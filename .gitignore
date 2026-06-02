@@ -1,0 +1,8 @@
+node_modules
+dist
+.wrangler
+*.bak
+.bak
+.bak2
+components.bak
+pages.bak

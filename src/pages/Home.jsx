@@ -1,0 +1,526 @@
+import { useState, useEffect, lazy, Suspense } from "react";
+import { motion } from "framer-motion";
+import Navbar from "../components/Navbar";
+const GuileoLogo3D = lazy(() => import("../components/GuileoLogo3D.jsx"));
+import Footer from "../components/Footer";
+import VoiceAgent from "../components/VoiceAgent";
+import Channels from "../components/Channels.jsx";
+import LiveCall from "../components/LiveCall.jsx";
+import Intro from "../components/Intro.jsx";
+import LeadForm from "../components/LeadForm.jsx";
+import LiveCallBar from "../components/LiveCallBar.jsx";
+import { Reveal, Count, Aurora, Ticker, Circuit, Stagger, Item, Magnetic, Parallax, Spotlight, Accordion, ProductsMarquee, HumanShield } from "../lib/ui.jsx";
+import { AnimatePresence } from "framer-motion";
+import logo from "../assets/guileo-logo.png";
+import { TECH, COMPLIANCE, TICKER, CHANNELS, CORE_OFFER, INTEGRATIONS, COMPARISON } from "../data/site";
+import { CONTACT, waLink } from "../data/contact.js";
+import { useLang } from "../i18n.jsx";
+
+/* The leak — interactive calculator (WHY) */
+function Calculator({ t }) {
+  const W = t.why;
+  const [calls, setCalls] = useState(600);
+  const [value, setValue] = useState(120);
+  const [email, setEmail] = useState("");
+  const [state, setState] = useState("idle"); // idle | sending | done
+  const missed = Math.round(calls * 0.35);
+  const lost = missed * value;
+  const recovered = Math.round(missed * 0.92) * value;
+  const submit = async (e) => {
+    e.preventDefault();
+    setState("sending");
+    const ctx = `Leak calculator → ${calls} calls/mo · $${value}/customer · losing $${lost.toLocaleString()}/mo · recoverable ~$${recovered.toLocaleString()}/mo`;
+    try {
+      const r = await fetch("/api/lead", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, source: "leak-calculator", message: ctx }) });
+      const d = await r.json().catch(() => ({}));
+      setState("done");
+      if (!d.stored) window.open(waLink(`${t.more.lead.wamsg}\n${ctx}`), "_blank");
+    } catch { setState("done"); window.open(waLink(`${t.more.lead.wamsg}\n${ctx}`), "_blank"); }
+  };
+  const Slider = ({ label, val, set, min, max, step, fmt, accent }) => (
+    <div>
+      <div className="flex items-baseline justify-between"><span className="text-sm font-semibold text-g-word">{label}</span><span className={`text-2xl font-extrabold ${accent}`}>{fmt(val)}</span></div>
+      <input type="range" min={min} max={max} step={step} value={val} onChange={(e)=>set(+e.target.value)} className={`w-full mt-2 ${accent==="text-g-gold"?"accent-g-gold":"accent-g-green"}`} />
+    </div>
+  );
+  return (
+    <div className="card sm:p-8 grid md:grid-cols-2 gap-8 items-center">
+      <div className="space-y-6">
+        <Slider label={W.calls} val={calls} set={setCalls} min={50} max={3000} step={50} fmt={(v)=>v.toLocaleString()} accent="text-g-green" />
+        <Slider label={W.value} val={value} set={setValue} min={20} max={3000} step={20} fmt={(v)=>"$"+v.toLocaleString()} accent="text-g-gold" />
+        <div className="rounded-xl2 border border-red-500/20 bg-red-500/[0.06] p-4">
+          <div className="text-xs uppercase tracking-wide text-red-400/80">{W.losing}</div>
+          <div className="text-3xl font-extrabold text-red-400 line-through decoration-red-400/40 drop-shadow-[0_0_16px_rgba(239,68,68,0.25)]">${lost.toLocaleString()}<span className="text-sm no-underline text-red-400/70">/mo</span></div>
+          <div className="text-xs text-g-muted mt-1">{W.leak}</div>
+        </div>
+      </div>
+      <div className="rounded-xl3 bg-g-deep p-7 text-center relative overflow-hidden">
+        <div className="absolute -top-16 -right-12 h-44 w-44 rounded-full bg-g-green/15 blur-3xl pointer-events-none" />
+        <div className="relative">
+          <div className="text-xs uppercase tracking-widest text-g-light">{W.recover}</div>
+          <div className="text-5xl sm:text-6xl font-extrabold mt-1 text-g-light drop-shadow-[0_0_24px_rgba(123,200,124,0.4)]"><Count to={recovered} prefix="$" dur={700} /><span className="text-xl text-white/45">/mo</span></div>
+          <div className="text-sm text-g-light/80 mt-1 font-semibold">≈ ${(recovered * 12).toLocaleString()}{W.peryear}</div>
+          {state !== "done" ? (
+            <form onSubmit={submit} className="mt-5 flex flex-col gap-2">
+              <input required type="email" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder={W.email}
+                className="rounded-full px-4 py-2.5 text-sm text-g-word bg-white/10 border border-white/15 outline-none focus:border-g-green/60 placeholder:text-white/40" />
+              <button disabled={state==="sending"} className="btn-gold text-sm disabled:opacity-70">{state==="sending" ? "…" : W.send}</button>
+            </form>
+          ) : <div className="mt-5 rounded-full bg-g-green/20 border border-g-green/40 text-g-light px-4 py-2.5 text-sm font-semibold">{W.sent}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* What — pillars */
+function Pillars({ t }) {
+  const items = t.pillars.items;
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const p = items[active];
+  useEffect(() => {
+    if (paused) return;
+    const id = setInterval(() => setActive((a) => (a + 1) % items.length), 4200);
+    return () => clearInterval(id);
+  }, [paused, items.length]);
+  const pick = (i) => { setActive(i); setPaused(true); };
+  return (
+    <div onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+      <div className="flex flex-wrap justify-center gap-2 mb-4">
+        {items.map((x,i) => (
+          <button key={i} onClick={()=>pick(i)}
+            className={`relative rounded-full px-5 py-2.5 text-sm font-bold transition-colors ${active===i ? "text-g-word" : "text-g-muted hover:text-g-word"}`}>
+            {active===i && <motion.span layoutId="pillTab" className="absolute inset-0 rounded-full bg-white/[0.07] border border-g-gold/35 shadow-soft" transition={{ type:"spring", stiffness:380, damping:30 }} />}
+            <span className="relative">{x.icon} {x.name}</span>
+          </button>
+        ))}
+      </div>
+      {/* auto-advance progress */}
+      <div className="mx-auto mb-8 h-0.5 w-44 rounded-full bg-white/10 overflow-hidden">
+        <div key={active} className="h-full origin-left bg-gradient-to-r from-g-green to-g-gold animate-growx" style={{ animationPlayState: paused ? "paused" : "running" }} />
+      </div>
+      <AnimatePresence mode="wait">
+        <motion.div key={active} initial={{ opacity:0, y:14 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.32 }}
+          className="card sm:p-10 grid md:grid-cols-2 gap-8 items-center relative overflow-hidden">
+          <div className="absolute -top-20 -right-16 h-56 w-56 rounded-full bg-g-gold/10 blur-3xl pointer-events-none animate-aurora" />
+          <div className="relative">
+            <div className="relative inline-grid place-items-center mb-3">
+              <span className="absolute inset-0 rounded-full blur-lg bg-g-gold/25 animate-pulse" />
+              <span className="relative text-5xl animate-floatslow">{p.icon}</span>
+            </div>
+            <div className="eyebrow mb-2">{p.tag}</div>
+            <h3 className="text-2xl font-extrabold text-g-word">{p.name}</h3>
+            <p className="mt-3 text-g-muted leading-relaxed">{p.desc}</p>
+            <Magnetic><a href="#contact" className="btn mt-5 text-sm">{t.pillars.getcta}</a></Magnetic>
+          </div>
+          <motion.div className="grid grid-cols-2 gap-2 relative" initial="h" animate="s" variants={{ s:{ transition:{ staggerChildren:0.05 } } }}>
+            {p.feats.map((f)=>(
+              <motion.div key={f} variants={{ h:{ opacity:0, y:10 }, s:{ opacity:1, y:0 } }}
+                className="rounded-xl2 bg-white/[0.035] border border-white/5 p-3 text-sm font-semibold text-g-word transition-all hover:border-g-gold/40 hover:bg-white/[0.06] hover:-translate-y-0.5">{f}</motion.div>
+            ))}
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export default function Home() {
+  const { t } = useLang();
+  const [introDone, setIntroDone] = useState(false);
+  return (
+    <div className="min-h-screen text-g-ink">
+      <Intro onDone={() => setIntroDone(true)} />
+      <Navbar />
+
+      {/* HERO */}
+      <section className="relative pt-28 pb-12 overflow-hidden">
+        <Aurora />
+        <Spotlight />
+        <div className="wrap grid lg:grid-cols-2 gap-12 items-center">
+          <motion.div initial="hide" animate={introDone ? "show" : "hide"} variants={{ show:{ transition:{ staggerChildren:0.14, delayChildren:0.05 } } }}>
+            {[
+              <span key="e" className="eyebrow mb-5">{t.hero.eyebrow}</span>,
+              <h1 key="h" className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] tracking-tight text-g-word">{t.hero.h1a} <span className="text-g-gold">{t.hero.h1b}</span><br/><span className="text-g-gold">{t.hero.h1c}</span></h1>,
+              <p key="p" className="mt-6 text-lg text-g-muted max-w-xl leading-relaxed">{t.hero.sub_a}<b className="text-g-word">{t.hero.sub_b}</b>{t.hero.sub_c}</p>,
+              <div key="b" className="mt-8 flex flex-wrap items-center gap-3"><Magnetic><a href="#why" className="btn">{t.hero.cta1}</a></Magnetic><a href="#contact" className="btn-ghost">{t.hero.cta2}</a><a href="/experience.html" className="inline-flex items-center gap-1.5 text-sm font-bold text-g-gold hover:gap-2.5 transition-all">▶ Watch the experience</a></div>,
+            ].map((el,i)=>(
+              <motion.div key={i} variants={{ hide:{ opacity:0, y:30, filter:"blur(8px)" }, show:{ opacity:1, y:0, filter:"blur(0px)", transition:{ type:"spring", stiffness:80, damping:18, mass:0.8 } } }}>{el}</motion.div>
+            ))}
+          </motion.div>
+          <Parallax distance={40} className="relative h-[340px] sm:h-[440px] lg:h-[500px]">
+            <motion.div className="absolute inset-0" initial={{ opacity:0, scale:0.88 }} animate={introDone ? { opacity:1, scale:1 } : { opacity:0, scale:0.88 }} transition={{ duration:1, delay:0.25, ease:[0.22,1,0.36,1] }}>
+            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-g-green/10 via-transparent to-g-gold/15 blur-3xl pointer-events-none" />
+            <Suspense fallback={<div className="w-full h-full grid place-items-center"><img src={logo} alt="Guileo" className="h-32 w-32 object-contain opacity-50 animate-floaty"/></div>}>
+              <GuileoLogo3D />
+            </Suspense>
+            </motion.div>
+            <div className="absolute top-3 right-3 rounded-full bg-white/[0.05] backdrop-blur-md shadow-soft px-3 py-1.5 text-xs font-bold text-g-light z-10 pointer-events-none animate-floatslow"><span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse"/>{t.hero.b1}</span></div>
+            <div className="absolute bottom-3 left-3 rounded-full bg-white/[0.05] backdrop-blur-md shadow-soft px-3 py-1.5 text-xs font-bold text-g-gold z-10 pointer-events-none animate-floatslow" style={{ animationDelay:"-3.5s" }}>{t.hero.b2}</div>
+          </Parallax>
+        </div>
+        <div className="wrap mt-10"><Ticker items={TICKER} /></div>
+      </section>
+
+      {/* INDUSTRIES — who we serve (moved up: identify first) */}
+      <section id="industries" className="py-12 bg-white/[0.035] overflow-hidden">
+        <div className="wrap text-center mb-8">
+          <span className="eyebrow mb-3">{t.industries.eyebrow}</span>
+          <h2 className="h2">{t.industries.h2}</h2>
+          <p className="mt-2 text-g-muted max-w-2xl mx-auto">{t.industries.sub}</p>
+        </div>
+        <div className="group relative flex w-full" style={{ WebkitMaskImage:"linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)" }}>
+          <div className="flex shrink-0 animate-marquee gap-3 pr-3 group-hover:[animation-play-state:paused]">
+            {[...t.indList,...t.indList].map(([i,tt],idx)=><span key={idx} className="whitespace-nowrap rounded-full border border-g-line bg-white/[0.05] backdrop-blur-md px-4 py-2 text-sm font-semibold text-g-word hover:border-g-gold/40 hover:text-g-gold transition-colors">{i} {tt}</span>)}
+          </div>
+        </div>
+      </section>
+
+      <Circuit />
+
+      {/* ADVANTAGES — why us, in plain customer language (no competitor names) */}
+      <section className="wrap py-12">
+        <Reveal className="text-center max-w-3xl mx-auto mb-10">
+          <span className="eyebrow mb-3">{t.more.adv.eyebrow}</span>
+          <h2 className="h2">{t.more.adv.line}</h2>
+        </Reveal>
+        <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6" gap={0.08}>
+          {t.more.adv.items.map(([icon, title, desc], idx) => (
+            <Item key={title} variant="scale">
+              <div className="card group h-full relative overflow-hidden">
+                <div className={`absolute -top-16 ${idx % 2 ? "-left-12" : "-right-12"} h-44 w-44 rounded-full blur-3xl pointer-events-none animate-aurora ${idx % 2 ? "bg-g-green/10" : "bg-g-gold/10"}`} style={{ animationDelay: `${-idx * 2}s` }} />
+                <div className="relative">
+                  <div className="relative inline-grid place-items-center mb-4">
+                    <span className={`absolute inset-0 rounded-2xl blur-md animate-pulse ${idx % 2 ? "bg-g-green/20" : "bg-g-gold/20"}`} />
+                    <span className="relative grid place-items-center h-14 w-14 rounded-2xl bg-white/[0.05] border border-white/10 text-2xl animate-floatslow transition-transform duration-300 group-hover:scale-110" style={{ animationDelay: `${-idx}s` }}>{icon}</span>
+                  </div>
+                  <h3 className="text-lg font-extrabold text-g-word">{title}</h3>
+                  <p className="mt-2 text-sm text-g-muted leading-relaxed">{desc}</p>
+                </div>
+              </div>
+            </Item>
+          ))}
+        </Stagger>
+        <p className="text-center text-sm text-g-muted mt-8">{t.more.coreSupport}</p>
+      </section>
+
+      {/* Compact "AI calls you" bar — high-intent touchpoint */}
+      <LiveCallBar source="bar-after-offer" />
+
+      {/* WHY */}
+      <section id="why" className="wrap py-12">
+        <Reveal className="text-center max-w-2xl mx-auto mb-8">
+          <span className="eyebrow mb-3">{t.why.eyebrow}</span>
+          <h2 className="h2">{t.why.h2}</h2>
+          <p className="mt-3 text-g-muted">{t.why.sub}</p>
+        </Reveal>
+        <Reveal><Calculator t={t} /></Reveal>
+      </section>
+
+      {/* FLYWHEEL */}
+      <section id="engine" className="bg-white/[0.05] backdrop-blur-md border-y border-g-line py-14">
+        <div className="wrap">
+          <Reveal className="text-center max-w-2xl mx-auto mb-10">
+            <span className="eyebrow mb-3">{t.engine.eyebrow}</span>
+            <h2 className="h2">{t.engine.h2}</h2>
+            <p className="mt-3 text-g-muted">{t.engine.sub_a}<b className="text-g-word">{t.engine.sub_b}</b>{t.engine.sub_c}</p>
+          </Reveal>
+
+          {/* the engine — a flywheel that visibly spins */}
+          <Reveal className="flex justify-center mb-9">
+            <div className="relative h-48 w-48">
+              <svg viewBox="0 0 200 200" className="absolute inset-0 animate-spin" style={{ animationDuration:"18s" }} aria-hidden>
+                <circle cx="100" cy="100" r="88" fill="none" stroke="#C2A878" strokeOpacity="0.4" strokeWidth="2" strokeDasharray="2 10" strokeLinecap="round" />
+              </svg>
+              <svg viewBox="0 0 200 200" className="absolute inset-0 animate-spin" style={{ animationDuration:"9s", animationDirection:"reverse" }} aria-hidden>
+                <defs><linearGradient id="fw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#3E9468" /><stop offset="1" stopColor="#D6C29A" /></linearGradient></defs>
+                <circle cx="100" cy="100" r="72" fill="none" stroke="url(#fw)" strokeWidth="3" strokeDasharray="130 320" strokeLinecap="round" />
+              </svg>
+              <div className="absolute inset-0 grid place-items-center text-center">
+                <div>
+                  <div className="text-3xl animate-spin" style={{ animationDuration:"7s" }}>♻️</div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-g-gold mt-1">Engine</div>
+                </div>
+              </div>
+              {["📞","🧠","📣","💰"].map((e,i)=>{ const a=(i/4)*2*Math.PI - Math.PI/2; const x=100+80*Math.cos(a); const y=100+80*Math.sin(a); return (
+                <div key={i} className="absolute -translate-x-1/2 -translate-y-1/2 h-9 w-9 grid place-items-center rounded-full bg-g-cream border border-g-gold/30 text-base shadow-soft animate-pulse" style={{ left:`${x/2}%`, top:`${y/2}%`, animationDelay:`${i*0.5}s` }}>{e}</div>
+              ); })}
+            </div>
+          </Reveal>
+
+          <div className="relative">
+            <Stagger className="grid md:grid-cols-4 gap-4 relative" gap={0.14}>
+              {t.engine.steps.map(([i,tt,d],idx)=>(
+                <Item key={idx} variant="up">
+                  <div className="card group h-full relative">
+                    <div className="absolute -top-3 -left-3 grid place-items-center h-8 w-8 rounded-full bg-g-gold text-black text-sm font-extrabold shadow-gold transition-transform duration-300 group-hover:scale-110">{idx+1}</div>
+                    <div className="text-4xl mb-3 transition-transform duration-300 group-hover:scale-110">{i}</div>
+                    <h3 className="font-bold text-g-word">{tt}</h3>
+                    <p className="mt-2 text-sm text-g-muted leading-relaxed">{d}</p>
+                    {idx<3 && <div className="hidden md:block absolute top-1/2 -right-5 text-g-gold/70 text-2xl animate-pulse">→</div>}
+                  </div>
+                </Item>
+              ))}
+            </Stagger>
+          </div>
+          <div className="mt-8 flex items-center justify-center gap-2 text-sm text-g-muted">
+            <span className="h-2 w-2 rounded-full bg-g-green animate-pulse" />{t.engine.loop}
+          </div>
+        </div>
+      </section>
+
+      {/* NUMBERS */}
+      <section id="results" className="bg-g-deep text-white py-14 relative overflow-hidden">
+        <div className="absolute -top-24 right-0 h-96 w-96 rounded-full bg-g-green/20 blur-3xl animate-aurora" />
+        <div className="wrap relative grid lg:grid-cols-[0.82fr_1.18fr] gap-10 items-center">
+          {/* left — narrative */}
+          <Reveal variant="left">
+            <span className="eyebrow mb-4">{t.numbers.eyebrow}</span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold leading-tight bg-gradient-to-r from-white via-g-gold to-white bg-[length:220%_auto] bg-clip-text text-transparent animate-shimmer">{t.numbers.h2}</h2>
+            <p className="mt-4 text-white/70 leading-relaxed">{t.more.numbersMission}</p>
+            <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-g-light">
+              <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full rounded-full bg-g-green/50 animate-ping" /><span className="relative inline-flex h-2 w-2 rounded-full bg-g-green" /></span>
+              {t.numbers.eyebrow}
+            </div>
+          </Reveal>
+
+          {/* right — live dashboard panel */}
+          <Reveal variant="right">
+            <div className="rounded-xl3 border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-lift overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 bg-white/[0.03]">
+                <span className="h-3 w-3 rounded-full bg-red-400/70" /><span className="h-3 w-3 rounded-full bg-g-gold/70" /><span className="h-3 w-3 rounded-full bg-g-green/70" />
+                <span className="ml-2 text-xs font-semibold text-white/45 tracking-wide">guileo · live results</span>
+                <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-bold uppercase text-g-light"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />live</span>
+              </div>
+              <Stagger className="grid grid-cols-2 sm:grid-cols-3" gap={0.07}>
+                {[["💰","$",15000,"+"],["📞","",0,""],["📈","+",286,"%"],["⚡","",3.2,"x"],["🎯","-",40,"%"],["📅","+",40,"%"]].map(([icon,pre,val,suf],idx)=>(
+                  <Item key={idx} variant="up">
+                    <div className="group h-full p-5 border-b border-r border-white/[0.06] transition-colors duration-300 hover:bg-white/[0.05]">
+                      <div className="flex items-center gap-1.5 text-base mb-2">{icon}</div>
+                      <div className="text-3xl sm:text-4xl font-extrabold text-g-light leading-none tracking-tight">
+                        <Count to={val} prefix={pre} suffix={suf} decimals={String(val).includes(".")?1:0} />
+                      </div>
+                      <div className="mt-1.5 font-bold text-white text-sm">{t.numbers.stats[idx][3]}</div>
+                      <div className="text-[11px] text-white/45 mt-0.5 leading-snug">{t.numbers.stats[idx][4]}</div>
+                    </div>
+                  </Item>
+                ))}
+              </Stagger>
+            </div>
+          </Reveal>
+        </div>
+        <div className="wrap relative mt-12"><LiveCall /></div>
+      </section>
+
+      <Circuit flip />
+
+      {/* PILLARS */}
+      <section id="pillars" className="wrap py-14">
+        <Reveal className="text-center max-w-2xl mx-auto mb-10">
+          <span className="eyebrow mb-3">{t.pillars.eyebrow}</span>
+          <h2 className="h2">{t.pillars.h2}</h2>
+          <p className="mt-3 text-g-muted">{t.pillars.sub}</p>
+        </Reveal>
+        <Reveal><Pillars t={t} /></Reveal>
+      </section>
+
+      {/* CHANNELS — real brand icons */}
+      <Channels t={t} />
+
+      {/* INTEGRATIONS — works with what you already use */}
+      <section className="wrap py-14">
+        <Reveal className="text-center max-w-2xl mx-auto mb-10">
+          <span className="eyebrow mb-3">{t.more.integ.eyebrow}</span>
+          <h2 className="h2">{t.more.integ.h2}</h2>
+          <p className="mt-3 text-g-muted">{t.more.integ.sub}</p>
+        </Reveal>
+        <Stagger className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4" gap={0.07}>
+          {INTEGRATIONS.map((g, gi) => (
+            <Item key={g.group} variant="up">
+              <div className="card h-full">
+                <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{t.more.integGroups[gi] || g.group}</div>
+                <div className="flex flex-wrap gap-2">
+                  {g.items.map((it) => (
+                    <span key={it} className="rounded-full bg-white/[0.035] border border-g-line px-3 py-1.5 text-sm font-semibold text-g-word hover:border-g-gold/50 hover:text-g-gold hover:-translate-y-0.5 transition-all cursor-default">{it}</span>
+                  ))}
+                </div>
+              </div>
+            </Item>
+          ))}
+        </Stagger>
+        <p className="text-center text-sm text-g-muted mt-6">{t.more.integ.ask} <a href="#contact" className="text-g-gold font-semibold hover:underline">{t.more.integ.asklink}</a></p>
+      </section>
+
+      {/* PRODUCTS — what we build (moved down: after they identify their industry) */}
+      <ProductsMarquee line={t.more.products.line} items={t.more.products.items} />
+
+      {/* STEPS */}
+      <section id="how" className="wrap py-14">
+        <Reveal className="text-center max-w-2xl mx-auto mb-9">
+          <span className="eyebrow mb-3">{t.steps.eyebrow}</span>
+          <h2 className="h2">{t.steps.h2}</h2>
+          {t.steps.sub && <p className="mt-3 text-g-muted">{t.steps.sub}</p>}
+        </Reveal>
+        <Stagger className="grid md:grid-cols-3 gap-6" gap={0.13}>
+          {t.steps.items.map(([i,tt,d],idx)=>(
+            <Item key={idx} variant="up"><div className="card group text-center">
+              <div className="text-4xl mb-3 transition-transform duration-300 group-hover:scale-110">{i}</div>
+              <div className="grid place-items-center h-9 w-9 mx-auto rounded-full border border-g-green/40 bg-g-green/15 text-g-light font-extrabold mb-3 transition-transform duration-300 group-hover:scale-110">{idx+1}</div>
+              <h3 className="font-bold text-g-word">{tt}</h3>
+              <p className="mt-2 text-sm text-g-muted leading-relaxed">{d}</p>
+            </div></Item>
+          ))}
+        </Stagger>
+      </section>
+
+      {/* PROOF — trust: human + security (super important) */}
+      <section className="relative bg-white/[0.05] backdrop-blur-md border-y border-g-line py-16 overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 h-72 w-[42rem] rounded-full bg-g-green/10 blur-3xl pointer-events-none" />
+        <div className="wrap relative">
+          <Reveal className="text-center mb-10"><span className="eyebrow mb-3">{t.proof.eyebrow}</span><h2 className="h2">{t.proof.h2}</h2></Reveal>
+
+          {/* tech + compliance — staggered, glowing on hover */}
+          <Stagger className="flex flex-wrap items-center justify-center gap-2.5" gap={0.04} amount={0.2}>
+            <Item variant="scale"><span className="text-xs font-bold uppercase text-g-muted mr-1">{t.proof.poweredby}</span></Item>
+            {TECH.map(x=><Item key={x} variant="scale"><span className="rounded-full border border-g-line bg-white/[0.04] px-3.5 py-1.5 text-sm font-semibold text-g-word transition-all hover:border-g-gold/50 hover:text-g-gold hover:-translate-y-0.5">{x}</span></Item>)}
+            <Item variant="scale"><span className="text-xs font-bold uppercase text-g-muted mx-1">{t.proof.compliant}</span></Item>
+            {COMPLIANCE.map(x=><Item key={x} variant="scale"><span className="inline-flex items-center gap-1 rounded-full border border-g-green/30 bg-g-green/10 px-3.5 py-1.5 text-sm font-bold text-g-light"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />🛡️ {x}</span></Item>)}
+          </Stagger>
+
+          <div className="grid md:grid-cols-2 gap-6 mt-10 items-stretch">
+            {/* Real humans — featured with illustration */}
+            <Reveal variant="left">
+              <div className="card group relative overflow-hidden h-full flex flex-col sm:flex-row items-center gap-5">
+                <div className="absolute -bottom-16 -left-10 h-48 w-48 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
+                <HumanShield className="relative h-32 w-32 shrink-0 drop-shadow-[0_0_24px_rgba(79,176,124,0.25)] transition-transform duration-500 group-hover:scale-105" />
+                <div className="relative text-center sm:text-left">
+                  <h3 className="font-extrabold text-g-word text-lg">{t.proof.ally_t}</h3>
+                  <p className="mt-2 text-sm text-g-muted leading-relaxed">{t.proof.ally_d}</p>
+                </div>
+              </div>
+            </Reveal>
+            {/* Security & consent */}
+            <Reveal variant="right">
+              <div className="card group relative overflow-hidden h-full">
+                <div className="absolute -top-16 -right-10 h-48 w-48 rounded-full bg-g-gold/12 blur-3xl pointer-events-none animate-aurora" style={{ animationDelay:"-7s" }} />
+                <div className="relative">
+                  <span className="grid place-items-center h-14 w-14 rounded-2xl bg-g-green/10 border border-g-green/25 text-2xl mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">🔒</span>
+                  <h3 className="font-extrabold text-g-word text-lg">{t.proof.sec_t}</h3>
+                  <p className="mt-2 text-sm text-g-muted leading-relaxed">{t.proof.sec_d}</p>
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    {COMPLIANCE.map(x=><span key={x} className="rounded-md bg-white/[0.04] border border-white/10 px-2 py-1 text-[11px] font-bold text-g-light">{x}</span>)}
+                  </div>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* COMPARISON — the obvious choice */}
+      <section className="wrap py-14">
+        <Reveal className="text-center max-w-2xl mx-auto mb-10">
+          <span className="eyebrow mb-3">{t.more.comp.eyebrow}</span>
+          <h2 className="h2">{t.more.comp.h2}</h2>
+          <p className="mt-3 text-g-muted">{t.more.comp.sub}</p>
+        </Reveal>
+        <Reveal>
+          <div className="overflow-x-auto rounded-xl3 border border-g-line bg-white/[0.05] backdrop-blur-md shadow-soft">
+            <table className="w-full text-sm min-w-[640px]">
+              <thead>
+                <tr>
+                  {t.more.comp.cols.map((c, i) => (
+                    <th key={i} className={`p-4 text-left font-extrabold ${i === 1 ? "bg-g-green/15 border-b-2 border-g-green/40 text-g-word rounded-t-xl relative after:absolute after:inset-0 after:rounded-t-xl after:shadow-[inset_0_0_30px_rgba(62,148,104,0.18)] after:animate-glowpulse after:pointer-events-none" : "text-g-muted"}`}>{c}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {t.more.comp.rows.map((r, i) => (
+                  <tr key={i} className="border-t border-g-line">
+                    {r.map((cell, j) => (
+                      <td key={j} className={`p-4 ${j === 0 ? "font-semibold text-g-word" : j === 1 ? "bg-g-green/[0.06] text-center font-bold text-g-light" : "text-center text-g-muted"}`}>{cell}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Reveal>
+        <div className="text-center mt-8"><Magnetic><a href="#contact" className="btn">{t.more.comp.cta}</a></Magnetic></div>
+      </section>
+
+      {/* Compact "AI calls you" bar — decision moment before pricing */}
+      <LiveCallBar source="bar-before-pricing" />
+
+      {/* PRICING */}
+      <section id="pricing" className="wrap py-14">
+        <Reveal className="text-center max-w-2xl mx-auto mb-10">
+          <span className="eyebrow mb-3">{t.pricing.eyebrow}</span>
+          <h2 className="h2">{t.pricing.h2}</h2>
+          <p className="mt-3 text-g-muted">{t.pricing.sub}</p>
+        </Reveal>
+        <Stagger className="grid md:grid-cols-3 gap-6" gap={0.1}>
+          {t.priceList.map((p)=>(
+            <Item key={p.name} variant="up">
+            <div className={`card flex flex-col h-full relative ${p.featured ? "ring-1 ring-g-gold/50 shadow-gold" : ""}`}>
+              {p.featured && <span aria-hidden className="absolute -inset-px rounded-xl2 animate-breathe pointer-events-none" />}
+              {p.featured && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-bold text-black bg-gradient-to-r from-g-gold via-g-word to-g-gold bg-[length:200%_100%] animate-shimmer">{p.tag}</span>}
+              <div className="text-xs font-bold uppercase text-g-gold relative">{p.tag}</div>
+              <div className="text-xl font-extrabold text-g-word mt-1 relative">{p.name}</div>
+              <div className="mt-2 mb-4 relative"><span className="text-3xl font-extrabold text-g-word">{p.price}</span><span className="text-g-muted text-sm">{p.per}</span></div>
+              <ul className="space-y-2 mb-6 flex-1 relative">{p.feats.map((f)=><li key={f} className="flex items-start gap-2 text-sm text-g-word"><span className="text-g-green">✓</span>{f}</li>)}</ul>
+              <a href="#contact" className={`relative ${p.featured ? "btn-gold" : "btn-ghost"}`}>{p.cta}</a>
+            </div>
+            </Item>
+          ))}
+        </Stagger>
+      </section>
+
+      {/* ACADEMY */}
+      <section id="academy" className="wrap pb-12">
+        <div className="rounded-xl3 bg-gradient-to-tr from-g-gold/10 via-transparent to-g-green/10 bg-[length:200%_200%] animate-shimmer border border-g-line p-8 sm:p-10 flex flex-col md:flex-row items-center gap-6 justify-between">
+          <div>
+            <div className="eyebrow mb-2">{t.academy.eyebrow}</div>
+            <h3 className="text-2xl font-extrabold text-g-word">{t.academy.h2}</h3>
+            <p className="mt-2 text-g-muted text-sm max-w-xl">{t.academy.sub}</p>
+          </div>
+          <a href="#contact" className="btn-gold shrink-0">{t.academy.cta}</a>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="wrap py-12">
+        <Reveal className="text-center mb-8"><span className="eyebrow mb-3">{t.faq.eyebrow}</span><h2 className="h2">{t.faq.h2}</h2></Reveal>
+        <Accordion items={t.faq.items} />
+      </section>
+
+      {/* CTA + LEAD CAPTURE */}
+      <section id="contact" className="wrap pb-14 scroll-mt-24">
+        <div className="rounded-xl3 bg-white/[0.03] backdrop-blur-xl border border-white/10 p-8 sm:p-12 shadow-lift relative overflow-hidden">
+          <div className="absolute -top-24 -right-16 h-72 w-72 rounded-full bg-g-green/15 blur-3xl animate-aurora pointer-events-none" />
+          <div className="absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-g-gold/15 blur-3xl animate-aurora pointer-events-none" style={{ animationDelay: "-6s" }} />
+          <div className="relative max-w-2xl mx-auto">
+            <div className="text-center">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-g-word">{t.final.h2}</h2>
+              <p className="mt-2 text-g-gold font-bold">{t.more.lead.title}</p>
+              <p className="mt-2 text-sm text-g-muted max-w-xl mx-auto">{t.more.lead.sub}</p>
+            </div>
+            <div className="mt-7"><LeadForm source="final-cta" /></div>
+            <div className="mt-6 flex items-center gap-3 text-xs text-g-muted">
+              <div className="h-px flex-1 bg-g-line" />{t.final.sub}<div className="h-px flex-1 bg-g-line" />
+            </div>
+            <div className="mt-5 flex flex-wrap justify-center gap-3">
+              <a href={waLink(t.more.lead.wamsg)} target="_blank" rel="noopener" className="btn-ghost text-sm">{t.final.wa}</a>
+              <a href={CONTACT.calendly} className="btn-ghost text-sm">{t.final.demo}</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
+      <VoiceAgent />
+    </div>
+  );
+}
