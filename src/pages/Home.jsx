@@ -216,17 +216,20 @@ export default function Home() {
           <h2 className="h2">{t.more.adv.line}</h2>
         </Reveal>
         <Stagger className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6" gap={0.08}>
-          {t.more.adv.items.map(([icon, title, desc], idx) => (
+          {t.more.adv.items.map(([icon, title, pre, num, suf, sub], idx) => (
             <Item key={title} variant="scale">
               <div className="card group h-full relative overflow-hidden">
                 <div className={`absolute -top-16 ${idx % 2 ? "-left-12" : "-right-12"} h-44 w-44 rounded-full blur-3xl pointer-events-none animate-aurora ${idx % 2 ? "bg-g-green/10" : "bg-g-gold/10"}`} style={{ animationDelay: `${-idx * 2}s` }} />
-                <div className="relative">
-                  <div className="relative inline-grid place-items-center mb-4">
+                <div className="relative flex items-center gap-4">
+                  <div className="relative inline-grid place-items-center shrink-0">
                     <span className={`absolute inset-0 rounded-2xl blur-md animate-pulse ${idx % 2 ? "bg-g-green/20" : "bg-g-gold/20"}`} />
                     <span className="relative grid place-items-center h-14 w-14 rounded-2xl bg-white/[0.05] border border-white/10 text-2xl animate-floatslow transition-transform duration-300 group-hover:scale-110" style={{ animationDelay: `${-idx}s` }}>{icon}</span>
                   </div>
-                  <h3 className="text-lg font-extrabold text-g-word">{title}</h3>
-                  <p className="mt-2 text-sm text-g-muted leading-relaxed">{desc}</p>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-g-word leading-tight">{title}</h3>
+                    <div className="text-3xl font-extrabold text-g-light leading-none mt-1 tracking-tight"><Count to={num} prefix={pre} suffix={suf} /></div>
+                    <div className="text-[11px] text-g-muted mt-0.5 leading-snug">{sub}</div>
+                  </div>
                 </div>
               </div>
             </Item>
@@ -337,7 +340,7 @@ export default function Home() {
                   <Item key={idx} variant="up">
                     <div className="group h-full p-5 border-b border-r border-white/[0.06] transition-colors duration-300 hover:bg-white/[0.05]">
                       <div className="flex items-center gap-1.5 text-base mb-2">{icon}</div>
-                      <div className="text-3xl sm:text-4xl font-extrabold text-g-light leading-none tracking-tight">
+                      <div className="text-3xl sm:text-4xl font-extrabold text-sky-400 leading-none tracking-tight drop-shadow-[0_0_16px_rgba(56,189,248,0.35)]">
                         <Count to={val} prefix={pre} suffix={suf} decimals={String(val).includes(".")?1:0} />
                       </div>
                       <div className="mt-1.5 font-bold text-white text-sm">{t.numbers.stats[idx][3]}</div>
@@ -573,19 +576,20 @@ export default function Home() {
           <p className="mt-3 text-g-muted">{t.pricing.sub}</p>
         </Reveal>
         <Stagger className="grid md:grid-cols-3 gap-6" gap={0.1}>
-          {t.priceList.map((p)=>(
+          {t.priceList.map((p,pi)=>{ const ICON=["🌱","⭐","🚀"][pi]||"✨"; const COL=["text-g-green","text-g-gold","text-sky-400"][pi]||"text-g-light"; const BG=["bg-g-green/10 border-g-green/30","bg-g-gold/10 border-g-gold/30","bg-sky-400/10 border-sky-400/30"][pi]||"bg-white/5 border-white/10"; return (
             <Item key={p.name} variant="up">
             <div className={`card flex flex-col h-full relative ${p.featured ? "ring-1 ring-g-gold/50 shadow-gold" : ""}`}>
               {p.featured && <span aria-hidden className="absolute -inset-px rounded-xl2 animate-breathe pointer-events-none" />}
               {p.featured && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-bold text-black bg-gradient-to-r from-g-gold via-g-word to-g-gold bg-[length:200%_100%] animate-shimmer">{p.tag}</span>}
+              <div className={`grid place-items-center h-12 w-12 rounded-2xl border text-2xl mb-3 relative ${BG}`}>{ICON}</div>
               <div className="text-xs font-bold uppercase text-g-gold relative">{p.tag}</div>
               <div className="text-xl font-extrabold text-g-word mt-1 relative">{p.name}</div>
               <div className="mt-2 mb-4 relative"><span className="text-3xl font-extrabold text-g-word">{p.price}</span><span className="text-g-muted text-sm">{p.per}</span></div>
-              <ul className="space-y-2 mb-6 flex-1 relative">{p.feats.map((f)=><li key={f} className="flex items-start gap-2 text-sm text-g-word"><span className="text-g-green">✓</span>{f}</li>)}</ul>
+              <ul className="space-y-2 mb-6 flex-1 relative">{p.feats.map((f)=><li key={f} className="flex items-start gap-2 text-sm text-g-word"><span className={COL}>✓</span>{f}</li>)}</ul>
               <a href="#contact" className={`relative ${p.featured ? "btn-bright" : "btn-ghost"}`}>{p.cta}</a>
             </div>
             </Item>
-          ))}
+          ); })}
         </Stagger>
         <div className="mt-8 flex flex-wrap justify-center gap-3 text-sm">
           {[["📈","+286% growth"],["⚡","3.2x ROI in 90 days"],["🚀","Live in 7 days"],["🛡️","30-day money-back"]].map(([ic,tx])=>(
