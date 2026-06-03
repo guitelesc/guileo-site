@@ -724,18 +724,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FAQ */}
-      <section id="faq" className="wrap py-12">
-        <Reveal className="text-center mb-8"><span className="eyebrow mb-3">{t.faq.eyebrow}</span><h2 className="h2">{t.faq.h2}</h2></Reveal>
-        <Accordion items={t.faq.items} />
-        <div className="mt-8 text-center">
-          <button onClick={()=>{ const el=document.querySelector("elevenlabs-convai"); const b=el?.shadowRoot?.querySelector("button"); if(b)b.click(); }}
-            className="btn-bright inline-flex"><span className="relative flex h-2 w-2 mr-1"><span className="absolute inline-flex h-full w-full rounded-full bg-black/40 animate-ping" /><span className="relative inline-flex h-2 w-2 rounded-full bg-black/60" /></span>🎙️ Still have questions? Ask our live AI</button>
-        </div>
-      </section>
-
-      {/* CTA + LEAD CAPTURE */}
-      <section id="contact" className="wrap pb-14 scroll-mt-24">
+      {/* CTA + LEAD CAPTURE (moved above FAQ — capture the lead while intent is hot) */}
+      <section id="contact" className="wrap py-12 scroll-mt-24">
         <div className="rounded-xl3 bg-white/[0.03] backdrop-blur-xl border border-white/10 p-8 sm:p-12 shadow-lift relative overflow-hidden">
           <div className="absolute -top-24 -right-16 h-72 w-72 rounded-full bg-g-green/15 blur-3xl animate-aurora pointer-events-none" />
           <div className="absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-g-gold/15 blur-3xl animate-aurora pointer-events-none" style={{ animationDelay: "-6s" }} />
@@ -754,6 +744,16 @@ export default function Home() {
               <a href={CONTACT.calendly} className="btn-ghost text-sm">{t.final.demo}</a>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* FAQ — last, right before the closing manifesto */}
+      <section id="faq" className="wrap pb-14">
+        <Reveal className="text-center mb-8"><span className="eyebrow mb-3">{t.faq.eyebrow}</span><h2 className="h2">{t.faq.h2}</h2></Reveal>
+        <Accordion items={t.faq.items} />
+        <div className="mt-8 text-center">
+          <button onClick={()=>{ const el=document.querySelector("elevenlabs-convai"); const b=el?.shadowRoot?.querySelector("button"); if(b)b.click(); }}
+            className="btn-bright inline-flex"><span className="relative flex h-2 w-2 mr-1"><span className="absolute inline-flex h-full w-full rounded-full bg-black/40 animate-ping" /><span className="relative inline-flex h-2 w-2 rounded-full bg-black/60" /></span>🎙️ Still have questions? Ask our live AI</button>
         </div>
       </section>
 
