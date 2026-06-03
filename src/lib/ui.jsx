@@ -178,6 +178,39 @@ export function Ticker({ items }) {
   );
 }
 
+// Live feed "screen" — a window mockup cycling demo items (what the AI does + result)
+export function LiveFeed({ label = "guileo · live", items }) {
+  const [tick, setTick] = useState(0);
+  useEffect(() => { const id = setInterval(() => setTick((x) => x + 1), 2400); return () => clearInterval(id); }, []);
+  const ordered = items.map((_, i) => items[(i + tick) % items.length]).slice(0, 4);
+  return (
+    <div className="rounded-xl3 border border-white/15 bg-gradient-to-br from-white/[0.10] to-white/[0.04] backdrop-blur-xl shadow-lift overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 bg-white/[0.03]">
+        <span className="h-3 w-3 rounded-full bg-red-400/70" /><span className="h-3 w-3 rounded-full bg-g-gold/70" /><span className="h-3 w-3 rounded-full bg-g-green/70" />
+        <span className="ml-2 text-xs font-semibold text-white/50 tracking-wide">{label}</span>
+        <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-bold uppercase text-g-light"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />live</span>
+      </div>
+      <div className="p-4 space-y-2.5 min-h-[18rem]">
+        <AnimatePresence mode="popLayout" initial={false}>
+          {ordered.map((d, i) => (
+            <motion.div key={d[1] + (i === 0 ? `-${tick}` : "")} layout
+              initial={i === 0 ? { opacity: 0, y: -14, scale: 0.97 } : false}
+              animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }} transition={{ duration: 0.4 }}
+              className={`flex items-center gap-3 rounded-xl2 border p-3 ${i === 0 ? "border-g-green/40 bg-g-green/[0.08]" : "border-white/10 bg-white/[0.04]"}`}>
+              <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-lg shrink-0">{d[0]}</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-bold text-g-word">{d[1]} <span className="text-g-green">· AI</span></div>
+                <div className="text-[11px] text-g-muted truncate">{d[2]}</div>
+              </div>
+              <span className="text-[10px] text-g-light whitespace-nowrap font-bold">{d[3]}</span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
 // Human + security illustration (inline SVG) — "real humans protect your data"
 export function HumanShield({ className = "" }) {
   return (

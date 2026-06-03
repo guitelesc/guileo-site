@@ -9,27 +9,35 @@ import LiveCall from "../components/LiveCall.jsx";
 import Intro from "../components/Intro.jsx";
 import LeadForm from "../components/LeadForm.jsx";
 import LiveCallBar from "../components/LiveCallBar.jsx";
-import { Reveal, Count, Aurora, Ticker, Circuit, Stagger, Item, Magnetic, Parallax, Spotlight, Accordion, ProductsMarquee, HumanShield } from "../lib/ui.jsx";
+import { Reveal, Count, Aurora, Ticker, Circuit, Stagger, Item, Magnetic, Parallax, Spotlight, Accordion, ProductsMarquee, HumanShield, LiveFeed } from "../lib/ui.jsx";
 import { AnimatePresence } from "framer-motion";
 import logo from "../assets/guileo-logo.png";
 import { TECH, COMPLIANCE, TICKER, CHANNELS, CORE_OFFER, INTEGRATIONS, COMPARISON } from "../data/site";
 import { CONTACT, waLink } from "../data/contact.js";
 import { useLang } from "../i18n.jsx";
 
-/* The leak — interactive calculator (WHY) */
+/* The leak — MULTICHANNEL interactive calculator (WHY) */
 function Calculator({ t }) {
   const W = t.why;
-  const [calls, setCalls] = useState(600);
+  const [contacts, setContacts] = useState(800);
   const [value, setValue] = useState(120);
   const [email, setEmail] = useState("");
   const [state, setState] = useState("idle"); // idle | sending | done
-  const missed = Math.round(calls * 0.35);
-  const lost = missed * value;
-  const recovered = Math.round(missed * 0.92) * value;
+  // each channel: [icon, label, share of contacts, miss-rate]
+  const CFG = [[0.30, 0.35], [0.25, 0.30], [0.20, 0.45], [0.15, 0.50], [0.10, 0.55]];
+  const rows = (W.chans || []).map(([ic, label], i) => {
+    const [share, miss] = CFG[i] || [0, 0];
+    const c = Math.round(contacts * share);
+    const m = Math.round(c * miss);
+    return { ic, label, miss, lost: m * value, missed: m };
+  });
+  const lost = rows.reduce((s, r) => s + r.lost, 0);
+  const totalMissed = rows.reduce((s, r) => s + r.missed, 0);
+  const recovered = Math.round(totalMissed * 0.92) * value;
   const submit = async (e) => {
     e.preventDefault();
     setState("sending");
-    const ctx = `Leak calculator → ${calls} calls/mo · $${value}/customer · losing $${lost.toLocaleString()}/mo · recoverable ~$${recovered.toLocaleString()}/mo`;
+    const ctx = `Multichannel leak → ${contacts} leads/mo · $${value}/customer · losing $${lost.toLocaleString()}/mo across all channels · recoverable ~$${recovered.toLocaleString()}/mo`;
     try {
       const r = await fetch("/api/lead", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, source: "leak-calculator", message: ctx }) });
@@ -41,38 +49,45 @@ function Calculator({ t }) {
   const Slider = ({ label, val, set, min, max, step, fmt, accent }) => (
     <div>
       <div className="flex items-baseline justify-between"><span className="text-sm font-semibold text-g-word">{label}</span><span className={`text-2xl font-extrabold ${accent}`}>{fmt(val)}</span></div>
-      <input type="range" min={min} max={max} step={step} value={val} onChange={(e)=>set(+e.target.value)} className={`w-full mt-2 ${accent==="text-g-gold"?"accent-g-gold":"accent-g-green"}`} />
+      <input type="range" min={min} max={max} step={step} value={val} onChange={(e) => set(+e.target.value)} className={`w-full mt-2 ${accent === "text-g-gold" ? "accent-g-gold" : "accent-g-green"}`} />
     </div>
   );
   return (
     <div className="card sm:p-8 grid md:grid-cols-2 gap-8 items-center">
-      <div className="space-y-6">
-        <Slider label={W.calls} val={calls} set={setCalls} min={50} max={3000} step={50} fmt={(v)=>v.toLocaleString()} accent="text-g-green" />
-        <Slider label={W.value} val={value} set={setValue} min={20} max={3000} step={20} fmt={(v)=>"$"+v.toLocaleString()} accent="text-g-gold" />
-        <div className="rounded-xl2 border border-red-500/20 bg-red-500/[0.06] p-4">
-          <div className="text-xs uppercase tracking-wide text-red-400/80">{W.losing}</div>
-          <div className="text-3xl font-extrabold text-red-400 line-through decoration-red-400/40 drop-shadow-[0_0_16px_rgba(239,68,68,0.25)]">${lost.toLocaleString()}<span className="text-sm no-underline text-red-400/70">/mo</span></div>
-          <div className="mt-3">
-            <div className="flex justify-between text-[11px] font-semibold mb-1"><span className="text-g-light">65% you catch</span><span className="text-red-400">35% missed</span></div>
-            <div className="h-2.5 rounded-full overflow-hidden bg-white/10 flex">
-              <div className="bg-gradient-to-r from-g-green to-g-light" style={{ width:"65%" }} />
-              <div className="bg-gradient-to-r from-red-500/80 to-red-400 animate-pulse" style={{ width:"35%" }} />
+      <div className="space-y-5">
+        <Slider label={W.contacts} val={contacts} set={setContacts} min={100} max={5000} step={50} fmt={(v) => v.toLocaleString()} accent="text-g-green" />
+        <Slider label={W.value} val={value} set={setValue} min={20} max={3000} step={20} fmt={(v) => "$" + v.toLocaleString()} accent="text-g-gold" />
+        {/* per-channel loss thermometers */}
+        <div className="space-y-2.5">
+          {rows.map((r) => (
+            <div key={r.label} className="flex items-center gap-3">
+              <span className="w-6 text-center text-lg shrink-0">{r.ic}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between text-[11px] mb-1"><span className="font-semibold text-g-word truncate">{r.label}</span><span className="font-bold text-red-400">−${r.lost.toLocaleString()}</span></div>
+                <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                  <motion.div className="h-full bg-gradient-to-r from-red-500/80 to-red-400" animate={{ width: `${Math.round(r.miss * 100)}%` }} transition={{ duration: 0.4 }} />
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="text-xs text-g-muted mt-2">{W.leak}</div>
+          ))}
+        </div>
+        <div className="rounded-xl2 border border-red-500/25 bg-red-500/[0.07] p-4 text-center">
+          <div className="text-xs uppercase tracking-wide text-red-400/80">{W.losing}</div>
+          <div className="text-4xl font-extrabold text-red-400 drop-shadow-[0_0_18px_rgba(239,68,68,0.3)]">−$<Count to={lost} dur={500} /><span className="text-sm text-red-400/70">/mo</span></div>
+          <div className="text-[11px] text-g-muted mt-1">{W.leak}</div>
         </div>
       </div>
       <div className="rounded-xl3 bg-g-deep p-7 text-center relative overflow-hidden">
         <div className="absolute -top-16 -right-12 h-44 w-44 rounded-full bg-g-green/15 blur-3xl pointer-events-none" />
         <div className="relative">
           <div className="text-xs uppercase tracking-widest text-g-light">{W.recover}</div>
-          <div className="text-5xl sm:text-6xl font-extrabold mt-1 text-g-light drop-shadow-[0_0_24px_rgba(123,200,124,0.4)]"><Count to={recovered} prefix="$" dur={700} /><span className="text-xl text-white/45">/mo</span></div>
+          <div className="text-5xl sm:text-6xl font-extrabold mt-1 text-g-light drop-shadow-[0_0_24px_rgba(123,200,124,0.4)]">+$<Count to={recovered} dur={700} /><span className="text-xl text-white/45">/mo</span></div>
           <div className="text-sm text-g-light/80 mt-1 font-semibold">≈ ${(recovered * 12).toLocaleString()}{W.peryear}</div>
           {state !== "done" ? (
             <form onSubmit={submit} className="mt-5 flex flex-col gap-2">
-              <input required type="email" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder={W.email}
+              <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={W.email}
                 className="rounded-full px-4 py-2.5 text-sm text-g-word bg-white/10 border border-white/15 outline-none focus:border-g-green/60 placeholder:text-white/40" />
-              <button disabled={state==="sending"} className="btn-gold text-sm disabled:opacity-70">{state==="sending" ? "…" : W.send}</button>
+              <button disabled={state === "sending"} className="btn-bright text-sm disabled:opacity-70">{state === "sending" ? "…" : W.send}</button>
             </form>
           ) : <div className="mt-5 rounded-full bg-g-green/20 border border-g-green/40 text-g-light px-4 py-2.5 text-sm font-semibold">{W.sent}</div>}
         </div>
@@ -363,22 +378,45 @@ export default function Home() {
           <span className="eyebrow mb-3">{t.more.charts.eyebrow}</span>
           <h2 className="h2">{t.more.charts.title}</h2>
         </Reveal>
-        <Reveal>
-          <div className="card grid sm:grid-cols-2 gap-x-10 gap-y-7 p-6 sm:p-8">
-            {t.more.charts.rows.map(([ic,label,pct,res])=>(
-              <div key={label}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-g-word"><span className="text-lg">{ic}</span>{label}</span>
-                  <span className="text-lg font-extrabold text-g-light">{res}</span>
+        <Stagger className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5" gap={0.1}>
+          {t.more.charts.rows.map(([ic,label,pct,res],i)=>(
+            <Item key={label} variant="scale">
+              <div className="card text-center h-full">
+                <div className="h-24 grid place-items-center mb-3">
+                  {i===0 && (
+                    <svg viewBox="0 0 100 50" className="w-full h-full" preserveAspectRatio="none">
+                      <defs><linearGradient id="lc" x1="0" x2="1"><stop offset="0" stopColor="#3E9468"/><stop offset="1" stopColor="#38BDF8"/></linearGradient></defs>
+                      <motion.polyline fill="none" stroke="url(#lc)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points="3,46 23,38 43,29 63,18 83,9 97,3"
+                        initial={{ pathLength:0 }} whileInView={{ pathLength:1 }} viewport={{ once:true }} transition={{ duration:1.4, ease:"easeInOut" }} />
+                    </svg>
+                  )}
+                  {i===1 && (
+                    <svg viewBox="0 0 44 44" className="h-20 w-20 -rotate-90">
+                      <circle cx="22" cy="22" r="17" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="5"/>
+                      <motion.circle cx="22" cy="22" r="17" fill="none" stroke="#38BDF8" strokeWidth="5" strokeLinecap="round" strokeDasharray={2*Math.PI*17}
+                        initial={{ strokeDashoffset:2*Math.PI*17 }} whileInView={{ strokeDashoffset:2*Math.PI*17*(1-pct/100) }} viewport={{ once:true }} transition={{ duration:1.4, ease:"easeOut" }} />
+                    </svg>
+                  )}
+                  {i===2 && (
+                    <svg viewBox="0 0 100 50" className="w-full h-full" preserveAspectRatio="none">
+                      <motion.polyline fill="none" stroke="#38BDF8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points="3,6 23,13 43,21 63,29 83,38 97,45"
+                        initial={{ pathLength:0 }} whileInView={{ pathLength:1 }} viewport={{ once:true }} transition={{ duration:1.4, ease:"easeInOut" }} />
+                    </svg>
+                  )}
+                  {i===3 && (
+                    <svg viewBox="0 0 100 50" className="w-full h-full">
+                      {[22,34,28,44,40].map((h,j)=>(
+                        <motion.rect key={j} x={6+j*19} width="13" rx="2.5" fill="#38BDF8" initial={{ height:0, y:48 }} whileInView={{ height:h, y:48-h }} viewport={{ once:true }} transition={{ duration:0.7, delay:j*0.1 }} />
+                      ))}
+                    </svg>
+                  )}
                 </div>
-                <div className="h-3 rounded-full bg-white/[0.06] overflow-hidden">
-                  <motion.div className="h-full rounded-full bg-gradient-to-r from-g-green via-g-light to-g-gold shadow-[0_0_14px_rgba(123,200,124,0.4)]"
-                    initial={{ width:0 }} whileInView={{ width:`${pct}%` }} viewport={{ once:true }} transition={{ duration:1.3, ease:[0.22,1,0.36,1] }} />
-                </div>
+                <div className="text-2xl sm:text-3xl font-extrabold text-sky-400 drop-shadow-[0_0_14px_rgba(56,189,248,0.35)]">{res}</div>
+                <div className="text-xs font-semibold text-g-word mt-1">{ic} {label}</div>
               </div>
-            ))}
-          </div>
-        </Reveal>
+            </Item>
+          ))}
+        </Stagger>
       </section>
 
       {/* PILLARS */}
@@ -424,20 +462,34 @@ export default function Home() {
           <h2 className="h2">{t.more.integ.h2}</h2>
           <p className="mt-3 text-g-muted">{t.more.integ.sub}</p>
         </Reveal>
-        <Stagger className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4" gap={0.07}>
-          {INTEGRATIONS.map((g, gi) => (
-            <Item key={g.group} variant="up">
-              <div className="card h-full">
-                <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{t.more.integGroups[gi] || g.group}</div>
-                <div className="flex flex-wrap gap-2">
-                  {g.items.map((it) => (
-                    <span key={it} className="rounded-full bg-white/[0.035] border border-g-line px-3 py-1.5 text-sm font-semibold text-g-word hover:border-g-gold/50 hover:text-g-gold hover:-translate-y-0.5 transition-all cursor-default">{it}</span>
-                  ))}
+        <div className="grid lg:grid-cols-2 gap-8 items-center">
+          {/* live demo screen — what the AI does inside your tools */}
+          <Reveal variant="left">
+            <LiveFeed label="guileo · working inside your tools" items={[
+              ["🛒","Shopify","Recovered $1,240 in abandoned carts","now"],
+              ["📘","Meta Ads","Cut cost per lead by −40%","2m"],
+              ["📅","Calendar","Booked 38 appointments this week","5m"],
+              ["🟠","HubSpot","Auto-updated 210 CRM contacts","8m"],
+              ["💳","Stripe","Collected $4,200 in payments","11m"],
+              ["📸","Instagram","Replied & sold a product in DMs","14m"],
+            ]} />
+          </Reveal>
+          {/* the stack groups */}
+          <Stagger className="grid sm:grid-cols-2 gap-4" gap={0.07}>
+            {INTEGRATIONS.map((g, gi) => (
+              <Item key={g.group} variant="up">
+                <div className="card h-full">
+                  <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{t.more.integGroups[gi] || g.group}</div>
+                  <div className="flex flex-wrap gap-2">
+                    {g.items.map((it) => (
+                      <span key={it} className="rounded-full bg-white/[0.035] border border-g-line px-3 py-1.5 text-xs font-semibold text-g-word hover:border-g-gold/50 hover:text-g-gold hover:-translate-y-0.5 transition-all cursor-default">{it}</span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </Item>
-          ))}
-        </Stagger>
+              </Item>
+            ))}
+          </Stagger>
+        </div>
         <p className="text-center text-sm text-g-muted mt-6">{t.more.integ.ask} <a href="#contact" className="text-g-gold font-semibold hover:underline">{t.more.integ.asklink}</a></p>
       </section>
 
@@ -495,12 +547,30 @@ export default function Home() {
             ))}
           </Stagger>
 
-          {/* tech + compliance — staggered, glowing on hover */}
-          <Stagger className="flex flex-wrap items-center justify-center gap-2.5" gap={0.04} amount={0.2}>
-            <Item variant="scale"><span className="text-xs font-bold uppercase text-g-muted mr-1">{t.proof.poweredby}</span></Item>
-            {TECH.map(x=><Item key={x} variant="scale"><span className="rounded-full border border-g-line bg-white/[0.04] px-3.5 py-1.5 text-sm font-semibold text-g-word transition-all hover:border-g-gold/50 hover:text-g-gold hover:-translate-y-0.5">{x}</span></Item>)}
-            <Item variant="scale"><span className="text-xs font-bold uppercase text-g-muted mx-1">{t.proof.compliant}</span></Item>
-            {COMPLIANCE.map(x=><Item key={x} variant="scale"><span className="inline-flex items-center gap-1 rounded-full border border-g-green/30 bg-g-green/10 px-3.5 py-1.5 text-sm font-bold text-g-light"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />🛡️ {x}</span></Item>)}
+          {/* tech = quality SEAL medallions · compliance = shield badges */}
+          <div className="text-center text-xs font-bold uppercase tracking-widest text-g-muted mb-4">{t.proof.poweredby}</div>
+          <Stagger className="flex flex-wrap items-center justify-center gap-4 mb-6" gap={0.05} amount={0.2}>
+            {TECH.map(x=>(
+              <Item key={x} variant="scale">
+                <div className="group grid place-items-center gap-1.5 text-center">
+                  <span className="relative grid place-items-center h-16 w-16 rounded-full border-2 border-g-gold/35 bg-gradient-to-b from-g-gold/[0.12] to-white/[0.02] text-xl font-extrabold text-g-gold shadow-[0_0_22px_rgba(214,194,154,0.2)] transition-transform duration-300 group-hover:scale-110">
+                    {x[0]}
+                    <span className="absolute inset-1 rounded-full border border-g-gold/15 animate-aurora pointer-events-none" />
+                  </span>
+                  <span className="text-[11px] font-semibold text-g-word">{x}</span>
+                </div>
+              </Item>
+            ))}
+          </Stagger>
+          <div className="text-center text-xs font-bold uppercase tracking-widest text-g-muted mb-4">{t.proof.compliant}</div>
+          <Stagger className="flex flex-wrap items-center justify-center gap-3" gap={0.05} amount={0.2}>
+            {COMPLIANCE.map(x=>(
+              <Item key={x} variant="scale">
+                <div className="inline-flex items-center gap-2 rounded-xl2 border border-g-green/35 bg-g-green/[0.08] px-4 py-2.5 shadow-glow">
+                  <span className="text-lg">🛡️</span><span className="text-sm font-extrabold text-g-light">{x}</span><span className="text-g-green text-sm">✓</span>
+                </div>
+              </Item>
+            ))}
           </Stagger>
 
           <div className="grid md:grid-cols-2 gap-6 mt-10 items-stretch">
