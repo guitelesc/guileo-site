@@ -6,11 +6,14 @@ import VoiceAgent from "../components/VoiceAgent";
 import { Reveal } from "../lib/ui.jsx";
 import { CATS } from "../data/services";
 import { waLink } from "../data/contact.js";
+import LeadForm from "../components/LeadForm.jsx";
+import { useLang } from "../i18n.jsx";
 
 const isOngoing = (t) => t === "mensal" || t === "projeto+mensal";
 const typeLabel = { projeto: "One-time", mensal: "Ongoing", "projeto+mensal": "Project + Ongoing" };
 
 export default function Servicos() {
+  const { t } = useLang();
   const [q, setQ] = useState("");
   const [type, setType] = useState("all");
   const [open, setOpen] = useState(null);
@@ -121,13 +124,21 @@ export default function Servicos() {
           ))}
         </div>
 
-        {/* global CTA */}
-        <div className="mt-12 rounded-xl3 bg-gradient-to-tr from-g-green to-g-dark p-10 text-center text-white shadow-lift">
-          <h3 className="text-2xl sm:text-3xl font-extrabold">Not sure what you need?</h3>
-          <p className="mt-2 text-white/85">Tell us your goal — a human designs the right mix for your business and quotes it. No generic packages.</p>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <a href={wa("a custom plan for my business")} className="inline-flex items-center gap-2 rounded-full bg-white/[0.05] backdrop-blur-md px-6 py-3 font-semibold text-g-green hover:bg-white/[0.035] transition">💬 Talk to a human</a>
-            <a href="/#pricing" className="inline-flex items-center gap-2 rounded-full bg-g-gold px-6 py-3 font-semibold text-white hover:brightness-110 transition">See how it works →</a>
+        {/* global CTA + LEAD CAPTURE */}
+        <div id="contact" className="mt-12 scroll-mt-24 rounded-xl3 bg-white/[0.03] backdrop-blur-xl border border-white/10 p-8 sm:p-12 shadow-lift relative overflow-hidden">
+          <div className="absolute -top-24 -right-16 h-72 w-72 rounded-full bg-g-green/15 blur-3xl animate-aurora pointer-events-none" />
+          <div className="absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-g-gold/15 blur-3xl animate-aurora pointer-events-none" style={{ animationDelay: "-6s" }} />
+          <div className="relative max-w-2xl mx-auto">
+            <div className="text-center">
+              <h3 className="text-2xl sm:text-3xl font-extrabold text-g-word">Not sure what you need?</h3>
+              <p className="mt-2 text-g-gold font-bold">{t.more.lead.title}</p>
+              <p className="mt-2 text-sm text-g-muted">Tell us your goal — a real human designs the right mix and quotes it. No generic packages.</p>
+            </div>
+            <div className="mt-7"><LeadForm source="services-page" /></div>
+            <div className="mt-5 flex flex-wrap justify-center gap-3">
+              <a href={wa("a custom plan for my business")} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Talk on WhatsApp</a>
+              <a href="/#pricing" className="btn-ghost text-sm">See how it works →</a>
+            </div>
           </div>
         </div>
       </div>

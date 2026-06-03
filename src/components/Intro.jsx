@@ -6,16 +6,19 @@ import logo from "../assets/guileo-logo.png";
 // Calls onDone when it hands off to the hero (overlay then fades out).
 export default function Intro({ onDone }) {
   const reduce = useReducedMotion();
-  const [show, setShow] = useState(true);
+  // play once per browser session (don't replay on every reload/navigation)
+  const seen = (() => { try { return !!sessionStorage.getItem("guileo_intro_seen"); } catch { return false; } })();
+  const [show, setShow] = useState(!reduce && !seen);
 
   useEffect(() => {
-    if (reduce) { setShow(false); onDone?.(); return; }
+    if (!show) { onDone?.(); return; }
+    try { sessionStorage.setItem("guileo_intro_seen", "1"); } catch { /* private mode */ }
     const t = setTimeout(() => { setShow(false); onDone?.(); }, 1500);
     return () => clearTimeout(t);
-  }, [reduce, onDone]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const skip = () => { setShow(false); onDone?.(); };
-  if (reduce) return null;
+  if (!show) return null;
 
   return (
     <AnimatePresence>
