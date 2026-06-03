@@ -526,7 +526,7 @@ export default function Home() {
       </section>
 
       {/* PRODUCTS — what we build (moved down: after they identify their industry) */}
-      <ProductsMarquee line={t.more.products.line} items={t.more.products.items} />
+      <ProductsMarquee line={t.more.products.line} items={t.more.products.items} sub={t.more.products.sub} cta={t.more.products.cta} ctaHref="/servicos" />
 
       {/* STEPS */}
       <section id="how" className="wrap py-14">

@@ -250,27 +250,33 @@ export function HumanShield({ className = "" }) {
 }
 
 // Products marquee — two rows sliding opposite directions, makes the full offer crystal clear
-export function ProductsMarquee({ line, items }) {
+export function ProductsMarquee({ line, items, sub, cta, ctaHref = "/servicos" }) {
   const half = Math.ceil(items.length / 2);
   const rows = [items.slice(0, half), items.slice(half)];
   const Chip = (it, i) => (
-    <span key={i} className="group inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.05] backdrop-blur-md px-4 py-2.5 text-sm font-semibold text-g-word whitespace-nowrap transition-all hover:border-g-light/40 hover:bg-white/[0.08]">
-      <span className="grid place-items-center h-7 w-7 rounded-full bg-white/[0.06] border border-white/10 text-base drop-shadow-[0_0_10px_rgba(127,201,160,0.45)] transition-transform duration-300 group-hover:scale-110">{it[0]}</span>{it[1]}
+    <span key={i} className="group inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.05] backdrop-blur-md px-4 py-2.5 text-sm font-semibold text-g-word whitespace-nowrap transition-all hover:border-g-gold/45 hover:bg-white/[0.08] hover:-translate-y-0.5">
+      <span className="grid place-items-center h-7 w-7 rounded-full bg-white/[0.06] border border-white/10 text-base drop-shadow-[0_0_10px_rgba(214,194,154,0.45)] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">{it[0]}</span>{it[1]}
     </span>
   );
   return (
-    <section className="py-12 border-y border-g-line bg-white/[0.02] overflow-hidden">
-      <div className="wrap text-center mb-8">
+    <section className="py-14 border-y border-g-line bg-white/[0.02] overflow-hidden">
+      <div className="wrap text-center mb-9">
         <span className="eyebrow mb-3">★ Everything we build</span>
         <h2 className="h2 max-w-3xl mx-auto">{line}</h2>
+        {sub && <p className="mt-3 text-g-muted max-w-2xl mx-auto">{sub}</p>}
       </div>
       <div className="space-y-3" style={{ WebkitMaskImage: "linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)", maskImage: "linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)" }}>
         {rows.map((data, r) => (
-          <div key={r} className="flex w-max gap-3 animate-marquee" style={r ? { animationDirection: "reverse" } : undefined}>
+          <div key={r} className="flex w-max gap-3 animate-marquee hover:[animation-play-state:paused]" style={r ? { animationDirection: "reverse" } : undefined}>
             {[...data, ...data].map(Chip)}
           </div>
         ))}
       </div>
+      {cta && (
+        <div className="wrap text-center mt-9">
+          <Magnetic><a href={ctaHref} className="btn-gold text-sm">{cta}</a></Magnetic>
+        </div>
+      )}
     </section>
   );
 }

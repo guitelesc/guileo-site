@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 // ---- Translations (EN source · PT · ES · HI) ----
 export const T = {
   en: {
-    nav: { solutions:"Solutions", engine:"Engine", industries:"Industries", results:"Results", academy:"Academy", pricing:"Pricing", services:"Services", cta:"Get Started" },
+    nav: { solutions:"Solutions", engine:"Engine", industries:"Industries", results:"Results", academy:"Academy", pricing:"Pricing", services:"Services", cta:"Get Started", cockpit:"Growth Cockpit", exp:"Experience" },
     hero: { eyebrow:"🌿 Nature meets technology · AI for business", h1a:"Work Smart.", h1b:"Grow Faster.", h1c:"Sleep Better.",
       sub_a:"You miss ", sub_b:"35% of your calls", sub_c:" — and every one is money walking out the door. Guileo's AI answers, books and closes every call, 24/7, in any language. You wake up to revenue, not voicemails.",
       cta1:"See what you're losing →", cta2:"Talk to our AI live", b1:"📞 Answered in 1.2s", b2:"📅 Booked +1",
@@ -49,7 +49,7 @@ export const T = {
 
 // ---- Portuguese ----
 T.pt = {
-  nav:{ solutions:"Soluções", engine:"Motor", industries:"Indústrias", results:"Resultados", academy:"Academy", pricing:"Preços", services:"Serviços", cta:"Começar" },
+  nav:{ solutions:"Soluções", engine:"Motor", industries:"Indústrias", results:"Resultados", academy:"Academy", pricing:"Preços", services:"Serviços", cta:"Começar", cockpit:"Growth Cockpit", exp:"Experience" },
   hero:{ eyebrow:"🌿 Natureza encontra tecnologia · IA para negócios", h1a:"Trabalhe Smart.", h1b:"Cresça Mais Rápido.", h1c:"Durma Melhor.",
     sub_a:"Você perde ", sub_b:"35% das suas ligações", sub_c:" — e cada uma é dinheiro saindo pela porta. A IA da Guileo atende, agenda e fecha cada ligação, 24/7, em qualquer idioma. Você acorda com receita, não com recados.",
     cta1:"Veja o que está perdendo →", cta2:"Fale com nossa IA ao vivo", b1:"📞 Atendida em 1,2s", b2:"📅 Agendado +1",
@@ -94,7 +94,7 @@ T.pt = {
 
 // ---- Spanish ----
 T.es = {
-  nav:{ solutions:"Soluciones", engine:"Motor", industries:"Industrias", results:"Resultados", academy:"Academy", pricing:"Precios", services:"Servicios", cta:"Empezar" },
+  nav:{ solutions:"Soluciones", engine:"Motor", industries:"Industrias", results:"Resultados", academy:"Academy", pricing:"Precios", services:"Servicios", cta:"Empezar", cockpit:"Growth Cockpit", exp:"Experience" },
   hero:{ eyebrow:"🌿 Naturaleza y tecnología · IA para negocios", h1a:"Trabaja Inteligente.", h1b:"Crece Más Rápido.", h1c:"Duerme Mejor.",
     sub_a:"Pierdes el ", sub_b:"35% de tus llamadas", sub_c:" — y cada una es dinero que se va. La IA de Guileo contesta, agenda y cierra cada llamada, 24/7, en cualquier idioma. Despiertas con ingresos, no con buzones de voz.",
     cta1:"Mira lo que estás perdiendo →", cta2:"Habla con nuestra IA en vivo", b1:"📞 Contestada en 1,2s", b2:"📅 Agendado +1",
@@ -139,7 +139,7 @@ T.es = {
 
 // ---- Hindi ----
 T.hi = {
-  nav:{ solutions:"समाधान", engine:"इंजन", industries:"उद्योग", results:"परिणाम", academy:"Academy", pricing:"मूल्य", services:"सेवाएँ", cta:"शुरू करें" },
+  nav:{ solutions:"समाधान", engine:"इंजन", industries:"उद्योग", results:"परिणाम", academy:"Academy", pricing:"मूल्य", services:"सेवाएँ", cta:"शुरू करें", cockpit:"Growth Cockpit", exp:"Experience" },
   hero:{ eyebrow:"🌿 प्रकृति और तकनीक · व्यवसाय के लिए AI", h1a:"स्मार्ट काम करें.", h1b:"तेज़ी से बढ़ें.", h1c:"चैन की नींद लें.",
     sub_a:"आप अपनी ", sub_b:"35% कॉल मिस करते हैं", sub_c:" — और हर एक पैसा हाथ से निकल जाता है। Guileo की AI हर कॉल का जवाब देती है, बुकिंग करती है और डील बंद करती है, 24/7, किसी भी भाषा में। आप वॉइसमेल नहीं, कमाई के साथ जागते हैं।",
     cta1:"देखें आप क्या खो रहे हैं →", cta2:"हमारी AI से लाइव बात करें", b1:"📞 1.2s में उत्तर", b2:"📅 बुक +1",
@@ -211,7 +211,7 @@ const PRICE = {
 const MORE = {
   en: {
     whatwedo:"What we do",
-    products:{ line:"From your first website to your final sale — we build all of it.",
+    products:{ line:"From your first website to your final sale — we build all of it.", sub:"60+ done-for-you services & products — one team, one bill, zero handoffs.", cta:"Browse all services →",
       items:[["🎙️","Voice AI agents"],["💬","Text & WhatsApp AI"],["🌐","Websites"],["📱","Mobile apps"],["⚙️","Custom software"],["📣","Ads & marketing"],["📅","Booking systems"],["🛒","E-commerce / Shopify"],["🔄","Automations"],["📊","Dashboards & CRM"],["⭐","Reviews & reputation"],["📈","Growth & analytics"]] },
     coreLine:"Two engines grow your business — your marketing and your daily operation. Run by AI, managed by real humans.",
     doesLabel:"What it does", changesLabel:"What it changes",
@@ -250,7 +250,7 @@ const MORE = {
   },
   pt: {
     whatwedo:"O que fazemos",
-    products:{ line:"Do seu primeiro site até a sua venda final — a gente constrói tudo.",
+    products:{ line:"Do seu primeiro site até a sua venda final — a gente constrói tudo.", sub:"60+ serviços e produtos feitos pra você — um time, uma conta, zero burocracia.", cta:"Ver todos os serviços →",
       items:[["🎙️","Agentes de voz IA"],["💬","Texto & WhatsApp IA"],["🌐","Sites"],["📱","Apps"],["⚙️","Software sob medida"],["📣","Anúncios & marketing"],["📅","Sistemas de agendamento"],["🛒","E-commerce / Shopify"],["🔄","Automações"],["📊","Dashboards & CRM"],["⭐","Avaliações & reputação"],["📈","Crescimento & analytics"]] },
     coreLine:"Dois motores fazem seu negócio crescer — seu marketing e sua operação do dia a dia. Movidos por IA, geridos por humanos de verdade.",
     doesLabel:"O que faz", changesLabel:"O que muda",
@@ -289,7 +289,7 @@ const MORE = {
   },
   es: {
     whatwedo:"Qué hacemos",
-    products:{ line:"De tu primera web a tu venta final — lo construimos todo.",
+    products:{ line:"De tu primera web a tu venta final — lo construimos todo.", sub:"60+ servicios y productos hechos para ti — un equipo, una factura, cero traspasos.", cta:"Ver todos los servicios →",
       items:[["🎙️","Agentes de voz IA"],["💬","Texto & WhatsApp IA"],["🌐","Webs"],["📱","Apps"],["⚙️","Software a medida"],["📣","Anuncios & marketing"],["📅","Sistemas de agenda"],["🛒","E-commerce / Shopify"],["🔄","Automatizaciones"],["📊","Dashboards & CRM"],["⭐","Reseñas & reputación"],["📈","Crecimiento & analítica"]] },
     coreLine:"Dos motores hacen crecer tu negocio — tu marketing y tu operación diaria. Movidos por IA, gestionados por humanos de verdad.",
     doesLabel:"Qué hace", changesLabel:"Qué cambia",
@@ -328,7 +328,7 @@ const MORE = {
   },
   hi: {
     whatwedo:"हम क्या करते हैं",
-    products:{ line:"आपकी पहली वेबसाइट से आपकी आख़िरी बिक्री तक — हम सब बनाते हैं।",
+    products:{ line:"आपकी पहली वेबसाइट से आपकी आख़िरी बिक्री तक — हम सब बनाते हैं।", sub:"60+ रेडी सर्विस और प्रोडक्ट — एक टीम, एक बिल, ज़ीरो झंझट।", cta:"सभी सेवाएँ देखें →",
       items:[["🎙️","वॉइस AI एजेंट"],["💬","टेक्स्ट & WhatsApp AI"],["🌐","वेबसाइट"],["📱","ऐप्स"],["⚙️","कस्टम सॉफ़्टवेयर"],["📣","विज्ञापन & मार्केटिंग"],["📅","बुकिंग सिस्टम"],["🛒","ई-कॉमर्स / Shopify"],["🔄","ऑटोमेशन"],["📊","डैशबोर्ड & CRM"],["⭐","समीक्षाएँ & प्रतिष्ठा"],["📈","ग्रोथ & एनालिटिक्स"]] },
     coreLine:"दो इंजन आपके व्यवसाय को बढ़ाते हैं — आपकी मार्केटिंग और आपका रोज़ का ऑपरेशन। AI से संचालित, असली इंसानों द्वारा प्रबंधित।",
     doesLabel:"यह क्या करता है", changesLabel:"यह क्या बदलता है",

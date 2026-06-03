@@ -10,8 +10,8 @@
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   :root{
-    --green:#6DC824; --light:#8BC34A; --dark:#4A8C14; --gold:#D4A520; --gold2:#C8900A;
-    --cyan:#26C6DA; --ivory:#F5EFE6; --bg:#070B08;
+    --green:#3E9468; --light:#6FB892; --dark:#2C6E4B; --gold:#D6C29A; --gold2:#C2A878;
+    --cyan:#38BDF8; --ivory:#EDE7DC; --bg:#161512;
   }
   html,body{ overflow-x:hidden; background:var(--bg); color:var(--ivory); font-family:'Inter',system-ui,sans-serif; }
   canvas{ position:fixed; top:0; left:0; width:100%; height:100%; z-index:0; }
@@ -41,19 +41,25 @@
   .stat .l{ font-size:12px; color:rgba(245,239,230,.6); }
   .cta{ display:inline-flex; align-items:center; gap:8px; margin-top:24px; padding:14px 26px; border-radius:999px;
     background:linear-gradient(120deg,var(--green),var(--dark)); color:#fff; font-weight:700; text-decoration:none;
-    box-shadow:0 0 30px rgba(109,200,36,.35); transition:transform .15s, box-shadow .15s; }
-  .cta:hover{ transform:translateY(-2px); box-shadow:0 0 44px rgba(109,200,36,.55); }
-  .cta.gold{ background:linear-gradient(120deg,var(--gold),var(--gold2)); box-shadow:0 0 30px rgba(212,165,32,.35); }
+    box-shadow:0 0 30px rgba(62,148,104,.4); transition:transform .15s, box-shadow .15s; }
+  .cta:hover{ transform:translateY(-2px); box-shadow:0 0 44px rgba(62,148,104,.6); }
+  .cta.gold{ background:linear-gradient(120deg,var(--gold),var(--gold2)); color:#161512; box-shadow:0 0 30px rgba(214,194,154,.4); }
   .hint{ position:fixed; bottom:26px; left:50%; transform:translateX(-50%); z-index:4; color:rgba(245,239,230,.6);
     font-size:12px; letter-spacing:.15em; text-transform:uppercase; pointer-events:none; animation:bob 2s ease-in-out infinite; }
   @keyframes bob{ 0%,100%{ transform:translateX(-50%) translateY(0); opacity:.6 } 50%{ transform:translateX(-50%) translateY(7px); opacity:1 } }
+  .autoenter{ position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:6; pointer-events:none; opacity:0;
+    transition:opacity .5s; display:flex; flex-direction:column; align-items:center; gap:8px;
+    color:var(--ivory); font-size:12px; font-weight:700; letter-spacing:.15em; text-transform:uppercase; }
+  .autoenter .bar{ width:140px; height:3px; border-radius:999px; background:rgba(255,255,255,.12); overflow:hidden; }
+  .autoenter .bar i{ display:block; height:100%; width:0; background:linear-gradient(90deg,var(--green),var(--gold)); }
+  @keyframes fillbar{ from{ width:0 } to{ width:100% } }
   .brandtop{ position:fixed; top:22px; left:26px; z-index:4; display:flex; align-items:center; gap:9px; font-weight:800; font-size:18px; }
-  .brandtop .dot{ width:26px; height:26px; border-radius:8px; background:linear-gradient(135deg,var(--light),var(--green)); box-shadow:0 0 16px rgba(109,200,36,.5); display:grid; place-items:center; }
+  .brandtop .dot{ width:26px; height:26px; border-radius:8px; background:linear-gradient(135deg,var(--light),var(--green)); box-shadow:0 0 16px rgba(62,148,104,.5); display:grid; place-items:center; }
   .enter{ position:fixed; top:20px; right:26px; z-index:4; pointer-events:auto; padding:9px 18px; border-radius:999px;
     border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.05); color:var(--ivory); font-weight:600; font-size:13px; text-decoration:none; backdrop-filter:blur(8px); }
   .enter:hover{ border-color:var(--green); color:var(--green); }
   #loader{ position:fixed; inset:0; z-index:50; background:var(--bg); display:grid; place-items:center; transition:opacity .8s; }
-  #loader .ring{ width:46px; height:46px; border-radius:50%; border:3px solid rgba(109,200,36,.25); border-top-color:var(--green); animation:spin 1s linear infinite; }
+  #loader .ring{ width:46px; height:46px; border-radius:50%; border:3px solid rgba(62,148,104,.25); border-top-color:var(--green); animation:spin 1s linear infinite; }
   @keyframes spin{ to{ transform:rotate(360deg) } }
   @media (max-width:640px){ .panel{ padding:24px 22px; } .section{ padding:0 5vw; } }
 </style>
@@ -114,13 +120,14 @@
   </div></section>
 </div>
 <div class="hint" id="hint">Scroll ↓</div>
+<div class="autoenter" id="autoenter"><span>Entering Guileo…</span><span class="bar"><i id="autobar"></i></span></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <script>
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const C = { green:0x6DC824, light:0x8BC34A, dark:0x4A8C14, gold:0xD4A520, gold2:0xC89000, cyan:0x26C6DA, ivory:0xF5EFE6, bg:0x070B08 };
+const C = { green:0x3E9468, light:0x6FB892, dark:0x2C6E4B, gold:0xD6C29A, gold2:0xC2A878, cyan:0x38BDF8, ivory:0xEDE7DC, bg:0x161512 };
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(C.bg);
@@ -242,6 +249,25 @@ gsap.utils.toArray('[data-anim]').forEach(el=>{
   gsap.fromTo(el,{ opacity:0, y:40 },{ opacity:1, y:0, scrollTrigger:{ trigger:el.closest('.section'), start:'top 75%', end:'top 35%', scrub:true } });
 });
 ScrollTrigger.create({ trigger:'.scroll', start:'top top', end:'top -5%', onLeave:()=>gsap.to('#hint',{opacity:0,duration:.4}), onEnterBack:()=>gsap.to('#hint',{opacity:.6,duration:.4}) });
+
+// auto-enter the site once the experience is finished (reaches the last panel)
+let ENTERING=false; const AUTO_MS=3600;
+const lastSection = document.querySelector('.scroll .section:last-child');
+function startAutoEnter(){
+  if(ENTERING) return; ENTERING=true;
+  gsap.to('#hint',{opacity:0,duration:.3});
+  const note=document.getElementById('autoenter'), bar=document.getElementById('autobar');
+  if(note) note.style.opacity=1;
+  if(bar) bar.style.animation=`fillbar ${AUTO_MS}ms linear forwards`;
+  setTimeout(()=>{ window.location.href='/'; }, AUTO_MS);
+}
+// cancel if the user scrolls back up (they want to keep exploring)
+function cancelAutoEnter(){
+  if(!ENTERING) return; ENTERING=false;
+  const note=document.getElementById('autoenter'), bar=document.getElementById('autobar');
+  if(note) note.style.opacity=0; if(bar) bar.style.animation='none';
+}
+ScrollTrigger.create({ trigger:lastSection, start:'top 35%', onEnter:startAutoEnter, onLeaveBack:cancelAutoEnter });
 
 // mouse parallax
 const mouse = { x:0, y:0 };
