@@ -97,54 +97,77 @@ function Calculator({ t }) {
 }
 
 /* What — pillars */
+// The 3 Guileo engines, physically wired into YOUR BUSINESS — an engineering diagram, not a carousel.
 function Pillars({ t }) {
   const items = t.pillars.items;
-  const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const p = items[active];
-  useEffect(() => {
-    if (paused) return;
-    const id = setInterval(() => setActive((a) => (a + 1) % items.length), 4200);
-    return () => clearInterval(id);
-  }, [paused, items.length]);
-  const pick = (i) => { setActive(i); setPaused(true); };
+  const accents = ["#3E9468", "#D6C29A", "#38BDF8"]; // Brain=green · Build=gold · AD=blue
   return (
-    <div onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
-      <div className="flex flex-wrap justify-center gap-2 mb-4">
-        {items.map((x,i) => (
-          <button key={i} onClick={()=>pick(i)}
-            className={`relative rounded-full px-5 py-2.5 text-sm font-bold transition-colors ${active===i ? "text-g-word" : "text-g-muted hover:text-g-word"}`}>
-            {active===i && <motion.span layoutId="pillTab" className="absolute inset-0 rounded-full bg-white/[0.07] border border-g-gold/35 shadow-soft" transition={{ type:"spring", stiffness:380, damping:30 }} />}
-            <span className="relative">{x.icon} {x.name}</span>
-          </button>
-        ))}
+    <div className="relative">
+      {/* 3 engines feeding the business */}
+      <Stagger className="grid md:grid-cols-3 gap-5 relative z-10" gap={0.1}>
+        {items.map((p, i) => {
+          const c = accents[i % 3];
+          return (
+            <Item key={i} variant="up">
+              <div className="card group relative h-full flex flex-col overflow-hidden">
+                <div className="absolute -top-16 -right-12 h-44 w-44 rounded-full blur-3xl pointer-events-none animate-aurora" style={{ background: c + "1f", animationDelay: `${-i * 2}s` }} />
+                <div className="relative flex items-center gap-3 mb-3">
+                  <span className="relative inline-grid place-items-center">
+                    <span className="absolute inset-0 rounded-2xl blur-md animate-pulse" style={{ background: c + "33" }} />
+                    <span className="relative grid place-items-center h-14 w-14 rounded-2xl bg-white/[0.05] border text-2xl animate-floatslow" style={{ borderColor: c + "55", animationDelay: `${-i}s` }}>{p.icon}</span>
+                  </span>
+                  <div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider" style={{ color: c }}>{p.tag}</div>
+                    <h3 className="text-lg font-extrabold text-g-word leading-tight">{p.name}</h3>
+                  </div>
+                </div>
+                <p className="relative text-sm text-g-muted leading-relaxed">{p.desc}</p>
+                <div className="relative mt-3 flex flex-wrap gap-1.5">
+                  {p.feats.slice(0, 4).map((f) => (
+                    <span key={f} className="rounded-full bg-white/[0.04] border border-white/10 px-2.5 py-1 text-[11px] font-semibold text-g-word transition-all group-hover:border-white/20" style={{ borderColor: undefined }}>{f}</span>
+                  ))}
+                </div>
+                {/* wire node — connects down to the business */}
+                <div className="mt-auto pt-5 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: c }}>
+                  <span className="h-px w-8" style={{ background: `linear-gradient(90deg, transparent, ${c})` }} />
+                  <span className="h-2 w-2 rounded-full animate-pulse" style={{ background: c }} />
+                  <span className="h-px w-8" style={{ background: `linear-gradient(90deg, ${c}, transparent)` }} />
+                </div>
+              </div>
+            </Item>
+          );
+        })}
+      </Stagger>
+
+      {/* converging flow lines into the hub */}
+      <div className="relative mx-auto h-14 w-full max-w-3xl" aria-hidden>
+        <svg viewBox="0 0 600 56" className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="pillflow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#3E9468" stopOpacity="0.7" /><stop offset="1" stopColor="#D6C29A" stopOpacity="0.7" /></linearGradient>
+          </defs>
+          {[100, 300, 500].map((x, i) => (
+            <g key={x}>
+              <path d={`M${x} 0 C ${x} 30, 300 26, 300 56`} fill="none" stroke="url(#pillflow)" strokeWidth="1.5" strokeDasharray="4 6" />
+              <circle r="3" fill={["#3E9468", "#D6C29A", "#38BDF8"][i]}>
+                <animateMotion dur="2.4s" repeatCount="indefinite" begin={`${i * 0.5}s`} path={`M${x} 0 C ${x} 30, 300 26, 300 56`} />
+              </circle>
+            </g>
+          ))}
+        </svg>
       </div>
-      {/* auto-advance progress */}
-      <div className="mx-auto mb-8 h-0.5 w-44 rounded-full bg-white/10 overflow-hidden">
-        <div key={active} className="h-full origin-left bg-gradient-to-r from-g-green to-g-gold animate-growx" style={{ animationPlayState: paused ? "paused" : "running" }} />
-      </div>
-      <AnimatePresence mode="wait">
-        <motion.div key={active} initial={{ opacity:0, y:14 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} transition={{ duration:0.32 }}
-          className="card sm:p-10 grid md:grid-cols-2 gap-8 items-center relative overflow-hidden">
-          <div className="absolute -top-20 -right-16 h-56 w-56 rounded-full bg-g-gold/10 blur-3xl pointer-events-none animate-aurora" />
-          <div className="relative">
-            <div className="relative inline-grid place-items-center mb-3">
-              <span className="absolute inset-0 rounded-full blur-lg bg-g-gold/25 animate-pulse" />
-              <span className="relative text-5xl animate-floatslow">{p.icon}</span>
-            </div>
-            <div className="eyebrow mb-2">{p.tag}</div>
-            <h3 className="text-2xl font-extrabold text-g-word">{p.name}</h3>
-            <p className="mt-3 text-g-muted leading-relaxed">{p.desc}</p>
-            <Magnetic><a href="#contact" className="btn mt-5 text-sm">{t.pillars.getcta}</a></Magnetic>
+
+      {/* YOUR BUSINESS hub */}
+      <div className="relative mx-auto max-w-lg rounded-xl3 border border-g-gold/40 bg-gradient-to-br from-g-gold/[0.12] to-g-green/[0.08] backdrop-blur-xl p-6 text-center shadow-lift overflow-hidden">
+        <div className="absolute inset-0 bg-g-gold/5 animate-breathe pointer-events-none" />
+        <div className="relative flex items-center justify-center gap-3">
+          <span className="text-3xl animate-floatslow">🏢</span>
+          <div className="text-left">
+            <div className="text-xl font-black uppercase tracking-tight bg-gradient-to-r from-g-gold via-g-word to-g-gold bg-[length:200%_auto] bg-clip-text text-transparent animate-shimmer">{t.pillars.hub}</div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-g-light">{t.pillars.hubsub}</div>
           </div>
-          <motion.div className="grid grid-cols-2 gap-2 relative" initial="h" animate="s" variants={{ s:{ transition:{ staggerChildren:0.05 } } }}>
-            {p.feats.map((f)=>(
-              <motion.div key={f} variants={{ h:{ opacity:0, y:10 }, s:{ opacity:1, y:0 } }}
-                className="rounded-xl2 bg-white/[0.035] border border-white/5 p-3 text-sm font-semibold text-g-word transition-all hover:border-g-gold/40 hover:bg-white/[0.06] hover:-translate-y-0.5">{f}</motion.div>
-            ))}
-          </motion.div>
-        </motion.div>
-      </AnimatePresence>
+        </div>
+        <Magnetic><a href="#contact" className="btn-bright mt-5 text-sm">{t.pillars.getcta}</a></Magnetic>
+      </div>
     </div>
   );
 }
@@ -427,8 +450,12 @@ export default function Home() {
           <p className="mt-3 text-g-muted">{t.pillars.sub}</p>
         </Reveal>
 
-        {/* The engineering cycle — Performance · Sales · Growth */}
-        <Reveal className="flex justify-center mb-10">
+        {/* The 3 Guileo engines wired into your business */}
+        <Reveal><Pillars t={t} /></Reveal>
+
+        {/* …which spins a self-running result cycle */}
+        <Reveal className="mt-12 flex flex-col items-center">
+          <div className="text-xs font-bold uppercase tracking-[0.2em] text-g-gold mb-5">{t.pillars.result}</div>
           <div className="relative h-56 w-56">
             <svg viewBox="0 0 200 200" className="absolute inset-0 animate-spin" style={{ animationDuration:"16s" }} aria-hidden>
               <circle cx="100" cy="100" r="82" fill="none" stroke="#C2A878" strokeOpacity="0.35" strokeWidth="1.5" strokeDasharray="3 8" />
@@ -448,8 +475,6 @@ export default function Home() {
             ); })}
           </div>
         </Reveal>
-
-        <Reveal><Pillars t={t} /></Reveal>
       </section>
 
       {/* CHANNELS — real brand icons */}

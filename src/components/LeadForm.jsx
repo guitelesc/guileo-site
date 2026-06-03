@@ -1,19 +1,23 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { FaWhatsapp, FaPhone, FaEnvelope, FaInstagram, FaTelegram, FaLinkedin, FaFacebookMessenger, FaXTwitter } from "react-icons/fa6";
 import { useLang } from "../i18n.jsx";
 import { waLink } from "../data/contact.js";
 
 const CHANNELS = [
-  ["💬", "WhatsApp", "whatsapp"],
-  ["📞", "Phone", "phone"],
-  ["📧", "Email", "email"],
-  ["📸", "Instagram", "instagram"],
-  ["✈️", "Telegram", "telegram"],
-  ["💼", "LinkedIn", "linkedin"],
+  [FaWhatsapp, "WhatsApp", "whatsapp", "#25D366"],
+  [FaPhone, "Phone", "phone", "#7BD828"],
+  [FaEnvelope, "Email", "email", "#E0AE2E"],
+  [FaInstagram, "Instagram", "instagram", "#E4405F"],
+  [FaTelegram, "Telegram", "telegram", "#26A5E4"],
+  [FaLinkedin, "LinkedIn", "linkedin", "#0A66C2"],
+  [FaFacebookMessenger, "Messenger", "messenger", "#0084FF"],
+  [FaXTwitter, "X", "x", "#e7e7e7"],
 ];
 const PLACEHOLDER = {
   whatsapp: "+1 (555) 000-0000", phone: "+1 (555) 000-0000", email: "you@email.com",
   instagram: "@yourhandle", telegram: "@yourhandle", linkedin: "linkedin.com/in/you",
+  messenger: "@yourhandle", x: "@yourhandle",
 };
 
 export default function LeadForm({ source = "website" }) {
@@ -59,14 +63,20 @@ export default function LeadForm({ source = "website" }) {
       <input required value={name} onChange={(e) => setName(e.target.value)} placeholder={L.name}
         className="rounded-full border border-white/20 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70 transition" />
 
-      {/* channel picker — leave us anything, we reach out */}
+      {/* channel picker — leave us anything, we reach out (real brand icons) */}
       <div className="flex flex-wrap gap-2">
-        {CHANNELS.map(([ic, label, key]) => (
-          <button type="button" key={key} onClick={() => setCh(key)}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold transition-all ${ch === key ? "bg-g-green/20 border border-g-green/60 text-g-light scale-105 shadow-glow" : "border border-white/15 bg-white/[0.04] text-g-muted hover:text-g-word"}`}>
-            {ic} {label}
-          </button>
-        ))}
+        {CHANNELS.map(([Icon, label, key, color]) => {
+          const on = ch === key;
+          return (
+            <button type="button" key={key} onClick={() => setCh(key)} aria-pressed={on}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold transition-all ${on ? "scale-105 shadow-glow" : "hover:text-g-word"}`}
+              style={on
+                ? { background: color + "22", border: `1px solid ${color}`, color }
+                : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.15)", color: "#9a958c" }}>
+              <Icon size={15} style={{ color }} /> {label}
+            </button>
+          );
+        })}
       </div>
 
       <input required value={contact} onChange={(e) => setContact(e.target.value)} placeholder={PLACEHOLDER[ch]}
