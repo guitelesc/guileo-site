@@ -32,6 +32,8 @@ body::after {
   .btn  { @apply relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-full border border-g-green/35 bg-white/[0.05] px-6 py-3 font-semibold text-g-word backdrop-blur-md transition-all duration-300 hover:scale-[1.03] hover:border-g-green/70 active:scale-[.98]; }
   .btn-gold { @apply relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-full bg-g-gold px-6 py-3 font-semibold text-black shadow-gold transition-all duration-300 hover:scale-[1.03] hover:brightness-110 active:scale-[.98]; }
   .btn-ghost { @apply inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-6 py-3 font-semibold text-g-word backdrop-blur-md transition-all duration-300 hover:scale-[1.03] hover:border-g-gold/50 hover:text-g-gold; }
+  /* BRIGHT = shiny solid green (for the live "AI call" product blocks) */
+  .btn-bright { @apply relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-g-green to-g-light px-6 py-3 font-extrabold text-black shadow-glow transition-all duration-300 hover:scale-[1.04] hover:brightness-110 active:scale-[.98]; }
   .card { @apply relative overflow-hidden rounded-xl2 border border-white/10 bg-white/[0.035] p-6 shadow-soft backdrop-blur-xl transition-all duration-300; }
   .eyebrow { @apply inline-flex items-center gap-2 rounded-full border border-g-gold/25 bg-g-gold/[0.08] px-3 py-1 text-xs font-bold uppercase tracking-wide text-g-gold; }
   .h2 { @apply text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-g-word via-g-gold to-g-word bg-[length:220%_auto] bg-clip-text text-transparent animate-shimmer; }
@@ -48,12 +50,13 @@ body::after {
 
 /* === buttons: glow + light sweep === */
 .btn:hover { box-shadow: 0 0 34px rgba(62,148,104,0.30), inset 0 0 0 1px rgba(62,148,104,0.20); }
-.btn::before, .btn-gold::before {
+.btn::before, .btn-gold::before, .btn-bright::before {
   content:""; position:absolute; top:0; left:0; width:40%; height:100%;
   background:linear-gradient(105deg, transparent, rgba(255,255,255,0.35), transparent);
   transform:translateX(-150%) skewX(-12deg); pointer-events:none;
 }
-.btn:hover::before, .btn-gold:hover::before { animation: shine .9s ease; }
+.btn:hover::before, .btn-gold:hover::before, .btn-bright:hover::before { animation: shine .9s ease; }
+.btn-bright::before { animation: shine 2.6s ease infinite; }
 
 /* nav link animated underline */
 .navlink { position:relative; }

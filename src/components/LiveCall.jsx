@@ -42,7 +42,7 @@ export default function LiveCall() {
   };
 
   return (
-    <div className="rounded-xl3 bg-white/[0.08] bg-gradient-to-br from-g-green/[0.06] via-transparent to-g-gold/[0.06] backdrop-blur-xl border border-g-green/25 shadow-lift p-6 sm:p-8 max-w-xl mx-auto">
+    <div className="rounded-xl3 bg-gradient-to-br from-white/[0.16] via-white/[0.08] to-g-green/[0.08] backdrop-blur-xl border border-white/25 shadow-lift p-6 sm:p-8 max-w-xl mx-auto">
       <div className="flex items-start gap-4">
         <div className="relative shrink-0">
           <div className="grid place-items-center h-14 w-14 rounded-full bg-gradient-to-br from-g-green/25 to-g-gold/20 border border-white/15 text-3xl shadow-soft">🧑‍💼</div>
@@ -74,9 +74,9 @@ export default function LiveCall() {
         </div>
       ) : (
         <form onSubmit={submit} className="mt-5 grid gap-3">
-          <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="rounded-full border border-g-line bg-white/[0.035] px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green" />
-          <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 000-0000" className="rounded-full border border-g-line bg-white/[0.035] px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green" />
-          <motion.button whileTap={{ scale: 0.98 }} disabled={state === "calling"} className="btn text-base">
+          <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="rounded-full border border-white/20 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+          <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 000-0000" className="rounded-full border border-white/20 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+          <motion.button whileTap={{ scale: 0.98 }} disabled={state === "calling"} className="btn-bright text-base">
             {state === "calling" ? "Connecting…" : "📞 Call me with AI →"}
           </motion.button>
           <p className="text-[11px] text-g-muted text-center">No spam. One call to show you it works. You can opt out anytime.</p>

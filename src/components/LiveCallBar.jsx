@@ -21,7 +21,7 @@ export default function LiveCallBar({ source = "callbar" }) {
 
   return (
     <section className="wrap py-8">
-      <div className="rounded-xl3 border border-g-green/30 bg-white/[0.08] bg-gradient-to-r from-g-green/[0.10] via-white/[0.05] to-g-gold/[0.10] backdrop-blur-xl shadow-lift p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-4">
+      <div className="rounded-xl3 border border-white/25 bg-gradient-to-br from-white/[0.18] via-white/[0.10] to-g-green/[0.10] backdrop-blur-xl shadow-lift p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-4">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <span className="grid place-items-center h-11 w-11 rounded-full bg-white/[0.06] border border-white/10 text-2xl shrink-0">🧑‍💼</span>
           <div className="min-w-0">
@@ -36,8 +36,8 @@ export default function LiveCallBar({ source = "callbar" }) {
         ) : (
           <form onSubmit={submit} className="flex w-full sm:w-auto gap-2">
             <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={C.placeholder}
-              className="flex-1 sm:w-52 rounded-full border border-g-line bg-white/[0.05] px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/60 transition" />
-            <button disabled={st === "calling"} className="btn whitespace-nowrap disabled:opacity-70">{st === "calling" ? C.calling : `📞 ${C.cta}`}</button>
+              className="flex-1 sm:w-52 rounded-full border border-white/20 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70 transition" />
+            <button disabled={st === "calling"} className="btn-bright whitespace-nowrap disabled:opacity-70">{st === "calling" ? C.calling : `📞 ${C.cta}`}</button>
           </form>
         )}
       </div>

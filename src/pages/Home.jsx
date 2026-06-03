@@ -52,7 +52,14 @@ function Calculator({ t }) {
         <div className="rounded-xl2 border border-red-500/20 bg-red-500/[0.06] p-4">
           <div className="text-xs uppercase tracking-wide text-red-400/80">{W.losing}</div>
           <div className="text-3xl font-extrabold text-red-400 line-through decoration-red-400/40 drop-shadow-[0_0_16px_rgba(239,68,68,0.25)]">${lost.toLocaleString()}<span className="text-sm no-underline text-red-400/70">/mo</span></div>
-          <div className="text-xs text-g-muted mt-1">{W.leak}</div>
+          <div className="mt-3">
+            <div className="flex justify-between text-[11px] font-semibold mb-1"><span className="text-g-light">65% you catch</span><span className="text-red-400">35% missed</span></div>
+            <div className="h-2.5 rounded-full overflow-hidden bg-white/10 flex">
+              <div className="bg-gradient-to-r from-g-green to-g-light" style={{ width:"65%" }} />
+              <div className="bg-gradient-to-r from-red-500/80 to-red-400 animate-pulse" style={{ width:"35%" }} />
+            </div>
+          </div>
+          <div className="text-xs text-g-muted mt-2">{W.leak}</div>
         </div>
       </div>
       <div className="rounded-xl3 bg-g-deep p-7 text-center relative overflow-hidden">
@@ -130,6 +137,11 @@ function Pillars({ t }) {
 export default function Home() {
   const { t } = useLang();
   const [introDone, setIntroDone] = useState(false);
+  const [engineActive, setEngineActive] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setEngineActive((a) => (a + 1) % 4), 1400);
+    return () => clearInterval(id);
+  }, []);
   return (
     <div className="min-h-screen text-g-ink">
       <Intro onDone={() => setIntroDone(true)} />
@@ -142,17 +154,27 @@ export default function Home() {
         <div className="wrap grid lg:grid-cols-2 gap-12 items-center">
           <motion.div initial="hide" animate={introDone ? "show" : "hide"} variants={{ show:{ transition:{ staggerChildren:0.14, delayChildren:0.05 } } }}>
             {[
-              <span key="e" className="eyebrow mb-5">{t.hero.eyebrow}</span>,
-              <h1 key="h" className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] tracking-tight text-g-word">{t.hero.h1a} <span className="text-g-gold">{t.hero.h1b}</span><br/><span className="text-g-gold">{t.hero.h1c}</span></h1>,
+              <span key="e" className="inline-flex items-center gap-2 rounded-full border border-g-green/40 bg-g-green/[0.08] px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-g-light shadow-[0_0_28px_rgba(62,148,104,0.28)] mb-5 backdrop-blur-md">
+                <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full rounded-full bg-g-green/60 animate-ping" /><span className="relative inline-flex h-2 w-2 rounded-full bg-g-green" /></span>{t.hero.eyebrow}
+              </span>,
+              <h1 key="h" className="text-5xl sm:text-6xl lg:text-7xl font-black leading-[0.98] tracking-tight">
+                <span className="block text-g-word">{t.hero.h1a}</span>
+                <span className="block bg-gradient-to-r from-g-green via-g-gold to-g-green bg-[length:200%_auto] bg-clip-text text-transparent animate-shimmer drop-shadow-[0_0_45px_rgba(214,194,154,0.45)]">{t.hero.h1b}</span>
+                <span className="block text-g-word">{t.hero.h1c}</span>
+              </h1>,
               <p key="p" className="mt-6 text-lg text-g-muted max-w-xl leading-relaxed">{t.hero.sub_a}<b className="text-g-word">{t.hero.sub_b}</b>{t.hero.sub_c}</p>,
-              <div key="b" className="mt-8 flex flex-wrap items-center gap-3"><Magnetic><a href="#why" className="btn">{t.hero.cta1}</a></Magnetic><a href="#contact" className="btn-ghost">{t.hero.cta2}</a><a href="/experience.html" className="inline-flex items-center gap-1.5 text-sm font-bold text-g-gold hover:gap-2.5 transition-all">▶ Watch the experience</a></div>,
+              <div key="trust" className="mt-5 flex flex-wrap gap-2">
+                {t.hero.trust.map(([ic,tx])=>(<span key={tx} className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] backdrop-blur-md px-3 py-1.5 text-xs font-semibold text-g-word hover:border-g-green/40 hover:text-g-light transition-colors">{ic} {tx}</span>))}
+              </div>,
+              <div key="b" className="mt-7 flex flex-wrap items-center gap-3"><Magnetic><a href="#why" className="btn">{t.hero.cta1}</a></Magnetic><a href="#contact" className="btn-ghost">{t.hero.cta2}</a><a href="/experience.html" className="inline-flex items-center gap-1.5 text-sm font-bold text-g-gold hover:gap-2.5 transition-all">▶ Watch the experience</a></div>,
             ].map((el,i)=>(
               <motion.div key={i} variants={{ hide:{ opacity:0, y:30, filter:"blur(8px)" }, show:{ opacity:1, y:0, filter:"blur(0px)", transition:{ type:"spring", stiffness:80, damping:18, mass:0.8 } } }}>{el}</motion.div>
             ))}
           </motion.div>
           <Parallax distance={40} className="relative h-[340px] sm:h-[440px] lg:h-[500px]">
             <motion.div className="absolute inset-0" initial={{ opacity:0, scale:0.88 }} animate={introDone ? { opacity:1, scale:1 } : { opacity:0, scale:0.88 }} transition={{ duration:1, delay:0.25, ease:[0.22,1,0.36,1] }}>
-            <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-g-green/10 via-transparent to-g-gold/15 blur-3xl pointer-events-none" />
+            <div className="absolute inset-6 rounded-full bg-gradient-to-tr from-g-green/20 via-transparent to-g-gold/25 blur-3xl pointer-events-none animate-breathe" />
+            <div className="absolute inset-0 rounded-full border border-g-gold/10 pointer-events-none animate-aurora" />
             <Suspense fallback={<div className="w-full h-full grid place-items-center"><img src={logo} alt="Guileo" className="h-32 w-32 object-contain opacity-50 animate-floaty"/></div>}>
               <GuileoLogo3D />
             </Suspense>
@@ -252,17 +274,17 @@ export default function Home() {
 
           <div className="relative">
             <Stagger className="grid md:grid-cols-4 gap-4 relative" gap={0.14}>
-              {t.engine.steps.map(([i,tt,d],idx)=>(
+              {t.engine.steps.map(([i,tt,d],idx)=>{ const on = engineActive===idx; return (
                 <Item key={idx} variant="up">
-                  <div className="card group h-full relative">
-                    <div className="absolute -top-3 -left-3 grid place-items-center h-8 w-8 rounded-full bg-g-gold text-black text-sm font-extrabold shadow-gold transition-transform duration-300 group-hover:scale-110">{idx+1}</div>
-                    <div className="text-4xl mb-3 transition-transform duration-300 group-hover:scale-110">{i}</div>
+                  <div className={`card group h-full relative transition-all duration-500 ${on ? "ring-2 ring-g-gold/60 shadow-gold -translate-y-1.5 bg-white/[0.07]" : ""}`}>
+                    <div className={`absolute -top-3 -left-3 grid place-items-center h-8 w-8 rounded-full text-sm font-extrabold shadow-gold transition-all duration-500 ${on ? "bg-g-gold text-black scale-110" : "bg-g-gold/70 text-black"}`}>{idx+1}</div>
+                    <div className={`text-4xl mb-3 transition-transform duration-500 ${on ? "scale-110" : "group-hover:scale-110"}`}>{i}</div>
                     <h3 className="font-bold text-g-word">{tt}</h3>
                     <p className="mt-2 text-sm text-g-muted leading-relaxed">{d}</p>
-                    {idx<3 && <div className="hidden md:block absolute top-1/2 -right-5 text-g-gold/70 text-2xl animate-pulse">→</div>}
+                    {idx<3 && <div className={`hidden md:block absolute top-1/2 -right-5 text-2xl transition-colors duration-500 ${on ? "text-g-gold animate-pulse" : "text-g-gold/40"}`}>→</div>}
                   </div>
                 </Item>
-              ))}
+              ); })}
             </Stagger>
           </div>
           <div className="mt-8 flex items-center justify-center gap-2 text-sm text-g-muted">
@@ -316,13 +338,60 @@ export default function Home() {
 
       <Circuit flip />
 
+      {/* RESULTS CHARTS — growth you can see */}
+      <section className="wrap py-14">
+        <Reveal className="text-center max-w-2xl mx-auto mb-10">
+          <span className="eyebrow mb-3">{t.more.charts.eyebrow}</span>
+          <h2 className="h2">{t.more.charts.title}</h2>
+        </Reveal>
+        <Reveal>
+          <div className="card grid sm:grid-cols-2 gap-x-10 gap-y-7 p-6 sm:p-8">
+            {t.more.charts.rows.map(([ic,label,pct,res])=>(
+              <div key={label}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-g-word"><span className="text-lg">{ic}</span>{label}</span>
+                  <span className="text-lg font-extrabold text-g-light">{res}</span>
+                </div>
+                <div className="h-3 rounded-full bg-white/[0.06] overflow-hidden">
+                  <motion.div className="h-full rounded-full bg-gradient-to-r from-g-green via-g-light to-g-gold shadow-[0_0_14px_rgba(123,200,124,0.4)]"
+                    initial={{ width:0 }} whileInView={{ width:`${pct}%` }} viewport={{ once:true }} transition={{ duration:1.3, ease:[0.22,1,0.36,1] }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+      </section>
+
       {/* PILLARS */}
       <section id="pillars" className="wrap py-14">
-        <Reveal className="text-center max-w-2xl mx-auto mb-10">
+        <Reveal className="text-center max-w-2xl mx-auto mb-8">
           <span className="eyebrow mb-3">{t.pillars.eyebrow}</span>
           <h2 className="h2">{t.pillars.h2}</h2>
           <p className="mt-3 text-g-muted">{t.pillars.sub}</p>
         </Reveal>
+
+        {/* The engineering cycle — Performance · Sales · Growth */}
+        <Reveal className="flex justify-center mb-10">
+          <div className="relative h-56 w-56">
+            <svg viewBox="0 0 200 200" className="absolute inset-0 animate-spin" style={{ animationDuration:"16s" }} aria-hidden>
+              <circle cx="100" cy="100" r="82" fill="none" stroke="#C2A878" strokeOpacity="0.35" strokeWidth="1.5" strokeDasharray="3 8" />
+            </svg>
+            <svg viewBox="0 0 200 200" className="absolute inset-0 animate-spin" style={{ animationDuration:"8s", animationDirection:"reverse" }} aria-hidden>
+              <defs><linearGradient id="psg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#3E9468" /><stop offset="1" stopColor="#D6C29A" /></linearGradient></defs>
+              <circle cx="100" cy="100" r="66" fill="none" stroke="url(#psg)" strokeWidth="3" strokeDasharray="100 250" strokeLinecap="round" />
+            </svg>
+            <div className="absolute inset-0 grid place-items-center text-center">
+              <div><div className="text-2xl animate-spin" style={{ animationDuration:"6s" }}>⚙️</div><div className="text-[10px] font-bold uppercase tracking-[0.2em] text-g-gold mt-1">Method</div></div>
+            </div>
+            {[["📈","Performance"],["💰","Sales"],["🚀","Growth"]].map(([ic,lb],i)=>{ const a=(i/3)*2*Math.PI - Math.PI/2; const x=100+78*Math.cos(a); const y=100+78*Math.sin(a); const on=engineActive%3===i; return (
+              <div key={lb} className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 transition-all duration-500 ${on?"scale-110":"scale-100 opacity-80"}`} style={{ left:`${x/2}%`, top:`${y/2}%` }}>
+                <span className={`grid place-items-center h-11 w-11 rounded-full border text-lg transition-all duration-500 ${on?"border-g-gold/60 bg-g-gold/15 shadow-gold":"border-white/15 bg-white/[0.05]"}`}>{ic}</span>
+                <span className="text-[11px] font-bold text-g-word whitespace-nowrap">{lb}</span>
+              </div>
+            ); })}
+          </div>
+        </Reveal>
+
         <Reveal><Pillars t={t} /></Reveal>
       </section>
 
@@ -363,23 +432,49 @@ export default function Home() {
           <h2 className="h2">{t.steps.h2}</h2>
           {t.steps.sub && <p className="mt-3 text-g-muted">{t.steps.sub}</p>}
         </Reveal>
-        <Stagger className="grid md:grid-cols-3 gap-6" gap={0.13}>
-          {t.steps.items.map(([i,tt,d],idx)=>(
-            <Item key={idx} variant="up"><div className="card group text-center">
-              <div className="text-4xl mb-3 transition-transform duration-300 group-hover:scale-110">{i}</div>
-              <div className="grid place-items-center h-9 w-9 mx-auto rounded-full border border-g-green/40 bg-g-green/15 text-g-light font-extrabold mb-3 transition-transform duration-300 group-hover:scale-110">{idx+1}</div>
-              <h3 className="font-bold text-g-word">{tt}</h3>
-              <p className="mt-2 text-sm text-g-muted leading-relaxed">{d}</p>
-            </div></Item>
-          ))}
-        </Stagger>
+        {/* growth scene: seed → sprout → tree, with a growing connector */}
+        <div className="relative">
+          <svg className="hidden md:block absolute top-12 left-0 w-full h-2 -z-0" viewBox="0 0 1000 8" preserveAspectRatio="none" aria-hidden>
+            <motion.line x1="120" y1="4" x2="880" y2="4" stroke="#3E9468" strokeWidth="2" strokeDasharray="4 6" strokeLinecap="round"
+              initial={{ pathLength:0 }} whileInView={{ pathLength:1 }} viewport={{ once:true }} transition={{ duration:1.8, ease:"easeInOut" }} />
+          </svg>
+          <Stagger className="grid md:grid-cols-3 gap-6 relative" gap={0.2}>
+            {t.steps.items.map(([i,tt,d],idx)=>(
+              <Item key={idx} variant="up"><div className="card group text-center relative overflow-hidden">
+                <div className={`absolute -top-12 left-1/2 -translate-x-1/2 h-32 w-32 rounded-full blur-3xl pointer-events-none animate-aurora ${idx===2?"bg-g-gold/15":"bg-g-green/12"}`} style={{ animationDelay:`${-idx*3}s` }} />
+                <div className="relative">
+                  <div className="text-6xl mb-3 animate-floatslow transition-transform duration-300 group-hover:scale-110" style={{ animationDelay:`${-idx}s` }}>{i}</div>
+                  <div className="grid place-items-center h-9 w-9 mx-auto rounded-full border-2 border-g-green/50 bg-g-green/15 text-g-light font-extrabold mb-3 shadow-glow transition-transform duration-300 group-hover:scale-110">{idx+1}</div>
+                  <h3 className="font-extrabold text-g-word text-lg">{tt}</h3>
+                  <p className="mt-2 text-sm text-g-muted leading-relaxed">{d}</p>
+                </div>
+              </div></Item>
+            ))}
+          </Stagger>
+        </div>
       </section>
 
       {/* PROOF — trust: human + security (super important) */}
       <section className="relative bg-white/[0.05] backdrop-blur-md border-y border-g-line py-16 overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 h-72 w-[42rem] rounded-full bg-g-green/10 blur-3xl pointer-events-none" />
         <div className="wrap relative">
-          <Reveal className="text-center mb-10"><span className="eyebrow mb-3">{t.proof.eyebrow}</span><h2 className="h2">{t.proof.h2}</h2></Reveal>
+          <Reveal className="text-center mb-9"><span className="eyebrow mb-3">{t.proof.eyebrow}</span><h2 className="h2">{t.proof.h2}</h2></Reveal>
+
+          {/* GUARANTEE SEALS — the trust medallions */}
+          <Stagger className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10" gap={0.08}>
+            {t.proof.seals.map(([ic,title,sub])=>(
+              <Item key={title} variant="scale">
+                <div className="group h-full rounded-xl2 border border-g-gold/25 bg-gradient-to-b from-g-gold/[0.08] via-white/[0.02] to-transparent p-5 text-center transition-all duration-300 hover:border-g-gold/50 hover:-translate-y-1">
+                  <div className="relative mx-auto mb-3 grid place-items-center h-16 w-16 rounded-full border-2 border-g-gold/40 bg-g-gold/10 text-3xl shadow-[0_0_24px_rgba(214,194,154,0.25)] transition-transform duration-300 group-hover:scale-110">
+                    {ic}
+                    <span className="absolute inset-0 rounded-full border border-g-gold/20 animate-aurora pointer-events-none" />
+                  </div>
+                  <div className="font-extrabold text-g-word text-sm leading-tight">{title}</div>
+                  <div className="text-[11px] text-g-muted mt-1">{sub}</div>
+                </div>
+              </Item>
+            ))}
+          </Stagger>
 
           {/* tech + compliance — staggered, glowing on hover */}
           <Stagger className="flex flex-wrap items-center justify-center gap-2.5" gap={0.04} amount={0.2}>
@@ -427,7 +522,7 @@ export default function Home() {
           <p className="mt-3 text-g-muted">{t.more.comp.sub}</p>
         </Reveal>
         <Reveal>
-          <div className="overflow-x-auto rounded-xl3 border border-g-line bg-white/[0.05] backdrop-blur-md shadow-soft">
+          <div className="overflow-x-auto rounded-xl3 border border-white/15 bg-gradient-to-br from-white/[0.10] to-white/[0.05] backdrop-blur-xl shadow-lift">
             <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr>
@@ -471,11 +566,16 @@ export default function Home() {
               <div className="text-xl font-extrabold text-g-word mt-1 relative">{p.name}</div>
               <div className="mt-2 mb-4 relative"><span className="text-3xl font-extrabold text-g-word">{p.price}</span><span className="text-g-muted text-sm">{p.per}</span></div>
               <ul className="space-y-2 mb-6 flex-1 relative">{p.feats.map((f)=><li key={f} className="flex items-start gap-2 text-sm text-g-word"><span className="text-g-green">✓</span>{f}</li>)}</ul>
-              <a href="#contact" className={`relative ${p.featured ? "btn-gold" : "btn-ghost"}`}>{p.cta}</a>
+              <a href="#contact" className={`relative ${p.featured ? "btn-bright" : "btn-ghost"}`}>{p.cta}</a>
             </div>
             </Item>
           ))}
         </Stagger>
+        <div className="mt-8 flex flex-wrap justify-center gap-3 text-sm">
+          {[["📈","+286% growth"],["⚡","3.2x ROI in 90 days"],["🚀","Live in 7 days"],["🛡️","30-day money-back"]].map(([ic,tx])=>(
+            <span key={tx} className="inline-flex items-center gap-1.5 rounded-full border border-g-green/25 bg-g-green/[0.06] px-4 py-2 font-bold text-g-light">{ic} {tx}</span>
+          ))}
+        </div>
       </section>
 
       {/* ACADEMY */}
@@ -494,6 +594,10 @@ export default function Home() {
       <section id="faq" className="wrap py-12">
         <Reveal className="text-center mb-8"><span className="eyebrow mb-3">{t.faq.eyebrow}</span><h2 className="h2">{t.faq.h2}</h2></Reveal>
         <Accordion items={t.faq.items} />
+        <div className="mt-8 text-center">
+          <button onClick={()=>{ const el=document.querySelector("elevenlabs-convai"); const b=el?.shadowRoot?.querySelector("button"); if(b)b.click(); }}
+            className="btn-bright inline-flex"><span className="relative flex h-2 w-2 mr-1"><span className="absolute inline-flex h-full w-full rounded-full bg-black/40 animate-ping" /><span className="relative inline-flex h-2 w-2 rounded-full bg-black/60" /></span>🎙️ Still have questions? Ask our live AI</button>
+        </div>
       </section>
 
       {/* CTA + LEAD CAPTURE */}

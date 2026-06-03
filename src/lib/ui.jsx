@@ -217,8 +217,8 @@ export function ProductsMarquee({ line, items }) {
   const half = Math.ceil(items.length / 2);
   const rows = [items.slice(0, half), items.slice(half)];
   const Chip = (it, i) => (
-    <span key={i} className="inline-flex items-center gap-2 rounded-full border border-g-line bg-white/[0.05] backdrop-blur-md px-5 py-2.5 text-sm font-semibold text-g-word whitespace-nowrap transition-colors hover:border-g-gold/40 hover:text-g-gold">
-      <span className="text-lg">{it[0]}</span>{it[1]}
+    <span key={i} className="group inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.05] backdrop-blur-md px-4 py-2.5 text-sm font-semibold text-g-word whitespace-nowrap transition-all hover:border-g-light/40 hover:bg-white/[0.08]">
+      <span className="grid place-items-center h-7 w-7 rounded-full bg-white/[0.06] border border-white/10 text-base drop-shadow-[0_0_10px_rgba(127,201,160,0.45)] transition-transform duration-300 group-hover:scale-110">{it[0]}</span>{it[1]}
     </span>
   );
   return (
