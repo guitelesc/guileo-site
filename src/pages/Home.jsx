@@ -309,9 +309,18 @@ export default function Home() {
             <span className="eyebrow mb-4">{t.numbers.eyebrow}</span>
             <h2 className="text-3xl sm:text-4xl font-extrabold leading-tight bg-gradient-to-r from-white via-g-gold to-white bg-[length:220%_auto] bg-clip-text text-transparent animate-shimmer">{t.numbers.h2}</h2>
             <p className="mt-4 text-white/70 leading-relaxed">{t.more.numbersMission}</p>
-            <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-g-light">
-              <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full rounded-full bg-g-green/50 animate-ping" /><span className="relative inline-flex h-2 w-2 rounded-full bg-g-green" /></span>
-              {t.numbers.eyebrow}
+            {/* the loss → gain contrast (red = what you lose without us) */}
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <div className="rounded-xl2 border border-red-500/25 bg-red-500/[0.07] p-3">
+                <div className="text-[11px] uppercase tracking-wide text-red-400/80 font-bold">Without Guileo</div>
+                <div className="text-2xl font-extrabold text-red-400 drop-shadow-[0_0_14px_rgba(239,68,68,0.25)]">−$300k<span className="text-sm">/yr</span></div>
+                <div className="text-[11px] text-white/50">35% of calls lost</div>
+              </div>
+              <div className="rounded-xl2 border border-g-green/30 bg-g-green/[0.08] p-3">
+                <div className="text-[11px] uppercase tracking-wide text-g-light font-bold">With Guileo</div>
+                <div className="text-2xl font-extrabold text-g-light drop-shadow-[0_0_14px_rgba(123,200,124,0.3)]">+$300k<span className="text-sm">/yr</span></div>
+                <div className="text-[11px] text-white/50">recovered & growing</div>
+              </div>
             </div>
           </Reveal>
 
