@@ -500,24 +500,36 @@ export default function Home() {
       <section className="relative py-16 border-y border-g-gold/20 bg-gradient-to-b from-transparent via-g-gold/[0.05] to-transparent overflow-hidden">
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-80 w-80 rounded-full bg-g-green/10 blur-3xl pointer-events-none animate-breathe" />
         <Reveal variant="scale" className="relative wrap">
-          <div className="mx-auto max-w-md rounded-xl3 border border-g-gold/35 bg-white/[0.04] backdrop-blur-xl p-8 sm:p-10 text-center shadow-lift relative overflow-hidden">
-            <div className="absolute -top-20 -right-16 h-48 w-48 rounded-full bg-g-gold/10 blur-3xl pointer-events-none animate-aurora" />
-            <div className="relative text-sm font-extrabold uppercase tracking-[0.2em] text-g-gold mb-6">{t.pillars.result}</div>
-            <div className="relative h-56 w-56 mx-auto">
+          <div className="mx-auto max-w-2xl rounded-xl3 border border-g-gold/35 bg-white/[0.04] backdrop-blur-xl p-8 sm:p-14 text-center shadow-lift relative overflow-hidden">
+            <div className="absolute -top-20 -right-16 h-56 w-56 rounded-full bg-g-gold/10 blur-3xl pointer-events-none animate-aurora" />
+            <div className="relative text-base sm:text-lg font-extrabold uppercase tracking-[0.2em] text-g-gold mb-8">{t.pillars.result}</div>
+            <div className="relative h-72 w-72 sm:h-80 sm:w-80 mx-auto">
               <svg viewBox="0 0 200 200" className="absolute inset-0 animate-spin" style={{ animationDuration:"16s" }} aria-hidden>
                 <circle cx="100" cy="100" r="82" fill="none" stroke="#C2A878" strokeOpacity="0.35" strokeWidth="1.5" strokeDasharray="3 8" />
               </svg>
               <svg viewBox="0 0 200 200" className="absolute inset-0 animate-spin" style={{ animationDuration:"8s", animationDirection:"reverse" }} aria-hidden>
                 <defs><linearGradient id="psg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#3E9468" /><stop offset="1" stopColor="#D6C29A" /></linearGradient></defs>
-                <circle cx="100" cy="100" r="66" fill="none" stroke="url(#psg)" strokeWidth="3" strokeDasharray="100 250" strokeLinecap="round" />
+                <circle cx="100" cy="100" r="66" fill="none" stroke="url(#psg)" strokeWidth="3.5" strokeDasharray="100 250" strokeLinecap="round" />
               </svg>
               <div className="absolute inset-0 grid place-items-center text-center">
-                <div><div className="text-2xl animate-spin" style={{ animationDuration:"6s" }}>⚙️</div><div className="text-[10px] font-bold uppercase tracking-[0.2em] text-g-gold mt-1">Method</div></div>
+                <div><div className="text-4xl animate-spin" style={{ animationDuration:"6s" }}>⚙️</div><div className="text-xs font-bold uppercase tracking-[0.25em] text-g-gold mt-2">Method</div></div>
               </div>
               {[["📈","Performance"],["💰","Sales"],["🚀","Growth"]].map(([ic,lb],i)=>{ const a=(i/3)*2*Math.PI - Math.PI/2; const x=100+78*Math.cos(a); const y=100+78*Math.sin(a); const on=engineActive%3===i; return (
                 <div key={lb} className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 transition-all duration-500 ${on?"scale-110":"scale-100 opacity-80"}`} style={{ left:`${x/2}%`, top:`${y/2}%` }}>
-                  <span className={`grid place-items-center h-11 w-11 rounded-full border text-lg transition-all duration-500 ${on?"border-g-gold/60 bg-g-gold/15 shadow-gold":"border-white/15 bg-white/[0.05]"}`}>{ic}</span>
-                  <span className="text-[11px] font-bold text-g-word whitespace-nowrap">{lb}</span>
+                  <span className={`grid place-items-center h-14 w-14 rounded-full border text-2xl transition-all duration-500 ${on?"border-g-gold/60 bg-g-gold/15 shadow-gold":"border-white/15 bg-white/[0.05]"}`}>{ic}</span>
+                  <span className="text-xs font-bold text-g-word whitespace-nowrap">{lb}</span>
+                </div>
+              ); })}
+            </div>
+
+            {/* the sequence beneath — Performance → Sales → Growth (like the method) */}
+            <div className="relative mt-10 flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
+              {[["📈","Performance"],["💰","Sales"],["🚀","Growth"]].map(([ic,lb],i)=>{ const on=engineActive%3===i; return (
+                <div key={lb} className="flex items-center gap-2 sm:gap-3">
+                  <div className={`flex items-center gap-2 rounded-full border px-3.5 sm:px-5 py-2.5 transition-all duration-500 ${on?"border-g-gold/60 bg-g-gold/15 scale-105 shadow-gold":"border-white/12 bg-white/[0.04]"}`}>
+                    <span className="text-lg">{ic}</span><span className="text-sm font-extrabold text-g-word whitespace-nowrap">{lb}</span>
+                  </div>
+                  {i < 2 && <span className="text-g-gold font-black text-lg">→</span>}
                 </div>
               ); })}
             </div>
