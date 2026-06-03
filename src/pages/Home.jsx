@@ -181,6 +181,13 @@ export default function Home() {
             </motion.div>
             <div className="absolute top-3 right-3 rounded-full bg-white/[0.05] backdrop-blur-md shadow-soft px-3 py-1.5 text-xs font-bold text-g-light z-10 pointer-events-none animate-floatslow"><span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse"/>{t.hero.b1}</span></div>
             <div className="absolute bottom-3 left-3 rounded-full bg-white/[0.05] backdrop-blur-md shadow-soft px-3 py-1.5 text-xs font-bold text-g-gold z-10 pointer-events-none animate-floatslow" style={{ animationDelay:"-3.5s" }}>{t.hero.b2}</div>
+            {/* the fruits = results (the harvest) */}
+            {introDone && [["💰","$3k saved/mo","top-[10%] left-[1%]"],["📈","3× sales","top-[28%] right-[1%]"],["🛒","2 stores","top-[3%] right-[16%]"],["📅","+40 bookings","top-[48%] left-[2%]"]].map(([ic,tx,pos],i)=>(
+              <motion.div key={tx} initial={{ opacity:0, scale:0.5, y:10 }} animate={{ opacity:1, scale:1, y:0 }} transition={{ delay:1.1+i*0.28, type:"spring", stiffness:150, damping:13 }}
+                className={`absolute ${pos} z-20 pointer-events-none animate-floatslow`} style={{ animationDelay:`${-i*1.3}s` }}>
+                <span className="inline-flex items-center gap-1 rounded-full border border-g-gold/45 bg-g-gold/[0.15] backdrop-blur-md px-2.5 py-1 text-[11px] font-extrabold text-g-gold shadow-[0_0_18px_rgba(214,194,154,0.3)]">{ic} {tx}</span>
+              </motion.div>
+            ))}
           </Parallax>
         </div>
         <div className="wrap mt-10"><Ticker items={TICKER} /></div>
