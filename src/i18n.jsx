@@ -42,6 +42,7 @@ export const T = {
       ["How much does it cost?","A fixed monthly subscription plus a one-time setup fee — never a percentage of your revenue. 30-day money-back guarantee. Book a demo for a plan tailored to your volume."],
       ["Do you only serve one industry?","No. Restaurants, clinics, salons, law firms, contractors, e-commerce and more — each gets a tailored agent on the same powerful platform."]] },
     final: { h2:"Stop losing customers. Start tonight.", sub:"Live in under 7 days · 30-day money-back · talk to our AI right now.", wa:"💬 Start on WhatsApp", demo:"📅 Book a demo" },
+    manifesto: { quote:"Imagine your business selling, booking and growing — while you sleep.", tag:"We don't just imagine it. We build it for you." },
     footer: { tagline:"AI systems for business — voice agents, websites, apps and growth. We replace the chaos with automation that books, closes and grows. Work smart, grow faster, sleep better.", company:"Company", findus:"Find Us", solutions:"Solutions", svc:"Services & Pricing", academy:"Guileo Academy", faq:"FAQ" },
   },
 };
@@ -87,6 +88,7 @@ T.pt = {
     ["Quanto custa?","Mensalidade fixa + uma taxa única de setup — nunca um percentual do seu faturamento. Garantia de 30 dias. Agende uma demo pra um plano sob medida pro seu volume."],
     ["Vocês só atendem uma indústria?","Não. Restaurantes, clínicas, salões, advocacia, prestadores, e-commerce e mais — cada um ganha uma IA sob medida na mesma plataforma."]] },
   final:{ h2:"Pare de perder clientes. Comece hoje à noite.", sub:"No ar em menos de 7 dias · garantia de 30 dias · fale com nossa IA agora.", wa:"💬 Começar no WhatsApp", demo:"📅 Agendar demo" },
+  manifesto:{ quote:"Imagine seu negócio vendendo, agendando e crescendo — enquanto você dorme.", tag:"A gente não só imagina. A gente constrói pra você." },
   footer:{ tagline:"Sistemas de IA para negócios — agentes de voz, sites, apps e crescimento. Trocamos o caos por automação que agenda, fecha e cresce. Trabalhe smart, cresça mais rápido, durma melhor.", company:"Empresa", findus:"Onde Achar", solutions:"Soluções", svc:"Serviços & Preços", academy:"Guileo Academy", faq:"FAQ" },
 };
 
@@ -131,6 +133,7 @@ T.es = {
     ["¿Cuánto cuesta?","Una suscripción mensual fija más una tarifa única de setup — nunca un porcentaje de tus ingresos. Garantía de 30 días. Agenda una demo para un plan a tu medida."],
     ["¿Solo atienden una industria?","No. Restaurantes, clínicas, salones, despachos, contratistas, e-commerce y más — cada uno recibe una IA a medida en la misma plataforma."]] },
   final:{ h2:"Deja de perder clientes. Empieza esta noche.", sub:"En vivo en menos de 7 días · garantía de 30 días · habla con nuestra IA ahora.", wa:"💬 Empezar en WhatsApp", demo:"📅 Agendar demo" },
+  manifesto:{ quote:"Imagina tu negocio vendiendo, agendando y creciendo — mientras duermes.", tag:"No solo lo imaginamos. Lo construimos para ti." },
   footer:{ tagline:"Sistemas de IA para negocios — agentes de voz, webs, apps y crecimiento. Cambiamos el caos por automatización que agenda, cierra y crece. Trabaja inteligente, crece más rápido, duerme mejor.", company:"Empresa", findus:"Encuéntranos", solutions:"Soluciones", svc:"Servicios y Precios", academy:"Guileo Academy", faq:"FAQ" },
 };
 
@@ -175,6 +178,7 @@ T.hi = {
     ["कीमत कितनी है?","एक निश्चित मासिक सब्सक्रिप्शन और एक बार का सेटअप शुल्क — कभी आपके राजस्व का प्रतिशत नहीं। 30-दिन मनी-बैक। अपने वॉल्यूम के हिसाब से प्लान के लिए डेमो बुक करें।"],
     ["क्या आप सिर्फ़ एक उद्योग की सेवा करते हैं?","नहीं। रेस्टोरेंट, क्लिनिक, सैलून, लॉ फ़र्म, ठेकेदार, ई-कॉमर्स और बहुत कुछ — हर एक को उसी शक्तिशाली प्लेटफ़ॉर्म पर अनुकूलित AI मिलती है।"]] },
   final:{ h2:"ग्राहक खोना बंद करें। आज रात ही शुरू करें।", sub:"7 दिनों से कम में लाइव · 30-दिन मनी-बैक · अभी हमारी AI से बात करें।", wa:"💬 WhatsApp पर शुरू करें", demo:"📅 डेमो बुक करें" },
+  manifesto:{ quote:"कल्पना कीजिए आपका व्यवसाय बेच रहा है, बुकिंग ले रहा है और बढ़ रहा है — जब आप सो रहे हैं।", tag:"हम सिर्फ़ कल्पना नहीं करते। हम इसे आपके लिए बनाते हैं।" },
   footer:{ tagline:"व्यवसाय के लिए AI सिस्टम — वॉइस एजेंट, वेबसाइट, ऐप और ग्रोथ। हम अराजकता को ऐसे ऑटोमेशन से बदलते हैं जो बुक करता, बंद करता और बढ़ाता है। स्मार्ट काम करें, तेज़ बढ़ें, चैन से सोएँ।", company:"कंपनी", findus:"हमें खोजें", solutions:"समाधान", svc:"सेवाएँ और मूल्य", academy:"Guileo Academy", faq:"FAQ" },
 };
 

@@ -453,8 +453,14 @@ export default function Home() {
         {/* The 3 Guileo engines wired into your business */}
         <Reveal><Pillars t={t} /></Reveal>
 
-        {/* …which spins a self-running result cycle */}
-        <Reveal className="mt-12 flex flex-col items-center">
+      </section>
+
+      {/* CHANNELS — real brand icons (phone mockup) */}
+      <Channels t={t} />
+
+      {/* …which spins a self-running result cycle — placed right after the channels */}
+      <section className="wrap py-12">
+        <Reveal className="flex flex-col items-center">
           <div className="text-xs font-bold uppercase tracking-[0.2em] text-g-gold mb-5">{t.pillars.result}</div>
           <div className="relative h-56 w-56">
             <svg viewBox="0 0 200 200" className="absolute inset-0 animate-spin" style={{ animationDuration:"16s" }} aria-hidden>
@@ -476,9 +482,6 @@ export default function Home() {
           </div>
         </Reveal>
       </section>
-
-      {/* CHANNELS — real brand icons */}
-      <Channels t={t} />
 
       {/* INTEGRATIONS — works with what you already use */}
       <section className="wrap py-14">
@@ -736,6 +739,21 @@ export default function Home() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* MANIFESTO — the closing line that sells the dream */}
+      <section className="relative py-20 sm:py-28 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-g-gold/[0.04] to-transparent pointer-events-none" />
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-72 w-72 rounded-full bg-g-green/10 blur-3xl pointer-events-none animate-breathe" />
+        <Reveal variant="scale" className="relative wrap text-center max-w-3xl mx-auto">
+          <span className="text-5xl text-g-gold/40 leading-none">“</span>
+          <p className="mt-1 text-2xl sm:text-4xl font-black leading-tight tracking-tight bg-gradient-to-r from-g-word via-g-gold to-g-word bg-[length:200%_auto] bg-clip-text text-transparent animate-shimmer">
+            {t.manifesto.quote}
+          </p>
+          <p className="mt-5 text-sm sm:text-base font-bold text-g-light">{t.manifesto.tag}</p>
+          <div className="mt-6 mx-auto h-px w-24 bg-gradient-to-r from-transparent via-g-gold/60 to-transparent" />
+          <div className="mt-3 text-xs font-bold uppercase tracking-[0.3em] text-g-muted">Guileo</div>
+        </Reveal>
       </section>
 
       <Footer />
