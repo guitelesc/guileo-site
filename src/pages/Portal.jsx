@@ -1110,7 +1110,10 @@ function AIBrain({ V }) {
           {chat.map((m, i) => (
             <div key={i} className="space-y-2">
               <div className="flex justify-end"><div className="max-w-[78%] rounded-2xl px-3.5 py-2 text-xs bg-g-gold/15 text-g-word border border-g-gold/30">{m.q}</div></div>
-              <div className="flex justify-start"><div className="max-w-[80%] rounded-2xl px-3.5 py-2 text-xs bg-g-green/15 text-g-light border border-g-green/30"><div className="text-[9px] font-black uppercase text-g-green mb-0.5 flex items-center gap-1">Your AI {m.trained && <span className="text-g-gold normal-case">· from your training</span>}</div>{m.a}</div></div>
+              <div className="flex justify-start"><div className="max-w-[80%] space-y-1">
+                <div className="rounded-2xl px-3.5 py-2 text-xs bg-g-green/15 text-g-light border border-g-green/30"><div className="text-[9px] font-black uppercase text-g-green mb-0.5 flex items-center gap-1">Your AI {m.trained && <span className="text-g-gold normal-case">· from your training</span>}</div>{m.a}</div>
+                {!m.trained && <button onClick={() => setEditing({ topic: "", triggers: m.q, answer: "" })} className="ml-1 text-[11px] font-bold text-g-gold hover:text-g-word transition inline-flex items-center gap-1"><FaPen size={9} /> Teach a better answer</button>}
+              </div></div>
             </div>
           ))}
         </div>
