@@ -154,6 +154,19 @@ const SECTION_ICON = {
 function Card({ children, className = "" }) {
   return <div className={`rounded-xl2 border border-white/10 bg-white/[0.04] backdrop-blur-md p-5 ${className}`}>{children}</div>;
 }
+// Reusable summary strip — adds depth (stats header) to any list screen
+function MiniStats({ items }) {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {items.map(([label, value, tone], i) => (
+        <Card key={i} className="py-3.5">
+          <div className="text-[10px] uppercase tracking-wide text-g-muted">{label}</div>
+          <div className={`text-lg font-extrabold mt-0.5 ${tone === "good" ? "text-g-green" : tone === "bad" ? "text-red-400" : "text-g-word"}`}>{value}</div>
+        </Card>
+      ))}
+    </div>
+  );
+}
 
 /* ───────────────────────── Views ───────────────────────── */
 function Overview({ V, onNav }) {
@@ -588,35 +601,47 @@ function MenuView({ V }) {
   );
 }
 function Customers({ V }) {
+  const rows = V.customers || genCustomers(V);
+  const totalSpent = rows.reduce((s, c) => s + (c.spent || 0), 0);
   return (
-    <Card className="p-0 overflow-hidden">
-      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Customers</div>
-      <div className="divide-y divide-white/[0.06]">
-        {(V.customers || genCustomers(V)).map((c, i) => (
-          <div key={i} className="flex items-center gap-3 px-5 py-3">
-            <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{c.name[0]}</span>
-            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name}</div><div className="text-[11px] text-g-muted truncate">{c.orders} {c.noun || "orders"} · {c.channel} · {c.last}</div></div>
-            <span className="text-sm font-extrabold text-g-green">${c.spent.toFixed(2)}</span>
-          </div>
-        ))}
-      </div>
-    </Card>
+    <div className="space-y-4">
+      <MiniStats items={[["Total customers", `${rows.length * 104}`], ["New this week", `+${rows.length * 6}`, "good"], ["Avg. value", `$${Math.round(totalSpent / rows.length)}`], ["Repeat rate", "38%", "good"]]} />
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Customers</div>
+        <div className="divide-y divide-white/[0.06]">
+          {rows.map((c, i) => (
+            <div key={i} className="flex items-center gap-3 px-5 py-3">
+              <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{c.name[0]}</span>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{c.name}{i === 0 && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-g-gold/15 text-g-gold">TOP</span>}</div><div className="text-[11px] text-g-muted truncate">{c.orders} {c.noun || "orders"} · {c.channel} · {c.last}</div></div>
+              <span className="text-sm font-extrabold text-g-green">${c.spent.toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
   );
 }
 function Campaigns({ V }) {
+  const rows = V.campaigns || genCampaigns(V);
+  const sent = rows.reduce((s, c) => s + c.sent, 0);
+  const rev = rows.reduce((s, c) => s + c.revenue, 0);
+  const open = Math.round(rows.reduce((s, c) => s + c.opened, 0) / rows.length);
   return (
-    <Card className="p-0 overflow-hidden">
-      <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Campaigns</span><a href={waLink("I'd like to launch a campaign")} target="_blank" rel="noopener" className="text-[11px] font-bold text-g-gold hover:underline">New campaign →</a></div>
-      <div className="divide-y divide-white/[0.06]">
-        {(V.campaigns || genCampaigns(V)).map((c, i) => (
-          <div key={i} className="flex items-center gap-4 px-5 py-3.5">
-            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name}</div><div className="text-[11px] text-g-muted">{c.channel} · {c.sent} sent · {c.opened}% opened</div></div>
-            <span className="text-sm font-extrabold text-g-green">${c.revenue.toLocaleString()}</span>
-            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: (c.status === "Active" ? "#3E9468" : "#D6C29A") + "22", color: c.status === "Active" ? "#3E9468" : "#D6C29A" }}>{c.status}</span>
-          </div>
-        ))}
-      </div>
-    </Card>
+    <div className="space-y-4">
+      <MiniStats items={[["Campaigns", `${rows.length}`], ["Messages sent", sent.toLocaleString()], ["Avg. open rate", `${open}%`, "good"], ["Revenue", `$${rev.toLocaleString()}`, "good"]]} />
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Campaigns</span><a href={waLink("I'd like to launch a campaign")} target="_blank" rel="noopener" className="text-[11px] font-bold text-g-gold hover:underline">New campaign →</a></div>
+        <div className="divide-y divide-white/[0.06]">
+          {rows.map((c, i) => (
+            <div key={i} className="flex items-center gap-4 px-5 py-3.5">
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name}</div><div className="text-[11px] text-g-muted">{c.channel} · {c.sent} sent · {c.opened}% opened</div></div>
+              <span className="text-sm font-extrabold text-g-green">${c.revenue.toLocaleString()}</span>
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: (c.status === "Active" ? "#3E9468" : "#D6C29A") + "22", color: c.status === "Active" ? "#3E9468" : "#D6C29A" }}>{c.status}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
   );
 }
 function Audiences({ V }) {
@@ -629,19 +654,23 @@ function Audiences({ V }) {
   );
 }
 function CallLogs({ V }) {
+  const rows = V.callLogs || genCalls(V);
   return (
-    <Card className="p-0 overflow-hidden">
-      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Call logs · answered by AI</div>
-      <div className="divide-y divide-white/[0.06]">
-        {(V.callLogs || genCalls(V)).map((c, i) => (
+    <div className="space-y-4">
+      <MiniStats items={[["Calls answered", `${rows.length * 78}`], ["Missed calls", "0", "good"], ["Avg. duration", "1m 14s"], ["Handled by AI", "100%", "good"]]} />
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Recent calls · answered by AI</div>
+        <div className="divide-y divide-white/[0.06]">
+          {rows.map((c, i) => (
           <div key={i} className="flex items-center gap-3 px-5 py-3">
             <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06]" style={{ color: c.color }}><FaPhone size={13} /></span>
             <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name} <span className="text-g-muted font-normal">· {c.phone}</span></div><div className="text-[11px] text-g-muted truncate">{c.outcome}</div></div>
             <div className="text-right shrink-0"><div className="text-[11px] text-g-light font-bold">{c.dur}</div><div className="text-[10px] text-g-muted">{c.time}</div></div>
           </div>
-        ))}
-      </div>
-    </Card>
+          ))}
+        </div>
+      </Card>
+    </div>
   );
 }
 function Dialer() {
@@ -741,6 +770,10 @@ function AIBrain({ V }) {
           <div><div className="text-sm font-extrabold text-g-word">🧠 Your AI's brain</div><div className="text-xs text-g-muted mt-0.5">Everything your AI knows and how it answers. Want a change? Your team updates it for you.</div></div>
           <a href={waLink("Hi Guileo! I'd like to update what my AI knows")} target="_blank" rel="noopener" className="btn-bright text-sm">Request an update →</a>
         </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word"><span className="text-g-green">✓</span> Last trained 2 days ago</span>
+          {["🇺🇸 English", "🇧🇷 Português", "🇪🇸 Español"].map((l) => <span key={l} className="inline-flex items-center rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word">{l}</span>)}
+        </div>
       </Card>
       <div className="grid sm:grid-cols-2 gap-4">
         {cards.map(([ic, title, body], i) => (
@@ -793,6 +826,13 @@ function ScheduleScreen({ V }) {
           {o.stats.map((s) => (<Card key={s.label}><div className="text-[11px] uppercase tracking-wide text-g-muted">{s.label}</div><div className={`text-2xl font-extrabold mt-1 ${s.tone === "good" ? "text-g-green" : "text-g-word"}`}>{s.value}</div></Card>))}
         </div>
       )}
+      {o.schedule && (
+        <div className="flex flex-wrap gap-2">
+          {Object.entries((o.schedule || []).reduce((m, r) => { m[r.status] = (m[r.status] || 0) + 1; return m; }, {})).map(([st, n]) => (
+            <span key={st} className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word">{st} <span className="text-g-muted">{n}</span></span>
+          ))}
+        </div>
+      )}
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{o.scheduleTitle || "Today"}</div>
         <div className="divide-y divide-white/[0.06]">
@@ -831,21 +871,28 @@ function SocialInbox({ V }) {
   const nets = [[FaInstagram, "#E4405F", "Instagram"], [FaFacebook, "#1877F2", "Facebook"], [FaTiktok, "#e7e7e7", "TikTok"], [FaInstagram, "#E4405F", "Instagram"]];
   const rows = (V.activity || []).slice(0, 4).map((a, i) => ({ name: (V.ops?.schedule?.[i]?.name) || "New DM", last: a[2], t: a[3], unread: i % 2 }));
   return (
-    <Card className="p-0 overflow-hidden">
-      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Social inbox · AI replies on Instagram, Facebook &amp; TikTok</div>
-      <div className="divide-y divide-white/[0.06]">
-        {rows.map((c, i) => {
-          const [Icon, color, net] = nets[i % 4];
-          return (
-            <div key={i} className="flex items-center gap-3 px-5 py-3">
-              <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06]" style={{ color }}><Icon size={16} /></span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name} <span className="text-g-muted font-normal">· {net}</span></div><div className="text-[11px] text-g-muted truncate">{c.last}</div></div>
-              <div className="text-right shrink-0 flex flex-col items-end gap-1"><span className="text-[10px] text-g-muted">{c.t}</span>{c.unread > 0 && <span className="inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-g-green text-[10px] font-bold text-black">{c.unread}</span>}</div>
-            </div>
-          );
-        })}
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        {[["Instagram", "#E4405F", 18], ["Facebook", "#1877F2", 9], ["TikTok", "#e7e7e7", 6]].map(([n, c, v]) => (
+          <span key={n} className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word"><span className="h-2 w-2 rounded-full" style={{ background: c }} />{n} <span className="text-g-muted">{v} replies today</span></span>
+        ))}
       </div>
-    </Card>
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Social inbox · AI replies on Instagram, Facebook &amp; TikTok</div>
+        <div className="divide-y divide-white/[0.06]">
+          {rows.map((c, i) => {
+            const [Icon, color, net] = nets[i % 4];
+            return (
+              <div key={i} className="flex items-center gap-3 px-5 py-3">
+                <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06]" style={{ color }}><Icon size={16} /></span>
+                <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name} <span className="text-g-muted font-normal">· {net}</span></div><div className="text-[11px] text-g-muted truncate">{c.last}</div></div>
+                <div className="text-right shrink-0 flex flex-col items-end gap-1"><span className="text-[10px] text-g-muted">{c.t}</span>{c.unread > 0 && <span className="inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-g-green text-[10px] font-bold text-black">{c.unread}</span>}</div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    </div>
   );
 }
 
