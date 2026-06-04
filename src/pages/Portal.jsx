@@ -4,7 +4,7 @@ import {
   FaGaugeHigh, FaComments, FaBullhorn, FaUsers, FaHeadset, FaFileLines, FaListCheck,
   FaArrowLeft, FaArrowTrendUp, FaArrowTrendDown, FaWhatsapp, FaInstagram, FaPhone, FaFacebook, FaTiktok, FaGoogle,
   FaReceipt, FaUtensils, FaBookOpen, FaBullseye, FaPhoneVolume, FaCommentSms, FaGear, FaChartLine,
-  FaDownload, FaBell, FaMagnifyingGlass, FaStore, FaBrain, FaCreditCard,
+  FaDownload, FaBell, FaMagnifyingGlass, FaStore, FaBrain, FaCreditCard, FaChevronDown,
 } from "react-icons/fa6";
 
 /* Upsell channel — services a client can request from inside the portal (revenue engine) */
@@ -220,9 +220,10 @@ function Overview({ V, onNav }) {
         )}
       </div>
 
-      {/* Rich row (restaurant-style): top selling + recent activity + needs attention */}
-      {V.topItems && (
+      {/* Rich row: top selling (restaurant) + recent activity (when channel breakdown took the slot above) + needs attention */}
+      {(V.topItems || V.alerts) && (
         <div className="grid lg:grid-cols-3 gap-4">
+          {V.topItems && (
           <Card>
             <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{V.topItems.title}</div>
             <div className="space-y-3">
@@ -237,6 +238,8 @@ function Overview({ V, onNav }) {
               })}
             </div>
           </Card>
+          )}
+          {V.channelMix && (
           <Card>
             <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Recent activity</div>
             <ul className="space-y-3">
@@ -249,6 +252,7 @@ function Overview({ V, onNav }) {
               ))}
             </ul>
           </Card>
+          )}
           {V.alerts && (
             <Card>
               <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{V.alerts.title}</div>
@@ -752,6 +756,7 @@ export default function Portal() {
   const [view, setView] = useState("overview");
   const [period, setPeriod] = useState("30 days");
   const [vertical, setVertical] = useState("restaurant");
+  const [vertOpen, setVertOpen] = useState(false);
   const V = VERTICALS[vertical];
   const sections = V.sections || DEFAULT_SECTIONS;
   const cur = sections.find((s) => s[0] === view);
@@ -848,17 +853,29 @@ export default function Portal() {
           <div className="rounded-full border border-g-gold/30 bg-g-gold/[0.08] px-4 py-2 text-[11px] font-bold text-g-gold inline-flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" /> Demo data — each client sees their own industry.
           </div>
-          <div className="flex items-center gap-1.5 ml-auto">
-            <span className="text-[11px] font-bold uppercase tracking-wide text-g-muted hidden sm:inline">Preview industry:</span>
-            {VERTICAL_KEYS.map((k) => {
-              const on = vertical === k;
-              return (
-                <button key={k} onClick={() => switchVertical(k)}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold border transition ${on ? "border-g-green/50 bg-g-green/15 text-g-light" : "border-white/12 bg-white/[0.04] text-g-muted hover:text-g-word"}`}>
-                  {VERTICALS[k].icon} <span className="hidden sm:inline">{VERTICALS[k].label}</span>
-                </button>
-              );
-            })}
+          <div className="ml-auto relative">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-g-muted hidden md:inline mr-2">Preview industry</span>
+            <button onClick={() => setVertOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={vertOpen}
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-3.5 py-2 text-xs font-bold text-g-word hover:border-g-gold/40 transition">
+              <span className="text-base">{V.icon}</span><span>{V.label}</span><FaChevronDown size={10} className={`transition-transform ${vertOpen ? "rotate-180" : ""}`} />
+            </button>
+            {vertOpen && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setVertOpen(false)} />
+                <div role="listbox" className="absolute right-0 mt-2 w-56 max-h-80 overflow-y-auto rounded-xl2 border border-white/12 bg-g-cream/95 backdrop-blur-xl shadow-lift z-30 p-1.5">
+                  <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-g-muted">Industry · demo</div>
+                  {VERTICAL_KEYS.map((k) => {
+                    const on = vertical === k;
+                    return (
+                      <button key={k} role="option" aria-selected={on} onClick={() => { switchVertical(k); setVertOpen(false); }}
+                        className={`w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-bold text-left transition ${on ? "bg-g-green/15 text-g-light" : "text-g-muted hover:text-g-word hover:bg-white/[0.06]"}`}>
+                        <span className="text-base">{VERTICALS[k].icon}</span><span className="flex-1">{VERTICALS[k].label}</span>{on && <span className="text-g-green">●</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
