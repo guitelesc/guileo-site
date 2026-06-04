@@ -45,15 +45,17 @@ export const VERTICALS = {
       ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"], ["grow", "Grow with Guileo"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
     ],
     liveOrders: [
+      { id: "#1049", customer: "Sofia M.", items: "Pão de Queijo x3, Guaraná", total: 29.0, channel: "iFood", status: "New", color: G },
+      { id: "#1048", customer: "Diego R.", items: "Coxinha x6", total: 27.0, channel: "WhatsApp", status: "New", color: G },
       { id: "#1047", customer: "João P.", items: "Pão de Queijo x2", total: 17.0, channel: "Phone", status: "Preparing", color: B },
-      { id: "#1046", customer: "Maria Silva", items: "Açaí Bowl, Coffee", total: 24.5, channel: "WhatsApp", status: "New", color: G },
-      { id: "#1045", customer: "Carlos M.", items: "Coxinha x4", total: 18.0, channel: "Delivery", status: "Ready", color: D },
+      { id: "#1046", customer: "Maria Silva", items: "Açaí Bowl, Coffee", total: 24.5, channel: "WhatsApp", status: "Preparing", color: B },
+      { id: "#1045", customer: "Carlos M.", items: "Coxinha x4", total: 18.0, channel: "Uber Eats", status: "Ready", color: D },
       { id: "#1044", customer: "Ana R.", items: "Brigadeiro x6", total: 17.1, channel: "QR / Walk-in", status: "Delivered", color: "#7C7C7C" },
     ],
     kitchen: {
-      new: [{ id: "#1046", items: "Açaí Bowl, Coffee", t: "1 min" }, { id: "#1048", items: "Pão de Queijo x3", t: "now" }],
-      preparing: [{ id: "#1047", items: "Pão de Queijo x2", t: "4 min" }, { id: "#1043", items: "Coxinha x2, Coffee", t: "6 min" }],
-      ready: [{ id: "#1045", items: "Coxinha x4", t: "ready" }],
+      new: [{ id: "#1049", items: "Pão de Queijo x3, Guaraná", t: "now" }, { id: "#1048", items: "Coxinha x6", t: "1 min" }],
+      preparing: [{ id: "#1047", items: "Pão de Queijo x2", t: "4 min" }, { id: "#1046", items: "Açaí Bowl, Coffee", t: "5 min" }, { id: "#1043", items: "Coxinha x2, Coffee", t: "6 min" }],
+      ready: [{ id: "#1045", items: "Coxinha x4", t: "ready · 2 min" }],
     },
     menu: [
       { name: "Pão de Queijo (3 pack)", price: 8.5, cat: "Savory", stock: "Low" },

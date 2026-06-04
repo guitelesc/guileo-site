@@ -44,6 +44,8 @@ const ROOM = { "Clinic": ["Room 1", "Room 2", "Room 3", "Room 4"], "Medical": ["
 const staffOf = (label, i) => { const a = STAFF[label] || []; return a.length ? a[i % a.length] : null; };
 const roomOf = (label, i) => { const a = ROOM[label] || []; return a.length ? a[i % a.length] : null; };
 const _dur = ["30 min", "45 min", "1 h", "1 h 30", "20 min"];
+// Anti-no-show deposits (the capacity-protection money lever) — $ held per booking by sector
+const DEPOSIT = { "Restaurant": 20, "Clinic": 30, "Medical": 40, "Salon & Spa": 25, "Plumbing & HVAC": 50, "Gym & Fitness": 0, "Auto Dealership": 0, "Construction": 0, "Education": 0, "Law Firm": 0, "Real Estate": 0, "E-Commerce": 0 };
 function genCalls(V) {
   const sch = (V.ops?.schedule || []).slice(0, 4);
   if (sch.length) return sch.map((p, i) => ({ name: p.name, phone: _PHONES[i % 4], outcome: p.meta ? `${p.meta} · booked by AI` : "Handled by AI", dur: `${1 + (i % 2)}m ${(12 + i * 9) % 60}s`, time: `${2 + i * 12} min ago`, color: ["#3E9468", "#38BDF8", "#3E9468", "#7C7C7C"][i % 4] }));
@@ -1122,6 +1124,14 @@ function ScheduleScreen({ V }) {
           {o.stats.map((s) => (<Card key={s.label}><div className="text-[11px] uppercase tracking-wide text-g-muted">{s.label}</div><div className={`text-2xl font-extrabold mt-1 ${s.tone === "good" ? "text-g-green" : "text-g-word"}`}>{s.value}</div></Card>))}
         </div>
       )}
+      {DEPOSIT[V.label] > 0 && (
+        <Card className="border-g-green/25 bg-g-green/[0.05]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><div className="text-sm font-extrabold text-g-word">🛡️ No-show protection · on</div><div className="text-xs text-g-muted mt-0.5">${DEPOSIT[V.label]} deposit held per booking · <b className="text-g-green">7 no-shows prevented</b> · $980 secured this month</div></div>
+            <button onClick={() => toast("Deposit rules updated ✓")} className="btn-ghost text-sm">Manage rules</button>
+          </div>
+        </Card>
+      )}
       {sch.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {Object.entries(sch.reduce((m, r) => { m[r.status] = (m[r.status] || 0) + 1; return m; }, {})).map(([st, n]) => (
@@ -1158,6 +1168,8 @@ function ScheduleScreen({ V }) {
             ["Location", roomOf(V.label, sel.i)],
             ["Duration", _dur[sel.i % _dur.length]],
             ["Channel", sel.r.ch && sel.r.ch !== "—" ? sel.r.ch : "—"],
+            ["Deposit", DEPOSIT[V.label] > 0 ? (/pending|new/i.test(sel.r.status) ? `$${DEPOSIT[V.label]} pending` : `$${DEPOSIT[V.label]} held ✓`) : "Not required"],
+            ["No-show risk", /pending|new|risk|follow/i.test(sel.r.status) ? "⚠ Higher" : "Low"],
             ["Status", sel.r.status],
           ]}
           note={`Captured by your AI ${sel.r.ch && sel.r.ch !== "—" ? `via ${sel.r.ch}` : ""}. Confirmation + reminder sent automatically. ${/pending|new|follow/i.test(sel.r.status) ? "Awaiting confirmation — the AI will follow up." : "Confirmed and on the books."}`}
@@ -1415,6 +1427,54 @@ function Recurring({ V }) {
   );
 }
 
+/* ───────────────────────── Onboarding wizard (first run) ───────────────────────── */
+function OnboardingWizard({ onDone }) {
+  const [step, setStep] = useState(0);
+  const [vid, setVid] = useState("restaurant");
+  const [name, setName] = useState("");
+  const [chs, setChs] = useState({ "WhatsApp": true, "Phone calls": true, "Instagram": true, "SMS": false });
+  const next = () => setStep((s) => s + 1);
+  return (
+    <div className="min-h-screen grid place-items-center px-5">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md rounded-xl3 border border-white/12 bg-white/[0.04] backdrop-blur-xl p-7 shadow-lift">
+        <div className="flex gap-1.5 mb-5">{[0, 1, 2, 3].map((i) => <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= step ? "bg-g-green" : "bg-white/15"}`} />)}</div>
+        {step === 0 && (<>
+          <div className="text-lg font-extrabold text-g-word">Welcome to Guileo 👋</div>
+          <p className="text-xs text-g-muted mt-1">What kind of business are we growing?</p>
+          <div className="mt-4 grid grid-cols-3 gap-2 max-h-72 overflow-y-auto">
+            {VERTICAL_KEYS.map((k) => (
+              <button key={k} onClick={() => { setVid(k); setName(VERTICALS[k].business.name); next(); }} className="flex flex-col items-center gap-1 rounded-xl2 border border-white/10 bg-white/[0.03] p-3 hover:border-g-gold/50 hover:-translate-y-0.5 transition-all">
+                <span className="text-2xl">{VERTICALS[k].icon}</span><span className="text-[10px] font-bold text-g-word text-center leading-tight">{VERTICALS[k].label}</span>
+              </button>
+            ))}
+          </div>
+        </>)}
+        {step === 1 && (<>
+          <div className="text-lg font-extrabold text-g-word">Your business name</div>
+          <p className="text-xs text-g-muted mt-1">This is how your AI introduces itself to customers.</p>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Bella Pizza" className="mt-4 w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+          <button onClick={next} className="btn-bright text-sm w-full mt-4">Continue →</button>
+        </>)}
+        {step === 2 && (<>
+          <div className="text-lg font-extrabold text-g-word">Which channels should your AI cover?</div>
+          <p className="text-xs text-g-muted mt-1">Your AI answers 24/7 on every one you turn on.</p>
+          <div className="mt-4 space-y-2">{Object.keys(chs).map((c) => (<div key={c} className="flex items-center justify-between rounded-xl2 border border-white/10 bg-white/[0.03] px-4 py-3"><span className="text-sm font-semibold text-g-word">{c}</span><Toggle on={chs[c]} onClick={() => setChs((x) => ({ ...x, [c]: !x[c] }))} /></div>))}</div>
+          <button onClick={next} className="btn-bright text-sm w-full mt-4">Continue →</button>
+        </>)}
+        {step === 3 && (
+          <div className="text-center py-3">
+            <div className="text-4xl mb-2">🎉</div>
+            <div className="text-lg font-extrabold text-g-word">You're all set, {name || "there"}!</div>
+            <p className="text-xs text-g-muted mt-1">Your AI is live and your Growth Cockpit is ready.</p>
+            <button onClick={() => onDone(vid)} className="btn-bright text-sm w-full mt-5">Enter my cockpit →</button>
+          </div>
+        )}
+        {step < 3 && <button onClick={() => onDone(vid)} className="block mx-auto mt-4 text-[11px] font-bold text-g-muted hover:text-g-word">Skip setup</button>}
+      </motion.div>
+    </div>
+  );
+}
+
 /* ───────────────────────── Login gate (demo) ───────────────────────── */
 function Login({ onEnter }) {
   const [email, setEmail] = useState("");
@@ -1449,6 +1509,7 @@ export default function Portal() {
   const [notifsRead, setNotifsRead] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [onboarded, setOnboarded] = useState(() => { try { return !!localStorage.getItem("guileo_onboarded"); } catch { return true; } });
   useEffect(() => { portalApi.session().then((s) => { if (s) setAuthed(true); }).finally(() => setBooting(false)); }, []);
   useEffect(() => {
     const h = (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPaletteOpen((o) => !o); } if (e.key === "Escape") setPaletteOpen(false); };
@@ -1505,6 +1566,7 @@ export default function Portal() {
 
   if (booting) return <div className="min-h-screen grid place-items-center text-g-muted text-sm">Loading your cockpit…</div>;
   if (!authed) return <div className="min-h-screen text-g-ink"><Login onEnter={() => setAuthed(true)} /></div>;
+  if (!onboarded) return <div className="min-h-screen text-g-ink"><OnboardingWizard onDone={(vid) => { setVertical(vid); setView("overview"); setOnboarded(true); try { localStorage.setItem("guileo_onboarded", "1"); } catch { /* private */ } }} /></div>;
 
   return (
     <div className="min-h-screen text-g-ink flex flex-col lg:flex-row">
