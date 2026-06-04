@@ -303,9 +303,24 @@ function MiniStats({ items }) {
   );
 }
 
+// Infer which section an alert is about so "View →" jumps straight there.
+function alertTarget(text = "") {
+  const t = text.toLowerCase();
+  if (/kitchen|prep/.test(t)) return { view: "kitchen", label: "View kitchen" };
+  if (/order/.test(t)) return { view: "liveorders", label: "View orders" };
+  if (/stock|inventory|menu|item/.test(t)) return { view: "menu", label: "View menu" };
+  if (/call|inbound|phone|voicemail/.test(t)) return { view: "calllogs", label: "View calls" };
+  if (/whatsapp|message|chat|reply/.test(t)) return { view: "whatsapp", label: "Open inbox" };
+  if (/appointment|booking|schedule|no-show/.test(t)) return { view: "schedule", label: "View schedule" };
+  if (/review|rating|reputation/.test(t)) return { view: "reputation", label: "View reviews" };
+  if (/follow|lead|quote|recall/.test(t)) return { view: "followups", label: "View follow-ups" };
+  return null;
+}
+
 /* ───────────────────────── Views ───────────────────────── */
-function Overview({ V, onNav }) {
+function Overview({ V, onNav, sections = [] }) {
   const [resolved, setResolved] = useState([]);
+  const validViews = new Set(sections.map(([k]) => k));
   const openAlerts = V.alerts ? V.alerts.items.map((a, i) => ({ a, i })).filter(({ i }) => !resolved.includes(i)) : [];
   const quick = (V.quick || [["📋", "See today's operations", "ops"], ["💬", "Message my team", "support"], ["📣", "Ask for a campaign", "wa"]]).map(([ic, label, kind]) =>
     kind === "ops" ? { ic, label, on: () => onNav("operations") }
@@ -319,27 +334,36 @@ function Overview({ V, onNav }) {
         <p className="text-xs text-g-muted">Welcome back — here's what's happening at {V.business.name} today.</p>
       </div>
 
-      {/* NEEDS ATTENTION — urgency first, above results · actionable */}
+      {/* NEEDS ATTENTION — calm, scannable list · the ACTION is the loudest thing, not the colour */}
       {V.alerts && (
-        <Card className={`${openAlerts.length ? "border-red-500/30 bg-red-500/[0.06]" : "border-g-green/30 bg-g-green/[0.05]"}`}>
-          <div className="flex items-center justify-between mb-2.5">
-            <div className={`text-xs font-bold uppercase tracking-wide flex items-center gap-2 ${openAlerts.length ? "text-red-400" : "text-g-green"}`}><span className={openAlerts.length ? "animate-pulse" : ""}>{openAlerts.length ? "⚠" : "✅"}</span> {V.alerts.title}</div>
-            <span className={`text-[11px] font-bold ${openAlerts.length ? "text-red-400" : "text-g-green"}`}>{openAlerts.length ? `${openAlerts.length} need action` : "All clear 🎉"}</span>
-          </div>
-          {openAlerts.length ? (
-            <div className="grid sm:grid-cols-3 gap-2">
+        openAlerts.length ? (
+          <Card className="p-0 overflow-hidden border-white/10">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.07]">
+              <div className="text-xs font-bold text-g-word flex items-center gap-2"><span className="grid place-items-center h-5 w-5 rounded-full bg-g-gold/15 text-g-gold text-[10px]">⚠</span>{V.alerts.title}</div>
+              <span className="text-[11px] font-bold text-g-muted">{openAlerts.length} to handle</span>
+            </div>
+            <div className="divide-y divide-white/[0.05]">
               {openAlerts.map(({ a, i }) => {
-                const c = a.level === "danger" ? "#EF4444" : a.level === "warn" ? "#D6C29A" : "#38BDF8";
+                const t0 = alertTarget(a.text);
+                const target = t0 && validViews.has(t0.view) ? t0 : null;
                 return (
-                  <div key={i} className="rounded-xl2 border-l-2 bg-white/[0.05] px-3 py-2.5 text-xs text-g-word" style={{ borderColor: c }}>
-                    <div className="flex items-start gap-2"><span style={{ color: c }}>⚠</span>{a.text}</div>
-                    <button onClick={() => { portalApi.resolveAlert(i); setResolved((r) => [...r, i]); toast("Alert resolved ✓"); }} className="mt-2 text-[10px] font-bold text-g-green hover:underline">Resolve ✓</button>
+                  <div key={i} className="group flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.025] transition">
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${a.level === "danger" ? "bg-red-400" : a.level === "warn" ? "bg-g-gold" : "bg-sky-400"}`} />
+                    <span className="flex-1 min-w-0 text-xs text-g-light leading-snug">{a.text}</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {target && <button onClick={() => onNav(target.view)} className="text-[11px] font-bold text-g-muted hover:text-g-word transition px-2 py-1 rounded-lg hover:bg-white/[0.05] opacity-0 group-hover:opacity-100">{target.label} →</button>}
+                      <button onClick={() => { portalApi.resolveAlert(i); setResolved((r) => [...r, i]); toast("Marked as handled ✓"); }} className="text-[11px] font-bold text-g-green border border-g-green/25 hover:bg-g-green/10 transition px-2.5 py-1 rounded-lg">Resolve</button>
+                    </div>
                   </div>
                 );
               })}
             </div>
-          ) : <div className="text-xs text-g-muted">Everything's handled — your AI is on top of it. 👏</div>}
-        </Card>
+          </Card>
+        ) : (
+          <div className="flex items-center gap-2.5 rounded-xl2 border border-g-green/20 bg-g-green/[0.04] px-4 py-2.5 text-xs text-g-light">
+            <span className="text-g-green">✅</span> All clear — your AI is on top of everything. 👏
+          </div>
+        )
       )}
 
       {/* PROFIT IMPACT — money first (the only thing the owner must see) */}
@@ -1647,7 +1671,7 @@ export default function Portal() {
     toast("Report downloaded ✓");
   };
   const content = {
-    overview: <Overview V={V} onNav={setView} />,
+    overview: <Overview V={V} onNav={setView} sections={sections} />,
     impact: <GuileoImpact V={V} />,
     followups: <Followups V={V} />,
     waitlist: <Waitlist V={V} />,
