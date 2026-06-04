@@ -259,6 +259,10 @@ const NAV_GROUPS = [
 function Card({ children, className = "" }) {
   return <div className={`rounded-xl2 border border-white/10 bg-white/[0.04] backdrop-blur-md p-5 ${className}`}>{children}</div>;
 }
+// Consistent empty state for any list that can run dry.
+function Empty({ icon = "✅", text }) {
+  return <div className="px-5 py-10 text-center text-xs text-g-muted">{icon} {text}</div>;
+}
 // Transient action feedback, bottom-center
 function Toaster() {
   const [items, setItems] = useState([]);
@@ -298,7 +302,7 @@ function Drawer({ open = true, title, subtitle, badge, fields = [], note, action
       <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <motion.div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={typeof title === "string" ? title : "Details"}
         initial={{ x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 320, damping: 32 }}
-        className="fixed top-0 right-0 z-50 h-full w-full max-w-sm bg-g-cream/95 backdrop-blur-xl border-l border-white/12 shadow-2xl overflow-y-auto flex flex-col outline-none">
+        className="fixed top-0 right-0 z-50 h-full w-full sm:max-w-sm bg-g-cream/95 backdrop-blur-xl border-l border-white/12 shadow-2xl overflow-y-auto flex flex-col outline-none">
         <div className="flex items-start justify-between p-5 border-b border-white/10">
           <div className="min-w-0"><div className="text-base font-extrabold text-g-word truncate">{title}</div>{subtitle && <div className="text-xs text-g-muted mt-0.5">{subtitle}</div>}</div>
           <div className="flex items-center gap-2 shrink-0">{badge}<button onClick={onClose} aria-label="Close" className="text-g-muted hover:text-g-word text-lg leading-none px-1">✕</button></div>
@@ -941,7 +945,7 @@ function Customers({ V }) {
   const [sel, setSel] = useState(null);
   return (
     <div className="space-y-4">
-      <MiniStats items={[["Total customers", `${rows.length * 104}`], ["New this week", `+${rows.length * 6}`, "good"], ["Avg. value", `$${Math.round(totalSpent / rows.length)}`], ["Repeat rate", `${vnum(V.label, "repeat", 31, 47)}%`, "good"]]} />
+      <MiniStats items={[["Total customers", `${rows.length * 104}`], ["New this week", `+${rows.length * 6}`, "good"], ["Avg. value", `$${rows.length ? Math.round(totalSpent / rows.length) : 0}`], ["Repeat rate", `${vnum(V.label, "repeat", 31, 47)}%`, "good"]]} />
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Customers</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for profile</span></div>
         <div className="divide-y divide-white/[0.06]">
@@ -952,6 +956,7 @@ function Customers({ V }) {
               <span className="text-sm font-extrabold text-g-green">${c.spent.toFixed(2)}</span>
             </button>
           ))}
+          {rows.length === 0 && <Empty icon="🧑" text="No customers yet — they'll appear here as your AI books and serves them." />}
         </div>
       </Card>
       {sel && (
@@ -1003,6 +1008,7 @@ function Campaigns({ V }) {
               <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: (c.status === "Active" ? "#3E9468" : "#D6C29A") + "22", color: c.status === "Active" ? "#3E9468" : "#D6C29A" }}>{c.status}</span>
             </button>
           ))}
+          {rows.length === 0 && <Empty icon="📣" text="No campaigns yet — ask your team to launch one and watch the revenue land here." />}
         </div>
       </Card>
       {sel && (
@@ -1034,6 +1040,7 @@ function Audiences({ V }) {
           </div>
         </Card>
       ))}
+      {rows.length === 0 && <div className="sm:col-span-2"><Card><Empty icon="🎯" text="No audiences built yet — your AI segments customers automatically as data grows." /></Card></div>}
     </div>
   );
 }
@@ -1053,6 +1060,7 @@ function CallLogs({ V }) {
             <div className="text-right shrink-0"><div className="text-[11px] text-g-light font-bold">{c.dur}</div><div className="text-[10px] text-g-muted">{c.time}</div></div>
           </button>
           ))}
+          {rows.length === 0 && <Empty icon="📞" text="No calls yet — your AI is standing by to answer 24/7." />}
         </div>
       </Card>
       {sel && (
@@ -1125,6 +1133,7 @@ function Convos({ V, title }) {
               <div className="text-right shrink-0"><div className="text-[10px] text-g-muted">{cc.t}</div>{cc.unread > 0 && <span className="inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-g-green text-[10px] font-bold text-black mt-0.5">{cc.unread}</span>}</div>
             </button>
           ))}
+          {list.length === 0 && <Empty icon="💬" text="No conversations yet — they'll show up here as customers message you." />}
         </div>
       </Card>
       <Card className="p-0 overflow-hidden lg:col-span-2 flex flex-col">
@@ -1582,6 +1591,7 @@ function SocialInbox({ V }) {
               </button>
             );
           })}
+          {rows.length === 0 && <Empty icon="💬" text="No social DMs yet — your AI replies on Instagram, Facebook & TikTok the moment they arrive." />}
         </div>
       </Card>
       {sel && (
@@ -1837,7 +1847,7 @@ function Recurring({ V }) {
       <MiniStats items={[["Active plans", `${rows.length * 23}`], ["Monthly recurring", `$${(perMo * 23).toLocaleString()}`, "good"], ["Renewals due", `${vnum(V.label, "renew", 4, 14)}`], ["Churn risk", `${vnum(V.label, "churn", 1, 6)}`, "bad"]]} />
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Recurring revenue · the AI keeps it renewing</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for plan</span></div>
-        <div className="divide-y divide-white/[0.06]">{rows.map((r, i) => (<button key={i} onClick={() => setSel(r)} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition"><span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{r.name[0]}</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted">{r.plan} · ${r.value}/mo</div></div><span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span></button>))}</div>
+        <div className="divide-y divide-white/[0.06]">{rows.map((r, i) => (<button key={i} onClick={() => setSel(r)} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition"><span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{r.name[0]}</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted">{r.plan} · ${r.value}/mo</div></div><span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span></button>))}{rows.length === 0 && <Empty icon="🔁" text="No recurring plans yet — offer one to start predictable monthly revenue." />}</div>
       </Card>
       <p className="text-center text-[11px] text-g-muted">Recurring revenue is the most valuable revenue — your AI renews, reminds and rescues it automatically.</p>
       {sel && (
