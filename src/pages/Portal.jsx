@@ -184,6 +184,8 @@ function MiniStats({ items }) {
 
 /* ───────────────────────── Views ───────────────────────── */
 function Overview({ V, onNav }) {
+  const [resolved, setResolved] = useState([]);
+  const openAlerts = V.alerts ? V.alerts.items.map((a, i) => ({ a, i })).filter(({ i }) => !resolved.includes(i)) : [];
   const quick = (V.quick || [["📋", "See today's operations", "ops"], ["💬", "Message my team", "support"], ["📣", "Ask for a campaign", "wa"]]).map(([ic, label, kind]) =>
     kind === "ops" ? { ic, label, on: () => onNav("operations") }
       : kind === "support" ? { ic, label, on: () => onNav("support") }
@@ -196,19 +198,26 @@ function Overview({ V, onNav }) {
         <p className="text-xs text-g-muted">Welcome back — here's what's happening at {V.business.name} today.</p>
       </div>
 
-      {/* NEEDS ATTENTION — urgency first, above results */}
+      {/* NEEDS ATTENTION — urgency first, above results · actionable */}
       {V.alerts && (
-        <Card className="border-red-500/30 bg-red-500/[0.06]">
+        <Card className={`${openAlerts.length ? "border-red-500/30 bg-red-500/[0.06]" : "border-g-green/30 bg-g-green/[0.05]"}`}>
           <div className="flex items-center justify-between mb-2.5">
-            <div className="text-xs font-bold uppercase tracking-wide text-red-400 flex items-center gap-2"><span className="animate-pulse">⚠</span> {V.alerts.title}</div>
-            <span className="text-[11px] font-bold text-red-400">{V.alerts.items.length} need action</span>
+            <div className={`text-xs font-bold uppercase tracking-wide flex items-center gap-2 ${openAlerts.length ? "text-red-400" : "text-g-green"}`}><span className={openAlerts.length ? "animate-pulse" : ""}>{openAlerts.length ? "⚠" : "✅"}</span> {V.alerts.title}</div>
+            <span className={`text-[11px] font-bold ${openAlerts.length ? "text-red-400" : "text-g-green"}`}>{openAlerts.length ? `${openAlerts.length} need action` : "All clear 🎉"}</span>
           </div>
-          <div className="grid sm:grid-cols-3 gap-2">
-            {V.alerts.items.map((a, i) => {
-              const c = a.level === "danger" ? "#EF4444" : a.level === "warn" ? "#D6C29A" : "#38BDF8";
-              return <div key={i} className="rounded-xl2 border-l-2 bg-white/[0.05] px-3 py-2.5 text-xs text-g-word flex items-start gap-2" style={{ borderColor: c }}><span style={{ color: c }}>⚠</span>{a.text}</div>;
-            })}
-          </div>
+          {openAlerts.length ? (
+            <div className="grid sm:grid-cols-3 gap-2">
+              {openAlerts.map(({ a, i }) => {
+                const c = a.level === "danger" ? "#EF4444" : a.level === "warn" ? "#D6C29A" : "#38BDF8";
+                return (
+                  <div key={i} className="rounded-xl2 border-l-2 bg-white/[0.05] px-3 py-2.5 text-xs text-g-word" style={{ borderColor: c }}>
+                    <div className="flex items-start gap-2"><span style={{ color: c }}>⚠</span>{a.text}</div>
+                    <button onClick={() => setResolved((r) => [...r, i])} className="mt-2 text-[10px] font-bold text-g-green hover:underline">Resolve ✓</button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : <div className="text-xs text-g-muted">Everything's handled — your AI is on top of it. 👏</div>}
         </Card>
       )}
 
@@ -586,20 +595,36 @@ function LiveOrders({ V }) {
   );
 }
 function Kitchen({ V }) {
-  const k = V.kitchen || { new: [], preparing: [], ready: [] };
+  const init = V.kitchen || { new: [], preparing: [], ready: [] };
+  const [board, setBoard] = useState({ new: [...(init.new || [])], preparing: [...(init.preparing || [])], ready: [...(init.ready || [])] });
+  const flow = ["new", "preparing", "ready", "done"];
+  const advance = (col, i) => setBoard((b) => {
+    const item = b[col][i]; const next = flow[flow.indexOf(col) + 1];
+    const nb = { ...b, [col]: b[col].filter((_, j) => j !== i) };
+    if (next !== "done") nb[next] = [...b[next], item];
+    return nb;
+  });
   const cols = [["New", "new", "#3E9468"], ["Preparing", "preparing", "#38BDF8"], ["Ready", "ready", "#D6C29A"]];
   return (
-    <div className="grid sm:grid-cols-3 gap-4">
-      {cols.map(([label, key, c]) => (
-        <Card key={key}>
-          <div className="flex items-center justify-between mb-3"><span className="text-xs font-bold uppercase tracking-wide" style={{ color: c }}>{label}</span><span className="text-[11px] text-g-muted">{(k[key] || []).length}</span></div>
-          <div className="space-y-2">
-            {(k[key] || []).map((o, i) => (
-              <div key={i} className="rounded-xl2 border border-white/10 bg-white/[0.04] p-3"><div className="flex justify-between text-xs"><span className="font-bold text-g-word">{o.id}</span><span className="text-g-muted">{o.t}</span></div><div className="text-[11px] text-g-muted mt-0.5">{o.items}</div></div>
-            ))}
-          </div>
-        </Card>
-      ))}
+    <div className="space-y-3">
+      <p className="text-xs text-g-muted">👆 Tap an order to move it forward · in <b className="text-g-light">Ready</b>, tap to complete.</p>
+      <div className="grid sm:grid-cols-3 gap-4">
+        {cols.map(([label, key, c]) => (
+          <Card key={key}>
+            <div className="flex items-center justify-between mb-3"><span className="text-xs font-bold uppercase tracking-wide" style={{ color: c }}>{label}</span><span className="text-[11px] text-g-muted">{board[key].length}</span></div>
+            <div className="space-y-2 min-h-[3rem]">
+              {board[key].map((o, i) => (
+                <button key={o.id + i} onClick={() => advance(key, i)} className="w-full text-left rounded-xl2 border border-white/10 bg-white/[0.04] p-3 hover:border-g-gold/40 hover:-translate-y-0.5 transition-all">
+                  <div className="flex justify-between text-xs"><span className="font-bold text-g-word">{o.id}</span><span className="text-g-muted">{o.t}</span></div>
+                  <div className="text-[11px] text-g-muted mt-0.5">{o.items}</div>
+                  <div className="text-[10px] font-bold mt-1.5" style={{ color: c }}>{key === "ready" ? "Tap to complete ✓" : "Tap to advance →"}</div>
+                </button>
+              ))}
+              {board[key].length === 0 && <div className="text-[11px] text-g-muted text-center py-4">— empty —</div>}
+            </div>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
@@ -706,19 +731,50 @@ function Dialer() {
   );
 }
 function Convos({ V, title }) {
+  const list = V.convos || genConvos(V);
+  const [active, setActive] = useState(0);
+  const [draft, setDraft] = useState("");
+  const [threads, setThreads] = useState(() => Object.fromEntries(list.map((c, i) => [i, [
+    { from: "them", text: c.last },
+    { from: "ai", text: "Hi! Thanks for reaching out 😊 I can take care of that right now." },
+    { from: "them", text: "Perfect, yes please." },
+    { from: "ai", text: "All set ✅ Anything else I can help you with?" },
+  ]])));
+  const send = (e) => { e.preventDefault(); if (!draft.trim()) return; setThreads((t) => ({ ...t, [active]: [...(t[active] || []), { from: "you", text: draft }] })); setDraft(""); };
+  const c = list[active] || {};
   return (
-    <Card className="p-0 overflow-hidden">
-      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{title} · AI conversations</div>
-      <div className="divide-y divide-white/[0.06]">
-        {(V.convos || genConvos(V)).map((c, i) => (
-          <div key={i} className="flex items-center gap-3 px-5 py-3">
-            <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{c.name[0]}</span>
-            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name}</div><div className="text-[11px] text-g-muted truncate">{c.last}</div></div>
-            <div className="text-right shrink-0 flex flex-col items-end gap-1"><span className="text-[10px] text-g-muted">{c.t}</span>{c.unread > 0 && <span className="inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-g-green text-[10px] font-bold text-black">{c.unread}</span>}</div>
-          </div>
-        ))}
-      </div>
-    </Card>
+    <div className="grid lg:grid-cols-3 gap-4 lg:h-[34rem]">
+      <Card className="p-0 overflow-hidden lg:col-span-1 flex flex-col">
+        <div className="px-4 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold shrink-0">{title} · {list.length} chats</div>
+        <div className="divide-y divide-white/[0.06] overflow-y-auto">
+          {list.map((cc, i) => (
+            <button key={i} onClick={() => setActive(i)} className={`w-full text-left flex items-center gap-3 px-4 py-3 transition ${i === active ? "bg-white/[0.06]" : "hover:bg-white/[0.03]"}`}>
+              <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word shrink-0">{cc.name[0]}</span>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{cc.name}</div><div className="text-[11px] text-g-muted truncate">{cc.last}</div></div>
+              <div className="text-right shrink-0"><div className="text-[10px] text-g-muted">{cc.t}</div>{cc.unread > 0 && <span className="inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-g-green text-[10px] font-bold text-black mt-0.5">{cc.unread}</span>}</div>
+            </button>
+          ))}
+        </div>
+      </Card>
+      <Card className="p-0 overflow-hidden lg:col-span-2 flex flex-col">
+        <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2 shrink-0"><span className="grid place-items-center h-8 w-8 rounded-full bg-white/[0.06] text-xs font-bold text-g-word">{(c.name || "?")[0]}</span><div className="text-sm font-bold text-g-word">{c.name}</div><span className="ml-auto text-[10px] font-bold uppercase text-g-green inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />AI active</span></div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-2.5 min-h-[15rem]">
+          {(threads[active] || []).map((m, i) => (
+            <div key={i} className={`flex ${m.from === "them" ? "justify-start" : "justify-end"}`}>
+              <div className={`max-w-[78%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed ${m.from === "them" ? "bg-white/[0.06] text-g-word" : m.from === "ai" ? "bg-g-green/15 text-g-light border border-g-green/30" : "bg-g-gold/15 text-g-word border border-g-gold/30"}`}>
+                {m.from === "ai" && <div className="text-[9px] font-black uppercase text-g-green mb-0.5">Guileo AI</div>}
+                {m.from === "you" && <div className="text-[9px] font-black uppercase text-g-gold mb-0.5">You</div>}
+                {m.text}
+              </div>
+            </div>
+          ))}
+        </div>
+        <form onSubmit={send} className="p-3 border-t border-white/10 flex gap-2 shrink-0">
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} aria-label="Reply" placeholder="Jump in and reply…" className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+          <button className="btn-bright text-sm px-5">Send</button>
+        </form>
+      </Card>
+    </div>
   );
 }
 function SettingsView({ V }) {
