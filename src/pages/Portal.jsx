@@ -999,12 +999,7 @@ function SettingsView({ V }) {
   const dirty = JSON.stringify(draft) !== JSON.stringify(profile);
   const set = (k) => (e) => setDraft((d) => ({ ...d, [k]: e.target.value }));
   const saveProfile = () => {
-    portalApi.saveProfile(V.label, draft);
-    // Re-sync the AI's location & hours answers so training reflects the edit.
-    const kb = portalApi.loadKB(V.label, seedKB(V, draft)).map((e) =>
-      e.id === "biz" ? { ...e, answer: profBiz(draft) } : e.id === "hours" ? { ...e, answer: profHours(draft) } : e
-    );
-    portalApi.saveKB(V.label, kb);
+    syncProfile(V.label, V, draft); // persist + re-sync the AI's location & hours answers
     setProfile(draft);
     toast("Business profile saved — your AI is updated ✓");
   };
@@ -1123,6 +1118,15 @@ function defProfile(V) {
 }
 const profBiz = (p) => `We're ${p.name}, located at ${p.place}. I can send directions on WhatsApp — want them?`;
 const profHours = (p) => `We're open ${p.hours}. Want me to book you in?`;
+// Save the profile AND re-sync the AI's location+hours answers in the KB, so any
+// edit (Settings or onboarding) is immediately reflected by the trained AI.
+function syncProfile(label, V, profile) {
+  portalApi.saveProfile(label, profile);
+  const kb = portalApi.loadKB(label, seedKB(V, profile)).map((e) =>
+    e.id === "biz" ? { ...e, answer: profBiz(profile) } : e.id === "hours" ? { ...e, answer: profHours(profile) } : e
+  );
+  portalApi.saveKB(label, kb);
+}
 
 // Default seed: pull real facts out of the vertical (+ saved profile) so every
 // sector starts smart.
@@ -1660,7 +1664,7 @@ function OnboardingWizard({ onDone }) {
             <div className="text-4xl mb-2">🎉</div>
             <div className="text-lg font-extrabold text-g-word">You're all set, {name || "there"}!</div>
             <p className="text-xs text-g-muted mt-1">Your AI is live and your Growth Cockpit is ready.</p>
-            <button onClick={() => onDone(vid)} className="btn-bright text-sm w-full mt-5">Enter my cockpit →</button>
+            <button onClick={() => onDone(vid, { name: name.trim() })} className="btn-bright text-sm w-full mt-5">Enter my cockpit →</button>
           </div>
         )}
         {step < 3 && <button onClick={() => onDone(vid)} className="block mx-auto mt-4 text-[11px] font-bold text-g-muted hover:text-g-word">Skip setup</button>}
@@ -1760,7 +1764,13 @@ export default function Portal() {
 
   if (booting) return <div className="min-h-screen grid place-items-center text-g-muted text-sm">Loading your cockpit…</div>;
   if (!authed) return <div className="min-h-screen text-g-ink"><Login onEnter={() => setAuthed(true)} /></div>;
-  if (!onboarded) return <div className="min-h-screen text-g-ink"><OnboardingWizard onDone={(vid) => { setVertical(vid); setView("overview"); setOnboarded(true); try { localStorage.setItem("guileo_onboarded", "1"); } catch { /* private */ } }} /></div>;
+  if (!onboarded) return <div className="min-h-screen text-g-ink"><OnboardingWizard onDone={(vid, extra) => {
+    setVertical(vid); setView("overview"); setOnboarded(true);
+    try { localStorage.setItem("guileo_onboarded", "1"); } catch { /* private */ }
+    // Carry the business name from onboarding straight into the profile + AI.
+    const OV = VERTICALS[vid];
+    if (extra?.name && OV) syncProfile(OV.label, OV, { ...defProfile(OV), name: extra.name });
+  }} /></div>;
 
   return (
     <div className="min-h-screen text-g-ink flex flex-col lg:flex-row">
