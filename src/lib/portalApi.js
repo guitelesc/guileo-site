@@ -18,6 +18,11 @@ export const CONNECTED = Boolean(SB_URL && SB_KEY);
 const wait = (ms = 320) => new Promise((r) => setTimeout(r, ms));
 const SESSION_KEY = "guileo_portal_session";
 
+// ── Tiny toast bus (action feedback across every screen) ──
+let _toastListeners = [];
+export const toast = (text) => _toastListeners.forEach((l) => l(text));
+export const onToast = (fn) => { _toastListeners.push(fn); return () => { _toastListeners = _toastListeners.filter((x) => x !== fn); }; };
+
 export const portalApi = {
   connected: CONNECTED,
 

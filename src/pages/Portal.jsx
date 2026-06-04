@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { portalApi, CONNECTED } from "../lib/portalApi.js";
+import { motion, AnimatePresence } from "framer-motion";
+import { portalApi, CONNECTED, toast, onToast } from "../lib/portalApi.js";
 import {
   FaGaugeHigh, FaComments, FaBullhorn, FaUsers, FaHeadset, FaFileLines, FaListCheck,
   FaArrowLeft, FaArrowTrendUp, FaArrowTrendDown, FaWhatsapp, FaInstagram, FaPhone, FaFacebook, FaTiktok, FaGoogle,
@@ -188,6 +188,25 @@ const SECTION_ICON = {
 function Card({ children, className = "" }) {
   return <div className={`rounded-xl2 border border-white/10 bg-white/[0.04] backdrop-blur-md p-5 ${className}`}>{children}</div>;
 }
+// Transient action feedback, bottom-center
+function Toaster() {
+  const [items, setItems] = useState([]);
+  useEffect(() => onToast((text) => {
+    const id = `${text}-${performance.now()}`;
+    setItems((x) => [...x, { id, text }]);
+    setTimeout(() => setItems((x) => x.filter((i) => i.id !== id)), 2600);
+  }), []);
+  return (
+    <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 pointer-events-none">
+      <AnimatePresence>
+        {items.map((i) => (
+          <motion.div key={i.id} initial={{ opacity: 0, y: 14, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}
+            className="rounded-full bg-g-cream/95 backdrop-blur-xl border border-g-green/35 px-4 py-2 text-xs font-bold text-g-word shadow-lift">{i.text}</motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
 // Slide-over detail panel — click any row to see everything + act on it
 function Drawer({ title, subtitle, badge, fields, note, actions, onClose }) {
   return (
@@ -254,7 +273,7 @@ function Overview({ V, onNav }) {
                 return (
                   <div key={i} className="rounded-xl2 border-l-2 bg-white/[0.05] px-3 py-2.5 text-xs text-g-word" style={{ borderColor: c }}>
                     <div className="flex items-start gap-2"><span style={{ color: c }}>⚠</span>{a.text}</div>
-                    <button onClick={() => { portalApi.resolveAlert(i); setResolved((r) => [...r, i]); }} className="mt-2 text-[10px] font-bold text-g-green hover:underline">Resolve ✓</button>
+                    <button onClick={() => { portalApi.resolveAlert(i); setResolved((r) => [...r, i]); toast("Alert resolved ✓"); }} className="mt-2 text-[10px] font-bold text-g-green hover:underline">Resolve ✓</button>
                   </div>
                 );
               })}
@@ -615,25 +634,36 @@ function Docs() {
 
 
 /* ───────────────────────── Sector screens (restaurant + reusable) ───────────────────────── */
-function ComingSoon({ title }) {
-  return <Card className="text-center py-16"><div className="text-3xl mb-2">✨</div><div className="text-lg font-extrabold text-g-word">{title}</div><div className="text-sm text-g-muted mt-1">Coming soon — deep AI insights on your data.</div></Card>;
-}
 function LiveOrders({ V }) {
   const rows = V.liveOrders || [];
+  const [sel, setSel] = useState(null);
   return (
+    <>
     <Card className="p-0 overflow-hidden">
       <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Live orders</span><span className="text-[11px] text-g-muted inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{rows.length} active</span></div>
       <div className="divide-y divide-white/[0.06]">
         {rows.map((o, i) => (
-          <div key={i} className="flex items-center gap-3 px-5 py-3">
+          <button key={i} onClick={() => setSel(o)} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
             <span className="text-xs font-bold text-g-light w-16 shrink-0">{o.id}</span>
             <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{o.customer}</div><div className="text-[11px] text-g-muted truncate">{o.items} · {o.channel}</div></div>
             <span className="text-sm font-extrabold text-g-word">${o.total.toFixed(2)}</span>
             <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: o.color + "22", color: o.color }}>{o.status}</span>
-          </div>
+          </button>
         ))}
       </div>
     </Card>
+    {sel && (
+      <Drawer
+        title={`${sel.id} · ${sel.customer}`}
+        subtitle={sel.items}
+        badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: sel.color + "22", color: sel.color }}>{sel.status}</span>}
+        fields={[["Items", sel.items], ["Total", `$${sel.total.toFixed(2)}`], ["Channel", sel.channel], ["Status", sel.status]]}
+        note={`Taken by your AI via ${sel.channel}. Customer notified automatically with ETA + confirmation.`}
+        actions={<><button onClick={() => { toast(`${sel.id} marked ready ✓`); setSel(null); }} className="btn-bright text-sm">✓ Mark ready</button><a href={waLink(`Hi ${sel.customer}, about order ${sel.id}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
+        onClose={() => setSel(null)}
+      />
+    )}
+    </>
   );
 }
 function Kitchen({ V }) {
@@ -642,6 +672,8 @@ function Kitchen({ V }) {
   const flow = ["new", "preparing", "ready", "done"];
   const advance = (col, i) => setBoard((b) => {
     const item = b[col][i]; const next = flow[flow.indexOf(col) + 1];
+    portalApi.updateStatus("orders", item?.id, next);
+    toast(next === "done" ? `${item?.id} completed ✓` : `${item?.id} → ${next}`);
     const nb = { ...b, [col]: b[col].filter((_, j) => j !== i) };
     if (next !== "done") nb[next] = [...b[next], item];
     return nb;
@@ -689,21 +721,33 @@ function MenuView({ V }) {
 function Customers({ V }) {
   const rows = V.customers || genCustomers(V);
   const totalSpent = rows.reduce((s, c) => s + (c.spent || 0), 0);
+  const [sel, setSel] = useState(null);
   return (
     <div className="space-y-4">
       <MiniStats items={[["Total customers", `${rows.length * 104}`], ["New this week", `+${rows.length * 6}`, "good"], ["Avg. value", `$${Math.round(totalSpent / rows.length)}`], ["Repeat rate", "38%", "good"]]} />
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Customers</div>
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Customers</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for profile</span></div>
         <div className="divide-y divide-white/[0.06]">
           {rows.map((c, i) => (
-            <div key={i} className="flex items-center gap-3 px-5 py-3">
+            <button key={i} onClick={() => setSel({ c, i })} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
               <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{c.name[0]}</span>
               <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{c.name}{i === 0 && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-g-gold/15 text-g-gold">TOP</span>}</div><div className="text-[11px] text-g-muted truncate">{c.orders} {c.noun || "orders"} · {c.channel} · {c.last}</div></div>
               <span className="text-sm font-extrabold text-g-green">${c.spent.toFixed(2)}</span>
-            </div>
+            </button>
           ))}
         </div>
       </Card>
+      {sel && (
+        <Drawer
+          title={sel.c.name}
+          subtitle={`${sel.c.orders} ${sel.c.noun || "orders"} · via ${sel.c.channel}`}
+          badge={sel.i === 0 ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-g-gold/15 text-g-gold">VIP</span> : null}
+          fields={[["Lifetime value", `$${sel.c.spent.toFixed(2)}`], [(sel.c.noun || "orders"), sel.c.orders], ["Preferred channel", sel.c.channel], ["Last seen", sel.c.last], ["Status", sel.i === 0 ? "Top spender" : "Active"]]}
+          note={`Engaged by your AI across ${sel.c.channel}. ${sel.i === 0 ? "Your most valuable customer — worth a personal touch." : "Loyal customer — keep them coming back."}`}
+          actions={<a href={waLink(`Hi ${sel.c.name}! `)} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Message</a>}
+          onClose={() => setSel(null)}
+        />
+      )}
     </div>
   );
 }
@@ -712,6 +756,7 @@ function Campaigns({ V }) {
   const sent = rows.reduce((s, c) => s + c.sent, 0);
   const rev = rows.reduce((s, c) => s + c.revenue, 0);
   const open = Math.round(rows.reduce((s, c) => s + c.opened, 0) / rows.length);
+  const [sel, setSel] = useState(null);
   return (
     <div className="space-y-4">
       <MiniStats items={[["Campaigns", `${rows.length}`], ["Messages sent", sent.toLocaleString()], ["Avg. open rate", `${open}%`, "good"], ["Revenue", `$${rev.toLocaleString()}`, "good"]]} />
@@ -719,14 +764,25 @@ function Campaigns({ V }) {
         <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Campaigns</span><a href={waLink("I'd like to launch a campaign")} target="_blank" rel="noopener" className="text-[11px] font-bold text-g-gold hover:underline">New campaign →</a></div>
         <div className="divide-y divide-white/[0.06]">
           {rows.map((c, i) => (
-            <div key={i} className="flex items-center gap-4 px-5 py-3.5">
+            <button key={i} onClick={() => setSel(c)} className="w-full text-left flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.04] transition">
               <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name}</div><div className="text-[11px] text-g-muted">{c.channel} · {c.sent} sent · {c.opened}% opened</div></div>
               <span className="text-sm font-extrabold text-g-green">${c.revenue.toLocaleString()}</span>
               <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: (c.status === "Active" ? "#3E9468" : "#D6C29A") + "22", color: c.status === "Active" ? "#3E9468" : "#D6C29A" }}>{c.status}</span>
-            </div>
+            </button>
           ))}
         </div>
       </Card>
+      {sel && (
+        <Drawer
+          title={sel.name}
+          subtitle={`${sel.channel} campaign`}
+          badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: (sel.status === "Active" ? "#3E9468" : "#D6C29A") + "22", color: sel.status === "Active" ? "#3E9468" : "#D6C29A" }}>{sel.status}</span>}
+          fields={[["Channel", sel.channel], ["Sent", sel.sent.toLocaleString()], ["Open rate", `${sel.opened}%`], ["Revenue", `$${sel.revenue.toLocaleString()}`], ["ROI", `${(sel.revenue / (sel.sent * 0.05) || 0).toFixed(1)}×`]]}
+          note={`Run automatically by Guileo. ${sel.status === "Active" ? "Live now — driving revenue while you focus on the business." : "Scheduled — will launch and optimize itself."}`}
+          actions={<><button onClick={() => { toast("Campaign duplicated ✓"); setSel(null); }} className="btn-bright text-sm">⧉ Duplicate</button><button onClick={() => { toast(sel.status === "Active" ? "Campaign paused" : "Campaign resumed"); setSel(null); }} className="btn-ghost text-sm">{sel.status === "Active" ? "⏸ Pause" : "▶ Resume"}</button></>}
+          onClose={() => setSel(null)}
+        />
+      )}
     </div>
   );
 }
@@ -741,21 +797,33 @@ function Audiences({ V }) {
 }
 function CallLogs({ V }) {
   const rows = V.callLogs || genCalls(V);
+  const [sel, setSel] = useState(null);
   return (
     <div className="space-y-4">
       <MiniStats items={[["Calls answered", `${rows.length * 78}`], ["Missed calls", "0", "good"], ["Avg. duration", "1m 14s"], ["Handled by AI", "100%", "good"]]} />
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Recent calls · answered by AI</div>
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Recent calls · answered by AI</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for transcript</span></div>
         <div className="divide-y divide-white/[0.06]">
           {rows.map((c, i) => (
-          <div key={i} className="flex items-center gap-3 px-5 py-3">
+          <button key={i} onClick={() => setSel(c)} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
             <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06]" style={{ color: c.color }}><FaPhone size={13} /></span>
             <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name} <span className="text-g-muted font-normal">· {c.phone}</span></div><div className="text-[11px] text-g-muted truncate">{c.outcome}</div></div>
             <div className="text-right shrink-0"><div className="text-[11px] text-g-light font-bold">{c.dur}</div><div className="text-[10px] text-g-muted">{c.time}</div></div>
-          </div>
+          </button>
           ))}
         </div>
       </Card>
+      {sel && (
+        <Drawer
+          title={sel.name}
+          subtitle={sel.phone}
+          badge={<span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-g-green/15 text-g-green">Positive</span>}
+          fields={[["Outcome", sel.outcome], ["Duration", sel.dur], ["When", sel.time], ["Channel", "Phone · AI"], ["Resolved", "By AI ✓"]]}
+          note={<>Transcript summary:<div className="mt-1.5 space-y-1 text-g-word">{[["📞", `${sel.name}: ${sel.outcome.replace(/·.*/, "").trim() || "Hi, calling about my booking."}`], ["🤖", "Guileo AI: Happy to help — all sorted! Anything else?"], ["📞", `${sel.name}: That's perfect, thank you!`]].map(([ic, t], j) => <div key={j}>{ic} {t}</div>)}</div></>}
+          actions={<><a href={`tel:${sel.phone.replace(/[^0-9+]/g, "")}`} className="btn-bright text-sm">📞 Call back</a><a href={waLink(`Hi ${sel.name}! `)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
+          onClose={() => setSel(null)}
+        />
+      )}
     </div>
   );
 }
@@ -782,7 +850,7 @@ function Convos({ V, title }) {
     { from: "them", text: "Perfect, yes please." },
     { from: "ai", text: "All set ✅ Anything else I can help you with?" },
   ]])));
-  const send = (e) => { e.preventDefault(); if (!draft.trim()) return; portalApi.sendMessage(title, active, draft); setThreads((t) => ({ ...t, [active]: [...(t[active] || []), { from: "you", text: draft }] })); setDraft(""); };
+  const send = (e) => { e.preventDefault(); if (!draft.trim()) return; portalApi.sendMessage(title, active, draft); setThreads((t) => ({ ...t, [active]: [...(t[active] || []), { from: "you", text: draft }] })); setDraft(""); toast("Reply sent ✓"); };
   const c = list[active] || {};
   return (
     <div className="grid lg:grid-cols-3 gap-4 lg:h-[34rem]">
@@ -819,17 +887,38 @@ function Convos({ V, title }) {
     </div>
   );
 }
-function SettingsView({ V }) {
-  const rows = [["Business name", V.business.name], ["Location", V.business.place], ["AI voice agent", "On"], ["WhatsApp & SMS", "On"], ["Auto reviews", "On"], ["Language", "English"]];
+function Toggle({ on, onClick }) {
   return (
-    <Card className="p-0 overflow-hidden">
-      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Settings</div>
-      <div className="divide-y divide-white/[0.06]">
-        {rows.map(([k, v], i) => (
-          <div key={i} className="flex items-center justify-between px-5 py-3.5"><span className="text-sm text-g-muted">{k}</span><span className="text-sm font-bold text-g-word">{v}</span></div>
-        ))}
-      </div>
-    </Card>
+    <button onClick={onClick} className={`relative h-5 w-9 rounded-full transition-colors ${on ? "bg-g-green" : "bg-white/15"}`} role="switch" aria-checked={on}>
+      <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${on ? "left-[18px]" : "left-0.5"}`} />
+    </button>
+  );
+}
+function SettingsView({ V }) {
+  const [toggles, setToggles] = useState({ voice: true, chat: true, reviews: true, recall: true, afterhours: true, marketing: false });
+  const flip = (k) => setToggles((t) => { const v = !t[k]; toast(`${LBL[k]}: ${v ? "On" : "Off"}`); return { ...t, [k]: v }; });
+  const LBL = { voice: "AI voice agent", chat: "WhatsApp & SMS AI", reviews: "Auto-request reviews", recall: "Recalls & reminders", afterhours: "After-hours coverage", marketing: "Weekly marketing digest" };
+  const info = [["Business name", V.business.name], ["Location", V.business.place], ["Plan", V.plan?.label || "Growth Plan"], ["Languages", "English · Português · Español"], ["Timezone", "Local"]];
+  return (
+    <div className="space-y-4">
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Business</div>
+        <div className="divide-y divide-white/[0.06]">
+          {info.map(([k, v], i) => (
+            <div key={i} className="flex items-center justify-between px-5 py-3.5"><span className="text-sm text-g-muted">{k}</span><span className="text-sm font-bold text-g-word text-right">{v}</span></div>
+          ))}
+        </div>
+      </Card>
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">What your AI handles</div>
+        <div className="divide-y divide-white/[0.06]">
+          {Object.keys(LBL).map((k) => (
+            <div key={k} className="flex items-center justify-between px-5 py-3.5"><span className="text-sm text-g-word font-semibold">{LBL[k]}</span><Toggle on={toggles[k]} onClick={() => flip(k)} /></div>
+          ))}
+        </div>
+      </Card>
+      <p className="text-center text-[11px] text-g-muted">Changes apply instantly. Need something custom? Your team's a tap away. 💬</p>
+    </div>
   );
 }
 
@@ -986,8 +1075,8 @@ function ScheduleScreen({ V }) {
           note={`Captured by your AI ${sel.r.ch && sel.r.ch !== "—" ? `via ${sel.r.ch}` : ""}. Confirmation + reminder sent automatically. ${/pending|new|follow/i.test(sel.r.status) ? "Awaiting confirmation — the AI will follow up." : "Confirmed and on the books."}`}
           actions={<>
             <a href={waLink(`Hi ${sel.r.name}, about your ${sel.r.meta}…`)} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Message</a>
-            <button onClick={() => setSel(null)} className="btn-ghost text-sm">✓ Confirm</button>
-            <button onClick={() => setSel(null)} className="btn-ghost text-sm">📅 Reschedule</button>
+            <button onClick={() => { toast(`${sel.r.name} confirmed ✓`); setSel(null); }} className="btn-ghost text-sm">✓ Confirm</button>
+            <button onClick={() => { toast("Reschedule link sent"); setSel(null); }} className="btn-ghost text-sm">📅 Reschedule</button>
           </>}
           onClose={() => setSel(null)}
         />
@@ -1158,6 +1247,7 @@ export default function Portal() {
     const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     const a = document.createElement("a"); a.href = url; a.download = `guileo-${vertical}-report.csv`; a.click(); URL.revokeObjectURL(url);
+    toast("Report downloaded ✓");
   };
   const content = {
     overview: <Overview V={V} onNav={setView} />,
@@ -1248,7 +1338,7 @@ export default function Portal() {
                 <>
                   <div className="fixed inset-0 z-20" onClick={() => setBellOpen(false)} />
                   <div className="absolute right-0 mt-2 w-72 max-h-96 overflow-y-auto rounded-xl2 border border-white/12 bg-g-cream/95 backdrop-blur-xl shadow-lift z-30 p-1.5">
-                    <div className="flex items-center justify-between px-2.5 py-1.5"><span className="text-[10px] font-bold uppercase tracking-wide text-g-muted">Notifications</span>{totalNotif > 0 && <button onClick={() => { setNotifsRead(true); setBellOpen(false); }} className="text-[10px] font-bold text-g-gold hover:underline">Mark all read</button>}</div>
+                    <div className="flex items-center justify-between px-2.5 py-1.5"><span className="text-[10px] font-bold uppercase tracking-wide text-g-muted">Notifications</span>{totalNotif > 0 && <button onClick={() => { setNotifsRead(true); setBellOpen(false); toast("All caught up ✓"); }} className="text-[10px] font-bold text-g-gold hover:underline">Mark all read</button>}</div>
                     {notifList.length ? notifList.map(({ k, l, n }) => (
                       <button key={k} onClick={() => { setView(k); setBellOpen(false); }} className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-bold text-left text-g-muted hover:text-g-word hover:bg-white/[0.06] transition">
                         <span className="grid place-items-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black">{n}</span>
@@ -1314,6 +1404,7 @@ export default function Portal() {
       </a>
 
       {paletteOpen && <Palette V={V} sections={sections} onNav={setView} onClose={() => setPaletteOpen(false)} />}
+      <Toaster />
     </div>
   );
 }
