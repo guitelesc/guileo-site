@@ -6,6 +6,7 @@ import {
   FaArrowLeft, FaArrowTrendUp, FaArrowTrendDown, FaWhatsapp, FaInstagram, FaPhone, FaFacebook, FaTiktok, FaGoogle,
   FaReceipt, FaUtensils, FaBookOpen, FaBullseye, FaPhoneVolume, FaCommentSms, FaGear, FaChartLine,
   FaDownload, FaBell, FaMagnifyingGlass, FaStore, FaBrain, FaCreditCard, FaChevronDown, FaShareNodes,
+  FaArrowsRotate, FaClock,
 } from "react-icons/fa6";
 
 /* Upsell channel — services a client can request from inside the portal (revenue engine) */
@@ -70,6 +71,32 @@ function genAudiences() {
     { name: "Lookalike · top value", size: 22000, source: "Meta" },
     { name: "Local · 3mi radius", size: 48000, source: "Google" },
   ];
+}
+// Growth attribution ledger — the basis of the revenue-share model
+function genImpact(V) {
+  const events = [
+    ["now", "Recovered a missed call → booking", 120],
+    ["14m", "Filled a cancelled slot from waitlist", 80],
+    ["1h", "Won back a lapsed customer", 240],
+    ["2h", "Reactivated a recall / repeat visit", 160],
+    ["3h", "Turned a 5★ review into a new lead", 90],
+    ["5h", "Captured an after-hours inquiry", 180],
+  ];
+  return { total: V.impact?.total || 0, parts: V.impact?.parts || [], events, sharePct: 12 };
+}
+// Universal "money leak" engine — un-converted leads, stalled quotes, trials, recalls the AI chases
+function genFollowups(V) {
+  const sch = V.ops?.schedule || [];
+  const TYPE = { "Law Firm": "Unsigned lead", "Construction": "Open estimate", "Real Estate": "Warm buyer", "Gym & Fitness": "Trial no-show", "Auto Dealership": "Test-drive lead", "Education": "Trial student", "Plumbing & HVAC": "Open quote", "Clinic": "Unconfirmed recall", "Medical": "Unconfirmed follow-up", "Salon & Spa": "No rebook yet", "E-Commerce": "Abandoned cart", "Restaurant": "Unconfirmed reservation" };
+  const t = TYPE[V.label] || "Open lead";
+  const base = sch.filter((r) => /pending|new|follow|risk/i.test(r.status));
+  return (base.length ? base : sch).slice(0, 5).map((r, i) => ({ name: r.name, type: t, stage: (i % 3) + 1, value: 120 + i * 90, next: ["Nudge today", "Call back", "Send offer", "Final follow-up"][i % 4], ch: r.ch && r.ch !== "—" ? r.ch : "WhatsApp" }));
+}
+// Waitlist — turn empty capacity into revenue
+function genWaitlist(V) {
+  const WANT = { "Restaurant": "Table for 2 tonight", "Clinic": "Earlier cleaning slot", "Medical": "Earlier appointment", "Salon & Spa": "Saturday haircut", "Gym & Fitness": "HIIT 7am spot", "Auto Dealership": "Service this week", "Plumbing & HVAC": "Same-day visit", "Education": "Evening class seat" };
+  const w = WANT[V.label] || "Earlier slot";
+  return (V.ops?.schedule || []).slice(0, 4).map((r, i) => ({ name: r.name, want: w, since: `${5 + i * 7} min ago`, ch: r.ch && r.ch !== "—" ? r.ch : "WhatsApp" }));
 }
 import logo from "../assets/guileo-logo.png";
 import { Count } from "../lib/ui.jsx";
@@ -157,8 +184,9 @@ function sectionsFor(vid, V) {
   if (V.sections) return V.sections; // restaurant has a bespoke nav from its reference tool
   const sec = SECTOR_NAV[vid] || [["operations", "Operations"]];
   return [
-    ["overview", "Overview"], ["brain", "Train your AI"], ["analytics", "AI Analytics"],
+    ["overview", "Overview"], ["impact", "Guileo Impact"], ["brain", "Train your AI"], ["analytics", "AI Analytics"],
     ...sec,
+    ["followups", "Follow-ups"], ["waitlist", "Waitlist"],
     ["customers", "Customers"], ["campaigns", "Campaigns"], ["audiences", "Ad Audiences"],
     ["calllogs", "Call Logs"], ["dialer", "Call Dialer"], ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"],
     ["grow", "Grow with Guileo"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
@@ -175,6 +203,8 @@ function notifFor(key, V) {
     case "whatsapp": return 1;
     case "sms": return 1;
     case "social": return 3;
+    case "followups": return 3;
+    case "waitlist": return 2;
     default: return 0;
   }
 }
@@ -182,6 +212,7 @@ const SECTION_ICON = {
   overview: FaGaugeHigh, operations: FaListCheck, schedule: FaListCheck, catalog: FaBookOpen, brain: FaBrain, analytics: FaChartLine, liveorders: FaReceipt,
   kitchen: FaUtensils, menu: FaBookOpen, customers: FaUsers, campaigns: FaBullhorn, audiences: FaBullseye,
   calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, social: FaShareNodes, grow: FaStore, billing: FaCreditCard,
+  impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock,
   channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, docs: FaFileLines, settings: FaGear,
 };
 
@@ -1194,6 +1225,91 @@ function Palette({ V, sections, onNav, onClose }) {
   );
 }
 
+function GuileoImpact({ V }) {
+  const d = genImpact(V);
+  const share = Math.round((d.total * d.sharePct) / 100);
+  return (
+    <div className="space-y-4">
+      <Card className="relative overflow-hidden bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] border-g-green/30">
+        <div className="absolute -top-16 -right-12 h-44 w-44 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
+        <div className="relative">
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Growth Guileo drove · this month</div>
+          <div className="text-4xl sm:text-5xl font-black text-g-word tracking-tight mt-1"><Count to={d.total} prefix="$" /></div>
+          <div className="mt-2.5 flex flex-wrap gap-2">{d.parts.map(([label, val]) => (<span key={label} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold"><span className="text-g-green">{val}</span><span className="text-g-muted">{label}</span></span>))}</div>
+        </div>
+      </Card>
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2 p-0 overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Growth ledger · every $ the AI generated</div>
+          <div className="divide-y divide-white/[0.06]">{d.events.map(([t, what, amt], i) => (<div key={i} className="flex items-center gap-3 px-5 py-3"><span className="grid place-items-center h-8 w-8 rounded-full bg-g-green/15 text-g-green text-sm font-black">＋</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{what}</div><div className="text-[11px] text-g-muted">{t} ago</div></div><span className="text-sm font-extrabold text-g-green">+${amt}</span></div>))}</div>
+        </Card>
+        <Card>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">Partnership</div>
+          <div className="text-sm text-g-muted">You grew <b className="text-g-word">${d.total.toLocaleString()}</b> with Guileo this month.</div>
+          <div className="mt-3 rounded-xl2 border border-g-gold/30 bg-g-gold/[0.06] p-3">
+            <div className="text-[10px] uppercase tracking-wide text-g-gold font-bold">Guileo's share · {d.sharePct}% of growth</div>
+            <div className="text-2xl font-extrabold text-g-word mt-1">${share.toLocaleString()}</div>
+            <div className="text-[11px] text-g-muted mt-0.5">You keep ${(d.total - share).toLocaleString()} — we only win when you win.</div>
+          </div>
+          <div className="mt-3"><Bars data={V.revenue} /></div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function Followups({ V }) {
+  const rows = genFollowups(V);
+  const [done, setDone] = useState([]);
+  const open = rows.map((r, i) => ({ r, i })).filter(({ i }) => !done.includes(i));
+  const pipeline = open.reduce((s, { r }) => s + r.value, 0);
+  return (
+    <div className="space-y-4">
+      <MiniStats items={[["Active sequences", `${open.length}`], ["Pipeline value", `$${pipeline.toLocaleString()}`], ["Won this week", "8", "good"], ["Auto-nudged", "31", "good"]]} />
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">The AI is chasing these — so you never lose them</div>
+        <div className="divide-y divide-white/[0.06]">
+          {open.map(({ r, i }) => (
+            <div key={i} className="flex items-center gap-3 px-5 py-3.5">
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name} <span className="text-g-muted font-normal">· {r.type}</span></div><div className="text-[11px] text-g-muted">via {r.ch} · next: {r.next} · step {r.stage}/3</div></div>
+              <span className="text-sm font-extrabold text-g-green">${r.value}</span>
+              <div className="flex gap-1.5 shrink-0">
+                <button onClick={() => toast(`${r.name}: nudge sent`)} className="text-[10px] font-bold rounded-full border border-white/15 px-2.5 py-1 text-g-word hover:border-g-gold/40 transition">Nudge</button>
+                <button onClick={() => { setDone((d) => [...d, i]); toast(`${r.name} marked won 🎉`); }} className="text-[10px] font-bold rounded-full bg-g-green/15 border border-g-green/40 px-2.5 py-1 text-g-green">Won</button>
+              </div>
+            </div>
+          ))}
+          {open.length === 0 && <div className="px-5 py-8 text-center text-xs text-g-muted">✅ All caught up — every lead followed up.</div>}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function Waitlist({ V }) {
+  const rows = genWaitlist(V);
+  const [filled, setFilled] = useState([]);
+  const open = rows.map((r, i) => ({ r, i })).filter(({ i }) => !filled.includes(i));
+  return (
+    <div className="space-y-4">
+      <MiniStats items={[["Waiting now", `${open.length}`], ["Filled today", "9", "good"], ["No-shows saved", "7", "good"], ["Revenue recovered", "$1,240", "good"]]} />
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Waitlist · turn empty slots into revenue</div>
+        <div className="divide-y divide-white/[0.06]">
+          {open.map(({ r, i }) => (
+            <div key={i} className="flex items-center gap-3 px-5 py-3.5">
+              <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{r.name[0]}</span>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted">{r.want} · via {r.ch} · {r.since}</div></div>
+              <button onClick={() => { setFilled((f) => [...f, i]); toast(`Offer sent to ${r.name} ✓`); }} className="btn-bright text-xs px-3 shrink-0">Offer slot</button>
+            </div>
+          ))}
+          {open.length === 0 && <div className="px-5 py-8 text-center text-xs text-g-muted">No one waiting — capacity is full. 🎉</div>}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 /* ───────────────────────── Login gate (demo) ───────────────────────── */
 function Login({ onEnter }) {
   const [email, setEmail] = useState("");
@@ -1251,6 +1367,9 @@ export default function Portal() {
   };
   const content = {
     overview: <Overview V={V} onNav={setView} />,
+    impact: <GuileoImpact V={V} />,
+    followups: <Followups V={V} />,
+    waitlist: <Waitlist V={V} />,
     operations: <Operations V={V} />,
     schedule: <ScheduleScreen V={V} />,
     catalog: <CatalogScreen V={V} />,

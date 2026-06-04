@@ -39,8 +39,8 @@ export const VERTICALS = {
     ] },
     plan: { label: "Growth Plan", used: 1, total: 2000, unit: "Orders this month" },
     sections: [
-      ["overview", "Overview"], ["brain", "Train your AI"], ["analytics", "AI Analytics"], ["liveorders", "Live Orders"],
-      ["kitchen", "Kitchen View"], ["menu", "Menu"], ["customers", "Customers"], ["campaigns", "Campaigns"],
+      ["overview", "Overview"], ["impact", "Guileo Impact"], ["brain", "Train your AI"], ["analytics", "AI Analytics"], ["liveorders", "Live Orders"],
+      ["kitchen", "Kitchen View"], ["menu", "Menu"], ["followups", "Follow-ups"], ["waitlist", "Waitlist"], ["customers", "Customers"], ["campaigns", "Campaigns"],
       ["audiences", "Ad Audiences"], ["calllogs", "Call Logs"], ["dialer", "Call Dialer"],
       ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"], ["grow", "Grow with Guileo"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
     ],
