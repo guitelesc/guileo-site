@@ -61,9 +61,17 @@ function genCustomers(V) {
 }
 function genCampaigns(V) {
   const ch = (V.channelMix?.items?.[0]?.[0]) || "WhatsApp";
+  // Vertical-aware promo so each sector's campaigns read like its real marketing.
+  const PROMO = {
+    "Restaurant": "Weekend special · regulars", "Clinic": "6-month cleaning recall", "Medical": "Annual check-up reminder",
+    "Salon & Spa": "Rebook your glow · 20% off", "Gym & Fitness": "New year · bring a friend", "Auto Dealership": "Service due · book now",
+    "Plumbing & HVAC": "Pre-winter HVAC tune-up", "Law Firm": "Free 15-min consult", "Real Estate": "New listings in your area",
+    "Education": "Enroll for next term", "Construction": "Spring project slots open", "E-Commerce": "Back in stock · VIP early access",
+  };
+  const promo = PROMO[V.label] || "Promo · this week";
   return [
     { name: "Reactivation · lapsed leads", channel: ch, sent: 840, opened: 46, revenue: 1240, status: "Active" },
-    { name: "Promo · this week", channel: "Email", sent: 520, opened: 38, revenue: 820, status: "Active" },
+    { name: promo, channel: "Email", sent: 520, opened: 38, revenue: 820, status: "Active" },
     { name: "Win-back · 30 days inactive", channel: "SMS", sent: 300, opened: 41, revenue: 560, status: "Scheduled" },
   ];
 }
@@ -97,7 +105,7 @@ function genFollowups(V) {
 }
 // Waitlist — turn empty capacity into revenue
 function genWaitlist(V) {
-  const WANT = { "Restaurant": "Table for 2 tonight", "Clinic": "Earlier cleaning slot", "Medical": "Earlier appointment", "Salon & Spa": "Saturday haircut", "Gym & Fitness": "HIIT 7am spot", "Auto Dealership": "Service this week", "Plumbing & HVAC": "Same-day visit", "Education": "Evening class seat" };
+  const WANT = { "Restaurant": "Table for 2 tonight", "Clinic": "Earlier cleaning slot", "Medical": "Earlier appointment", "Salon & Spa": "Saturday haircut", "Gym & Fitness": "HIIT 7am spot", "Auto Dealership": "Service this week", "Plumbing & HVAC": "Same-day visit", "Education": "Evening class seat", "Law Firm": "Consultation this week", "Real Estate": "Weekend viewing", "Construction": "On-site estimate", "E-Commerce": "Back-in-stock alert" };
   const w = WANT[V.label] || "Earlier slot";
   return (V.ops?.schedule || []).slice(0, 4).map((r, i) => ({ name: r.name, want: w, since: `${5 + i * 7} min ago`, ch: r.ch && r.ch !== "—" ? r.ch : "WhatsApp" }));
 }
@@ -1129,6 +1137,10 @@ function SettingsView({ V }) {
             <div key={k} className="flex items-center justify-between px-5 py-3.5"><span className="text-sm text-g-word font-semibold">{LBL[k]}</span><Toggle on={toggles[k]} onClick={() => flip(k)} /></div>
           ))}
         </div>
+      </Card>
+      <Card className="flex flex-wrap items-center justify-between gap-3">
+        <div><div className="text-sm font-bold text-g-word">Demo data</div><div className="text-[11px] text-g-muted">Reset resolved alerts, won deals, filled slots & read flags back to the sample state.</div></div>
+        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
       </Card>
       <p className="text-center text-[11px] text-g-muted">Changes apply instantly. Need something custom? Your team's a tap away. 💬</p>
     </div>
