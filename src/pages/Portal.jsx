@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { portalApi, CONNECTED } from "../lib/portalApi.js";
 import {
   FaGaugeHigh, FaComments, FaBullhorn, FaUsers, FaHeadset, FaFileLines, FaListCheck,
   FaArrowLeft, FaArrowTrendUp, FaArrowTrendDown, FaWhatsapp, FaInstagram, FaPhone, FaFacebook, FaTiktok, FaGoogle,
@@ -212,7 +213,7 @@ function Overview({ V, onNav }) {
                 return (
                   <div key={i} className="rounded-xl2 border-l-2 bg-white/[0.05] px-3 py-2.5 text-xs text-g-word" style={{ borderColor: c }}>
                     <div className="flex items-start gap-2"><span style={{ color: c }}>⚠</span>{a.text}</div>
-                    <button onClick={() => setResolved((r) => [...r, i])} className="mt-2 text-[10px] font-bold text-g-green hover:underline">Resolve ✓</button>
+                    <button onClick={() => { portalApi.resolveAlert(i); setResolved((r) => [...r, i]); }} className="mt-2 text-[10px] font-bold text-g-green hover:underline">Resolve ✓</button>
                   </div>
                 );
               })}
@@ -740,7 +741,7 @@ function Convos({ V, title }) {
     { from: "them", text: "Perfect, yes please." },
     { from: "ai", text: "All set ✅ Anything else I can help you with?" },
   ]])));
-  const send = (e) => { e.preventDefault(); if (!draft.trim()) return; setThreads((t) => ({ ...t, [active]: [...(t[active] || []), { from: "you", text: draft }] })); setDraft(""); };
+  const send = (e) => { e.preventDefault(); if (!draft.trim()) return; portalApi.sendMessage(title, active, draft); setThreads((t) => ({ ...t, [active]: [...(t[active] || []), { from: "you", text: draft }] })); setDraft(""); };
   const c = list[active] || {};
   return (
     <div className="grid lg:grid-cols-3 gap-4 lg:h-[34rem]">
@@ -973,18 +974,21 @@ function SocialInbox({ V }) {
 
 /* ───────────────────────── Login gate (demo) ───────────────────────── */
 function Login({ onEnter }) {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const go = async (em) => { setBusy(true); try { await portalApi.login(em); onEnter(); } catch { setBusy(false); } };
   return (
     <div className="min-h-screen grid place-items-center px-5">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm rounded-xl3 border border-white/12 bg-white/[0.04] backdrop-blur-xl p-8 shadow-lift text-center">
         <img src={logo} alt="Guileo" className="h-12 w-12 object-contain mx-auto" />
         <div className="mt-3 text-xl font-black uppercase tracking-tight bg-gradient-to-r from-g-green via-g-gold to-g-green bg-[length:200%_auto] bg-clip-text text-transparent animate-shimmer">Growth Cockpit</div>
         <p className="text-xs text-g-muted mt-1">Sign in to your private dashboard</p>
-        <form onSubmit={(e) => { e.preventDefault(); onEnter(); }} className="mt-6 space-y-2.5 text-left">
-          <input type="email" required placeholder="you@email.com" className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+        <form onSubmit={(e) => { e.preventDefault(); go(email); }} className="mt-6 space-y-2.5 text-left">
+          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
           <input type="password" required placeholder="Password" className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-          <button className="btn-bright text-sm w-full">Enter Growth Cockpit →</button>
+          <button disabled={busy} className="btn-bright text-sm w-full disabled:opacity-70">{busy ? "Signing in…" : "Enter Growth Cockpit →"}</button>
         </form>
-        <button onClick={onEnter} className="mt-3 text-xs font-bold text-g-gold hover:underline">▶ Enter demo (sample data)</button>
+        <button onClick={() => go()} disabled={busy} className="mt-3 text-xs font-bold text-g-gold hover:underline disabled:opacity-60">▶ Enter demo (sample data)</button>
         <div className="mt-4 text-[11px] text-g-muted"><a href="/" className="hover:text-g-word">← Back to guileo.ai</a></div>
       </motion.div>
     </div>
@@ -994,16 +998,29 @@ function Login({ onEnter }) {
 /* ───────────────────────── Page ───────────────────────── */
 export default function Portal() {
   const [authed, setAuthed] = useState(false);
+  const [booting, setBooting] = useState(true);
   const [view, setView] = useState("overview");
   const [period, setPeriod] = useState("30 days");
   const [vertical, setVertical] = useState("restaurant");
   const [vertOpen, setVertOpen] = useState(false);
+  const [notifsRead, setNotifsRead] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
+  useEffect(() => { portalApi.session().then((s) => { if (s) setAuthed(true); }).finally(() => setBooting(false)); }, []);
   const V = VERTICALS[vertical];
   const sections = sectionsFor(vertical, V);
-  const totalNotif = sections.reduce((s, [k]) => s + notifFor(k, V), 0);
+  const nf = (k) => (notifsRead ? 0 : notifFor(k, V));
+  const totalNotif = sections.reduce((s, [k]) => s + nf(k), 0);
+  const notifList = notifsRead ? [] : sections.map(([k, l]) => ({ k, l, n: notifFor(k, V) })).filter((x) => x.n > 0);
   const cur = sections.find((s) => s[0] === view);
   const title = view === "operations" ? `${V.label} operations` : (cur ? cur[1] : "Overview");
-  const switchVertical = (k) => { setVertical(k); setView("overview"); };
+  const switchVertical = (k) => { setVertical(k); setView("overview"); setVertOpen(false); setNotifsRead(false); };
+  const logout = () => portalApi.logout().then(() => setAuthed(false));
+  const exportReport = () => {
+    const rows = [["Metric", "Value"], ...V.kpis.map((k) => [k.label, `${k.pre || ""}${k.num}${k.suf || ""}`])];
+    const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const a = document.createElement("a"); a.href = url; a.download = `guileo-${vertical}-report.csv`; a.click(); URL.revokeObjectURL(url);
+  };
   const content = {
     overview: <Overview V={V} onNav={setView} />,
     operations: <Operations V={V} />,
@@ -1032,6 +1049,7 @@ export default function Portal() {
     settings: <SettingsView V={V} />,
   }[view] || <Overview V={V} onNav={setView} />;
 
+  if (booting) return <div className="min-h-screen grid place-items-center text-g-muted text-sm">Loading your cockpit…</div>;
   if (!authed) return <div className="min-h-screen text-g-ink"><Login onEnter={() => setAuthed(true)} /></div>;
 
   return (
@@ -1046,7 +1064,7 @@ export default function Portal() {
           {sections.map(([key, label, flag]) => {
             const Icon = SECTION_ICON[key] || FaGaugeHigh;
             const on = view === key;
-            const notif = notifFor(key, V);
+            const notif = nf(key);
             return (
               <button key={key} onClick={() => setView(key)}
                 className={`relative flex items-center gap-3 rounded-xl2 px-3.5 py-2.5 text-sm font-bold whitespace-nowrap transition-colors ${on ? "text-g-word" : "text-g-muted hover:text-g-word"}`}>
@@ -1069,8 +1087,8 @@ export default function Portal() {
           )}
           <div className="flex items-center gap-2">
             <span className="grid place-items-center h-8 w-8 rounded-full bg-g-green/15 text-xs font-bold text-g-light">JS</span>
-            <div className="leading-tight min-w-0 flex-1"><div className="text-xs font-bold text-g-word truncate">Jane Staff</div><div className="text-[10px] text-g-muted truncate">Staff · admin</div></div>
-            <a href="/" title="Back to site" className="text-g-muted hover:text-g-gold transition"><FaArrowLeft size={12} /></a>
+            <div className="leading-tight min-w-0 flex-1"><div className="text-xs font-bold text-g-word truncate">Jane Staff</div><div className="text-[10px] text-g-muted truncate">{CONNECTED ? "Staff · admin" : "Demo mode"}</div></div>
+            <button onClick={logout} title="Sign out" className="text-g-muted hover:text-red-400 transition text-[11px] font-bold">Sign out</button>
           </div>
         </div>
       </aside>
@@ -1085,8 +1103,24 @@ export default function Portal() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <div className="hidden md:flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs text-g-muted w-40"><FaMagnifyingGlass size={11} /><span className="truncate">Search… ⌘K</span></div>
-            <button className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word hover:border-g-gold/40 transition"><FaDownload size={11} /> Report</button>
-            <button className="relative grid place-items-center h-9 w-9 rounded-full border border-white/12 bg-white/[0.04] text-g-muted hover:text-g-word transition" aria-label={`Notifications (${totalNotif})`}><FaBell size={13} />{totalNotif > 0 && <span className="absolute -top-1 -right-1 inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black shadow-[0_0_8px_rgba(239,68,68,0.6)]">{totalNotif}</span>}</button>
+            <button onClick={exportReport} className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word hover:border-g-gold/40 transition"><FaDownload size={11} /> Report</button>
+            <div className="relative">
+              <button onClick={() => setBellOpen((o) => !o)} className="relative grid place-items-center h-9 w-9 rounded-full border border-white/12 bg-white/[0.04] text-g-muted hover:text-g-word transition" aria-label={`Notifications (${totalNotif})`}><FaBell size={13} />{totalNotif > 0 && <span className="absolute -top-1 -right-1 inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black shadow-[0_0_8px_rgba(239,68,68,0.6)]">{totalNotif}</span>}</button>
+              {bellOpen && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setBellOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-72 max-h-96 overflow-y-auto rounded-xl2 border border-white/12 bg-g-cream/95 backdrop-blur-xl shadow-lift z-30 p-1.5">
+                    <div className="flex items-center justify-between px-2.5 py-1.5"><span className="text-[10px] font-bold uppercase tracking-wide text-g-muted">Notifications</span>{totalNotif > 0 && <button onClick={() => { setNotifsRead(true); setBellOpen(false); }} className="text-[10px] font-bold text-g-gold hover:underline">Mark all read</button>}</div>
+                    {notifList.length ? notifList.map(({ k, l, n }) => (
+                      <button key={k} onClick={() => { setView(k); setBellOpen(false); }} className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-bold text-left text-g-muted hover:text-g-word hover:bg-white/[0.06] transition">
+                        <span className="grid place-items-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black">{n}</span>
+                        <span className="flex-1 text-g-word">{l}</span><span className="text-g-muted">view →</span>
+                      </button>
+                    )) : <div className="px-2.5 py-6 text-center text-xs text-g-muted">✅ All caught up</div>}
+                  </div>
+                </>
+              )}
+            </div>
             <div className="hidden lg:flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.04] p-1">
               {["7 days", "30 days", "90 days"].map((p) => (
                 <button key={p} onClick={() => setPeriod(p)} className={`rounded-full px-3 py-1 text-xs font-bold transition ${period === p ? "bg-g-gold/15 text-g-gold" : "text-g-muted hover:text-g-word"}`}>{p}</button>
