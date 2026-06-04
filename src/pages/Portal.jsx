@@ -1,22 +1,15 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FaGaugeHigh, FaComments, FaBullhorn, FaUsers, FaHeadset, FaFileLines,
+  FaGaugeHigh, FaComments, FaBullhorn, FaUsers, FaHeadset, FaFileLines, FaListCheck,
   FaArrowLeft, FaArrowTrendUp, FaArrowTrendDown, FaWhatsapp, FaInstagram, FaPhone, FaFacebook, FaTiktok, FaGoogle,
 } from "react-icons/fa6";
 import logo from "../assets/guileo-logo.png";
 import { Count } from "../lib/ui.jsx";
 import { waLink } from "../data/contact.js";
+import { VERTICALS, VERTICAL_KEYS } from "../data/verticals.js";
 
-/* ───────────────────────── Mock data (demo — swap for Supabase later) ───────────────────────── */
-const BUSINESS = { name: "Bella Pizza", place: "São Paulo · BR", since: "Live since Apr 2026" };
-
-const KPIS = [
-  { ic: "💰", label: "Revenue recovered", pre: "$", num: 18420, suf: "", delta: 22, color: "#3E9468" },
-  { ic: "📞", label: "Calls answered by AI", pre: "", num: 1240, suf: "", delta: 100, color: "#38BDF8", note: "0 missed" },
-  { ic: "📅", label: "Appointments booked", pre: "", num: 386, suf: "", delta: 18, color: "#D6C29A" },
-  { ic: "⭐", label: "5★ reviews collected", pre: "", num: 92, suf: "", delta: 41, color: "#3E9468" },
-];
+/* ───────────────────────── Mock data (demo — swap for Supabase/integrations later) ───────────────────────── */
 
 const CHANNELS = [
   { Icon: FaWhatsapp, name: "WhatsApp", color: "#25D366", convos: 642, won: 128, note: "booked 96 orders" },
@@ -88,6 +81,7 @@ function Bars({ data = REVENUE, color = "#D6C29A" }) {
 /* ───────────────────────── Shell pieces ───────────────────────── */
 const NAV = [
   ["overview", "Overview", FaGaugeHigh],
+  ["operations", "Operations", FaListCheck],
   ["channels", "Channels", FaComments],
   ["ads", "Marketing & Ads", FaBullhorn],
   ["leads", "Leads", FaUsers],
@@ -100,22 +94,22 @@ function Card({ children, className = "" }) {
 }
 
 /* ───────────────────────── Views ───────────────────────── */
-function Overview() {
+function Overview({ V }) {
   return (
     <div className="space-y-5">
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {KPIS.map((k, i) => (
+        {V.kpis.map((k, i) => (
           <motion.div key={k.label} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
             <Card>
               <div className="flex items-center justify-between">
                 <span className="grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] text-xl">{k.ic}</span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: k.color + "22", color: k.color }}>
-                  <FaArrowTrendUp size={10} /> {k.note || `+${k.delta}%`}
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: (k.good ? "#3E9468" : k.color) + "22", color: k.good ? "#3E9468" : k.color }}>
+                  {k.good ? <FaArrowTrendDown size={10} /> : <FaArrowTrendUp size={10} />} {k.note || `+${k.delta}%`}
                 </span>
               </div>
-              <div className="mt-3 text-2xl font-extrabold text-g-word tracking-tight"><Count to={k.num} prefix={k.pre} suffix={k.suf} /></div>
+              <div className="mt-3 text-2xl font-extrabold text-g-word tracking-tight"><Count to={k.num} prefix={k.pre || ""} suffix={k.suf || ""} /></div>
               <div className="text-[11px] text-g-muted">{k.label}</div>
-              <div className="mt-2"><Spark color={k.color} h={32} /></div>
+              <div className="mt-2"><Spark data={V.revenue} color={k.color} h={32} /></div>
             </Card>
           </motion.div>
         ))}
@@ -127,12 +121,12 @@ function Overview() {
             <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Revenue · last 12 months</div>
             <div className="text-xs text-g-muted">+186% YoY</div>
           </div>
-          <Bars />
+          <Bars data={V.revenue} />
         </Card>
         <Card>
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Live activity</div>
           <ul className="space-y-3">
-            {ACTIVITY.map(([ic, ch, msg, t]) => (
+            {V.activity.map(([ic, ch, msg, t]) => (
               <li key={ch + t} className="flex items-start gap-3">
                 <span className="text-lg shrink-0">{ic}</span>
                 <div className="min-w-0">
@@ -155,6 +149,63 @@ function Overview() {
           <a href={waLink("I'd like to review my Guileo results this month")} target="_blank" rel="noopener" className="btn-bright text-sm">Talk to my team →</a>
         </div>
       </Card>
+    </div>
+  );
+}
+
+function Operations({ V }) {
+  const o = V.ops;
+  return (
+    <div className="space-y-4">
+      <div className="grid sm:grid-cols-3 gap-4">
+        {o.stats.map((s) => (
+          <Card key={s.label}>
+            <div className="text-[11px] uppercase tracking-wide text-g-muted">{s.label}</div>
+            <div className={`text-2xl font-extrabold mt-1 ${s.tone === "good" ? "text-g-green" : "text-g-word"}`}>{s.value}</div>
+          </Card>
+        ))}
+      </div>
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2 p-0 overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{o.scheduleTitle}</div>
+          <div className="divide-y divide-white/[0.06]">
+            {o.schedule.map((r, i) => (
+              <div key={i} className="flex items-center gap-3 px-5 py-3">
+                <span className="text-xs font-bold text-g-light w-16 shrink-0">{r.time}</span>
+                <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted truncate">{r.meta}{r.ch && r.ch !== "—" ? ` · ${r.ch}` : ""}</div></div>
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <div className="space-y-4">
+          {o.grid && (
+            <Card>
+              <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{o.gridTitle}</div>
+              <div className="grid grid-cols-4 gap-2">
+                {o.grid.map((g, i) => (
+                  <div key={i} className={`grid place-items-center h-10 rounded-lg text-xs font-bold border ${g.on ? "border-g-green/50 bg-g-green/15 text-g-light" : "border-white/10 bg-white/[0.03] text-g-muted"}`}>{g.label}</div>
+                ))}
+              </div>
+              <div className="mt-2 text-[10px] text-g-muted">● in use · ○ free</div>
+            </Card>
+          )}
+          {o.list && (
+            <Card>
+              <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{o.listTitle}</div>
+              {o.list.map((it, i) => {
+                const max = Math.max(...o.list.map((x) => x.val));
+                return (
+                  <div key={i} className="mb-2.5 last:mb-0">
+                    <div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{it.name}</span><span className="text-g-muted">{it.val}</span></div>
+                    <div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${(it.val / max) * 100}%` }} /></div>
+                  </div>
+                );
+              })}
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -271,7 +322,6 @@ function Docs() {
   );
 }
 
-const VIEWS = { overview: Overview, channels: Channels, ads: Ads, leads: Leads, support: Support, docs: Docs };
 
 /* ───────────────────────── Login gate (demo) ───────────────────────── */
 function Login({ onEnter }) {
@@ -298,7 +348,17 @@ export default function Portal() {
   const [authed, setAuthed] = useState(false);
   const [view, setView] = useState("overview");
   const [period, setPeriod] = useState("30 days");
-  const View = VIEWS[view];
+  const [vertical, setVertical] = useState("restaurant");
+  const V = VERTICALS[vertical];
+  const content = {
+    overview: <Overview V={V} />,
+    operations: <Operations V={V} />,
+    channels: <Channels />,
+    ads: <Ads />,
+    leads: <Leads />,
+    support: <Support />,
+    docs: <Docs />,
+  }[view];
 
   if (!authed) return <div className="min-h-screen text-g-ink"><Login onEnter={() => setAuthed(true)} /></div>;
 
@@ -308,7 +368,7 @@ export default function Portal() {
       <aside className="lg:w-60 lg:min-h-screen border-b lg:border-b-0 lg:border-r border-white/10 bg-white/[0.03] backdrop-blur-xl lg:sticky lg:top-0">
         <div className="flex items-center gap-2 px-5 py-4">
           <img src={logo} alt="Guileo" className="h-8 w-8 object-contain" />
-          <div className="leading-tight"><div className="text-sm font-extrabold text-g-word">Growth Cockpit</div><div className="text-[10px] text-g-muted">{BUSINESS.name}</div></div>
+          <div className="leading-tight"><div className="text-sm font-extrabold text-g-word">Growth Cockpit</div><div className="text-[10px] text-g-muted">{V.icon} {V.business.name}</div></div>
         </div>
         <nav className="flex lg:flex-col gap-1 px-3 pb-3 overflow-x-auto">
           {NAV.map(([key, label, Icon]) => {
@@ -332,8 +392,8 @@ export default function Portal() {
         {/* topbar */}
         <header className="flex items-center justify-between gap-3 px-5 sm:px-8 py-4 border-b border-white/10 bg-white/[0.02] backdrop-blur-md sticky top-0 z-20">
           <div>
-            <h1 className="text-lg sm:text-xl font-extrabold text-g-word capitalize">{NAV.find(n => n[0] === view)[1]}</h1>
-            <p className="text-[11px] text-g-muted">{BUSINESS.name} · {BUSINESS.place} · {BUSINESS.since}</p>
+            <h1 className="text-lg sm:text-xl font-extrabold text-g-word">{view === "operations" ? `${V.label} operations` : NAV.find(n => n[0] === view)[1]}</h1>
+            <p className="text-[11px] text-g-muted">{V.business.name} · {V.business.place} · {V.business.since}</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="hidden sm:flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.04] p-1">
@@ -341,21 +401,33 @@ export default function Portal() {
                 <button key={p} onClick={() => setPeriod(p)} className={`rounded-full px-3 py-1 text-xs font-bold transition ${period === p ? "bg-g-gold/15 text-g-gold" : "text-g-muted hover:text-g-word"}`}>{p}</button>
               ))}
             </div>
-            <span className="grid place-items-center h-9 w-9 rounded-full bg-g-green/15 text-sm font-extrabold text-g-light">{BUSINESS.name[0]}</span>
+            <span className="grid place-items-center h-9 w-9 rounded-full bg-g-green/15 text-sm font-extrabold text-g-light">{V.business.name[0]}</span>
           </div>
         </header>
 
-        {/* demo banner */}
-        <div className="px-5 sm:px-8 pt-4">
+        {/* demo banner + INDUSTRY SWITCHER (demo only — real clients get their own fixed industry) */}
+        <div className="px-5 sm:px-8 pt-4 flex flex-wrap items-center gap-3">
           <div className="rounded-full border border-g-gold/30 bg-g-gold/[0.08] px-4 py-2 text-[11px] font-bold text-g-gold inline-flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" /> Demo data — your real numbers appear once your system is live.
+            <span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" /> Demo data — each client sees their own industry.
+          </div>
+          <div className="flex items-center gap-1.5 ml-auto">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-g-muted hidden sm:inline">Preview industry:</span>
+            {VERTICAL_KEYS.map((k) => {
+              const on = vertical === k;
+              return (
+                <button key={k} onClick={() => setVertical(k)}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold border transition ${on ? "border-g-green/50 bg-g-green/15 text-g-light" : "border-white/12 bg-white/[0.04] text-g-muted hover:text-g-word"}`}>
+                  {VERTICALS[k].icon} <span className="hidden sm:inline">{VERTICALS[k].label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* content — keyed remount = clean fade-in per view (no stuck-exit) */}
+        {/* content — keyed by view+vertical = clean remount/fade per switch */}
         <div className="p-5 sm:p-8">
-          <motion.div key={view} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
-            <View />
+          <motion.div key={view + vertical} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+            {content}
           </motion.div>
         </div>
       </main>
