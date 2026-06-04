@@ -7,6 +7,7 @@ import {
   FaReceipt, FaUtensils, FaBookOpen, FaBullseye, FaPhoneVolume, FaCommentSms, FaGear, FaChartLine,
   FaDownload, FaBell, FaMagnifyingGlass, FaStore, FaBrain, FaCreditCard, FaChevronDown, FaShareNodes,
   FaArrowsRotate, FaClock, FaStar, FaIdCard,
+  FaPen, FaTrash, FaPlus, FaCircleCheck, FaWandMagicSparkles,
 } from "react-icons/fa6";
 
 /* Upsell channel — services a client can request from inside the portal (revenue engine) */
@@ -265,7 +266,8 @@ function Toaster() {
   );
 }
 // Slide-over detail panel — click any row to see everything + act on it
-function Drawer({ title, subtitle, badge, fields, note, actions, onClose }) {
+function Drawer({ open = true, title, subtitle, badge, fields = [], note, actions, onClose, children }) {
+  if (!open) return null;
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
@@ -276,9 +278,10 @@ function Drawer({ title, subtitle, badge, fields, note, actions, onClose }) {
           <div className="flex items-center gap-2 shrink-0">{badge}<button onClick={onClose} aria-label="Close" className="text-g-muted hover:text-g-word text-lg leading-none px-1">✕</button></div>
         </div>
         <div className="p-5 space-y-2.5 flex-1">
-          {fields.filter(([, v]) => v != null && v !== "").map(([k, v], i) => (
+          {(fields || []).filter(([, v]) => v != null && v !== "").map(([k, v], i) => (
             <div key={i} className="flex justify-between gap-4 text-sm"><span className="text-g-muted">{k}</span><span className="font-bold text-g-word text-right">{v}</span></div>
           ))}
+          {children}
           {note && <div className="mt-3 rounded-xl2 border border-g-green/25 bg-g-green/[0.06] p-3 text-xs text-g-light"><div className="text-[10px] font-black uppercase text-g-green mb-1">🧠 Guileo AI notes</div>{note}</div>}
         </div>
         {actions && <div className="p-4 border-t border-white/10 flex flex-wrap gap-2">{actions}</div>}
@@ -1017,38 +1020,84 @@ function Grow() {
   );
 }
 
-function aiAnswer(q, V) {
-  const s = q.toLowerCase();
-  if (/hour|open|close|time|aberto|horário/.test(s)) return "We're open Mon–Sun, 9am–10pm. Want me to book you in?";
-  if (/price|cost|how much|preço|quanto/.test(s)) return "Pricing depends on what you need — I can get you a quick quote. What are you looking for?";
-  if (/book|appointment|reserv|table|schedule|agendar|marcar/.test(s)) return "Absolutely! What day and time works for you? I'll lock it in right away. 📅";
-  if (/where|location|address|onde|endereço/.test(s)) return `We're at ${V.business.place}. I can send directions on WhatsApp — want them?`;
-  if (/cancel|refund|reembolso|cancelar/.test(s)) return "No problem — I'll take care of that and loop in a human if needed. Can I have your name?";
-  if (/deliver|entrega/.test(s)) return "Yes, we deliver 🛵 — just send your address and order and I'll confirm the ETA.";
-  return `Great question! Based on ${V.business.name}'s info I'd handle that right away and book or answer accordingly. (Train me with more details to sharpen this answer.)`;
+// Words too common to carry meaning when matching a question to a trained answer.
+const KB_STOP = new Set("a an the is are do does can could would i you we my your our of to for on in at and or with how what when where why which that this it me us your you're im i'm".split(" "));
+const kbTokens = (s) => (s || "").toLowerCase().replace(/[^a-z0-9à-ÿ\s]/gi, " ").split(/\s+/).filter((w) => w.length > 2 && !KB_STOP.has(w));
+
+// Match a free-text customer question against the trained knowledge base.
+// Score = how many meaningful words of the entry's trigger appear in the question
+// (normalised by trigger length so a tight 2-word topic isn't beaten by a long one).
+// Returns the best entry above a confidence floor, else null → keyword fallback.
+// Two words "match" if they're equal OR share a 4-char prefix — cheap, robust
+// stemming so "located"/"location", "booking"/"book", "prices"/"pricing" collide
+// without a brittle suffix-stripping table.
+const wordsMatch = (a, b) => a === b || (a.length >= 4 && b.length >= 4 && a.slice(0, 4) === b.slice(0, 4));
+function kbMatch(q, kb) {
+  const qt = kbTokens(q);
+  if (!qt.length) return null;
+  let best = null, bestScore = 0;
+  for (const e of kb) {
+    const trig = [...new Set(kbTokens(`${e.topic} ${e.triggers || ""}`))];
+    if (!trig.length) continue;
+    const hits = trig.filter((w) => qt.some((x) => wordsMatch(w, x))).length;
+    const score = hits / Math.sqrt(trig.length);
+    if (hits > 0 && score > bestScore) { bestScore = score; best = e; }
+  }
+  return bestScore >= 0.4 ? best : null;
 }
-function AIBrain({ V }) {
-  const cards = [
-    ["🏢", "Business info", `${V.business.name} · ${V.business.place} · Hours: Mon–Sun, 9am–10pm`],
-    ["📋", V.ops?.listTitle || "Menu & services", (V.ops?.list || []).map((x) => x.name).join(" · ") || "Set up with your team"],
-    ["❓", "Top questions it answers", "Hours · Location · Pricing · Booking · Delivery · Specials"],
-    ["🎙️", "Voice & languages", "Warm & friendly · English, Portuguese, Spanish"],
-    ["⤴️", "Escalation rules", "Refunds & complaints → human · VIPs → owner"],
-    ["⭐", "After every interaction", "Asks happy customers for a 5★ review automatically"],
+
+// Default seed: pull real facts out of the vertical so every sector starts smart.
+function seedKB(V) {
+  const services = (V.ops?.list || []).slice(0, 6).map((x) => x.name).filter(Boolean).join(", ");
+  return [
+    { id: "biz", topic: "Location & address", triggers: "where address location directions onde endereço", answer: `We're ${V.business.name}, located at ${V.business.place}. I can send directions on WhatsApp — want them?`, locked: false },
+    { id: "hours", topic: "Opening hours", triggers: "open close time hours aberto horário", answer: "We're open Mon–Sun, 9am–10pm. Want me to book you in?", locked: false },
+    { id: "book", topic: "Bookings & appointments", triggers: "book booking appointment reserve table schedule agendar marcar", answer: "Absolutely! What day and time works for you? I'll lock it in right away. 📅", locked: false },
+    { id: "price", topic: "Pricing & quotes", triggers: "price pricing cost quote preço quanto", answer: "Pricing depends on what you need — I can get you a quick quote. What are you looking for?", locked: false },
+    { id: "services", topic: "Services offered", triggers: "service services offer menu catalog produtos", answer: services ? `We offer: ${services}. Which one can I help you with?` : "We offer a full range of services — tell me what you need and I'll guide you.", locked: false },
+    { id: "cancel", topic: "Cancellations & refunds", triggers: "cancel cancellation refund reschedule reembolso cancelar", answer: "No problem — I'll take care of that and loop in a human if needed. Can I have your name?", locked: true },
   ];
+}
+
+function aiAnswer(q, V, kb) {
+  const hit = kb && kbMatch(q, kb);
+  if (hit) return hit.answer;
+  const s = q.toLowerCase();
+  if (/deliver|entrega/.test(s)) return "Yes, we deliver 🛵 — just send your address and order and I'll confirm the ETA.";
+  return `Great question! I'd handle that right away for ${V.business.name} and book or answer accordingly. (Add this to your knowledge base below so I nail it every time.)`;
+}
+
+function AIBrain({ V }) {
+  const [kb, setKb] = useState(() => portalApi.loadKB(V.label, seedKB(V)));
+  const [trainedAt, setTrainedAt] = useState("2 days ago");
+  const [editing, setEditing] = useState(null); // entry being edited, or {} for new
   const [q, setQ] = useState("");
   const [chat, setChat] = useState([]);
-  const ask = (e) => { e.preventDefault(); if (!q.trim()) return; setChat((c) => [...c, { q, a: aiAnswer(q, V) }]); setQ(""); };
+
+  // Reload when switching verticals (each sector keeps its own brain).
+  useEffect(() => { setKb(portalApi.loadKB(V.label, seedKB(V))); setChat([]); }, [V.label]);
+
+  const persist = (next) => { setKb(next); portalApi.saveKB(V.label, next); setTrainedAt("just now"); toast("AI retrained ✓ — it'll use this on the next conversation"); };
+  const saveEntry = (entry) => {
+    const e = { ...entry, id: entry.id || `k${kb.length}_${entry.topic.slice(0, 4)}` };
+    persist(entry.id ? kb.map((x) => (x.id === e.id ? e : x)) : [...kb, e]);
+    setEditing(null);
+  };
+  const delEntry = (id) => persist(kb.filter((x) => x.id !== id));
+
+  const ask = (e) => { e.preventDefault(); if (!q.trim()) return; setChat((c) => [...c, { q, a: aiAnswer(q, V, kb), trained: !!kbMatch(q, kb) }]); setQ(""); };
   const suggestions = ["What are your hours?", "Can I book for tomorrow?", "How much does it cost?", "Where are you located?"];
+
   return (
     <div className="space-y-4">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word">🧠 Your AI's brain</div><div className="text-xs text-g-muted mt-0.5">Everything your AI knows and how it answers — and you can test it live, right here.</div></div>
-          <a href={waLink("Hi Guileo! I'd like to update what my AI knows")} target="_blank" rel="noopener" className="btn-bright text-sm">Request an update →</a>
+          <div><div className="text-sm font-extrabold text-g-word">🧠 Your AI's brain</div><div className="text-xs text-g-muted mt-0.5">Add what your AI should know — it starts using it instantly. Test it live below.</div></div>
+          <button onClick={() => setEditing({ topic: "", triggers: "", answer: "" })} className="btn-bright text-sm inline-flex items-center gap-2"><FaPlus size={11} /> Teach it something</button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word"><span className="text-g-green">✓</span> Last trained 2 days ago</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word"><FaCircleCheck className="text-g-green" size={11} /> {kb.length} things learned</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word"><span className="text-g-green">✓</span> Last trained {trainedAt}</span>
           {["🇺🇸 English", "🇧🇷 Português", "🇪🇸 Español"].map((l) => <span key={l} className="inline-flex items-center rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word">{l}</span>)}
         </div>
       </Card>
@@ -1061,21 +1110,71 @@ function AIBrain({ V }) {
           {chat.map((m, i) => (
             <div key={i} className="space-y-2">
               <div className="flex justify-end"><div className="max-w-[78%] rounded-2xl px-3.5 py-2 text-xs bg-g-gold/15 text-g-word border border-g-gold/30">{m.q}</div></div>
-              <div className="flex justify-start"><div className="max-w-[80%] rounded-2xl px-3.5 py-2 text-xs bg-g-green/15 text-g-light border border-g-green/30"><div className="text-[9px] font-black uppercase text-g-green mb-0.5">Your AI</div>{m.a}</div></div>
+              <div className="flex justify-start"><div className="max-w-[80%] rounded-2xl px-3.5 py-2 text-xs bg-g-green/15 text-g-light border border-g-green/30"><div className="text-[9px] font-black uppercase text-g-green mb-0.5 flex items-center gap-1">Your AI {m.trained && <span className="text-g-gold normal-case">· from your training</span>}</div>{m.a}</div></div>
             </div>
           ))}
         </div>
-        {chat.length === 0 && <div className="px-4 pb-2 flex flex-wrap gap-2">{suggestions.map((s) => <button key={s} onClick={() => setChat([{ q: s, a: aiAnswer(s, V) }])} className="rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-[11px] font-bold text-g-muted hover:text-g-word transition">{s}</button>)}</div>}
+        {chat.length === 0 && <div className="px-4 pb-2 flex flex-wrap gap-2">{suggestions.map((s) => <button key={s} onClick={() => setChat([{ q: s, a: aiAnswer(s, V, kb), trained: !!kbMatch(s, kb) }])} className="rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-[11px] font-bold text-g-muted hover:text-g-word transition">{s}</button>)}</div>}
         <form onSubmit={ask} className="p-3 border-t border-white/10 flex gap-2">
           <input value={q} onChange={(e) => setQ(e.target.value)} aria-label="Ask your AI" placeholder="Ask your AI a question…" className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
           <button className="btn-bright text-sm px-5">Ask</button>
         </form>
       </Card>
 
-      <div className="grid sm:grid-cols-2 gap-4">
-        {cards.map(([ic, title, body], i) => (
-          <Card key={i}><div className="flex items-center gap-2 mb-1"><span className="text-lg">{ic}</span><span className="text-sm font-bold text-g-word">{title}</span></div><p className="text-xs text-g-muted leading-relaxed">{body}</p></Card>
-        ))}
+      {/* EDITABLE KNOWLEDGE BASE */}
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2"><FaWandMagicSparkles size={11} /> Knowledge base · what your AI knows</div>
+          <button onClick={() => setEditing({ topic: "", triggers: "", answer: "" })} className="text-[11px] font-bold text-g-green hover:text-g-word transition inline-flex items-center gap-1"><FaPlus size={10} /> Add</button>
+        </div>
+        <div className="divide-y divide-white/[0.06]">
+          {kb.map((e) => (
+            <div key={e.id} className="px-5 py-3 flex items-start gap-3 group">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold text-g-word flex items-center gap-2">{e.topic}{e.locked && <span className="text-[9px] font-black uppercase text-g-gold border border-g-gold/30 rounded px-1.5 py-0.5">routes to human</span>}</div>
+                <p className="text-xs text-g-muted leading-relaxed mt-0.5">{e.answer}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 opacity-60 group-hover:opacity-100 transition">
+                <button onClick={() => setEditing(e)} aria-label="Edit" className="text-g-muted hover:text-g-word transition"><FaPen size={11} /></button>
+                <button onClick={() => delEntry(e.id)} aria-label="Delete" className="text-g-muted hover:text-red-400 transition"><FaTrash size={11} /></button>
+              </div>
+            </div>
+          ))}
+          {kb.length === 0 && <div className="px-5 py-8 text-center text-xs text-g-muted">Nothing trained yet — add your first answer above.</div>}
+        </div>
+      </Card>
+
+      <Drawer
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        title={editing?.id ? "Edit knowledge" : "Teach your AI"}
+        subtitle="Your AI uses this the moment you save it"
+        fields={null}
+        actions={null}
+      >
+        {editing && <KBForm key={editing.id || "new"} entry={editing} onSave={saveEntry} onCancel={() => setEditing(null)} />}
+      </Drawer>
+    </div>
+  );
+}
+
+function KBForm({ entry, onSave, onCancel }) {
+  const [topic, setTopic] = useState(entry.topic || "");
+  const [triggers, setTriggers] = useState(entry.triggers || "");
+  const [answer, setAnswer] = useState(entry.answer || "");
+  const valid = topic.trim() && answer.trim();
+  const field = "w-full rounded-xl border border-white/15 bg-black/20 px-3.5 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70";
+  return (
+    <div className="space-y-3">
+      <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">Topic</span>
+        <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. Parking & access" className={`mt-1 ${field}`} /></label>
+      <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">When customers ask about… <span className="normal-case font-normal text-g-muted/70">(keywords, optional)</span></span>
+        <input value={triggers} onChange={(e) => setTriggers(e.target.value)} placeholder="parking park garage valet" className={`mt-1 ${field}`} /></label>
+      <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">Your AI should reply</span>
+        <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} rows={4} placeholder="Free parking is available right behind the building…" className={`mt-1 ${field} resize-none`} /></label>
+      <div className="flex gap-2 pt-1">
+        <button disabled={!valid} onClick={() => onSave({ ...entry, topic: topic.trim(), triggers: triggers.trim(), answer: answer.trim() })} className="btn-bright text-sm flex-1 disabled:opacity-40 disabled:cursor-not-allowed">Save & retrain</button>
+        <button onClick={onCancel} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word transition">Cancel</button>
       </div>
     </div>
   );

@@ -74,4 +74,23 @@ export const portalApi = {
     await wait(120);
     return { ok: true, id };
   },
+
+  // ── AI knowledge base (what the client trains their AI on) ──
+  // Persists per-vertical. Demo = localStorage; live = a `kb_entries` table
+  // keyed by tenant + vertical. The "Test your AI" sandbox reads from here so
+  // training has an immediate, visible effect.
+  loadKB(vertical, seed = []) {
+    // CONNECT: const { data } = await supabase.from("kb_entries").select("*").eq("vertical", vertical); return data?.length ? data : seed;
+    try {
+      const raw = localStorage.getItem(`guileo_kb_${vertical}`);
+      if (raw) return JSON.parse(raw);
+    } catch { /* private mode */ }
+    return seed;
+  },
+
+  saveKB(vertical, entries) {
+    // CONNECT: await supabase.from("kb_entries").upsert(entries.map(e => ({ ...e, vertical })));
+    try { localStorage.setItem(`guileo_kb_${vertical}`, JSON.stringify(entries)); } catch { /* private mode */ }
+    return { ok: true, count: entries.length };
+  },
 };
