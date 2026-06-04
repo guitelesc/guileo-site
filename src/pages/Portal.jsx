@@ -228,6 +228,15 @@ const SECTION_ICON = {
   impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock, recurring: FaIdCard, reputation: FaStar,
   channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, docs: FaFileLines, settings: FaGear,
 };
+// Group the (long) nav into scannable categories
+const NAV_GROUPS = [
+  ["", ["overview"]],
+  ["Grow revenue", ["impact", "followups", "waitlist", "recurring", "reputation", "campaigns", "audiences", "grow"]],
+  ["Operations", ["liveorders", "kitchen", "menu", "schedule", "catalog", "operations"]],
+  ["Conversations", ["calllogs", "dialer", "whatsapp", "sms", "social"]],
+  ["Customers & AI", ["customers", "brain", "analytics"]],
+  ["Account", ["billing", "support", "settings"]],
+];
 
 function Card({ children, className = "" }) {
   return <div className={`rounded-xl2 border border-white/10 bg-white/[0.04] backdrop-blur-md p-5 ${className}`}>{children}</div>;
@@ -1458,22 +1467,38 @@ export default function Portal() {
           <img src={logo} alt="Guileo" className="h-8 w-8 object-contain" />
           <div className="leading-tight"><div className="text-sm font-extrabold text-g-word">Growth Cockpit</div><div className="text-[10px] text-g-muted">{V.icon} {V.business.name}</div></div>
         </div>
-        <nav aria-label="Dashboard sections" className="flex lg:flex-col gap-1 px-3 pb-3 overflow-x-auto">
-          {sections.map(([key, label, flag]) => {
-            const Icon = SECTION_ICON[key] || FaGaugeHigh;
-            const on = view === key;
-            const notif = nf(key);
-            return (
-              <button key={key} onClick={() => setView(key)}
-                className={`relative flex items-center gap-3 rounded-xl2 px-3.5 py-2.5 text-sm font-bold whitespace-nowrap transition-colors ${on ? "text-g-word" : "text-g-muted hover:text-g-word"}`}>
-                {on && <motion.span layoutId="navpill" className="absolute inset-0 rounded-xl2 bg-white/[0.07] border border-g-gold/30" transition={{ type: "spring", stiffness: 380, damping: 30 }} />}
-                <Icon size={15} className="relative" /><span className="relative">{label}</span>
-                {flag === "soon"
-                  ? <span className="relative ml-auto text-[8px] font-black uppercase tracking-wider text-g-gold/90 bg-g-gold/10 rounded px-1 py-0.5">soon</span>
-                  : notif > 0 && <span className="relative ml-auto inline-grid place-items-center h-5 min-w-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-black shadow-[0_0_8px_rgba(239,68,68,0.55)]">{notif}</span>}
-              </button>
-            );
-          })}
+        <nav aria-label="Dashboard sections" className="flex lg:flex-col gap-1 px-3 pb-3 overflow-x-auto lg:overflow-x-visible lg:overflow-y-auto">
+          {(() => {
+            const renderBtn = ([key, label, flag]) => {
+              const Icon = SECTION_ICON[key] || FaGaugeHigh;
+              const on = view === key;
+              const notif = nf(key);
+              return (
+                <button key={key} onClick={() => setView(key)}
+                  className={`relative flex items-center gap-3 rounded-xl2 px-3.5 py-2.5 text-sm font-bold whitespace-nowrap transition-colors ${on ? "text-g-word" : "text-g-muted hover:text-g-word"}`}>
+                  {on && <motion.span layoutId="navpill" className="absolute inset-0 rounded-xl2 bg-white/[0.07] border border-g-gold/30" transition={{ type: "spring", stiffness: 380, damping: 30 }} />}
+                  <Icon size={15} className="relative" /><span className="relative">{label}</span>
+                  {flag === "soon"
+                    ? <span className="relative ml-auto text-[8px] font-black uppercase tracking-wider text-g-gold/90 bg-g-gold/10 rounded px-1 py-0.5">soon</span>
+                    : notif > 0 && <span className="relative ml-auto inline-grid place-items-center h-5 min-w-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-black shadow-[0_0_8px_rgba(239,68,68,0.55)]">{notif}</span>}
+                </button>
+              );
+            };
+            const seen = new Set();
+            const groups = NAV_GROUPS.map(([g, keys]) => {
+              const items = keys.map((k) => sections.find((s) => s[0] === k)).filter(Boolean);
+              items.forEach((it) => seen.add(it[0]));
+              return [g, items];
+            }).filter(([, items]) => items.length);
+            const leftover = sections.filter((s) => !seen.has(s[0]));
+            if (leftover.length) groups.push(["More", leftover]);
+            return groups.map(([g, items]) => (
+              <div key={g || "main"} className="contents lg:block">
+                {g && <div className="hidden lg:block px-3.5 pt-3 pb-1 text-[9px] font-bold uppercase tracking-wider text-g-muted/60">{g}</div>}
+                {items.map(renderBtn)}
+              </div>
+            ));
+          })()}
         </nav>
         <div className="hidden lg:block px-4 mt-auto py-4 space-y-3">
           {V.plan && (
