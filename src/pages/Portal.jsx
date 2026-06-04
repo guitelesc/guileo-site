@@ -4,8 +4,21 @@ import {
   FaGaugeHigh, FaComments, FaBullhorn, FaUsers, FaHeadset, FaFileLines, FaListCheck,
   FaArrowLeft, FaArrowTrendUp, FaArrowTrendDown, FaWhatsapp, FaInstagram, FaPhone, FaFacebook, FaTiktok, FaGoogle,
   FaReceipt, FaUtensils, FaBookOpen, FaBullseye, FaPhoneVolume, FaCommentSms, FaGear, FaChartLine,
-  FaDownload, FaBell, FaMagnifyingGlass,
+  FaDownload, FaBell, FaMagnifyingGlass, FaStore,
 } from "react-icons/fa6";
+
+/* Upsell channel — services a client can request from inside the portal (revenue engine) */
+const ADDONS = [
+  ["💬", "Add a Telegram / Messenger agent", "One more channel your AI answers 24/7."],
+  ["📣", "Launch Meta & Google Ads", "We run and optimize your paid growth."],
+  ["🌐", "New website or landing page", "Built to convert — live in days."],
+  ["🔎", "SEO & Google Business", "Show up first when people search nearby."],
+  ["🎁", "Loyalty & win-back program", "Bring customers back automatically."],
+  ["📍", "Add another location", "Same system, brand-new store."],
+  ["🛒", "Online ordering / store", "Sell direct — keep the commissions."],
+  ["📧", "Email & SMS automation", "Follow-ups that recover revenue."],
+  ["🤖", "Custom automation", "Connect your tools, automate a workflow."],
+];
 import logo from "../assets/guileo-logo.png";
 import { Count } from "../lib/ui.jsx";
 import { waLink } from "../data/contact.js";
@@ -75,12 +88,12 @@ function Bars({ data = REVENUE, color = "#D6C29A" }) {
 /* ───────────────────────── Shell pieces ───────────────────────── */
 const DEFAULT_SECTIONS = [
   ["overview", "Overview"], ["operations", "Operations"], ["channels", "Channels"],
-  ["ads", "Marketing & Ads"], ["leads", "Leads"], ["support", "Support"], ["docs", "Documents"],
+  ["ads", "Marketing & Ads"], ["leads", "Leads"], ["grow", "Grow with Guileo"], ["support", "Support"], ["docs", "Documents"],
 ];
 const SECTION_ICON = {
   overview: FaGaugeHigh, operations: FaListCheck, analytics: FaChartLine, liveorders: FaReceipt,
   kitchen: FaUtensils, menu: FaBookOpen, customers: FaUsers, campaigns: FaBullhorn, audiences: FaBullseye,
-  calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms,
+  calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, grow: FaStore,
   channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, docs: FaFileLines, settings: FaGear,
 };
 
@@ -616,6 +629,28 @@ function SettingsView({ V }) {
   );
 }
 
+function Grow() {
+  return (
+    <div className="space-y-4">
+      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><div className="text-sm font-extrabold text-g-word">Grow with Guileo</div><div className="text-xs text-g-muted mt-0.5">Add a service or channel — your team sets it up for you. No extra logins, one bill.</div></div>
+          <a href={waLink("Hi Guileo! I'd like to add a new service to my plan")} target="_blank" rel="noopener" className="btn-bright text-sm">Talk to my team →</a>
+        </div>
+      </Card>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {ADDONS.map(([ic, name, desc], i) => (
+          <Card key={i} className="flex flex-col">
+            <div className="flex items-center gap-3"><span className="grid place-items-center h-11 w-11 rounded-xl bg-white/[0.06] text-xl shrink-0">{ic}</span><div className="text-sm font-bold text-g-word">{name}</div></div>
+            <p className="text-xs text-g-muted mt-2 flex-1">{desc}</p>
+            <a href={waLink(`Hi Guileo! I'd like to add: ${name}`)} target="_blank" rel="noopener" className="mt-3 inline-flex items-center justify-center gap-1 rounded-full border border-g-gold/40 bg-g-gold/[0.08] px-4 py-2 text-xs font-bold text-g-gold hover:bg-g-gold/[0.16] transition">Request this →</a>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ───────────────────────── Login gate (demo) ───────────────────────── */
 function Login({ onEnter }) {
   return (
@@ -666,6 +701,7 @@ export default function Portal() {
     leads: <Leads />,
     support: <Support />,
     docs: <Docs />,
+    grow: <Grow />,
     settings: <SettingsView V={V} />,
   }[view] || <Overview V={V} onNav={setView} />;
 
