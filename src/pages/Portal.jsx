@@ -785,7 +785,7 @@ function Docs() {
           <div key={name} className="flex items-center gap-3 px-5 py-3.5">
             <span className="text-xl">{ic}</span>
             <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word">{name}</div><div className="text-[11px] text-g-muted">{meta}</div></div>
-            <button aria-label={`${action} — ${name}`} className="text-xs font-bold text-g-gold hover:underline">{action}</button>
+            <button onClick={() => toast(action === "View" ? `Opening ${name}…` : `${name} · ${action}`)} aria-label={`${action} — ${name}`} className="text-xs font-bold text-g-gold hover:underline">{action}</button>
           </div>
         ))}
       </div>
@@ -984,10 +984,19 @@ function Campaigns({ V }) {
   );
 }
 function Audiences({ V }) {
+  const rows = V.audiences || genAudiences();
   return (
     <div className="grid sm:grid-cols-2 gap-4">
-      {(V.audiences || genAudiences()).map((a, i) => (
-        <Card key={i}><div className="flex items-center justify-between"><div className="text-sm font-bold text-g-word">{a.name}</div><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/[0.06] text-g-muted">{a.source}</span></div><div className="mt-2 text-2xl font-extrabold text-g-word"><Count to={a.size} /></div><div className="text-[11px] text-g-muted">people reachable</div></Card>
+      {rows.map((a, i) => (
+        <Card key={i} className="flex flex-col">
+          <div className="flex items-center justify-between"><div className="text-sm font-bold text-g-word">{a.name}</div><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/[0.06] text-g-muted">{a.source}</span></div>
+          <div className="mt-2 text-2xl font-extrabold text-g-word"><Count to={a.size} /></div>
+          <div className="text-[11px] text-g-muted">people reachable</div>
+          <div className="mt-3 flex gap-2">
+            <button onClick={() => toast(`"${a.name}" synced to ${a.source === "Meta" ? "Meta Ads" : a.source === "Google" ? "Google Ads" : "your ad platforms"} ✓`)} className="text-[11px] font-bold rounded-full border border-g-gold/35 bg-g-gold/[0.08] px-3 py-1.5 text-g-gold hover:bg-g-gold/[0.16] transition">Sync to ads</button>
+            <a href={waLink(`Hi Guileo! Launch a campaign to the "${a.name}" audience (${a.size.toLocaleString()} people)`)} target="_blank" rel="noopener" className="text-[11px] font-bold rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">Use in a campaign →</a>
+          </div>
+        </Card>
       ))}
     </div>
   );
@@ -997,7 +1006,7 @@ function CallLogs({ V }) {
   const [sel, setSel] = useState(null);
   return (
     <div className="space-y-4">
-      <MiniStats items={[["Calls answered", `${rows.length * 78}`], ["Missed calls", "0", "good"], ["Avg. duration", "1m 14s"], ["Handled by AI", "100%", "good"]]} />
+      <MiniStats items={[["Calls answered", `${vnum(V.label, "callsans", 210, 540)}`], ["Missed calls", "0", "good"], ["Avg. duration", `1m ${vnum(V.label, "calldur", 2, 54)}s`], ["Handled by AI", "100%", "good"]]} />
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Recent calls · answered by AI</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for transcript</span></div>
         <div className="divide-y divide-white/[0.06]">
@@ -1417,7 +1426,7 @@ function Billing({ V }) {
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Invoices</div>
         <div className="divide-y divide-white/[0.06]">
           {invoices.map(([n, d, s], i) => (
-            <div key={i} className="flex items-center gap-3 px-5 py-3"><span className="text-lg">🧾</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word">{n}</div><div className="text-[11px] text-g-muted">{d}</div></div><span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-g-green/15 text-g-green">{s}</span><button aria-label={`Download ${n}`} className="text-g-gold hover:text-g-word transition"><FaDownload size={12} /></button></div>
+            <div key={i} className="flex items-center gap-3 px-5 py-3"><span className="text-lg">🧾</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word">{n}</div><div className="text-[11px] text-g-muted">{d}</div></div><span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-g-green/15 text-g-green">{s}</span><button onClick={() => toast(`${n} downloaded ✓`)} aria-label={`Download ${n}`} className="text-g-gold hover:text-g-word transition"><FaDownload size={12} /></button></div>
           ))}
         </div>
       </Card>
