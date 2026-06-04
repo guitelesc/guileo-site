@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { portalApi, CONNECTED, toast, onToast } from "../lib/portalApi.js";
 import {
@@ -278,14 +278,27 @@ function Toaster() {
     </div>
   );
 }
-// Slide-over detail panel — click any row to see everything + act on it
+// Slide-over detail panel — click any row to see everything + act on it.
+// Shared by every module, so a11y/keyboard lives here once: Esc closes, focus
+// moves into the panel on open, body scroll locks, role=dialog for screen readers.
 function Drawer({ open = true, title, subtitle, badge, fields = [], note, actions, onClose, children }) {
+  const panelRef = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";          // lock background scroll
+    panelRef.current?.focus();                          // move focus into the panel
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prevOverflow; };
+  }, [open, onClose]);
   if (!open) return null;
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <motion.div initial={{ x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 320, damping: 32 }}
-        className="fixed top-0 right-0 z-50 h-full w-full max-w-sm bg-g-cream/95 backdrop-blur-xl border-l border-white/12 shadow-2xl overflow-y-auto flex flex-col">
+      <motion.div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={typeof title === "string" ? title : "Details"}
+        initial={{ x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 320, damping: 32 }}
+        className="fixed top-0 right-0 z-50 h-full w-full max-w-sm bg-g-cream/95 backdrop-blur-xl border-l border-white/12 shadow-2xl overflow-y-auto flex flex-col outline-none">
         <div className="flex items-start justify-between p-5 border-b border-white/10">
           <div className="min-w-0"><div className="text-base font-extrabold text-g-word truncate">{title}</div>{subtitle && <div className="text-xs text-g-muted mt-0.5">{subtitle}</div>}</div>
           <div className="flex items-center gap-2 shrink-0">{badge}<button onClick={onClose} aria-label="Close" className="text-g-muted hover:text-g-word text-lg leading-none px-1">✕</button></div>
@@ -1928,7 +1941,7 @@ export default function Portal() {
   const [onboarded, setOnboarded] = useState(() => { try { return !!localStorage.getItem("guileo_onboarded"); } catch { return true; } });
   useEffect(() => { portalApi.session().then((s) => { if (s) setAuthed(true); }).finally(() => setBooting(false)); }, []);
   useEffect(() => {
-    const h = (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPaletteOpen((o) => !o); } if (e.key === "Escape") setPaletteOpen(false); };
+    const h = (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPaletteOpen((o) => !o); } if (e.key === "Escape") { setPaletteOpen(false); setNavOpen(false); setBellOpen(false); } };
     window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h);
   }, []);
   const V = VERTICALS[vertical];
