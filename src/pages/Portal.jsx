@@ -824,6 +824,26 @@ function MenuView({ V }) {
     </div>
   );
 }
+// Vertical-aware "rebook" verb — Re-order for restaurants/retail, Book again for
+// appointment businesses, Schedule visit for field services.
+const REBOOK = { "Restaurant": "Re-order for them", "E-Commerce": "Send re-order link", "Clinic": "Book next visit", "Medical": "Book next visit", "Salon & Spa": "Book next visit", "Gym & Fitness": "Book a session", "Law Firm": "Schedule a call", "Real Estate": "Schedule a viewing", "Plumbing & HVAC": "Schedule service", "Auto Dealership": "Schedule service", "Education": "Book a class", "Construction": "Schedule a site visit" };
+// A synthetic recent-activity timeline so each profile reads like a real CRM record.
+function custTimeline(c, V) {
+  const noun = (c.noun || "order").replace(/s$/, "");
+  return [
+    { t: c.last, ev: `Last ${noun} · via ${c.channel}`, ic: "🟢" },
+    { t: "2 days ago", ev: `AI answered a question on ${c.channel}`, ic: "💬" },
+    { t: "1 week ago", ev: `Left a 5★ review (AI-requested)`, ic: "⭐" },
+    { t: "3 weeks ago", ev: `First ${noun} with ${V.business.name}`, ic: "✨" },
+  ];
+}
+// The revenue-share thesis, made concrete: tell the owner the single best move.
+function nextBestAction(c, i) {
+  if (i === 0) return "Your top spender. A personal thank-you + a small perk usually unlocks a referral. The AI can send it now.";
+  if ((c.orders || 0) >= 15) return "Loyal & frequent — a perfect fit for a membership/subscription. Offer it to lock in recurring revenue.";
+  return "Active but not yet loyal. One well-timed nudge with a returning-customer offer tends to convert them. The AI can handle it.";
+}
+
 function Customers({ V }) {
   const rows = V.customers || genCustomers(V);
   const totalSpent = rows.reduce((s, c) => s + (c.spent || 0), 0);
@@ -849,10 +869,26 @@ function Customers({ V }) {
           subtitle={`${sel.c.orders} ${sel.c.noun || "orders"} · via ${sel.c.channel}`}
           badge={sel.i === 0 ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-g-gold/15 text-g-gold">VIP</span> : null}
           fields={[["Lifetime value", `$${sel.c.spent.toFixed(2)}`], [(sel.c.noun || "orders"), sel.c.orders], ["Preferred channel", sel.c.channel], ["Last seen", sel.c.last], ["Status", sel.i === 0 ? "Top spender" : "Active"]]}
-          note={`Engaged by your AI across ${sel.c.channel}. ${sel.i === 0 ? "Your most valuable customer — worth a personal touch." : "Loyal customer — keep them coming back."}`}
-          actions={<a href={waLink(`Hi ${sel.c.name}! `)} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Message</a>}
+          note={<><div className="text-[10px] font-black uppercase text-g-gold mb-1">⚡ Next best action</div>{nextBestAction(sel.c, sel.i)}</>}
+          actions={<>
+            <a href={waLink(`Hi ${sel.c.name}! `)} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Message</a>
+            <button onClick={() => { toast(`${REBOOK[V.label] || "Rebook"}: queued for ${sel.c.name} ✓`); setSel(null); }} className="btn-ghost text-sm">🔁 {REBOOK[V.label] || "Rebook"}</button>
+            <button onClick={() => { toast(`Review request sent to ${sel.c.name} ✓`); setSel(null); }} className="btn-ghost text-sm">⭐ Request review</button>
+          </>}
           onClose={() => setSel(null)}
-        />
+        >
+          <div className="mt-1">
+            <div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">Recent activity</div>
+            <div className="space-y-2.5">
+              {custTimeline(sel.c, V).map((e, k) => (
+                <div key={k} className="flex items-start gap-2.5 text-xs">
+                  <span className="text-sm leading-none mt-0.5">{e.ic}</span>
+                  <div className="flex-1 min-w-0"><div className="text-g-word font-semibold">{e.ev}</div><div className="text-[10px] text-g-muted">{e.t}</div></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Drawer>
       )}
     </div>
   );
