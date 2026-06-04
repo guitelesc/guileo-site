@@ -144,6 +144,20 @@ function sectionsFor(vid, V) {
     ["grow", "Grow with Guileo"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
   ];
 }
+// Red notification counts per menu item — drives urgency badges in the sidebar
+function notifFor(key, V) {
+  switch (key) {
+    case "overview": return V.alerts ? V.alerts.items.length : 0;
+    case "liveorders": return (V.liveOrders || []).filter((o) => o.status !== "Delivered").length;
+    case "kitchen": return ((V.kitchen?.new || []).length + (V.kitchen?.preparing || []).length);
+    case "schedule": return (V.ops?.schedule || []).filter((r) => /pending|new|unassigned|risk|follow/i.test(r.status)).length;
+    case "calllogs": return 2;
+    case "whatsapp": return 1;
+    case "sms": return 1;
+    case "social": return 3;
+    default: return 0;
+  }
+}
 const SECTION_ICON = {
   overview: FaGaugeHigh, operations: FaListCheck, schedule: FaListCheck, catalog: FaBookOpen, brain: FaBrain, analytics: FaChartLine, liveorders: FaReceipt,
   kitchen: FaUtensils, menu: FaBookOpen, customers: FaUsers, campaigns: FaBullhorn, audiences: FaBullseye,
@@ -181,6 +195,22 @@ function Overview({ V, onNav }) {
         <h2 className="text-lg font-extrabold text-g-word">Dashboard Overview</h2>
         <p className="text-xs text-g-muted">Welcome back — here's what's happening at {V.business.name} today.</p>
       </div>
+
+      {/* NEEDS ATTENTION — urgency first, above results */}
+      {V.alerts && (
+        <Card className="border-red-500/30 bg-red-500/[0.06]">
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="text-xs font-bold uppercase tracking-wide text-red-400 flex items-center gap-2"><span className="animate-pulse">⚠</span> {V.alerts.title}</div>
+            <span className="text-[11px] font-bold text-red-400">{V.alerts.items.length} need action</span>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-2">
+            {V.alerts.items.map((a, i) => {
+              const c = a.level === "danger" ? "#EF4444" : a.level === "warn" ? "#D6C29A" : "#38BDF8";
+              return <div key={i} className="rounded-xl2 border-l-2 bg-white/[0.05] px-3 py-2.5 text-xs text-g-word flex items-start gap-2" style={{ borderColor: c }}><span style={{ color: c }}>⚠</span>{a.text}</div>;
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* PROFIT IMPACT — money first (the only thing the owner must see) */}
       <Card className="relative overflow-hidden bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] border-g-green/30">
@@ -287,9 +317,9 @@ function Overview({ V, onNav }) {
         )}
       </div>
 
-      {/* Rich row: top selling (restaurant) + recent activity (when channel breakdown took the slot above) + needs attention */}
-      {(V.topItems || V.alerts) && (
-        <div className="grid lg:grid-cols-3 gap-4">
+      {/* Rich row: top selling (restaurant) + recent activity */}
+      {(V.topItems || V.channelMix) && (
+        <div className="grid lg:grid-cols-2 gap-4">
           {V.topItems && (
           <Card>
             <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{V.topItems.title}</div>
@@ -319,17 +349,6 @@ function Overview({ V, onNav }) {
               ))}
             </ul>
           </Card>
-          )}
-          {V.alerts && (
-            <Card>
-              <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{V.alerts.title}</div>
-              <div className="space-y-2">
-                {V.alerts.items.map((a, i) => {
-                  const c = a.level === "danger" ? "#EF4444" : a.level === "warn" ? "#D6C29A" : "#38BDF8";
-                  return <div key={i} className="rounded-xl2 border-l-2 bg-white/[0.04] px-3 py-2.5 text-xs text-g-word flex items-start gap-2" style={{ borderColor: c }}><span style={{ color: c }}>⚠</span>{a.text}</div>;
-                })}
-              </div>
-            </Card>
           )}
         </div>
       )}
@@ -925,6 +944,7 @@ export default function Portal() {
   const [vertOpen, setVertOpen] = useState(false);
   const V = VERTICALS[vertical];
   const sections = sectionsFor(vertical, V);
+  const totalNotif = sections.reduce((s, [k]) => s + notifFor(k, V), 0);
   const cur = sections.find((s) => s[0] === view);
   const title = view === "operations" ? `${V.label} operations` : (cur ? cur[1] : "Overview");
   const switchVertical = (k) => { setVertical(k); setView("overview"); };
@@ -970,12 +990,15 @@ export default function Portal() {
           {sections.map(([key, label, flag]) => {
             const Icon = SECTION_ICON[key] || FaGaugeHigh;
             const on = view === key;
+            const notif = notifFor(key, V);
             return (
               <button key={key} onClick={() => setView(key)}
                 className={`relative flex items-center gap-3 rounded-xl2 px-3.5 py-2.5 text-sm font-bold whitespace-nowrap transition-colors ${on ? "text-g-word" : "text-g-muted hover:text-g-word"}`}>
                 {on && <motion.span layoutId="navpill" className="absolute inset-0 rounded-xl2 bg-white/[0.07] border border-g-gold/30" transition={{ type: "spring", stiffness: 380, damping: 30 }} />}
                 <Icon size={15} className="relative" /><span className="relative">{label}</span>
-                {flag === "soon" && <span className="relative ml-auto text-[8px] font-black uppercase tracking-wider text-g-gold/90 bg-g-gold/10 rounded px-1 py-0.5">soon</span>}
+                {flag === "soon"
+                  ? <span className="relative ml-auto text-[8px] font-black uppercase tracking-wider text-g-gold/90 bg-g-gold/10 rounded px-1 py-0.5">soon</span>
+                  : notif > 0 && <span className="relative ml-auto inline-grid place-items-center h-5 min-w-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-black shadow-[0_0_8px_rgba(239,68,68,0.55)]">{notif}</span>}
               </button>
             );
           })}
@@ -1007,7 +1030,7 @@ export default function Portal() {
           <div className="flex items-center gap-2 shrink-0">
             <div className="hidden md:flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs text-g-muted w-40"><FaMagnifyingGlass size={11} /><span className="truncate">Search… ⌘K</span></div>
             <button className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word hover:border-g-gold/40 transition"><FaDownload size={11} /> Report</button>
-            <button className="relative grid place-items-center h-9 w-9 rounded-full border border-white/12 bg-white/[0.04] text-g-muted hover:text-g-word transition" aria-label="Notifications"><FaBell size={13} /><span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-g-green" /></button>
+            <button className="relative grid place-items-center h-9 w-9 rounded-full border border-white/12 bg-white/[0.04] text-g-muted hover:text-g-word transition" aria-label={`Notifications (${totalNotif})`}><FaBell size={13} />{totalNotif > 0 && <span className="absolute -top-1 -right-1 inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black shadow-[0_0_8px_rgba(239,68,68,0.6)]">{totalNotif}</span>}</button>
             <div className="hidden lg:flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.04] p-1">
               {["7 days", "30 days", "90 days"].map((p) => (
                 <button key={p} onClick={() => setPeriod(p)} className={`rounded-full px-3 py-1 text-xs font-bold transition ${period === p ? "bg-g-gold/15 text-g-gold" : "text-g-muted hover:text-g-word"}`}>{p}</button>
