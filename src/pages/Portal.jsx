@@ -330,13 +330,21 @@ function scaleMoney(str, f) {
 
 // The "what should I do today to grow?" list — Guileo earns a % of growth, so the
 // home screen leads with the concrete money moves, each linking to its module.
+// Numbers are derived from the SAME data the modules show, so the home screen and
+// the detail screens never disagree.
 function growthOps(V) {
+  const wait = genWaitlist(V);
+  const fups = genFollowups(V);
+  const recur = genRecurring(V);
+  const pipeline = fups.reduce((s, r) => s + (r.value || 0), 0);
+  const atRisk = recur.filter((r) => r.status === "At risk");
+  const atRiskMo = atRisk.reduce((s, r) => s + (r.value || 0), 0);
   return [
-    { ic: "🪑", view: "waitlist", text: "people waiting for an open slot", n: 4, value: "$1,240" },
-    { ic: "🎯", view: "followups", text: "follow-ups about to convert", n: 6, value: "$3,180" },
-    { ic: "🛟", view: "recurring", text: "at-risk plans to save this week", n: 3, value: "$540/mo" },
+    { ic: "🪑", view: "waitlist", text: wait.length === 1 ? "person waiting for an open slot" : "people waiting for an open slot", n: wait.length, value: "$1,240" },
+    { ic: "🎯", view: "followups", text: fups.length === 1 ? "follow-up about to convert" : "follow-ups about to convert", n: fups.length, value: `$${pipeline.toLocaleString()}` },
+    { ic: "🛟", view: "recurring", text: atRisk.length === 1 ? "at-risk plan to save this week" : "at-risk plans to save this week", n: atRisk.length, value: `$${atRiskMo}/mo` },
     { ic: "⭐", view: "reputation", text: "happy customers to ask for a review", n: 12, value: "+rating" },
-  ];
+  ].filter((o) => o.n > 0);
 }
 
 function Overview({ V, onNav, sections = [], period = "30 days" }) {
