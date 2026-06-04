@@ -242,6 +242,43 @@ function Operations({ V }) {
           )}
         </div>
       </div>
+
+      {(o.mix || o.peak || o.channels) && (
+        <div className="grid lg:grid-cols-3 gap-4">
+          {o.mix && (
+            <Card>
+              <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{o.mix.title}</div>
+              {o.mix.items.map(([label, val], i) => {
+                const total = o.mix.items.reduce((s, x) => s + x[1], 0);
+                return (
+                  <div key={i} className="mb-2.5 last:mb-0">
+                    <div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{label}</span><span className="text-g-muted">{Math.round((val / total) * 100)}%</span></div>
+                    <div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${(val / total) * 100}%` }} /></div>
+                  </div>
+                );
+              })}
+            </Card>
+          )}
+          {o.peak && (
+            <Card>
+              <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{o.peak.title}</div>
+              <Bars data={o.peak.data} color="#D6C29A" />
+              {o.peak.labels && <div className="mt-1 flex justify-between text-[9px] text-g-muted">{o.peak.labels.map((l, i) => <span key={i}>{l}</span>)}</div>}
+            </Card>
+          )}
+          {o.channels && (
+            <Card>
+              <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{o.channels.title}</div>
+              {o.channels.items.map(([label, val], i) => (
+                <div key={i} className="mb-2.5 last:mb-0">
+                  <div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{label}</span><span className="text-g-muted">{val}%</span></div>
+                  <div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-g-green" style={{ width: `${val}%` }} /></div>
+                </div>
+              ))}
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 }

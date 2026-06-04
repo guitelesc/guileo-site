@@ -42,6 +42,9 @@ export const VERTICALS = {
       listTitle: "Top dishes today", list: [
         { name: "Margherita", val: 42 }, { name: "Pepperoni", val: 31 }, { name: "Tiramisù", val: 18 }, { name: "Lasagna", val: 14 },
       ],
+      mix: { title: "Orders mix", items: [["🍽️ Dine-in", 54], ["🛵 Delivery", 31], ["🥡 Takeout", 15]] },
+      peak: { title: "Covers by hour", data: [4, 6, 9, 14, 22, 38, 52, 61, 48, 30, 18, 8], labels: ["12", "", "14", "", "16", "", "18", "", "20", "", "22", ""] },
+      channels: { title: "Where bookings come from", items: [["WhatsApp", 38], ["Phone", 29], ["Instagram", 21], ["Google", 12]] },
     },
   },
 
