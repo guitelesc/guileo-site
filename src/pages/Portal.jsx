@@ -1552,7 +1552,7 @@ function AIAnalytics({ V }) {
   ];
   return (
     <div className="space-y-4">
-      <MiniStats items={[["Conversations analyzed", "1,842"], ["Avg sentiment", "Positive 👍", "good"], ["Resolved by AI", "91%", "good"], ["Avg handle time", "1m 12s"]]} />
+      <MiniStats items={[["Conversations analyzed", vnum(V.label, "convan", 980, 3200).toLocaleString()], ["Avg sentiment", "Positive 👍", "good"], ["Resolved by AI", `${vnum(V.label, "resai", 86, 95)}%`, "good"], ["Avg handle time", `1m ${vnum(V.label, "handle", 4, 52)}s`]]} />
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Sentiment</div>
