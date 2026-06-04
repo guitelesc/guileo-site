@@ -6,21 +6,37 @@ const G = "#3E9468", B = "#38BDF8", D = "#D6C29A", C = "#C2A878";
 export const VERTICALS = {
   restaurant: {
     label: "Restaurant", icon: "🍽️",
-    business: { name: "Bella Pizza", place: "São Paulo · BR", since: "Live since Apr 2026" },
-    impact: { total: 24800, parts: [["Revenue recovered", "$18,420"], ["Extra covers booked", "$4,200"], ["Ad return", "$2,180"]] },
+    business: { name: "New York Pão de Queijo", place: "New York · US", since: "Live since Apr 2026" },
+    impact: { total: 24800, parts: [["Revenue recovered", "$18,420"], ["Extra orders", "$4,200"], ["Ad return", "$2,180"]] },
     kpis: [
-      { ic: "📅", label: "Reservations today", num: 48, delta: 12, color: G },
-      { ic: "🍽️", label: "Covers booked", num: 132, delta: 9, color: B },
-      { ic: "🚫", label: "No-show rate", num: 4, suf: "%", color: D, note: "−2 pts", good: true },
-      { ic: "💰", label: "Revenue recovered", pre: "$", num: 18420, delta: 22, color: G },
+      { ic: "💵", label: "Total revenue", pre: "$", num: 12840, delta: 12, color: G },
+      { ic: "📦", label: "Total orders", num: 506, delta: 8, color: "#8B7CF6" },
+      { ic: "📈", label: "Avg order value", pre: "$", num: 25, delta: 3, color: D },
+      { ic: "📞", label: "Total calls", num: 312, delta: 15, color: B },
+      { ic: "🧑", label: "Total customers", num: 418, delta: 33, color: C },
+      { ic: "🔁", label: "Repeat rate", num: 38, suf: "%", delta: 5, color: G },
     ],
     revenue: [8, 10, 9, 13, 12, 16, 15, 19, 18, 22, 24, 28],
     activity: [
-      ["📞", "Phone", "Booked a table for 4 — tonight 8:00 PM", "now"],
-      ["💬", "WhatsApp", "Took a delivery order — $54", "4 min"],
-      ["📸", "Instagram", "Answered a menu question & upsold dessert", "11 min"],
-      ["⭐", "Google", "Asked a happy diner for a 5★ review", "22 min"],
+      ["📞", "Phone", "João ordered Pão de Queijo x2 — $17.00", "2m"],
+      ["💬", "WhatsApp", "Order from Maria Silva — $24.50", "8m"],
+      ["✅", "Delivery", "Order #1044 delivered to 31st Ave", "15m"],
+      ["⭐", "Google", "Asked a happy customer for a 5★ review", "22m"],
     ],
+    quick: [["🍳", "View kitchen HUD", "ops"], ["🍽️", "Manage menu items", "wa"], ["📣", "Send a campaign", "wa"]],
+    channelMix: { title: "Channel breakdown", sub: "Order distribution by source", items: [["WhatsApp", 34], ["Phone (AI)", 28], ["Delivery apps", 22], ["Walk-in / QR", 16]] },
+    topItems: { title: "Top selling items", items: [
+      { name: "Pão de Queijo (3 pack)", sold: 142, rev: 1207.00 },
+      { name: "Brazilian Coffee", sold: 120, rev: 480.00 },
+      { name: "Brigadeiro", sold: 95, rev: 285.00 },
+      { name: "Coxinha", sold: 85, rev: 382.50 },
+      { name: "Acai Bowl", sold: 64, rev: 768.00 },
+    ] },
+    alerts: { title: "Needs attention", items: [
+      { level: "warn", text: "Active orders waiting in Kitchen Prep queues" },
+      { level: "danger", text: "Pão de Queijo (3 pack) — low stock flagged" },
+      { level: "info", text: "Inbound customer calls awaiting AI assistance" },
+    ] },
     ops: {
       stats: [
         { label: "Seated now", value: "76%", tone: "neutral" },

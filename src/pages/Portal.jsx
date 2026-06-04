@@ -87,11 +87,11 @@ function Card({ children, className = "" }) {
 
 /* ───────────────────────── Views ───────────────────────── */
 function Overview({ V, onNav }) {
-  const quick = [
-    { ic: "📋", label: "See today's operations", on: () => onNav("operations") },
-    { ic: "💬", label: "Message my team", on: () => onNav("support") },
-    { ic: "📣", label: "Ask for a campaign", href: waLink("I'd like to launch a campaign with Guileo") },
-  ];
+  const quick = (V.quick || [["📋", "See today's operations", "ops"], ["💬", "Message my team", "support"], ["📣", "Ask for a campaign", "wa"]]).map(([ic, label, kind]) =>
+    kind === "ops" ? { ic, label, on: () => onNav("operations") }
+      : kind === "support" ? { ic, label, on: () => onNav("support") }
+        : { ic, label, href: waLink(`Guileo — ${label}`) }
+  );
   return (
     <div className="space-y-5">
       {/* PROFIT IMPACT — money first (the only thing the owner must see) */}
@@ -113,7 +113,7 @@ function Overview({ V, onNav }) {
         </div>
       </Card>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={`grid gap-4 grid-cols-2 ${V.kpis.length >= 6 ? "md:grid-cols-3 xl:grid-cols-6" : "sm:grid-cols-2 lg:grid-cols-4"}`}>
         {V.kpis.map((k, i) => (
           <motion.div key={k.label} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
             <Card>
@@ -160,31 +160,84 @@ function Overview({ V, onNav }) {
         </Card>
       </div>
 
+      {/* Revenue + channel breakdown (or live activity) */}
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
-            <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Revenue · last 12 months</div>
+            <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Revenue &amp; order volume</div>
             <div className="text-xs text-g-muted">+186% YoY</div>
           </div>
           <Bars data={V.revenue} />
         </Card>
-        <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Live activity</div>
-          <ul className="space-y-3">
-            {V.activity.map(([ic, ch, msg, t], i) => (
-              <li key={ch + t + i} className="flex items-start gap-3">
-                <span className="text-lg shrink-0">{ic}</span>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-g-word">{ch} <span className="text-g-green">· AI</span></div>
-                  <div className="text-[11px] text-g-muted leading-snug">{msg}</div>
-                </div>
-                <span className="ml-auto text-[10px] text-g-light whitespace-nowrap">{t}</span>
-              </li>
+        {V.channelMix ? (
+          <Card>
+            <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{V.channelMix.title}</div>
+            <div className="text-[11px] text-g-muted mb-3">{V.channelMix.sub}</div>
+            {V.channelMix.items.map(([label, pct], i) => (
+              <div key={i} className="mb-2.5 last:mb-0">
+                <div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{label}</span><span className="text-g-muted">{pct}%</span></div>
+                <div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-g-green" style={{ width: `${pct}%` }} /></div>
+              </div>
             ))}
-          </ul>
-        </Card>
+          </Card>
+        ) : (
+          <Card>
+            <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Live activity</div>
+            <ul className="space-y-3">
+              {V.activity.map(([ic, ch, msg, t], i) => (
+                <li key={ch + t + i} className="flex items-start gap-3">
+                  <span className="text-lg shrink-0">{ic}</span>
+                  <div className="min-w-0"><div className="text-xs font-bold text-g-word">{ch} <span className="text-g-green">· AI</span></div><div className="text-[11px] text-g-muted leading-snug">{msg}</div></div>
+                  <span className="ml-auto text-[10px] text-g-light whitespace-nowrap">{t}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
       </div>
 
+      {/* Rich row (restaurant-style): top selling + recent activity + needs attention */}
+      {V.topItems && (
+        <div className="grid lg:grid-cols-3 gap-4">
+          <Card>
+            <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{V.topItems.title}</div>
+            <div className="space-y-3">
+              {V.topItems.items.map((it, i) => {
+                const max = Math.max(...V.topItems.items.map((x) => x.sold));
+                return (
+                  <div key={i}>
+                    <div className="flex justify-between items-baseline text-xs mb-1"><span className="font-bold text-g-word uppercase truncate pr-2">{it.name}</span><span className="text-g-muted whitespace-nowrap">{it.sold} sold · <span className="text-g-green font-bold">${it.rev.toFixed(2)}</span></span></div>
+                    <div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${(it.sold / max) * 100}%` }} /></div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+          <Card>
+            <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Recent activity</div>
+            <ul className="space-y-3">
+              {V.activity.map(([ic, ch, msg, t], i) => (
+                <li key={ch + t + i} className="flex items-start gap-3">
+                  <span className="text-lg shrink-0">{ic}</span>
+                  <div className="min-w-0"><div className="text-xs font-bold text-g-word">{ch} <span className="text-g-green">· AI</span></div><div className="text-[11px] text-g-muted leading-snug">{msg}</div></div>
+                  <span className="ml-auto text-[10px] text-g-light whitespace-nowrap">{t}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+          {V.alerts && (
+            <Card>
+              <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{V.alerts.title}</div>
+              <div className="space-y-2">
+                {V.alerts.items.map((a, i) => {
+                  const c = a.level === "danger" ? "#EF4444" : a.level === "warn" ? "#D6C29A" : "#38BDF8";
+                  return <div key={i} className="rounded-xl2 border-l-2 bg-white/[0.04] px-3 py-2.5 text-xs text-g-word flex items-start gap-2" style={{ borderColor: c }}><span style={{ color: c }}>⚠</span>{a.text}</div>;
+                })}
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 }
