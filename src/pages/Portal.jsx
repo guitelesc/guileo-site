@@ -348,8 +348,10 @@ function growthOps(V) {
 }
 
 function Overview({ V, onNav, sections = [], period = "30 days" }) {
-  const [resolved, setResolved] = useState([]);
+  const [resolved, setResolved] = useState(() => portalApi.loadState(`${V.label}:alerts`, []));
   const [alertsOpen, setAlertsOpen] = useState(false);
+  useEffect(() => { setResolved(portalApi.loadState(`${V.label}:alerts`, [])); }, [V.label]);
+  const resolveAlert = (i) => { portalApi.resolveAlert(i); setResolved((r) => { const n = [...r, i]; portalApi.saveState(`${V.label}:alerts`, n); return n; }); toast("Marked as handled ✓"); };
   const validViews = new Set(sections.map(([k]) => k));
   const ops = growthOps(V).filter((o) => validViews.has(o.view)).slice(0, 3);
   // The seed data represents a 30-day window; 7d/90d scale the cumulative money.
@@ -391,7 +393,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
                           <span className="flex-1 min-w-0 text-xs text-g-light leading-snug">{a.text}</span>
                           <div className="flex items-center gap-1.5 shrink-0">
                             {target && <button onClick={() => onNav(target.view)} className="text-[11px] font-bold text-g-muted hover:text-g-word transition px-2 py-1 rounded-lg hover:bg-white/[0.05] opacity-0 group-hover:opacity-100">{target.label} →</button>}
-                            <button onClick={() => { portalApi.resolveAlert(i); setResolved((r) => [...r, i]); toast("Marked as handled ✓"); }} className="text-[11px] font-bold text-g-green border border-g-green/25 hover:bg-g-green/10 transition px-2.5 py-1 rounded-lg">Resolve</button>
+                            <button onClick={() => resolveAlert(i)} className="text-[11px] font-bold text-g-green border border-g-green/25 hover:bg-g-green/10 transition px-2.5 py-1 rounded-lg">Resolve</button>
                           </div>
                         </div>
                       );
@@ -1604,11 +1606,12 @@ function GuileoImpact({ V }) {
 
 function Followups({ V }) {
   const rows = genFollowups(V);
-  const [done, setDone] = useState([]);
+  const [done, setDone] = useState(() => portalApi.loadState(`${V.label}:fups`, []));
   const [sel, setSel] = useState(null);
+  useEffect(() => { setDone(portalApi.loadState(`${V.label}:fups`, [])); }, [V.label]);
   const open = rows.map((r, i) => ({ r, i })).filter(({ i }) => !done.includes(i));
   const pipeline = open.reduce((s, { r }) => s + r.value, 0);
-  const markWon = (i, name) => { setDone((d) => [...d, i]); setSel(null); toast(`${name} marked won 🎉`); };
+  const markWon = (i, name) => { setDone((d) => { const n = [...d, i]; portalApi.saveState(`${V.label}:fups`, n); return n; }); setSel(null); toast(`${name} marked won 🎉`); };
   return (
     <div className="space-y-4">
       <MiniStats items={[["Active sequences", `${open.length}`], ["Pipeline value", `$${pipeline.toLocaleString()}`], ["Won this week", "8", "good"], ["Auto-nudged", "31", "good"]]} />
@@ -1645,10 +1648,11 @@ function Followups({ V }) {
 
 function Waitlist({ V }) {
   const rows = genWaitlist(V);
-  const [filled, setFilled] = useState([]);
+  const [filled, setFilled] = useState(() => portalApi.loadState(`${V.label}:wait`, []));
   const [sel, setSel] = useState(null);
+  useEffect(() => { setFilled(portalApi.loadState(`${V.label}:wait`, [])); }, [V.label]);
   const open = rows.map((r, i) => ({ r, i })).filter(({ i }) => !filled.includes(i));
-  const offer = (i, name) => { setFilled((f) => [...f, i]); setSel(null); toast(`Offer sent to ${name} ✓`); };
+  const offer = (i, name) => { setFilled((f) => { const n = [...f, i]; portalApi.saveState(`${V.label}:wait`, n); return n; }); setSel(null); toast(`Offer sent to ${name} ✓`); };
   return (
     <div className="space-y-4">
       <MiniStats items={[["Waiting now", `${open.length}`], ["Filled today", "9", "good"], ["No-shows saved", "7", "good"], ["Revenue recovered", "$1,240", "good"]]} />
@@ -1818,9 +1822,10 @@ export default function Portal() {
   const [period, setPeriod] = useState("30 days");
   const [vertical, setVertical] = useState("restaurant");
   const [vertOpen, setVertOpen] = useState(false);
-  const [notifsRead, setNotifsRead] = useState(false);
+  const [notifsRead, setNotifsRead] = useState(() => portalApi.loadState(`${vertical}:notifsRead`, false));
   const [bellOpen, setBellOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const [onboarded, setOnboarded] = useState(() => { try { return !!localStorage.getItem("guileo_onboarded"); } catch { return true; } });
   useEffect(() => { portalApi.session().then((s) => { if (s) setAuthed(true); }).finally(() => setBooting(false)); }, []);
   useEffect(() => {
@@ -1834,7 +1839,8 @@ export default function Portal() {
   const notifList = notifsRead ? [] : sections.map(([k, l]) => ({ k, l, n: notifFor(k, V) })).filter((x) => x.n > 0);
   const cur = sections.find((s) => s[0] === view);
   const title = view === "operations" ? `${V.label} operations` : (cur ? cur[1] : "Overview");
-  const switchVertical = (k) => { setVertical(k); setView("overview"); setVertOpen(false); setNotifsRead(false); };
+  const switchVertical = (k) => { setVertical(k); setView("overview"); setVertOpen(false); setNotifsRead(portalApi.loadState(`${k}:notifsRead`, false)); };
+  const markAllRead = () => { setNotifsRead(true); portalApi.saveState(`${vertical}:notifsRead`, true); setBellOpen(false); toast("All caught up ✓"); };
   const logout = () => portalApi.logout().then(() => setAuthed(false));
   const exportReport = () => {
     const rows = [["Metric", "Value"], ...V.kpis.map((k) => [k.label, `${k.pre || ""}${k.num}${k.suf || ""}`])];
@@ -1888,20 +1894,23 @@ export default function Portal() {
 
   return (
     <div className="min-h-screen text-g-ink flex flex-col lg:flex-row">
-      {/* Sidebar */}
-      <aside className="lg:w-60 lg:min-h-screen border-b lg:border-b-0 lg:border-r border-white/10 bg-white/[0.03] backdrop-blur-xl lg:sticky lg:top-0 lg:flex lg:flex-col">
+      {/* Mobile backdrop */}
+      {navOpen && <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden" onClick={() => setNavOpen(false)} />}
+      {/* Sidebar — slide-over on mobile, static on desktop */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[82vw] overflow-y-auto transform transition-transform duration-300 ${navOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static lg:z-auto lg:w-60 lg:max-w-none lg:min-h-screen border-r border-white/10 bg-[#070b10]/98 lg:bg-white/[0.03] backdrop-blur-xl lg:sticky lg:top-0 flex flex-col`}>
         <div className="flex items-center gap-2 px-5 py-4">
           <img src={logo} alt="Guileo" className="h-8 w-8 object-contain" />
-          <div className="leading-tight"><div className="text-sm font-extrabold text-g-word">Growth Cockpit</div><div className="text-[10px] text-g-muted">{V.icon} {V.business.name}</div></div>
+          <div className="leading-tight flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word">Growth Cockpit</div><div className="text-[10px] text-g-muted truncate">{V.icon} {V.business.name}</div></div>
+          <button onClick={() => setNavOpen(false)} className="lg:hidden text-g-muted hover:text-g-word text-lg leading-none px-1" aria-label="Close menu">✕</button>
         </div>
-        <nav aria-label="Dashboard sections" className="flex lg:flex-col gap-1 px-3 pb-3 overflow-x-auto lg:overflow-x-visible lg:overflow-y-auto">
+        <nav aria-label="Dashboard sections" className="flex flex-col gap-1 px-3 pb-3 overflow-y-auto">
           {(() => {
             const renderBtn = ([key, label, flag]) => {
               const Icon = SECTION_ICON[key] || FaGaugeHigh;
               const on = view === key;
               const notif = nf(key);
               return (
-                <button key={key} onClick={() => setView(key)}
+                <button key={key} onClick={() => { setView(key); setNavOpen(false); }}
                   className={`relative flex items-center gap-3 rounded-xl2 px-3.5 py-2.5 text-sm font-bold whitespace-nowrap transition-colors ${on ? "text-g-word" : "text-g-muted hover:text-g-word"}`}>
                   {on && <motion.span layoutId="navpill" className="absolute inset-0 rounded-xl2 bg-white/[0.07] border border-g-gold/30" transition={{ type: "spring", stiffness: 380, damping: 30 }} />}
                   <Icon size={15} className="relative" /><span className="relative">{label}</span>
@@ -1920,14 +1929,14 @@ export default function Portal() {
             const leftover = sections.filter((s) => !seen.has(s[0]));
             if (leftover.length) groups.push(["More", leftover]);
             return groups.map(([g, items]) => (
-              <div key={g || "main"} className="contents lg:block">
-                {g && <div className="hidden lg:block px-3.5 pt-3 pb-1 text-[9px] font-bold uppercase tracking-wider text-g-muted/60">{g}</div>}
+              <div key={g || "main"} className="block">
+                {g && <div className="px-3.5 pt-3 pb-1 text-[9px] font-bold uppercase tracking-wider text-g-muted/60">{g}</div>}
                 {items.map(renderBtn)}
               </div>
             ));
           })()}
         </nav>
-        <div className="hidden lg:block px-4 mt-auto py-4 space-y-3">
+        <div className="block px-4 mt-auto py-4 space-y-3">
           {V.plan && (
             <div className="rounded-xl2 border border-g-gold/25 bg-g-gold/[0.06] p-3">
               <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wide"><span className="text-g-gold">{V.plan.label}</span><span className="text-g-muted">{V.plan.used} / {V.plan.total.toLocaleString()}</span></div>
@@ -1947,9 +1956,12 @@ export default function Portal() {
       <main className="flex-1 min-w-0">
         {/* topbar */}
         <header className="flex items-center justify-between gap-3 px-5 sm:px-8 py-4 border-b border-white/10 bg-white/[0.02] backdrop-blur-md sticky top-0 z-20">
-          <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl font-extrabold text-g-word truncate">{title}</h1>
-            <p className="text-[11px] text-g-muted truncate">{V.business.name} · {V.business.place} · {V.business.since}</p>
+          <div className="flex items-center gap-3 min-w-0">
+            <button onClick={() => setNavOpen(true)} className="lg:hidden grid place-items-center h-9 w-9 rounded-xl border border-white/12 bg-white/[0.04] text-g-word shrink-0" aria-label="Open menu">☰</button>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-extrabold text-g-word truncate">{title}</h1>
+              <p className="text-[11px] text-g-muted truncate">{V.business.name} · {V.business.place} · {V.business.since}</p>
+            </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button onClick={() => setPaletteOpen(true)} className="hidden md:flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs text-g-muted w-40 hover:border-g-gold/40 transition"><FaMagnifyingGlass size={11} /><span className="truncate">Search… ⌘K</span></button>
@@ -1960,7 +1972,7 @@ export default function Portal() {
                 <>
                   <div className="fixed inset-0 z-20" onClick={() => setBellOpen(false)} />
                   <div className="absolute right-0 mt-2 w-72 max-h-96 overflow-y-auto rounded-xl2 border border-white/12 bg-g-cream/95 backdrop-blur-xl shadow-lift z-30 p-1.5">
-                    <div className="flex items-center justify-between px-2.5 py-1.5"><span className="text-[10px] font-bold uppercase tracking-wide text-g-muted">Notifications</span>{totalNotif > 0 && <button onClick={() => { setNotifsRead(true); setBellOpen(false); toast("All caught up ✓"); }} className="text-[10px] font-bold text-g-gold hover:underline">Mark all read</button>}</div>
+                    <div className="flex items-center justify-between px-2.5 py-1.5"><span className="text-[10px] font-bold uppercase tracking-wide text-g-muted">Notifications</span>{totalNotif > 0 && <button onClick={markAllRead} className="text-[10px] font-bold text-g-gold hover:underline">Mark all read</button>}</div>
                     {notifList.length ? notifList.map(({ k, l, n }) => (
                       <button key={k} onClick={() => { setView(k); setBellOpen(false); }} className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-bold text-left text-g-muted hover:text-g-word hover:bg-white/[0.06] transition">
                         <span className="grid place-items-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black">{n}</span>

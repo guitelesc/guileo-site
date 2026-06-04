@@ -111,4 +111,24 @@ export const portalApi = {
     try { localStorage.setItem(`guileo_profile_${vertical}`, JSON.stringify(profile)); } catch { /* private mode */ }
     return { ok: true };
   },
+
+  // ── Durable UI state (resolved alerts, won deals, filled slots, read flags) ──
+  // This is what makes the demo behave like a real connected app: an operator's
+  // actions persist across reloads instead of dying with component state.
+  // Keyed by an arbitrary scope string (e.g. "Restaurant:alerts"). Live backend
+  // would store these as per-tenant rows; the seam stays identical.
+  loadState(key, fallback) {
+    // CONNECT: read from a `ui_state` table by (tenant, key)
+    try {
+      const raw = localStorage.getItem(`guileo_state_${key}`);
+      if (raw != null) return JSON.parse(raw);
+    } catch { /* private mode */ }
+    return fallback;
+  },
+
+  saveState(key, value) {
+    // CONNECT: upsert into `ui_state` (tenant, key, value)
+    try { localStorage.setItem(`guileo_state_${key}`, JSON.stringify(value)); } catch { /* private mode */ }
+    return { ok: true };
+  },
 };
