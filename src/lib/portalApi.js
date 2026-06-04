@@ -93,4 +93,22 @@ export const portalApi = {
     try { localStorage.setItem(`guileo_kb_${vertical}`, JSON.stringify(entries)); } catch { /* private mode */ }
     return { ok: true, count: entries.length };
   },
+
+  // ── Business profile (name / address / hours / phone) ──
+  // Single source of truth for the facts the AI repeats most. Editing it in
+  // Settings re-syncs the AI's "location" & "hours" answers (see syncProfileIntoKB).
+  loadProfile(vertical, seed = {}) {
+    // CONNECT: const { data } = await supabase.from("business_profile").select("*").eq("vertical", vertical).single(); return data || seed;
+    try {
+      const raw = localStorage.getItem(`guileo_profile_${vertical}`);
+      if (raw) return { ...seed, ...JSON.parse(raw) };
+    } catch { /* private mode */ }
+    return seed;
+  },
+
+  saveProfile(vertical, profile) {
+    // CONNECT: await supabase.from("business_profile").upsert({ ...profile, vertical });
+    try { localStorage.setItem(`guileo_profile_${vertical}`, JSON.stringify(profile)); } catch { /* private mode */ }
+    return { ok: true };
+  },
 };

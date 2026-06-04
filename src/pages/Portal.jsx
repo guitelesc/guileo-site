@@ -320,6 +320,7 @@ function alertTarget(text = "") {
 /* ───────────────────────── Views ───────────────────────── */
 function Overview({ V, onNav, sections = [] }) {
   const [resolved, setResolved] = useState([]);
+  const [alertsOpen, setAlertsOpen] = useState(false);
   const validViews = new Set(sections.map(([k]) => k));
   const openAlerts = V.alerts ? V.alerts.items.map((a, i) => ({ a, i })).filter(({ i }) => !resolved.includes(i)) : [];
   const quick = (V.quick || [["📋", "See today's operations", "ops"], ["💬", "Message my team", "support"], ["📣", "Ask for a campaign", "wa"]]).map(([ic, label, kind]) =>
@@ -334,34 +335,42 @@ function Overview({ V, onNav, sections = [] }) {
         <p className="text-xs text-g-muted">Welcome back — here's what's happening at {V.business.name} today.</p>
       </div>
 
-      {/* NEEDS ATTENTION — calm, scannable list · the ACTION is the loudest thing, not the colour */}
+      {/* NEEDS ATTENTION — one quiet line by default; expands only on click */}
       {V.alerts && (
         openAlerts.length ? (
-          <Card className="p-0 overflow-hidden border-white/10">
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.07]">
-              <div className="text-xs font-bold text-g-word flex items-center gap-2"><span className="grid place-items-center h-5 w-5 rounded-full bg-g-gold/15 text-g-gold text-[10px]">⚠</span>{V.alerts.title}</div>
-              <span className="text-[11px] font-bold text-g-muted">{openAlerts.length} to handle</span>
-            </div>
-            <div className="divide-y divide-white/[0.05]">
-              {openAlerts.map(({ a, i }) => {
-                const t0 = alertTarget(a.text);
-                const target = t0 && validViews.has(t0.view) ? t0 : null;
-                return (
-                  <div key={i} className="group flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.025] transition">
-                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${a.level === "danger" ? "bg-red-400" : a.level === "warn" ? "bg-g-gold" : "bg-sky-400"}`} />
-                    <span className="flex-1 min-w-0 text-xs text-g-light leading-snug">{a.text}</span>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {target && <button onClick={() => onNav(target.view)} className="text-[11px] font-bold text-g-muted hover:text-g-word transition px-2 py-1 rounded-lg hover:bg-white/[0.05] opacity-0 group-hover:opacity-100">{target.label} →</button>}
-                      <button onClick={() => { portalApi.resolveAlert(i); setResolved((r) => [...r, i]); toast("Marked as handled ✓"); }} className="text-[11px] font-bold text-g-green border border-g-green/25 hover:bg-g-green/10 transition px-2.5 py-1 rounded-lg">Resolve</button>
-                    </div>
+          <div className="rounded-xl2 border border-white/[0.08] bg-white/[0.02] overflow-hidden">
+            <button onClick={() => setAlertsOpen((o) => !o)} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left hover:bg-white/[0.02] transition">
+              <span className="h-1.5 w-1.5 rounded-full bg-g-gold shrink-0" />
+              <span className="text-xs font-bold text-g-word">{openAlerts.length} {openAlerts.length === 1 ? "item needs" : "items need"} your attention</span>
+              <span className="flex-1" />
+              <FaChevronDown size={11} className={`text-g-muted transition-transform ${alertsOpen ? "rotate-180" : ""}`} />
+            </button>
+            <AnimatePresence initial={false}>
+              {alertsOpen && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} className="overflow-hidden">
+                  <div className="divide-y divide-white/[0.05] border-t border-white/[0.06]">
+                    {openAlerts.map(({ a, i }) => {
+                      const t0 = alertTarget(a.text);
+                      const target = t0 && validViews.has(t0.view) ? t0 : null;
+                      return (
+                        <div key={i} className="group flex items-center gap-3 px-3.5 py-2.5 hover:bg-white/[0.025] transition">
+                          <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${a.level === "danger" ? "bg-red-400" : a.level === "warn" ? "bg-g-gold" : "bg-sky-400"}`} />
+                          <span className="flex-1 min-w-0 text-xs text-g-light leading-snug">{a.text}</span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {target && <button onClick={() => onNav(target.view)} className="text-[11px] font-bold text-g-muted hover:text-g-word transition px-2 py-1 rounded-lg hover:bg-white/[0.05] opacity-0 group-hover:opacity-100">{target.label} →</button>}
+                            <button onClick={() => { portalApi.resolveAlert(i); setResolved((r) => [...r, i]); toast("Marked as handled ✓"); }} className="text-[11px] font-bold text-g-green border border-g-green/25 hover:bg-g-green/10 transition px-2.5 py-1 rounded-lg">Resolve</button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
-          </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         ) : (
-          <div className="flex items-center gap-2.5 rounded-xl2 border border-g-green/20 bg-g-green/[0.04] px-4 py-2.5 text-xs text-g-light">
-            <span className="text-g-green">✅</span> All clear — your AI is on top of everything. 👏
+          <div className="flex items-center gap-2.5 rounded-xl2 border border-g-green/15 bg-g-green/[0.03] px-3.5 py-2 text-xs text-g-muted">
+            <span className="h-1.5 w-1.5 rounded-full bg-g-green shrink-0" /> All clear — your AI is on top of everything.
           </div>
         )
       )}
@@ -982,13 +991,47 @@ function SettingsView({ V }) {
   const [toggles, setToggles] = useState({ voice: true, chat: true, reviews: true, recall: true, afterhours: true, marketing: false });
   const flip = (k) => setToggles((t) => { const v = !t[k]; toast(`${LBL[k]}: ${v ? "On" : "Off"}`); return { ...t, [k]: v }; });
   const LBL = { voice: "AI voice agent", chat: "WhatsApp & SMS AI", reviews: "Auto-request reviews", recall: "Recalls & reminders", afterhours: "After-hours coverage", marketing: "Weekly marketing digest" };
-  const info = [["Business name", V.business.name], ["Location", V.business.place], ["Plan", V.plan?.label || "Growth Plan"], ["Languages", "English · Português · Español"], ["Timezone", "Local"]];
+
+  // Editable business profile → feeds the trained AI's location & hours answers.
+  const [profile, setProfile] = useState(() => portalApi.loadProfile(V.label, defProfile(V)));
+  const [draft, setDraft] = useState(profile);
+  useEffect(() => { const p = portalApi.loadProfile(V.label, defProfile(V)); setProfile(p); setDraft(p); }, [V.label]);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(profile);
+  const set = (k) => (e) => setDraft((d) => ({ ...d, [k]: e.target.value }));
+  const saveProfile = () => {
+    portalApi.saveProfile(V.label, draft);
+    // Re-sync the AI's location & hours answers so training reflects the edit.
+    const kb = portalApi.loadKB(V.label, seedKB(V, draft)).map((e) =>
+      e.id === "biz" ? { ...e, answer: profBiz(draft) } : e.id === "hours" ? { ...e, answer: profHours(draft) } : e
+    );
+    portalApi.saveKB(V.label, kb);
+    setProfile(draft);
+    toast("Business profile saved — your AI is updated ✓");
+  };
+  const fieldCls = "mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-3.5 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70";
+  const PROFILE_FIELDS = [["Business name", "name", "Your business name"], ["Address / location", "place", "123 Main St, City"], ["Opening hours", "hours", "Mon–Sun, 9am–10pm"], ["Public phone", "phone", "(optional)"]];
   return (
     <div className="space-y-4">
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Business</div>
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Business profile</div>
+          <span className="text-[10px] text-g-muted inline-flex items-center gap-1"><FaWandMagicSparkles size={9} className="text-g-green" /> feeds your AI's answers</span>
+        </div>
         <div className="divide-y divide-white/[0.06]">
-          {info.map(([k, v], i) => (
+          {PROFILE_FIELDS.map(([label, k, ph]) => (
+            <label key={k} className="block px-5 py-3"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{label}</span>
+              <input value={draft[k] || ""} onChange={set(k)} placeholder={ph} className={fieldCls} /></label>
+          ))}
+        </div>
+        <div className="px-5 py-3 border-t border-white/10 flex items-center justify-between gap-3">
+          <span className="text-[11px] text-g-muted">{dirty ? "Unsaved changes" : "Your AI uses these facts when customers ask."}</span>
+          <button onClick={saveProfile} disabled={!dirty} className="btn-bright text-sm disabled:opacity-40 disabled:cursor-not-allowed">Save & update AI</button>
+        </div>
+      </Card>
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Account</div>
+        <div className="divide-y divide-white/[0.06]">
+          {[["Plan", V.plan?.label || "Growth Plan"], ["Languages", "English · Português · Español"], ["Timezone", "Local"]].map(([k, v], i) => (
             <div key={i} className="flex items-center justify-between px-5 py-3.5"><span className="text-sm text-g-muted">{k}</span><span className="text-sm font-bold text-g-word text-right">{v}</span></div>
           ))}
         </div>
@@ -1064,18 +1107,30 @@ function kbMatch(q, kb) {
     const trig = [...new Set(kbTokens(`${e.topic} ${e.triggers || ""}`))];
     if (!trig.length) continue;
     const hits = trig.filter((w) => qt.some((x) => wordsMatch(w, x))).length;
-    const score = hits / Math.sqrt(trig.length);
-    if (hits > 0 && score > bestScore) { bestScore = score; best = e; }
+    if (!hits) continue;
+    // Raw hit count wins (more keyword overlap = more relevant); a small
+    // focus bonus breaks ties toward concise entries. More triggers must HELP
+    // recall, never hurt it — so we do NOT divide by trigger count.
+    const score = hits + hits / trig.length * 0.1;
+    if (score > bestScore) { bestScore = score; best = e; }
   }
-  return bestScore >= 0.4 ? best : null;
+  return best; // any ≥1 keyword overlap matches; no overlap → keyword fallback
 }
 
-// Default seed: pull real facts out of the vertical so every sector starts smart.
-function seedKB(V) {
+// The handful of facts the AI repeats most — editable in Settings, feeds the KB.
+function defProfile(V) {
+  return { name: V.business.name, place: V.business.place, hours: "Mon–Sun, 9am–10pm", phone: "" };
+}
+const profBiz = (p) => `We're ${p.name}, located at ${p.place}. I can send directions on WhatsApp — want them?`;
+const profHours = (p) => `We're open ${p.hours}. Want me to book you in?`;
+
+// Default seed: pull real facts out of the vertical (+ saved profile) so every
+// sector starts smart.
+function seedKB(V, profile = defProfile(V)) {
   const services = (V.ops?.list || []).slice(0, 6).map((x) => x.name).filter(Boolean).join(", ");
   return [
-    { id: "biz", topic: "Location & address", triggers: "where address location directions onde endereço", answer: `We're ${V.business.name}, located at ${V.business.place}. I can send directions on WhatsApp — want them?`, locked: false },
-    { id: "hours", topic: "Opening hours", triggers: "open close time hours aberto horário", answer: "We're open Mon–Sun, 9am–10pm. Want me to book you in?", locked: false },
+    { id: "biz", topic: "Location & address", triggers: "where address location directions onde endereço", answer: profBiz(profile), locked: false },
+    { id: "hours", topic: "Opening hours", triggers: "open close time hours aberto horário", answer: profHours(profile), locked: false },
     { id: "book", topic: "Bookings & appointments", triggers: "book booking appointment reserve table schedule agendar marcar", answer: "Absolutely! What day and time works for you? I'll lock it in right away. 📅", locked: false },
     { id: "price", topic: "Pricing & quotes", triggers: "price pricing cost quote preço quanto", answer: "Pricing depends on what you need — I can get you a quick quote. What are you looking for?", locked: false },
     { id: "services", topic: "Services offered", triggers: "service services offer menu catalog produtos", answer: services ? `We offer: ${services}. Which one can I help you with?` : "We offer a full range of services — tell me what you need and I'll guide you.", locked: false },
@@ -1092,14 +1147,14 @@ function aiAnswer(q, V, kb) {
 }
 
 function AIBrain({ V }) {
-  const [kb, setKb] = useState(() => portalApi.loadKB(V.label, seedKB(V)));
+  const [kb, setKb] = useState(() => portalApi.loadKB(V.label, seedKB(V, portalApi.loadProfile(V.label, defProfile(V)))));
   const [trainedAt, setTrainedAt] = useState("2 days ago");
   const [editing, setEditing] = useState(null); // entry being edited, or {} for new
   const [q, setQ] = useState("");
   const [chat, setChat] = useState([]);
 
-  // Reload when switching verticals (each sector keeps its own brain).
-  useEffect(() => { setKb(portalApi.loadKB(V.label, seedKB(V))); setChat([]); }, [V.label]);
+  // Reload when switching verticals (each sector keeps its own brain + profile).
+  useEffect(() => { setKb(portalApi.loadKB(V.label, seedKB(V, portalApi.loadProfile(V.label, defProfile(V))))); setChat([]); }, [V.label]);
 
   const persist = (next) => { setKb(next); portalApi.saveKB(V.label, next); setTrainedAt("just now"); toast("AI retrained ✓ — it'll use this on the next conversation"); };
   const saveEntry = (entry) => {
