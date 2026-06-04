@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import {
   FaGaugeHigh, FaComments, FaBullhorn, FaUsers, FaHeadset, FaFileLines, FaListCheck,
   FaArrowLeft, FaArrowTrendUp, FaArrowTrendDown, FaWhatsapp, FaInstagram, FaPhone, FaFacebook, FaTiktok, FaGoogle,
+  FaReceipt, FaUtensils, FaBookOpen, FaBullseye, FaPhoneVolume, FaCommentSms, FaGear, FaChartLine,
+  FaDownload, FaBell, FaMagnifyingGlass,
 } from "react-icons/fa6";
 import logo from "../assets/guileo-logo.png";
 import { Count } from "../lib/ui.jsx";
@@ -71,15 +73,16 @@ function Bars({ data = REVENUE, color = "#D6C29A" }) {
 }
 
 /* ───────────────────────── Shell pieces ───────────────────────── */
-const NAV = [
-  ["overview", "Overview", FaGaugeHigh],
-  ["operations", "Operations", FaListCheck],
-  ["channels", "Channels", FaComments],
-  ["ads", "Marketing & Ads", FaBullhorn],
-  ["leads", "Leads", FaUsers],
-  ["support", "Support", FaHeadset],
-  ["docs", "Documents", FaFileLines],
+const DEFAULT_SECTIONS = [
+  ["overview", "Overview"], ["operations", "Operations"], ["channels", "Channels"],
+  ["ads", "Marketing & Ads"], ["leads", "Leads"], ["support", "Support"], ["docs", "Documents"],
 ];
+const SECTION_ICON = {
+  overview: FaGaugeHigh, operations: FaListCheck, analytics: FaChartLine, liveorders: FaReceipt,
+  kitchen: FaUtensils, menu: FaBookOpen, customers: FaUsers, campaigns: FaBullhorn, audiences: FaBullseye,
+  calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms,
+  channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, docs: FaFileLines, settings: FaGear,
+};
 
 function Card({ children, className = "" }) {
   return <div className={`rounded-xl2 border border-white/10 bg-white/[0.04] backdrop-blur-md p-5 ${className}`}>{children}</div>;
@@ -94,6 +97,11 @@ function Overview({ V, onNav }) {
   );
   return (
     <div className="space-y-5">
+      <div>
+        <h2 className="text-lg font-extrabold text-g-word">Dashboard Overview</h2>
+        <p className="text-xs text-g-muted">Welcome back — here's what's happening at {V.business.name} today.</p>
+      </div>
+
       {/* PROFIT IMPACT — money first (the only thing the owner must see) */}
       <Card className="relative overflow-hidden bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] border-g-green/30">
         <div className="absolute -top-16 -right-12 h-40 w-40 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
@@ -163,9 +171,12 @@ function Overview({ V, onNav }) {
       {/* Revenue + channel breakdown (or live activity) */}
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Revenue &amp; order volume</div>
-            <div className="text-xs text-g-muted">+186% YoY</div>
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Revenue &amp; order volume</div>
+              <div className="mt-1 flex items-center gap-3 text-[10px] text-g-muted"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-gold" />Revenue</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-green" />Orders</span></div>
+            </div>
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-g-green"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />Live sync</span>
           </div>
           <Bars data={V.revenue} />
         </Card>
@@ -449,6 +460,162 @@ function Docs() {
 }
 
 
+/* ───────────────────────── Sector screens (restaurant + reusable) ───────────────────────── */
+function ComingSoon({ title }) {
+  return <Card className="text-center py-16"><div className="text-3xl mb-2">✨</div><div className="text-lg font-extrabold text-g-word">{title}</div><div className="text-sm text-g-muted mt-1">Coming soon — deep AI insights on your data.</div></Card>;
+}
+function LiveOrders({ V }) {
+  const rows = V.liveOrders || [];
+  return (
+    <Card className="p-0 overflow-hidden">
+      <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Live orders</span><span className="text-[11px] text-g-muted inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{rows.length} active</span></div>
+      <div className="divide-y divide-white/[0.06]">
+        {rows.map((o, i) => (
+          <div key={i} className="flex items-center gap-3 px-5 py-3">
+            <span className="text-xs font-bold text-g-light w-16 shrink-0">{o.id}</span>
+            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{o.customer}</div><div className="text-[11px] text-g-muted truncate">{o.items} · {o.channel}</div></div>
+            <span className="text-sm font-extrabold text-g-word">${o.total.toFixed(2)}</span>
+            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: o.color + "22", color: o.color }}>{o.status}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+function Kitchen({ V }) {
+  const k = V.kitchen || { new: [], preparing: [], ready: [] };
+  const cols = [["New", "new", "#3E9468"], ["Preparing", "preparing", "#38BDF8"], ["Ready", "ready", "#D6C29A"]];
+  return (
+    <div className="grid sm:grid-cols-3 gap-4">
+      {cols.map(([label, key, c]) => (
+        <Card key={key}>
+          <div className="flex items-center justify-between mb-3"><span className="text-xs font-bold uppercase tracking-wide" style={{ color: c }}>{label}</span><span className="text-[11px] text-g-muted">{(k[key] || []).length}</span></div>
+          <div className="space-y-2">
+            {(k[key] || []).map((o, i) => (
+              <div key={i} className="rounded-xl2 border border-white/10 bg-white/[0.04] p-3"><div className="flex justify-between text-xs"><span className="font-bold text-g-word">{o.id}</span><span className="text-g-muted">{o.t}</span></div><div className="text-[11px] text-g-muted mt-0.5">{o.items}</div></div>
+            ))}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+function MenuView({ V }) {
+  const sc = (s) => s === "Out" ? "#EF4444" : s === "Low" ? "#D6C29A" : "#3E9468";
+  return (
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {(V.menu || []).map((m, i) => (
+        <Card key={i}>
+          <div className="flex items-start justify-between gap-2">
+            <div><div className="text-sm font-bold text-g-word">{m.name}</div><div className="text-[11px] text-g-muted">{m.cat}</div></div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: sc(m.stock) + "22", color: sc(m.stock) }}>{m.stock}</span>
+          </div>
+          <div className="mt-3 text-xl font-extrabold text-g-word">${m.price.toFixed(2)}</div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+function Customers({ V }) {
+  return (
+    <Card className="p-0 overflow-hidden">
+      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Customers</div>
+      <div className="divide-y divide-white/[0.06]">
+        {(V.customers || []).map((c, i) => (
+          <div key={i} className="flex items-center gap-3 px-5 py-3">
+            <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{c.name[0]}</span>
+            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name}</div><div className="text-[11px] text-g-muted truncate">{c.orders} orders · {c.channel} · {c.last}</div></div>
+            <span className="text-sm font-extrabold text-g-green">${c.spent.toFixed(2)}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+function Campaigns({ V }) {
+  return (
+    <Card className="p-0 overflow-hidden">
+      <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Campaigns</span><a href={waLink("I'd like to launch a campaign")} target="_blank" rel="noopener" className="text-[11px] font-bold text-g-gold hover:underline">New campaign →</a></div>
+      <div className="divide-y divide-white/[0.06]">
+        {(V.campaigns || []).map((c, i) => (
+          <div key={i} className="flex items-center gap-4 px-5 py-3.5">
+            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name}</div><div className="text-[11px] text-g-muted">{c.channel} · {c.sent} sent · {c.opened}% opened</div></div>
+            <span className="text-sm font-extrabold text-g-green">${c.revenue.toLocaleString()}</span>
+            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: (c.status === "Active" ? "#3E9468" : "#D6C29A") + "22", color: c.status === "Active" ? "#3E9468" : "#D6C29A" }}>{c.status}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+function Audiences({ V }) {
+  return (
+    <div className="grid sm:grid-cols-2 gap-4">
+      {(V.audiences || []).map((a, i) => (
+        <Card key={i}><div className="flex items-center justify-between"><div className="text-sm font-bold text-g-word">{a.name}</div><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/[0.06] text-g-muted">{a.source}</span></div><div className="mt-2 text-2xl font-extrabold text-g-word"><Count to={a.size} /></div><div className="text-[11px] text-g-muted">people reachable</div></Card>
+      ))}
+    </div>
+  );
+}
+function CallLogs({ V }) {
+  return (
+    <Card className="p-0 overflow-hidden">
+      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Call logs · answered by AI</div>
+      <div className="divide-y divide-white/[0.06]">
+        {(V.callLogs || []).map((c, i) => (
+          <div key={i} className="flex items-center gap-3 px-5 py-3">
+            <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06]" style={{ color: c.color }}><FaPhone size={13} /></span>
+            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name} <span className="text-g-muted font-normal">· {c.phone}</span></div><div className="text-[11px] text-g-muted truncate">{c.outcome}</div></div>
+            <div className="text-right shrink-0"><div className="text-[11px] text-g-light font-bold">{c.dur}</div><div className="text-[10px] text-g-muted">{c.time}</div></div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+function Dialer() {
+  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
+  return (
+    <div className="max-w-xs mx-auto">
+      <Card className="text-center">
+        <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">AI Call Dialer</div>
+        <div className="h-10 rounded-xl2 bg-black/20 border border-white/10 grid place-items-center text-g-word font-bold mb-3">+1 (___) ___-____</div>
+        <div className="grid grid-cols-3 gap-2">{keys.map((k) => <button key={k} className="h-12 rounded-xl2 border border-white/10 bg-white/[0.04] text-g-word font-bold hover:border-g-gold/40 transition">{k}</button>)}</div>
+        <button className="btn-bright w-full mt-3 text-sm">📞 Start AI call</button>
+      </Card>
+    </div>
+  );
+}
+function Convos({ V, title }) {
+  return (
+    <Card className="p-0 overflow-hidden">
+      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{title} · AI conversations</div>
+      <div className="divide-y divide-white/[0.06]">
+        {(V.convos || []).map((c, i) => (
+          <div key={i} className="flex items-center gap-3 px-5 py-3">
+            <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{c.name[0]}</span>
+            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name}</div><div className="text-[11px] text-g-muted truncate">{c.last}</div></div>
+            <div className="text-right shrink-0 flex flex-col items-end gap-1"><span className="text-[10px] text-g-muted">{c.t}</span>{c.unread > 0 && <span className="inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-g-green text-[10px] font-bold text-black">{c.unread}</span>}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+function SettingsView({ V }) {
+  const rows = [["Business name", V.business.name], ["Location", V.business.place], ["AI voice agent", "On"], ["WhatsApp & SMS", "On"], ["Auto reviews", "On"], ["Language", "English"]];
+  return (
+    <Card className="p-0 overflow-hidden">
+      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Settings</div>
+      <div className="divide-y divide-white/[0.06]">
+        {rows.map(([k, v], i) => (
+          <div key={i} className="flex items-center justify-between px-5 py-3.5"><span className="text-sm text-g-muted">{k}</span><span className="text-sm font-bold text-g-word">{v}</span></div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 /* ───────────────────────── Login gate (demo) ───────────────────────── */
 function Login({ onEnter }) {
   return (
@@ -476,40 +643,69 @@ export default function Portal() {
   const [period, setPeriod] = useState("30 days");
   const [vertical, setVertical] = useState("restaurant");
   const V = VERTICALS[vertical];
+  const sections = V.sections || DEFAULT_SECTIONS;
+  const cur = sections.find((s) => s[0] === view);
+  const title = view === "operations" ? `${V.label} operations` : (cur ? cur[1] : "Overview");
+  const switchVertical = (k) => { setVertical(k); setView("overview"); };
   const content = {
     overview: <Overview V={V} onNav={setView} />,
     operations: <Operations V={V} />,
+    analytics: <ComingSoon title="AI Analytics" />,
+    liveorders: <LiveOrders V={V} />,
+    kitchen: <Kitchen V={V} />,
+    menu: <MenuView V={V} />,
+    customers: <Customers V={V} />,
+    campaigns: <Campaigns V={V} />,
+    audiences: <Audiences V={V} />,
+    calllogs: <CallLogs V={V} />,
+    dialer: <Dialer />,
+    whatsapp: <Convos V={V} title="WhatsApp" />,
+    sms: <Convos V={V} title="SMS" />,
     channels: <Channels />,
     ads: <Ads />,
     leads: <Leads />,
     support: <Support />,
     docs: <Docs />,
-  }[view];
+    settings: <SettingsView V={V} />,
+  }[view] || <Overview V={V} onNav={setView} />;
 
   if (!authed) return <div className="min-h-screen text-g-ink"><Login onEnter={() => setAuthed(true)} /></div>;
 
   return (
     <div className="min-h-screen text-g-ink flex flex-col lg:flex-row">
       {/* Sidebar */}
-      <aside className="lg:w-60 lg:min-h-screen border-b lg:border-b-0 lg:border-r border-white/10 bg-white/[0.03] backdrop-blur-xl lg:sticky lg:top-0">
+      <aside className="lg:w-60 lg:min-h-screen border-b lg:border-b-0 lg:border-r border-white/10 bg-white/[0.03] backdrop-blur-xl lg:sticky lg:top-0 lg:flex lg:flex-col">
         <div className="flex items-center gap-2 px-5 py-4">
           <img src={logo} alt="Guileo" className="h-8 w-8 object-contain" />
           <div className="leading-tight"><div className="text-sm font-extrabold text-g-word">Growth Cockpit</div><div className="text-[10px] text-g-muted">{V.icon} {V.business.name}</div></div>
         </div>
         <nav aria-label="Dashboard sections" className="flex lg:flex-col gap-1 px-3 pb-3 overflow-x-auto">
-          {NAV.map(([key, label, Icon]) => {
+          {sections.map(([key, label, flag]) => {
+            const Icon = SECTION_ICON[key] || FaGaugeHigh;
             const on = view === key;
             return (
               <button key={key} onClick={() => setView(key)}
                 className={`relative flex items-center gap-3 rounded-xl2 px-3.5 py-2.5 text-sm font-bold whitespace-nowrap transition-colors ${on ? "text-g-word" : "text-g-muted hover:text-g-word"}`}>
                 {on && <motion.span layoutId="navpill" className="absolute inset-0 rounded-xl2 bg-white/[0.07] border border-g-gold/30" transition={{ type: "spring", stiffness: 380, damping: 30 }} />}
                 <Icon size={15} className="relative" /><span className="relative">{label}</span>
+                {flag === "soon" && <span className="relative ml-auto text-[8px] font-black uppercase tracking-wider text-g-gold/90 bg-g-gold/10 rounded px-1 py-0.5">soon</span>}
               </button>
             );
           })}
         </nav>
-        <div className="hidden lg:block px-5 mt-auto py-4">
-          <a href="/" className="inline-flex items-center gap-2 text-xs font-bold text-g-muted hover:text-g-gold transition"><FaArrowLeft size={11} /> Back to site</a>
+        <div className="hidden lg:block px-4 mt-auto py-4 space-y-3">
+          {V.plan && (
+            <div className="rounded-xl2 border border-g-gold/25 bg-g-gold/[0.06] p-3">
+              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wide"><span className="text-g-gold">{V.plan.label}</span><span className="text-g-muted">{V.plan.used} / {V.plan.total.toLocaleString()}</span></div>
+              <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${Math.max(2, (V.plan.used / V.plan.total) * 100)}%` }} /></div>
+              <div className="mt-1.5 text-[10px] text-g-muted">{V.plan.unit}</div>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <span className="grid place-items-center h-8 w-8 rounded-full bg-g-green/15 text-xs font-bold text-g-light">JS</span>
+            <div className="leading-tight min-w-0 flex-1"><div className="text-xs font-bold text-g-word truncate">Jane Staff</div><div className="text-[10px] text-g-muted truncate">Staff · admin</div></div>
+            <a href="/" title="Back to site" className="text-g-muted hover:text-g-gold transition"><FaArrowLeft size={12} /></a>
+          </div>
         </div>
       </aside>
 
@@ -517,12 +713,15 @@ export default function Portal() {
       <main className="flex-1 min-w-0">
         {/* topbar */}
         <header className="flex items-center justify-between gap-3 px-5 sm:px-8 py-4 border-b border-white/10 bg-white/[0.02] backdrop-blur-md sticky top-0 z-20">
-          <div>
-            <h1 className="text-lg sm:text-xl font-extrabold text-g-word">{view === "operations" ? `${V.label} operations` : NAV.find(n => n[0] === view)[1]}</h1>
-            <p className="text-[11px] text-g-muted">{V.business.name} · {V.business.place} · {V.business.since}</p>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-extrabold text-g-word truncate">{title}</h1>
+            <p className="text-[11px] text-g-muted truncate">{V.business.name} · {V.business.place} · {V.business.since}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.04] p-1">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="hidden md:flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs text-g-muted w-40"><FaMagnifyingGlass size={11} /><span className="truncate">Search… ⌘K</span></div>
+            <button className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word hover:border-g-gold/40 transition"><FaDownload size={11} /> Report</button>
+            <button className="relative grid place-items-center h-9 w-9 rounded-full border border-white/12 bg-white/[0.04] text-g-muted hover:text-g-word transition" aria-label="Notifications"><FaBell size={13} /><span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-g-green" /></button>
+            <div className="hidden lg:flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.04] p-1">
               {["7 days", "30 days", "90 days"].map((p) => (
                 <button key={p} onClick={() => setPeriod(p)} className={`rounded-full px-3 py-1 text-xs font-bold transition ${period === p ? "bg-g-gold/15 text-g-gold" : "text-g-muted hover:text-g-word"}`}>{p}</button>
               ))}
@@ -541,7 +740,7 @@ export default function Portal() {
             {VERTICAL_KEYS.map((k) => {
               const on = vertical === k;
               return (
-                <button key={k} onClick={() => setVertical(k)}
+                <button key={k} onClick={() => switchVertical(k)}
                   className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold border transition ${on ? "border-g-green/50 bg-g-green/15 text-g-light" : "border-white/12 bg-white/[0.04] text-g-muted hover:text-g-word"}`}>
                   {VERTICALS[k].icon} <span className="hidden sm:inline">{VERTICALS[k].label}</span>
                 </button>

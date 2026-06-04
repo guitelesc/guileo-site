@@ -37,6 +37,61 @@ export const VERTICALS = {
       { level: "danger", text: "Pão de Queijo (3 pack) — low stock flagged" },
       { level: "info", text: "Inbound customer calls awaiting AI assistance" },
     ] },
+    plan: { label: "Growth Plan", used: 1, total: 2000, unit: "Orders this month" },
+    sections: [
+      ["overview", "Overview"], ["analytics", "AI Analytics", "soon"], ["liveorders", "Live Orders"],
+      ["kitchen", "Kitchen View"], ["menu", "Menu"], ["customers", "Customers"], ["campaigns", "Campaigns"],
+      ["audiences", "Ad Audiences"], ["calllogs", "Call Logs"], ["dialer", "Call Dialer"],
+      ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["support", "Support"], ["settings", "Settings"],
+    ],
+    liveOrders: [
+      { id: "#1047", customer: "João P.", items: "Pão de Queijo x2", total: 17.0, channel: "Phone", status: "Preparing", color: B },
+      { id: "#1046", customer: "Maria Silva", items: "Açaí Bowl, Coffee", total: 24.5, channel: "WhatsApp", status: "New", color: G },
+      { id: "#1045", customer: "Carlos M.", items: "Coxinha x4", total: 18.0, channel: "Delivery", status: "Ready", color: D },
+      { id: "#1044", customer: "Ana R.", items: "Brigadeiro x6", total: 17.1, channel: "QR / Walk-in", status: "Delivered", color: "#7C7C7C" },
+    ],
+    kitchen: {
+      new: [{ id: "#1046", items: "Açaí Bowl, Coffee", t: "1 min" }, { id: "#1048", items: "Pão de Queijo x3", t: "now" }],
+      preparing: [{ id: "#1047", items: "Pão de Queijo x2", t: "4 min" }, { id: "#1043", items: "Coxinha x2, Coffee", t: "6 min" }],
+      ready: [{ id: "#1045", items: "Coxinha x4", t: "ready" }],
+    },
+    menu: [
+      { name: "Pão de Queijo (3 pack)", price: 8.5, cat: "Savory", stock: "Low" },
+      { name: "Coxinha", price: 4.5, cat: "Savory", stock: "OK" },
+      { name: "Brazilian Coffee", price: 4.0, cat: "Drinks", stock: "OK" },
+      { name: "Açaí Bowl", price: 12.0, cat: "Bowls", stock: "OK" },
+      { name: "Brigadeiro", price: 3.0, cat: "Sweets", stock: "OK" },
+      { name: "Guaraná", price: 3.5, cat: "Drinks", stock: "Out" },
+    ],
+    customers: [
+      { name: "Maria Silva", orders: 24, spent: 612.5, last: "8 min ago", channel: "WhatsApp" },
+      { name: "João P.", orders: 18, spent: 410.0, last: "2 min ago", channel: "Phone" },
+      { name: "Carlos M.", orders: 11, spent: 268.0, last: "1 h ago", channel: "Delivery" },
+      { name: "Ana R.", orders: 7, spent: 132.4, last: "Yesterday", channel: "QR" },
+    ],
+    campaigns: [
+      { name: "Weekend Pão de Queijo combo", channel: "WhatsApp", sent: 1240, opened: 64, revenue: 1820, status: "Active" },
+      { name: "Win-back · 30 days inactive", channel: "SMS", sent: 380, opened: 41, revenue: 640, status: "Active" },
+      { name: "New Açaí launch", channel: "Email", sent: 920, opened: 38, revenue: 1110, status: "Scheduled" },
+    ],
+    audiences: [
+      { name: "Repeat customers (3+ orders)", size: 412, source: "Orders" },
+      { name: "Lapsed (no order 30d)", size: 188, source: "CRM" },
+      { name: "Lookalike · top spenders", size: 22000, source: "Meta" },
+      { name: "Local · 3mi radius", size: 48000, source: "Google" },
+    ],
+    callLogs: [
+      { name: "João P.", phone: "+1 (917) 555-0142", outcome: "Order placed · $17.00", dur: "1m 12s", time: "2 min ago", color: G },
+      { name: "Unknown", phone: "+1 (646) 555-0199", outcome: "Hours & menu answered", dur: "0m 48s", time: "20 min ago", color: B },
+      { name: "Maria Silva", phone: "+1 (917) 555-0177", outcome: "Reservation · 4 ppl", dur: "1m 33s", time: "41 min ago", color: G },
+      { name: "Robocall", phone: "+1 (800) 555-0100", outcome: "Spam · blocked", dur: "0m 04s", time: "1 h ago", color: "#EF4444" },
+    ],
+    convos: [
+      { name: "Maria Silva", last: "Order received! ETA 25 min 🛵", t: "8m", unread: 0 },
+      { name: "João P.", last: "Confirmed — Pão de Queijo x2", t: "2m", unread: 1 },
+      { name: "Carlos M.", last: "Your order is out for delivery", t: "15m", unread: 0 },
+      { name: "+1 (646) 555-0188", last: "What time do you close today?", t: "22m", unread: 2 },
+    ],
     ops: {
       stats: [
         { label: "Seated now", value: "76%", tone: "neutral" },
