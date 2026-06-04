@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   FaGaugeHigh, FaComments, FaBullhorn, FaUsers, FaHeadset, FaFileLines, FaListCheck,
   FaArrowLeft, FaArrowTrendUp, FaArrowTrendDown, FaWhatsapp, FaInstagram, FaPhone, FaFacebook, FaTiktok, FaGoogle,
@@ -34,14 +34,6 @@ const LEADS = [
   { name: "Ana L.", ch: "WhatsApp", when: "1 h ago", status: "Booked", color: "#3E9468" },
   { name: "Bruno T.", ch: "Facebook", when: "2 h ago", status: "Follow-up", color: "#C2A878" },
   { name: "Carla M.", ch: "Google", when: "3 h ago", status: "Review ⭐", color: "#3E9468" },
-];
-
-const ACTIVITY = [
-  ["📸", "Instagram", "AI replied to a DM and closed a $240 order", "now"],
-  ["💬", "WhatsApp", "Booked a table — Saturday 8:00 PM", "3 min"],
-  ["📞", "Phone", "Answered a call & took a delivery order", "12 min"],
-  ["⭐", "Google", "Asked a happy client for a 5★ review", "25 min"],
-  ["📘", "Meta Ads", "Cut cost per lead to $3.50", "1 h"],
 ];
 
 const DOCS = [
@@ -128,7 +120,7 @@ function Overview({ V, onNav }) {
               <div className="flex items-center justify-between">
                 <span className="grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] text-xl">{k.ic}</span>
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: (k.good ? "#3E9468" : k.color) + "22", color: k.good ? "#3E9468" : k.color }}>
-                  {k.good ? <FaArrowTrendDown size={10} /> : <FaArrowTrendUp size={10} />} {k.note || `+${k.delta}%`}
+                  {k.good ? <FaArrowTrendDown size={10} /> : <FaArrowTrendUp size={10} />} {k.note || (k.delta != null ? `+${k.delta}%` : "live")}
                 </span>
               </div>
               <div className="mt-3 text-2xl font-extrabold text-g-word tracking-tight"><Count to={k.num} prefix={k.pre || ""} suffix={k.suf || ""} /></div>
@@ -149,7 +141,7 @@ function Overview({ V, onNav }) {
           <div className="divide-y divide-white/[0.06]">
             {V.ops.schedule.slice(0, 3).map((r, i) => (
               <div key={i} className="flex items-center gap-3 px-5 py-3">
-                <span className="text-xs font-bold text-g-light w-16 shrink-0">{r.time}</span>
+                <span className="text-xs font-bold text-g-light w-20 shrink-0 inline-block truncate align-middle" title={r.time}>{r.time}</span>
                 <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted truncate">{r.meta}{r.ch && r.ch !== "—" ? ` · ${r.ch}` : ""}</div></div>
                 <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span>
               </div>
@@ -179,8 +171,8 @@ function Overview({ V, onNav }) {
         <Card>
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Live activity</div>
           <ul className="space-y-3">
-            {V.activity.map(([ic, ch, msg, t]) => (
-              <li key={ch + t} className="flex items-start gap-3">
+            {V.activity.map(([ic, ch, msg, t], i) => (
+              <li key={ch + t + i} className="flex items-start gap-3">
                 <span className="text-lg shrink-0">{ic}</span>
                 <div className="min-w-0">
                   <div className="text-xs font-bold text-g-word">{ch} <span className="text-g-green">· AI</span></div>
@@ -215,7 +207,7 @@ function Operations({ V }) {
           <div className="divide-y divide-white/[0.06]">
             {o.schedule.map((r, i) => (
               <div key={i} className="flex items-center gap-3 px-5 py-3">
-                <span className="text-xs font-bold text-g-light w-16 shrink-0">{r.time}</span>
+                <span className="text-xs font-bold text-g-light w-20 shrink-0 inline-block truncate align-middle" title={r.time}>{r.time}</span>
                 <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted truncate">{r.meta}{r.ch && r.ch !== "—" ? ` · ${r.ch}` : ""}</div></div>
                 <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span>
               </div>
@@ -338,7 +330,7 @@ function Support() {
         <p className="text-xs text-g-muted mt-1">Want to tweak your AI, add a channel, or launch a campaign? Tell us.</p>
         {!sent ? (
           <form onSubmit={(e) => { e.preventDefault(); setSent(true); }} className="mt-3 space-y-2">
-            <textarea required rows={3} placeholder="e.g. Add a Telegram agent and a weekend promo campaign…" className="w-full rounded-xl2 border border-white/15 bg-black/20 px-4 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+            <textarea required rows={3} aria-label="Describe your change request" placeholder="e.g. Add a Telegram agent and a weekend promo campaign…" className="w-full rounded-xl2 border border-white/15 bg-black/20 px-4 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
             <button className="btn-bright text-sm w-full">Send request →</button>
           </form>
         ) : (
@@ -358,7 +350,7 @@ function Docs() {
           <div key={name} className="flex items-center gap-3 px-5 py-3.5">
             <span className="text-xl">{ic}</span>
             <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word">{name}</div><div className="text-[11px] text-g-muted">{meta}</div></div>
-            <button className="text-xs font-bold text-g-gold hover:underline">{action}</button>
+            <button aria-label={`${action} — ${name}`} className="text-xs font-bold text-g-gold hover:underline">{action}</button>
           </div>
         ))}
       </div>
@@ -414,7 +406,7 @@ export default function Portal() {
           <img src={logo} alt="Guileo" className="h-8 w-8 object-contain" />
           <div className="leading-tight"><div className="text-sm font-extrabold text-g-word">Growth Cockpit</div><div className="text-[10px] text-g-muted">{V.icon} {V.business.name}</div></div>
         </div>
-        <nav className="flex lg:flex-col gap-1 px-3 pb-3 overflow-x-auto">
+        <nav aria-label="Dashboard sections" className="flex lg:flex-col gap-1 px-3 pb-3 overflow-x-auto">
           {NAV.map(([key, label, Icon]) => {
             const on = view === key;
             return (

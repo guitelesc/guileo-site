@@ -268,6 +268,189 @@ export const VERTICALS = {
       ],
     },
   },
+  medical: {
+    label: "Medical", icon: "🏥",
+    business: { name: "Vida Clinic", place: "Madrid · ES", since: "Live since Mar 2026" },
+    impact: { total: 23600, parts: [["Revenue recovered", "$17,300"], ["Recalls reactivated", "$4,100"], ["Ad return", "$2,200"]] },
+    kpis: [
+      { ic: "📅", label: "Appointments today", num: 34, delta: 9, color: G },
+      { ic: "🆕", label: "New patients (mo.)", num: 52, delta: 21, color: B },
+      { ic: "🚫", label: "No-show rate", num: 5, suf: "%", color: D, note: "−3 pts", good: true },
+      { ic: "🔁", label: "Follow-ups due", num: 46, color: C, note: "auto-reminded" },
+    ],
+    revenue: [7, 8, 10, 9, 12, 13, 15, 14, 17, 19, 21, 24],
+    activity: [
+      ["📞", "Phone", "Booked a consultation — Wed 16:00", "now"],
+      ["💬", "WhatsApp", "Confirmed & reminded a patient", "7 min"],
+      ["📞", "Phone", "Rescheduled a no-show automatically", "16 min"],
+      ["⭐", "Google", "Requested a review after a visit", "30 min"],
+    ],
+    ops: {
+      stats: [
+        { label: "Rooms in use", value: "5 / 6", tone: "neutral" },
+        { label: "Recalls reactivated", value: "26", tone: "good" },
+        { label: "No-shows recovered", value: "9", tone: "good" },
+      ],
+      scheduleTitle: "Today's appointments",
+      schedule: [
+        { time: "09:00", name: "Laura M.", meta: "General check-up", ch: "WhatsApp", status: "Confirmed", color: G },
+        { time: "10:15", name: "Diego R.", meta: "Cardiology", ch: "Phone", status: "Checked-in", color: B },
+        { time: "11:30", name: "Sara P.", meta: "Dermatology", ch: "Instagram", status: "Confirmed", color: G },
+        { time: "15:00", name: "Iván T.", meta: "Follow-up", ch: "Phone", status: "Confirmed", color: G },
+        { time: "16:30", name: "Nuria L.", meta: "Recall · check-up", ch: "WhatsApp", status: "Pending", color: C },
+      ],
+      gridTitle: "Rooms", grid: [
+        { label: "R1", on: true }, { label: "R2", on: true }, { label: "R3", on: true }, { label: "R4", on: true }, { label: "R5", on: true }, { label: "R6", on: false },
+      ],
+      listTitle: "Top specialties (mo.)", list: [
+        { name: "General", val: 92 }, { name: "Cardiology", val: 41 }, { name: "Dermatology", val: 33 }, { name: "Pediatrics", val: 25 },
+      ],
+    },
+  },
+
+  homeservices: {
+    label: "Plumbing & HVAC", icon: "🔧",
+    business: { name: "FlowPro Services", place: "Dallas · US", since: "Live since Apr 2026" },
+    impact: { total: 29800, parts: [["Jobs won", "$21,400"], ["After-hours captured", "$6,200"], ["Ad return", "$2,200"]] },
+    kpis: [
+      { ic: "🛠️", label: "Jobs booked today", num: 19, delta: 17, color: G },
+      { ic: "🧾", label: "Quotes sent (mo.)", num: 84, delta: 23, color: B },
+      { ic: "🚨", label: "Emergency calls won", num: 12, color: D, note: "after-hours" },
+      { ic: "💰", label: "Revenue recovered", pre: "$", num: 21400, delta: 28, color: G },
+    ],
+    revenue: [6, 8, 7, 11, 12, 14, 13, 16, 18, 20, 22, 26],
+    activity: [
+      ["📞", "Phone", "Captured a 2 AM emergency leak job", "now"],
+      ["💬", "WhatsApp", "Sent a quote & booked Tue 9 AM", "12 min"],
+      ["📞", "Phone", "Dispatched a tech to a no-heat call", "26 min"],
+      ["⭐", "Google", "Requested a review after the repair", "44 min"],
+    ],
+    ops: {
+      stats: [
+        { label: "After-hours jobs", value: "12", tone: "good" },
+        { label: "Avg. response", value: "18 s", tone: "good" },
+        { label: "Quote → job", value: "44%", tone: "good" },
+      ],
+      scheduleTitle: "Today's jobs",
+      schedule: [
+        { time: "08:30", name: "Water heater", meta: "Oak St · Tech Mike", ch: "Phone", status: "Dispatched", color: B },
+        { time: "10:00", name: "AC tune-up", meta: "5th Ave · Tech Sara", ch: "WhatsApp", status: "Confirmed", color: G },
+        { time: "13:00", name: "Leak repair", meta: "Elm Rd · Tech Mike", ch: "Phone", status: "Confirmed", color: G },
+        { time: "16:00", name: "Furnace check", meta: "Pine St · unassigned", ch: "WhatsApp", status: "Pending", color: C },
+      ],
+      listTitle: "Top jobs (mo.)", list: [
+        { name: "AC repair", val: 58 }, { name: "Leak / plumbing", val: 47 }, { name: "Water heater", val: 31 }, { name: "Furnace", val: 22 },
+      ],
+    },
+  },
+
+  auto: {
+    label: "Auto Dealership", icon: "🚗",
+    business: { name: "DriveMax Motors", place: "Houston · US", since: "Live since Feb 2026" },
+    impact: { total: 41200, parts: [["Sales pipeline", "$33,000"], ["Service revenue", "$5,800"], ["Ad return", "$2,400"]] },
+    kpis: [
+      { ic: "🚘", label: "Test drives today", num: 16, delta: 20, color: G },
+      { ic: "🔧", label: "Service appts today", num: 42, delta: 11, color: B },
+      { ic: "🆕", label: "New leads (mo.)", num: 121, delta: 25, color: D },
+      { ic: "➡️", label: "Lead → showroom", num: 38, suf: "%", delta: 7, color: C },
+    ],
+    revenue: [8, 9, 11, 10, 13, 15, 14, 18, 20, 22, 25, 29],
+    activity: [
+      ["📞", "Phone", "Booked a test drive — SUV, Sat 14:00", "now"],
+      ["💬", "WhatsApp", "Answered financing questions & qualified", "9 min"],
+      ["📧", "Email", "Sent 3 matching vehicles automatically", "22 min"],
+      ["⭐", "Google", "Requested a review after delivery", "37 min"],
+    ],
+    ops: {
+      stats: [
+        { label: "After-hours leads", value: "23", tone: "good" },
+        { label: "Avg. response", value: "20 s", tone: "good" },
+        { label: "Show-rate", value: "72%", tone: "good" },
+      ],
+      scheduleTitle: "Today's test drives & service",
+      schedule: [
+        { time: "10:00", name: "SUV test drive", meta: "R. Costa · buyer", ch: "Phone", status: "Confirmed", color: G },
+        { time: "11:30", name: "Oil change", meta: "Plate ABC-1234", ch: "WhatsApp", status: "Checked-in", color: B },
+        { time: "14:00", name: "Sedan test drive", meta: "M. Reis · buyer", ch: "Instagram", status: "Confirmed", color: G },
+        { time: "16:00", name: "Brake service", meta: "Plate XYZ-9988", ch: "Phone", status: "Pending", color: C },
+      ],
+      listTitle: "Top models (mo.)", list: [
+        { name: "Compact SUV", val: 64 }, { name: "Sedan", val: 49 }, { name: "Pickup", val: 33 }, { name: "Hatch", val: 21 },
+      ],
+    },
+  },
+
+  education: {
+    label: "Education", icon: "📚",
+    business: { name: "BrightPath Academy", place: "Online · BR", since: "Live since Mar 2026" },
+    impact: { total: 18700, parts: [["New enrollments", "$13,200"], ["Win-backs", "$3,300"], ["Ad return", "$2,200"]] },
+    kpis: [
+      { ic: "🎓", label: "Enrollments (mo.)", num: 58, delta: 22, color: G },
+      { ic: "📝", label: "Trial classes today", num: 21, delta: 16, color: B },
+      { ic: "🆕", label: "New leads (mo.)", num: 96, delta: 19, color: D },
+      { ic: "🔁", label: "Retention rate", num: 88, suf: "%", delta: 5, color: C },
+    ],
+    revenue: [5, 6, 8, 7, 10, 11, 13, 14, 16, 18, 20, 22],
+    activity: [
+      ["💬", "WhatsApp", "Booked a trial class — tomorrow 18:00", "now"],
+      ["📞", "Phone", "Answered course questions & enrolled", "8 min"],
+      ["📧", "Email", "Won back a paused student", "23 min"],
+      ["⭐", "Google", "Collected a 5★ review from a parent", "36 min"],
+    ],
+    ops: {
+      stats: [
+        { label: "Trial → enroll", value: "39%", tone: "good" },
+        { label: "Avg. response", value: "16 s", tone: "good" },
+        { label: "At-risk re-engaged", value: "14", tone: "good" },
+      ],
+      scheduleTitle: "Today's trials & classes",
+      schedule: [
+        { time: "16:00", name: "English · trial", meta: "Lucas · new", ch: "WhatsApp", status: "Confirmed", color: G },
+        { time: "17:00", name: "Math · group", meta: "12 / 14 booked", ch: "—", status: "2 open", color: C },
+        { time: "18:00", name: "Coding · trial", meta: "Bianca · new", ch: "Instagram", status: "Confirmed", color: G },
+        { time: "19:30", name: "Spanish · group", meta: "10 / 10 booked", ch: "—", status: "Full", color: G },
+      ],
+      listTitle: "Top courses (mo.)", list: [
+        { name: "English", val: 78 }, { name: "Math", val: 52 }, { name: "Coding", val: 40 }, { name: "Spanish", val: 28 },
+      ],
+    },
+  },
+
+  construction: {
+    label: "Construction", icon: "🏗️",
+    business: { name: "BuildRight Co.", place: "Phoenix · US", since: "Live since Feb 2026" },
+    impact: { total: 52000, parts: [["Project pipeline", "$44,000"], ["After-hours quotes", "$5,500"], ["Ad return", "$2,500"]] },
+    kpis: [
+      { ic: "🧾", label: "Quote requests today", num: 11, delta: 18, color: G },
+      { ic: "🏗️", label: "Site visits booked", num: 7, delta: 14, color: B },
+      { ic: "✅", label: "Qualified leads (mo.)", num: 39, delta: 24, color: D },
+      { ic: "📈", label: "Pipeline value", pre: "$", num: 44000, delta: 16, color: C },
+    ],
+    revenue: [4, 5, 7, 9, 8, 11, 13, 12, 16, 18, 21, 25],
+    activity: [
+      ["📞", "Phone", "Captured a remodel quote request", "now"],
+      ["💬", "WhatsApp", "Qualified budget & booked a site visit", "14 min"],
+      ["📧", "Email", "Sent estimate & follow-up", "27 min"],
+      ["⭐", "Google", "Requested a review after handover", "45 min"],
+    ],
+    ops: {
+      stats: [
+        { label: "After-hours leads", value: "16", tone: "good" },
+        { label: "Avg. response", value: "22 s", tone: "good" },
+        { label: "Quote → visit", value: "47%", tone: "good" },
+      ],
+      scheduleTitle: "Today's site visits",
+      schedule: [
+        { time: "09:00", name: "Kitchen remodel", meta: "R. Alves · estimate", ch: "Phone", status: "Confirmed", color: G },
+        { time: "11:00", name: "Roof replacement", meta: "T. Nunes · estimate", ch: "WhatsApp", status: "Confirmed", color: G },
+        { time: "14:00", name: "Home addition", meta: "M. Pires · estimate", ch: "Phone", status: "Pending", color: C },
+        { time: "16:00", name: "Bathroom reno", meta: "F. Dias · estimate", ch: "Instagram", status: "Confirmed", color: G },
+      ],
+      listTitle: "Top projects (mo.)", list: [
+        { name: "Remodel", val: 44 }, { name: "Roofing", val: 31 }, { name: "Addition", val: 22 }, { name: "Bathroom", val: 17 },
+      ],
+    },
+  },
 };
 
 export const VERTICAL_KEYS = Object.keys(VERTICALS);
