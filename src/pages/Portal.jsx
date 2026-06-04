@@ -318,10 +318,23 @@ function alertTarget(text = "") {
 }
 
 /* ───────────────────────── Views ───────────────────────── */
-function Overview({ V, onNav, sections = [] }) {
+// Scale a pre-formatted money/number string ("$18,420", "120") by a factor,
+// preserving its $ prefix and thousands separators. Non-numeric → returned as-is.
+function scaleMoney(str, f) {
+  const s = String(str);
+  const m = s.match(/-?[\d,]+/);
+  if (!m) return s;
+  const n = Math.round(parseInt(m[0].replace(/,/g, ""), 10) * f);
+  return s.replace(m[0], n.toLocaleString());
+}
+
+function Overview({ V, onNav, sections = [], period = "30 days" }) {
   const [resolved, setResolved] = useState([]);
   const [alertsOpen, setAlertsOpen] = useState(false);
   const validViews = new Set(sections.map(([k]) => k));
+  // The seed data represents a 30-day window; 7d/90d scale the cumulative money.
+  const periodFactor = { "7 days": 7 / 30, "30 days": 1, "90 days": 3 }[period] || 1;
+  const periodLabel = period === "30 days" ? "this month" : `last ${period}`;
   const openAlerts = V.alerts ? V.alerts.items.map((a, i) => ({ a, i })).filter(({ i }) => !resolved.includes(i)) : [];
   const quick = (V.quick || [["📋", "See today's operations", "ops"], ["💬", "Message my team", "support"], ["📣", "Ask for a campaign", "wa"]]).map(([ic, label, kind]) =>
     kind === "ops" ? { ic, label, on: () => onNav("operations") }
@@ -380,17 +393,17 @@ function Overview({ V, onNav, sections = [] }) {
         <div className="absolute -top-16 -right-12 h-40 w-40 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Guileo profit impact · this month</div>
-            <div className="text-4xl sm:text-5xl font-black text-g-word tracking-tight mt-1"><Count to={V.impact.total} prefix="$" /></div>
+            <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Guileo profit impact · {periodLabel}</div>
+            <div className="text-4xl sm:text-5xl font-black text-g-word tracking-tight mt-1"><Count key={period} to={Math.round(V.impact.total * periodFactor)} prefix="$" /></div>
             <div className="mt-2.5 flex flex-wrap gap-2">
               {V.impact.parts.map(([label, val]) => (
                 <span key={label} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold">
-                  <span className="text-g-green">{val}</span><span className="text-g-muted">{label}</span>
+                  <span className="text-g-green">{scaleMoney(val, periodFactor)}</span><span className="text-g-muted">{label}</span>
                 </span>
               ))}
             </div>
           </div>
-          <a href={waLink("I'd like to review my Guileo results this month")} target="_blank" rel="noopener" className="btn-bright text-sm">Talk to my team →</a>
+          <a href={waLink("I'd like to review my Guileo results")} target="_blank" rel="noopener" className="btn-bright text-sm">Talk to my team →</a>
         </div>
       </Card>
 
@@ -1730,7 +1743,7 @@ export default function Portal() {
     toast("Report downloaded ✓");
   };
   const content = {
-    overview: <Overview V={V} onNav={setView} sections={sections} />,
+    overview: <Overview V={V} onNav={setView} sections={sections} period={period} />,
     impact: <GuileoImpact V={V} />,
     followups: <Followups V={V} />,
     waitlist: <Waitlist V={V} />,
