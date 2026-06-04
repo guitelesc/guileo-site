@@ -231,10 +231,11 @@ const SECTION_ICON = {
 // Group the (long) nav into scannable categories
 const NAV_GROUPS = [
   ["", ["overview"]],
+  ["Your AI ✨", ["brain", "analytics"]],
   ["Grow revenue", ["impact", "followups", "waitlist", "recurring", "reputation", "campaigns", "audiences", "grow"]],
   ["Operations", ["liveorders", "kitchen", "menu", "schedule", "catalog", "operations"]],
   ["Conversations", ["calllogs", "dialer", "whatsapp", "sms", "social"]],
-  ["Customers & AI", ["customers", "brain", "analytics"]],
+  ["Customers", ["customers"]],
   ["Account", ["billing", "support", "settings"]],
 ];
 
@@ -1013,6 +1014,16 @@ function Grow() {
   );
 }
 
+function aiAnswer(q, V) {
+  const s = q.toLowerCase();
+  if (/hour|open|close|time|aberto|horário/.test(s)) return "We're open Mon–Sun, 9am–10pm. Want me to book you in?";
+  if (/price|cost|how much|preço|quanto/.test(s)) return "Pricing depends on what you need — I can get you a quick quote. What are you looking for?";
+  if (/book|appointment|reserv|table|schedule|agendar|marcar/.test(s)) return "Absolutely! What day and time works for you? I'll lock it in right away. 📅";
+  if (/where|location|address|onde|endereço/.test(s)) return `We're at ${V.business.place}. I can send directions on WhatsApp — want them?`;
+  if (/cancel|refund|reembolso|cancelar/.test(s)) return "No problem — I'll take care of that and loop in a human if needed. Can I have your name?";
+  if (/deliver|entrega/.test(s)) return "Yes, we deliver 🛵 — just send your address and order and I'll confirm the ETA.";
+  return `Great question! Based on ${V.business.name}'s info I'd handle that right away and book or answer accordingly. (Train me with more details to sharpen this answer.)`;
+}
 function AIBrain({ V }) {
   const cards = [
     ["🏢", "Business info", `${V.business.name} · ${V.business.place} · Hours: Mon–Sun, 9am–10pm`],
@@ -1022,11 +1033,15 @@ function AIBrain({ V }) {
     ["⤴️", "Escalation rules", "Refunds & complaints → human · VIPs → owner"],
     ["⭐", "After every interaction", "Asks happy customers for a 5★ review automatically"],
   ];
+  const [q, setQ] = useState("");
+  const [chat, setChat] = useState([]);
+  const ask = (e) => { e.preventDefault(); if (!q.trim()) return; setChat((c) => [...c, { q, a: aiAnswer(q, V) }]); setQ(""); };
+  const suggestions = ["What are your hours?", "Can I book for tomorrow?", "How much does it cost?", "Where are you located?"];
   return (
     <div className="space-y-4">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word">🧠 Your AI's brain</div><div className="text-xs text-g-muted mt-0.5">Everything your AI knows and how it answers. Want a change? Your team updates it for you.</div></div>
+          <div><div className="text-sm font-extrabold text-g-word">🧠 Your AI's brain</div><div className="text-xs text-g-muted mt-0.5">Everything your AI knows and how it answers — and you can test it live, right here.</div></div>
           <a href={waLink("Hi Guileo! I'd like to update what my AI knows")} target="_blank" rel="noopener" className="btn-bright text-sm">Request an update →</a>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -1034,6 +1049,26 @@ function AIBrain({ V }) {
           {["🇺🇸 English", "🇧🇷 Português", "🇪🇸 Español"].map((l) => <span key={l} className="inline-flex items-center rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word">{l}</span>)}
         </div>
       </Card>
+
+      {/* THE DIFFERENTIATOR — test your AI live */}
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />Test your AI · see exactly how it answers your customers</div>
+        <div className="p-4 space-y-2.5 min-h-[8rem] max-h-72 overflow-y-auto">
+          {chat.length === 0 && <div className="text-center text-xs text-g-muted py-6">Ask your AI anything a customer might ask 👇</div>}
+          {chat.map((m, i) => (
+            <div key={i} className="space-y-2">
+              <div className="flex justify-end"><div className="max-w-[78%] rounded-2xl px-3.5 py-2 text-xs bg-g-gold/15 text-g-word border border-g-gold/30">{m.q}</div></div>
+              <div className="flex justify-start"><div className="max-w-[80%] rounded-2xl px-3.5 py-2 text-xs bg-g-green/15 text-g-light border border-g-green/30"><div className="text-[9px] font-black uppercase text-g-green mb-0.5">Your AI</div>{m.a}</div></div>
+            </div>
+          ))}
+        </div>
+        {chat.length === 0 && <div className="px-4 pb-2 flex flex-wrap gap-2">{suggestions.map((s) => <button key={s} onClick={() => setChat([{ q: s, a: aiAnswer(s, V) }])} className="rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-[11px] font-bold text-g-muted hover:text-g-word transition">{s}</button>)}</div>}
+        <form onSubmit={ask} className="p-3 border-t border-white/10 flex gap-2">
+          <input value={q} onChange={(e) => setQ(e.target.value)} aria-label="Ask your AI" placeholder="Ask your AI a question…" className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+          <button className="btn-bright text-sm px-5">Ask</button>
+        </form>
+      </Card>
+
       <div className="grid sm:grid-cols-2 gap-4">
         {cards.map(([ic, title, body], i) => (
           <Card key={i}><div className="flex items-center gap-2 mb-1"><span className="text-lg">{ic}</span><span className="text-sm font-bold text-g-word">{title}</span></div><p className="text-xs text-g-muted leading-relaxed">{body}</p></Card>
@@ -1356,14 +1391,26 @@ function Reputation({ V }) {
 function Recurring({ V }) {
   const rows = genRecurring(V);
   const perMo = rows.reduce((s, r) => s + r.value, 0);
+  const [sel, setSel] = useState(null);
   return (
     <div className="space-y-4">
       <MiniStats items={[["Active plans", `${rows.length * 23}`], ["Monthly recurring", `$${(perMo * 23).toLocaleString()}`, "good"], ["Renewals due", "8"], ["Churn risk", "3", "bad"]]} />
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Recurring revenue · the AI keeps it renewing</div>
-        <div className="divide-y divide-white/[0.06]">{rows.map((r, i) => (<div key={i} className="flex items-center gap-3 px-5 py-3.5"><span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{r.name[0]}</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted">{r.plan} · ${r.value}/mo</div></div><span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span></div>))}</div>
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Recurring revenue · the AI keeps it renewing</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for plan</span></div>
+        <div className="divide-y divide-white/[0.06]">{rows.map((r, i) => (<button key={i} onClick={() => setSel(r)} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition"><span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{r.name[0]}</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted">{r.plan} · ${r.value}/mo</div></div><span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span></button>))}</div>
       </Card>
       <p className="text-center text-[11px] text-g-muted">Recurring revenue is the most valuable revenue — your AI renews, reminds and rescues it automatically.</p>
+      {sel && (
+        <Drawer
+          title={sel.name}
+          subtitle={sel.plan}
+          badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: sel.color + "22", color: sel.color }}>{sel.status}</span>}
+          fields={[["Plan", sel.plan], ["Value", `$${sel.value}/mo`], ["Annual value", `$${(sel.value * 12).toLocaleString()}`], ["Status", sel.status], ["Member since", "Apr 2026"]]}
+          note={sel.status === "At risk" ? "⚠ Engagement dropped — the AI is running a win-back sequence to save this plan." : sel.status === "Renews soon" ? "Renewal coming up — the AI will remind and auto-renew." : "Active and healthy — auto-renewing each cycle."}
+          actions={<><button onClick={() => { toast(`${sel.name} renewed ✓`); setSel(null); }} className="btn-bright text-sm">↻ Renew now</button><a href={waLink(`Hi ${sel.name}, about your ${sel.plan}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
+          onClose={() => setSel(null)}
+        />
+      )}
     </div>
   );
 }
