@@ -4,7 +4,7 @@ import {
   FaGaugeHigh, FaComments, FaBullhorn, FaUsers, FaHeadset, FaFileLines, FaListCheck,
   FaArrowLeft, FaArrowTrendUp, FaArrowTrendDown, FaWhatsapp, FaInstagram, FaPhone, FaFacebook, FaTiktok, FaGoogle,
   FaReceipt, FaUtensils, FaBookOpen, FaBullseye, FaPhoneVolume, FaCommentSms, FaGear, FaChartLine,
-  FaDownload, FaBell, FaMagnifyingGlass, FaStore,
+  FaDownload, FaBell, FaMagnifyingGlass, FaStore, FaBrain, FaCreditCard,
 } from "react-icons/fa6";
 
 /* Upsell channel — services a client can request from inside the portal (revenue engine) */
@@ -87,13 +87,13 @@ function Bars({ data = REVENUE, color = "#D6C29A" }) {
 
 /* ───────────────────────── Shell pieces ───────────────────────── */
 const DEFAULT_SECTIONS = [
-  ["overview", "Overview"], ["operations", "Operations"], ["channels", "Channels"],
-  ["ads", "Marketing & Ads"], ["leads", "Leads"], ["grow", "Grow with Guileo"], ["support", "Support"], ["docs", "Documents"],
+  ["overview", "Overview"], ["operations", "Operations"], ["brain", "Train your AI"], ["channels", "Channels"],
+  ["ads", "Marketing & Ads"], ["leads", "Leads"], ["grow", "Grow with Guileo"], ["billing", "Billing & Plan"], ["support", "Support"], ["docs", "Documents"],
 ];
 const SECTION_ICON = {
-  overview: FaGaugeHigh, operations: FaListCheck, analytics: FaChartLine, liveorders: FaReceipt,
+  overview: FaGaugeHigh, operations: FaListCheck, brain: FaBrain, analytics: FaChartLine, liveorders: FaReceipt,
   kitchen: FaUtensils, menu: FaBookOpen, customers: FaUsers, campaigns: FaBullhorn, audiences: FaBullseye,
-  calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, grow: FaStore,
+  calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, grow: FaStore, billing: FaCreditCard,
   channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, docs: FaFileLines, settings: FaGear,
 };
 
@@ -630,6 +630,9 @@ function SettingsView({ V }) {
 }
 
 function Grow() {
+  const [sent, setSent] = useState(false);
+  const [txt, setTxt] = useState("");
+  const submit = (e) => { e.preventDefault(); setSent(true); window.open(waLink(`Hi Guileo! I wish you offered: ${txt}`), "_blank"); };
   return (
     <div className="space-y-4">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
@@ -647,6 +650,78 @@ function Grow() {
           </Card>
         ))}
       </div>
+      {/* Demand learning — request something we don't offer yet */}
+      <Card>
+        <div className="text-sm font-extrabold text-g-word">Don't see what you need?</div>
+        <p className="text-xs text-g-muted mt-0.5">Tell us what you wish we offered — we're always adding services, and your idea shapes what we build next.</p>
+        {!sent ? (
+          <form onSubmit={submit} className="mt-3 flex flex-col sm:flex-row gap-2">
+            <input required value={txt} onChange={(e) => setTxt(e.target.value)} aria-label="Request a service we don't offer yet" placeholder="e.g. A reservations widget for my website…" className="flex-1 rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+            <button className="btn-bright text-sm whitespace-nowrap">Send request →</button>
+          </form>
+        ) : (
+          <div className="mt-3 rounded-xl2 border border-g-green/40 bg-g-green/[0.1] p-3 text-sm font-bold text-g-light text-center">✅ Got it — thanks! Our team will look into it.</div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function AIBrain({ V }) {
+  const cards = [
+    ["🏢", "Business info", `${V.business.name} · ${V.business.place} · Hours: Mon–Sun, 9am–10pm`],
+    ["📋", V.ops?.listTitle || "Menu & services", (V.ops?.list || []).map((x) => x.name).join(" · ") || "Set up with your team"],
+    ["❓", "Top questions it answers", "Hours · Location · Pricing · Booking · Delivery · Specials"],
+    ["🎙️", "Voice & languages", "Warm & friendly · English, Portuguese, Spanish"],
+    ["⤴️", "Escalation rules", "Refunds & complaints → human · VIPs → owner"],
+    ["⭐", "After every interaction", "Asks happy customers for a 5★ review automatically"],
+  ];
+  return (
+    <div className="space-y-4">
+      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><div className="text-sm font-extrabold text-g-word">🧠 Your AI's brain</div><div className="text-xs text-g-muted mt-0.5">Everything your AI knows and how it answers. Want a change? Your team updates it for you.</div></div>
+          <a href={waLink("Hi Guileo! I'd like to update what my AI knows")} target="_blank" rel="noopener" className="btn-bright text-sm">Request an update →</a>
+        </div>
+      </Card>
+      <div className="grid sm:grid-cols-2 gap-4">
+        {cards.map(([ic, title, body], i) => (
+          <Card key={i}><div className="flex items-center gap-2 mb-1"><span className="text-lg">{ic}</span><span className="text-sm font-bold text-g-word">{title}</span></div><p className="text-xs text-g-muted leading-relaxed">{body}</p></Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Billing({ V }) {
+  const plan = V.plan || { label: "Growth Plan", used: 1, total: 2000, unit: "Actions this month" };
+  const pct = Math.round((plan.used / plan.total) * 100);
+  const includes = ["AI voice agent · 24/7", "WhatsApp, SMS & social replies", "Bookings & reviews automation", "Live dashboard & monthly reports", "A real human managing it for you"];
+  const invoices = [["Invoice #0012", "Jun 1, 2026", "Paid"], ["Invoice #0011", "May 1, 2026", "Paid"], ["Invoice #0010", "Apr 1, 2026", "Paid"]];
+  return (
+    <div className="space-y-4">
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2">
+          <div className="flex items-center justify-between gap-3">
+            <div><div className="text-xs font-bold uppercase tracking-wide text-g-gold">Current plan</div><div className="text-xl font-extrabold text-g-word mt-1">{plan.label}</div></div>
+            <a href={waLink("I'd like to upgrade my Guileo plan")} target="_blank" rel="noopener" className="btn-bright text-sm">Upgrade →</a>
+          </div>
+          <div className="mt-4"><div className="flex justify-between text-xs mb-1"><span className="text-g-muted">{plan.unit}</span><span className="text-g-word font-bold">{plan.used} / {plan.total.toLocaleString()}</span></div><div className="h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${Math.max(2, pct)}%` }} /></div></div>
+        </Card>
+        <Card>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">What's included</div>
+          <ul className="space-y-1.5 text-xs text-g-word">{includes.map((x, i) => <li key={i} className="flex gap-2"><span className="text-g-green">✓</span>{x}</li>)}</ul>
+        </Card>
+      </div>
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Invoices</div>
+        <div className="divide-y divide-white/[0.06]">
+          {invoices.map(([n, d, s], i) => (
+            <div key={i} className="flex items-center gap-3 px-5 py-3"><span className="text-lg">🧾</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word">{n}</div><div className="text-[11px] text-g-muted">{d}</div></div><span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-g-green/15 text-g-green">{s}</span><button aria-label={`Download ${n}`} className="text-g-gold hover:text-g-word transition"><FaDownload size={12} /></button></div>
+          ))}
+        </div>
+      </Card>
+      <p className="text-center text-[11px] text-g-muted">Payment is handled securely with your team — we never ask for card details in chat.</p>
     </div>
   );
 }
@@ -702,6 +777,8 @@ export default function Portal() {
     support: <Support />,
     docs: <Docs />,
     grow: <Grow />,
+    brain: <AIBrain V={V} />,
+    billing: <Billing V={V} />,
     settings: <SettingsView V={V} />,
   }[view] || <Overview V={V} onNav={setView} />;
 
