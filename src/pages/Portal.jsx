@@ -328,10 +328,22 @@ function scaleMoney(str, f) {
   return s.replace(m[0], n.toLocaleString());
 }
 
+// The "what should I do today to grow?" list — Guileo earns a % of growth, so the
+// home screen leads with the concrete money moves, each linking to its module.
+function growthOps(V) {
+  return [
+    { ic: "🪑", view: "waitlist", text: "people waiting for an open slot", n: 4, value: "$1,240" },
+    { ic: "🎯", view: "followups", text: "follow-ups about to convert", n: 6, value: "$3,180" },
+    { ic: "🛟", view: "recurring", text: "at-risk plans to save this week", n: 3, value: "$540/mo" },
+    { ic: "⭐", view: "reputation", text: "happy customers to ask for a review", n: 12, value: "+rating" },
+  ];
+}
+
 function Overview({ V, onNav, sections = [], period = "30 days" }) {
   const [resolved, setResolved] = useState([]);
   const [alertsOpen, setAlertsOpen] = useState(false);
   const validViews = new Set(sections.map(([k]) => k));
+  const ops = growthOps(V).filter((o) => validViews.has(o.view)).slice(0, 3);
   // The seed data represents a 30-day window; 7d/90d scale the cumulative money.
   const periodFactor = { "7 days": 7 / 30, "30 days": 1, "90 days": 3 }[period] || 1;
   const periodLabel = period === "30 days" ? "this month" : `last ${period}`;
@@ -406,6 +418,26 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
           <a href={waLink("I'd like to review my Guileo results")} target="_blank" rel="noopener" className="btn-bright text-sm">Talk to my team →</a>
         </div>
       </Card>
+
+      {/* GROWTH MOVES — "what to do today to grow", the revenue-share thesis on the home screen */}
+      {ops.length > 0 && (
+        <Card className="p-0 overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wide text-g-gold">⚡ This week's growth moves</span>
+            <span className="text-[10px] text-g-muted">· spotted by your AI</span>
+          </div>
+          <div className="divide-y divide-white/[0.05]">
+            {ops.map((o) => (
+              <button key={o.view} onClick={() => onNav(o.view)} className="group w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.03] transition">
+                <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-base shrink-0">{o.ic}</span>
+                <div className="flex-1 min-w-0 text-sm text-g-word"><span className="font-extrabold">{o.n}</span> {o.text}</div>
+                <span className="text-xs font-extrabold text-g-green whitespace-nowrap">{o.value}</span>
+                <span className="text-g-muted group-hover:text-g-word transition shrink-0">→</span>
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className={`grid gap-4 grid-cols-2 ${V.kpis.length >= 6 ? "md:grid-cols-3 xl:grid-cols-6" : "sm:grid-cols-2 lg:grid-cols-4"}`}>
         {V.kpis.map((k, i) => (
