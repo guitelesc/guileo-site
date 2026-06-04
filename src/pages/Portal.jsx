@@ -94,9 +94,33 @@ function Card({ children, className = "" }) {
 }
 
 /* ───────────────────────── Views ───────────────────────── */
-function Overview({ V }) {
+function Overview({ V, onNav }) {
+  const quick = [
+    { ic: "📋", label: "See today's operations", on: () => onNav("operations") },
+    { ic: "💬", label: "Message my team", on: () => onNav("support") },
+    { ic: "📣", label: "Ask for a campaign", href: waLink("I'd like to launch a campaign with Guileo") },
+  ];
   return (
     <div className="space-y-5">
+      {/* PROFIT IMPACT — money first (the only thing the owner must see) */}
+      <Card className="relative overflow-hidden bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] border-g-green/30">
+        <div className="absolute -top-16 -right-12 h-40 w-40 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Guileo profit impact · this month</div>
+            <div className="text-4xl sm:text-5xl font-black text-g-word tracking-tight mt-1"><Count to={V.impact.total} prefix="$" /></div>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {V.impact.parts.map(([label, val]) => (
+                <span key={label} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold">
+                  <span className="text-g-green">{val}</span><span className="text-g-muted">{label}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+          <a href={waLink("I'd like to review my Guileo results this month")} target="_blank" rel="noopener" className="btn-bright text-sm">Talk to my team →</a>
+        </div>
+      </Card>
+
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {V.kpis.map((k, i) => (
           <motion.div key={k.label} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
@@ -113,6 +137,35 @@ function Overview({ V }) {
             </Card>
           </motion.div>
         ))}
+      </div>
+
+      {/* TODAY + QUICK ACTIONS — surface ops on the home screen (fewer clicks) */}
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2 p-0 overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{V.ops.scheduleTitle} · next up</span>
+            <button onClick={() => onNav("operations")} className="text-[11px] font-bold text-g-gold hover:underline">See all →</button>
+          </div>
+          <div className="divide-y divide-white/[0.06]">
+            {V.ops.schedule.slice(0, 3).map((r, i) => (
+              <div key={i} className="flex items-center gap-3 px-5 py-3">
+                <span className="text-xs font-bold text-g-light w-16 shrink-0">{r.time}</span>
+                <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted truncate">{r.meta}{r.ch && r.ch !== "—" ? ` · ${r.ch}` : ""}</div></div>
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Card>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Quick actions</div>
+          <div className="space-y-2">
+            {quick.map((q) => q.href ? (
+              <a key={q.label} href={q.href} target="_blank" rel="noopener" className="flex items-center gap-3 rounded-xl2 border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-g-word hover:border-g-gold/40 hover:-translate-y-0.5 transition-all"><span>{q.ic}</span>{q.label}<span className="ml-auto text-g-gold">→</span></a>
+            ) : (
+              <button key={q.label} onClick={q.on} className="w-full text-left flex items-center gap-3 rounded-xl2 border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-g-word hover:border-g-gold/40 hover:-translate-y-0.5 transition-all"><span>{q.ic}</span>{q.label}<span className="ml-auto text-g-gold">→</span></button>
+            ))}
+          </div>
+        </Card>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
@@ -140,15 +193,6 @@ function Overview({ V }) {
         </Card>
       </div>
 
-      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
-        <div className="flex flex-wrap items-center gap-4 justify-between">
-          <div>
-            <div className="text-sm font-extrabold text-g-word">Guileo saved you ~<span className="text-g-light"><Count to={62} suffix=" hrs" /></span> this month</div>
-            <div className="text-xs text-g-muted mt-0.5">…and recovered <b className="text-g-green">$18,420</b> that would've slipped away.</div>
-          </div>
-          <a href={waLink("I'd like to review my Guileo results this month")} target="_blank" rel="noopener" className="btn-bright text-sm">Talk to my team →</a>
-        </div>
-      </Card>
     </div>
   );
 }
@@ -351,7 +395,7 @@ export default function Portal() {
   const [vertical, setVertical] = useState("restaurant");
   const V = VERTICALS[vertical];
   const content = {
-    overview: <Overview V={V} />,
+    overview: <Overview V={V} onNav={setView} />,
     operations: <Operations V={V} />,
     channels: <Channels />,
     ads: <Ads />,
@@ -431,6 +475,12 @@ export default function Portal() {
           </motion.div>
         </div>
       </main>
+
+      {/* persistent support — 1 click to your team, from any view */}
+      <a href={waLink("Hi Guileo team! I need help with my account")} target="_blank" rel="noopener"
+        className="fixed bottom-5 right-5 z-40 btn-bright text-sm shadow-lift">
+        💬 <span className="hidden sm:inline">Talk to your team</span>
+      </a>
     </div>
   );
 }

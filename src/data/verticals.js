@@ -7,6 +7,7 @@ export const VERTICALS = {
   restaurant: {
     label: "Restaurant", icon: "🍽️",
     business: { name: "Bella Pizza", place: "São Paulo · BR", since: "Live since Apr 2026" },
+    impact: { total: 24800, parts: [["Revenue recovered", "$18,420"], ["Extra covers booked", "$4,200"], ["Ad return", "$2,180"]] },
     kpis: [
       { ic: "📅", label: "Reservations today", num: 48, delta: 12, color: G },
       { ic: "🍽️", label: "Covers booked", num: 132, delta: 9, color: B },
@@ -47,6 +48,7 @@ export const VERTICALS = {
   clinic: {
     label: "Clinic", icon: "🦷",
     business: { name: "Sorriso Clinic", place: "Lisboa · PT", since: "Live since Mar 2026" },
+    impact: { total: 21300, parts: [["Revenue recovered", "$15,900"], ["Recalls reactivated", "$3,600"], ["Ad return", "$1,800"]] },
     kpis: [
       { ic: "📅", label: "Appointments today", num: 26, delta: 8, color: G },
       { ic: "🆕", label: "New patients (mo.)", num: 41, delta: 24, color: B },
@@ -86,6 +88,7 @@ export const VERTICALS = {
   salon: {
     label: "Salon & Spa", icon: "💈",
     business: { name: "Lumière Spa", place: "Miami · US", since: "Live since May 2026" },
+    impact: { total: 16900, parts: [["Revenue recovered", "$11,200"], ["Slots filled", "$3,900"], ["Packages sold", "$1,800"]] },
     kpis: [
       { ic: "📅", label: "Bookings today", num: 31, delta: 14, color: G },
       { ic: "📈", label: "Chair utilization", num: 82, suf: "%", delta: 11, color: B },
@@ -124,6 +127,7 @@ export const VERTICALS = {
   law: {
     label: "Law Firm", icon: "⚖️",
     business: { name: "Mendes & Co.", place: "São Paulo · BR", since: "Live since Feb 2026" },
+    impact: { total: 38400, parts: [["Signed cases", "$31,000"], ["After-hours intakes", "$5,400"], ["Ad return", "$2,000"]] },
     kpis: [
       { ic: "🆕", label: "New intakes (mo.)", num: 64, delta: 19, color: G },
       { ic: "📅", label: "Consults booked", num: 28, delta: 12, color: B },
@@ -153,6 +157,114 @@ export const VERTICALS = {
       ],
       listTitle: "Matter types (mo.)", list: [
         { name: "Personal injury", val: 38 }, { name: "Family law", val: 24 }, { name: "Labor", val: 19 }, { name: "Real estate", val: 12 },
+      ],
+    },
+  },
+  ecommerce: {
+    label: "E-Commerce", icon: "🛒",
+    business: { name: "Aurora Store", place: "Online · US", since: "Live since Apr 2026" },
+    impact: { total: 27600, parts: [["Carts recovered", "$14,800"], ["Won-back customers", "$7,200"], ["Ad return", "$5,600"]] },
+    kpis: [
+      { ic: "📦", label: "Orders today", num: 73, delta: 16, color: G },
+      { ic: "🛒", label: "Carts recovered", num: 41, delta: 0, color: B, note: "AI chased" },
+      { ic: "💵", label: "Avg. order value", pre: "$", num: 58, delta: 8, color: D },
+      { ic: "💰", label: "Revenue recovered", pre: "$", num: 14800, delta: 26, color: G },
+    ],
+    revenue: [9, 11, 10, 14, 16, 15, 18, 20, 22, 25, 27, 31],
+    activity: [
+      ["💬", "WhatsApp", "Recovered an abandoned cart — $124", "now"],
+      ["📸", "Instagram", "Answered sizing question & closed sale", "5 min"],
+      ["📧", "Email", "Won back a lapsed customer", "17 min"],
+      ["⭐", "Google", "Collected a post-purchase 5★ review", "29 min"],
+    ],
+    ops: {
+      stats: [
+        { label: "Conversion rate", value: "3.4%", tone: "good" },
+        { label: "Cart recovery", value: "28%", tone: "good" },
+        { label: "Avg. reply time", value: "15 s", tone: "good" },
+      ],
+      scheduleTitle: "Latest orders",
+      schedule: [
+        { time: "#1042", name: "Marcos A.", meta: "2 items · $124", ch: "WhatsApp", status: "Paid", color: G },
+        { time: "#1041", name: "Julia R.", meta: "1 item · $58", ch: "Instagram", status: "Paid", color: G },
+        { time: "#1040", name: "Pedro S.", meta: "3 items · $211", ch: "Web", status: "Packing", color: B },
+        { time: "#1039", name: "Ana L.", meta: "Recovered cart · $96", ch: "WhatsApp", status: "Paid", color: G },
+        { time: "#1038", name: "Bruno T.", meta: "1 item · $39", ch: "Web", status: "Refunded", color: C },
+      ],
+      listTitle: "Top products (mo.)", list: [
+        { name: "Signature Hoodie", val: 124 }, { name: "Classic Tee", val: 98 }, { name: "Cap", val: 61 }, { name: "Tote bag", val: 44 },
+      ],
+    },
+  },
+
+  realestate: {
+    label: "Real Estate", icon: "🏠",
+    business: { name: "Prime Imóveis", place: "São Paulo · BR", since: "Live since Mar 2026" },
+    impact: { total: 32000, parts: [["Commission pipeline", "$24,000"], ["Viewings booked", "$5,500"], ["Ad return", "$2,500"]] },
+    kpis: [
+      { ic: "🔑", label: "Viewings booked today", num: 12, delta: 18, color: G },
+      { ic: "🆕", label: "New leads (mo.)", num: 88, delta: 22, color: B },
+      { ic: "➡️", label: "Lead → visit rate", num: 34, suf: "%", delta: 6, color: D },
+      { ic: "🏘️", label: "Active listings", num: 47, color: C },
+    ],
+    revenue: [4, 5, 7, 6, 9, 11, 10, 13, 15, 16, 19, 22],
+    activity: [
+      ["📞", "Phone", "Booked a viewing — Sat 11:00, 2BR apt", "now"],
+      ["💬", "WhatsApp", "Qualified a buyer's budget & timeline", "8 min"],
+      ["📧", "Email", "Sent 3 matching listings automatically", "20 min"],
+      ["⭐", "Google", "Requested a review after closing", "35 min"],
+    ],
+    ops: {
+      stats: [
+        { label: "After-hours leads", value: "19", tone: "good" },
+        { label: "Avg. response", value: "25 s", tone: "good" },
+        { label: "No-show rate", value: "7%", tone: "neutral" },
+      ],
+      scheduleTitle: "Today's viewings",
+      schedule: [
+        { time: "10:00", name: "2BR · Jardins", meta: "R. Almeida · buyer", ch: "Phone", status: "Confirmed", color: G },
+        { time: "11:30", name: "Studio · Centro", meta: "T. Souza · renter", ch: "WhatsApp", status: "Confirmed", color: G },
+        { time: "14:00", name: "House · Morumbi", meta: "M. Dias · buyer", ch: "Instagram", status: "Pending", color: C },
+        { time: "16:30", name: "3BR · Pinheiros", meta: "F. Lima · buyer", ch: "Phone", status: "Confirmed", color: G },
+      ],
+      listTitle: "Hottest listings", list: [
+        { name: "2BR · Jardins", val: 34 }, { name: "Studio · Centro", val: 28 }, { name: "3BR · Pinheiros", val: 21 }, { name: "House · Morumbi", val: 12 },
+      ],
+    },
+  },
+
+  gym: {
+    label: "Gym & Fitness", icon: "💪",
+    business: { name: "Pulse Fitness", place: "Austin · US", since: "Live since Apr 2026" },
+    impact: { total: 19400, parts: [["New memberships", "$12,600"], ["Churn saved", "$4,300"], ["Ad return", "$2,500"]] },
+    kpis: [
+      { ic: "🏃", label: "Trials booked today", num: 14, delta: 21, color: G },
+      { ic: "🪪", label: "New members (mo.)", num: 63, delta: 18, color: B },
+      { ic: "📈", label: "Class fill rate", num: 81, suf: "%", delta: 9, color: D },
+      { ic: "🛟", label: "At-risk re-engaged", num: 22, color: C, note: "auto-nudged" },
+    ],
+    revenue: [6, 7, 8, 10, 11, 13, 14, 16, 17, 19, 21, 23],
+    activity: [
+      ["💬", "WhatsApp", "Booked a free trial — tomorrow 7 AM", "now"],
+      ["📞", "Phone", "Reactivated a lapsed member", "10 min"],
+      ["📸", "Instagram", "Sold a 3-month plan in DMs", "24 min"],
+      ["⭐", "Google", "Collected a 5★ review", "38 min"],
+    ],
+    ops: {
+      stats: [
+        { label: "Trial → member", value: "41%", tone: "good" },
+        { label: "Walk-ins handled", value: "9", tone: "good" },
+        { label: "At-risk re-engaged", value: "17", tone: "good" },
+      ],
+      scheduleTitle: "Today's trials & classes",
+      schedule: [
+        { time: "07:00", name: "HIIT class", meta: "18 / 20 booked", ch: "—", status: "Almost full", color: C },
+        { time: "09:00", name: "Free trial · Léo", meta: "First visit", ch: "WhatsApp", status: "Confirmed", color: G },
+        { time: "12:00", name: "Spin class", meta: "15 / 16 booked", ch: "—", status: "1 open", color: C },
+        { time: "18:00", name: "Free trial · Maya", meta: "First visit", ch: "Instagram", status: "Confirmed", color: G },
+      ],
+      listTitle: "Top classes (mo.)", list: [
+        { name: "HIIT", val: 142 }, { name: "Spin", val: 118 }, { name: "Yoga", val: 86 }, { name: "Boxing", val: 54 },
       ],
     },
   },
