@@ -47,6 +47,11 @@ const roomOf = (label, i) => { const a = ROOM[label] || []; return a.length ? a[
 const _dur = ["30 min", "45 min", "1 h", "1 h 30", "20 min"];
 // Anti-no-show deposits (the capacity-protection money lever) — $ held per booking by sector
 const DEPOSIT = { "Restaurant": 20, "Clinic": 30, "Medical": 40, "Salon & Spa": 25, "Plumbing & HVAC": 50, "Gym & Fitness": 0, "Auto Dealership": 0, "Construction": 0, "Education": 0, "Law Firm": 0, "Real Estate": 0, "E-Commerce": 0 };
+// Deterministic per-sector number: stable for a given (label,salt), distinct across
+// sectors — so "store-wide" stats vary realistically instead of showing the same
+// hardcoded "8 / 31 / 9" for every vertical.
+function vhash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
+function vnum(label, salt, min, max) { return min + (vhash(`${label}|${salt}`) % (max - min + 1)); }
 function genCalls(V) {
   const sch = (V.ops?.schedule || []).slice(0, 4);
   if (sch.length) return sch.map((p, i) => ({ name: p.name, phone: _PHONES[i % 4], outcome: p.meta ? `${p.meta} · booked by AI` : "Handled by AI", dur: `${1 + (i % 2)}m ${(12 + i * 9) % 60}s`, time: `${2 + i * 12} min ago`, color: ["#3E9468", "#38BDF8", "#3E9468", "#7C7C7C"][i % 4] }));
@@ -900,7 +905,7 @@ function Customers({ V }) {
   const [sel, setSel] = useState(null);
   return (
     <div className="space-y-4">
-      <MiniStats items={[["Total customers", `${rows.length * 104}`], ["New this week", `+${rows.length * 6}`, "good"], ["Avg. value", `$${Math.round(totalSpent / rows.length)}`], ["Repeat rate", "38%", "good"]]} />
+      <MiniStats items={[["Total customers", `${rows.length * 104}`], ["New this week", `+${rows.length * 6}`, "good"], ["Avg. value", `$${Math.round(totalSpent / rows.length)}`], ["Repeat rate", `${vnum(V.label, "repeat", 31, 47)}%`, "good"]]} />
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Customers</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for profile</span></div>
         <div className="divide-y divide-white/[0.06]">
@@ -1645,7 +1650,7 @@ function Followups({ V }) {
   const markWon = (i, name) => { setDone((d) => { const n = [...d, i]; portalApi.saveState(`${V.label}:fups`, n); return n; }); setSel(null); toast(`${name} marked won 🎉`); };
   return (
     <div className="space-y-4">
-      <MiniStats items={[["Active sequences", `${open.length}`], ["Pipeline value", `$${pipeline.toLocaleString()}`], ["Won this week", "8", "good"], ["Auto-nudged", "31", "good"]]} />
+      <MiniStats items={[["Active sequences", `${open.length}`], ["Pipeline value", `$${pipeline.toLocaleString()}`], ["Won this week", `${vnum(V.label, "won", 4, 14)}`, "good"], ["Auto-nudged", `${vnum(V.label, "nudge", 18, 44)}`, "good"]]} />
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">The AI is chasing these — so you never lose them</div>
         <div className="divide-y divide-white/[0.06]">
@@ -1686,7 +1691,7 @@ function Waitlist({ V }) {
   const offer = (i, name) => { setFilled((f) => { const n = [...f, i]; portalApi.saveState(`${V.label}:wait`, n); return n; }); setSel(null); toast(`Offer sent to ${name} ✓`); };
   return (
     <div className="space-y-4">
-      <MiniStats items={[["Waiting now", `${open.length}`], ["Filled today", "9", "good"], ["No-shows saved", "7", "good"], ["Revenue recovered", "$1,240", "good"]]} />
+      <MiniStats items={[["Waiting now", `${open.length}`], ["Filled today", `${vnum(V.label, "filled", 5, 16)}`, "good"], ["No-shows saved", `${vnum(V.label, "noshow", 3, 11)}`, "good"], ["Revenue recovered", `$${vnum(V.label, "wrev", 800, 2600).toLocaleString()}`, "good"]]} />
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Waitlist · turn empty slots into revenue</div>
         <div className="divide-y divide-white/[0.06]">
@@ -1720,7 +1725,7 @@ function Reputation({ V }) {
   const [sel, setSel] = useState(null);
   return (
     <div className="space-y-4">
-      <MiniStats items={[["Avg rating", "4.8 ★", "good"], ["Reviews this month", "92", "good"], ["Requests sent", "310"], ["Request → review", "30%", "good"]]} />
+      <MiniStats items={[["Avg rating", `${((46 + vnum(V.label, "rate", 0, 3)) / 10).toFixed(1)} ★`, "good"], ["Reviews this month", `${vnum(V.label, "revc", 40, 140)}`, "good"], ["Requests sent", `${vnum(V.label, "reqs", 200, 420)}`], ["Request → review", `${vnum(V.label, "conv", 24, 38)}%`, "good"]]} />
       <div className="grid lg:grid-cols-3 gap-4">
         <Card>
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Rating breakdown</div>
@@ -1753,7 +1758,7 @@ function Recurring({ V }) {
   const [sel, setSel] = useState(null);
   return (
     <div className="space-y-4">
-      <MiniStats items={[["Active plans", `${rows.length * 23}`], ["Monthly recurring", `$${(perMo * 23).toLocaleString()}`, "good"], ["Renewals due", "8"], ["Churn risk", "3", "bad"]]} />
+      <MiniStats items={[["Active plans", `${rows.length * 23}`], ["Monthly recurring", `$${(perMo * 23).toLocaleString()}`, "good"], ["Renewals due", `${vnum(V.label, "renew", 4, 14)}`], ["Churn risk", `${vnum(V.label, "churn", 1, 6)}`, "bad"]]} />
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Recurring revenue · the AI keeps it renewing</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for plan</span></div>
         <div className="divide-y divide-white/[0.06]">{rows.map((r, i) => (<button key={i} onClick={() => setSel(r)} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition"><span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{r.name[0]}</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted">{r.plan} · ${r.value}/mo</div></div><span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span></button>))}</div>
