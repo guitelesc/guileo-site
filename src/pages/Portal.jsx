@@ -6,7 +6,7 @@ import {
   FaArrowLeft, FaArrowTrendUp, FaArrowTrendDown, FaWhatsapp, FaInstagram, FaPhone, FaFacebook, FaTiktok, FaGoogle,
   FaReceipt, FaUtensils, FaBookOpen, FaBullseye, FaPhoneVolume, FaCommentSms, FaGear, FaChartLine,
   FaDownload, FaBell, FaMagnifyingGlass, FaStore, FaBrain, FaCreditCard, FaChevronDown, FaShareNodes,
-  FaArrowsRotate, FaClock,
+  FaArrowsRotate, FaClock, FaStar, FaIdCard,
 } from "react-icons/fa6";
 
 /* Upsell channel — services a client can request from inside the portal (revenue engine) */
@@ -98,6 +98,18 @@ function genWaitlist(V) {
   const w = WANT[V.label] || "Earlier slot";
   return (V.ops?.schedule || []).slice(0, 4).map((r, i) => ({ name: r.name, want: w, since: `${5 + i * 7} min ago`, ch: r.ch && r.ch !== "—" ? r.ch : "WhatsApp" }));
 }
+// Reviews — reputation drives new demand (a growth lever)
+function genReviews(V) {
+  const names = (V.ops?.schedule || []).map((r) => r.name).filter(Boolean);
+  const texts = ["Amazing — fast and so friendly!", "Best experience, highly recommend 🙌", "They handled everything for me, so easy.", "Quick reply and great service.", "Will 100% come back!"];
+  return (names.length ? names : ["Marcos A.", "Maria S.", "Pedro L.", "Ana R.", "Bruno T."]).slice(0, 5).map((n, i) => ({ name: n, stars: i === 4 ? 4 : 5, text: texts[i % texts.length], ch: ["Google", "Instagram", "WhatsApp"][i % 3] }));
+}
+// Recurring revenue — memberships / plans / subscriptions (the most valuable revenue)
+function genRecurring(V) {
+  const PLAN = { "Gym & Fitness": "Monthly membership", "Clinic": "Recall plan", "Medical": "Care plan", "Salon & Spa": "Glow package", "Plumbing & HVAC": "Maintenance plan", "Auto Dealership": "Service plan", "Education": "Course subscription", "Restaurant": "VIP club", "E-Commerce": "Replenish subscription", "Real Estate": "Property mgmt", "Law Firm": "Retainer", "Construction": "Service contract" };
+  const p = PLAN[V.label] || "Membership";
+  return (V.ops?.schedule || []).slice(0, 5).map((r, i) => ({ name: r.name, plan: p, value: 39 + i * 12, status: i === 3 ? "Renews soon" : i === 4 ? "At risk" : "Active", color: i === 3 ? "#D6C29A" : i === 4 ? "#EF4444" : "#3E9468" }));
+}
 import logo from "../assets/guileo-logo.png";
 import { Count } from "../lib/ui.jsx";
 import { waLink } from "../data/contact.js";
@@ -186,7 +198,7 @@ function sectionsFor(vid, V) {
   return [
     ["overview", "Overview"], ["impact", "Guileo Impact"], ["brain", "Train your AI"], ["analytics", "AI Analytics"],
     ...sec,
-    ["followups", "Follow-ups"], ["waitlist", "Waitlist"],
+    ["followups", "Follow-ups"], ["waitlist", "Waitlist"], ["recurring", "Recurring"], ["reputation", "Reputation"],
     ["customers", "Customers"], ["campaigns", "Campaigns"], ["audiences", "Ad Audiences"],
     ["calllogs", "Call Logs"], ["dialer", "Call Dialer"], ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"],
     ["grow", "Grow with Guileo"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
@@ -205,6 +217,7 @@ function notifFor(key, V) {
     case "social": return 3;
     case "followups": return 3;
     case "waitlist": return 2;
+    case "recurring": return 1;
     default: return 0;
   }
 }
@@ -212,7 +225,7 @@ const SECTION_ICON = {
   overview: FaGaugeHigh, operations: FaListCheck, schedule: FaListCheck, catalog: FaBookOpen, brain: FaBrain, analytics: FaChartLine, liveorders: FaReceipt,
   kitchen: FaUtensils, menu: FaBookOpen, customers: FaUsers, campaigns: FaBullhorn, audiences: FaBullseye,
   calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, social: FaShareNodes, grow: FaStore, billing: FaCreditCard,
-  impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock,
+  impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock, recurring: FaIdCard, reputation: FaStar,
   channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, docs: FaFileLines, settings: FaGear,
 };
 
@@ -1310,6 +1323,42 @@ function Waitlist({ V }) {
   );
 }
 
+function Reputation({ V }) {
+  const reviews = genReviews(V);
+  const dist = [["5★", 78], ["4★", 15], ["3★", 4], ["2★", 2], ["1★", 1]];
+  return (
+    <div className="space-y-4">
+      <MiniStats items={[["Avg rating", "4.8 ★", "good"], ["Reviews this month", "92", "good"], ["Requests sent", "310"], ["Request → review", "30%", "good"]]} />
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Card>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Rating breakdown</div>
+          {dist.map(([l, v]) => (<div key={l} className="mb-2 last:mb-0 flex items-center gap-2"><span className="text-xs text-g-muted w-8">{l}</span><div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-gold to-g-green" style={{ width: `${v}%` }} /></div><span className="text-[11px] text-g-muted w-8 text-right">{v}%</span></div>))}
+          <button onClick={() => toast("Review blast queued ✓")} className="btn-bright text-sm w-full mt-4 justify-center">Request reviews now</button>
+        </Card>
+        <Card className="lg:col-span-2 p-0 overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Recent reviews · collected by AI</div>
+          <div className="divide-y divide-white/[0.06]">{reviews.map((r, i) => (<div key={i} className="px-5 py-3"><div className="flex items-center justify-between"><span className="text-sm font-bold text-g-word">{r.name}</span><span className="text-xs text-g-gold">{"★".repeat(r.stars)}<span className="text-g-muted">{"★".repeat(5 - r.stars)}</span></span></div><div className="text-[12px] text-g-muted mt-0.5">"{r.text}" <span className="text-g-light">· {r.ch}</span></div></div>))}</div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function Recurring({ V }) {
+  const rows = genRecurring(V);
+  const perMo = rows.reduce((s, r) => s + r.value, 0);
+  return (
+    <div className="space-y-4">
+      <MiniStats items={[["Active plans", `${rows.length * 23}`], ["Monthly recurring", `$${(perMo * 23).toLocaleString()}`, "good"], ["Renewals due", "8"], ["Churn risk", "3", "bad"]]} />
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Recurring revenue · the AI keeps it renewing</div>
+        <div className="divide-y divide-white/[0.06]">{rows.map((r, i) => (<div key={i} className="flex items-center gap-3 px-5 py-3.5"><span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{r.name[0]}</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted">{r.plan} · ${r.value}/mo</div></div><span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span></div>))}</div>
+      </Card>
+      <p className="text-center text-[11px] text-g-muted">Recurring revenue is the most valuable revenue — your AI renews, reminds and rescues it automatically.</p>
+    </div>
+  );
+}
+
 /* ───────────────────────── Login gate (demo) ───────────────────────── */
 function Login({ onEnter }) {
   const [email, setEmail] = useState("");
@@ -1370,6 +1419,8 @@ export default function Portal() {
     impact: <GuileoImpact V={V} />,
     followups: <Followups V={V} />,
     waitlist: <Waitlist V={V} />,
+    recurring: <Recurring V={V} />,
+    reputation: <Reputation V={V} />,
     operations: <Operations V={V} />,
     schedule: <ScheduleScreen V={V} />,
     catalog: <CatalogScreen V={V} />,
