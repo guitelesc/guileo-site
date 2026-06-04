@@ -1529,8 +1529,10 @@ function GuileoImpact({ V }) {
 function Followups({ V }) {
   const rows = genFollowups(V);
   const [done, setDone] = useState([]);
+  const [sel, setSel] = useState(null);
   const open = rows.map((r, i) => ({ r, i })).filter(({ i }) => !done.includes(i));
   const pipeline = open.reduce((s, { r }) => s + r.value, 0);
+  const markWon = (i, name) => { setDone((d) => [...d, i]); setSel(null); toast(`${name} marked won 🎉`); };
   return (
     <div className="space-y-4">
       <MiniStats items={[["Active sequences", `${open.length}`], ["Pipeline value", `$${pipeline.toLocaleString()}`], ["Won this week", "8", "good"], ["Auto-nudged", "31", "good"]]} />
@@ -1538,18 +1540,29 @@ function Followups({ V }) {
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">The AI is chasing these — so you never lose them</div>
         <div className="divide-y divide-white/[0.06]">
           {open.map(({ r, i }) => (
-            <div key={i} className="flex items-center gap-3 px-5 py-3.5">
+            <button key={i} onClick={() => setSel({ r, i })} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition">
               <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name} <span className="text-g-muted font-normal">· {r.type}</span></div><div className="text-[11px] text-g-muted">via {r.ch} · next: {r.next} · step {r.stage}/3</div></div>
               <span className="text-sm font-extrabold text-g-green">${r.value}</span>
               <div className="flex gap-1.5 shrink-0">
-                <button onClick={() => toast(`${r.name}: nudge sent`)} className="text-[10px] font-bold rounded-full border border-white/15 px-2.5 py-1 text-g-word hover:border-g-gold/40 transition">Nudge</button>
-                <button onClick={() => { setDone((d) => [...d, i]); toast(`${r.name} marked won 🎉`); }} className="text-[10px] font-bold rounded-full bg-g-green/15 border border-g-green/40 px-2.5 py-1 text-g-green">Won</button>
+                <span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); toast(`${r.name}: nudge sent`); }} className="text-[10px] font-bold rounded-full border border-white/15 px-2.5 py-1 text-g-word hover:border-g-gold/40 transition cursor-pointer">Nudge</span>
+                <span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); markWon(i, r.name); }} className="text-[10px] font-bold rounded-full bg-g-green/15 border border-g-green/40 px-2.5 py-1 text-g-green cursor-pointer">Won</span>
               </div>
-            </div>
+            </button>
           ))}
           {open.length === 0 && <div className="px-5 py-8 text-center text-xs text-g-muted">✅ All caught up — every lead followed up.</div>}
         </div>
       </Card>
+      {sel && (
+        <Drawer
+          title={sel.r.name}
+          subtitle={sel.r.type}
+          badge={<span className="text-sm font-extrabold text-g-green">${sel.r.value}</span>}
+          fields={[["Type", sel.r.type], ["Channel", sel.r.ch], ["Next touch", sel.r.next], ["Sequence stage", `${sel.r.stage} of 3`], ["Pipeline value", `$${sel.r.value}`]]}
+          note={`The AI is running a ${sel.r.stage}-of-3 follow-up sequence via ${sel.r.ch}. It stops automatically the moment they convert or reply.`}
+          actions={<><button onClick={() => { toast(`${sel.r.name}: nudge sent`); setSel(null); }} className="btn-bright text-sm">Send nudge now</button><button onClick={() => markWon(sel.i, sel.r.name)} className="btn-ghost text-sm">🎉 Mark won</button><a href={waLink(`Hi ${sel.r.name}, following up…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
+          onClose={() => setSel(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1557,7 +1570,9 @@ function Followups({ V }) {
 function Waitlist({ V }) {
   const rows = genWaitlist(V);
   const [filled, setFilled] = useState([]);
+  const [sel, setSel] = useState(null);
   const open = rows.map((r, i) => ({ r, i })).filter(({ i }) => !filled.includes(i));
+  const offer = (i, name) => { setFilled((f) => [...f, i]); setSel(null); toast(`Offer sent to ${name} ✓`); };
   return (
     <div className="space-y-4">
       <MiniStats items={[["Waiting now", `${open.length}`], ["Filled today", "9", "good"], ["No-shows saved", "7", "good"], ["Revenue recovered", "$1,240", "good"]]} />
@@ -1565,15 +1580,25 @@ function Waitlist({ V }) {
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Waitlist · turn empty slots into revenue</div>
         <div className="divide-y divide-white/[0.06]">
           {open.map(({ r, i }) => (
-            <div key={i} className="flex items-center gap-3 px-5 py-3.5">
+            <button key={i} onClick={() => setSel({ r, i })} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition">
               <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{r.name[0]}</span>
               <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted">{r.want} · via {r.ch} · {r.since}</div></div>
-              <button onClick={() => { setFilled((f) => [...f, i]); toast(`Offer sent to ${r.name} ✓`); }} className="btn-bright text-xs px-3 shrink-0">Offer slot</button>
-            </div>
+              <span onClick={(e) => { e.stopPropagation(); offer(i, r.name); }} role="button" className="btn-bright text-xs px-3 shrink-0">Offer slot</span>
+            </button>
           ))}
           {open.length === 0 && <div className="px-5 py-8 text-center text-xs text-g-muted">No one waiting — capacity is full. 🎉</div>}
         </div>
       </Card>
+      {sel && (
+        <Drawer
+          title={sel.r.name}
+          subtitle={`Wants: ${sel.r.want}`}
+          fields={[["Looking for", sel.r.want], ["Channel", sel.r.ch], ["Waiting", sel.r.since]]}
+          note={`The AI will text ${sel.r.name} the instant a matching slot frees up — first to reply keeps it. No empty chairs, no manual calls.`}
+          actions={<><button onClick={() => offer(sel.i, sel.r.name)} className="btn-bright text-sm">Offer next open slot</button><a href={waLink(`Hi ${sel.r.name}, a slot just opened for ${sel.r.want}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
+          onClose={() => setSel(null)}
+        />
+      )}
     </div>
   );
 }
