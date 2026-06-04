@@ -19,6 +19,38 @@ const ADDONS = [
   ["📧", "Email & SMS automation", "Follow-ups that recover revenue."],
   ["🤖", "Custom automation", "Connect your tools, automate a workflow."],
 ];
+
+/* Generic builders — give EVERY sector the Guileo AI screens (voice/calls, chats, customers…) from its own data */
+const _PHONES = ["+1 (917) 555-0142", "+1 (646) 555-0199", "+1 (917) 555-0177", "+1 (305) 555-0188"];
+const _NOUN = { "Clinic": "visits", "Medical": "visits", "Law Firm": "matters", "Real Estate": "deals", "Salon & Spa": "visits", "Gym & Fitness": "check-ins", "Education": "classes", "Construction": "projects", "Plumbing & HVAC": "jobs", "Auto Dealership": "deals" };
+function genCalls(V) {
+  const sch = (V.ops?.schedule || []).slice(0, 4);
+  if (sch.length) return sch.map((p, i) => ({ name: p.name, phone: _PHONES[i % 4], outcome: p.meta ? `${p.meta} · booked by AI` : "Handled by AI", dur: `${1 + (i % 2)}m ${(12 + i * 9) % 60}s`, time: `${2 + i * 12} min ago`, color: ["#3E9468", "#38BDF8", "#3E9468", "#7C7C7C"][i % 4] }));
+  return (V.activity || []).slice(0, 4).map((a, i) => ({ name: "Caller", phone: _PHONES[i % 4], outcome: a[2], dur: "1m 02s", time: a[3], color: "#3E9468" }));
+}
+function genConvos(V) {
+  return (V.activity || []).slice(0, 4).map((a, i) => ({ name: (V.ops?.schedule?.[i]?.name) || a[1], last: a[2], t: a[3], unread: i === 1 ? 1 : 0 }));
+}
+function genCustomers(V) {
+  const noun = _NOUN[V.label] || "orders";
+  return (V.ops?.schedule || []).slice(0, 4).map((p, i) => ({ name: p.name, orders: 24 - i * 5, spent: (600 - i * 120) + 0.5, last: `${2 + i * 15} min ago`, channel: p.ch && p.ch !== "—" ? p.ch : "WhatsApp", noun }));
+}
+function genCampaigns(V) {
+  const ch = (V.channelMix?.items?.[0]?.[0]) || "WhatsApp";
+  return [
+    { name: "Reactivation · lapsed leads", channel: ch, sent: 840, opened: 46, revenue: 1240, status: "Active" },
+    { name: "Promo · this week", channel: "Email", sent: 520, opened: 38, revenue: 820, status: "Active" },
+    { name: "Win-back · 30 days inactive", channel: "SMS", sent: 300, opened: 41, revenue: 560, status: "Scheduled" },
+  ];
+}
+function genAudiences() {
+  return [
+    { name: "Repeat customers", size: 412, source: "CRM" },
+    { name: "Lapsed (no activity 30d)", size: 188, source: "CRM" },
+    { name: "Lookalike · top value", size: 22000, source: "Meta" },
+    { name: "Local · 3mi radius", size: 48000, source: "Google" },
+  ];
+}
 import logo from "../assets/guileo-logo.png";
 import { Count } from "../lib/ui.jsx";
 import { waLink } from "../data/contact.js";
@@ -86,9 +118,12 @@ function Bars({ data = REVENUE, color = "#D6C29A" }) {
 }
 
 /* ───────────────────────── Shell pieces ───────────────────────── */
+// Every sector gets the full Guileo experience — voice/calls, WhatsApp, SMS, AI training — because that IS what Guileo is.
 const DEFAULT_SECTIONS = [
-  ["overview", "Overview"], ["operations", "Operations"], ["brain", "Train your AI"], ["channels", "Channels"],
-  ["ads", "Marketing & Ads"], ["leads", "Leads"], ["grow", "Grow with Guileo"], ["billing", "Billing & Plan"], ["support", "Support"], ["docs", "Documents"],
+  ["overview", "Overview"], ["brain", "Train your AI"], ["analytics", "AI Analytics", "soon"],
+  ["operations", "Operations"], ["customers", "Customers"], ["campaigns", "Campaigns"], ["audiences", "Ad Audiences"],
+  ["calllogs", "Call Logs"], ["dialer", "Call Dialer"], ["whatsapp", "WhatsApp"], ["sms", "SMS"],
+  ["grow", "Grow with Guileo"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
 ];
 const SECTION_ICON = {
   overview: FaGaugeHigh, operations: FaListCheck, brain: FaBrain, analytics: FaChartLine, liveorders: FaReceipt,
@@ -538,10 +573,10 @@ function Customers({ V }) {
     <Card className="p-0 overflow-hidden">
       <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Customers</div>
       <div className="divide-y divide-white/[0.06]">
-        {(V.customers || []).map((c, i) => (
+        {(V.customers || genCustomers(V)).map((c, i) => (
           <div key={i} className="flex items-center gap-3 px-5 py-3">
             <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{c.name[0]}</span>
-            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name}</div><div className="text-[11px] text-g-muted truncate">{c.orders} orders · {c.channel} · {c.last}</div></div>
+            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name}</div><div className="text-[11px] text-g-muted truncate">{c.orders} {c.noun || "orders"} · {c.channel} · {c.last}</div></div>
             <span className="text-sm font-extrabold text-g-green">${c.spent.toFixed(2)}</span>
           </div>
         ))}
@@ -554,7 +589,7 @@ function Campaigns({ V }) {
     <Card className="p-0 overflow-hidden">
       <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Campaigns</span><a href={waLink("I'd like to launch a campaign")} target="_blank" rel="noopener" className="text-[11px] font-bold text-g-gold hover:underline">New campaign →</a></div>
       <div className="divide-y divide-white/[0.06]">
-        {(V.campaigns || []).map((c, i) => (
+        {(V.campaigns || genCampaigns(V)).map((c, i) => (
           <div key={i} className="flex items-center gap-4 px-5 py-3.5">
             <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name}</div><div className="text-[11px] text-g-muted">{c.channel} · {c.sent} sent · {c.opened}% opened</div></div>
             <span className="text-sm font-extrabold text-g-green">${c.revenue.toLocaleString()}</span>
@@ -568,7 +603,7 @@ function Campaigns({ V }) {
 function Audiences({ V }) {
   return (
     <div className="grid sm:grid-cols-2 gap-4">
-      {(V.audiences || []).map((a, i) => (
+      {(V.audiences || genAudiences()).map((a, i) => (
         <Card key={i}><div className="flex items-center justify-between"><div className="text-sm font-bold text-g-word">{a.name}</div><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/[0.06] text-g-muted">{a.source}</span></div><div className="mt-2 text-2xl font-extrabold text-g-word"><Count to={a.size} /></div><div className="text-[11px] text-g-muted">people reachable</div></Card>
       ))}
     </div>
@@ -579,7 +614,7 @@ function CallLogs({ V }) {
     <Card className="p-0 overflow-hidden">
       <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Call logs · answered by AI</div>
       <div className="divide-y divide-white/[0.06]">
-        {(V.callLogs || []).map((c, i) => (
+        {(V.callLogs || genCalls(V)).map((c, i) => (
           <div key={i} className="flex items-center gap-3 px-5 py-3">
             <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06]" style={{ color: c.color }}><FaPhone size={13} /></span>
             <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name} <span className="text-g-muted font-normal">· {c.phone}</span></div><div className="text-[11px] text-g-muted truncate">{c.outcome}</div></div>
@@ -608,7 +643,7 @@ function Convos({ V, title }) {
     <Card className="p-0 overflow-hidden">
       <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{title} · AI conversations</div>
       <div className="divide-y divide-white/[0.06]">
-        {(V.convos || []).map((c, i) => (
+        {(V.convos || genConvos(V)).map((c, i) => (
           <div key={i} className="flex items-center gap-3 px-5 py-3">
             <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{c.name[0]}</span>
             <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name}</div><div className="text-[11px] text-g-muted truncate">{c.last}</div></div>
