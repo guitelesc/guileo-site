@@ -231,13 +231,14 @@ const SECTION_ICON = {
   channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, docs: FaFileLines, settings: FaGear,
 };
 // Group the (long) nav into scannable categories
+// Order = everyday use first (operations/conversations/customers), then growth/strategy, then account.
 const NAV_GROUPS = [
   ["", ["overview"]],
   ["Your AI ✨", ["brain", "analytics"]],
-  ["Grow revenue", ["impact", "followups", "waitlist", "recurring", "reputation", "campaigns", "audiences", "grow"]],
   ["Operations", ["liveorders", "kitchen", "menu", "schedule", "catalog", "operations"]],
   ["Conversations", ["calllogs", "dialer", "whatsapp", "sms", "social"]],
   ["Customers", ["customers"]],
+  ["Grow revenue", ["impact", "followups", "waitlist", "recurring", "reputation", "campaigns", "audiences", "grow"]],
   ["Account", ["billing", "support", "settings"]],
 ];
 
@@ -1382,6 +1383,7 @@ function Waitlist({ V }) {
 function Reputation({ V }) {
   const reviews = genReviews(V);
   const dist = [["5★", 78], ["4★", 15], ["3★", 4], ["2★", 2], ["1★", 1]];
+  const [sel, setSel] = useState(null);
   return (
     <div className="space-y-4">
       <MiniStats items={[["Avg rating", "4.8 ★", "good"], ["Reviews this month", "92", "good"], ["Requests sent", "310"], ["Request → review", "30%", "good"]]} />
@@ -1393,9 +1395,20 @@ function Reputation({ V }) {
         </Card>
         <Card className="lg:col-span-2 p-0 overflow-hidden">
           <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Recent reviews · collected by AI</div>
-          <div className="divide-y divide-white/[0.06]">{reviews.map((r, i) => (<div key={i} className="px-5 py-3"><div className="flex items-center justify-between"><span className="text-sm font-bold text-g-word">{r.name}</span><span className="text-xs text-g-gold">{"★".repeat(r.stars)}<span className="text-g-muted">{"★".repeat(5 - r.stars)}</span></span></div><div className="text-[12px] text-g-muted mt-0.5">"{r.text}" <span className="text-g-light">· {r.ch}</span></div></div>))}</div>
+          <div className="divide-y divide-white/[0.06]">{reviews.map((r, i) => (<button key={i} onClick={() => setSel(r)} className="w-full text-left px-5 py-3 hover:bg-white/[0.04] transition"><div className="flex items-center justify-between"><span className="text-sm font-bold text-g-word">{r.name}</span><span className="text-xs text-g-gold">{"★".repeat(r.stars)}<span className="text-g-muted">{"★".repeat(5 - r.stars)}</span></span></div><div className="text-[12px] text-g-muted mt-0.5">"{r.text}" <span className="text-g-light">· {r.ch}</span></div></button>))}</div>
         </Card>
       </div>
+      {sel && (
+        <Drawer
+          title={sel.name}
+          subtitle={`${sel.ch} review`}
+          badge={<span className="text-xs text-g-gold">{"★".repeat(sel.stars)}</span>}
+          fields={[["Rating", `${sel.stars} / 5`], ["Channel", sel.ch], ["Status", "Published"]]}
+          note={<>"{sel.text}"<div className="mt-2 text-g-muted">The AI requested this review automatically after a great experience.</div></>}
+          actions={<><button onClick={() => { toast("Thanks reply posted ✓"); setSel(null); }} className="btn-bright text-sm">💬 Reply / thank</button><button onClick={() => { toast("Shared to social ✓"); setSel(null); }} className="btn-ghost text-sm">📣 Share</button></>}
+          onClose={() => setSel(null)}
+        />
+      )}
     </div>
   );
 }
