@@ -1518,13 +1518,32 @@ function SocialInbox({ V }) {
   );
 }
 
+// What customers ask the AI, the missed-revenue insights, and sample transcripts —
+// all per-sector so AI Analytics reads true for a clinic or a law firm, not just a restaurant.
+const BOOK_WORD = { "Restaurant": "a table", "Clinic": "an appointment", "Medical": "an appointment", "Salon & Spa": "an appointment", "Gym & Fitness": "a session", "Law Firm": "a consultation", "Real Estate": "a viewing", "Plumbing & HVAC": "a visit", "Auto Dealership": "a service slot", "Education": "a class", "Construction": "an estimate", "E-Commerce": "an order" };
+function aiIntents(V) {
+  const primary = { "Restaurant": "Booking / reservation", "Clinic": "Appointment booking", "Medical": "Appointment booking", "Salon & Spa": "Appointment booking", "Gym & Fitness": "Class / session booking", "Law Firm": "Consultation request", "Real Estate": "Viewing request", "Plumbing & HVAC": "Service request", "Auto Dealership": "Service / test-drive", "Education": "Enrollment request", "Construction": "Estimate request", "E-Commerce": "Order / status" }[V.label] || "Booking request";
+  return [[primary, 41], ["Hours & location", 22], ["Pricing", 18], ["Status / follow-up", 12], ["Complaint", 7]];
+}
+function aiMissed(V) {
+  const svc = (V.ops?.list?.[0]?.name) || "a service";
+  return [
+    `3 callers asked for ${svc.toLowerCase()}-adjacent services you don't offer yet — a possible new revenue line.`,
+    "Demand peaks beyond capacity at busy hours — push the waitlist / pre-booking to capture it.",
+    "5 pricing questions didn't convert — a small, well-timed offer could win them back.",
+  ];
+}
 function AIAnalytics({ V }) {
   const sentiment = [["Positive", 82, "#3E9468"], ["Neutral", 13, "#D6C29A"], ["Negative", 5, "#EF4444"]];
-  const intents = [["Booking / reservation", 41], ["Hours & location", 22], ["Pricing", 18], ["Order / status", 12], ["Complaint", 7]];
-  const missed = ["3 callers asked for a service you don't offer yet — a possible new revenue line.", "Demand peaks 7–8pm beyond capacity — push pre-orders / waitlist.", "5 pricing questions didn't convert — a small promo could win them back."];
-  const T = [
-    { who: "Marcos A.", ch: "Phone", sent: "Positive", lines: [["them", "Do you have a table for 4 tonight?"], ["ai", "We do — 8:00 PM works. Shall I book it under your name?"], ["them", "Yes please, Marcos."], ["ai", "Booked ✅ See you at 8, Marcos!"]] },
-    { who: "Maria S.", ch: "WhatsApp", sent: "Positive", lines: [["them", "Can I order delivery?"], ["ai", "Of course 🛵 What would you like?"], ["them", "2 Pão de Queijo packs."], ["ai", "$17 total, ETA 25 min — confirmed!"]] },
+  const intents = aiIntents(V);
+  const missed = aiMissed(V);
+  const names = (V.ops?.schedule || []).map((r) => r.name).filter(Boolean);
+  const ch1 = (V.channelMix?.items?.[0]?.[0]) || "Phone";
+  const book = BOOK_WORD[V.label] || "an appointment";
+  const svc = (V.ops?.list?.[0]?.name) || "your services";
+  const T = V.transcripts || [
+    { who: names[0] || "A customer", ch: ch1, sent: "Positive", lines: [["them", `Can I book ${book} for tomorrow?`], ["ai", `Of course! What time works best? I'll lock it in.`], ["them", "Around 2pm?"], ["ai", `2pm tomorrow it is — booked ✅ You'll get a reminder the day before.`]] },
+    { who: names[1] || "Another customer", ch: "WhatsApp", sent: "Positive", lines: [["them", `How much is ${svc.toLowerCase()}?`], ["ai", `Happy to help — it depends on a couple of details. Can I ask what you need?`], ["them", "Just the basics for now."], ["ai", `Got it — I'll send a quick quote on WhatsApp and can book you in if it looks good. 👍`]] },
   ];
   return (
     <div className="space-y-4">
