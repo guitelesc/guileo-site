@@ -24,6 +24,25 @@ const ADDONS = [
 /* Generic builders — give EVERY sector the Guileo AI screens (voice/calls, chats, customers…) from its own data */
 const _PHONES = ["+1 (917) 555-0142", "+1 (646) 555-0199", "+1 (917) 555-0177", "+1 (305) 555-0188"];
 const _NOUN = { "Clinic": "visits", "Medical": "visits", "Law Firm": "matters", "Real Estate": "deals", "Salon & Spa": "visits", "Gym & Fitness": "check-ins", "Education": "classes", "Construction": "projects", "Plumbing & HVAC": "jobs", "Auto Dealership": "deals" };
+// Who handles each booking (provider / staff) — gives the schedule real operational meaning
+const STAFF = {
+  "Restaurant": ["Server Ana", "Server Léo", "Host stand"],
+  "Clinic": ["Dr. Ferreira", "Dr. Mendes", "Dr. Lopes", "Dr. Rocha"],
+  "Medical": ["Dr. Alves", "Dr. Castro", "Dr. Nunes", "Dr. Pires"],
+  "Salon & Spa": ["Bianca", "Tom", "Léa", "Marco"],
+  "Law Firm": ["R. Mendes", "A. Costa", "P. Lima"],
+  "E-Commerce": ["Fulfillment", "Packing", "Support AI"],
+  "Real Estate": ["Agent Rui", "Agent Bea", "Agent Tom"],
+  "Gym & Fitness": ["Coach Léo", "Coach Maya", "Front desk"],
+  "Plumbing & HVAC": ["Tech Mike", "Tech Sara", "Tech Bruno"],
+  "Auto Dealership": ["Sales · Rui", "Service bay 2", "Sales · Ana"],
+  "Education": ["Teacher Ana", "Teacher Caio", "Teacher Bia"],
+  "Construction": ["Crew A", "Crew B", "Estimator João"],
+};
+const ROOM = { "Clinic": ["Room 1", "Room 2", "Room 3", "Room 4"], "Medical": ["Room 1", "Room 2", "Room 3", "Room 4", "Room 5", "Room 6"], "Salon & Spa": ["Station 1", "Station 2", "Station 3", "Spa room"] };
+const staffOf = (label, i) => { const a = STAFF[label] || []; return a.length ? a[i % a.length] : null; };
+const roomOf = (label, i) => { const a = ROOM[label] || []; return a.length ? a[i % a.length] : null; };
+const _dur = ["30 min", "45 min", "1 h", "1 h 30", "20 min"];
 function genCalls(V) {
   const sch = (V.ops?.schedule || []).slice(0, 4);
   if (sch.length) return sch.map((p, i) => ({ name: p.name, phone: _PHONES[i % 4], outcome: p.meta ? `${p.meta} · booked by AI` : "Handled by AI", dur: `${1 + (i % 2)}m ${(12 + i * 9) % 60}s`, time: `${2 + i * 12} min ago`, color: ["#3E9468", "#38BDF8", "#3E9468", "#7C7C7C"][i % 4] }));
@@ -138,7 +157,7 @@ function sectionsFor(vid, V) {
   if (V.sections) return V.sections; // restaurant has a bespoke nav from its reference tool
   const sec = SECTOR_NAV[vid] || [["operations", "Operations"]];
   return [
-    ["overview", "Overview"], ["brain", "Train your AI"], ["analytics", "AI Analytics", "soon"],
+    ["overview", "Overview"], ["brain", "Train your AI"], ["analytics", "AI Analytics"],
     ...sec,
     ["customers", "Customers"], ["campaigns", "Campaigns"], ["audiences", "Ad Audiences"],
     ["calllogs", "Call Logs"], ["dialer", "Call Dialer"], ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"],
@@ -168,6 +187,28 @@ const SECTION_ICON = {
 
 function Card({ children, className = "" }) {
   return <div className={`rounded-xl2 border border-white/10 bg-white/[0.04] backdrop-blur-md p-5 ${className}`}>{children}</div>;
+}
+// Slide-over detail panel — click any row to see everything + act on it
+function Drawer({ title, subtitle, badge, fields, note, actions, onClose }) {
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <motion.div initial={{ x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 320, damping: 32 }}
+        className="fixed top-0 right-0 z-50 h-full w-full max-w-sm bg-g-cream/95 backdrop-blur-xl border-l border-white/12 shadow-2xl overflow-y-auto flex flex-col">
+        <div className="flex items-start justify-between p-5 border-b border-white/10">
+          <div className="min-w-0"><div className="text-base font-extrabold text-g-word truncate">{title}</div>{subtitle && <div className="text-xs text-g-muted mt-0.5">{subtitle}</div>}</div>
+          <div className="flex items-center gap-2 shrink-0">{badge}<button onClick={onClose} aria-label="Close" className="text-g-muted hover:text-g-word text-lg leading-none px-1">✕</button></div>
+        </div>
+        <div className="p-5 space-y-2.5 flex-1">
+          {fields.filter(([, v]) => v != null && v !== "").map(([k, v], i) => (
+            <div key={i} className="flex justify-between gap-4 text-sm"><span className="text-g-muted">{k}</span><span className="font-bold text-g-word text-right">{v}</span></div>
+          ))}
+          {note && <div className="mt-3 rounded-xl2 border border-g-green/25 bg-g-green/[0.06] p-3 text-xs text-g-light"><div className="text-[10px] font-black uppercase text-g-green mb-1">🧠 Guileo AI notes</div>{note}</div>}
+        </div>
+        {actions && <div className="p-4 border-t border-white/10 flex flex-wrap gap-2">{actions}</div>}
+      </motion.div>
+    </>
+  );
 }
 // Reusable summary strip — adds depth (stats header) to any list screen
 function MiniStats({ items }) {
@@ -895,6 +936,8 @@ function Billing({ V }) {
 
 function ScheduleScreen({ V }) {
   const o = V.ops || {};
+  const sch = o.schedule || [];
+  const [sel, setSel] = useState(null);
   return (
     <div className="space-y-4">
       {o.stats && (
@@ -902,27 +945,52 @@ function ScheduleScreen({ V }) {
           {o.stats.map((s) => (<Card key={s.label}><div className="text-[11px] uppercase tracking-wide text-g-muted">{s.label}</div><div className={`text-2xl font-extrabold mt-1 ${s.tone === "good" ? "text-g-green" : "text-g-word"}`}>{s.value}</div></Card>))}
         </div>
       )}
-      {o.schedule && (
+      {sch.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {Object.entries((o.schedule || []).reduce((m, r) => { m[r.status] = (m[r.status] || 0) + 1; return m; }, {})).map(([st, n]) => (
+          {Object.entries(sch.reduce((m, r) => { m[r.status] = (m[r.status] || 0) + 1; return m; }, {})).map(([st, n]) => (
             <span key={st} className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word">{st} <span className="text-g-muted">{n}</span></span>
           ))}
         </div>
       )}
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{o.scheduleTitle || "Today"}</div>
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{o.scheduleTitle || "Today"}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap a row for full details</span></div>
         <div className="divide-y divide-white/[0.06]">
-          {(o.schedule || []).map((r, i) => (
-            <div key={i} className="flex items-center gap-3 px-5 py-3">
-              <span className="text-xs font-bold text-g-light w-20 shrink-0 inline-block truncate align-middle" title={r.time}>{r.time}</span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted truncate">{r.meta}{r.ch && r.ch !== "—" ? ` · ${r.ch}` : ""}</div></div>
-              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span>
-            </div>
-          ))}
+          {sch.map((r, i) => {
+            const who = staffOf(V.label, i);
+            return (
+              <button key={i} onClick={() => setSel({ r, i, who })} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
+                <span className="text-xs font-bold text-g-light w-20 shrink-0 inline-block truncate align-middle" title={r.time}>{r.time}</span>
+                <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted truncate">{r.meta}{who ? <> · <span className="text-g-light">{who}</span></> : ""}{r.ch && r.ch !== "—" ? ` · ${r.ch}` : ""}</div></div>
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span>
+              </button>
+            );
+          })}
         </div>
       </Card>
       {o.grid && (
         <Card><div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{o.gridTitle}</div><div className="grid grid-cols-6 sm:grid-cols-8 gap-2">{o.grid.map((g, i) => (<div key={i} className={`grid place-items-center h-10 rounded-lg text-xs font-bold border ${g.on ? "border-g-green/50 bg-g-green/15 text-g-light" : "border-white/10 bg-white/[0.03] text-g-muted"}`}>{g.label}</div>))}</div></Card>
+      )}
+      {sel && (
+        <Drawer
+          title={sel.r.name}
+          subtitle={sel.r.meta}
+          badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: sel.r.color + "22", color: sel.r.color }}>{sel.r.status}</span>}
+          fields={[
+            ["Time", sel.r.time],
+            ["With", sel.who],
+            ["Location", roomOf(V.label, sel.i)],
+            ["Duration", _dur[sel.i % _dur.length]],
+            ["Channel", sel.r.ch && sel.r.ch !== "—" ? sel.r.ch : "—"],
+            ["Status", sel.r.status],
+          ]}
+          note={`Captured by your AI ${sel.r.ch && sel.r.ch !== "—" ? `via ${sel.r.ch}` : ""}. Confirmation + reminder sent automatically. ${/pending|new|follow/i.test(sel.r.status) ? "Awaiting confirmation — the AI will follow up." : "Confirmed and on the books."}`}
+          actions={<>
+            <a href={waLink(`Hi ${sel.r.name}, about your ${sel.r.meta}…`)} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Message</a>
+            <button onClick={() => setSel(null)} className="btn-ghost text-sm">✓ Confirm</button>
+            <button onClick={() => setSel(null)} className="btn-ghost text-sm">📅 Reschedule</button>
+          </>}
+          onClose={() => setSel(null)}
+        />
       )}
     </div>
   );
@@ -972,6 +1040,71 @@ function SocialInbox({ V }) {
   );
 }
 
+function AIAnalytics({ V }) {
+  const sentiment = [["Positive", 82, "#3E9468"], ["Neutral", 13, "#D6C29A"], ["Negative", 5, "#EF4444"]];
+  const intents = [["Booking / reservation", 41], ["Hours & location", 22], ["Pricing", 18], ["Order / status", 12], ["Complaint", 7]];
+  const missed = ["3 callers asked for a service you don't offer yet — a possible new revenue line.", "Demand peaks 7–8pm beyond capacity — push pre-orders / waitlist.", "5 pricing questions didn't convert — a small promo could win them back."];
+  const T = [
+    { who: "Marcos A.", ch: "Phone", sent: "Positive", lines: [["them", "Do you have a table for 4 tonight?"], ["ai", "We do — 8:00 PM works. Shall I book it under your name?"], ["them", "Yes please, Marcos."], ["ai", "Booked ✅ See you at 8, Marcos!"]] },
+    { who: "Maria S.", ch: "WhatsApp", sent: "Positive", lines: [["them", "Can I order delivery?"], ["ai", "Of course 🛵 What would you like?"], ["them", "2 Pão de Queijo packs."], ["ai", "$17 total, ETA 25 min — confirmed!"]] },
+  ];
+  return (
+    <div className="space-y-4">
+      <MiniStats items={[["Conversations analyzed", "1,842"], ["Avg sentiment", "Positive 👍", "good"], ["Resolved by AI", "91%", "good"], ["Avg handle time", "1m 12s"]]} />
+      <div className="grid lg:grid-cols-2 gap-4">
+        <Card>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Sentiment</div>
+          {sentiment.map(([l, v, c]) => (<div key={l} className="mb-2.5 last:mb-0"><div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{l}</span><span className="text-g-muted">{v}%</span></div><div className="h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full" style={{ width: `${v}%`, background: c }} /></div></div>))}
+        </Card>
+        <Card>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Why people contact you</div>
+          {intents.map(([l, v]) => (<div key={l} className="mb-2.5 last:mb-0"><div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{l}</span><span className="text-g-muted">{v}%</span></div><div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-g-green" style={{ width: `${(v / 41) * 100}%` }} /></div></div>))}
+        </Card>
+      </div>
+      <Card className="border-g-gold/30 bg-g-gold/[0.05]">
+        <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">⚡ Missed opportunities the AI spotted</div>
+        <div className="space-y-2">{missed.map((m, i) => (<div key={i} className="rounded-xl2 border-l-2 border-g-gold/50 bg-white/[0.05] px-3 py-2.5 text-xs text-g-word">{m}</div>))}</div>
+      </Card>
+      <div className="grid lg:grid-cols-2 gap-4">
+        {T.map((t, i) => (
+          <Card key={i} className="p-0 overflow-hidden">
+            <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold text-g-word">{t.who} · {t.ch}</span><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-g-green/15 text-g-green">{t.sent}</span></div>
+            <div className="p-4 space-y-2">{t.lines.map(([from, text], j) => (<div key={j} className={`flex ${from === "them" ? "justify-start" : "justify-end"}`}><div className={`max-w-[80%] rounded-2xl px-3 py-1.5 text-xs ${from === "them" ? "bg-white/[0.06] text-g-word" : "bg-g-green/15 text-g-light border border-g-green/30"}`}>{text}</div></div>))}</div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Palette({ V, sections, onNav, onClose }) {
+  const [q, setQ] = useState("");
+  const items = [
+    ...sections.map(([k, l]) => ({ icon: "›", label: l, sub: "Section", key: k })),
+    ...(V.customers || genCustomers(V)).map((c) => ({ icon: "👤", label: c.name, sub: "Customer", key: "customers" })),
+    ...(V.convos || genConvos(V)).map((c) => ({ icon: "💬", label: c.name, sub: "Conversation", key: "whatsapp" })),
+    ...((V.ops && V.ops.schedule) || []).map((r) => ({ icon: "📅", label: r.name, sub: r.meta, key: V.sections ? "overview" : "schedule" })),
+  ];
+  const ql = q.trim().toLowerCase();
+  const res = (ql ? items.filter((it) => (it.label + " " + it.sub).toLowerCase().includes(ql)) : items).slice(0, 14);
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed left-1/2 top-20 sm:top-24 -translate-x-1/2 z-50 w-[92%] max-w-lg rounded-xl3 border border-white/12 bg-g-cream/95 backdrop-blur-xl shadow-2xl overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10"><FaMagnifyingGlass size={13} className="text-g-muted" /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search sections, customers, conversations…" className="flex-1 bg-transparent text-sm text-g-word placeholder:text-g-muted outline-none" /><span className="text-[10px] text-g-muted border border-white/15 rounded px-1.5 py-0.5">ESC</span></div>
+        <div className="max-h-80 overflow-y-auto p-1.5">
+          {res.length ? res.map((it, i) => (
+            <button key={i} onClick={() => { onNav(it.key); onClose(); }} className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-white/[0.06] transition">
+              <span className="text-base w-5 text-center text-g-gold">{it.icon}</span>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{it.label}</div><div className="text-[11px] text-g-muted truncate">{it.sub}</div></div>
+            </button>
+          )) : <div className="px-3 py-6 text-center text-xs text-g-muted">No matches</div>}
+        </div>
+      </div>
+    </>
+  );
+}
+
 /* ───────────────────────── Login gate (demo) ───────────────────────── */
 function Login({ onEnter }) {
   const [email, setEmail] = useState("");
@@ -1005,7 +1138,12 @@ export default function Portal() {
   const [vertOpen, setVertOpen] = useState(false);
   const [notifsRead, setNotifsRead] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   useEffect(() => { portalApi.session().then((s) => { if (s) setAuthed(true); }).finally(() => setBooting(false)); }, []);
+  useEffect(() => {
+    const h = (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPaletteOpen((o) => !o); } if (e.key === "Escape") setPaletteOpen(false); };
+    window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h);
+  }, []);
   const V = VERTICALS[vertical];
   const sections = sectionsFor(vertical, V);
   const nf = (k) => (notifsRead ? 0 : notifFor(k, V));
@@ -1027,7 +1165,7 @@ export default function Portal() {
     schedule: <ScheduleScreen V={V} />,
     catalog: <CatalogScreen V={V} />,
     social: <SocialInbox V={V} />,
-    analytics: <ComingSoon title="AI Analytics" />,
+    analytics: <AIAnalytics V={V} />,
     liveorders: <LiveOrders V={V} />,
     kitchen: <Kitchen V={V} />,
     menu: <MenuView V={V} />,
@@ -1102,7 +1240,7 @@ export default function Portal() {
             <p className="text-[11px] text-g-muted truncate">{V.business.name} · {V.business.place} · {V.business.since}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <div className="hidden md:flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs text-g-muted w-40"><FaMagnifyingGlass size={11} /><span className="truncate">Search… ⌘K</span></div>
+            <button onClick={() => setPaletteOpen(true)} className="hidden md:flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs text-g-muted w-40 hover:border-g-gold/40 transition"><FaMagnifyingGlass size={11} /><span className="truncate">Search… ⌘K</span></button>
             <button onClick={exportReport} className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word hover:border-g-gold/40 transition"><FaDownload size={11} /> Report</button>
             <div className="relative">
               <button onClick={() => setBellOpen((o) => !o)} className="relative grid place-items-center h-9 w-9 rounded-full border border-white/12 bg-white/[0.04] text-g-muted hover:text-g-word transition" aria-label={`Notifications (${totalNotif})`}><FaBell size={13} />{totalNotif > 0 && <span className="absolute -top-1 -right-1 inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black shadow-[0_0_8px_rgba(239,68,68,0.6)]">{totalNotif}</span>}</button>
@@ -1174,6 +1312,8 @@ export default function Portal() {
         className="fixed bottom-5 right-5 z-40 btn-bright text-sm shadow-lift">
         💬 <span className="hidden sm:inline">Talk to your team</span>
       </a>
+
+      {paletteOpen && <Palette V={V} sections={sections} onNav={setView} onClose={() => setPaletteOpen(false)} />}
     </div>
   );
 }
