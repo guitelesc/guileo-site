@@ -4,7 +4,7 @@ import {
   FaGaugeHigh, FaComments, FaBullhorn, FaUsers, FaHeadset, FaFileLines, FaListCheck,
   FaArrowLeft, FaArrowTrendUp, FaArrowTrendDown, FaWhatsapp, FaInstagram, FaPhone, FaFacebook, FaTiktok, FaGoogle,
   FaReceipt, FaUtensils, FaBookOpen, FaBullseye, FaPhoneVolume, FaCommentSms, FaGear, FaChartLine,
-  FaDownload, FaBell, FaMagnifyingGlass, FaStore, FaBrain, FaCreditCard, FaChevronDown,
+  FaDownload, FaBell, FaMagnifyingGlass, FaStore, FaBrain, FaCreditCard, FaChevronDown, FaShareNodes,
 } from "react-icons/fa6";
 
 /* Upsell channel — services a client can request from inside the portal (revenue engine) */
@@ -118,17 +118,36 @@ function Bars({ data = REVENUE, color = "#D6C29A" }) {
 }
 
 /* ───────────────────────── Shell pieces ───────────────────────── */
-// Every sector gets the full Guileo experience — voice/calls, WhatsApp, SMS, AI training — because that IS what Guileo is.
-const DEFAULT_SECTIONS = [
-  ["overview", "Overview"], ["brain", "Train your AI"], ["analytics", "AI Analytics", "soon"],
-  ["operations", "Operations"], ["customers", "Customers"], ["campaigns", "Campaigns"], ["audiences", "Ad Audiences"],
-  ["calllogs", "Call Logs"], ["dialer", "Call Dialer"], ["whatsapp", "WhatsApp"], ["sms", "SMS"],
-  ["grow", "Grow with Guileo"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
-];
+// Per-sector operational screens (reuse Schedule/Catalog renderers, named per industry).
+const SECTOR_NAV = {
+  clinic: [["schedule", "Appointments"], ["catalog", "Procedures"]],
+  medical: [["schedule", "Appointments"], ["catalog", "Specialties"]],
+  salon: [["schedule", "Schedule"], ["catalog", "Services"]],
+  law: [["schedule", "Intakes"], ["catalog", "Matter types"]],
+  ecommerce: [["schedule", "Orders"], ["catalog", "Products"]],
+  realestate: [["schedule", "Viewings"], ["catalog", "Listings"]],
+  gym: [["schedule", "Classes & trials"], ["catalog", "Class types"]],
+  homeservices: [["schedule", "Jobs"], ["catalog", "Services"]],
+  auto: [["schedule", "Test drives"], ["catalog", "Models"]],
+  education: [["schedule", "Classes & trials"], ["catalog", "Courses"]],
+  construction: [["schedule", "Site visits"], ["catalog", "Project types"]],
+};
+// Every sector gets the full Guileo experience — voice/calls, WhatsApp, SMS, Social, AI training — because that IS what Guileo is.
+function sectionsFor(vid, V) {
+  if (V.sections) return V.sections; // restaurant has a bespoke nav from its reference tool
+  const sec = SECTOR_NAV[vid] || [["operations", "Operations"]];
+  return [
+    ["overview", "Overview"], ["brain", "Train your AI"], ["analytics", "AI Analytics", "soon"],
+    ...sec,
+    ["customers", "Customers"], ["campaigns", "Campaigns"], ["audiences", "Ad Audiences"],
+    ["calllogs", "Call Logs"], ["dialer", "Call Dialer"], ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"],
+    ["grow", "Grow with Guileo"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
+  ];
+}
 const SECTION_ICON = {
-  overview: FaGaugeHigh, operations: FaListCheck, brain: FaBrain, analytics: FaChartLine, liveorders: FaReceipt,
+  overview: FaGaugeHigh, operations: FaListCheck, schedule: FaListCheck, catalog: FaBookOpen, brain: FaBrain, analytics: FaChartLine, liveorders: FaReceipt,
   kitchen: FaUtensils, menu: FaBookOpen, customers: FaUsers, campaigns: FaBullhorn, audiences: FaBullseye,
-  calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, grow: FaStore, billing: FaCreditCard,
+  calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, social: FaShareNodes, grow: FaStore, billing: FaCreditCard,
   channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, docs: FaFileLines, settings: FaGear,
 };
 
@@ -765,6 +784,71 @@ function Billing({ V }) {
   );
 }
 
+function ScheduleScreen({ V }) {
+  const o = V.ops || {};
+  return (
+    <div className="space-y-4">
+      {o.stats && (
+        <div className="grid sm:grid-cols-3 gap-4">
+          {o.stats.map((s) => (<Card key={s.label}><div className="text-[11px] uppercase tracking-wide text-g-muted">{s.label}</div><div className={`text-2xl font-extrabold mt-1 ${s.tone === "good" ? "text-g-green" : "text-g-word"}`}>{s.value}</div></Card>))}
+        </div>
+      )}
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{o.scheduleTitle || "Today"}</div>
+        <div className="divide-y divide-white/[0.06]">
+          {(o.schedule || []).map((r, i) => (
+            <div key={i} className="flex items-center gap-3 px-5 py-3">
+              <span className="text-xs font-bold text-g-light w-20 shrink-0 inline-block truncate align-middle" title={r.time}>{r.time}</span>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted truncate">{r.meta}{r.ch && r.ch !== "—" ? ` · ${r.ch}` : ""}</div></div>
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+      {o.grid && (
+        <Card><div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{o.gridTitle}</div><div className="grid grid-cols-6 sm:grid-cols-8 gap-2">{o.grid.map((g, i) => (<div key={i} className={`grid place-items-center h-10 rounded-lg text-xs font-bold border ${g.on ? "border-g-green/50 bg-g-green/15 text-g-light" : "border-white/10 bg-white/[0.03] text-g-muted"}`}>{g.label}</div>))}</div></Card>
+      )}
+    </div>
+  );
+}
+
+function CatalogScreen({ V }) {
+  const o = V.ops || {}; const list = o.list || [];
+  const max = Math.max(1, ...list.map((x) => x.val));
+  return (
+    <Card className="p-0 overflow-hidden">
+      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{o.listTitle || "Catalog"}</div>
+      <div className="p-5 space-y-3.5">
+        {list.map((it, i) => (
+          <div key={i}><div className="flex justify-between text-xs mb-1"><span className="font-bold text-g-word">{it.name}</span><span className="text-g-muted">{it.val}</span></div><div className="h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${(it.val / max) * 100}%` }} /></div></div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function SocialInbox({ V }) {
+  const nets = [[FaInstagram, "#E4405F", "Instagram"], [FaFacebook, "#1877F2", "Facebook"], [FaTiktok, "#e7e7e7", "TikTok"], [FaInstagram, "#E4405F", "Instagram"]];
+  const rows = (V.activity || []).slice(0, 4).map((a, i) => ({ name: (V.ops?.schedule?.[i]?.name) || "New DM", last: a[2], t: a[3], unread: i % 2 }));
+  return (
+    <Card className="p-0 overflow-hidden">
+      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Social inbox · AI replies on Instagram, Facebook &amp; TikTok</div>
+      <div className="divide-y divide-white/[0.06]">
+        {rows.map((c, i) => {
+          const [Icon, color, net] = nets[i % 4];
+          return (
+            <div key={i} className="flex items-center gap-3 px-5 py-3">
+              <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06]" style={{ color }}><Icon size={16} /></span>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name} <span className="text-g-muted font-normal">· {net}</span></div><div className="text-[11px] text-g-muted truncate">{c.last}</div></div>
+              <div className="text-right shrink-0 flex flex-col items-end gap-1"><span className="text-[10px] text-g-muted">{c.t}</span>{c.unread > 0 && <span className="inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-g-green text-[10px] font-bold text-black">{c.unread}</span>}</div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
 /* ───────────────────────── Login gate (demo) ───────────────────────── */
 function Login({ onEnter }) {
   return (
@@ -793,13 +877,16 @@ export default function Portal() {
   const [vertical, setVertical] = useState("restaurant");
   const [vertOpen, setVertOpen] = useState(false);
   const V = VERTICALS[vertical];
-  const sections = V.sections || DEFAULT_SECTIONS;
+  const sections = sectionsFor(vertical, V);
   const cur = sections.find((s) => s[0] === view);
   const title = view === "operations" ? `${V.label} operations` : (cur ? cur[1] : "Overview");
   const switchVertical = (k) => { setVertical(k); setView("overview"); };
   const content = {
     overview: <Overview V={V} onNav={setView} />,
     operations: <Operations V={V} />,
+    schedule: <ScheduleScreen V={V} />,
+    catalog: <CatalogScreen V={V} />,
+    social: <SocialInbox V={V} />,
     analytics: <ComingSoon title="AI Analytics" />,
     liveorders: <LiveOrders V={V} />,
     kitchen: <Kitchen V={V} />,

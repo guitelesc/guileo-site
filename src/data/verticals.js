@@ -42,7 +42,7 @@ export const VERTICALS = {
       ["overview", "Overview"], ["brain", "Train your AI"], ["analytics", "AI Analytics", "soon"], ["liveorders", "Live Orders"],
       ["kitchen", "Kitchen View"], ["menu", "Menu"], ["customers", "Customers"], ["campaigns", "Campaigns"],
       ["audiences", "Ad Audiences"], ["calllogs", "Call Logs"], ["dialer", "Call Dialer"],
-      ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["grow", "Grow with Guileo"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
+      ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"], ["grow", "Grow with Guileo"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
     ],
     liveOrders: [
       { id: "#1047", customer: "João P.", items: "Pão de Queijo x2", total: 17.0, channel: "Phone", status: "Preparing", color: B },
