@@ -68,6 +68,10 @@ function recordFor(view, who, channel, V) {
   if (view === "deliveries") { const cfg = deliveryCfg(V); return { customer: who, who: `${cfg.who} · assigning`, eta: "Assigning…", status: "Preparing", color: "#D6C29A", addr: `From ${channel}`, via: cfg.own[0] }; }
   return null;
 }
+// Log a $ event to the Guileo Impact growth ledger (the revenue-share basis): when
+// an order is fulfilled / a deal won / a delivery completed, the money the AI drove
+// shows up in Impact and bumps the total — closing the loop to what Guileo gets paid on.
+const logImpact = (label, what, amt) => pushCreated(label, "impact", { t: "now", what, amt });
 
 // ── Delivery / dispatch config per sector ──
 // Restaurants plug into Uber Eats / DoorDash / Grubhub AND run their own drivers;
@@ -741,7 +745,7 @@ function Deliveries({ V }) {
           actions={<>
             <button onClick={() => { toast(`Live tracking link sent to ${sel.customer} ✓`); setSel(null); }} className="btn-bright text-sm">📍 Share tracking</button>
             <button onClick={() => { toast(`${sel.via}: ${cfg.who.toLowerCase()} reassigned`); setSel(null); }} className="btn-ghost text-sm">↻ Reassign</button>
-            <button onClick={() => { toast(`${sel.customer} marked delivered ✓`); setSel(null); }} className="btn-ghost text-sm">✓ Mark delivered</button>
+            <button onClick={() => { logImpact(V.label, `Delivery to ${sel.customer} completed`, 16); toast(`${sel.customer} marked delivered ✓ — logged to Guileo Impact`); setSel(null); }} className="btn-ghost text-sm">✓ Mark delivered</button>
           </>}
           onClose={() => setSel(null)}
         />
@@ -983,7 +987,7 @@ function LiveOrders({ V }) {
         badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: sel.color + "22", color: sel.color }}>{sel.status}</span>}
         fields={[["Items", sel.items], ["Total", `$${sel.total.toFixed(2)}`], ["Channel", sel.channel], ["Status", sel.status]]}
         note={`Taken by your AI via ${sel.channel}. Customer notified automatically with ETA + confirmation.`}
-        actions={<><button onClick={() => { toast(`${sel.id} marked ready ✓`); setSel(null); }} className="btn-bright text-sm">✓ Mark ready</button><a href={waLink(`Hi ${sel.customer}, about order ${sel.id}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
+        actions={<><button onClick={() => { logImpact(V.label, `${sel.id} fulfilled — taken by your AI`, Math.max(18, Math.round(sel.total) || 22)); toast(`${sel.id} marked ready ✓ — logged to Guileo Impact`); setSel(null); }} className="btn-bright text-sm">✓ Mark ready</button><a href={waLink(`Hi ${sel.customer}, about order ${sel.id}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
         onClose={() => setSel(null)}
       />
     )}
@@ -1085,10 +1089,11 @@ function nextBestAction(c, i) {
   return "Active but not yet loyal. One well-timed nudge with a returning-customer offer tends to convert them. The AI can handle it.";
 }
 
-function Customers({ V }) {
+function Customers({ V, onNav }) {
   const rows = V.customers || genCustomers(V);
   const totalSpent = rows.reduce((s, c) => s + (c.spent || 0), 0);
   const [sel, setSel] = useState(null);
+  const rebook = (c) => { const act = convoAction(V); const rec = recordFor(act.view, c.name, c.channel, V); if (rec) pushCreated(V.label, act.view, rec); setSel(null); toast(`${REBOOK[V.label] || "Rebook"} created for ${c.name} ✓ — see it in the tab`); onNav?.(act.view); };
   return (
     <div className="space-y-4">
       <MiniStats items={[["Total customers", `${rows.length * 104}`], ["New this week", `+${rows.length * 6}`, "good"], ["Avg. value", `$${rows.length ? Math.round(totalSpent / rows.length) : 0}`], ["Repeat rate", `${vnum(V.label, "repeat", 31, 47)}%`, "good"]]} />
@@ -1114,7 +1119,7 @@ function Customers({ V }) {
           note={<><div className="text-[10px] font-black uppercase text-g-gold mb-1">⚡ Next best action</div>{nextBestAction(sel.c, sel.i)}</>}
           actions={<>
             <a href={waLink(`Hi ${sel.c.name}! `)} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Message</a>
-            <button onClick={() => { toast(`${REBOOK[V.label] || "Rebook"}: queued for ${sel.c.name} ✓`); setSel(null); }} className="btn-ghost text-sm">🔁 {REBOOK[V.label] || "Rebook"}</button>
+            <button onClick={() => rebook(sel.c)} className="btn-ghost text-sm">🔁 {REBOOK[V.label] || "Rebook"}</button>
             <button onClick={() => { toast(`Review request sent to ${sel.c.name} ✓`); setSel(null); }} className="btn-ghost text-sm">⭐ Request review</button>
           </>}
           onClose={() => setSel(null)}
@@ -1136,7 +1141,7 @@ function Customers({ V }) {
   );
 }
 function Campaigns({ V }) {
-  const rows = V.campaigns || genCampaigns(V);
+  const rows = [...loadCreated(V.label, "campaigns"), ...(V.campaigns || genCampaigns(V))];
   const sent = rows.reduce((s, c) => s + c.sent, 0);
   const rev = rows.reduce((s, c) => s + c.revenue, 0);
   const open = Math.round(rows.reduce((s, c) => s + c.opened, 0) / rows.length);
@@ -1149,7 +1154,7 @@ function Campaigns({ V }) {
         <div className="divide-y divide-white/[0.06]">
           {rows.map((c, i) => (
             <button key={i} onClick={() => setSel(c)} className="w-full text-left flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.04] transition">
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name}</div><div className="text-[11px] text-g-muted">{c.channel} · {c.sent} sent · {c.opened}% opened</div></div>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{c.name}{c.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">new</span>}</div><div className="text-[11px] text-g-muted">{c.channel} · {c.sent} sent · {c.opened}% opened</div></div>
               <span className="text-sm font-extrabold text-g-green">${c.revenue.toLocaleString()}</span>
               <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: (c.status === "Active" ? "#3E9468" : "#D6C29A") + "22", color: c.status === "Active" ? "#3E9468" : "#D6C29A" }}>{c.status}</span>
             </button>
@@ -1500,7 +1505,7 @@ function SettingsView({ V }) {
       </Card>
       <Card className="flex flex-wrap items-center justify-between gap-3">
         <div><div className="text-sm font-bold text-g-word">Demo data</div><div className="text-[11px] text-g-muted">Reset resolved alerts, won deals, filled slots & read flags back to the sample state.</div></div>
-        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "integrations", "owndelivery"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
+        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "created:deliveries", "created:campaigns", "created:impact", "integrations", "owndelivery"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
       </Card>
       <p className="text-center text-[11px] text-g-muted">Changes apply instantly. Need something custom? Your team's a tap away. 💬</p>
     </div>
@@ -1977,29 +1982,33 @@ function Palette({ V, sections, onNav, onClose }) {
 
 function GuileoImpact({ V }) {
   const d = genImpact(V);
-  const share = Math.round((d.total * d.sharePct) / 100);
+  const created = loadCreated(V.label, "impact"); // events logged from operational actions
+  const events = [...created.map((e) => [e.t, e.what, e.amt]), ...d.events];
+  const extra = created.reduce((s, e) => s + (e.amt || 0), 0);
+  const total = d.total + extra;
+  const share = Math.round((total * d.sharePct) / 100);
   return (
     <div className="space-y-4">
       <Card className="relative overflow-hidden bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] border-g-green/30">
         <div className="absolute -top-16 -right-12 h-44 w-44 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
         <div className="relative">
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Growth Guileo drove · this month</div>
-          <div className="text-4xl sm:text-5xl font-black text-g-word tracking-tight mt-1"><Count to={d.total} prefix="$" /></div>
+          <div className="text-4xl sm:text-5xl font-black text-g-word tracking-tight mt-1"><Count key={total} to={total} prefix="$" /></div>
           <div className="mt-2.5 flex flex-wrap gap-2">{d.parts.map(([label, val]) => (<span key={label} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold"><span className="text-g-green">{val}</span><span className="text-g-muted">{label}</span></span>))}</div>
         </div>
       </Card>
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2 p-0 overflow-hidden">
           <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Growth ledger · every $ the AI generated</div>
-          <div className="divide-y divide-white/[0.06]">{d.events.map(([t, what, amt], i) => (<div key={i} className="flex items-center gap-3 px-5 py-3"><span className="grid place-items-center h-8 w-8 rounded-full bg-g-green/15 text-g-green text-sm font-black">＋</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{what}</div><div className="text-[11px] text-g-muted">{t} ago</div></div><span className="text-sm font-extrabold text-g-green">+${amt}</span></div>))}</div>
+          <div className="divide-y divide-white/[0.06]">{events.map(([t, what, amt], i) => (<div key={i} className="flex items-center gap-3 px-5 py-3"><span className="grid place-items-center h-8 w-8 rounded-full bg-g-green/15 text-g-green text-sm font-black">＋</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{what}</div><div className="text-[11px] text-g-muted">{t === "now" ? "just now" : `${t} ago`}</div></div><span className="text-sm font-extrabold text-g-green">+${amt}</span></div>))}</div>
         </Card>
         <Card>
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">Partnership</div>
-          <div className="text-sm text-g-muted">You grew <b className="text-g-word">${d.total.toLocaleString()}</b> with Guileo this month.</div>
+          <div className="text-sm text-g-muted">You grew <b className="text-g-word">${total.toLocaleString()}</b> with Guileo this month.</div>
           <div className="mt-3 rounded-xl2 border border-g-gold/30 bg-g-gold/[0.06] p-3">
             <div className="text-[10px] uppercase tracking-wide text-g-gold font-bold">Guileo's share · {d.sharePct}% of growth</div>
             <div className="text-2xl font-extrabold text-g-word mt-1">${share.toLocaleString()}</div>
-            <div className="text-[11px] text-g-muted mt-0.5">You keep ${(d.total - share).toLocaleString()} — we only win when you win.</div>
+            <div className="text-[11px] text-g-muted mt-0.5">You keep ${(total - share).toLocaleString()} — we only win when you win.</div>
           </div>
           <div className="mt-3"><Bars data={V.revenue} /></div>
         </Card>
@@ -2015,7 +2024,7 @@ function Followups({ V }) {
   useEffect(() => { setDone(portalApi.loadState(`${V.label}:fups`, [])); }, [V.label]);
   const open = rows.map((r, i) => ({ r, i })).filter(({ i }) => !done.includes(i));
   const pipeline = open.reduce((s, { r }) => s + r.value, 0);
-  const markWon = (i, name) => { setDone((d) => { const n = [...d, i]; portalApi.saveState(`${V.label}:fups`, n); return n; }); setSel(null); toast(`${name} marked won 🎉`); };
+  const markWon = (i, name, value) => { setDone((d) => { const n = [...d, i]; portalApi.saveState(`${V.label}:fups`, n); return n; }); logImpact(V.label, `Won back ${name}`, value || 120); setSel(null); toast(`${name} marked won 🎉 — $${value || 120} logged to Guileo Impact`); };
   return (
     <div className="space-y-4">
       <MiniStats items={[["Active sequences", `${open.length}`], ["Pipeline value", `$${pipeline.toLocaleString()}`], ["Won this week", `${vnum(V.label, "won", 4, 14)}`, "good"], ["Auto-nudged", `${vnum(V.label, "nudge", 18, 44)}`, "good"]]} />
@@ -2028,7 +2037,7 @@ function Followups({ V }) {
               <span className="text-sm font-extrabold text-g-green">${r.value}</span>
               <div className="flex gap-1.5 shrink-0">
                 <span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); toast(`${r.name}: nudge sent`); }} className="text-[10px] font-bold rounded-full border border-white/15 px-2.5 py-1 text-g-word hover:border-g-gold/40 transition cursor-pointer">Nudge</span>
-                <span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); markWon(i, r.name); }} className="text-[10px] font-bold rounded-full bg-g-green/15 border border-g-green/40 px-2.5 py-1 text-g-green cursor-pointer">Won</span>
+                <span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); markWon(i, r.name, r.value); }} className="text-[10px] font-bold rounded-full bg-g-green/15 border border-g-green/40 px-2.5 py-1 text-g-green cursor-pointer">Won</span>
               </div>
             </button>
           ))}
@@ -2042,7 +2051,7 @@ function Followups({ V }) {
           badge={<span className="text-sm font-extrabold text-g-green">${sel.r.value}</span>}
           fields={[["Type", sel.r.type], ["Channel", sel.r.ch], ["Next touch", sel.r.next], ["Sequence stage", `${sel.r.stage} of 3`], ["Pipeline value", `$${sel.r.value}`]]}
           note={`The AI is running a ${sel.r.stage}-of-3 follow-up sequence via ${sel.r.ch}. It stops automatically the moment they convert or reply.`}
-          actions={<><button onClick={() => { toast(`${sel.r.name}: nudge sent`); setSel(null); }} className="btn-bright text-sm">Send nudge now</button><button onClick={() => markWon(sel.i, sel.r.name)} className="btn-ghost text-sm">🎉 Mark won</button><a href={waLink(`Hi ${sel.r.name}, following up…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
+          actions={<><button onClick={() => { toast(`${sel.r.name}: nudge sent`); setSel(null); }} className="btn-bright text-sm">Send nudge now</button><button onClick={() => markWon(sel.i, sel.r.name, sel.r.value)} className="btn-ghost text-sm">🎉 Mark won</button><a href={waLink(`Hi ${sel.r.name}, following up…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
           onClose={() => setSel(null)}
         />
       )}
@@ -2099,10 +2108,11 @@ function Waitlist({ V }) {
   );
 }
 
-function Reputation({ V }) {
+function Reputation({ V, onNav }) {
   const reviews = genReviews(V);
   const dist = [["5★", 78], ["4★", 15], ["3★", 4], ["2★", 2], ["1★", 1]];
   const [sel, setSel] = useState(null);
+  const boost = (r) => { pushCreated(V.label, "campaigns", { name: `⭐ ${r.name}'s ${r.stars}★ review → ad`, channel: r.ch || "Meta", sent: 0, opened: 0, revenue: 0, status: "Active" }); setSel(null); toast(`Review boosted as an ad ✓ — see it in Campaigns`); onNav?.("campaigns"); };
   return (
     <div className="space-y-4">
       <MiniStats items={[["Avg rating", `${((46 + vnum(V.label, "rate", 0, 3)) / 10).toFixed(1)} ★`, "good"], ["Reviews this month", `${vnum(V.label, "revc", 40, 140)}`, "good"], ["Requests sent", `${vnum(V.label, "reqs", 200, 420)}`], ["Request → review", `${vnum(V.label, "conv", 24, 38)}%`, "good"]]} />
@@ -2124,7 +2134,7 @@ function Reputation({ V }) {
           badge={<span className="text-xs text-g-gold">{"★".repeat(sel.stars)}</span>}
           fields={[["Rating", `${sel.stars} / 5`], ["Channel", sel.ch], ["Status", "Published"]]}
           note={<>"{sel.text}"<div className="mt-2 text-g-muted">The AI requested this review automatically after a great experience.</div></>}
-          actions={<><button onClick={() => { toast("Thanks reply posted ✓"); setSel(null); }} className="btn-bright text-sm">💬 Reply / thank</button><button onClick={() => { toast("Shared to social ✓"); setSel(null); }} className="btn-ghost text-sm">📣 Share</button></>}
+          actions={<><button onClick={() => { toast("Thanks reply posted ✓"); setSel(null); }} className="btn-bright text-sm">💬 Reply / thank</button>{sel.stars >= 4 && <button onClick={() => boost(sel)} className="btn-ghost text-sm">🚀 Boost as ad</button>}<button onClick={() => { toast("Shared to social ✓"); setSel(null); }} className="btn-ghost text-sm">📣 Share</button></>}
           onClose={() => setSel(null)}
         />
       )}
@@ -2273,7 +2283,7 @@ export default function Portal() {
     followups: <Followups V={V} />,
     waitlist: <Waitlist V={V} />,
     recurring: <Recurring V={V} />,
-    reputation: <Reputation V={V} />,
+    reputation: <Reputation V={V} onNav={setView} />,
     operations: <Operations V={V} />,
     schedule: <ScheduleScreen V={V} />,
     catalog: <CatalogScreen V={V} />,
@@ -2282,7 +2292,7 @@ export default function Portal() {
     liveorders: <LiveOrders V={V} />,
     kitchen: <Kitchen V={V} />,
     menu: <MenuView V={V} />,
-    customers: <Customers V={V} />,
+    customers: <Customers V={V} onNav={setView} />,
     campaigns: <Campaigns V={V} />,
     audiences: <Audiences V={V} />,
     calllogs: <CallLogs V={V} onNav={setView} />,
