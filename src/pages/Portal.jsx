@@ -346,11 +346,52 @@ function genWaitlist(V) {
   return (V.ops?.schedule || []).slice(0, 4).map((r, i) => ({ name: r.name, want: w, since: `${5 + i * 7} min ago`, ch: r.ch && r.ch !== "—" ? r.ch : "WhatsApp" }));
 }
 // Reviews — reputation drives new demand (a growth lever)
+// Sector-true review text (keyed by V.label) so reputation reads like a real customer of THAT business.
+// A dental review mentions a painless cleaning; an auto review mentions a fair trade-in — never one generic pool.
+const SECTOR_REVIEWS = {
+  "Restaurant": ["Tasting menu was unforgettable, our server paired every wine perfectly.", "They squeezed us in from the waitlist on a packed Friday.", "Best brunch in town, the bottomless mimosas kept coming.", "Booked a table of twelve and catering was flawless.", "Steak cooked exactly to temp, room was warm and lively.", "Called after hours, they confirmed our reservation right away."],
+  "Clinic": ["Painless cleaning and they explained my Invisalign options clearly.", "They reminded me my recall was overdue and rebooked instantly.", "Whitening results were incredible, my smile looks brand new.", "Confirmed my insurance over the phone, no surprise billing.", "Hygienist was gentle and the six-month checkup was quick.", "Reactivated me after a year away, so glad they reached out."],
+  "Salon & Spa": ["My stylist nailed the balayage, color looks stunning in sunlight.", "Booked a last-minute Saturday chair, the cut was perfect.", "Relaxing facial and they rebooked my next visit on the spot.", "My package was about to expire and they reminded me.", "Best blowout I've had, lasted me through the whole week.", "Texted after hours for a slot and got one fast."],
+  "Law Firm": ["Handled my injury claim with care, settled for more than expected.", "They followed up after my consult and got me signed quickly.", "Walked me through the engagement letter, e-signed in minutes.", "Answered my call after hours when I really needed help.", "Clear advice on my case, no confusing legal jargon.", "Past client here, happily referred two friends to them."],
+  "E-Commerce": ["Order arrived two days early and packaging was beautiful.", "Their sizing guide nailed the fit, no return needed.", "Abandoned my cart and the reminder offer brought me back.", "Asked an order question at midnight and got an instant answer.", "Quality exceeded the photos, already reordered my favorite.", "Smooth checkout and the subscription refill is so convenient."],
+  "Real Estate": ["Sent me matching listings within my budget the same day.", "Replied to my Zillow inquiry in seconds, booked a showing fast.", "Connected me with a great lender for financing too.", "Weekend viewing was easy to schedule, closed without stress.", "Knew the neighborhood inside out, found our dream home.", "Closed happy and gladly sent two referrals their way."],
+  "Gym & Fitness": ["Coaches kept me accountable, the HIIT classes are addictive.", "Reached out when I went quiet and got me back training.", "My trial turned into a membership, best decision ever.", "Filled my spot in a packed 7am class from the waitlist.", "Personal training upsell was worth every penny, real results.", "Answered my membership pricing call right away, super helpful."],
+  "Medical": ["Doctor was thorough and the telehealth follow-up was so convenient.", "They reminded me about my overdue follow-up before I drifted.", "Got an earlier appointment when a slot opened up.", "Confirmed my visit so I didn't miss it, great care.", "Intake call after hours was captured, never felt rushed.", "Caring staff and quick check-in, I felt heard the whole time."],
+  "Plumbing & HVAC": ["Fixed my burst pipe at 2am, lifesaver after hours.", "Booked my open quote fast and the HVAC install was clean.", "Signed up for their maintenance plan, furnace runs perfectly now.", "Same-day visit and the leak was sorted in an hour.", "Honest pricing, no upsells, my AC is finally cold again.", "Followed up on my estimate and won the job, great work."],
+  "Auto Dealership": ["Followed up after my test drive, made buying stress-free.", "Booked my service-due appointment and got a fair trade-in.", "Answered my trade-in value question after hours, super helpful.", "Replied to my AutoTrader inquiry in seconds, no pressure.", "Service team had me in and out, car runs like new.", "Repeat buyer here, their VIP trade-in offer was unbeatable."],
+  "Education": ["My trial class hooked me, enrolled the very next week.", "They checked in when my son fell behind, real difference.", "Tutors are patient and his grades jumped in a month.", "Answered my enrollment questions late at night, so helpful.", "Advanced course was challenging and exactly what I needed.", "Happy parent here, already referred two families their way."],
+  "Construction": ["Followed up on my estimate and delivered the remodel on time.", "On-site estimate was detailed and the bid was fair.", "Captured my project lead after hours, no call went unanswered.", "Crew was tidy and the kitchen build exceeded expectations.", "Clear proposal, no surprise costs, my deck looks amazing.", "Great project, happily referred them to my neighbor."],
+};
 function genReviews(V) {
   const names = (V.ops?.schedule || []).map((r) => r.name).filter(Boolean);
-  const texts = ["Amazing — fast and so friendly!", "Best experience, highly recommend 🙌", "They handled everything for me, so easy.", "Quick reply and great service.", "Will 100% come back!"];
-  return (names.length ? names : ["Marcos A.", "Maria S.", "Pedro L.", "Ana R.", "Bruno T."]).slice(0, 5).map((n, i) => ({ name: n, stars: i === 4 ? 4 : 5, text: texts[i % texts.length], ch: ["Google", "Instagram", "WhatsApp"][i % 3] }));
+  const texts = SECTOR_REVIEWS[V.label] || ["Amazing — fast and so friendly!", "Best experience, highly recommend 🙌", "They handled everything for me, so easy.", "Quick reply and great service.", "Will 100% come back!"];
+  const base = names.length ? names : ["Marcos A.", "Maria S.", "Pedro L.", "Ana R.", "Bruno T."];
+  return base.slice(0, 5).map((n, i) => ({ name: n, stars: i === 4 ? 4 : 5, text: texts[i % texts.length], ch: ["Google", "Instagram", "WhatsApp"][i % 3] }));
 }
+
+// Signature Overview ops board per sector (keyed by V.label) — the one widget that makes the
+// dashboard feel like THIS owner's business, mirroring restaurant's bespoke topItems block.
+// Each row is normalized to {a:primary, b:detail, pill:status, color, val:right-figure, ch:channel}.
+const SECTOR_OPS = {
+  "Clinic": { title: "Recall radar", sub: "overdue patients Gui is reactivating — high-margin recovery", chip: "🦷 Reactivate all", view: "followups", rows: [
+    { a: "Carla M.", b: "Cleaning + check-up · 4 mo overdue", pill: "Reactivating", color: "#38BDF8", val: "$160", ch: "WhatsApp" },
+    { a: "Hugo N.", b: "Implant follow-up · 7 mo overdue", pill: "Overdue", color: "#C2A878", val: "$320", ch: "Phone" },
+    { a: "Rita F.", b: "Whitening recall · 2 mo overdue", pill: "Rebooked", color: "#3E9468", val: "$210", ch: "Instagram" },
+    { a: "Sofia L.", b: "Cleaning · 3 mo overdue", pill: "Due soon", color: "#D6C29A", val: "$160", ch: "WhatsApp" },
+    { a: "João P.", b: "Perio maintenance · 6 mo overdue", pill: "Reactivating", color: "#38BDF8", val: "$240", ch: "Phone" } ] },
+  "E-Commerce": { title: "Cart rescue", sub: "abandoned carts in flight — Gui is winning them back live", chip: "🛒 Recover all", view: "followups", rows: [
+    { a: "Marcos A.", b: "Signature Hoodie, Cap · 18 min ago", pill: "Nudge 1 sent", color: "#38BDF8", val: "$124", ch: "WhatsApp" },
+    { a: "Julia R.", b: "Classic Tee ×2 · 42 min ago", pill: "Offer sent", color: "#D6C29A", val: "$58", ch: "Instagram" },
+    { a: "Ana L.", b: "Hoodie, Tote, Cap · 1h 10m ago", pill: "Recovered", color: "#3E9468", val: "$211", ch: "WhatsApp" },
+    { a: "Bruno T.", b: "Cap · size question · 6 min ago", pill: "Detected", color: "#C2A878", val: "$39", ch: "Email" },
+    { a: "Sofia P.", b: "Tote bag ×2 · 55 min ago", pill: "Recovered", color: "#3E9468", val: "$96", ch: "WhatsApp" } ] },
+  "Real Estate": { title: "Hot lead pipeline", sub: "active buyers ranked by heat — Gui replies & matches instantly", chip: "🏠 Send matches", view: "followups", rows: [
+    { a: "R. Almeida", b: "Buyer · 2BR Jardins · send 3 matches", pill: "Hot", color: "#3E9468", val: "R$900k–1.1M", ch: "Phone" },
+    { a: "F. Lima", b: "Buyer · 3BR Pinheiros · book Sat viewing", pill: "Hot", color: "#3E9468", val: "R$1.2–1.5M", ch: "Phone" },
+    { a: "T. Souza", b: "Renter · Studio Centro · confirm viewing", pill: "Warm", color: "#38BDF8", val: "R$3.5k/mo", ch: "WhatsApp" },
+    { a: "P. Castro", b: "Buyer · 2BR Vila Mariana · answer financing", pill: "Warm", color: "#D6C29A", val: "R$700–850k", ch: "Web form" },
+    { a: "M. Dias", b: "Buyer · House Morumbi · re-engage", pill: "Cooling", color: "#C2A878", val: "R$1.8–2.2M", ch: "Instagram" } ] },
+};
 // Recurring revenue — memberships / plans / subscriptions (the most valuable revenue)
 function genRecurring(V) {
   const PLAN = { "Gym & Fitness": "Monthly membership", "Clinic": "Recall plan", "Medical": "Care plan", "Salon & Spa": "Glow package", "Plumbing & HVAC": "Maintenance plan", "Auto Dealership": "Service plan", "Education": "Course subscription", "Restaurant": "VIP club", "E-Commerce": "Replenish subscription", "Real Estate": "Property mgmt", "Law Firm": "Retainer", "Construction": "Service contract" };
@@ -973,6 +1014,9 @@ const PT_UI = {
   "Call back": "Retornar ligação",
   "Caller": "Quem ligou",
   "Business name": "Nome da empresa",
+  "Address / location": "Endereço / localização",
+  "feeds your AI's answers": "alimenta as respostas da sua IA",
+  "Your AI uses these facts when customers ask.": "Sua IA usa esses dados quando os clientes perguntam.",
   "Bookings & appointments": "Reservas e agendamentos",
   "Booking request": "Solicitação de reserva",
   "Active sequences": "Sequências ativas",
@@ -1524,6 +1568,35 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
           )}
         </div>
       )}
+
+      {/* Signature sector ops board (clinic recalls / e-com carts / realestate leads) */}
+      {SECTOR_OPS[V.label] && (() => {
+        const board = SECTOR_OPS[V.label];
+        return (
+          <Card>
+            <div className="flex items-center justify-between mb-3 gap-3">
+              <div className="min-w-0">
+                <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr(board.title)}</div>
+                <div className="text-[11px] text-g-muted truncate">{tr(board.sub)}</div>
+              </div>
+              <button onClick={() => onNav?.(board.view)} className="shrink-0 rounded-full border border-g-green/35 bg-g-green/10 px-3 py-1.5 text-[11px] font-bold text-g-word hover:bg-g-green/20 transition">{board.chip}</button>
+            </div>
+            <div className="divide-y divide-white/5">
+              {board.rows.map((r, i) => (
+                <div key={i} className="flex items-center gap-3 py-2">
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: r.color }} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold text-g-word truncate">{r.a} <span className="text-g-muted font-normal">· {r.ch}</span></div>
+                    <div className="text-[11px] text-g-muted truncate">{r.b}</div>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wide whitespace-nowrap px-2 py-0.5 rounded-full" style={{ color: r.color, background: `${r.color}1a` }}>{r.pill}</span>
+                  <span className="text-xs font-bold text-g-green whitespace-nowrap w-20 text-right">{r.val}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        );
+      })()}
     </div>
   );
 }
@@ -2596,16 +2669,16 @@ function SettingsView({ V }) {
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Business profile")}</div>
-          <span className="text-[10px] text-g-muted inline-flex items-center gap-1"><FaWandMagicSparkles size={9} className="text-g-green" /> feeds your AI's answers</span>
+          <span className="text-[10px] text-g-muted inline-flex items-center gap-1"><FaWandMagicSparkles size={9} className="text-g-green" /> {tr("feeds your AI's answers")}</span>
         </div>
         <div className="divide-y divide-white/[0.06]">
           {PROFILE_FIELDS.map(([label, k, ph]) => (
-            <label key={k} className="block px-5 py-3"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{label}</span>
+            <label key={k} className="block px-5 py-3"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr(label)}</span>
               <input value={draft[k] || ""} onChange={set(k)} placeholder={ph} className={fieldCls} /></label>
           ))}
         </div>
         <div className="px-5 py-3 border-t border-white/10 flex items-center justify-between gap-3">
-          <span className="text-[11px] text-g-muted">{dirty ? "Unsaved changes" : "Your AI uses these facts when customers ask."}</span>
+          <span className="text-[11px] text-g-muted">{dirty ? tr("Unsaved changes") : tr("Your AI uses these facts when customers ask.")}</span>
           <button onClick={saveProfile} disabled={!dirty} className="btn-bright text-sm disabled:opacity-40 disabled:cursor-not-allowed">{tr("Save & update AI")}</button>
         </div>
       </Card>
@@ -2961,7 +3034,7 @@ function Billing({ V }) {
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px]">
           <div className="flex items-center gap-2"><Toggle on={payg} onClick={() => { const v = !payg; setPayg(v); portalApi.saveState("gui_payg", v); toast(v ? "Pay-as-you-go on — auto-top-up when low" : "Pay-as-you-go off — Gui pauses when out of credits"); }} /><span className="text-g-muted">{tr("Auto top-up (pay-as-you-go)")}</span></div>
-          <span className="text-g-muted">{usedThisMonth} credits used this month</span>
+          <span className="text-g-muted">{usedThisMonth} {tr("credits used this month")}</span>
         </div>
         <p className="mt-2 text-[10px] text-g-muted">{tr("Top-ups are billed securely to your account on file — we never ask for card details in chat.")}</p>
       </Card>
@@ -4289,7 +4362,7 @@ export default function Portal() {
   const [view, setView] = useState("overview");
   const [period, setPeriod] = useState("30 days");
   const [lang, setLang] = useState(() => portalApi.loadState("portal_lang", "en"));
-  setUiLang(lang); // publish current UI language so tr() works anywhere, no prop threading
+  if (UI_LANG !== lang) setUiLang(lang); // publish UI language for tr() before children render; guarded so it's a no-op on StrictMode double-invoke (single-Portal-instance invariant) instead of writing the module global unconditionally every render
   const toggleLang = () => setLang((l) => { const n = l === "pt" ? "en" : "pt"; portalApi.saveState("portal_lang", n); return n; });
   // Vertical can be deep-linked via ?v=<id> (shareable per-sector links) and is remembered.
   const [vertical, setVertical] = useState(() => {
