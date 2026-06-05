@@ -1,10 +1,11 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FaWandMagicSparkles, FaCalendarCheck, FaCreditCard, FaStar, FaInstagram,
+  FaCalendarCheck, FaCreditCard, FaStar, FaInstagram,
   FaPhoneVolume, FaWhatsapp, FaStripe, FaGoogle, FaCircleCheck,
   FaArrowsRotate, FaClockRotateLeft, FaMicrophone,
 } from "react-icons/fa6";
+import logo from "../assets/guileo-mark.png";
 
 /* ───────────────────────────────────────────────────────────────
    LiveDemo — a REAL, functional mini Growth Cockpit on the landing.
@@ -99,7 +100,7 @@ export default function LiveDemo() {
     <div className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-4 sm:p-6 shadow-2xl">
       {/* header */}
       <div className="flex items-center gap-3 mb-4">
-        <span className="grid place-items-center h-10 w-10 rounded-full bg-gradient-to-br from-g-green to-g-dark text-white"><FaWandMagicSparkles /></span>
+        <span className="grid place-items-center h-11 w-11 rounded-full bg-g-green/10 ring-1 ring-g-green/30 overflow-hidden shrink-0"><img src={logo} alt="Guileo" className="h-9 w-9 object-contain" /></span>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-extrabold text-g-word flex items-center gap-2">Gui <span className="text-[9px] font-black uppercase text-g-green">· AI assistant</span> <span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" /></div>
           <div className="text-[11px] text-g-muted">Not a video — actually click and use it.</div>
