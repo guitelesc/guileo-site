@@ -197,6 +197,36 @@ function RotatingAction({ words, suffix }) {
 // Common country dial codes for the discrete hero phone capture (flag + code).
 const DIAL_CODES = [["🇺🇸","+1"],["🇧🇷","+55"],["🇵🇹","+351"],["🇪🇸","+34"],["🇬🇧","+44"],["🇲🇽","+52"],["🇦🇷","+54"],["🇨🇦","+1"],["🇮🇳","+91"],["🇦🇺","+61"],["🇩🇪","+49"],["🇫🇷","+33"]];
 
+// The living business loop over the plant: capabilities drop IN as seeds (planted),
+// results float UP out of the fruits and fade (harvested) — a continuous cycle.
+// "Plant → water → fruit → harvest → repeat" — the business logic, made visible.
+function PlantCycle({ seeds = [], results = [] }) {
+  const seedX = ["8%", "26%", "16%", "34%", "20%", "4%"];
+  const resX = ["52%", "70%", "60%", "78%", "46%", "66%"];
+  return (
+    <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
+      {/* SEEDS — your capabilities, planted */}
+      {seeds.map(([ic, tx], i) => (
+        <motion.div key={"s" + tx} className="absolute whitespace-nowrap" style={{ left: seedX[i % seedX.length], top: "-4%" }}
+          initial={{ opacity: 0, y: 0 }}
+          animate={{ opacity: [0, 0.95, 0.95, 0], y: [0, 120, 220, 300], scale: [0.7, 1, 1, 0.7] }}
+          transition={{ duration: 5.2, delay: i * 1.05, repeat: Infinity, repeatDelay: Math.max(1, seeds.length * 0.55), ease: "easeIn" }}>
+          <span className="inline-flex items-center gap-1 rounded-full border border-g-green/35 bg-g-green/[0.12] backdrop-blur-md px-2.5 py-1 text-[11px] font-bold text-g-light shadow-[0_0_14px_rgba(62,148,104,0.3)]">{ic} {tx}</span>
+        </motion.div>
+      ))}
+      {/* RESULTS — harvested from the fruits, rising and fading */}
+      {results.map(([ic, tx], i) => (
+        <motion.div key={"r" + tx} className="absolute whitespace-nowrap" style={{ left: resX[i % resX.length], top: "56%" }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: [0, 1, 1, 0], y: [10, -70, -150, -210], scale: [0.65, 1, 1, 0.95] }}
+          transition={{ duration: 5.6, delay: 2.2 + i * 0.95, repeat: Infinity, repeatDelay: Math.max(1, results.length * 0.5), ease: "easeOut" }}>
+          <span className="inline-flex items-center gap-1 rounded-full border border-g-gold/50 bg-g-gold/[0.16] backdrop-blur-md px-2.5 py-1 text-[11px] font-extrabold text-g-gold shadow-[0_0_18px_rgba(214,194,154,0.35)]">{ic} {tx}</span>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
 // Discrete in-hero "Gui calls you" capture — the killer proof, inline.
 // Required: phone (country code + number) and name. Optional: a one-line business description.
 // Posts the lead (/api/lead) and triggers the live call (/api/call) — same backend as LiveCallBar.
@@ -207,6 +237,7 @@ function HeroCallForm({ t }) {
   const [name, setName] = useState("");
   const [biz, setBiz] = useState("");
   const [st, setSt] = useState("idle"); // idle · calling · done
+  const [open, setOpen] = useState(false); // progressive: name + business reveal once they engage
   const submit = async (e) => {
     e.preventDefault();
     setSt("calling");
@@ -222,15 +253,22 @@ function HeroCallForm({ t }) {
   );
   const inputCls = "rounded-full border border-white/20 bg-black/25 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted/80 outline-none focus:border-g-green/70 transition";
   return (
-    <form onSubmit={submit} className="mt-6 max-w-md grid gap-2">
+    <form onSubmit={submit} onFocusCapture={() => setOpen(true)} className="mt-6 max-w-md grid gap-2">
       <div className="flex gap-2">
         <select value={cc} onChange={(e) => setCc(e.target.value)} aria-label={C.phCountry || "Country code"} className={`${inputCls} pr-2`}>
           {DIAL_CODES.map(([flag, code], i) => <option key={code + i} value={code} className="bg-g-deep text-g-word">{flag} {code}</option>)}
         </select>
-        <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} aria-label={C.phPhone || "Phone number"} placeholder={C.phPhone || "Your phone (area + number)"} className={`${inputCls} flex-1`} />
+        <input required type="tel" value={phone} onFocus={() => setOpen(true)} onChange={(e) => setPhone(e.target.value)} aria-label={C.phPhone || "Phone number"} placeholder={C.phPhone || "Your phone (area + number)"} className={`${inputCls} flex-1`} />
       </div>
-      <input required value={name} onChange={(e) => setName(e.target.value)} aria-label={C.phName || "Your name"} placeholder={C.phName || "Your name"} className={inputCls} />
-      <input value={biz} onChange={(e) => setBiz(e.target.value)} aria-label={C.phBiz || "Describe your business"} placeholder={C.phBiz || "Describe your business (optional)"} className={inputCls} />
+      {/* progressive: keep it to ONE line until they engage, then reveal name + business (bulletproof grid-rows height-auto) */}
+      <div className={`grid transition-all duration-300 ease-out ${open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+        <div className="overflow-hidden">
+          <div className="grid gap-2 pt-0.5">
+            <input required={open} value={name} onChange={(e) => setName(e.target.value)} aria-label={C.phName || "Your name"} placeholder={C.phName || "Your name"} className={inputCls} />
+            <input value={biz} onChange={(e) => setBiz(e.target.value)} aria-label={C.phBiz || "Describe your business"} placeholder={C.phBiz || "Describe your business (optional)"} className={inputCls} />
+          </div>
+        </div>
+      </div>
       <Magnetic>
         <button disabled={st === "calling"} aria-label={C.callBtn || "Call me now — hear Gui live"}
           className="group relative mt-0.5 inline-flex w-auto self-start items-center gap-2 overflow-hidden rounded-full border border-white/40 px-4 py-2 text-sm font-extrabold text-g-deep shadow-[0_3px_14px_rgba(0,0,0,0.45)] transition-transform hover:scale-[1.03] active:scale-95 disabled:opacity-70"
@@ -296,15 +334,13 @@ export default function Home() {
                   })}
                 </div>
                 <div className="text-base sm:text-lg text-g-muted font-semibold inline-flex items-center gap-2">
+                  <img src={mark} alt="" className="h-5 w-5 object-contain drop-shadow-[0_0_6px_rgba(62,148,104,0.5)]" />
                   <span className="text-g-word font-extrabold">Gui</span>
                   <RotatingAction words={t.hero.rotors || ["answers your calls","books","quotes","sells","follows up"]} suffix="24/7" />
                 </div>
               </div>,
               <HeroCallForm key="call" t={t} />,
-              <div key="trust" className="mt-5 flex flex-wrap gap-2">
-                {t.hero.trust.map(([ic,tx])=>(<span key={tx} className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] backdrop-blur-md px-3 py-1.5 text-xs font-semibold text-g-word hover:border-g-green/40 hover:text-g-light transition-colors">{ic} {tx}</span>))}
-              </div>,
-              t.hero.proof ? <p key="proof" className="mt-4 text-xs font-medium text-g-muted/90 max-w-xl leading-relaxed">{t.hero.proof}</p> : null,
+              t.hero.proof ? <p key="proof" className="mt-5 text-xs font-medium text-g-muted/90 max-w-xl leading-relaxed">{t.hero.proof}</p> : null,
             ].map((el,i)=>(
               <motion.div key={i} variants={{ hide:{ opacity:0, y:30, filter:"blur(8px)" }, show:{ opacity:1, y:0, filter:"blur(0px)", transition:{ type:"spring", stiffness:80, damping:18, mass:0.8 } } }}>{el}</motion.div>
             ))}
@@ -317,18 +353,8 @@ export default function Home() {
               <GuileoLogo3D />
             </Suspense>
             </motion.div>
-            <div className="absolute top-3 right-3 rounded-full bg-white/[0.05] backdrop-blur-md shadow-soft px-3 py-1.5 text-xs font-bold text-g-light z-10 pointer-events-none animate-floatslow"><span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse"/>{t.hero.b1}</span></div>
-            <div className="absolute bottom-3 left-3 rounded-full bg-white/[0.05] backdrop-blur-md shadow-soft px-3 py-1.5 text-xs font-bold text-g-gold z-10 pointer-events-none animate-floatslow" style={{ animationDelay:"-3.5s" }}>{t.hero.b2}</div>
-            {/* live actions Gui is taking — coherent with the live-call theme (not random KPIs) */}
-            {introDone && (t.hero.fruits || [["📞","Answered a call"],["📅","Booked a slot"],["💬","Replied instantly"],["✅","Sent a quote"]]).map((b,i)=>{
-              const [ic,tx]=b; const pos=["top-[10%] left-[1%]","top-[28%] right-[1%]","top-[3%] right-[16%]","top-[48%] left-[2%]"][i];
-              return (
-              <motion.div key={tx} initial={{ opacity:0, scale:0.5, y:10 }} animate={{ opacity:1, scale:1, y:0 }} transition={{ delay:1.1+i*0.28, type:"spring", stiffness:150, damping:13 }}
-                className={`absolute ${pos} z-20 pointer-events-none animate-floatslow`} style={{ animationDelay:`${-i*1.3}s` }}>
-                <span className="inline-flex items-center gap-1 rounded-full border border-g-gold/45 bg-g-gold/[0.15] backdrop-blur-md px-2.5 py-1 text-[11px] font-extrabold text-g-gold shadow-[0_0_18px_rgba(214,194,154,0.3)]">{ic} {tx}</span>
-              </motion.div>
-              );
-            })}
+            {/* the living business loop: capabilities planted as seeds → results harvested from the fruits */}
+            {introDone && <PlantCycle seeds={t.hero.trust} results={t.hero.fruits || [["📞","Answered a call"],["📅","Booked a slot"],["💬","Replied instantly"],["✅","Sent a quote"],["💰","Recovered a payment"],["⭐","Won a 5★ review"]]} />}
           </Parallax>
         </div>
         <div className="wrap mt-10"><Ticker items={TICKER} /></div>
