@@ -17,23 +17,25 @@ export const CONNECTED = hasSupabase;
 const wait = (ms = 320) => new Promise((r) => setTimeout(r, ms));
 const SESSION_KEY = "guileo_portal_session";
 
-// ── Background sync to Supabase (localStorage stays the synchronous source of truth;
-// the cloud is mirrored so state persists across devices). Writes are debounced. ──
+// ── Background sync to Supabase (NO TABLE / NO SQL needed) ──
+// localStorage stays the synchronous source of truth (instant UI); the account's
+// config state is mirrored into the user's own Supabase record (user_metadata.kv),
+// so it persists across devices. Bulky demo feeds (created:* lists) are NOT synced,
+// keeping the blob small. Writes are debounced.
 let _uid = null;                       // current auth user id (set on hydrate)
-const _pending = new Map();            // key -> value awaiting upsert
+let _cloud = {};                       // full key→value blob mirrored to the cloud
 let _flushTimer = null;
+const _syncable = (key) => !key.includes(":created:");   // skip bulky demo records
 function _queueUpsert(key, value) {
-  if (!supabase || !_uid) return;
-  _pending.set(key, value);
+  if (!supabase || !_uid || !_syncable(key)) return;
+  _cloud[key] = value;
   if (_flushTimer) return;
-  _flushTimer = setTimeout(_flush, 800);
+  _flushTimer = setTimeout(_flush, 900);
 }
 async function _flush() {
   _flushTimer = null;
-  if (!supabase || !_uid || _pending.size === 0) return;
-  const rows = [..._pending.entries()].map(([k, v]) => ({ user_id: _uid, k, v }));
-  _pending.clear();
-  try { await supabase.from("app_kv").upsert(rows); } catch { /* offline — localStorage already has it */ }
+  if (!supabase || !_uid) return;
+  try { await supabase.auth.updateUser({ data: { kv: _cloud } }); } catch { /* offline — localStorage already has it */ }
 }
 
 // ── Tiny toast bus (action feedback across every screen) ──
@@ -54,16 +56,27 @@ export const portalApi = {
     try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch { return null; }
   },
 
-  /** Sign in. Real backend = passwordless magic link (no passwords handled). Demo = any creds. */
-  async login(email) {
+  /** Sign in with email + password. Real backend = Supabase auth. Demo = any creds. */
+  async login(email, password) {
     if (supabase) {
-      const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${location.origin}/portal` } });
-      return { pending: true, email, error: error?.message || null };
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { error: error.message };
+      if (data?.session) { await this.hydrate(); return { ok: true, uid: data.user.id }; }
+      return { error: "Sign-in failed" };
     }
     await wait();
     const sess = { email: email || "demo@guileo.ai", name: "Jane Staff", role: "Staff", demo: true, at: Date.now() };
     try { localStorage.setItem(SESSION_KEY, JSON.stringify(sess)); } catch { /* private mode */ }
-    return sess;
+    return { ok: true, demo: true };
+  },
+
+  /** Create an account. If the project requires email confirmation, returns {confirm:true}. */
+  async signUp(email, password) {
+    if (!supabase) return this.login(email, password);
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) return { error: error.message };
+    if (data?.session) { await this.hydrate(); return { ok: true, uid: data.user.id }; } // confirmation disabled → instant
+    return { confirm: true, email }; // confirmation email sent
   },
 
   async logout() {
@@ -80,10 +93,10 @@ export const portalApi = {
     const { data: u } = await supabase.auth.getUser();
     if (!u?.user) return 0;
     _uid = u.user.id;
-    const { data, error } = await supabase.from("app_kv").select("k,v");
-    if (error || !data) return 0;
-    data.forEach(({ k, v }) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* */ } });
-    return data.length;
+    const kv = u.user.user_metadata?.kv || {};
+    _cloud = { ...kv };
+    Object.entries(kv).forEach(([k, v]) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* */ } });
+    return Object.keys(kv).length;
   },
 
   /** Subscribe to auth changes; hydrates on sign-in, then calls cb(session|null). */

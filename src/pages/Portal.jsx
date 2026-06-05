@@ -3563,17 +3563,21 @@ function OnboardingWizard({ onDone }) {
 /* ───────────────────────── Login gate (demo) ───────────────────────── */
 function Login({ onEnter }) {
   const [email, setEmail] = useState("");
+  const [pw, setPw] = useState("");
+  const [mode, setMode] = useState("signup");   // signup | signin (real backend only)
   const [busy, setBusy] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [confirm, setConfirm] = useState(false);
   const [err, setErr] = useState("");
-  // Real backend = passwordless magic link; demo = instant local session.
-  const submit = async (em) => {
+  const submit = async () => {
     setBusy(true); setErr("");
     try {
-      const res = await portalApi.login(em);
-      if (res?.pending) { if (res.error) { setErr(res.error); setBusy(false); } else setSent(true); }
+      const res = CONNECTED
+        ? (mode === "signup" ? await portalApi.signUp(email, pw) : await portalApi.login(email, pw))
+        : await portalApi.login(email, pw);
+      if (res?.error) { setErr(res.error); setBusy(false); }
+      else if (res?.confirm) { setConfirm(true); setBusy(false); }
       else onEnter();
-    } catch { setBusy(false); }
+    } catch (e) { setErr(String(e?.message || e)); setBusy(false); }
   };
   const demoEnter = () => { try { localStorage.setItem("guileo_portal_session", JSON.stringify({ email: "demo@guileo.ai", name: "Jane Staff", role: "Staff", demo: true, at: Date.now() })); } catch { /* */ } onEnter(); };
   return (
@@ -3581,23 +3585,28 @@ function Login({ onEnter }) {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm rounded-xl3 border border-white/12 bg-white/[0.04] backdrop-blur-xl p-8 shadow-lift text-center">
         <img src={logo} alt="Guileo" className="h-12 w-12 object-contain mx-auto" />
         <div className="mt-3 text-xl font-black uppercase tracking-tight bg-gradient-to-r from-g-green via-g-gold to-g-green bg-[length:200%_auto] bg-clip-text text-transparent animate-shimmer">Growth Cockpit</div>
-        {sent ? (
+        {confirm ? (
           <div className="mt-6">
             <div className="text-3xl mb-2">📬</div>
-            <div className="text-sm font-extrabold text-g-word">Check your email</div>
-            <p className="text-xs text-g-muted mt-1">We sent a secure sign-in link to <span className="text-g-light font-semibold">{email}</span>. Open it on this device to enter.</p>
-            <button onClick={() => setSent(false)} className="mt-4 text-xs font-bold text-g-gold hover:underline">Use a different email</button>
+            <div className="text-sm font-extrabold text-g-word">Confirm your email</div>
+            <p className="text-xs text-g-muted mt-1">We sent a confirmation to <span className="text-g-light font-semibold">{email}</span>. Click the link, then come back and sign in.</p>
+            <button onClick={() => { setConfirm(false); setMode("signin"); }} className="mt-4 btn-bright text-sm w-full">I confirmed — sign in →</button>
           </div>
         ) : (
           <>
-            <p className="text-xs text-g-muted mt-1">{CONNECTED ? "Sign in with a secure link — no password." : "Sign in to your private dashboard"}</p>
-            <form onSubmit={(e) => { e.preventDefault(); submit(email); }} className="mt-6 space-y-2.5 text-left">
+            <p className="text-xs text-g-muted mt-1">{CONNECTED ? (mode === "signup" ? "Create your account" : "Welcome back") : "Sign in to your private dashboard"}</p>
+            <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="mt-6 space-y-2.5 text-left">
               <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-              {!CONNECTED && <input type="password" required placeholder="Password" className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />}
-              <button disabled={busy} className="btn-bright text-sm w-full disabled:opacity-70">{busy ? (CONNECTED ? "Sending link…" : "Signing in…") : (CONNECTED ? "Email me a sign-in link →" : "Enter Growth Cockpit →")}</button>
+              <input type="password" required minLength={6} value={pw} onChange={(e) => setPw(e.target.value)} placeholder={CONNECTED ? "Password (min 6 chars)" : "Password"} className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+              <button disabled={busy} className="btn-bright text-sm w-full disabled:opacity-70">{busy ? "…" : (CONNECTED ? (mode === "signup" ? "Create account →" : "Sign in →") : "Enter Growth Cockpit →")}</button>
               {err && <div className="text-[11px] text-red-400 text-center">{err}</div>}
             </form>
-            <button onClick={demoEnter} disabled={busy} className="mt-3 text-xs font-bold text-g-gold hover:underline disabled:opacity-60">{tr("▶ Enter demo (sample data)")}</button>
+            {CONNECTED && (
+              <button onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setErr(""); }} className="mt-3 text-xs font-bold text-g-gold hover:underline">
+                {mode === "signup" ? "Already have an account? Sign in" : "New here? Create an account"}
+              </button>
+            )}
+            <button onClick={demoEnter} disabled={busy} className="block mx-auto mt-3 text-xs font-bold text-g-muted hover:text-g-word disabled:opacity-60">{tr("▶ Enter demo (sample data)")}</button>
           </>
         )}
         <div className="mt-4 text-[11px] text-g-muted"><a href="/" className="hover:text-g-word">← Back to guileo.ai</a></div>
