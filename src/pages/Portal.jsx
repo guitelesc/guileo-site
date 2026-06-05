@@ -62,9 +62,10 @@ function pushCreated(label, view, rec) {
   portalApi.saveState(createdKey(label, view), [{ ...rec, fromChat: true, _id: Date.now() }, ...cur].slice(0, 25));
 }
 const loadCreated = (label, view) => portalApi.loadState(createdKey(label, view), []);
-function recordFor(view, who, channel) {
+function recordFor(view, who, channel, V) {
   if (view === "liveorders") return { id: `#${1000 + (Date.now() % 9000)}`, customer: who, items: `New order · via ${channel}`, total: 0, channel, status: "New", color: "#3E9468" };
   if (view === "schedule") return { time: "ASAP", name: who, meta: `Booked via ${channel}`, status: "Pending", ch: channel, color: "#D6C29A" };
+  if (view === "deliveries") { const cfg = deliveryCfg(V); return { customer: who, who: `${cfg.who} · assigning`, eta: "Assigning…", status: "Preparing", color: "#D6C29A", addr: `From ${channel}`, via: cfg.own[0] }; }
   return null;
 }
 
@@ -274,11 +275,11 @@ function sectionsFor(vid, V) {
 function notifFor(key, V) {
   switch (key) {
     case "overview": return V.alerts ? V.alerts.items.length : 0;
-    case "liveorders": return (V.liveOrders || []).filter((o) => o.status !== "Delivered").length;
+    case "liveorders": return ([...loadCreated(V.label, "liveorders"), ...(V.liveOrders || [])]).filter((o) => o.status !== "Delivered").length;
     case "kitchen": return ((V.kitchen?.new || []).length + (V.kitchen?.preparing || []).length);
-    case "deliveries": return genDeliveries(V).filter((r) => r.status !== "Delivered").length;
+    case "deliveries": return ([...loadCreated(V.label, "deliveries"), ...genDeliveries(V)]).filter((r) => r.status !== "Delivered").length;
     case "inbox": return genInbox(V).filter((c) => c.unread).length;
-    case "schedule": return (V.ops?.schedule || []).filter((r) => /pending|new|unassigned|risk|follow/i.test(r.status)).length;
+    case "schedule": return ([...loadCreated(V.label, "schedule"), ...(V.ops?.schedule || [])]).filter((r) => /pending|new|unassigned|risk|follow/i.test(r.status)).length;
     case "calllogs": return 2;
     case "whatsapp": return 1;
     case "sms": return 1;
@@ -661,7 +662,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
 // + Guileo's own delivery, unified. Connections persist; every drop is trackable.
 function Deliveries({ V }) {
   const cfg = deliveryCfg(V);
-  const rows = genDeliveries(V);
+  const rows = [...loadCreated(V.label, "deliveries"), ...genDeliveries(V)];
   const active = rows.filter((r) => r.status !== "Delivered");
   // Connection state persists (feels like a real integration toggle). Seed: first
   // two partners connected, rest off — so both states are visible.
@@ -722,7 +723,7 @@ function Deliveries({ V }) {
           {rows.map((r, i) => (
             <button key={i} onClick={() => setSel(r)} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition">
               <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06]" style={{ color: r.color }}><FaTruck size={13} /></span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.customer} <span className="text-g-muted font-normal">· {r.via}</span></div><div className="text-[11px] text-g-muted truncate">{r.who} · {r.addr}</div></div>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{r.customer}{r.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">from chat</span>} <span className="text-g-muted font-normal">· {r.via}</span></div><div className="text-[11px] text-g-muted truncate">{r.who} · {r.addr}</div></div>
               <div className="text-right shrink-0"><div className="text-[11px] font-bold" style={{ color: r.color }}>{r.eta}</div><span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: r.color + "22", color: r.color }}>{r.status}</span></div>
             </button>
           ))}
@@ -1299,11 +1300,14 @@ function convoAction(V) {
 // so a call or a text can spawn an order / booking / follow-up that lands in its tab.
 function ConvoActions({ V, who, channel, onNav, onDone }) {
   const act = convoAction(V);
+  const cfg = deliveryCfg(V);
   const fire = (msg, view) => { toast(msg); onDone?.(); if (view) onNav?.(view); };
-  const firePrimary = () => { const rec = recordFor(act.view, who, channel); if (rec) pushCreated(V.label, act.view, rec); fire(`${act.done} from ${who}'s ${channel} ✓ — see it in the tab`, act.view); };
+  const firePrimary = () => { const rec = recordFor(act.view, who, channel, V); if (rec) pushCreated(V.label, act.view, rec); fire(`${act.done} from ${who}'s ${channel} ✓ — see it in the tab`, act.view); };
+  const fireDelivery = () => { const rec = recordFor("deliveries", who, channel, V); pushCreated(V.label, "deliveries", rec); fire(`${who} sent to ${deliveryTab(V).toLowerCase()} ✓ — see it in the tab`, "deliveries"); };
   return (
     <div className="flex flex-wrap gap-2">
       <button onClick={firePrimary} className="text-[11px] font-bold rounded-full border border-g-green/40 bg-g-green/[0.1] px-3 py-1.5 text-g-green hover:bg-g-green/20 transition">{act.label}</button>
+      <button onClick={fireDelivery} className="text-[11px] font-bold rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">{cfg.partners.length ? "🚚 To delivery" : "📍 Dispatch"}</button>
       <button onClick={() => fire(`${who} added to follow-ups ✓`, "followups")} className="text-[11px] font-bold rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">⏰ Follow-up</button>
       <button onClick={() => fire(`Saved to ${who}'s customer profile ✓`, "customers")} className="text-[11px] font-bold rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">👤 Save to customer</button>
     </div>
@@ -2052,7 +2056,19 @@ function Waitlist({ V }) {
   const [sel, setSel] = useState(null);
   useEffect(() => { setFilled(portalApi.loadState(`${V.label}:wait`, [])); }, [V.label]);
   const open = rows.map((r, i) => ({ r, i })).filter(({ i }) => !filled.includes(i));
-  const offer = (i, name) => { setFilled((f) => { const n = [...f, i]; portalApi.saveState(`${V.label}:wait`, n); return n; }); setSel(null); toast(`Offer sent to ${name} ✓`); };
+  // Restaurants book into Live Orders flow; appointment/field sectors have a Schedule.
+  const bookView = convoAction(V).view; // "schedule" for most, "liveorders" for restaurant
+  const offer = (i, name, want) => {
+    setFilled((f) => { const n = [...f, i]; portalApi.saveState(`${V.label}:wait`, n); return n; });
+    // Stitch: an accepted waitlist offer becomes a pending booking/reservation in its tab.
+    if (bookView === "schedule") {
+      pushCreated(V.label, "schedule", { time: "Offered", name, meta: `Waitlist · ${want || "open slot"}`, status: "Pending", ch: "WhatsApp", color: "#D6C29A" });
+      setSel(null); toast(`Slot offered to ${name} ✓ — pending booking added to your schedule`);
+    } else {
+      pushCreated(V.label, "liveorders", { id: `#${1000 + (Date.now() % 9000)}`, customer: name, items: `Reservation · ${want || "table"}`, total: 0, channel: "WhatsApp", status: "New", color: "#3E9468" });
+      setSel(null); toast(`Slot offered to ${name} ✓ — reservation added`);
+    }
+  };
   return (
     <div className="space-y-4">
       <MiniStats items={[["Waiting now", `${open.length}`], ["Filled today", `${vnum(V.label, "filled", 5, 16)}`, "good"], ["No-shows saved", `${vnum(V.label, "noshow", 3, 11)}`, "good"], ["Revenue recovered", `$${vnum(V.label, "wrev", 800, 2600).toLocaleString()}`, "good"]]} />
@@ -2063,7 +2079,7 @@ function Waitlist({ V }) {
             <button key={i} onClick={() => setSel({ r, i })} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition">
               <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{r.name[0]}</span>
               <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted">{r.want} · via {r.ch} · {r.since}</div></div>
-              <span onClick={(e) => { e.stopPropagation(); offer(i, r.name); }} role="button" className="btn-bright text-xs px-3 shrink-0">Offer slot</span>
+              <span onClick={(e) => { e.stopPropagation(); offer(i, r.name, r.want); }} role="button" className="btn-bright text-xs px-3 shrink-0">Offer slot</span>
             </button>
           ))}
           {open.length === 0 && <div className="px-5 py-8 text-center text-xs text-g-muted">No one waiting — capacity is full. 🎉</div>}
@@ -2075,7 +2091,7 @@ function Waitlist({ V }) {
           subtitle={`Wants: ${sel.r.want}`}
           fields={[["Looking for", sel.r.want], ["Channel", sel.r.ch], ["Waiting", sel.r.since]]}
           note={`The AI will text ${sel.r.name} the instant a matching slot frees up — first to reply keeps it. No empty chairs, no manual calls.`}
-          actions={<><button onClick={() => offer(sel.i, sel.r.name)} className="btn-bright text-sm">Offer next open slot</button><a href={waLink(`Hi ${sel.r.name}, a slot just opened for ${sel.r.want}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
+          actions={<><button onClick={() => offer(sel.i, sel.r.name, sel.r.want)} className="btn-bright text-sm">Offer next open slot</button><a href={waLink(`Hi ${sel.r.name}, a slot just opened for ${sel.r.want}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
           onClose={() => setSel(null)}
         />
       )}
