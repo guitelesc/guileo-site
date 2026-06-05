@@ -321,7 +321,7 @@ function sectionsFor(vid, V) {
   if (V.sections) return V.sections; // restaurant has a bespoke nav from its reference tool
   const sec = SECTOR_NAV[vid] || [["operations", "Operations"]];
   return [
-    ["overview", "Overview"], ["impact", "Guileo Impact"], ["brain", "Train your AI"], ["analytics", "AI Analytics"],
+    ["overview", "Overview"], ["impact", "Guileo Impact"], ["brain", "Train your AI"], ["analytics", "AI Analytics"], ["insights", "AI Insights"],
     ...sec,
     ["deliveries", deliveryTab(V)],
     ["payments", "Payments"], ["followups", "Follow-ups"], ["waitlist", "Waitlist"], ["recurring", "Recurring"], ["reputation", "Reputation"], ["loyalty", "Loyalty"],
@@ -351,7 +351,7 @@ function notifFor(key, V) {
   }
 }
 const SECTION_ICON = {
-  overview: FaGaugeHigh, operations: FaListCheck, schedule: FaListCheck, catalog: FaBookOpen, brain: FaBrain, analytics: FaChartLine, liveorders: FaReceipt,
+  overview: FaGaugeHigh, operations: FaListCheck, schedule: FaListCheck, catalog: FaBookOpen, brain: FaBrain, analytics: FaChartLine, insights: FaWandMagicSparkles, liveorders: FaReceipt,
   kitchen: FaUtensils, menu: FaBookOpen, deliveries: FaTruck, customers: FaUsers, campaigns: FaBullhorn, audiences: FaBullseye,
   inbox: FaComments, calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, social: FaShareNodes, grow: FaStore, billing: FaCreditCard,
   impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock, recurring: FaIdCard, reputation: FaStar, loyalty: FaGift, payments: FaReceipt,
@@ -361,7 +361,7 @@ const SECTION_ICON = {
 // Order = everyday use first (operations/conversations/customers), then growth/strategy, then account.
 const NAV_GROUPS = [
   ["", ["overview"]],
-  ["Your AI ✨", ["brain", "analytics"]],
+  ["Your AI ✨", ["brain", "analytics", "insights"]],
   ["Operations", ["liveorders", "kitchen", "menu", "schedule", "catalog", "deliveries", "operations"]],
   ["Conversations", ["inbox", "calllogs", "dialer", "whatsapp", "sms", "social"]],
   ["Customers", ["customers"]],
@@ -1194,12 +1194,21 @@ const REBOOK = { "Restaurant": "Re-order for them", "E-Commerce": "Send re-order
 // A synthetic recent-activity timeline so each profile reads like a real CRM record.
 function custTimeline(c, V) {
   const noun = (c.noun || "order").replace(/s$/, "");
-  return [
+  const L = V.label, name = c.name;
+  // REAL events first — anything the operator actually did for this customer (created:* records).
+  const real = [];
+  loadCreated(L, "liveorders").filter((o) => o.customer === name).forEach((o) => real.push({ t: "just now", ev: `Order ${o.id} created · ${o.channel}`, ic: "🧾", real: true }));
+  loadCreated(L, "schedule").filter((o) => o.name === name).forEach((o) => real.push({ t: "just now", ev: `Booked · ${o.meta || "appointment"}`, ic: "📅", real: true }));
+  loadCreated(L, "deliveries").filter((o) => o.customer === name).forEach((o) => real.push({ t: "just now", ev: `Delivery · ${o.status}`, ic: "🛵", real: true }));
+  loadCreated(L, "payments").filter((o) => o.customer === name).forEach((o) => real.push({ t: "just now", ev: `${o.id} · ${o.status} · $${o.amount}`, ic: "💳", real: true }));
+  loadCreated(L, "reviewreq").filter((o) => o.name === name).forEach(() => real.push({ t: "just now", ev: "Review requested by your AI", ic: "⭐", real: true }));
+  const base = [
     { t: c.last, ev: `Last ${noun} · via ${c.channel}`, ic: "🟢" },
     { t: "2 days ago", ev: `AI answered a question on ${c.channel}`, ic: "💬" },
     { t: "1 week ago", ev: `Left a 5★ review (AI-requested)`, ic: "⭐" },
     { t: "3 weeks ago", ev: `First ${noun} with ${V.business.name}`, ic: "✨" },
   ];
+  return [...real, ...base];
 }
 // The revenue-share thesis, made concrete: tell the owner the single best move.
 function nextBestAction(c, i) {
@@ -1249,7 +1258,7 @@ function Customers({ V, onNav }) {
               {custTimeline(sel.c, V).map((e, k) => (
                 <div key={k} className="flex items-start gap-2.5 text-xs">
                   <span className="text-sm leading-none mt-0.5">{e.ic}</span>
-                  <div className="flex-1 min-w-0"><div className="text-g-word font-semibold">{e.ev}</div><div className="text-[10px] text-g-muted">{e.t}</div></div>
+                  <div className="flex-1 min-w-0"><div className="text-g-word font-semibold flex items-center gap-1.5">{e.ev}{e.real && <span className="text-[8px] font-black uppercase tracking-wide text-g-green bg-g-green/15 rounded px-1 py-0.5">live</span>}</div><div className="text-[10px] text-g-muted">{e.t}</div></div>
                 </div>
               ))}
             </div>
@@ -2083,35 +2092,21 @@ function genBenchmarks(V) {
     { label: "Reviews per month", you: `${vnum(V.label, "bmrev", 60, 130)}`, avg: `${vnum(V.label, "bmrevavg", 14, 30)}`, delta: "3–4×", better: true },
   ];
 }
-function AIAnalytics({ V, onNav, sections = [] }) {
+// Consolidated AI Insights tab — recommendations (apply in 1 click) + demand/no-show
+// forecast + industry benchmarks, all in one place.
+function AIInsights({ V, onNav, sections = [] }) {
   const has = new Set(sections.map(([k]) => k));
   const recs = genRecommendations(V).filter((r) => has.has(r.view));
   const fc = genForecast(V);
   const fcMax = Math.max(...fc.load);
-  const sentiment = [["Positive", 82, "#3E9468"], ["Neutral", 13, "#D6C29A"], ["Negative", 5, "#EF4444"]];
-  const intents = aiIntents(V);
   const missed = aiMissed(V);
-  const names = (V.ops?.schedule || []).map((r) => r.name).filter(Boolean);
-  const ch1 = (V.channelMix?.items?.[0]?.[0]) || "Phone";
-  const book = BOOK_WORD[V.label] || "an appointment";
-  const svc = (V.ops?.list?.[0]?.name) || "your services";
-  const T = V.transcripts || [
-    { who: names[0] || "A customer", ch: ch1, sent: "Positive", lines: [["them", `Can I book ${book} for tomorrow?`], ["ai", `Of course! What time works best? I'll lock it in.`], ["them", "Around 2pm?"], ["ai", `2pm tomorrow it is — booked ✅ You'll get a reminder the day before.`]] },
-    { who: names[1] || "Another customer", ch: "WhatsApp", sent: "Positive", lines: [["them", `How much is ${svc.toLowerCase()}?`], ["ai", `Happy to help — it depends on a couple of details. Can I ask what you need?`], ["them", "Just the basics for now."], ["ai", `Got it — I'll send a quick quote on WhatsApp and can book you in if it looks good. 👍`]] },
-  ];
   return (
     <div className="space-y-4 stagger">
-      <MiniStats items={[["Conversations analyzed", vnum(V.label, "convan", 980, 3200).toLocaleString()], ["Avg sentiment", "Positive 👍", "good"], ["Resolved by AI", `${vnum(V.label, "resai", 86, 95)}%`, "good"], ["Avg handle time", `1m ${vnum(V.label, "handle", 4, 52)}s`]]} />
-      <div className="grid lg:grid-cols-2 gap-4">
-        <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Sentiment</div>
-          {sentiment.map(([l, v, c]) => (<div key={l} className="mb-2.5 last:mb-0"><div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{l}</span><span className="text-g-muted">{v}%</span></div><div className="h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full" style={{ width: `${v}%`, background: c }} /></div></div>))}
-        </Card>
-        <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Why people contact you</div>
-          {intents.map(([l, v]) => (<div key={l} className="mb-2.5 last:mb-0"><div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{l}</span><span className="text-g-muted">{v}%</span></div><div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-g-green" style={{ width: `${(v / 41) * 100}%` }} /></div></div>))}
-        </Card>
-      </div>
+      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
+        <div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaBrain className="text-g-green" /> AI Insights</div>
+        <div className="text-xs text-g-muted mt-0.5">What your AI sees in your numbers — and the exact moves to grow faster. Apply any of them in one click.</div>
+      </Card>
+
       <Card className="border-g-gold/30 bg-g-gold/[0.05] p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">⚡ Recommended by your AI · apply in one click</div>
         <div className="divide-y divide-white/[0.06]">
@@ -2126,7 +2121,6 @@ function AIAnalytics({ V, onNav, sections = [] }) {
         <div className="px-5 py-2.5 border-t border-white/[0.06] text-[11px] text-g-muted">{missed[0]}</div>
       </Card>
 
-      {/* Predictive AI — demand forecast + no-show risk */}
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-1">🔮 Predicted demand · next 7 days</div>
@@ -2152,11 +2146,9 @@ function AIAnalytics({ V, onNav, sections = [] }) {
               </div>
             )) : <Empty icon="✅" text="No high-risk bookings — your AI's reminders are keeping no-shows low." />}
           </div>
-          {fc.risk.length > 0 && <div className="px-5 py-2.5 border-t border-white/[0.06] text-[11px] text-g-muted">The AI auto-sends deposit requests + reminders to high-risk bookings.</div>}
         </Card>
       </div>
 
-      {/* Industry benchmarks — how the business stacks up vs sector average */}
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">📊 How you compare · vs {V.label.toLowerCase()} average</div>
         <div className="divide-y divide-white/[0.06]">
@@ -2169,7 +2161,35 @@ function AIAnalytics({ V, onNav, sections = [] }) {
         </div>
         <div className="px-5 py-2.5 border-t border-white/[0.06] text-[11px] text-g-muted">You're outperforming your sector on every metric your AI touches.</div>
       </Card>
+    </div>
+  );
+}
 
+function AIAnalytics({ V, onNav, sections = [] }) {
+  const sentiment = [["Positive", 82, "#3E9468"], ["Neutral", 13, "#D6C29A"], ["Negative", 5, "#EF4444"]];
+  const intents = aiIntents(V);
+  const missed = aiMissed(V);
+  const names = (V.ops?.schedule || []).map((r) => r.name).filter(Boolean);
+  const ch1 = (V.channelMix?.items?.[0]?.[0]) || "Phone";
+  const book = BOOK_WORD[V.label] || "an appointment";
+  const svc = (V.ops?.list?.[0]?.name) || "your services";
+  const T = V.transcripts || [
+    { who: names[0] || "A customer", ch: ch1, sent: "Positive", lines: [["them", `Can I book ${book} for tomorrow?`], ["ai", `Of course! What time works best? I'll lock it in.`], ["them", "Around 2pm?"], ["ai", `2pm tomorrow it is — booked ✅ You'll get a reminder the day before.`]] },
+    { who: names[1] || "Another customer", ch: "WhatsApp", sent: "Positive", lines: [["them", `How much is ${svc.toLowerCase()}?`], ["ai", `Happy to help — it depends on a couple of details. Can I ask what you need?`], ["them", "Just the basics for now."], ["ai", `Got it — I'll send a quick quote on WhatsApp and can book you in if it looks good. 👍`]] },
+  ];
+  return (
+    <div className="space-y-4 stagger">
+      <MiniStats items={[["Conversations analyzed", vnum(V.label, "convan", 980, 3200).toLocaleString()], ["Avg sentiment", "Positive 👍", "good"], ["Resolved by AI", `${vnum(V.label, "resai", 86, 95)}%`, "good"], ["Avg handle time", `1m ${vnum(V.label, "handle", 4, 52)}s`]]} />
+      <div className="grid lg:grid-cols-2 gap-4">
+        <Card>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Sentiment</div>
+          {sentiment.map(([l, v, c]) => (<div key={l} className="mb-2.5 last:mb-0"><div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{l}</span><span className="text-g-muted">{v}%</span></div><div className="h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full" style={{ width: `${v}%`, background: c }} /></div></div>))}
+        </Card>
+        <Card>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Why people contact you</div>
+          {intents.map(([l, v]) => (<div key={l} className="mb-2.5 last:mb-0"><div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{l}</span><span className="text-g-muted">{v}%</span></div><div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-g-green" style={{ width: `${(v / 41) * 100}%` }} /></div></div>))}
+        </Card>
+      </div>
       <div className="grid lg:grid-cols-2 gap-4">
         {T.map((t, i) => (
           <Card key={i} className="p-0 overflow-hidden">
@@ -2844,6 +2864,7 @@ export default function Portal() {
     catalog: <CatalogScreen V={V} />,
     social: <SocialInbox V={V} />,
     analytics: <AIAnalytics V={V} onNav={setView} sections={sections} />,
+    insights: <AIInsights V={V} onNav={setView} sections={sections} />,
     liveorders: <LiveOrders V={V} />,
     kitchen: <Kitchen V={V} />,
     menu: <MenuView V={V} />,
