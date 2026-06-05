@@ -2789,33 +2789,58 @@ function Login({ onEnter }) {
 // ── Gui — the in-portal AI assistant that EXECUTES tasks ──
 // Interprets a request and runs the matching action (reusing the same stitches the
 // rest of the app uses), so "send an invoice" actually creates one in Payments.
-function guiPlan(text, V) {
+function guiPlan(text, V, ctx = {}) {
   const s = text.toLowerCase();
   const act = convoAction(V);
-  if (/(invoice|charge|bill|cobr|fatur|payment|receb)/.test(s)) return { cost: 5, reply: "Done ✓ — I created an invoice with a payment link and dropped it in Payments. I'll chase it until it's paid.", run: (onNav) => { const c = (V.customers || genCustomers(V))[0]; pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: c?.name || "New customer", amount: vnum(V.label, "guiinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); onNav?.("payments"); } };
-  if (/(review|avalia|rating|estrela)/.test(s)) return { cost: 5, reply: "On it ✓ — I queued review requests to your happiest recent customers. They're tracked in Reputation.", run: (onNav) => { (V.customers || genCustomers(V)).slice(0, 3).forEach((c) => pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel })); onNav?.("reputation"); } };
-  if (/(deliver|entrega|dispatch|despach)/.test(s)) return { cost: 5, reply: `Done ✓ — sent it to ${deliveryTab(V).toLowerCase()}. I'll text the customer live updates.`, run: (onNav) => { pushCreated(V.label, "deliveries", recordFor("deliveries", "Gui", "Gui", V)); onNav?.("deliveries"); } };
-  if (/(campaign|promo|an[úu]nci|\bad\b|marketing)/.test(s)) return { cost: 5, reply: "Launched ✓ — a promo is live and the AI will optimize it. It's in Campaigns.", run: (onNav) => { pushCreated(V.label, "campaigns", { name: "Gui promo", channel: "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); onNav?.("campaigns"); } };
-  if (/(order|pedido|book|appointment|agend|marcar|reserv|schedule)/.test(s)) return { cost: 5, reply: `${act.done} ✓ — it's in the right tab now.`, run: (onNav) => { const rec = recordFor(act.view, "Gui customer", "Gui", V); if (rec) pushCreated(V.label, act.view, rec); onNav?.(act.view); } };
-  if (/(follow|nudge|win-?back|lapse|reativ)/.test(s)) return { cost: 3, reply: "Done ✓ — I started a follow-up sequence. Check the Follow-ups tab.", run: (onNav) => onNav?.("followups") };
-  if (/(hour|open|close|price|cost|where|location|menu|service)/.test(s)) { const kb = portalApi.loadKB(V.label, seedKB(V, portalApi.loadProfile(V.label, defProfile(V)))); return { cost: 1, reply: aiAnswer(text, V, kb) }; }
-  return { cost: 0, reply: "I can create orders & bookings, send invoices, request reviews, launch promos, start follow-ups, or push to delivery. Try: \"send an invoice to my top customer\"." };
+  const customers = (V.customers || genCustomers(V));
+  const named = customers.find((c) => s.includes((c.name || "").toLowerCase()));
+  const pronoun = /\b(them|her|him|they|that customer|same one|ele|ela|esse cliente|essa cliente|o mesmo|a mesma)\b/.test(s);
+  const who = named ? named.name : (pronoun && ctx.customer) ? ctx.customer : null;
+  const target = who || customers[0]?.name || "New customer";
+  const C = (cust) => ({ ...ctx, customer: cust });        // carry the customer forward in memory
+  const forTxt = who ? ` for ${target}` : "";
+  if (/(invoice|charge|bill|cobr|fatur|payment|receb)/.test(s)) return { cost: 5, ctx: C(target), reply: `Done ✓ — invoice sent to ${target} with a payment link, tracked in Payments. I'll chase it until it's paid.`, run: (onNav) => { pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: target, amount: vnum(V.label, "guiinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); onNav?.("payments"); } };
+  if (/(review|avalia|rating|estrela)/.test(s)) return { cost: 5, ctx: C(who || ctx.customer), reply: `On it ✓ — I queued review requests${who ? ` to ${target}` : " to your happiest recent customers"}. Tracked in Reputation.`, run: (onNav) => { (who ? [{ name: target, channel: "WhatsApp" }] : customers.slice(0, 3)).forEach((c) => pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel })); onNav?.("reputation"); } };
+  if (/(deliver|entrega|dispatch|despach)/.test(s)) return { cost: 5, ctx: C(who || ctx.customer), reply: `Done ✓ — sent${forTxt} to ${deliveryTab(V).toLowerCase()}. I'll text live updates.`, run: (onNav) => { const r = recordFor("deliveries", target, "Gui", V); pushCreated(V.label, "deliveries", r); onNav?.("deliveries"); } };
+  if (/(campaign|promo|an[úu]nci|\bad\b|marketing)/.test(s)) return { cost: 5, ctx, reply: "Launched ✓ — a promo is live and the AI will optimize it. It's in Campaigns.", run: (onNav) => { pushCreated(V.label, "campaigns", { name: "Gui promo", channel: "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); onNav?.("campaigns"); } };
+  if (/(order|pedido|book|appointment|agend|marcar|reserv|schedule)/.test(s)) return { cost: 5, ctx: C(target), reply: `${act.done}${forTxt} ✓ — it's in the right tab now.`, run: (onNav) => { const rec = recordFor(act.view, target, "Gui", V); if (rec) pushCreated(V.label, act.view, rec); onNav?.(act.view); } };
+  if (/(follow|nudge|win-?back|lapse|reativ)/.test(s)) return { cost: 3, ctx, reply: "Done ✓ — I started a follow-up sequence. Check the Follow-ups tab.", run: (onNav) => onNav?.("followups") };
+  if (/(hour|open|close|price|cost|where|location|menu|service)/.test(s)) { const kb = portalApi.loadKB(V.label, seedKB(V, portalApi.loadProfile(V.label, defProfile(V)))); return { cost: 1, ctx, reply: aiAnswer(text, V, kb) }; }
+  return { cost: 0, ctx, reply: "I can create orders & bookings, send invoices, request reviews, launch promos, start follow-ups, or push to delivery. Try: \"send an invoice to my top customer\" — then \"book them too\"." };
 }
 function Gui({ V, onNav }) {
   const [open, setOpen] = useState(false);
   const [credits, setCredits] = useState(() => portalApi.loadState("gui_credits", 250));
-  const [msgs, setMsgs] = useState([{ from: "gui", text: "Hi! I'm Gui — your AI assistant 👋 Tell me what to do and I'll handle it: “create an order”, “send an invoice”, “request reviews”, “book an appointment”…" }]);
+  const [msgs, setMsgs] = useState(() => [
+    { from: "gui", text: "Hi! I'm Gui — your AI assistant 👋 Tell me what to do and I'll handle it." },
+    { from: "gui", text: `Quick read on today: ${dailyBriefing(V)}. Want me to get started?` },
+  ]);
   const [q, setQ] = useState("");
+  const [ctx, setCtx] = useState({});            // conversation memory (last customer, etc.)
+  const [listening, setListening] = useState(false);
   const setC = (n) => { setCredits(n); portalApi.saveState("gui_credits", n); };
   const recharge = () => { setC(credits + 250); toast("250 credits added ✓ — pay-as-you-go, billed to your account"); };
-  const send = (e) => {
-    e.preventDefault(); const text = q.trim(); if (!text) return;
-    setMsgs((m) => [...m, { from: "you", text }]); setQ("");
-    const res = guiPlan(text, V);
+  const run = (text) => {
+    const t = text.trim(); if (!t) return;
+    setMsgs((m) => [...m, { from: "you", text: t }]); setQ("");
+    const res = guiPlan(t, V, ctx);
+    if (res.ctx) setCtx(res.ctx);
     if (res.cost > credits) { setMsgs((m) => [...m, { from: "gui", text: "You're out of credits for that one — top up and I'll get right on it.", lowCredit: true }]); return; }
     if (res.run) res.run(onNav);
     setC(credits - res.cost);
     setMsgs((m) => [...m, { from: "gui", text: res.reply, cost: res.cost }]);
+  };
+  const send = (e) => { e.preventDefault(); run(q); };
+  // Voice input via the Web Speech API (graceful no-op where unsupported).
+  const SR = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+  const dictate = () => {
+    if (!SR) { toast("Voice isn't supported in this browser"); return; }
+    const rec = new SR(); rec.lang = "en-US"; rec.interimResults = false; rec.maxAlternatives = 1;
+    setListening(true);
+    rec.onresult = (ev) => { const t = ev.results[0][0].transcript; setQ(t); setListening(false); setTimeout(() => run(t), 200); };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    rec.start();
   };
   const pct = Math.max(0, Math.min(100, Math.round((credits / 250) * 100)));
   const low = credits < 30;
@@ -2852,11 +2877,12 @@ function Gui({ V, onNav }) {
               </div>
             ))}
           </div>
-          {msgs.length <= 1 && (
-            <div className="px-3 pb-1 flex flex-wrap gap-1.5 shrink-0">{["Create an order", "Send an invoice", "Request reviews", "Launch a promo"].map((s) => <button key={s} onClick={() => { setQ(s); }} className="rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold text-g-muted hover:text-g-word transition">{s}</button>)}</div>
+          {msgs.length <= 2 && (
+            <div className="px-3 pb-1 flex flex-wrap gap-1.5 shrink-0">{["Create an order", "Send an invoice", "Request reviews", "Launch a promo"].map((s) => <button key={s} onClick={() => run(s)} className="rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold text-g-muted hover:text-g-word transition">{s}</button>)}</div>
           )}
           <form onSubmit={send} className="p-3 border-t border-white/10 flex gap-2 shrink-0">
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ask Gui to do something…" className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+            {SR && <button type="button" onClick={dictate} aria-label="Dictate to Gui" className={`grid place-items-center h-10 w-10 rounded-full border shrink-0 transition ${listening ? "border-red-400 bg-red-500/15 text-red-400 animate-pulse" : "border-white/15 bg-white/[0.04] text-g-muted hover:text-g-word"}`}>🎙️</button>}
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={listening ? "Listening…" : "Ask Gui to do something…"} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
             <button className="btn-bright text-sm px-4">Send</button>
           </form>
           <a href={waLink("Hi Guileo team! I need help")} target="_blank" rel="noopener" className="px-4 pb-3 text-[10px] text-g-muted hover:text-g-word text-center shrink-0">Need a human? Talk to your team →</a>
