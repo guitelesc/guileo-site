@@ -391,11 +391,11 @@ const SECTION_ICON = {
 // Order = everyday use first (operations/conversations/customers), then growth/strategy, then account.
 const NAV_GROUPS = [
   ["", ["overview"]],
-  ["Your AI ✨", ["brain", "analytics", "insights", "integrations"]],
+  ["Your AI ✨", ["brain", "analytics", "insights", "grow"]],
   ["Operations", ["liveorders", "kitchen", "menu", "schedule", "catalog", "deliveries", "operations"]],
   ["Conversations", ["inbox", "calllogs", "dialer", "whatsapp", "sms", "social"]],
   ["Customers", ["customers"]],
-  ["Grow revenue", ["impact", "payments", "followups", "waitlist", "recurring", "reputation", "loyalty", "campaigns", "audiences", "grow"]],
+  ["Grow revenue", ["impact", "payments", "followups", "waitlist", "recurring", "reputation", "loyalty", "campaigns", "audiences", "integrations"]],
   ["Account", ["locations", "team", "billing", "support", "settings"]],
 ];
 // Portal UI translation (PT) — keyed by the English string. Covers the most-visible
