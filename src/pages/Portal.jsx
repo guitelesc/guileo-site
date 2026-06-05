@@ -8,6 +8,7 @@ import {
   FaDownload, FaBell, FaMagnifyingGlass, FaStore, FaBrain, FaCreditCard, FaChevronDown, FaShareNodes,
   FaArrowsRotate, FaClock, FaStar, FaIdCard,
   FaPen, FaTrash, FaPlus, FaCircleCheck, FaWandMagicSparkles,
+  FaTruck, FaLocationDot,
 } from "react-icons/fa6";
 
 /* Upsell channel — services a client can request from inside the portal (revenue engine) */
@@ -52,6 +53,40 @@ const DEPOSIT = { "Restaurant": 20, "Clinic": 30, "Medical": 40, "Salon & Spa": 
 // hardcoded "8 / 31 / 9" for every vertical.
 function vhash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
 function vnum(label, salt, min, max) { return min + (vhash(`${label}|${salt}`) % (max - min + 1)); }
+
+// ── Delivery / dispatch config per sector ──
+// Restaurants plug into Uber Eats / DoorDash / Grubhub AND run their own drivers;
+// every other vertical gets the equivalent logistics layer (carriers, field techs,
+// mobile visits, couriers). `partners` = third-party platforms to connect;
+// `own` = Guileo-run delivery that keeps 0% commission + the customer relationship.
+const DELIVERY = {
+  "Restaurant": { title: "Delivery & couriers", noun: "deliveries", who: "Driver", partners: [["Uber Eats", "🛵", "#06C167"], ["DoorDash", "🚗", "#FF3008"], ["Grubhub", "🍴", "#F63440"]], own: ["Guileo Direct", "Your own drivers — 0% commission, you keep the customer"] },
+  "E-Commerce": { title: "Shipping & fulfilment", noun: "shipments", who: "Carrier", partners: [["UPS", "📦", "#8B6F47"], ["FedEx", "✈️", "#4D148C"], ["USPS", "📮", "#333366"], ["DHL", "🚚", "#D4A520"]], own: ["Local same-day", "Your courier for nearby orders"] },
+  "Plumbing & HVAC": { title: "Field dispatch", noun: "jobs", who: "Tech", partners: [], own: ["Guileo Dispatch", "Auto-route technicians to the next job"] },
+  "Construction": { title: "Crew & material dispatch", noun: "drops", who: "Crew", partners: [], own: ["Guileo Dispatch", "Route crews & material deliveries"] },
+  "Auto Dealership": { title: "Pickup & delivery", noun: "vehicles", who: "Driver", partners: [], own: ["Valet & loaner", "Pick up and drop off customer vehicles"] },
+  "Clinic": { title: "Prescriptions & home visits", noun: "deliveries", who: "Courier", partners: [["Local pharmacy", "💊", "#3E9468"]], own: ["Mobile nurse / courier", "Send meds or a nurse to the patient"] },
+  "Medical": { title: "Prescriptions & home care", noun: "deliveries", who: "Courier", partners: [["Local pharmacy", "💊", "#3E9468"]], own: ["Mobile care / courier", "Home care visits and sample pickup"] },
+  "Salon & Spa": { title: "At-home appointments", noun: "visits", who: "Stylist", partners: [], own: ["Mobile glow squad", "Send a stylist to the client's home"] },
+  "Gym & Fitness": { title: "On-site & home training", noun: "sessions", who: "Coach", partners: [], own: ["Mobile trainers", "Train clients at home or work"] },
+  "Education": { title: "On-site & home tutoring", noun: "sessions", who: "Tutor", partners: [], own: ["Mobile tutors", "Send a tutor to the student"] },
+  "Law Firm": { title: "Document courier", noun: "deliveries", who: "Courier", partners: [["Legal courier", "📄", "#8B6F47"]], own: ["Same-day courier", "Get documents signed & filed on time"] },
+  "Real Estate": { title: "Showings & key handoff", noun: "handoffs", who: "Agent", partners: [], own: ["Agent / lockbox", "Coordinate key handoffs and showings"] },
+};
+const deliveryCfg = (V) => DELIVERY[V.label] || DELIVERY["Restaurant"];
+// Short sidebar label for the delivery/dispatch tab, per sector.
+const deliveryTab = (V) => ({ "E-Commerce": "Shipping", "Plumbing & HVAC": "Dispatch", "Construction": "Dispatch", "Auto Dealership": "Logistics", "Salon & Spa": "Mobile visits", "Gym & Fitness": "Mobile sessions", "Education": "Mobile sessions", "Law Firm": "Courier", "Real Estate": "Handoffs", "Clinic": "Deliveries", "Medical": "Deliveries" }[V.label] || "Delivery");
+function genDeliveries(V) {
+  const cfg = deliveryCfg(V);
+  const names = (V.ops?.schedule || []).map((r) => r.name).filter(Boolean);
+  const ST = [["Preparing", "#D6C29A"], ["En route", "#38BDF8"], ["Arriving", "#3E9468"], ["Delivered", "#7C7C7C"]];
+  const ppl = ["Alex", "Sam", "Júlia", "Marco", "Bia"];
+  return (names.length ? names : ["Order #1049", "Order #1048", "Order #1047", "Order #1046"]).slice(0, 4).map((n, i) => {
+    const [status, color] = ST[i % ST.length];
+    const via = cfg.partners.length ? cfg.partners[i % cfg.partners.length][0] : cfg.own[0];
+    return { customer: n, who: `${cfg.who} ${ppl[i % ppl.length]}`, eta: status === "Delivered" ? "Delivered" : `${8 + i * 6} min`, status, color, addr: `${100 + i * 37} Main St`, via };
+  });
+}
 function genCalls(V) {
   const sch = (V.ops?.schedule || []).slice(0, 4);
   if (sch.length) return sch.map((p, i) => ({ name: p.name, phone: _PHONES[i % 4], outcome: p.meta ? `${p.meta} · booked by AI` : "Handled by AI", dur: `${1 + (i % 2)}m ${(12 + i * 9) % 60}s`, time: `${2 + i * 12} min ago`, color: ["#3E9468", "#38BDF8", "#3E9468", "#7C7C7C"][i % 4] }));
@@ -214,6 +249,7 @@ function sectionsFor(vid, V) {
   return [
     ["overview", "Overview"], ["impact", "Guileo Impact"], ["brain", "Train your AI"], ["analytics", "AI Analytics"],
     ...sec,
+    ["deliveries", deliveryTab(V)],
     ["followups", "Follow-ups"], ["waitlist", "Waitlist"], ["recurring", "Recurring"], ["reputation", "Reputation"],
     ["customers", "Customers"], ["campaigns", "Campaigns"], ["audiences", "Ad Audiences"],
     ["calllogs", "Call Logs"], ["dialer", "Call Dialer"], ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"],
@@ -226,6 +262,7 @@ function notifFor(key, V) {
     case "overview": return V.alerts ? V.alerts.items.length : 0;
     case "liveorders": return (V.liveOrders || []).filter((o) => o.status !== "Delivered").length;
     case "kitchen": return ((V.kitchen?.new || []).length + (V.kitchen?.preparing || []).length);
+    case "deliveries": return genDeliveries(V).filter((r) => r.status !== "Delivered").length;
     case "schedule": return (V.ops?.schedule || []).filter((r) => /pending|new|unassigned|risk|follow/i.test(r.status)).length;
     case "calllogs": return 2;
     case "whatsapp": return 1;
@@ -239,7 +276,7 @@ function notifFor(key, V) {
 }
 const SECTION_ICON = {
   overview: FaGaugeHigh, operations: FaListCheck, schedule: FaListCheck, catalog: FaBookOpen, brain: FaBrain, analytics: FaChartLine, liveorders: FaReceipt,
-  kitchen: FaUtensils, menu: FaBookOpen, customers: FaUsers, campaigns: FaBullhorn, audiences: FaBullseye,
+  kitchen: FaUtensils, menu: FaBookOpen, deliveries: FaTruck, customers: FaUsers, campaigns: FaBullhorn, audiences: FaBullseye,
   calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, social: FaShareNodes, grow: FaStore, billing: FaCreditCard,
   impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock, recurring: FaIdCard, reputation: FaStar,
   channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, docs: FaFileLines, settings: FaGear,
@@ -249,7 +286,7 @@ const SECTION_ICON = {
 const NAV_GROUPS = [
   ["", ["overview"]],
   ["Your AI ✨", ["brain", "analytics"]],
-  ["Operations", ["liveorders", "kitchen", "menu", "schedule", "catalog", "operations"]],
+  ["Operations", ["liveorders", "kitchen", "menu", "schedule", "catalog", "deliveries", "operations"]],
   ["Conversations", ["calllogs", "dialer", "whatsapp", "sms", "social"]],
   ["Customers", ["customers"]],
   ["Grow revenue", ["impact", "followups", "waitlist", "recurring", "reputation", "campaigns", "audiences", "grow"]],
@@ -337,6 +374,7 @@ function MiniStats({ items }) {
 function alertTarget(text = "") {
   const t = text.toLowerCase();
   if (/kitchen|prep/.test(t)) return { view: "kitchen", label: "View kitchen" };
+  if (/deliver|courier|driver|dispatch|shipment|en route/.test(t)) return { view: "deliveries", label: "View deliveries" };
   if (/order/.test(t)) return { view: "liveorders", label: "View orders" };
   if (/stock|inventory|menu|item/.test(t)) return { view: "menu", label: "View menu" };
   if (/call|inbound|phone|voicemail/.test(t)) return { view: "calllogs", label: "View calls" };
@@ -599,6 +637,98 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
           </Card>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+// Delivery & dispatch — third-party platforms (Uber Eats/DoorDash/Grubhub, carriers)
+// + Guileo's own delivery, unified. Connections persist; every drop is trackable.
+function Deliveries({ V }) {
+  const cfg = deliveryCfg(V);
+  const rows = genDeliveries(V);
+  const active = rows.filter((r) => r.status !== "Delivered");
+  // Connection state persists (feels like a real integration toggle). Seed: first
+  // two partners connected, rest off — so both states are visible.
+  const [conn, setConn] = useState(() => portalApi.loadState(`${V.label}:integrations`, Object.fromEntries(cfg.partners.map(([n], i) => [n, i < 2]))));
+  useEffect(() => { setConn(portalApi.loadState(`${V.label}:integrations`, Object.fromEntries(cfg.partners.map(([n], i) => [n, i < 2])))); }, [V.label]);
+  const toggle = (name) => setConn((c) => { const n = { ...c, [name]: !c[name] }; portalApi.saveState(`${V.label}:integrations`, n); toast(`${name} ${n[name] ? "connected ✓" : "disconnected"}`); return n; });
+  const [ownOn, setOwnOn] = useState(() => portalApi.loadState(`${V.label}:owndelivery`, true));
+  const flipOwn = () => setOwnOn((o) => { const v = !o; portalApi.saveState(`${V.label}:owndelivery`, v); toast(`${cfg.own[0]} ${v ? "on ✓" : "off"}`); return v; });
+  const [sel, setSel] = useState(null);
+  const onTime = vnum(V.label, "ontime", 92, 99);
+
+  return (
+    <div className="space-y-4">
+      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaTruck className="text-g-green" /> {cfg.title}</div><div className="text-xs text-g-muted mt-0.5">{cfg.partners.length ? "Every order — third-party apps and your own delivery — in one place. " : "Dispatch and track every job in one place. "}Your AI texts customers live ETAs automatically.</div></div>
+          <a href={waLink(`Hi Guileo! Help me set up ${cfg.title.toLowerCase()}`)} target="_blank" rel="noopener" className="btn-bright text-sm">Set up with my team →</a>
+        </div>
+      </Card>
+
+      <MiniStats items={[["Active now", `${active.length}`], ["On-time", `${onTime}%`, "good"], ["Avg. time", `${vnum(V.label, "deltime", 18, 42)} min`], [cfg.partners.length ? "Commission saved" : "Auto-dispatched", cfg.partners.length ? `$${vnum(V.label, "commsave", 400, 1800).toLocaleString()}` : `${vnum(V.label, "autodisp", 20, 70)}`, "good"]]} />
+
+      {/* Integrations — connect the platforms */}
+      {cfg.partners.length > 0 && (
+        <Card className="p-0 overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Connect your delivery platforms</div>
+          <div className="divide-y divide-white/[0.06]">
+            {cfg.partners.map(([name, ic, color]) => (
+              <div key={name} className="flex items-center gap-3 px-5 py-3.5">
+                <span className="grid place-items-center h-10 w-10 rounded-xl text-lg" style={{ background: color + "22" }}>{ic}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-g-word">{name}</div>
+                  <div className="text-[11px] text-g-muted">{conn[name] ? `Connected · ${vnum(V.label, name, 6, 28)} ${cfg.noun} today` : "Not connected"}</div>
+                </div>
+                {conn[name] && <span className="text-[10px] font-black uppercase text-g-green inline-flex items-center gap-1"><FaCircleCheck size={10} /> Live</span>}
+                <Toggle on={!!conn[name]} onClick={() => toggle(name)} />
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Guileo's own delivery — the differentiator: 0% commission, owns the customer */}
+      <Card className="border-g-gold/30 bg-g-gold/[0.05]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="grid place-items-center h-10 w-10 rounded-xl bg-g-gold/15 text-g-gold"><FaLocationDot /></span>
+            <div><div className="text-sm font-extrabold text-g-word">{cfg.own[0]} <span className="text-[10px] font-black uppercase text-g-gold ml-1">{cfg.partners.length ? "0% commission" : "in-house"}</span></div><div className="text-xs text-g-muted">{cfg.own[1]}</div></div>
+          </div>
+          <Toggle on={ownOn} onClick={flipOwn} />
+        </div>
+      </Card>
+
+      {/* Live deliveries / dispatch board */}
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Live {cfg.noun} · tap to track</span><span className="text-[11px] text-g-muted">{active.length} in progress</span></div>
+        <div className="divide-y divide-white/[0.06]">
+          {rows.map((r, i) => (
+            <button key={i} onClick={() => setSel(r)} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition">
+              <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06]" style={{ color: r.color }}><FaTruck size={13} /></span>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.customer} <span className="text-g-muted font-normal">· {r.via}</span></div><div className="text-[11px] text-g-muted truncate">{r.who} · {r.addr}</div></div>
+              <div className="text-right shrink-0"><div className="text-[11px] font-bold" style={{ color: r.color }}>{r.eta}</div><span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: r.color + "22", color: r.color }}>{r.status}</span></div>
+            </button>
+          ))}
+          {rows.length === 0 && <Empty icon="🛵" text={`No ${cfg.noun} in progress right now.`} />}
+        </div>
+      </Card>
+
+      {sel && (
+        <Drawer
+          title={sel.customer}
+          subtitle={`${sel.via} · ${sel.status}`}
+          badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: sel.color + "22", color: sel.color }}>{sel.eta}</span>}
+          fields={[[cfg.who, sel.who], ["Channel", sel.via], ["Destination", sel.addr], ["ETA", sel.eta], ["Status", sel.status]]}
+          note={`Your AI is texting ${sel.customer} live ${sel.status.toLowerCase()} updates — no “where's my order?” calls for you to answer.`}
+          actions={<>
+            <button onClick={() => { toast(`Live tracking link sent to ${sel.customer} ✓`); setSel(null); }} className="btn-bright text-sm">📍 Share tracking</button>
+            <button onClick={() => { toast(`${sel.via}: ${cfg.who.toLowerCase()} reassigned`); setSel(null); }} className="btn-ghost text-sm">↻ Reassign</button>
+            <button onClick={() => { toast(`${sel.customer} marked delivered ✓`); setSel(null); }} className="btn-ghost text-sm">✓ Mark delivered</button>
+          </>}
+          onClose={() => setSel(null)}
+        />
       )}
     </div>
   );
@@ -1973,6 +2103,7 @@ export default function Portal() {
   };
   const content = {
     overview: <Overview V={V} onNav={setView} sections={sections} period={period} />,
+    deliveries: <Deliveries V={V} />,
     impact: <GuileoImpact V={V} />,
     followups: <Followups V={V} />,
     waitlist: <Waitlist V={V} />,
