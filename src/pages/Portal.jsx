@@ -494,6 +494,18 @@ function growthOps(V) {
   ].filter((o) => o.n > 0);
 }
 
+// Unified recent-activity feed — the latest things you + Gui actually did, across tabs.
+function recentActivity(V) {
+  const L = V.label, items = [];
+  loadCreated(L, "liveorders").forEach((o) => items.push({ ic: "🧾", text: `Order ${o.id} · ${o.customer}`, view: "liveorders", _id: o._id }));
+  loadCreated(L, "schedule").forEach((o) => items.push({ ic: "📅", text: `Booking · ${o.name}`, view: "schedule", _id: o._id }));
+  loadCreated(L, "deliveries").forEach((o) => items.push({ ic: "🛵", text: `Delivery · ${o.customer}`, view: "deliveries", _id: o._id }));
+  loadCreated(L, "payments").forEach((o) => items.push({ ic: "💳", text: `${o.id} · ${o.customer} · $${o.amount}`, view: "payments", _id: o._id }));
+  loadCreated(L, "campaigns").forEach((o) => items.push({ ic: "📣", text: `Campaign · ${o.name}`, view: "campaigns", _id: o._id }));
+  loadCreated(L, "reviewreq").forEach((o) => items.push({ ic: "⭐", text: `Review requested · ${o.name}`, view: "reputation", _id: o._id }));
+  loadCreated(L, "impact").forEach((o) => items.push({ ic: "💰", text: `${o.what} · +$${o.amt}`, view: "impact", _id: o._id }));
+  return items.sort((a, b) => (b._id || 0) - (a._id || 0)).slice(0, 6);
+}
 // One-line AI briefing for the home screen — derived from real signals.
 function dailyBriefing(V) {
   const alerts = V.alerts ? V.alerts.items.length : 0;
@@ -653,6 +665,23 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
           </div>
         </Card>
       )}
+
+      {/* RECENT ACTIVITY — the latest things you + Gui did, across every tab */}
+      {(() => { const acts = recentActivity(V).filter((a) => validViews.has(a.view)); return acts.length > 0 ? (
+        <Card className="p-0 overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Recent activity</span><span className="text-[10px] text-g-muted inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />live</span></div>
+          <div className="divide-y divide-white/[0.05]">
+            {acts.map((a, i) => (
+              <button key={i} onClick={() => onNav(a.view)} className="group w-full text-left flex items-center gap-3 px-5 py-2.5 hover:bg-white/[0.03] transition">
+                <span className="text-base shrink-0">{a.ic}</span>
+                <div className="flex-1 min-w-0 text-xs text-g-word truncate">{a.text}</div>
+                <span className="text-[10px] text-g-muted shrink-0">just now</span>
+                <span className="text-g-muted group-hover:text-g-word transition shrink-0">→</span>
+              </button>
+            ))}
+          </div>
+        </Card>
+      ) : null; })()}
 
       <div className={`grid gap-4 grid-cols-2 ${V.kpis.length >= 6 ? "md:grid-cols-3 xl:grid-cols-6" : "sm:grid-cols-2 lg:grid-cols-4"}`}>
         {V.kpis.map((k, i) => (
