@@ -13,6 +13,7 @@ import LiveDemo from "../components/LiveDemo.jsx";
 import { Reveal, Count, Aurora, Ticker, Circuit, Stagger, Item, Magnetic, Parallax, Spotlight, Accordion, ProductsMarquee, HumanShield, LiveFeed } from "../lib/ui.jsx";
 import { AnimatePresence } from "framer-motion";
 import logo from "../assets/guileo-logo.png";
+import mark from "../assets/guileo-mark.png";
 import { TECH, COMPLIANCE, TICKER, CHANNELS, CORE_OFFER, INTEGRATIONS, COMPARISON } from "../data/site";
 import { CONTACT, waLink } from "../data/contact.js";
 import { useLang } from "../i18n.jsx";
@@ -230,7 +231,16 @@ function HeroCallForm({ t }) {
       </div>
       <input required value={name} onChange={(e) => setName(e.target.value)} aria-label={C.phName || "Your name"} placeholder={C.phName || "Your name"} className={inputCls} />
       <input value={biz} onChange={(e) => setBiz(e.target.value)} aria-label={C.phBiz || "Describe your business"} placeholder={C.phBiz || "Describe your business (optional)"} className={inputCls} />
-      <Magnetic><button disabled={st === "calling"} className="btn-bright text-base w-full justify-center disabled:opacity-70">{st === "calling" ? (C.callingBtn || "Calling you…") : `📞 ${C.callBtn || "Call me now — hear Gui live"}`}</button></Magnetic>
+      <Magnetic>
+        <button disabled={st === "calling"} aria-label={C.callBtn || "Call me now — hear Gui live"}
+          className="group relative mt-0.5 inline-flex w-auto self-start items-center gap-2 overflow-hidden rounded-full border border-white/40 px-4 py-2 text-sm font-extrabold text-g-deep shadow-[0_3px_14px_rgba(0,0,0,0.45)] transition-transform hover:scale-[1.03] active:scale-95 disabled:opacity-70"
+          style={{ background: "linear-gradient(180deg,#fbf6ea 0%,#ecdfc2 42%,#cdb98c 52%,#e6d8b6 70%,#f6eed9 100%)" }}>
+          {/* metallic shine sweep */}
+          <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/70 to-transparent transition-transform duration-[900ms] group-hover:translate-x-full" />
+          <img src={mark} alt="" className="relative h-4 w-4 object-contain drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]" />
+          <span className="relative">{st === "calling" ? (C.callingBtn || "Calling you…") : (C.callBtn || "Call me now — hear Gui live")}</span>
+        </button>
+      </Magnetic>
       <p className="text-[11px] text-g-muted/90">{C.callsmall || "Enter your number and Gui calls you — hear it live, right now."}</p>
     </form>
   );
@@ -273,13 +283,17 @@ export default function Home() {
                 <span className="block ml-[1.2em] sm:ml-[2.2em] text-g-word">{t.hero.h1c}</span>
               </h1>,
               <div key="method" className="mt-5 flex flex-col gap-2">
-                <div className="flex items-center gap-2.5 text-[11px] sm:text-xs font-black uppercase tracking-[0.18em]">
-                  {(t.hero.method || ["Performance","Sales","Growth"]).map((m,mi,arr)=>(
-                    <span key={m} className="inline-flex items-center gap-2.5">
-                      <span className={mi===0?"text-g-green":mi===1?"text-g-gold":"text-g-light"}>{m}</span>
-                      {mi<arr.length-1 && <span className="text-g-muted">→</span>}
+                <div className="flex items-center gap-2 text-sm sm:text-base font-black uppercase tracking-[0.16em]">
+                  {(t.hero.method || ["Performance","Sales","Growth"]).map((m,mi,arr)=>{
+                    // combustion: heat rises across the three stages — cool emerald → champagne → ignited orange/red
+                    const heat=["from-g-green via-emerald-300 to-g-green drop-shadow-[0_0_16px_rgba(62,148,104,0.55)]","from-g-gold via-amber-200 to-g-gold drop-shadow-[0_0_16px_rgba(214,194,154,0.6)]","from-orange-400 via-red-400 to-amber-300 drop-shadow-[0_0_20px_rgba(249,115,22,0.65)]"][mi];
+                    return (
+                    <span key={m} className="inline-flex items-center gap-2">
+                      <span className={`bg-gradient-to-r ${heat} bg-[length:200%_auto] bg-clip-text text-transparent animate-shimmer`}>{m}</span>
+                      {mi<arr.length-1 && <span className="text-orange-400/80 animate-pulse" style={{animationDelay:`${mi*0.4}s`}}>→</span>}
                     </span>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div className="text-base sm:text-lg text-g-muted font-semibold inline-flex items-center gap-2">
                   <span className="text-g-word font-extrabold">Gui</span>
