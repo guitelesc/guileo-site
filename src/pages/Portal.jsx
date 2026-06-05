@@ -2586,6 +2586,34 @@ function Recurring({ V }) {
 }
 
 /* ───────────────────────── Onboarding wizard (first run) ───────────────────────── */
+// First-run welcome tour — shows once (localStorage), highlights the differentiators.
+function Tour({ onDone }) {
+  const steps = [
+    { ic: "💬", title: "One unified inbox", text: "Every call, WhatsApp, SMS and social DM lands in one place — and from any of them you fire an order or booking that drops into the right tab." },
+    { ic: "🧠", title: "Train your AI — live", text: "Teach your AI in plain words and test it instantly. What you add, it uses on the very next customer." },
+    { ic: "💰", title: "Guileo Impact", text: "Every order, booking, delivery and win-back feeds a live growth ledger — the exact number Guileo earns its % on. Fully transparent." },
+    { ic: "⚡", title: "Run anything with ⌘K", text: "Press ⌘K (or Ctrl-K) anywhere to search or run a command — create an order, send an invoice, request reviews." },
+  ];
+  const [i, setI] = useState(0);
+  const last = i >= steps.length - 1;
+  const s = steps[Math.min(i, steps.length - 1)]; // guard against rapid double-clicks
+  const advance = () => { if (last) onDone(); else setI((x) => Math.min(x + 1, steps.length - 1)); };
+  return (
+    <div className="fixed inset-0 z-[70] grid place-items-center px-5 bg-black/55 backdrop-blur-sm">
+      <motion.div initial={{ opacity: 0, y: 18, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="w-full max-w-md rounded-xl3 border border-white/12 bg-g-cream/95 backdrop-blur-xl p-7 shadow-lift text-center">
+        <div className="flex gap-1.5 mb-5 justify-center">{steps.map((_, k) => <div key={k} className={`h-1.5 rounded-full transition-all ${k === i ? "w-6 bg-g-green" : "w-1.5 bg-white/15"}`} />)}</div>
+        <div className="text-5xl mb-3">{s.ic}</div>
+        <div className="text-lg font-extrabold text-g-word">{s.title}</div>
+        <p className="text-sm text-g-muted mt-2 leading-relaxed">{s.text}</p>
+        <div className="mt-6 flex items-center justify-between gap-3">
+          <button onClick={onDone} className="text-[11px] font-bold text-g-muted hover:text-g-word">Skip tour</button>
+          <button onClick={advance} className="btn-bright text-sm px-6">{last ? "Got it — let's go →" : "Next →"}</button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 function OnboardingWizard({ onDone }) {
   const [step, setStep] = useState(0);
   const [vid, setVid] = useState("restaurant");
@@ -2669,6 +2697,8 @@ export default function Portal() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [onboarded, setOnboarded] = useState(() => { try { return !!localStorage.getItem("guileo_onboarded"); } catch { return true; } });
+  const [tourDone, setTourDone] = useState(() => { try { return !!localStorage.getItem("guileo_tour_done"); } catch { return true; } });
+  const finishTour = () => { setTourDone(true); try { localStorage.setItem("guileo_tour_done", "1"); } catch { /* private */ } };
   useEffect(() => { portalApi.session().then((s) => { if (s) setAuthed(true); }).finally(() => setBooting(false)); }, []);
   useEffect(() => {
     const h = (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPaletteOpen((o) => !o); } if (e.key === "Escape") { setPaletteOpen(false); setNavOpen(false); setBellOpen(false); } };
@@ -2765,6 +2795,7 @@ export default function Portal() {
 
   return (
     <div className="min-h-screen text-g-ink flex flex-col lg:flex-row">
+      {!tourDone && <Tour onDone={finishTour} />}
       {/* Mobile backdrop */}
       {navOpen && <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden" onClick={() => setNavOpen(false)} />}
       {/* Sidebar — slide-over on mobile, static on desktop */}
