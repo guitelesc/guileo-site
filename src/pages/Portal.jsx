@@ -1580,7 +1580,7 @@ function SettingsView({ V }) {
       </Card>
       <Card className="flex flex-wrap items-center justify-between gap-3">
         <div><div className="text-sm font-bold text-g-word">Demo data</div><div className="text-[11px] text-g-muted">Reset resolved alerts, won deals, filled slots & read flags back to the sample state.</div></div>
-        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "created:deliveries", "created:campaigns", "created:impact", "created:audiences", "created:reviewreq", "created:payments", "created:team", "created:locations", "integrations", "owndelivery", "loyalty"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
+        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "created:deliveries", "created:campaigns", "created:impact", "created:audiences", "created:reviewreq", "created:payments", "created:team", "created:locations", "created:giftcards", "integrations", "owndelivery", "loyalty"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
       </Card>
       <p className="text-center text-[11px] text-g-muted">Changes apply instantly. Need something custom? Your team's a tap away. 💬</p>
     </div>
@@ -2216,8 +2216,11 @@ function Loyalty({ V }) {
   const convert = (r, i) => { setJoined((j) => [...j, i]); logImpact(V.label, `Referral from ${r.name} joined`, r.reward * 6); toast(`Referral converted ✓ — $${r.reward * 6} new-customer value logged to Guileo Impact`); };
   const copyLink = () => { try { navigator.clipboard?.writeText(`https://refer.guileo.ai/${V.label.toLowerCase().replace(/\W+/g, "")}`); } catch { /* blocked */ } toast("Referral link copied ✓"); };
   const tierColor = (t) => (t === "Gold" ? "#D4A520" : t === "Silver" ? "#9ca3af" : "#B0764A");
-  const [sold, setSold] = useState(0);
-  const sellGift = (amt) => { setSold((s) => s + 1); logImpact(V.label, `Gift card sold ($${amt})`, amt); toast(`$${amt} gift card sold ✓ — logged to Guileo Impact`); };
+  const [cards, setCards] = useState(() => loadCreated(V.label, "giftcards"));
+  useEffect(() => { setCards(loadCreated(V.label, "giftcards")); }, [V.label]);
+  const sellGift = (amt) => { pushCreated(V.label, "giftcards", { code: `GC-${1000 + (Date.now() % 9000)}`, balance: amt, original: amt }); setCards(loadCreated(V.label, "giftcards")); logImpact(V.label, `Gift card sold ($${amt})`, amt); toast(`$${amt} gift card sold ✓ — logged to Guileo Impact`); };
+  const redeem = (code, amt) => { const next = cards.map((c) => (c.code === code ? { ...c, balance: Math.max(0, c.balance - amt) } : c)); portalApi.saveState(createdKey(V.label, "giftcards"), next); setCards(next); toast(`$${amt} redeemed from ${code} ✓`); };
+  const liveBalance = cards.reduce((s, c) => s + (c.balance || 0), 0);
 
   return (
     <div className="space-y-4">
@@ -2277,7 +2280,7 @@ function Loyalty({ V }) {
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2"><FaGift size={11} /> Gift cards</div>
         <div className="p-4 flex flex-wrap items-center gap-4">
           <div className="grid grid-cols-3 gap-2 text-center">
-            {[["Active balance", `$${vnum(V.label, "giftbal", 800, 5200).toLocaleString()}`], ["Sold this month", `${vnum(V.label, "giftsold", 8, 40) + sold}`], ["Redeemed", `${vnum(V.label, "giftredeem", 4, 22)}`]].map(([l, v]) => (
+            {[["Active balance", `$${(vnum(V.label, "giftbal", 800, 5200) + liveBalance).toLocaleString()}`], ["Sold this month", `${vnum(V.label, "giftsold", 8, 40) + cards.length}`], ["Cards live", `${cards.length}`]].map(([l, v]) => (
               <div key={l} className="rounded-xl2 border border-white/10 bg-white/[0.03] px-3 py-2"><div className="text-[10px] uppercase tracking-wide text-g-muted">{l}</div><div className="text-base font-extrabold text-g-word mt-0.5">{v}</div></div>
             ))}
           </div>
@@ -2286,6 +2289,18 @@ function Loyalty({ V }) {
             <div className="flex flex-wrap gap-2">{[25, 50, 100].map((amt) => (<button key={amt} onClick={() => sellGift(amt)} className="text-sm font-bold rounded-full border border-g-gold/35 bg-g-gold/[0.08] px-4 py-1.5 text-g-gold hover:bg-g-gold/[0.16] transition">Sell ${amt}</button>))}</div>
           </div>
         </div>
+        {cards.length > 0 && (
+          <div className="border-t border-white/[0.06] divide-y divide-white/[0.05]">
+            {cards.map((c) => (
+              <div key={c.code} className="flex items-center gap-3 px-5 py-2.5">
+                <span className="font-mono text-[11px] text-g-muted">{c.code}</span>
+                <div className="flex-1 min-w-0"><div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-gold to-g-green" style={{ width: `${(c.balance / c.original) * 100}%` }} /></div></div>
+                <span className="text-xs font-bold text-g-word whitespace-nowrap">${c.balance} <span className="text-g-muted font-normal">/ ${c.original}</span></span>
+                <button disabled={c.balance <= 0} onClick={() => redeem(c.code, Math.min(c.balance, 10))} className="text-[11px] font-bold rounded-full border border-white/12 px-2.5 py-1 text-g-word hover:border-g-gold/40 disabled:opacity-30 transition">Redeem $10</button>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
     </div>
   );
