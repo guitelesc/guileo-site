@@ -338,6 +338,7 @@ function notifFor(key, V) {
     case "kitchen": return ((V.kitchen?.new || []).length + (V.kitchen?.preparing || []).length);
     case "deliveries": return ([...loadCreated(V.label, "deliveries"), ...genDeliveries(V)]).filter((r) => r.status !== "Delivered").length;
     case "inbox": return genInbox(V).filter((c) => c.unread).length;
+    case "payments": return ([...loadCreated(V.label, "payments"), ...genPayments(V)]).filter((p) => p.status === "Overdue" || p.status === "Pending").length;
     case "schedule": return ([...loadCreated(V.label, "schedule"), ...(V.ops?.schedule || [])]).filter((r) => /pending|new|unassigned|risk|follow/i.test(r.status)).length;
     case "calllogs": return 2;
     case "whatsapp": return 1;
