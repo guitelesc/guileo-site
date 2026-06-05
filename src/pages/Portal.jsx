@@ -2786,6 +2786,86 @@ function Login({ onEnter }) {
   );
 }
 
+// ── Gui — the in-portal AI assistant that EXECUTES tasks ──
+// Interprets a request and runs the matching action (reusing the same stitches the
+// rest of the app uses), so "send an invoice" actually creates one in Payments.
+function guiPlan(text, V) {
+  const s = text.toLowerCase();
+  const act = convoAction(V);
+  if (/(invoice|charge|bill|cobr|fatur|payment|receb)/.test(s)) return { cost: 5, reply: "Done ✓ — I created an invoice with a payment link and dropped it in Payments. I'll chase it until it's paid.", run: (onNav) => { const c = (V.customers || genCustomers(V))[0]; pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: c?.name || "New customer", amount: vnum(V.label, "guiinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); onNav?.("payments"); } };
+  if (/(review|avalia|rating|estrela)/.test(s)) return { cost: 5, reply: "On it ✓ — I queued review requests to your happiest recent customers. They're tracked in Reputation.", run: (onNav) => { (V.customers || genCustomers(V)).slice(0, 3).forEach((c) => pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel })); onNav?.("reputation"); } };
+  if (/(deliver|entrega|dispatch|despach)/.test(s)) return { cost: 5, reply: `Done ✓ — sent it to ${deliveryTab(V).toLowerCase()}. I'll text the customer live updates.`, run: (onNav) => { pushCreated(V.label, "deliveries", recordFor("deliveries", "Gui", "Gui", V)); onNav?.("deliveries"); } };
+  if (/(campaign|promo|an[úu]nci|\bad\b|marketing)/.test(s)) return { cost: 5, reply: "Launched ✓ — a promo is live and the AI will optimize it. It's in Campaigns.", run: (onNav) => { pushCreated(V.label, "campaigns", { name: "Gui promo", channel: "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); onNav?.("campaigns"); } };
+  if (/(order|pedido|book|appointment|agend|marcar|reserv|schedule)/.test(s)) return { cost: 5, reply: `${act.done} ✓ — it's in the right tab now.`, run: (onNav) => { const rec = recordFor(act.view, "Gui customer", "Gui", V); if (rec) pushCreated(V.label, act.view, rec); onNav?.(act.view); } };
+  if (/(follow|nudge|win-?back|lapse|reativ)/.test(s)) return { cost: 3, reply: "Done ✓ — I started a follow-up sequence. Check the Follow-ups tab.", run: (onNav) => onNav?.("followups") };
+  if (/(hour|open|close|price|cost|where|location|menu|service)/.test(s)) { const kb = portalApi.loadKB(V.label, seedKB(V, portalApi.loadProfile(V.label, defProfile(V)))); return { cost: 1, reply: aiAnswer(text, V, kb) }; }
+  return { cost: 0, reply: "I can create orders & bookings, send invoices, request reviews, launch promos, start follow-ups, or push to delivery. Try: \"send an invoice to my top customer\"." };
+}
+function Gui({ V, onNav }) {
+  const [open, setOpen] = useState(false);
+  const [credits, setCredits] = useState(() => portalApi.loadState("gui_credits", 250));
+  const [msgs, setMsgs] = useState([{ from: "gui", text: "Hi! I'm Gui — your AI assistant 👋 Tell me what to do and I'll handle it: “create an order”, “send an invoice”, “request reviews”, “book an appointment”…" }]);
+  const [q, setQ] = useState("");
+  const setC = (n) => { setCredits(n); portalApi.saveState("gui_credits", n); };
+  const recharge = () => { setC(credits + 250); toast("250 credits added ✓ — pay-as-you-go, billed to your account"); };
+  const send = (e) => {
+    e.preventDefault(); const text = q.trim(); if (!text) return;
+    setMsgs((m) => [...m, { from: "you", text }]); setQ("");
+    const res = guiPlan(text, V);
+    if (res.cost > credits) { setMsgs((m) => [...m, { from: "gui", text: "You're out of credits for that one — top up and I'll get right on it.", lowCredit: true }]); return; }
+    if (res.run) res.run(onNav);
+    setC(credits - res.cost);
+    setMsgs((m) => [...m, { from: "gui", text: res.reply, cost: res.cost }]);
+  };
+  const pct = Math.max(0, Math.min(100, Math.round((credits / 250) * 100)));
+  const low = credits < 30;
+  return (
+    <>
+      {!open && (
+        <button onClick={() => setOpen(true)} aria-label="Open Gui assistant" className="fixed bottom-5 right-5 z-[55] grid place-items-center h-14 w-14 rounded-full bg-gradient-to-br from-g-green to-g-dark text-white shadow-lift hover:scale-105 active:scale-95 transition">
+          <FaWandMagicSparkles size={18} />
+          <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-g-gold border-2 border-g-deep" />
+        </button>
+      )}
+      {open && (
+        <motion.div initial={{ opacity: 0, y: 20, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="fixed bottom-5 right-5 z-[55] w-[92vw] max-w-sm rounded-xl3 border border-white/12 bg-[#0c100d]/98 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden" style={{ height: "min(78vh, 560px)" }}>
+          <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2.5 shrink-0">
+            <span className="grid place-items-center h-9 w-9 rounded-full bg-gradient-to-br from-g-green to-g-dark text-white"><FaWandMagicSparkles size={15} /></span>
+            <div className="flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word flex items-center gap-1.5">Gui <span className="text-[9px] font-black uppercase text-g-green">· AI assistant</span></div><div className="text-[10px] text-g-muted">Executes tasks for you, 24/7</div></div>
+            <button onClick={() => setOpen(false)} aria-label="Close" className="text-g-muted hover:text-g-word text-lg px-1">✕</button>
+          </div>
+          {/* credit meter */}
+          <div className="px-4 py-2 border-b border-white/[0.06] shrink-0">
+            <div className="flex items-center justify-between text-[10px] mb-1"><span className="text-g-muted font-bold uppercase tracking-wide">Credits</span><span className={`font-bold ${low ? "text-red-400" : "text-g-word"}`}>{credits} left</span></div>
+            <div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className={`h-full rounded-full ${low ? "bg-red-500" : "bg-gradient-to-r from-g-green to-g-gold"}`} style={{ width: `${pct}%` }} /></div>
+            <div className="mt-1 flex items-center justify-between text-[10px] text-g-muted"><span>Pay-as-you-go · ~5 credits per task</span><button onClick={recharge} className="font-bold text-g-gold hover:underline">+ Recharge</button></div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
+            {msgs.map((m, i) => (
+              <div key={i} className={`flex ${m.from === "you" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed ${m.from === "you" ? "bg-g-gold/15 text-g-word border border-g-gold/30" : "bg-g-green/12 text-g-light border border-g-green/25"}`}>
+                  {m.from === "gui" && <div className="text-[9px] font-black uppercase text-g-green mb-0.5">Gui</div>}
+                  {m.text}
+                  {m.cost > 0 && <span className="ml-1.5 text-[9px] text-g-muted">−{m.cost} cr</span>}
+                  {m.lowCredit && <button onClick={recharge} className="block mt-1.5 text-[11px] font-bold text-g-gold hover:underline">+ Recharge credits</button>}
+                </div>
+              </div>
+            ))}
+          </div>
+          {msgs.length <= 1 && (
+            <div className="px-3 pb-1 flex flex-wrap gap-1.5 shrink-0">{["Create an order", "Send an invoice", "Request reviews", "Launch a promo"].map((s) => <button key={s} onClick={() => { setQ(s); }} className="rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold text-g-muted hover:text-g-word transition">{s}</button>)}</div>
+          )}
+          <form onSubmit={send} className="p-3 border-t border-white/10 flex gap-2 shrink-0">
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ask Gui to do something…" className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+            <button className="btn-bright text-sm px-4">Send</button>
+          </form>
+          <a href={waLink("Hi Guileo team! I need help")} target="_blank" rel="noopener" className="px-4 pb-3 text-[10px] text-g-muted hover:text-g-word text-center shrink-0">Need a human? Talk to your team →</a>
+        </motion.div>
+      )}
+    </>
+  );
+}
+
 /* ───────────────────────── Page ───────────────────────── */
 export default function Portal() {
   const [authed, setAuthed] = useState(false);
@@ -3036,11 +3116,8 @@ export default function Portal() {
         </div>
       </main>
 
-      {/* persistent support — 1 click to your team, from any view */}
-      <a href={waLink("Hi Guileo team! I need help with my account")} target="_blank" rel="noopener"
-        className="fixed bottom-5 right-5 z-40 btn-bright text-sm shadow-lift">
-        💬 <span className="hidden sm:inline">Talk to your team</span>
-      </a>
+      {/* Gui — the AI assistant that executes tasks (floating, from any view) */}
+      <Gui V={V} onNav={setView} />
 
       {paletteOpen && <Palette V={V} sections={sections} onNav={setView} onClose={() => setPaletteOpen(false)} />}
       <Toaster />
