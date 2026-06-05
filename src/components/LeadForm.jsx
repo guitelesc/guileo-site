@@ -60,7 +60,8 @@ export default function LeadForm({ source = "website" }) {
 
   return (
     <form onSubmit={submit} className="grid gap-3">
-      <input required value={name} onChange={(e) => setName(e.target.value)} placeholder={L.name}
+      <input required value={name} onChange={(e) => setName(e.target.value)} aria-label={L.name}
+        placeholder={L.name}
         className="rounded-full border border-white/20 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70 transition" />
 
       {/* channel picker — leave us anything, we reach out (real brand icons) */}
@@ -79,9 +80,11 @@ export default function LeadForm({ source = "website" }) {
         })}
       </div>
 
-      <input required value={contact} onChange={(e) => setContact(e.target.value)} placeholder={PLACEHOLDER[ch]}
+      <input required value={contact} onChange={(e) => setContact(e.target.value)} aria-label={L.contact || PLACEHOLDER[ch]}
+        placeholder={PLACEHOLDER[ch]}
         className="rounded-full border border-white/20 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70 transition" />
-      <input value={biz} onChange={(e) => setBiz(e.target.value)} placeholder={L.business}
+      <input value={biz} onChange={(e) => setBiz(e.target.value)} aria-label={L.business}
+        placeholder={L.business}
         className="rounded-full border border-white/20 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70 transition" />
 
       <motion.button whileTap={{ scale: 0.98 }} disabled={state === "sending"} className="btn-bright text-base disabled:opacity-70">

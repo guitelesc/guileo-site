@@ -536,6 +536,10 @@ const PT_UI = {
   "Nothing to undo yet — I'll only undo the last thing I created.": "Nada pra desfazer ainda — só desfaço a última coisa que criei.",
   "Voice isn't supported in this browser": "A voz não é suportada neste navegador",
   "Open Gui assistant": "Abrir o assistente Gui",
+  "Email address": "Endereço de e-mail",
+  "Monthly revenue goal": "Meta de receita mensal",
+  "Search or run a command": "Buscar ou executar um comando",
+  "Ask Gui to do something": "Peça ao Gui para fazer algo",
   "Search… ⌘K": "Buscar… ⌘K",
   "Language": "Idioma",
   "Notifications": "Notificações",
@@ -550,6 +554,24 @@ const PT_UI = {
   "Industry · demo": "Segmento · demo",
   "operations": "operações",
   "Demo mode": "Modo demonstração", "Demo · sample data": "Demo · dados de exemplo",
+  "Approve before Gui sends money or customer messages": "Aprovar antes do Gui enviar dinheiro ou mensagens a clientes",
+  "Invoices, charges, deliveries, social posts and campaigns wait for your one-tap OK. Answers and navigation stay instant.": "Faturas, cobranças, entregas, posts e campanhas esperam seu OK de um toque. Respostas e navegação seguem instantâneas.",
+  "✓ Confirm": "✓ Confirmar",
+  "Watch Gui work": "Veja o Gui agir",
+  "First win": "Primeira vitória",
+  "Let's get one tool live": "Vamos ligar uma ferramenta",
+  "and Gui starts acting through it for you.": "e o Gui começa a agir através dela por você.",
+  "Connecting…": "Conectando…",
+  "Connect →": "Conectar →",
+  "Skip": "Pular",
+  "Now watch Gui do real work": "Agora veja o Gui fazer de verdade",
+  "Gui will": "O Gui vai",
+  "— a real record in your cockpit. This is what it does 24/7.": "— um registro real no seu cockpit. É o que ele faz 24/7.",
+  "Gui is working…": "O Gui está trabalhando…",
+  "First win — Gui just did that for you": "Primeira vitória — o Gui acabou de fazer isso por você",
+  "It's in your cockpit now. Gui handles this around the clock.": "Já está no seu cockpit. O Gui cuida disso o tempo todo.",
+  "See it →": "Ver →",
+  "Go to my cockpit": "Ir pro meu cockpit",
   "Staff · admin": "Equipe · admin",
   "Monthly report opened — print → Save as PDF ✓": "Relatório mensal aberto — imprima → Salvar como PDF ✓",
   "Close menu": "Fechar menu",
@@ -1295,7 +1317,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
         <div className="flex items-center justify-between gap-3 mb-2">
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("🎯 Monthly goal")}</div>
           {editGoal ? (
-            <div className="flex items-center gap-1.5"><span className="text-g-muted text-sm">$</span><input autoFocus value={goalDraft} onChange={(e) => setGoalDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveGoal()} className="w-24 rounded-lg border border-white/15 bg-black/20 px-2 py-1 text-sm text-g-word outline-none focus:border-g-green/70" /><button onClick={saveGoal} className="text-[11px] font-bold text-g-green hover:underline">Save</button></div>
+            <div className="flex items-center gap-1.5"><span className="text-g-muted text-sm">$</span><input autoFocus value={goalDraft} onChange={(e) => setGoalDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveGoal()} aria-label={tr("Monthly revenue goal")} className="w-24 rounded-lg border border-white/15 bg-black/20 px-2 py-1 text-sm text-g-word outline-none focus:border-g-green/70" /><button onClick={saveGoal} className="text-[11px] font-bold text-g-green hover:underline">Save</button></div>
           ) : (
             <button onClick={() => { setGoalDraft(goal); setEditGoal(true); }} className="text-sm font-extrabold text-g-word inline-flex items-center gap-1.5">${goal.toLocaleString()} <FaPen size={9} className="text-g-muted" /></button>
           )}
@@ -2563,7 +2585,7 @@ function SettingsView({ V }) {
   const fieldCls = "mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-3.5 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70";
   const PROFILE_FIELDS = [["Business name", "name", "Your business name"], ["Address / location", "place", "123 Main St, City"], ["Opening hours", "hours", "Mon–Sun, 9am–10pm"], ["Public phone", "phone", "(optional)"]];
   // Real, persisted operating settings (shape the AI's behavior + when the owner gets pinged).
-  const defS = { tone: "Friendly", greeting: "", on_booking: true, on_missed: true, on_review: true, daily_summary: true, quiet_enabled: false, quiet_start: "21:00", quiet_end: "08:00", after_hours_msg: "", fallback_number: "" };
+  const defS = { tone: "Friendly", greeting: "", on_booking: true, on_missed: true, on_review: true, daily_summary: true, quiet_enabled: false, quiet_start: "21:00", quiet_end: "08:00", after_hours_msg: "", fallback_number: "", require_approval: true };
   const [st, setSt] = useState(() => ({ ...defS, ...portalApi.loadState(`${V.label}:settings`, {}) }));
   useEffect(() => { setSt({ ...defS, ...portalApi.loadState(`${V.label}:settings`, {}) }); }, [V.label]); // eslint-disable-line
   const setS = (k, v) => setSt((s) => { const n = { ...s, [k]: v }; portalApi.saveState(`${V.label}:settings`, n); return n; });
@@ -2597,6 +2619,7 @@ function SettingsView({ V }) {
           <label className="block px-5 py-3"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr("Custom greeting")}</span>
             <textarea value={st.greeting} onChange={(e) => setS("greeting", e.target.value)} placeholder={`e.g. "Hi! Thanks for contacting ${draft.name || V.business.name} 👋 How can I help?"`} rows={2} className={fieldCls} /></label>
           <div className="flex items-center justify-between px-5 py-3.5"><div><div className="text-sm text-g-word font-semibold">{tr("Hand off to a human on request")}</div><div className="text-[11px] text-g-muted">{tr("When a customer asks for a person, the AI alerts your team.")}</div></div><Toggle on={st.human_handoff !== false} onClick={() => setS("human_handoff", st.human_handoff === false)} /></div>
+          <div className="flex items-center justify-between px-5 py-3.5"><div className="pr-3"><div className="text-sm text-g-word font-semibold">{tr("Approve before Gui sends money or customer messages")}</div><div className="text-[11px] text-g-muted">{tr("Invoices, charges, deliveries, social posts and campaigns wait for your one-tap OK. Answers and navigation stay instant.")}</div></div><Toggle on={st.require_approval !== false} onClick={() => setS("require_approval", st.require_approval === false)} /></div>
         </div>
         <div className="px-5 py-2.5 border-t border-white/10 text-[11px] text-g-green">{tr("Saved automatically · your AI uses this on every channel ✓")}</div>
       </Card>
@@ -3368,7 +3391,7 @@ function Palette({ V, sections, onNav, onClose }) {
     <>
       <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="fixed left-1/2 top-20 sm:top-24 -translate-x-1/2 z-50 w-[92%] max-w-lg rounded-xl3 border border-white/12 bg-g-cream/95 backdrop-blur-xl shadow-2xl overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10"><FaMagnifyingGlass size={13} className="text-g-muted" /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search or run a command…" className="flex-1 bg-transparent text-sm text-g-word placeholder:text-g-muted outline-none" /><span className="text-[10px] text-g-muted border border-white/15 rounded px-1.5 py-0.5">ESC</span></div>
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10"><FaMagnifyingGlass size={13} className="text-g-muted" /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} aria-label={tr("Search or run a command")} placeholder="Search or run a command…" className="flex-1 bg-transparent text-sm text-g-word placeholder:text-g-muted outline-none" /><span className="text-[10px] text-g-muted border border-white/15 rounded px-1.5 py-0.5">ESC</span></div>
         <div className="max-h-80 overflow-y-auto p-1.5">
           {res.length ? res.map((it, i) => (
             <button key={i} onClick={() => { if (it.run) it.run(); else { onNav(it.key); onClose(); } }} className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-white/[0.06] transition">
@@ -3859,6 +3882,58 @@ function Tour({ onDone }) {
   );
 }
 
+// Onboarding-to-first-value: connect one real tool → watch Gui do one real sector task → first win.
+function FirstValue({ V, onNav, onDone }) {
+  const onb = SECTOR_ONBOARD[V.label];
+  const suggested = (onb?.auto || ["WhatsApp"])[0];
+  const act = convoAction(V);
+  const [step, setStep] = useState(0);
+  const [connecting, setConnecting] = useState(false);
+  const [running, setRunning] = useState(false);
+  const connect = () => { setConnecting(true); const stack = portalApi.loadState(`${V.label}:stack`, {}); portalApi.saveState(`${V.label}:stack`, { ...stack, [suggested]: true }); setTimeout(() => { setConnecting(false); setStep(1); }, 700); };
+  const runTask = () => { setRunning(true); const target = (V.customers || genCustomers(V))[0]?.name || "New customer"; const rec = recordFor(act.view, target, "Gui", V); if (rec) pushCreated(V.label, act.view, rec); setTimeout(() => { setRunning(false); setStep(2); }, 900); };
+  const seeIt = () => { onNav(act.view); onDone(); };
+  const finish = () => { onNav("overview"); onDone(); };
+  const steps = [tr("Connect"), tr("Watch Gui work"), tr("First win")];
+  return (
+    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/70 backdrop-blur-sm px-5">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md rounded-xl3 border border-white/12 bg-[#0c100d]/98 backdrop-blur-xl p-7 shadow-lift">
+        <div className="flex items-center gap-2 mb-5">
+          {steps.map((s, i) => (
+            <div key={s} className="flex-1 flex flex-col items-center gap-1.5">
+              <div className={`h-1 w-full rounded-full transition-colors ${i <= step ? "bg-g-green" : "bg-white/15"}`} />
+              <span className={`text-[9px] font-bold uppercase tracking-wide ${i <= step ? "text-g-green" : "text-g-muted"}`}>{s}</span>
+            </div>
+          ))}
+        </div>
+        {step === 0 && (<>
+          <div className="text-lg font-extrabold text-g-word">{tr("Let's get one tool live")}</div>
+          <p className="text-xs text-g-muted mt-1">{tr("Connect")} <span className="text-g-light font-semibold">{suggested}</span> {tr("and Gui starts acting through it for you.")}</p>
+          <div className="mt-4 flex items-center justify-between rounded-xl2 border border-white/10 bg-white/[0.03] px-4 py-3">
+            <span className="text-sm font-semibold text-g-word">{suggested}</span>
+            <button onClick={connect} disabled={connecting} className="btn-bright text-sm">{connecting ? tr("Connecting…") : tr("Connect →")}</button>
+          </div>
+          <button onClick={finish} className="block mx-auto mt-4 text-[11px] font-bold text-g-muted hover:text-g-word">{tr("Skip")}</button>
+        </>)}
+        {step === 1 && (<>
+          <div className="text-lg font-extrabold text-g-word">{tr("Now watch Gui do real work")}</div>
+          <p className="text-xs text-g-muted mt-1">{tr("Gui will")} {act.done.toLowerCase()} {tr("— a real record in your cockpit. This is what it does 24/7.")}</p>
+          <button onClick={runTask} disabled={running} className="btn-bright text-sm w-full mt-4">{running ? tr("Gui is working…") : act.label}</button>
+          <button onClick={finish} className="block mx-auto mt-3 text-[11px] font-bold text-g-muted hover:text-g-word">{tr("Skip")}</button>
+        </>)}
+        {step === 2 && (
+          <div className="text-center py-2">
+            <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 300 }} className="text-5xl mb-2">🎉</motion.div>
+            <div className="text-lg font-extrabold text-g-word">{tr("First win — Gui just did that for you")}</div>
+            <p className="text-xs text-g-muted mt-1">{act.done} ✓ {tr("It's in your cockpit now. Gui handles this around the clock.")}</p>
+            <button onClick={seeIt} className="btn-bright text-sm w-full mt-5">{tr("See it →")}</button>
+            <button onClick={finish} className="block mx-auto mt-3 text-[11px] font-bold text-g-muted hover:text-g-word">{tr("Go to my cockpit")}</button>
+          </div>
+        )}
+      </motion.div>
+    </div>
+  );
+}
 function OnboardingWizard({ onDone }) {
   const [step, setStep] = useState(0);
   const [vid, setVid] = useState("restaurant");
@@ -3942,8 +4017,8 @@ function Login({ onEnter }) {
           <>
             <p className="text-xs text-g-muted mt-1">{tr(CONNECTED ? (mode === "signup" ? "Create your account" : "Welcome back") : "Sign in to your private dashboard")}</p>
             <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="mt-6 space-y-2.5 text-left">
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-              <input type="password" required minLength={6} value={pw} onChange={(e) => setPw(e.target.value)} placeholder={CONNECTED ? tr("Password (min 6 chars)") : tr("Password")} className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} aria-label={tr("Email address")} placeholder="you@email.com" className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+              <input type="password" required minLength={6} value={pw} onChange={(e) => setPw(e.target.value)} aria-label={tr("Password")} placeholder={CONNECTED ? tr("Password (min 6 chars)") : tr("Password")} className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
               <button disabled={busy} className="btn-bright text-sm w-full disabled:opacity-70">{busy ? "…" : tr(CONNECTED ? (mode === "signup" ? "Create account →" : "Sign in →") : "Enter Growth Cockpit →")}</button>
               {err && <div className="text-[11px] text-red-400 text-center">{err}</div>}
             </form>
@@ -3992,6 +4067,13 @@ function missingConnection(V) {
   const sector = SECTOR_STACK[V.label] || [];
   return sector.find(off) || null;
 }
+// High-stakes = sends money or a customer-facing message → gate behind approval.
+const HIGH_STAKES = new Set(["invoice", "deliver", "social", "campaign", "chaseall"]);
+function approvalSummary(intent, pt) {
+  const en = { invoice: "send an invoice with a payment link", deliver: "dispatch to delivery", social: "post to Instagram & Facebook", campaign: "launch a live promo", chaseall: "message everyone with overdue invoices" };
+  const ptd = { invoice: "enviar uma fatura com link de pagamento", deliver: "mandar pra entrega", social: "publicar no Instagram e Facebook", campaign: "lançar uma promoção ao vivo", chaseall: "cobrar todos os clientes com faturas atrasadas" };
+  return (pt ? ptd : en)[intent] || (pt ? "executar a ação" : "run the action");
+}
 function guiPlan(text, V, ctx = {}) {
   const s = text.toLowerCase();
   const act = convoAction(V);
@@ -4019,7 +4101,7 @@ function guiPlan(text, V, ctx = {}) {
     return { cost: 0, ctx, reply: because };
   }
   // R5 — act ACROSS the connected stack (the differentiator).
-  if (/(instagram|\bpost\b|publica|story|stories|\bfeed\b|social)/.test(s)) { const ok = connected("Instagram"); return { cost: ok ? 5 : 0, ctx, reply: ok ? L("Posted ✓ — your AI scheduled an on-brand post to Instagram & Facebook, timed for when your audience is most active. It's in Social.", "Publicado ✓ — sua IA agendou um post na cara da marca pro Instagram e Facebook, na hora de pico do seu público. Está em Social.") : L("Instagram isn't connected yet — connect it in Integrations and I'll post for you.", "O Instagram ainda não está conectado — conecte em Integrações que eu publico por você."), next: ok ? undefined : [{ label: L("🔌 Open Integrations", "🔌 Abrir Integrações"), cmd: "open integrations" }], run: (onNav) => onNav?.(ok ? "social" : "integrations") }; }
+  if (/(instagram|\bpost\b|publica|story|stories|\bfeed\b|social)/.test(s)) { const ok = connected("Instagram"); return { intent: "social", cost: ok ? 5 : 0, ctx, reply: ok ? L("Posted ✓ — your AI scheduled an on-brand post to Instagram & Facebook, timed for when your audience is most active. It's in Social.", "Publicado ✓ — sua IA agendou um post na cara da marca pro Instagram e Facebook, na hora de pico do seu público. Está em Social.") : L("Instagram isn't connected yet — connect it in Integrations and I'll post for you.", "O Instagram ainda não está conectado — conecte em Integrações que eu publico por você."), next: ok ? undefined : [{ label: L("🔌 Open Integrations", "🔌 Abrir Integrações"), cmd: "open integrations" }], run: (onNav) => onNav?.(ok ? "social" : "integrations") }; }
   if (/(quickbooks|accounting|contabil|sync.*(book|nota)|nota fiscal|bookkeep)/.test(s)) { const ok = connected("QuickBooks"); return { cost: ok ? 3 : 0, ctx, reply: ok ? L("Synced ✓ — every sale and invoice is flowing into QuickBooks automatically. Your books stay current with zero data entry.", "Sincronizado ✓ — cada venda e fatura entra no QuickBooks automaticamente. Sua contabilidade fica em dia sem digitar nada.") : L("QuickBooks isn't connected — connect it in Integrations and I'll keep your books in sync.", "O QuickBooks não está conectado — conecte em Integrações que eu mantenho a contabilidade sincronizada."), next: ok ? undefined : [{ label: L("🔌 Open Integrations", "🔌 Abrir Integrações"), cmd: "open integrations" }], run: (onNav) => onNav?.(ok ? "payments" : "integrations") }; }
   if (/(integration|integra[çc]|connect|conect|stack|my tools|minhas ferramentas)/.test(s)) return { cost: 0, ctx, reply: L("Here's your connected stack — toggle any tool and I start acting through it.", "Aqui está seu stack conectado — ligue qualquer ferramenta e eu começo a agir através dela."), run: (onNav) => onNav?.("integrations") };
   if (/(open|go to|abrir?|ver)\s+(overview|home|in[íi]cio|dashboard|automa)/.test(s)) return { cost: 0, ctx, reply: L("Here's your Overview — your automations and weekly recap are here.", "Aqui está seu Overview — suas automações e o resumo da semana estão aqui."), run: (onNav) => onNav?.("overview") };
@@ -4037,11 +4119,11 @@ function guiPlan(text, V, ctx = {}) {
     const when = day.charAt(0).toUpperCase() + day.slice(1);
     return { cost: 3, ctx, reply: L(`Set ✓ — from now on I'll ${what} ${day}, automatically. It's on your Overview under Automations, where you can pause it anytime.`, `Pronto ✓ — de agora em diante eu vou ${what} ${day}, automaticamente. Está no seu Overview em Automações, onde você pausa quando quiser.`), next: [{ label: L("⚙️ See automations", "⚙️ Ver automações"), cmd: "open overview" }], run: (onNav) => { addAutomation(V.label, { what: what.charAt(0).toUpperCase() + what.slice(1), when, ic }); onNav?.("overview"); } };
   }
-  if (/(remind|chase|collect all|chase all|overdue|atrasad|cobrar todos|all unpaid)/.test(s)) { const open = genPayments(V).filter((p) => p.status !== "Paid"); return { cost: 5, ctx, reply: L(`Done ✓ — I sent payment reminders to ${open.length} customer${open.length !== 1 ? "s" : ""} with open invoices. They're in Payments.`, `Pronto ✓ — enviei lembretes de pagamento para ${open.length} cliente${open.length !== 1 ? "s" : ""} com faturas em aberto. Estão em Pagamentos.`), next: [{ label: L("⭐ Ask them for reviews too", "⭐ Pedir avaliações também"), cmd: "request reviews from my recent customers" }], run: (onNav) => onNav?.("payments") }; }
-  if (/(invoice|charge|bill|cobr|fatur|payment|receb)/.test(s)) return { cost: 5, ctx: C(target), reply: L(`Done ✓ — invoice sent to ${target} with a payment link, tracked in Payments. I'll chase it until it's paid.`, `Pronto ✓ — fatura enviada para ${target} com link de pagamento, registrada em Pagamentos. Eu cobro até ser paga.`), next: [{ label: L(`📅 Book ${target} too`, `📅 Agendar ${target} também`), cmd: `book them` }, { label: L("⭐ Request a review", "⭐ Pedir avaliação"), cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: target, amount: vnum(V.label, "guiinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); onNav?.("payments"); return undoer([{ view: "payments", id }], "payments"); } };
+  if (/(remind|chase|collect all|chase all|overdue|atrasad|cobrar todos|all unpaid)/.test(s)) { const open = genPayments(V).filter((p) => p.status !== "Paid"); return { intent: "chaseall", cost: 5, ctx, reply: L(`Done ✓ — I sent payment reminders to ${open.length} customer${open.length !== 1 ? "s" : ""} with open invoices. They're in Payments.`, `Pronto ✓ — enviei lembretes de pagamento para ${open.length} cliente${open.length !== 1 ? "s" : ""} com faturas em aberto. Estão em Pagamentos.`), next: [{ label: L("⭐ Ask them for reviews too", "⭐ Pedir avaliações também"), cmd: "request reviews from my recent customers" }], run: (onNav) => onNav?.("payments") }; }
+  if (/(invoice|charge|bill|cobr|fatur|payment|receb)/.test(s)) return { intent: "invoice", cost: 5, ctx: C(target), reply: L(`Done ✓ — invoice sent to ${target} with a payment link, tracked in Payments. I'll chase it until it's paid.`, `Pronto ✓ — fatura enviada para ${target} com link de pagamento, registrada em Pagamentos. Eu cobro até ser paga.`), next: [{ label: L(`📅 Book ${target} too`, `📅 Agendar ${target} também`), cmd: `book them` }, { label: L("⭐ Request a review", "⭐ Pedir avaliação"), cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: target, amount: vnum(V.label, "guiinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); onNav?.("payments"); return undoer([{ view: "payments", id }], "payments"); } };
   if (/(review|avalia|rating|estrela)/.test(s)) return { cost: 5, ctx: C(who || ctx.customer), reply: L(`On it ✓ — I queued review requests${who ? ` to ${target}` : " to your happiest recent customers"}. Tracked in Reputation.`, `Feito ✓ — enviei pedidos de avaliação${who ? ` para ${target}` : " aos seus clientes mais satisfeitos"}. Registrado em Reputação.`), next: [{ label: L("📣 Turn 5★ reviews into ads", "📣 Virar avaliações 5★ em anúncios"), cmd: "launch a promo" }], run: (onNav) => { const rows = (who ? [{ name: target, channel: "WhatsApp" }] : customers.slice(0, 3)).map((c) => ({ view: "reviewreq", id: pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel }) })); onNav?.("reputation"); return undoer(rows, "reputation"); } };
-  if (/(deliver|entrega|dispatch|despach)/.test(s)) return { cost: 5, ctx: C(who || ctx.customer), reply: L(`Done ✓ — sent${forTxt} to ${deliveryTab(V).toLowerCase()}. I'll text live updates.`, `Pronto ✓ — enviado${forPt} para ${deliveryTab(V).toLowerCase()}. Vou mandar atualizações ao vivo.`), next: [{ label: L("⭐ Ask for a review on arrival", "⭐ Pedir avaliação na entrega"), cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "deliveries", recordFor("deliveries", target, "Gui", V)); onNav?.("deliveries"); return undoer([{ view: "deliveries", id }], "deliveries"); } };
-  if (/(campaign|promo|an[úu]nci|\bad\b|marketing)/.test(s)) return { cost: 5, ctx, reply: L("Launched ✓ — a promo is live and the AI will optimize it. It's in Campaigns.", "Lançado ✓ — uma promoção está no ar e a IA vai otimizá-la. Está em Campanhas."), next: [{ label: L("👥 Build an audience for it", "👥 Criar um público pra ela"), cmd: "build an audience from my best customers" }], run: (onNav) => { const id = pushCreated(V.label, "campaigns", { name: "Gui promo", channel: "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); onNav?.("campaigns"); return undoer([{ view: "campaigns", id }], "campaigns"); } };
+  if (/(deliver|entrega|dispatch|despach)/.test(s)) return { intent: "deliver", cost: 5, ctx: C(who || ctx.customer), reply: L(`Done ✓ — sent${forTxt} to ${deliveryTab(V).toLowerCase()}. I'll text live updates.`, `Pronto ✓ — enviado${forPt} para ${deliveryTab(V).toLowerCase()}. Vou mandar atualizações ao vivo.`), next: [{ label: L("⭐ Ask for a review on arrival", "⭐ Pedir avaliação na entrega"), cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "deliveries", recordFor("deliveries", target, "Gui", V)); onNav?.("deliveries"); return undoer([{ view: "deliveries", id }], "deliveries"); } };
+  if (/(campaign|promo|an[úu]nci|\bad\b|marketing)/.test(s)) return { intent: "campaign", cost: 5, ctx, reply: L("Launched ✓ — a promo is live and the AI will optimize it. It's in Campaigns.", "Lançado ✓ — uma promoção está no ar e a IA vai otimizá-la. Está em Campanhas."), next: [{ label: L("👥 Build an audience for it", "👥 Criar um público pra ela"), cmd: "build an audience from my best customers" }], run: (onNav) => { const id = pushCreated(V.label, "campaigns", { name: "Gui promo", channel: "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); onNav?.("campaigns"); return undoer([{ view: "campaigns", id }], "campaigns"); } };
   if (/(order|pedido|book|appointment|agend|marcar|reserv|schedule)/.test(s)) return { cost: 5, ctx: C(target), reply: L(`${act.done}${forTxt} ✓ — it's in the right tab now.`, `${act.done}${forPt} ✓ — já está na aba certa.`), next: [{ label: L("💳 Send the invoice too", "💳 Enviar a fatura também"), cmd: `send an invoice to them` }], run: (onNav) => { const rec = recordFor(act.view, target, "Gui", V); const id = rec ? pushCreated(V.label, act.view, rec) : null; onNav?.(act.view); return id ? undoer([{ view: act.view, id }], act.view) : undefined; } };
   if (/(follow|nudge|win-?back|lapse|reativ)/.test(s)) return { cost: 3, ctx, reply: L("Done ✓ — I started a follow-up sequence. Check the Follow-ups tab.", "Pronto ✓ — iniciei uma sequência de follow-up. Veja na aba Follow-ups."), run: (onNav) => onNav?.("followups") };
   if (/(audience|p[úu]blico|segment)/.test(s)) return { cost: 5, ctx, reply: L("Built ✓ — an audience of your most engaged customers is ready in Ad Audiences.", "Pronto ✓ — um público com seus clientes mais engajados está pronto em Públicos de Anúncio."), run: (onNav) => { const id = pushCreated(V.label, "audiences", { name: "Gui · best customers", size: vnum(V.label, "guiaud", 1200, 9000), source: "CRM" }); onNav?.("audiences"); return undoer([{ view: "audiences", id }], "audiences"); } };
@@ -4069,6 +4151,7 @@ function Gui({ V, onNav }) {
   const [showHist, setShowHist] = useState(false);
   const lastUndo = useRef(null);                  // undo closure for the most recent action
   const lastPt = useRef(false);                   // language of the last command, for system messages
+  const [pending, setPending] = useState(null);   // a high-stakes action awaiting Confirm
   useEffect(() => { const h = () => setOpen(true); window.addEventListener("gui:open", h); return () => window.removeEventListener("gui:open", h); }, []);
   useEffect(() => { const h = () => setCredits(portalApi.loadState("gui_credits", 250)); window.addEventListener("gui:credits", h); return () => window.removeEventListener("gui:credits", h); }, []);
   const setC = (n) => { setCredits(n); portalApi.saveState("gui_credits", n); window.dispatchEvent(new Event("gui:credits")); };
@@ -4081,19 +4164,40 @@ function Gui({ V, onNav }) {
     lastUndo.current(onNav); lastUndo.current = null;
     setMsgs((m) => [...m, { from: "gui", text: p ? "Desfeito ✓ — removi a última coisa que criei. Sem cobrança." : "Undone ✓ — I removed the last thing I created. No charge for that." }]);
   };
+  // The real side-effect path (shared by the instant path + the Confirm button).
+  const execute = (res, t) => {
+    const undo = res.run ? res.run(onNav) : undefined;
+    lastUndo.current = typeof undo === "function" ? undo : null;
+    setC(credits - res.cost);
+    logUsage(res.cost, t || "");
+    setMsgs((m) => [...m, { from: "gui", text: res.reply, cost: res.cost, next: res.next, canUndo: typeof undo === "function" }]);
+  };
+  const confirmPending = () => {
+    if (!pending) return;
+    const { res, t } = pending; setPending(null);
+    setMsgs((m) => [...m, { from: "you", text: pending.pt ? "✓ Confirmar" : "✓ Confirm" }]);
+    if (res.cost > credits) { setMsgs((m) => [...m, { from: "gui", text: pending.pt ? "Acabaram os créditos — recarregue e eu já faço." : "Out of credits — top up and I'll do it.", lowCredit: true }]); return; }
+    execute(res, t);
+  };
+  const cancelPending = () => { if (!pending) return; const p = pending.pt; setPending(null); setMsgs((m) => [...m, { from: "gui", text: p ? "Cancelado — não enviei nada. Sem cobrança." : "Cancelled — I didn't send anything. No charge." }]); };
   const run = (text) => {
     const t = text.trim(); if (!t) return;
-    setShowHist(false); lastPt.current = isPt(t);
+    setShowHist(false); setPending(null); lastPt.current = isPt(t);
     if (/^(undo|desfaz|desfazer|cancela|reverte|revert)/i.test(t)) { setMsgs((m) => [...m, { from: "you", text: t }]); setQ(""); doUndo(); return; }
     setMsgs((m) => [...m, { from: "you", text: t }]); setQ(""); remember(t);
     const res = guiPlan(t, V, ctx);
     if (res.ctx) setCtx(res.ctx);
     if (res.cost > credits) { setMsgs((m) => [...m, { from: "gui", text: lastPt.current ? "Você ficou sem créditos pra essa — recarregue e eu já faço." : "You're out of credits for that one — top up and I'll get right on it.", lowCredit: true }]); return; }
-    const undo = res.run ? res.run(onNav) : undefined;
-    lastUndo.current = typeof undo === "function" ? undo : null;
-    setC(credits - res.cost);
-    logUsage(res.cost, t);
-    setMsgs((m) => [...m, { from: "gui", text: res.reply, cost: res.cost, next: res.next, canUndo: typeof undo === "function" }]);
+    // Approval gate: a money/customer-facing action waits for one-tap Confirm.
+    const approvalOn = portalApi.loadState(`${V.label}:settings`, {}).require_approval !== false;
+    if (approvalOn && res.intent && HIGH_STAKES.has(res.intent) && res.run) {
+      setPending({ res, t, pt: lastPt.current });
+      setMsgs((m) => [...m, { from: "gui", confirm: true, cost: res.cost, text: lastPt.current
+        ? `Quer que eu confirme antes — pronto pra ${approvalSummary(res.intent, true)}. Confirmo?`
+        : `You asked me to confirm money & customer-facing actions — ready to ${approvalSummary(res.intent, false)}. Go ahead?` }]);
+      return;
+    }
+    execute(res, t);
   };
   const send = (e) => { e.preventDefault(); run(q); };
   // Voice input via the Web Speech API (graceful no-op where unsupported).
@@ -4143,6 +4247,12 @@ function Gui({ V, onNav }) {
                   {m.cost > 0 && <span className="ml-1.5 text-[9px] text-g-muted">−{m.cost} cr</span>}
                   {m.lowCredit && <button onClick={recharge} className="block mt-1.5 text-[11px] font-bold text-g-gold hover:underline">{tr("+ Recharge credits")}</button>}
                   {m.canUndo && i === msgs.length - 1 && <button onClick={doUndo} className="block mt-1.5 text-[11px] font-bold text-g-muted hover:text-g-word">{tr("↩ Undo this")}</button>}
+                  {m.confirm && pending && i === msgs.length - 1 && (
+                    <div className="mt-2 flex gap-1.5">
+                      <button onClick={confirmPending} className="rounded-full bg-g-green px-3 py-1 text-[11px] font-black text-black hover:brightness-110 transition">{tr("✓ Confirm")}</button>
+                      <button onClick={cancelPending} className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-[11px] font-bold text-g-muted hover:text-g-word transition">{tr("Cancel")}</button>
+                    </div>
+                  )}
                   {m.next && m.next.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5">{m.next.map((n) => <button key={n.cmd} onClick={() => run(n.cmd)} className="rounded-full border border-g-gold/30 bg-g-gold/10 px-2.5 py-1 text-[10px] font-bold text-g-gold hover:bg-g-gold/20 transition">{n.label}</button>)}</div>
                   )}
@@ -4162,7 +4272,7 @@ function Gui({ V, onNav }) {
           <form onSubmit={send} className="p-3 border-t border-white/10 flex gap-2 shrink-0">
             {history.length > 0 && <button type="button" onClick={() => setShowHist((v) => !v)} aria-label="Command history" className={`grid place-items-center h-10 w-10 rounded-full border shrink-0 transition ${showHist ? "border-g-green/50 bg-g-green/15 text-g-light" : "border-white/15 bg-white/[0.04] text-g-muted hover:text-g-word"}`}>↻</button>}
             {SR && <button type="button" onClick={dictate} aria-label="Dictate to Gui" className={`grid place-items-center h-10 w-10 rounded-full border shrink-0 transition ${listening ? "border-red-400 bg-red-500/15 text-red-400 animate-pulse" : "border-white/15 bg-white/[0.04] text-g-muted hover:text-g-word"}`}>🎙️</button>}
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={listening ? tr("Listening…") : tr("Ask Gui to do something…")} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} aria-label={tr("Ask Gui to do something")} placeholder={listening ? tr("Listening…") : tr("Ask Gui to do something…")} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
             <button className="btn-bright text-sm px-4">{tr("Send")}</button>
           </form>
           <a href={waLink("Hi Guileo team! I need help")} target="_blank" rel="noopener" className="px-4 pb-3 text-[10px] text-g-muted hover:text-g-word text-center shrink-0">{tr("Need a human? Talk to your team →")}</a>
@@ -4197,6 +4307,8 @@ export default function Portal() {
   const [navOpen, setNavOpen] = useState(false);
   const [onboarded, setOnboarded] = useState(() => { try { return !!localStorage.getItem("guileo_onboarded"); } catch { return true; } });
   const [tourDone, setTourDone] = useState(() => { try { return !!localStorage.getItem("guileo_tour_done"); } catch { return true; } });
+  const [fvDone, setFvDone] = useState(true);   // first-value guided path — only fires right after a fresh wizard
+  const finishFV = () => { setFvDone(true); try { localStorage.setItem("guileo_firstvalue_done", "1"); } catch { /* */ } };
   const finishTour = () => { setTourDone(true); try { localStorage.setItem("guileo_tour_done", "1"); } catch { /* private */ } };
   useEffect(() => {
     let unsub = () => {};
@@ -4308,6 +4420,7 @@ export default function Portal() {
   if (!onboarded) return <div className="min-h-screen text-g-ink"><OnboardingWizard onDone={(vid, extra) => {
     setVertical(vid); setView("overview"); setOnboarded(true);
     try { localStorage.setItem("guileo_onboarded", "1"); } catch { /* private */ }
+    setFvDone(false);   // trigger the guided first-value path right after the wizard
     // Carry the business name from onboarding straight into the profile + AI.
     const OV = VERTICALS[vid];
     if (extra?.name && OV) syncProfile(OV.label, OV, { ...defProfile(OV), name: extra.name });
@@ -4315,7 +4428,8 @@ export default function Portal() {
 
   return (
     <div className="min-h-screen text-g-ink flex flex-col lg:flex-row">
-      {!tourDone && <Tour onDone={finishTour} />}
+      {!tourDone && fvDone && <Tour onDone={finishTour} />}
+      {onboarded && !fvDone && <FirstValue V={V} onNav={setView} onDone={finishFV} />}
       {/* Mobile backdrop */}
       {navOpen && <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden" onClick={() => setNavOpen(false)} />}
       {/* Sidebar — slide-over on mobile, static on desktop */}

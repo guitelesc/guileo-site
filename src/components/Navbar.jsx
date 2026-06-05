@@ -26,14 +26,14 @@ export default function Navbar() {
         <div className="flex items-center gap-2">
           <div className="hidden sm:flex items-center gap-1 rounded-full border border-g-line bg-white/[0.06] px-1 py-1">
             {LANGS.map(([code,flag]) => (
-              <button key={code} onClick={() => setLang(code)} title={code.toUpperCase()}
+              <button key={code} onClick={() => setLang(code)} title={code.toUpperCase()} aria-label={`${code.toUpperCase()}`} aria-pressed={lang===code}
                 className={`h-7 w-7 rounded-full text-sm transition ${lang===code ? "bg-g-green/15 scale-110" : "opacity-60 hover:opacity-100"}`}>{flag}</button>
             ))}
           </div>
           <a href="/experience.html" className="hidden xl:inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs font-bold text-g-muted hover:text-g-gold hover:border-g-gold/40 transition">✨ {t.nav.exp}</a>
           <a href="/portal" className="hidden md:inline-flex items-center gap-1.5 rounded-full border border-g-gold/45 bg-g-gold/[0.08] px-3.5 py-1.5 text-xs font-extrabold text-g-gold hover:bg-g-gold/[0.18] hover:shadow-gold transition-all"><FaGaugeHigh size={13} /> {t.nav.cockpit}</a>
           <a href="#contact" className="btn text-sm hidden sm:inline-flex">{t.nav.cta}</a>
-          <button onClick={() => setOpen(!open)} className="lg:hidden p-2 text-g-word" aria-label="Menu"><svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+          <button onClick={() => setOpen(!open)} className="lg:hidden p-2 text-g-word" aria-label="Menu" aria-expanded={open}><svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
         </div>
       </nav>
       {open && (
@@ -42,7 +42,7 @@ export default function Navbar() {
           <a href="/portal" onClick={()=>setOpen(false)} className="inline-flex items-center gap-2 text-sm font-extrabold text-g-gold py-1"><FaGaugeHigh size={13} /> {t.nav.cockpit}</a>
           <a href="/experience.html" onClick={()=>setOpen(false)} className="text-sm font-semibold text-g-muted py-1">✨ {t.nav.exp}</a>
           <a href="#contact" onClick={()=>setOpen(false)} className="btn text-sm mt-1 justify-center">{t.nav.cta}</a>
-          <div className="flex gap-2 pt-2">{LANGS.map(([c,f])=><button key={c} onClick={()=>setLang(c)} className="text-lg">{f}</button>)}</div>
+          <div className="flex gap-2 pt-2">{LANGS.map(([c,f])=><button key={c} onClick={()=>setLang(c)} aria-label={c.toUpperCase()} aria-pressed={lang===c} className="text-lg">{f}</button>)}</div>
         </div>
       )}
     </header>

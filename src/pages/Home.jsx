@@ -86,7 +86,7 @@ function Calculator({ t }) {
           <div className="text-sm text-g-light/80 mt-1 font-semibold">≈ ${(recovered * 12).toLocaleString()}{W.peryear}</div>
           {state !== "done" ? (
             <form onSubmit={submit} className="mt-5 flex flex-col gap-2">
-              <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={W.email}
+              <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} aria-label={W.email} placeholder={W.email}
                 className="rounded-full px-4 py-2.5 text-sm text-g-word bg-white/10 border border-white/15 outline-none focus:border-g-green/60 placeholder:text-white/40" />
               <button disabled={state === "sending"} className="btn-bright text-sm disabled:opacity-70">{state === "sending" ? "…" : W.send}</button>
             </form>
@@ -602,6 +602,17 @@ export default function Home() {
         <div className="wrap relative">
           <Reveal className="text-center mb-9"><span className="eyebrow mb-3">{t.proof.eyebrow}</span><h2 className="h2">{t.proof.h2}</h2></Reveal>
 
+          {/* DOGFOOD PROOF — the only honest proof we have yet: the product itself, live */}
+          <Reveal className="mb-10">
+            <div className="relative mx-auto max-w-3xl rounded-xl3 border border-g-green/30 bg-gradient-to-br from-g-green/[0.10] to-g-gold/[0.06] backdrop-blur-xl p-6 sm:p-7 text-center overflow-hidden shadow-lift">
+              <div className="absolute -top-16 -right-12 h-44 w-44 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
+              <div className="relative inline-flex items-center gap-2 rounded-full border border-g-green/40 bg-g-green/[0.10] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-g-light mb-3"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full rounded-full bg-g-green/60 animate-ping" /><span className="relative inline-flex h-2 w-2 rounded-full bg-g-green" /></span>Live, right now</div>
+              <p className="relative text-lg sm:text-xl font-extrabold text-g-word leading-snug">The AI talking to you on this page <span className="text-g-light">is the product.</span></p>
+              <p className="relative mt-2 text-sm text-g-muted max-w-xl mx-auto">We don't show borrowed logos or invented reviews. Try Gui yourself above — if it works on us, it works for you.</p>
+              <a href="#demo" className="relative inline-flex items-center gap-1.5 mt-4 text-sm font-bold text-g-gold hover:gap-2.5 transition-all">▶ Try the live demo</a>
+            </div>
+          </Reveal>
+
           {/* GUARANTEE SEALS — the trust medallions */}
           <Stagger className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10" gap={0.08}>
             {t.proof.seals.map(([ic,title,sub])=>(
@@ -643,6 +654,7 @@ export default function Home() {
               </Item>
             ))}
           </Stagger>
+          <p className="text-center text-[11px] text-g-muted mt-4 max-w-xl mx-auto">We build to these standards from day one — your stack, your data, your customers, fully governed.</p>
 
           <div className="grid md:grid-cols-2 gap-6 mt-10 items-stretch">
             {/* Real humans — featured with illustration */}
