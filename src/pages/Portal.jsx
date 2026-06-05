@@ -81,6 +81,28 @@ function recordFor(view, who, channel, V) {
 // shows up in Impact and bumps the total — closing the loop to what Guileo gets paid on.
 const logImpact = (label, what, amt) => pushCreated(label, "impact", { t: "now", what, amt });
 
+// Gui credit usage ledger — every metered task logs its cost + day, so the owner
+// sees exactly what their AI credits bought (transparency drives trust + top-ups).
+function logUsage(cost, label) {
+  if (!cost) return;
+  const day = new Date().toISOString().slice(0, 10);
+  const cur = portalApi.loadState("gui_usage", []);
+  portalApi.saveState("gui_usage", [{ day, cost, label: (label || "").slice(0, 60), _id: Date.now() }, ...cur].slice(0, 200));
+}
+// Roll the usage ledger into the last N days (oldest→newest) for a mini bar chart.
+function usageByDay(days = 7) {
+  const log = portalApi.loadState("gui_usage", []);
+  const today = new Date();
+  const out = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today); d.setDate(today.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const total = log.filter((u) => u.day === key).reduce((s, u) => s + (u.cost || 0), 0);
+    out.push({ day: key, label: d.toLocaleDateString("en-US", { weekday: "short" }), total });
+  }
+  return out;
+}
+
 // ── Delivery / dispatch config per sector ──
 // Restaurants plug into Uber Eats / DoorDash / Grubhub AND run their own drivers;
 // every other vertical gets the equivalent logistics layer (carriers, field techs,
@@ -389,6 +411,195 @@ const PT_UI = {
   "Billing & Plan": "Plano e cobrança", "Support": "Suporte", "Settings": "Ajustes", "Operations": "Operações",
   // topbar
   "Report": "Relatório", "Search…": "Buscar…",
+  "Active": "Ativo",
+  "Paid": "Pago",
+  "Pending": "Pendente",
+  "Status": "Status",
+  "Channel": "Canal",
+  "Positive": "Positivo",
+  "Negative": "Negativo",
+  "Neutral": "Neutro",
+  "Delivered": "Entregue",
+  "Open": "Aberto",
+  "Connected": "Conectado",
+  "Not connected": "Não conectado",
+  "Busy": "Ocupado",
+  "Phone": "Telefone",
+  "Email": "E-mail",
+  "Overdue": "Em atraso",
+  "New": "Novo",
+  "At risk": "Em risco",
+  "All": "Todos",
+  "All channels": "Todos os canais",
+  "Team member": "Membro da equipe",
+  "Request reviews": "Solicitar avaliações",
+  "Quick action": "Ação rápida",
+  "Preparing": "Preparando",
+  "Payment link": "Link de pagamento",
+  "Onboarding": "Integração",
+  "New customer": "Novo cliente",
+  "Joined": "Entrou em",
+  "Booked": "Agendado",
+  "Book next visit": "Agendar próxima visita",
+  "Appointment booking": "Agendamento de consultas",
+  "Appointment booked": "Consulta agendada",
+  "When": "Quando",
+  "View": "Ver",
+  "Plan": "Plano",
+  "Revenue": "Receita",
+  "Reply": "Responder",
+  "Renews soon": "Renova em breve",
+  "Rebook": "Reagendar",
+  "Rating": "Avaliação",
+  "Pipeline value": "Valor do funil",
+  "Out": "Saída",
+  "Mobile sessions": "Sessões no celular",
+  "Off": "Desligado",
+  "Order created": "Pedido criado",
+  "Opening hours": "Horário de funcionamento",
+  "Low": "Baixo",
+  "Invited": "Convidado",
+  "In stock": "Em estoque",
+  "Handled by AI": "Resolvido pela IA",
+  "Duration": "Duração",
+  "Driver": "Motorista",
+  "Dispatch": "Despacho",
+  "Deliveries": "Entregas",
+  "Delete": "Excluir",
+  "Close": "Fechar",
+  "Card": "Cartão",
+  "Bookings handled": "Reservas atendidas",
+  "Avg rating": "Avaliação média",
+  "Appointments": "Consultas",
+  "Amount": "Valor",
+  "Agent": "Agente",
+  "Waiting": "Aguardando",
+  "Waiting now": "Aguardando agora",
+  "Volume today": "Volume hoje",
+  "Viewings": "Visitas",
+  "View schedule": "Ver agenda",
+  "View reviews": "Ver avaliações",
+  "View orders": "Ver pedidos",
+  "View menu": "Ver cardápio",
+  "View kitchen": "Ver cozinha",
+  "View follow-ups": "Ver acompanhamentos",
+  "View deliveries": "Ver entregas",
+  "View calls": "Ver chamadas",
+  "Value": "Valor",
+  "Unsaved changes": "Alterações não salvas",
+  "Type": "Tipo",
+  "Transfer": "Transferir",
+  "Total": "Total",
+  "Total growth": "Crescimento total",
+  "Total customers": "Total de clientes",
+  "Top spender": "Maior gasto",
+  "Today's volume": "Volume de hoje",
+  "Today": "Hoje",
+  "Timezone": "Fuso horário",
+  "Time": "Horário",
+  "Team size": "Tamanho da equipe",
+  "Teach your AI": "Ensine sua IA",
+  "Sign out": "Sair",
+  "Signed": "Assinado",
+  "Sent": "Enviado",
+  "Send offer": "Enviar oferta",
+  "Send an invoice": "Enviar uma fatura",
+  "Section": "Seção",
+  "Scheduled": "Agendado",
+  "Schedule": "Agendar",
+  "Schedule a call": "Agendar uma ligação",
+  "Resolved": "Resolvido",
+  "Resolved by AI": "Resolvido pela IA",
+  "Requests sent": "Solicitações enviadas",
+  "Remove": "Remover",
+  "Referral revenue": "Receita de indicações",
+  "Redemptions": "Resgates",
+  "Ready": "Pronto",
+  "Qualified": "Qualificado",
+  "Published": "Publicado",
+  "Public phone": "Telefone público",
+  "Pricing": "Preços",
+  "Price": "Preço",
+  "Preferred channel": "Canal preferido",
+  "Phone calls": "Chamadas telefônicas",
+  "Payments & Accounting": "Pagamentos e Contabilidade",
+  "Password": "Senha",
+  "Paid invoices": "Faturas pagas",
+  "Outstanding": "Em aberto",
+  "Outcome": "Resultado",
+  "Orders": "Pedidos",
+  "Open rate": "Taxa de abertura",
+  "Open now": "Aberto agora",
+  "Open menu": "Abrir menu",
+  "Open inbox": "Abrir caixa de entrada",
+  "Onboarding checklist": "Checklist de integração",
+  "On-time": "No prazo",
+  "Offered": "Oferecido",
+  "Nudge today": "Lembrar hoje",
+  "Not required": "Não obrigatório",
+  "No-shows saved": "Faltas recuperadas",
+  "No-show risk": "Risco de falta",
+  "No-show rate": "Taxa de faltas",
+  "No rebook yet": "Sem reagendamento ainda",
+  "Next touch": "Próximo contato",
+  "New this week": "Novos esta semana",
+  "New lead": "Novo lead",
+  "New invoice": "Nova fatura",
+  "New address": "Novo endereço",
+  "New teammate": "Novo colega de equipe",
+  "New DM": "Nova DM",
+  "Method": "Método",
+  "Messaging & Social": "Mensagens e Redes Sociais",
+  "Messages sent": "Mensagens enviadas",
+  "Message my team": "Falar com minha equipe",
+  "Membership": "Assinatura",
+  "Members": "Membros",
+  "Member since": "Membro desde",
+  "Matter types": "Tipos de processo",
+  "Maintenance plan": "Plano de manutenção",
+  "Missed calls": "Chamadas perdidas",
+  "Looking for": "Procurando por",
+  "Loyalty & win-back program": "Programa de fidelidade e reconquista",
+  "Live dashboard & monthly reports": "Painel ao vivo e relatórios mensais",
+  "Hours & location": "Horários e localização",
+  "Hours saved / wk": "Horas economizadas / sem",
+  "Growth event": "Evento de crescimento",
+  "Get started": "Começar",
+  "Filter": "Filtrar",
+  "Filled today": "Preenchidos hoje",
+  "Edit knowledge": "Editar conhecimento",
+  "Edit": "Editar",
+  "Details": "Detalhes",
+  "Done": "Concluído",
+  "Delivery & couriers": "Entrega e entregadores",
+  "Create an order": "Criar um pedido",
+  "Completed": "Concluído",
+  "Commission saved": "Comissão economizada",
+  "Cancellations & refunds": "Cancelamentos e reembolsos",
+  "Calls answered": "Chamadas atendidas",
+  "Call back": "Retornar ligação",
+  "Caller": "Quem ligou",
+  "Business name": "Nome da empresa",
+  "Bookings & appointments": "Reservas e agendamentos",
+  "Booking request": "Solicitação de reserva",
+  "Active sequences": "Sequências ativas",
+  "Active plans": "Planos ativos",
+  "Active balance": "Saldo ativo",
+  "Actions this month": "Ações este mês",
+  "Add another location": "Adicionar outra unidade",
+  "Ads & Growth": "Anúncios e Crescimento",
+  "Repeat rate": "Taxa de recompra",
+  "Repeat customers": "Clientes recorrentes",
+  "Renewals due": "Renovações pendentes",
+  "Reviews this month": "Avaliações este mês",
+  "Revenue recovered": "Receita recuperada",
+  "Role": "Função",
+  "Staff": "Equipe",
+  "Setup": "Configuração",
+  "Stock": "Estoque",
+  "Send re-order link": "Enviar link de recompra",
+  "Customer": "Cliente",
+  "Toggle language": "Alternar idioma",
 };
 const tr = (s, lang) => (lang === "pt" && PT_UI[s]) ? PT_UI[s] : s;
 
@@ -1035,6 +1246,22 @@ const SECTOR_STACK = {
     ["Klaviyo", "✉️", "#232426", "Runs win-back & post-purchase flows on autopilot", "Roda fluxos de recompra e pós-venda no automático", false],
   ],
 };
+// Sector onboarding — the tools Guileo auto-connects on day one for each trade,
+// so a new account reaches first value in minutes (activation = trial→paid $).
+const SECTOR_ONBOARD = {
+  "Restaurant": { auto: ["WhatsApp", "Toast POS", "Uber Eats", "OpenTable", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, Toast POS, Uber Eats, OpenTable, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Toast POS, Uber Eats, OpenTable, Google Calendar e Stripe." },
+  "Clinic": { auto: ["WhatsApp", "Dentrix", "Weave", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, Dentrix, Weave, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Dentrix, Weave, Google Calendar e Stripe." },
+  "Medical": { auto: ["WhatsApp", "Epic / EHR", "Zocdoc", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, Epic / EHR, Zocdoc, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Epic / EHR, Zocdoc, Google Calendar e Stripe." },
+  "Salon & Spa": { auto: ["WhatsApp", "Instagram", "Mindbody", "Fresha", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, Instagram, Mindbody, Fresha, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Instagram, Mindbody, Fresha, Google Calendar e Stripe." },
+  "Law Firm": { auto: ["Email / Gmail", "Clio", "DocuSign", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your Email / Gmail, Clio, DocuSign, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu Email / Gmail, Clio, DocuSign, Google Calendar e Stripe." },
+  "Real Estate": { auto: ["WhatsApp", "Zillow", "DocuSign", "Google Calendar", "Email / Gmail"], en: "Done — Guileo is live across your WhatsApp, Zillow, DocuSign, Google Calendar, and Email / Gmail.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Zillow, DocuSign, Google Calendar e Email / Gmail." },
+  "Gym & Fitness": { auto: ["WhatsApp", "Instagram", "Mindbody", "ClassPass", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, Instagram, Mindbody, ClassPass, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Instagram, Mindbody, ClassPass, Google Calendar e Stripe." },
+  "Auto Dealership": { auto: ["WhatsApp", "DealerSocket", "CarGurus", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, DealerSocket, CarGurus, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, DealerSocket, CarGurus, Google Calendar e Stripe." },
+  "Plumbing & HVAC": { auto: ["WhatsApp", "ServiceTitan", "Jobber", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, ServiceTitan, Jobber, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, ServiceTitan, Jobber, Google Calendar e Stripe." },
+  "Education": { auto: ["WhatsApp", "Canvas LMS", "Zoom", "Google Calendar", "Email / Gmail"], en: "Done — Guileo is live across your WhatsApp, Canvas LMS, Zoom, Google Calendar, and Email / Gmail.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Canvas LMS, Zoom, Google Calendar e Email / Gmail." },
+  "Construction": { auto: ["WhatsApp", "Procore", "Buildertrend", "Google Calendar", "QuickBooks"], en: "Done — Guileo is live across your WhatsApp, Procore, Buildertrend, Google Calendar, and QuickBooks.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Procore, Buildertrend, Google Calendar e QuickBooks." },
+  "E-Commerce": { auto: ["WhatsApp", "Shopify", "WooCommerce", "Klaviyo", "Stripe", "Meta Ads"], en: "Done — Guileo is live across your WhatsApp, Shopify, WooCommerce, Klaviyo, Stripe, and Meta Ads.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Shopify, WooCommerce, Klaviyo, Stripe e Meta Ads." },
+};
 function genIntegrations(V) {
   const sector = SECTOR_STACK[V.label] || [];
   // [name, IconComponent|emoji, brandColor, what Guileo does through it (EN), (PT), default-connected]
@@ -1066,16 +1293,32 @@ function genIntegrations(V) {
     ]],
   ];
 }
-function Integrations({ V, onNav }) {
+function Integrations({ V, onNav, lang = "en" }) {
   const groups = useMemo(() => genIntegrations(V), [V]);
   const flat = groups.flatMap(([, tools]) => tools);
-  const seed = useMemo(() => Object.fromEntries(flat.map(([n, , , , , def]) => [n, !!def])), [V]); // eslint-disable-line
+  const onb = SECTOR_ONBOARD[V.label];
+  // Day-one seed: catalog defaults OR this sector's auto-connect list (activation).
+  const seed = useMemo(() => Object.fromEntries(flat.map(([n, , , , , def]) => [n, !!def || (onb ? onb.auto.includes(n) : false)])), [V]); // eslint-disable-line
   const [conn, setConn] = useState(() => portalApi.loadState(`${V.label}:stack`, seed));
   useEffect(() => { setConn(portalApi.loadState(`${V.label}:stack`, seed)); }, [V.label]); // eslint-disable-line
+  const [onbSeen, setOnbSeen] = useState(() => portalApi.loadState(`${V.label}:onboard_seen`, false));
+  const dismissOnb = () => { setOnbSeen(true); portalApi.saveState(`${V.label}:onboard_seen`, true); };
   const toggle = (name) => setConn((c) => { const n = { ...c, [name]: !c[name] }; portalApi.saveState(`${V.label}:stack`, n); toast(`${name} ${n[name] ? "connected ✓ — your AI is now acting through it" : "disconnected"}`); return n; });
   const liveCount = flat.filter(([n]) => conn[n]).length;
   return (
     <div className="space-y-4 stagger">
+      {onb && !onbSeen && (
+        <Card className="border-g-green/40 bg-g-green/[0.08]">
+          <div className="flex items-start gap-3">
+            <span className="grid place-items-center h-9 w-9 rounded-full bg-g-green/20 text-g-green shrink-0"><FaCircleCheck /></span>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-extrabold text-g-word">{lang === "pt" ? "Já deixamos sua IA pronta pro seu setor" : "We set your AI up for your industry"}</div>
+              <div className="text-xs text-g-light mt-0.5">{lang === "pt" ? onb.pt : onb.en} <span className="text-g-muted">{lang === "pt" ? "Ajuste o que quiser abaixo." : "Tweak anything below."}</span></div>
+            </div>
+            <button onClick={dismissOnb} aria-label="Dismiss" className="text-g-muted hover:text-g-word text-sm shrink-0">✕</button>
+          </div>
+        </Card>
+      )}
       <Card className="bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -1877,6 +2120,13 @@ function SettingsView({ V }) {
   };
   const fieldCls = "mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-3.5 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70";
   const PROFILE_FIELDS = [["Business name", "name", "Your business name"], ["Address / location", "place", "123 Main St, City"], ["Opening hours", "hours", "Mon–Sun, 9am–10pm"], ["Public phone", "phone", "(optional)"]];
+  // Real, persisted operating settings (shape the AI's behavior + when the owner gets pinged).
+  const defS = { tone: "Friendly", greeting: "", on_booking: true, on_missed: true, on_review: true, daily_summary: true, quiet_enabled: false, quiet_start: "21:00", quiet_end: "08:00", after_hours_msg: "", fallback_number: "" };
+  const [st, setSt] = useState(() => ({ ...defS, ...portalApi.loadState(`${V.label}:settings`, {}) }));
+  useEffect(() => { setSt({ ...defS, ...portalApi.loadState(`${V.label}:settings`, {}) }); }, [V.label]); // eslint-disable-line
+  const setS = (k, v) => setSt((s) => { const n = { ...s, [k]: v }; portalApi.saveState(`${V.label}:settings`, n); return n; });
+  const [payg, setPaygS] = useState(() => portalApi.loadState("gui_payg", true));
+  const flipPayg = () => setPaygS((p) => { const v = !p; portalApi.saveState("gui_payg", v); window.dispatchEvent(new Event("gui:credits")); toast(v ? "Auto top-up on ✓" : "Auto top-up off"); return v; });
   return (
     <div className="space-y-4 stagger">
       <Card className="p-0 overflow-hidden">
@@ -1895,6 +2145,38 @@ function SettingsView({ V }) {
           <button onClick={saveProfile} disabled={!dirty} className="btn-bright text-sm disabled:opacity-40 disabled:cursor-not-allowed">Save & update AI</button>
         </div>
       </Card>
+
+      {/* AI behavior — tone + custom greeting shape every customer interaction */}
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">AI voice & greeting</div>
+        <div className="divide-y divide-white/[0.06]">
+          <label className="block px-5 py-3"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">Tone</span>
+            <select value={st.tone} onChange={(e) => setS("tone", e.target.value)} className={fieldCls}>{["Friendly", "Professional", "Warm & casual", "Concise", "Enthusiastic"].map((o) => <option key={o} value={o}>{o}</option>)}</select></label>
+          <label className="block px-5 py-3"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">Custom greeting</span>
+            <textarea value={st.greeting} onChange={(e) => setS("greeting", e.target.value)} placeholder={`e.g. "Hi! Thanks for contacting ${draft.name || V.business.name} 👋 How can I help?"`} rows={2} className={fieldCls} /></label>
+          <div className="flex items-center justify-between px-5 py-3.5"><div><div className="text-sm text-g-word font-semibold">Hand off to a human on request</div><div className="text-[11px] text-g-muted">When a customer asks for a person, the AI alerts your team.</div></div><Toggle on={st.human_handoff !== false} onClick={() => setS("human_handoff", st.human_handoff === false)} /></div>
+        </div>
+        <div className="px-5 py-2.5 border-t border-white/10 text-[11px] text-g-green">Saved automatically · your AI uses this on every channel ✓</div>
+      </Card>
+
+      {/* Notifications & billing — when the owner gets pinged + auto top-up (revenue safety) */}
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Notifications & billing</div>
+        <div className="divide-y divide-white/[0.06]">
+          {[["on_booking", "New booking or order"], ["on_missed", "Missed call or lead"], ["on_review", "New review"], ["daily_summary", "Daily summary from Gui"]].map(([k, label]) => (
+            <div key={k} className="flex items-center justify-between px-5 py-3.5"><span className="text-sm text-g-word font-semibold">{label}</span><Toggle on={st[k] !== false} onClick={() => setS(k, st[k] === false)} /></div>
+          ))}
+          <div className="flex items-center justify-between px-5 py-3.5"><div><div className="text-sm text-g-word font-semibold">Auto top-up Gui credits</div><div className="text-[11px] text-g-muted">Never let the AI pause mid-task — refill when low (pay-as-you-go).</div></div><Toggle on={payg} onClick={flipPayg} /></div>
+          <div className="flex items-center justify-between px-5 py-3.5"><div className="flex items-center gap-3"><span className="text-sm text-g-word font-semibold">Quiet hours</span></div><Toggle on={!!st.quiet_enabled} onClick={() => setS("quiet_enabled", !st.quiet_enabled)} /></div>
+          {st.quiet_enabled && (
+            <div className="flex items-center gap-3 px-5 py-3">
+              <label className="flex-1"><span className="text-[10px] uppercase tracking-wide text-g-muted">From</span><input type="time" value={st.quiet_start} onChange={(e) => setS("quiet_start", e.target.value)} className={fieldCls} /></label>
+              <label className="flex-1"><span className="text-[10px] uppercase tracking-wide text-g-muted">To</span><input type="time" value={st.quiet_end} onChange={(e) => setS("quiet_end", e.target.value)} className={fieldCls} /></label>
+            </div>
+          )}
+        </div>
+      </Card>
+
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Account</div>
         <div className="divide-y divide-white/[0.06]">
@@ -2212,6 +2494,38 @@ function Billing({ V }) {
         </div>
         <p className="mt-2 text-[10px] text-g-muted">Top-ups are billed securely to your account on file — we never ask for card details in chat.</p>
       </Card>
+
+      {/* Gui usage history — what your credits bought, by day */}
+      {(() => {
+        const days = usageByDay(7);
+        const max = Math.max(1, ...days.map((d) => d.total));
+        const weekTotal = days.reduce((s, d) => s + d.total, 0);
+        const recent = portalApi.loadState("gui_usage", []).slice(0, 6);
+        return (
+          <Card className="p-0 overflow-hidden">
+            <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Gui usage · last 7 days</span><span className="text-[11px] text-g-muted">{weekTotal} credits this week</span></div>
+            <div className="p-5">
+              <div className="flex items-end gap-2 h-24">
+                {days.map((d) => (
+                  <div key={d.day} className="flex-1 flex flex-col items-center gap-1.5">
+                    <div className="w-full flex items-end justify-center" style={{ height: "72px" }}>
+                      <div className="w-full max-w-[28px] rounded-t-md bg-gradient-to-t from-g-green to-g-gold transition-all" style={{ height: `${Math.max(4, Math.round((d.total / max) * 72))}px` }} title={`${d.total} credits`} />
+                    </div>
+                    <span className="text-[10px] text-g-muted">{d.label}</span>
+                  </div>
+                ))}
+              </div>
+              {recent.length > 0 ? (
+                <div className="mt-4 divide-y divide-white/[0.05] border-t border-white/[0.06]">
+                  {recent.map((u) => (
+                    <div key={u._id} className="flex items-center gap-3 py-2"><span className="text-sm">🪄</span><div className="flex-1 min-w-0 text-xs text-g-word truncate">{u.label || "AI task"}</div><span className="text-[11px] text-g-muted shrink-0">{u.day}</span><span className="text-[11px] font-bold text-g-gold shrink-0">−{u.cost} cr</span></div>
+                  ))}
+                </div>
+              ) : <p className="mt-3 text-[11px] text-g-muted text-center">No Gui activity yet — ask Gui to do something and it'll show up here.</p>}
+            </div>
+          </Card>
+        );
+      })()}
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Invoices</div>
         <div className="divide-y divide-white/[0.06]">
@@ -3107,6 +3421,8 @@ function Login({ onEnter }) {
 // launcher badge and Gui's opening nudge — Gui surfaces money on the table unasked.
 function guiAlerts(V) {
   const out = [];
+  const credits = portalApi.loadState("gui_credits", 250);
+  if (credits < 50) out.push({ key: "lowcredit", count: 0, cmd: "open billing", en: `Gui credits are low (${credits} left) — top up so I never pause mid-task.`, pt: `Seus créditos do Gui estão baixos (${credits}) — recarregue pra eu não parar no meio.`, chipEn: "⚡ Top up", chipPt: "⚡ Recarregar" });
   const overdue = genPayments(V).filter((p) => p.status === "Overdue");
   if (overdue.length) out.push({ key: "overdue", count: overdue.length, cmd: "remind all overdue invoices", en: `${overdue.length} invoice${overdue.length !== 1 ? "s" : ""} overdue — want me to chase them?`, pt: `${overdue.length} fatura${overdue.length !== 1 ? "s" : ""} atrasada${overdue.length !== 1 ? "s" : ""} — quer que eu cobre?`, chipEn: "💳 Chase them", chipPt: "💳 Cobrar agora" });
   const waiting = genWaitlist(V).length;
@@ -3156,6 +3472,7 @@ function guiPlan(text, V, ctx = {}) {
   if (/(quickbooks|accounting|contabil|sync.*(book|nota)|nota fiscal|bookkeep)/.test(s)) { const ok = connected("QuickBooks"); return { cost: ok ? 3 : 0, ctx, reply: ok ? L("Synced ✓ — every sale and invoice is flowing into QuickBooks automatically. Your books stay current with zero data entry.", "Sincronizado ✓ — cada venda e fatura entra no QuickBooks automaticamente. Sua contabilidade fica em dia sem digitar nada.") : L("QuickBooks isn't connected — connect it in Integrations and I'll keep your books in sync.", "O QuickBooks não está conectado — conecte em Integrações que eu mantenho a contabilidade sincronizada."), next: ok ? undefined : [{ label: L("🔌 Open Integrations", "🔌 Abrir Integrações"), cmd: "open integrations" }], run: (onNav) => onNav?.(ok ? "payments" : "integrations") }; }
   if (/(integration|integra[çc]|connect|conect|stack|my tools|minhas ferramentas)/.test(s)) return { cost: 0, ctx, reply: L("Here's your connected stack — toggle any tool and I start acting through it.", "Aqui está seu stack conectado — ligue qualquer ferramenta e eu começo a agir através dela."), run: (onNav) => onNav?.("integrations") };
   if (/(open|go to|abrir?|ver)\s+(overview|home|in[íi]cio|dashboard|automa)/.test(s)) return { cost: 0, ctx, reply: L("Here's your Overview — your automations and weekly recap are here.", "Aqui está seu Overview — suas automações e o resumo da semana estão aqui."), run: (onNav) => onNav?.("overview") };
+  if (/(billing|cobran|plano|fatur.*plano|top.?up|recarregar|recarga|cr[ée]dito)/.test(s)) return { cost: 0, ctx, reply: L("Opening Billing — top up your Gui credits and manage your plan here.", "Abrindo Plano e cobrança — recarregue seus créditos do Gui e gerencie o plano aqui."), run: (onNav) => onNav?.("billing") };
   // R3 — recurring automations: "every Monday chase overdue", "toda semana peça avaliações".
   if (/\b(every|each|always|recurring|weekly|daily|automat|toda|todo|todas|todos|sempre|cada|recorrente|autom[áa]tic)/.test(s) && /(chase|overdue|remind|cobr|invoice|fatur|review|avali|promo|campaign|follow|nudge|post|instagram|social|report|resumo|recap)/.test(s)) {
     const day = /(monday|segunda)/.test(s) ? L("every Monday", "toda segunda") : /(friday|sexta)/.test(s) ? L("every Friday", "toda sexta") : /(daily|every day|todo dia|diari)/.test(s) ? L("every day", "todo dia") : /(month|m[êe]s)/.test(s) ? L("monthly", "todo mês") : L("every week", "toda semana");
@@ -3224,6 +3541,7 @@ function Gui({ V, onNav }) {
     const undo = res.run ? res.run(onNav) : undefined;
     lastUndo.current = typeof undo === "function" ? undo : null;
     setC(credits - res.cost);
+    logUsage(res.cost, t);
     setMsgs((m) => [...m, { from: "gui", text: res.reply, cost: res.cost, next: res.next, canUndo: typeof undo === "function" }]);
   };
   const send = (e) => { e.preventDefault(); run(q); };
@@ -3401,7 +3719,7 @@ export default function Portal() {
     social: <SocialInbox V={V} />,
     analytics: <AIAnalytics V={V} onNav={setView} sections={sections} />,
     insights: <AIInsights V={V} onNav={setView} sections={sections} />,
-    integrations: <Integrations V={V} onNav={setView} />,
+    integrations: <Integrations V={V} onNav={setView} lang={lang} />,
     liveorders: <LiveOrders V={V} />,
     kitchen: <Kitchen V={V} />,
     menu: <MenuView V={V} />,
