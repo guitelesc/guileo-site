@@ -9,6 +9,7 @@ import {
   FaArrowsRotate, FaClock, FaStar, FaIdCard,
   FaPen, FaTrash, FaPlus, FaCircleCheck, FaWandMagicSparkles,
   FaTruck, FaLocationDot, FaGift, FaUserPlus,
+  FaPlug, FaStripe, FaShopify, FaSlack, FaEnvelope, FaCalendarDays, FaFileInvoiceDollar, FaMeta, FaGoogleDrive,
 } from "react-icons/fa6";
 
 /* Upsell channel — services a client can request from inside the portal (revenue engine) */
@@ -328,7 +329,7 @@ function sectionsFor(vid, V) {
   if (V.sections) return V.sections; // restaurant has a bespoke nav from its reference tool
   const sec = SECTOR_NAV[vid] || [["operations", "Operations"]];
   return [
-    ["overview", "Overview"], ["impact", "Guileo Impact"], ["brain", "Train your AI"], ["analytics", "AI Analytics"], ["insights", "AI Insights"],
+    ["overview", "Overview"], ["impact", "Guileo Impact"], ["brain", "Train your AI"], ["analytics", "AI Analytics"], ["insights", "AI Insights"], ["integrations", "Integrations"],
     ...sec,
     ["deliveries", deliveryTab(V)],
     ["payments", "Payments"], ["followups", "Follow-ups"], ["waitlist", "Waitlist"], ["recurring", "Recurring"], ["reputation", "Reputation"], ["loyalty", "Loyalty"],
@@ -358,7 +359,7 @@ function notifFor(key, V) {
   }
 }
 const SECTION_ICON = {
-  overview: FaGaugeHigh, operations: FaListCheck, schedule: FaListCheck, catalog: FaBookOpen, brain: FaBrain, analytics: FaChartLine, insights: FaWandMagicSparkles, liveorders: FaReceipt,
+  overview: FaGaugeHigh, operations: FaListCheck, schedule: FaListCheck, catalog: FaBookOpen, brain: FaBrain, analytics: FaChartLine, insights: FaWandMagicSparkles, integrations: FaPlug, liveorders: FaReceipt,
   kitchen: FaUtensils, menu: FaBookOpen, deliveries: FaTruck, customers: FaUsers, campaigns: FaBullhorn, audiences: FaBullseye,
   inbox: FaComments, calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, social: FaShareNodes, grow: FaStore, billing: FaCreditCard,
   impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock, recurring: FaIdCard, reputation: FaStar, loyalty: FaGift, payments: FaReceipt,
@@ -368,7 +369,7 @@ const SECTION_ICON = {
 // Order = everyday use first (operations/conversations/customers), then growth/strategy, then account.
 const NAV_GROUPS = [
   ["", ["overview"]],
-  ["Your AI ✨", ["brain", "analytics", "insights"]],
+  ["Your AI ✨", ["brain", "analytics", "insights", "integrations"]],
   ["Operations", ["liveorders", "kitchen", "menu", "schedule", "catalog", "deliveries", "operations"]],
   ["Conversations", ["inbox", "calllogs", "dialer", "whatsapp", "sms", "social"]],
   ["Customers", ["customers"]],
@@ -904,6 +905,94 @@ function Deliveries({ V }) {
           onClose={() => setSel(null)}
         />
       )}
+    </div>
+  );
+}
+
+/* ───────────────────────── Integrations hub ─────────────────────────
+   The differentiator: Guileo is not just another app — it plugs into the
+   ENTIRE stack a business already runs on, and the AI acts ACROSS all of
+   them. Each tool shows what Guileo *does* through it, not just "connected".
+*/
+function genIntegrations(V) {
+  const C = "currentColor";
+  // [name, IconComponent, brandColor, what Guileo does through it (EN), (PT), default-connected]
+  return [
+    ["Messaging & Social", [
+      ["WhatsApp", FaWhatsapp, "#25D366", "Answers, books and follows up with customers 24/7", "Atende, agenda e faz follow-up com clientes 24/7", true],
+      ["Instagram", FaInstagram, "#E1306C", "Replies to DMs & comments, turns followers into bookings", "Responde DMs e comentários, vira seguidores em agendamentos", true],
+      ["Messenger", FaFacebook, "#1877F2", "Handles Facebook chats and re-engages old leads", "Cuida dos chats do Facebook e reativa leads antigos", false],
+      ["Email / Gmail", FaEnvelope, "#EA4335", "Drafts, sends and follows up on emails automatically", "Escreve, envia e faz follow-up de e-mails sozinho", true],
+    ]],
+    ["Calendar & Scheduling", [
+      ["Google Calendar", FaCalendarDays, "#4285F4", "Books, reschedules and reminds — zero double-bookings", "Agenda, remarca e lembra — sem choque de horário", true],
+    ]],
+    ["Payments & Accounting", [
+      ["Stripe", FaStripe, "#635BFF", "Sends payment links, chases invoices until they're paid", "Envia links de pagamento e cobra até quitar", true],
+      ["QuickBooks", FaFileInvoiceDollar, "#2CA01C", "Syncs every sale & invoice into your books automatically", "Sincroniza cada venda e fatura na contabilidade", false],
+    ]],
+    ["Commerce & Storefront", [
+      ["Shopify", FaShopify, "#95BF47", "Recovers abandoned carts and upsells past buyers", "Recupera carrinhos abandonados e revende a clientes", false],
+    ]],
+    ["Ads & Growth", [
+      ["Meta Ads", FaMeta, "#0866FF", "Builds audiences from your CRM and optimizes spend", "Monta públicos do seu CRM e otimiza o investimento", true],
+      ["Google", FaGoogle, "#4285F4", "Turns 5★ reviews into ads and captures local search", "Vira avaliações 5★ em anúncios e capta busca local", true],
+    ]],
+    ["Team & Files", [
+      ["Slack", FaSlack, "#4A154B", "Pings your team the moment a hot lead or VIP comes in", "Avisa sua equipe quando entra um lead quente ou VIP", false],
+      ["Google Drive", FaGoogleDrive, "#1FA463", "Files contracts, receipts and docs where they belong", "Arquiva contratos, recibos e docs no lugar certo", false],
+    ]],
+  ];
+}
+function Integrations({ V, onNav }) {
+  const groups = useMemo(() => genIntegrations(V), [V]);
+  const flat = groups.flatMap(([, tools]) => tools);
+  const seed = useMemo(() => Object.fromEntries(flat.map(([n, , , , , def]) => [n, !!def])), [V]); // eslint-disable-line
+  const [conn, setConn] = useState(() => portalApi.loadState(`${V.label}:stack`, seed));
+  useEffect(() => { setConn(portalApi.loadState(`${V.label}:stack`, seed)); }, [V.label]); // eslint-disable-line
+  const toggle = (name) => setConn((c) => { const n = { ...c, [name]: !c[name] }; portalApi.saveState(`${V.label}:stack`, n); toast(`${name} ${n[name] ? "connected ✓ — your AI is now acting through it" : "disconnected"}`); return n; });
+  const liveCount = flat.filter(([n]) => conn[n]).length;
+  return (
+    <div className="space-y-4 stagger">
+      <Card className="bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] border-g-green/30">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="grid place-items-center h-11 w-11 rounded-xl bg-g-green/15 text-g-green"><FaPlug /></span>
+            <div>
+              <div className="text-sm font-extrabold text-g-word">Guileo plugs into your whole stack</div>
+              <div className="text-xs text-g-muted mt-0.5">We don't replace your tools — your AI works <span className="text-g-light font-semibold">inside</span> them, across all of them. <span className="text-g-green font-bold">{liveCount} connected</span> and acting right now.</div>
+            </div>
+          </div>
+          <a href={waLink("Hi Guileo! Help me connect my tools/systems")} target="_blank" rel="noopener" className="btn-bright text-sm">Connect a tool →</a>
+        </div>
+      </Card>
+
+      <MiniStats items={[["Connected", `${liveCount}/${flat.length}`, "good"], ["Acting 24/7", "Always-on"], ["Hours saved / wk", `${vnum(V.label, "stackhrs", 8, 26)}h`, "good"], ["Setup", "Done-for-you"]]} />
+
+      {groups.map(([cat, tools]) => (
+        <Card key={cat} className="p-0 overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{cat}</div>
+          <div className="divide-y divide-white/[0.06]">
+            {tools.map(([name, Icon, color, doesEn]) => (
+              <div key={name} className="flex items-center gap-3 px-5 py-3.5">
+                <span className="grid place-items-center h-10 w-10 rounded-xl text-lg" style={{ background: color + "22", color }}><Icon /></span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-g-word flex items-center gap-2">{name}{conn[name] && <span className="text-[9px] font-black uppercase text-g-green inline-flex items-center gap-1"><FaCircleCheck size={9} /> Live</span>}</div>
+                  <div className="text-[11px] text-g-muted leading-snug">{doesEn}</div>
+                </div>
+                <Toggle on={!!conn[name]} onClick={() => toggle(name)} />
+              </div>
+            ))}
+          </div>
+        </Card>
+      ))}
+
+      <Card className="border-g-gold/25 bg-g-gold/[0.04]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-xs text-g-muted">Don't see your system? If it has an API (or Zapier/Make), <span className="text-g-light font-semibold">your team wires it</span> — Guileo becomes the brain on top of everything you already run.</div>
+          <button onClick={() => onNav?.("brain")} className="btn-ghost text-sm shrink-0">Train your AI on it →</button>
+        </div>
+      </Card>
     </div>
   );
 }
@@ -2855,6 +2944,20 @@ function guiPlan(text, V, ctx = {}) {
   const forPt = who ? ` para ${target}` : "";
   // undo a record-creating action: returns a closure that drops the created rows + navigates to show it
   const undoer = (rows, nav) => (onNav) => { rows.forEach((r) => removeCreated(V.label, r.view, r.id)); onNav?.(nav); };
+  // is a stack tool connected? (Integrations hub persists to :stack)
+  const stack = portalApi.loadState(`${V.label}:stack`, {});
+  const connected = (name) => stack[name] !== false; // default-on if never toggled
+  // R2 — explainability: Gui justifies its suggestions from the real data it sees.
+  if (/\b(why|por\s?que|por\s?qu[êe]|explain|explica|explique|motivo|reason)\b/.test(s)) {
+    const al = guiAlerts(V);
+    const top = al[0];
+    const because = top ? L(`Because I'm watching your live data: ${top.en} That's money on the table, so I flag it first. I rank actions by $ at risk × how fast they decay — overdue invoices and empty slots lose value by the hour.`, `Porque estou de olho nos seus dados ao vivo: ${top.pt} Isso é dinheiro na mesa, então priorizo. Eu ranqueio ações por $ em risco × velocidade que perdem valor — faturas atrasadas e vagas vazias perdem valor a cada hora.`) : L("I base every suggestion on your live numbers — bookings, unpaid invoices, at-risk customers and quiet hours — and rank them by the revenue at stake. Right now things look healthy.", "Eu baseio cada sugestão nos seus números ao vivo — agendamentos, faturas em aberto, clientes em risco e horários vazios — e ranqueio pela receita em jogo. Agora está tudo saudável.");
+    return { cost: 0, ctx, reply: because };
+  }
+  // R5 — act ACROSS the connected stack (the differentiator).
+  if (/(instagram|\bpost\b|publica|story|stories|\bfeed\b|social)/.test(s)) { const ok = connected("Instagram"); return { cost: ok ? 5 : 0, ctx, reply: ok ? L("Posted ✓ — your AI scheduled an on-brand post to Instagram & Facebook, timed for when your audience is most active. It's in Social.", "Publicado ✓ — sua IA agendou um post na cara da marca pro Instagram e Facebook, na hora de pico do seu público. Está em Social.") : L("Instagram isn't connected yet — connect it in Integrations and I'll post for you.", "O Instagram ainda não está conectado — conecte em Integrações que eu publico por você."), next: ok ? undefined : [{ label: L("🔌 Open Integrations", "🔌 Abrir Integrações"), cmd: "open integrations" }], run: (onNav) => onNav?.(ok ? "social" : "integrations") }; }
+  if (/(quickbooks|accounting|contabil|sync.*(book|nota)|nota fiscal|bookkeep)/.test(s)) { const ok = connected("QuickBooks"); return { cost: ok ? 3 : 0, ctx, reply: ok ? L("Synced ✓ — every sale and invoice is flowing into QuickBooks automatically. Your books stay current with zero data entry.", "Sincronizado ✓ — cada venda e fatura entra no QuickBooks automaticamente. Sua contabilidade fica em dia sem digitar nada.") : L("QuickBooks isn't connected — connect it in Integrations and I'll keep your books in sync.", "O QuickBooks não está conectado — conecte em Integrações que eu mantenho a contabilidade sincronizada."), next: ok ? undefined : [{ label: L("🔌 Open Integrations", "🔌 Abrir Integrações"), cmd: "open integrations" }], run: (onNav) => onNav?.(ok ? "payments" : "integrations") }; }
+  if (/(integration|integra[çc]|connect|conect|stack|my tools|minhas ferramentas)/.test(s)) return { cost: 0, ctx, reply: L("Here's your connected stack — toggle any tool and I start acting through it.", "Aqui está seu stack conectado — ligue qualquer ferramenta e eu começo a agir através dela."), run: (onNav) => onNav?.("integrations") };
   if (/(remind|chase|collect all|chase all|overdue|atrasad|cobrar todos|all unpaid)/.test(s)) { const open = genPayments(V).filter((p) => p.status !== "Paid"); return { cost: 5, ctx, reply: L(`Done ✓ — I sent payment reminders to ${open.length} customer${open.length !== 1 ? "s" : ""} with open invoices. They're in Payments.`, `Pronto ✓ — enviei lembretes de pagamento para ${open.length} cliente${open.length !== 1 ? "s" : ""} com faturas em aberto. Estão em Pagamentos.`), next: [{ label: L("⭐ Ask them for reviews too", "⭐ Pedir avaliações também"), cmd: "request reviews from my recent customers" }], run: (onNav) => onNav?.("payments") }; }
   if (/(invoice|charge|bill|cobr|fatur|payment|receb)/.test(s)) return { cost: 5, ctx: C(target), reply: L(`Done ✓ — invoice sent to ${target} with a payment link, tracked in Payments. I'll chase it until it's paid.`, `Pronto ✓ — fatura enviada para ${target} com link de pagamento, registrada em Pagamentos. Eu cobro até ser paga.`), next: [{ label: L(`📅 Book ${target} too`, `📅 Agendar ${target} também`), cmd: `book them` }, { label: L("⭐ Request a review", "⭐ Pedir avaliação"), cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: target, amount: vnum(V.label, "guiinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); onNav?.("payments"); return undoer([{ view: "payments", id }], "payments"); } };
   if (/(review|avalia|rating|estrela)/.test(s)) return { cost: 5, ctx: C(who || ctx.customer), reply: L(`On it ✓ — I queued review requests${who ? ` to ${target}` : " to your happiest recent customers"}. Tracked in Reputation.`, `Feito ✓ — enviei pedidos de avaliação${who ? ` para ${target}` : " aos seus clientes mais satisfeitos"}. Registrado em Reputação.`), next: [{ label: L("📣 Turn 5★ reviews into ads", "📣 Virar avaliações 5★ em anúncios"), cmd: "launch a promo" }], run: (onNav) => { const rows = (who ? [{ name: target, channel: "WhatsApp" }] : customers.slice(0, 3)).map((c) => ({ view: "reviewreq", id: pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel }) })); onNav?.("reputation"); return undoer(rows, "reputation"); } };
@@ -3067,6 +3170,7 @@ export default function Portal() {
     social: <SocialInbox V={V} />,
     analytics: <AIAnalytics V={V} onNav={setView} sections={sections} />,
     insights: <AIInsights V={V} onNav={setView} sections={sections} />,
+    integrations: <Integrations V={V} onNav={setView} />,
     liveorders: <LiveOrders V={V} />,
     kitchen: <Kitchen V={V} />,
     menu: <MenuView V={V} />,
