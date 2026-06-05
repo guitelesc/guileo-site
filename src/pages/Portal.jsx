@@ -1001,7 +1001,8 @@ function Kitchen({ V }) {
   const advance = (col, i) => setBoard((b) => {
     const item = b[col][i]; const next = flow[flow.indexOf(col) + 1];
     portalApi.updateStatus("orders", item?.id, next);
-    toast(next === "done" ? `${item?.id} completed ✓` : `${item?.id} → ${next}`);
+    if (next === "done") { const amt = vnum(V.label, "kitchenval", 18, 42); logImpact(V.label, `${item?.id} fulfilled in kitchen`, amt); toast(`${item?.id} completed ✓ — $${amt} logged to Guileo Impact`); }
+    else toast(`${item?.id} → ${next}`);
     const nb = { ...b, [col]: b[col].filter((_, j) => j !== i) };
     if (next !== "done") nb[next] = [...b[next], item];
     return nb;
@@ -1832,6 +1833,7 @@ function ScheduleScreen({ V }) {
           actions={<>
             <a href={waLink(`Hi ${sel.r.name}, about your ${sel.r.meta}…`)} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Message</a>
             <button onClick={() => { toast(`${sel.r.name} confirmed ✓`); setSel(null); }} className="btn-ghost text-sm">✓ Confirm</button>
+            <button onClick={() => { const amt = vnum(V.label, "svcval", 60, 220); logImpact(V.label, `${sel.r.name} · ${sel.r.meta} completed`, amt); toast(`${sel.r.name} marked completed ✓ — $${amt} logged to Guileo Impact`); setSel(null); }} className="btn-ghost text-sm">✓ Completed</button>
             <button onClick={() => { toast("Reschedule link sent"); setSel(null); }} className="btn-ghost text-sm">📅 Reschedule</button>
           </>}
           onClose={() => setSel(null)}
@@ -2114,7 +2116,9 @@ function Reputation({ V, onNav }) {
   const reviews = genReviews(V);
   const dist = [["5★", 78], ["4★", 15], ["3★", 4], ["2★", 2], ["1★", 1]];
   const [sel, setSel] = useState(null);
-  const reqs = loadCreated(V.label, "reviewreq"); // pending review requests from Customers
+  const [reqs, setReqs] = useState(() => loadCreated(V.label, "reviewreq")); // pending review requests
+  useEffect(() => { setReqs(loadCreated(V.label, "reviewreq")); }, [V.label]);
+  const blast = () => { (V.customers || genCustomers(V)).slice(0, 3).forEach((c) => pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel })); setReqs(loadCreated(V.label, "reviewreq")); toast("Review blast queued to recent customers ✓"); };
   const boost = (r) => { pushCreated(V.label, "campaigns", { name: `⭐ ${r.name}'s ${r.stars}★ review → ad`, channel: r.ch || "Meta", sent: 0, opened: 0, revenue: 0, status: "Active" }); setSel(null); toast(`Review boosted as an ad ✓ — see it in Campaigns`); onNav?.("campaigns"); };
   return (
     <div className="space-y-4">
@@ -2129,7 +2133,7 @@ function Reputation({ V, onNav }) {
         <Card>
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Rating breakdown</div>
           {dist.map(([l, v]) => (<div key={l} className="mb-2 last:mb-0 flex items-center gap-2"><span className="text-xs text-g-muted w-8">{l}</span><div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-gold to-g-green" style={{ width: `${v}%` }} /></div><span className="text-[11px] text-g-muted w-8 text-right">{v}%</span></div>))}
-          <button onClick={() => toast("Review blast queued ✓")} className="btn-bright text-sm w-full mt-4 justify-center">Request reviews now</button>
+          <button onClick={blast} className="btn-bright text-sm w-full mt-4 justify-center">Request reviews now</button>
         </Card>
         <Card className="lg:col-span-2 p-0 overflow-hidden">
           <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Recent reviews · collected by AI</div>
