@@ -173,6 +173,26 @@ function Pillars({ t }) {
   );
 }
 
+// Small rotating verb under the headline — cycles what Gui DOES, with a fixed "24/7" anchor.
+// The 24/7 stays put (it's the promise); only the action swaps, so the eye reads "Gui ___ · 24/7".
+function RotatingAction({ words, suffix }) {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setI((n) => (n + 1) % words.length), 2100);
+    return () => clearInterval(id);
+  }, [words.length]);
+  return (
+    <span className="inline-flex items-baseline gap-1.5">
+      <span className="relative inline-grid">
+        {/* sizer keeps width = longest word so the 24/7 never jumps */}
+        <span className="col-start-1 row-start-1 invisible font-bold" aria-hidden>{words.reduce((a, b) => (b.length > a.length ? b : a), "")}</span>
+        <motion.span key={i} initial={{ opacity: 0, y: 9 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 320, damping: 26 }} className="col-start-1 row-start-1 font-bold text-g-light">{words[i]}</motion.span>
+      </span>
+      <span className="font-black text-g-green">· {suffix}</span>
+    </span>
+  );
+}
+
 export default function Home() {
   const { t } = useLang();
   // If the brand intro already played this session (or reduced-motion), paint the hero
@@ -206,10 +226,24 @@ export default function Home() {
               </span>,
               <h1 key="h" className="text-5xl sm:text-6xl lg:text-7xl font-black leading-[0.98] tracking-tight">
                 <span className="block text-g-word">{t.hero.h1a}</span>
-                <span className="block bg-gradient-to-r from-g-green via-g-gold to-g-green bg-[length:200%_auto] bg-clip-text text-transparent animate-shimmer drop-shadow-[0_0_45px_rgba(214,194,154,0.45)]">{t.hero.h1b}</span>
-                <span className="block text-g-word">{t.hero.h1c}</span>
+                <span className="block ml-[0.6em] sm:ml-[1.1em] bg-gradient-to-r from-g-green via-g-gold to-g-green bg-[length:200%_auto] bg-clip-text text-transparent animate-shimmer drop-shadow-[0_0_45px_rgba(214,194,154,0.45)]">{t.hero.h1b}</span>
+                <span className="block ml-[1.2em] sm:ml-[2.2em] text-g-word">{t.hero.h1c}</span>
               </h1>,
-              <p key="p" className="mt-6 text-lg text-g-muted max-w-xl leading-relaxed">{t.hero.sub_a}<b className="text-g-word">{t.hero.sub_b}</b>{t.hero.sub_c}</p>,
+              <div key="method" className="mt-5 flex flex-col gap-2">
+                <div className="flex items-center gap-2.5 text-[11px] sm:text-xs font-black uppercase tracking-[0.18em]">
+                  {(t.hero.method || ["Performance","Sales","Growth"]).map((m,mi,arr)=>(
+                    <span key={m} className="inline-flex items-center gap-2.5">
+                      <span className={mi===0?"text-g-green":mi===1?"text-g-gold":"text-g-light"}>{m}</span>
+                      {mi<arr.length-1 && <span className="text-g-muted">→</span>}
+                    </span>
+                  ))}
+                </div>
+                <div className="text-base sm:text-lg text-g-muted font-semibold inline-flex items-center gap-2">
+                  <span className="text-g-word font-extrabold">Gui</span>
+                  <RotatingAction words={t.hero.rotors || ["answers your calls","books","quotes","sells","follows up"]} suffix="24/7" />
+                </div>
+              </div>,
+              <p key="p" className="mt-6 text-base text-g-muted max-w-xl leading-relaxed">{t.hero.sub_a}<b className="text-g-word">{t.hero.sub_b}</b>{t.hero.sub_c}</p>,
               <div key="trust" className="mt-5 flex flex-wrap gap-2">
                 {t.hero.trust.map(([ic,tx])=>(<span key={tx} className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] backdrop-blur-md px-3 py-1.5 text-xs font-semibold text-g-word hover:border-g-green/40 hover:text-g-light transition-colors">{ic} {tx}</span>))}
               </div>,
