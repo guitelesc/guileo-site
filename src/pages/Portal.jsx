@@ -8,7 +8,7 @@ import {
   FaDownload, FaBell, FaMagnifyingGlass, FaStore, FaBrain, FaCreditCard, FaChevronDown, FaShareNodes,
   FaArrowsRotate, FaClock, FaStar, FaIdCard,
   FaPen, FaTrash, FaPlus, FaCircleCheck, FaWandMagicSparkles,
-  FaTruck, FaLocationDot,
+  FaTruck, FaLocationDot, FaGift, FaUserPlus,
 } from "react-icons/fa6";
 
 /* Upsell channel — services a client can request from inside the portal (revenue engine) */
@@ -93,6 +93,36 @@ const DELIVERY = {
   "Real Estate": { title: "Showings & key handoff", noun: "handoffs", who: "Agent", partners: [], own: ["Agent / lockbox", "Coordinate key handoffs and showings"] },
 };
 const deliveryCfg = (V) => DELIVERY[V.label] || DELIVERY["Restaurant"];
+
+// ── Loyalty & referrals config per sector ──
+const LOYALTY = {
+  "Restaurant": { unit: "points", reward: "a free item", earn: "$1 spent = 1 point" },
+  "E-Commerce": { unit: "points", reward: "$ off next order", earn: "$1 spent = 1 point" },
+  "Clinic": { unit: "credits", reward: "a free cleaning", earn: "1 credit per visit" },
+  "Medical": { unit: "credits", reward: "a free check-up", earn: "1 credit per visit" },
+  "Salon & Spa": { unit: "points", reward: "a free treatment", earn: "points per visit" },
+  "Gym & Fitness": { unit: "points", reward: "a free month", earn: "points per check-in" },
+  "Auto Dealership": { unit: "points", reward: "a free service", earn: "points per service" },
+  "Plumbing & HVAC": { unit: "credits", reward: "a free tune-up", earn: "1 credit per job" },
+  "Education": { unit: "points", reward: "a free class", earn: "points per class" },
+  "Law Firm": { unit: "credits", reward: "a free consult", earn: "1 credit per matter" },
+  "Real Estate": { unit: "points", reward: "a closing gift", earn: "points per deal" },
+  "Construction": { unit: "credits", reward: "priority scheduling", earn: "1 credit per project" },
+};
+const loyaltyCfg = (V) => LOYALTY[V.label] || { unit: "points", reward: "a reward", earn: "points per visit" };
+function genLoyaltyMembers(V) {
+  return (V.customers || genCustomers(V)).map((c, i) => ({ name: c.name, pts: vnum(V.label, `${c.name}pts`, 120, 940), tier: i === 0 ? "Gold" : i === 1 ? "Silver" : "Bronze", channel: c.channel }));
+}
+function genReferrals(V) {
+  const sch = (V.ops?.schedule || []).map((r) => r.name).filter(Boolean);
+  const reward = 20;
+  return [
+    { name: sch[0] || "Ana R.", note: "referred a friend who joined", status: "Joined", reward },
+    { name: sch[1] || "Bruno T.", note: "invite sent · awaiting", status: "Pending", reward },
+    { name: sch[2] || "Carla M.", note: "referred 2 friends", status: "Joined", reward: reward * 2 },
+    { name: sch[3] || "Diego P.", note: "invite opened", status: "Pending", reward },
+  ];
+}
 // Short sidebar label for the delivery/dispatch tab, per sector.
 const deliveryTab = (V) => ({ "E-Commerce": "Shipping", "Plumbing & HVAC": "Dispatch", "Construction": "Dispatch", "Auto Dealership": "Logistics", "Salon & Spa": "Mobile visits", "Gym & Fitness": "Mobile sessions", "Education": "Mobile sessions", "Law Firm": "Courier", "Real Estate": "Handoffs", "Clinic": "Deliveries", "Medical": "Deliveries" }[V.label] || "Delivery");
 function genDeliveries(V) {
@@ -269,7 +299,7 @@ function sectionsFor(vid, V) {
     ["overview", "Overview"], ["impact", "Guileo Impact"], ["brain", "Train your AI"], ["analytics", "AI Analytics"],
     ...sec,
     ["deliveries", deliveryTab(V)],
-    ["followups", "Follow-ups"], ["waitlist", "Waitlist"], ["recurring", "Recurring"], ["reputation", "Reputation"],
+    ["followups", "Follow-ups"], ["waitlist", "Waitlist"], ["recurring", "Recurring"], ["reputation", "Reputation"], ["loyalty", "Loyalty"],
     ["customers", "Customers"], ["campaigns", "Campaigns"], ["audiences", "Ad Audiences"],
     ["inbox", "Inbox"], ["calllogs", "Call Logs"], ["dialer", "Call Dialer"], ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"],
     ["grow", "Grow with Guileo"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
@@ -298,7 +328,7 @@ const SECTION_ICON = {
   overview: FaGaugeHigh, operations: FaListCheck, schedule: FaListCheck, catalog: FaBookOpen, brain: FaBrain, analytics: FaChartLine, liveorders: FaReceipt,
   kitchen: FaUtensils, menu: FaBookOpen, deliveries: FaTruck, customers: FaUsers, campaigns: FaBullhorn, audiences: FaBullseye,
   inbox: FaComments, calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, social: FaShareNodes, grow: FaStore, billing: FaCreditCard,
-  impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock, recurring: FaIdCard, reputation: FaStar,
+  impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock, recurring: FaIdCard, reputation: FaStar, loyalty: FaGift,
   channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, docs: FaFileLines, settings: FaGear,
 };
 // Group the (long) nav into scannable categories
@@ -309,7 +339,7 @@ const NAV_GROUPS = [
   ["Operations", ["liveorders", "kitchen", "menu", "schedule", "catalog", "deliveries", "operations"]],
   ["Conversations", ["inbox", "calllogs", "dialer", "whatsapp", "sms", "social"]],
   ["Customers", ["customers"]],
-  ["Grow revenue", ["impact", "followups", "waitlist", "recurring", "reputation", "campaigns", "audiences", "grow"]],
+  ["Grow revenue", ["impact", "followups", "waitlist", "recurring", "reputation", "loyalty", "campaigns", "audiences", "grow"]],
   ["Account", ["billing", "support", "settings"]],
 ];
 
@@ -1508,7 +1538,7 @@ function SettingsView({ V }) {
       </Card>
       <Card className="flex flex-wrap items-center justify-between gap-3">
         <div><div className="text-sm font-bold text-g-word">Demo data</div><div className="text-[11px] text-g-muted">Reset resolved alerts, won deals, filled slots & read flags back to the sample state.</div></div>
-        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "created:deliveries", "created:campaigns", "created:impact", "created:audiences", "created:reviewreq", "integrations", "owndelivery"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
+        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "created:deliveries", "created:campaigns", "created:impact", "created:audiences", "created:reviewreq", "integrations", "owndelivery", "loyalty"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
       </Card>
       <p className="text-center text-[11px] text-g-muted">Changes apply instantly. Need something custom? Your team's a tap away. 💬</p>
     </div>
@@ -1984,6 +2014,77 @@ function Palette({ V, sections, onNav, onClose }) {
   );
 }
 
+// Loyalty & referrals — recurring engagement + word-of-mouth growth. Rewards and
+// converted referrals feed the Guileo Impact ledger (real growth Guileo drove).
+function Loyalty({ V }) {
+  const cfg = loyaltyCfg(V);
+  const members = genLoyaltyMembers(V);
+  const refs = genReferrals(V);
+  const [on, setOn] = useState(() => portalApi.loadState(`${V.label}:loyalty`, true));
+  useEffect(() => { setOn(portalApi.loadState(`${V.label}:loyalty`, true)); }, [V.label]);
+  const flip = () => setOn((o) => { const v = !o; portalApi.saveState(`${V.label}:loyalty`, v); toast(`Loyalty program ${v ? "on ✓" : "off"}`); return v; });
+  const [joined, setJoined] = useState([]); // referrals marked joined this session
+  const reward = (m) => { logImpact(V.label, `${m.name} redeemed ${cfg.reward}`, 14); toast(`Reward sent to ${m.name} ✓ — logged to Guileo Impact`); };
+  const convert = (r, i) => { setJoined((j) => [...j, i]); logImpact(V.label, `Referral from ${r.name} joined`, r.reward * 6); toast(`Referral converted ✓ — $${r.reward * 6} new-customer value logged to Guileo Impact`); };
+  const copyLink = () => { try { navigator.clipboard?.writeText(`https://refer.guileo.ai/${V.label.toLowerCase().replace(/\W+/g, "")}`); } catch { /* blocked */ } toast("Referral link copied ✓"); };
+  const tierColor = (t) => (t === "Gold" ? "#D4A520" : t === "Silver" ? "#9ca3af" : "#B0764A");
+
+  return (
+    <div className="space-y-4">
+      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaGift className="text-g-gold" /> Loyalty & referrals</div><div className="text-xs text-g-muted mt-0.5">Earn rule: {cfg.earn} · Reward: {cfg.reward}. Your AI enrolls, reminds and rewards automatically.</div></div>
+          <div className="flex items-center gap-2"><span className="text-[11px] font-bold text-g-muted">{on ? "Active" : "Off"}</span><Toggle on={on} onClick={flip} /></div>
+        </div>
+      </Card>
+
+      <MiniStats items={[["Members", `${members.length * 86}`], [`${cfg.unit} outstanding`, vnum(V.label, "ptsout", 4000, 24000).toLocaleString()], ["Redemptions", `${vnum(V.label, "redeem", 12, 60)}`, "good"], ["Referral revenue", `$${vnum(V.label, "refrev", 600, 3400).toLocaleString()}`, "good"]]} />
+
+      <div className="grid lg:grid-cols-2 gap-4">
+        {/* Loyalty members */}
+        <Card className="p-0 overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Top members</div>
+          <div className="divide-y divide-white/[0.06]">
+            {members.map((m, i) => (
+              <div key={i} className="flex items-center gap-3 px-5 py-3">
+                <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{m.name[0]}</span>
+                <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{m.name}<span className="text-[9px] font-black uppercase rounded px-1.5 py-0.5" style={{ background: tierColor(m.tier) + "22", color: tierColor(m.tier) }}>{m.tier}</span></div><div className="text-[11px] text-g-muted">{m.pts.toLocaleString()} {cfg.unit}</div></div>
+                <button onClick={() => reward(m)} className="text-[11px] font-bold rounded-full border border-g-gold/35 bg-g-gold/[0.08] px-3 py-1.5 text-g-gold hover:bg-g-gold/[0.16] transition">🎁 Reward</button>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Referrals */}
+        <Card className="p-0 overflow-hidden flex flex-col">
+          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2"><FaUserPlus size={11} /> Referrals</div>
+          <div className="p-4 border-b border-white/[0.06]">
+            <div className="flex items-center gap-2 rounded-xl2 border border-white/12 bg-black/20 px-3 py-2">
+              <span className="flex-1 min-w-0 text-[11px] text-g-muted truncate">refer.guileo.ai/{V.label.toLowerCase().replace(/\W+/g, "")}</span>
+              <button onClick={copyLink} className="text-[11px] font-bold text-g-gold hover:text-g-word transition shrink-0">Copy link</button>
+            </div>
+            <div className="mt-1.5 text-[10px] text-g-muted">Each friend who joins earns both sides {cfg.reward}.</div>
+          </div>
+          <div className="divide-y divide-white/[0.06] flex-1">
+            {refs.map((r, i) => {
+              const isJoined = r.status === "Joined" || joined.includes(i);
+              return (
+                <div key={i} className="flex items-center gap-3 px-5 py-2.5">
+                  <span className="text-base">{isJoined ? "🎉" : "✉️"}</span>
+                  <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted truncate">{isJoined ? "referred a friend who joined" : r.note}</div></div>
+                  {isJoined
+                    ? <span className="text-[10px] font-black uppercase text-g-green">Joined</span>
+                    : <button onClick={() => convert(r, i)} className="text-[11px] font-bold rounded-full border border-g-green/40 bg-g-green/[0.1] px-2.5 py-1 text-g-green hover:bg-g-green/20 transition">Mark joined</button>}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 function GuileoImpact({ V }) {
   const d = genImpact(V);
   const created = loadCreated(V.label, "impact"); // events logged from operational actions
@@ -2297,6 +2398,7 @@ export default function Portal() {
     waitlist: <Waitlist V={V} />,
     recurring: <Recurring V={V} />,
     reputation: <Reputation V={V} onNav={setView} />,
+    loyalty: <Loyalty V={V} />,
     operations: <Operations V={V} />,
     schedule: <ScheduleScreen V={V} />,
     catalog: <CatalogScreen V={V} />,
