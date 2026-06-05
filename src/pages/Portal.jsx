@@ -549,7 +549,7 @@ const PT_UI = {
   "Preview industry": "Pré-visualizar segmento",
   "Industry · demo": "Segmento · demo",
   "operations": "operações",
-  "Demo mode": "Modo demonstração",
+  "Demo mode": "Modo demonstração", "Demo · sample data": "Demo · dados de exemplo",
   "Staff · admin": "Equipe · admin",
   "Monthly report opened — print → Save as PDF ✓": "Relatório mensal aberto — imprima → Salvar como PDF ✓",
   "Close menu": "Fechar menu",
@@ -894,6 +894,7 @@ const PT_UI = {
   "Phone calls": "Chamadas telefônicas",
   "Payments & Accounting": "Pagamentos e Contabilidade",
   "Password": "Senha",
+  "Quick read on today:": "Resumo de hoje:", "Want me to get started?": "Quer que eu comece?",
   "Paid invoices": "Faturas pagas",
   "Outstanding": "Em aberto",
   "Outcome": "Resultado",
@@ -4054,8 +4055,8 @@ function Gui({ V, onNav }) {
   const alertCount = alerts.reduce((n, a) => n + (a.count || 0), 0);
   const [msgs, setMsgs] = useState(() => {
     const base = [
-      { from: "gui", text: "Hi! I'm Gui — your AI assistant 👋 Tell me what to do and I'll handle it." },
-      { from: "gui", text: `Quick read on today: ${dailyBriefing(V)}. Want me to get started?` },
+      { from: "gui", text: tr("Hi! I'm Gui — your AI assistant 👋 Tell me what to do and I'll handle it.") },
+      { from: "gui", text: `${tr("Quick read on today:")} ${dailyBriefing(V)}. ${tr("Want me to get started?")}` },
     ];
     const al = guiAlerts(V);
     if (al.length) base.push({ from: "gui", text: `👀 Heads up — ${al[0].en}`, next: al.slice(0, 2).map((a) => ({ label: a.chipEn, cmd: a.cmd })) });
@@ -4129,7 +4130,7 @@ function Gui({ V, onNav }) {
           </div>
           {/* credit meter */}
           <div className="px-4 py-2 border-b border-white/[0.06] shrink-0">
-            <div className="flex items-center justify-between text-[10px] mb-1"><span className="text-g-muted font-bold uppercase tracking-wide">{tr("Credits")}</span><span className={`font-bold ${low ? "text-red-400" : "text-g-word"}`}>{credits} left</span></div>
+            <div className="flex items-center justify-between text-[10px] mb-1"><span className="text-g-muted font-bold uppercase tracking-wide">{tr("Credits")}</span><span className={`font-bold ${low ? "text-red-400" : "text-g-word"}`}>{credits} {tr("left")}</span></div>
             <div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className={`h-full rounded-full ${low ? "bg-red-500" : "bg-gradient-to-r from-g-green to-g-gold"}`} style={{ width: `${pct}%` }} /></div>
             <div className="mt-1 flex items-center justify-between text-[10px] text-g-muted"><span>{tr("Pay-as-you-go · ~5 credits per task")}</span><button onClick={recharge} className="font-bold text-g-gold hover:underline">{tr("+ Recharge")}</button></div>
           </div>
@@ -4161,8 +4162,8 @@ function Gui({ V, onNav }) {
           <form onSubmit={send} className="p-3 border-t border-white/10 flex gap-2 shrink-0">
             {history.length > 0 && <button type="button" onClick={() => setShowHist((v) => !v)} aria-label="Command history" className={`grid place-items-center h-10 w-10 rounded-full border shrink-0 transition ${showHist ? "border-g-green/50 bg-g-green/15 text-g-light" : "border-white/15 bg-white/[0.04] text-g-muted hover:text-g-word"}`}>↻</button>}
             {SR && <button type="button" onClick={dictate} aria-label="Dictate to Gui" className={`grid place-items-center h-10 w-10 rounded-full border shrink-0 transition ${listening ? "border-red-400 bg-red-500/15 text-red-400 animate-pulse" : "border-white/15 bg-white/[0.04] text-g-muted hover:text-g-word"}`}>🎙️</button>}
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={listening ? "Listening…" : "Ask Gui to do something…"} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-            <button className="btn-bright text-sm px-4">Send</button>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={listening ? tr("Listening…") : tr("Ask Gui to do something…")} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+            <button className="btn-bright text-sm px-4">{tr("Send")}</button>
           </form>
           <a href={waLink("Hi Guileo team! I need help")} target="_blank" rel="noopener" className="px-4 pb-3 text-[10px] text-g-muted hover:text-g-word text-center shrink-0">{tr("Need a human? Talk to your team →")}</a>
         </motion.div>
@@ -4380,7 +4381,7 @@ export default function Portal() {
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={() => setNavOpen(true)} className="lg:hidden grid place-items-center h-9 w-9 rounded-xl border border-white/12 bg-white/[0.04] text-g-word shrink-0" aria-label={tr("Open menu")}>☰</button>
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-extrabold text-g-word truncate">{tr(title, lang)}</h1>
+              <h1 className="text-lg sm:text-xl font-extrabold text-g-word truncate flex items-center gap-2">{tr(title, lang)}{(() => { let demo = false; try { demo = JSON.parse(localStorage.getItem("guileo_portal_session") || "null")?.demo === true; } catch { /* */ } return demo ? <span className="text-[9px] font-black uppercase tracking-wide bg-g-gold/20 text-g-gold border border-g-gold/30 rounded-full px-2 py-0.5 shrink-0">{tr("Demo · sample data")}</span> : null; })()}</h1>
               <p className="text-[11px] text-g-muted truncate">{V.business.name} · {V.business.place} · {V.business.since}</p>
             </div>
           </div>
