@@ -291,7 +291,6 @@ export default function Home() {
                 {t.hero.trust.map(([ic,tx])=>(<span key={tx} className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] backdrop-blur-md px-3 py-1.5 text-xs font-semibold text-g-word hover:border-g-green/40 hover:text-g-light transition-colors">{ic} {tx}</span>))}
               </div>,
               t.hero.proof ? <p key="proof" className="mt-4 text-xs font-medium text-g-muted/90 max-w-xl leading-relaxed">{t.hero.proof}</p> : null,
-              <div key="b" className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-bold"><a href="#demo" className="inline-flex items-center gap-1.5 text-g-light hover:text-g-gold transition-colors">{t.hero.cta1}</a><span className="text-g-line">·</span><a href="/experience.html" className="inline-flex items-center gap-1.5 text-g-gold hover:gap-2.5 transition-all">▶ {t.hero.watch || "Watch the experience"}</a></div>,
             ].map((el,i)=>(
               <motion.div key={i} variants={{ hide:{ opacity:0, y:30, filter:"blur(8px)" }, show:{ opacity:1, y:0, filter:"blur(0px)", transition:{ type:"spring", stiffness:80, damping:18, mass:0.8 } } }}>{el}</motion.div>
             ))}
