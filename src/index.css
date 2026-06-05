@@ -78,11 +78,17 @@ body::after {
 .stagger > *:nth-child(7){animation-delay:.32s}
 .stagger > *:nth-child(n+8){animation-delay:.36s}
 
+/* Integrations hub — data flowing from connected tools into the Guileo brain */
+@keyframes dataflow { 0% { left:0%; opacity:0; } 8% { opacity:1; } 88% { opacity:1; } 100% { left:100%; opacity:0; } }
+.flowtrack { position:relative; height:2px; border-radius:2px; background:linear-gradient(90deg, rgba(62,148,104,0.25), rgba(214,194,154,0.25)); overflow:hidden; }
+.flowdot { position:absolute; top:50%; height:6px; width:6px; margin-top:-3px; border-radius:9999px; background:#3E9468; box-shadow:0 0 8px #3E9468; animation:dataflow 2.6s linear infinite; }
+
 /* respect reduced motion — kill ambient/decorative movement */
 @media (prefers-reduced-motion: reduce) {
   .card::after, .btn::before, .btn-gold::before { display:none; }
   .card:hover { transform:none; }
   .animate-aurora, .animate-floatslow, .animate-floaty, .animate-breathe, .animate-shimmer, .animate-marquee, .animate-glowpulse, .animate-spin, .animate-pulse { animation: none !important; }
   .stagger > * { animation: none !important; }
+  .flowdot { animation: none !important; opacity:.6; left:50% !important; }
   html { scroll-behavior: auto; }
 }

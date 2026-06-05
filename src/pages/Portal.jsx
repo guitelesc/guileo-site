@@ -376,6 +376,21 @@ const NAV_GROUPS = [
   ["Grow revenue", ["impact", "payments", "followups", "waitlist", "recurring", "reputation", "loyalty", "campaigns", "audiences", "grow"]],
   ["Account", ["locations", "team", "billing", "support", "settings"]],
 ];
+// Portal UI translation (PT) — keyed by the English string. Covers the most-visible
+// chrome (nav groups, section titles, topbar). tr() returns PT when lang==='pt'.
+const PT_UI = {
+  // nav groups
+  "Your AI ✨": "Sua IA ✨", "Operations": "Operações", "Conversations": "Conversas", "Customers": "Clientes", "Grow revenue": "Crescer receita", "Account": "Conta", "More": "Mais",
+  // section labels
+  "Overview": "Visão geral", "Guileo Impact": "Impacto Guileo", "Train your AI": "Treinar sua IA", "AI Analytics": "Análises de IA", "AI Insights": "Insights de IA", "Integrations": "Integrações",
+  "Live Orders": "Pedidos ao vivo", "Kitchen View": "Cozinha", "Menu": "Cardápio", "Delivery": "Entregas", "Payments": "Pagamentos", "Follow-ups": "Follow-ups", "Waitlist": "Lista de espera",
+  "Recurring": "Recorrentes", "Reputation": "Reputação", "Loyalty": "Fidelidade", "Customers ": "Clientes", "Campaigns": "Campanhas", "Ad Audiences": "Públicos de anúncio",
+  "Inbox": "Caixa de entrada", "Call Logs": "Chamadas", "Call Dialer": "Discador", "Social": "Social", "Grow with Guileo": "Crescer com a Guileo", "Locations": "Locais", "Team": "Equipe",
+  "Billing & Plan": "Plano e cobrança", "Support": "Suporte", "Settings": "Ajustes", "Operations": "Operações",
+  // topbar
+  "Report": "Relatório", "Search…": "Buscar…",
+};
+const tr = (s, lang) => (lang === "pt" && PT_UI[s]) ? PT_UI[s] : s;
 
 function Card({ children, className = "" }) {
   return <div className={`rounded-xl2 border border-white/10 bg-white/[0.04] backdrop-blur-md p-5 ${className}`}>{children}</div>;
@@ -1071,6 +1086,18 @@ function Integrations({ V, onNav }) {
             </div>
           </div>
           <a href={waLink("Hi Guileo! Help me connect my tools/systems")} target="_blank" rel="noopener" className="btn-bright text-sm">Connect a tool →</a>
+        </div>
+        {/* live data flow: connected tools → Guileo brain */}
+        <div className="mt-4 flex items-center gap-2">
+          <div className="flex items-center -space-x-1.5 shrink-0">
+            {flat.filter(([n]) => conn[n]).slice(0, 5).map(([name, Icon, color]) => (
+              <span key={name} title={name} className="grid place-items-center h-7 w-7 rounded-lg ring-2 ring-g-cream" style={{ background: color + "22", color }}>{typeof Icon === "string" ? <span className="text-[11px]">{Icon}</span> : <Icon size={11} />}</span>
+            ))}
+          </div>
+          <div className="flowtrack flex-1">
+            {[0, 0.7, 1.4, 2.1].map((d, i) => <span key={i} className="flowdot" style={{ animationDelay: `${d}s` }} />)}
+          </div>
+          <span className="grid place-items-center h-8 w-8 rounded-full bg-gradient-to-br from-g-green to-g-dark text-white shrink-0" title="Guileo AI"><FaWandMagicSparkles size={13} /></span>
         </div>
       </Card>
 
@@ -2136,6 +2163,15 @@ function Billing({ V }) {
   const pct = Math.round((plan.used / plan.total) * 100);
   const includes = ["AI voice agent · 24/7", "WhatsApp, SMS & social replies", "Bookings & reviews automation", "Live dashboard & monthly reports", "A real human managing it for you"];
   const invoices = [["Invoice #0012", "Jun 1, 2026", "Paid"], ["Invoice #0011", "May 1, 2026", "Paid"], ["Invoice #0010", "Apr 1, 2026", "Paid"]];
+  // Gui AI credits — same gui_credits store the assistant + its meter read, so they never disagree.
+  const [credits, setCredits] = useState(() => portalApi.loadState("gui_credits", 250));
+  const [payg, setPayg] = useState(() => portalApi.loadState("gui_payg", true));
+  useEffect(() => { const h = () => setCredits(portalApi.loadState("gui_credits", 250)); window.addEventListener("gui:credits", h); return () => window.removeEventListener("gui:credits", h); }, []);
+  const setC = (n) => { setCredits(n); portalApi.saveState("gui_credits", n); window.dispatchEvent(new Event("gui:credits")); };
+  const topUp = (n) => { setC(credits + n); toast(`${n} credits added ✓ — ${payg ? "billed to your account (pay-as-you-go)" : "added to your plan"}`); };
+  const usedThisMonth = vnum(V.label, "guiused", 60, 320);
+  const cpct = Math.max(2, Math.min(100, Math.round((credits / 500) * 100)));
+  const low = credits < 50;
   return (
     <div className="space-y-4 stagger">
       <div className="grid lg:grid-cols-3 gap-4">
@@ -2151,6 +2187,31 @@ function Billing({ V }) {
           <ul className="space-y-1.5 text-xs text-g-word">{includes.map((x, i) => <li key={i} className="flex gap-2"><span className="text-g-green">✓</span>{x}</li>)}</ul>
         </Card>
       </div>
+
+      {/* Gui AI credits — the assistant's pay-as-you-go meter, managed here */}
+      <Card className="border-g-green/25 bg-gradient-to-br from-g-green/[0.08] to-transparent">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="grid place-items-center h-10 w-10 rounded-xl bg-g-green/15 text-g-green"><FaWandMagicSparkles /></span>
+            <div><div className="text-sm font-extrabold text-g-word">Gui — AI assistant credits</div><div className="text-xs text-g-muted mt-0.5">Powers every task Gui runs for you · ~5 credits per action</div></div>
+          </div>
+          <div className="text-right"><div className={`text-2xl font-extrabold ${low ? "text-red-400" : "text-g-word"}`}>{credits}</div><div className="text-[10px] uppercase tracking-wide text-g-muted">credits left</div></div>
+        </div>
+        <div className="mt-3 h-2 rounded-full bg-white/10 overflow-hidden"><div className={`h-full rounded-full ${low ? "bg-red-500" : "bg-gradient-to-r from-g-green to-g-gold"}`} style={{ width: `${cpct}%` }} /></div>
+        <div className="mt-3 grid sm:grid-cols-3 gap-2">
+          {[["+250", 250, "$9"], ["+500", 500, "$16"], ["+1,200", 1200, "$32"]].map(([label, n, price]) => (
+            <button key={n} onClick={() => topUp(n)} className="rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2.5 text-center hover:border-g-green/50 hover:bg-white/[0.07] transition">
+              <div className="text-sm font-extrabold text-g-word">{label} <span className="text-g-muted font-normal">credits</span></div>
+              <div className="text-[10px] text-g-gold font-bold">{price}</div>
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+          <div className="flex items-center gap-2"><Toggle on={payg} onClick={() => { const v = !payg; setPayg(v); portalApi.saveState("gui_payg", v); toast(v ? "Pay-as-you-go on — auto-top-up when low" : "Pay-as-you-go off — Gui pauses when out of credits"); }} /><span className="text-g-muted">Auto top-up (pay-as-you-go)</span></div>
+          <span className="text-g-muted">{usedThisMonth} credits used this month</span>
+        </div>
+        <p className="mt-2 text-[10px] text-g-muted">Top-ups are billed securely to your account on file — we never ask for card details in chat.</p>
+      </Card>
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Invoices</div>
         <div className="divide-y divide-white/[0.06]">
@@ -3141,7 +3202,8 @@ function Gui({ V, onNav }) {
   const lastUndo = useRef(null);                  // undo closure for the most recent action
   const lastPt = useRef(false);                   // language of the last command, for system messages
   useEffect(() => { const h = () => setOpen(true); window.addEventListener("gui:open", h); return () => window.removeEventListener("gui:open", h); }, []);
-  const setC = (n) => { setCredits(n); portalApi.saveState("gui_credits", n); };
+  useEffect(() => { const h = () => setCredits(portalApi.loadState("gui_credits", 250)); window.addEventListener("gui:credits", h); return () => window.removeEventListener("gui:credits", h); }, []);
+  const setC = (n) => { setCredits(n); portalApi.saveState("gui_credits", n); window.dispatchEvent(new Event("gui:credits")); };
   const recharge = () => { setC(credits + 250); toast("250 credits added ✓ — pay-as-you-go, billed to your account"); };
   const remember = (t) => { setHistory((h) => { const next = [t, ...h.filter((x) => x !== t)].slice(0, 12); portalApi.saveState("gui_history", next); return next; }); };
   const isPt = (t) => /[ãõçáàâéêíóôú]|\b(cobr|fatur|entreg|agend|marc|reserv|avali|promo|cliente|atrasad|envi|mand|cria|fa[çc]a?|desfaz|quero|pedido|preciso)/i.test(t);
@@ -3247,6 +3309,8 @@ export default function Portal() {
   const [booting, setBooting] = useState(true);
   const [view, setView] = useState("overview");
   const [period, setPeriod] = useState("30 days");
+  const [lang, setLang] = useState(() => portalApi.loadState("portal_lang", "en"));
+  const toggleLang = () => setLang((l) => { const n = l === "pt" ? "en" : "pt"; portalApi.saveState("portal_lang", n); return n; });
   // Vertical can be deep-linked via ?v=<id> (shareable per-sector links) and is remembered.
   const [vertical, setVertical] = useState(() => {
     try {
@@ -3285,6 +3349,13 @@ export default function Portal() {
     const share = Math.round((impact.total * impact.sharePct) / 100);
     const kpiRows = V.kpis.map((k) => `<tr><td>${k.label}</td><td style="text-align:right;font-weight:700">${k.pre || ""}${k.num.toLocaleString?.() || k.num}${k.suf || ""}</td></tr>`).join("");
     const eventRows = impact.events.map(([t, what, amt]) => `<tr><td>${what}</td><td style="text-align:right;color:#1f9d57;font-weight:700">+$${amt}</td></tr>`).join("");
+    // Sector-aware: which of this business's tools Guileo is acting through, + standing automations.
+    const stack = portalApi.loadState(`${V.label}:stack`, {});
+    const flatTools = genIntegrations(V).flatMap(([, tools]) => tools);
+    const liveTools = flatTools.filter(([n, , , , , def]) => (stack[n] === undefined ? !!def : !!stack[n]));
+    const toolRows = liveTools.map(([name, , , doesEn]) => `<tr><td><b>${name}</b></td><td class="muted" style="font-size:13px">${doesEn}</td></tr>`).join("");
+    const autos = portalApi.loadState(`${V.label}:automations`, []).filter((a) => a.on);
+    const autoRows = autos.map((a) => `<tr><td>${a.what}</td><td style="text-align:right" class="muted">${a.when}</td></tr>`).join("");
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Guileo Monthly Report · ${V.business.name}</title><style>
       *{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1a1f1c;max-width:760px;margin:40px auto;padding:0 24px;line-height:1.5}
       h1{font-size:26px;margin:0}.muted{color:#6b7280}.hero{background:linear-gradient(135deg,#e9f6ef,#fbf6e8);border:1px solid #d9e9df;border-radius:16px;padding:24px;margin:20px 0}
@@ -3302,7 +3373,9 @@ export default function Portal() {
       </div>
       <h3>Key metrics</h3><table>${kpiRows}</table>
       <h3>Growth ledger</h3><table>${eventRows}<tr><td><b>Total</b></td><td style="text-align:right"><b>$${impact.total.toLocaleString()}</b></td></tr></table>
-      <div class="foot">Generated by Guileo · ${V.business.name} · This report reflects activity handled by your AI. Tip: print → Save as PDF.</div>
+      <h3>Your connected stack · ${liveTools.length} tools Guileo acts through</h3><table>${toolRows}</table>
+      ${autoRows ? `<h3>Automations on autopilot</h3><table>${autoRows}</table>` : ""}
+      <div class="foot">Generated by Guileo · ${V.business.name} · This report reflects activity handled by your AI across your connected stack. Tip: print → Save as PDF.</div>
     </body></html>`;
     const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
     window.open(url, "_blank");
@@ -3382,7 +3455,7 @@ export default function Portal() {
                 <button key={key} onClick={() => { setView(key); setNavOpen(false); }}
                   className={`relative flex items-center gap-3 rounded-xl2 px-3.5 py-2.5 text-sm font-bold whitespace-nowrap transition-colors ${on ? "text-g-word" : "text-g-muted hover:text-g-word"}`}>
                   {on && <motion.span layoutId="navpill" className="absolute inset-0 rounded-xl2 bg-white/[0.07] border border-g-gold/30" transition={{ type: "spring", stiffness: 380, damping: 30 }} />}
-                  <Icon size={15} className="relative" /><span className="relative">{label}</span>
+                  <Icon size={15} className="relative" /><span className="relative">{tr(label, lang)}</span>
                   {flag === "soon"
                     ? <span className="relative ml-auto text-[8px] font-black uppercase tracking-wider text-g-gold/90 bg-g-gold/10 rounded px-1 py-0.5">soon</span>
                     : notif > 0 && <span className="relative ml-auto inline-grid place-items-center h-5 min-w-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-black shadow-[0_0_8px_rgba(239,68,68,0.55)]">{notif}</span>}
@@ -3399,7 +3472,7 @@ export default function Portal() {
             if (leftover.length) groups.push(["More", leftover]);
             return groups.map(([g, items]) => (
               <div key={g || "main"} className="block">
-                {g && <div className="px-3.5 pt-3 pb-1 text-[9px] font-bold uppercase tracking-wider text-g-muted/60">{g}</div>}
+                {g && <div className="px-3.5 pt-3 pb-1 text-[9px] font-bold uppercase tracking-wider text-g-muted/60">{tr(g, lang)}</div>}
                 {items.map(renderBtn)}
               </div>
             ));
@@ -3428,13 +3501,14 @@ export default function Portal() {
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={() => setNavOpen(true)} className="lg:hidden grid place-items-center h-9 w-9 rounded-xl border border-white/12 bg-white/[0.04] text-g-word shrink-0" aria-label="Open menu">☰</button>
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-extrabold text-g-word truncate">{title}</h1>
+              <h1 className="text-lg sm:text-xl font-extrabold text-g-word truncate">{tr(title, lang)}</h1>
               <p className="text-[11px] text-g-muted truncate">{V.business.name} · {V.business.place} · {V.business.since}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button onClick={() => setPaletteOpen(true)} className="hidden md:flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs text-g-muted w-40 hover:border-g-gold/40 transition"><FaMagnifyingGlass size={11} /><span className="truncate">Search… ⌘K</span></button>
-            <button onClick={exportReport} className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word hover:border-g-gold/40 transition"><FaDownload size={11} /> Report</button>
+            <button onClick={exportReport} className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word hover:border-g-gold/40 transition"><FaDownload size={11} /> {tr("Report", lang)}</button>
+            <button onClick={toggleLang} title="Language" aria-label="Toggle language" className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-black text-g-word hover:border-g-gold/40 transition"><span className={lang === "en" ? "text-g-gold" : "text-g-muted"}>EN</span><span className="text-g-muted">·</span><span className={lang === "pt" ? "text-g-gold" : "text-g-muted"}>PT</span></button>
             <div className="relative">
               <button onClick={() => setBellOpen((o) => !o)} className="relative grid place-items-center h-9 w-9 rounded-full border border-white/12 bg-white/[0.04] text-g-muted hover:text-g-word transition" aria-label={`Notifications (${totalNotif})`}><FaBell size={13} />{totalNotif > 0 && <span className="absolute -top-1 -right-1 inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black shadow-[0_0_8px_rgba(239,68,68,0.6)]">{totalNotif}</span>}</button>
               {bellOpen && (
