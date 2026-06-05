@@ -113,6 +113,14 @@ const loyaltyCfg = (V) => LOYALTY[V.label] || { unit: "points", reward: "a rewar
 
 // ── Team / staff per sector (reuses STAFF map for names) ──
 const TEAM_ROLE = { "Restaurant": "Server", "Clinic": "Dentist", "Medical": "Doctor", "Salon & Spa": "Stylist", "Gym & Fitness": "Coach", "Law Firm": "Attorney", "Real Estate": "Agent", "Plumbing & HVAC": "Technician", "Auto Dealership": "Advisor", "Education": "Teacher", "Construction": "Foreman", "E-Commerce": "Support rep" };
+function genLocations(V) {
+  const n = V.business.name;
+  return [
+    { name: `${n} · Main`, addr: V.business.place || "Main St", status: "Open", revenue: vnum(V.label, "loc1", 1800, 9000), staff: (STAFF[V.label] || []).length || 3, today: vnum(V.label, "loc1o", 20, 120) },
+    { name: `${n} · Downtown`, addr: "Downtown", status: "Open", revenue: vnum(V.label, "loc2", 1200, 7000), staff: 3, today: vnum(V.label, "loc2o", 14, 90) },
+    { name: `${n} · Uptown`, addr: "Uptown", status: "Busy", revenue: vnum(V.label, "loc3", 900, 5000), staff: 2, today: vnum(V.label, "loc3o", 8, 60) },
+  ];
+}
 function genTeam(V) {
   const staff = (STAFF[V.label] || ["Team member"]).filter((s) => s && !/stand|desk|AI|Fulfillment|Packing|bay/i.test(s));
   const role = TEAM_ROLE[V.label] || "Team member";
@@ -319,7 +327,7 @@ function sectionsFor(vid, V) {
     ["payments", "Payments"], ["followups", "Follow-ups"], ["waitlist", "Waitlist"], ["recurring", "Recurring"], ["reputation", "Reputation"], ["loyalty", "Loyalty"],
     ["customers", "Customers"], ["campaigns", "Campaigns"], ["audiences", "Ad Audiences"],
     ["inbox", "Inbox"], ["calllogs", "Call Logs"], ["dialer", "Call Dialer"], ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"],
-    ["grow", "Grow with Guileo"], ["team", "Team"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
+    ["grow", "Grow with Guileo"], ["locations", "Locations"], ["team", "Team"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
   ];
 }
 // Red notification counts per menu item — drives urgency badges in the sidebar
@@ -346,7 +354,7 @@ const SECTION_ICON = {
   kitchen: FaUtensils, menu: FaBookOpen, deliveries: FaTruck, customers: FaUsers, campaigns: FaBullhorn, audiences: FaBullseye,
   inbox: FaComments, calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, social: FaShareNodes, grow: FaStore, billing: FaCreditCard,
   impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock, recurring: FaIdCard, reputation: FaStar, loyalty: FaGift, payments: FaReceipt,
-  channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, docs: FaFileLines, settings: FaGear, team: FaUsers,
+  channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, docs: FaFileLines, settings: FaGear, team: FaUsers, locations: FaLocationDot,
 };
 // Group the (long) nav into scannable categories
 // Order = everyday use first (operations/conversations/customers), then growth/strategy, then account.
@@ -357,7 +365,7 @@ const NAV_GROUPS = [
   ["Conversations", ["inbox", "calllogs", "dialer", "whatsapp", "sms", "social"]],
   ["Customers", ["customers"]],
   ["Grow revenue", ["impact", "payments", "followups", "waitlist", "recurring", "reputation", "loyalty", "campaigns", "audiences", "grow"]],
-  ["Account", ["team", "billing", "support", "settings"]],
+  ["Account", ["locations", "team", "billing", "support", "settings"]],
 ];
 
 function Card({ children, className = "" }) {
@@ -1554,9 +1562,25 @@ function SettingsView({ V }) {
           ))}
         </div>
       </Card>
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Integrations &amp; webhooks</div>
+        <div className="divide-y divide-white/[0.06]">
+          {[["📅 Calendar (Google/Apple)", "Connected"], ["💳 Stripe payments", "Connected"], ["🍔 POS / orders", "Connected"], ["📣 Meta & Google Ads", "Connected"], ["🛵 Delivery platforms", "Connected"]].map(([name, st]) => (
+            <div key={name} className="flex items-center justify-between px-5 py-3"><span className="text-sm text-g-word font-semibold">{name}</span><span className="text-[10px] font-black uppercase text-g-green inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{st}</span></div>
+          ))}
+        </div>
+        <div className="px-5 py-3 border-t border-white/10">
+          <div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">Live webhook events</div>
+          <div className="space-y-1.5 font-mono text-[10px] text-g-muted">
+            {[["order.created", "→ POS · just now"], ["booking.confirmed", "→ Calendar · 2m"], ["payment.succeeded", "→ Stripe · 6m"], ["review.received", "→ Reputation · 11m"]].map(([ev, meta]) => (
+              <div key={ev} className="flex items-center gap-2"><span className="text-g-green">●</span><span className="text-g-word">{ev}</span><span className="flex-1" /><span>{meta}</span></div>
+            ))}
+          </div>
+        </div>
+      </Card>
       <Card className="flex flex-wrap items-center justify-between gap-3">
         <div><div className="text-sm font-bold text-g-word">Demo data</div><div className="text-[11px] text-g-muted">Reset resolved alerts, won deals, filled slots & read flags back to the sample state.</div></div>
-        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "created:deliveries", "created:campaigns", "created:impact", "created:audiences", "created:reviewreq", "created:payments", "created:team", "integrations", "owndelivery", "loyalty"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
+        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "created:deliveries", "created:campaigns", "created:impact", "created:audiences", "created:reviewreq", "created:payments", "created:team", "created:locations", "integrations", "owndelivery", "loyalty"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
       </Card>
       <p className="text-center text-[11px] text-g-muted">Changes apply instantly. Need something custom? Your team's a tap away. 💬</p>
     </div>
@@ -2037,6 +2061,49 @@ function Palette({ V, sections, onNav, onClose }) {
         </div>
       </div>
     </>
+  );
+}
+
+// Multi-location — run every branch from one dashboard.
+function Locations({ V }) {
+  const rows = [...loadCreated(V.label, "locations"), ...genLocations(V)];
+  const totalRev = rows.reduce((s, r) => s + (r.revenue || 0), 0);
+  const [sel, setSel] = useState(null);
+  const addLocation = () => { pushCreated(V.label, "locations", { name: `${V.business.name} · New branch`, addr: "New address", status: "Onboarding", revenue: 0, staff: 0, today: 0 }); toast("Location added ✓ — your AI is now covering it too"); };
+  return (
+    <div className="space-y-4">
+      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaLocationDot className="text-g-green" /> Locations</div><div className="text-xs text-g-muted mt-0.5">One AI, every branch — calls, bookings and orders routed to the right location automatically.</div></div>
+          <button onClick={addLocation} className="btn-bright text-sm inline-flex items-center gap-2"><FaPlus size={11} /> Add location</button>
+        </div>
+      </Card>
+      <MiniStats items={[["Locations", `${rows.length}`], ["Revenue (all)", `$${totalRev.toLocaleString()}`, "good"], ["Open now", `${rows.filter((r) => r.status !== "Onboarding").length}`, "good"], ["Today's volume", `${rows.reduce((s, r) => s + (r.today || 0), 0)}`]]} />
+      <div className="grid sm:grid-cols-2 gap-4">
+        {rows.map((r, i) => (
+          <button key={i} onClick={() => setSel(r)} className="text-left">
+            <Card className="hover:border-g-gold/30 transition">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{r.name}{r.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">new</span>}</div><div className="text-[11px] text-g-muted">{r.addr}</div></div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ background: (r.status === "Open" ? "#3E9468" : r.status === "Busy" ? "#D6C29A" : "#38BDF8") + "22", color: r.status === "Open" ? "#3E9468" : r.status === "Busy" ? "#D6C29A" : "#38BDF8" }}>{r.status}</span>
+              </div>
+              <div className="mt-3 flex items-center gap-4 text-xs"><span className="font-extrabold text-g-word">${(r.revenue || 0).toLocaleString()}<span className="text-g-muted font-normal"> /mo</span></span><span className="text-g-muted">{r.staff} staff</span><span className="text-g-muted">{r.today} today</span></div>
+            </Card>
+          </button>
+        ))}
+      </div>
+      {sel && (
+        <Drawer
+          title={sel.name}
+          subtitle={sel.addr}
+          badge={<span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: (sel.status === "Open" ? "#3E9468" : sel.status === "Busy" ? "#D6C29A" : "#38BDF8") + "22", color: sel.status === "Open" ? "#3E9468" : sel.status === "Busy" ? "#D6C29A" : "#38BDF8" }}>{sel.status}</span>}
+          fields={[["Address", sel.addr], ["Revenue (mo.)", `$${(sel.revenue || 0).toLocaleString()}`], ["Staff", sel.staff], ["Volume today", sel.today], ["Status", sel.status]]}
+          note={sel.status === "Onboarding" ? "New branch — your AI is being set up to cover its calls, bookings and chats." : `Fully live — the AI handles ${sel.name}'s customers 24/7 alongside every other branch.`}
+          actions={<><button onClick={() => { toast(`${sel.name} set as default ✓`); setSel(null); }} className="btn-bright text-sm">⭐ Set default</button><a href={waLink(`Hi Guileo, about ${sel.name}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Manage</a></>}
+          onClose={() => setSel(null)}
+        />
+      )}
+    </div>
   );
 }
 
@@ -2547,6 +2614,7 @@ export default function Portal() {
     loyalty: <Loyalty V={V} />,
     payments: <Payments V={V} />,
     team: <Team V={V} />,
+    locations: <Locations V={V} />,
     operations: <Operations V={V} />,
     schedule: <ScheduleScreen V={V} />,
     catalog: <CatalogScreen V={V} />,

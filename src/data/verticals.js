@@ -42,7 +42,7 @@ export const VERTICALS = {
       ["overview", "Overview"], ["impact", "Guileo Impact"], ["brain", "Train your AI"], ["analytics", "AI Analytics"], ["liveorders", "Live Orders"],
       ["kitchen", "Kitchen View"], ["menu", "Menu"], ["deliveries", "Delivery"], ["followups", "Follow-ups"], ["waitlist", "Waitlist"], ["payments", "Payments"], ["recurring", "Recurring"], ["reputation", "Reputation"], ["loyalty", "Loyalty"], ["customers", "Customers"], ["campaigns", "Campaigns"],
       ["audiences", "Ad Audiences"], ["inbox", "Inbox"], ["calllogs", "Call Logs"], ["dialer", "Call Dialer"],
-      ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"], ["grow", "Grow with Guileo"], ["team", "Team"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
+      ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"], ["grow", "Grow with Guileo"], ["locations", "Locations"], ["team", "Team"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
     ],
     liveOrders: [
       { id: "#1049", customer: "Sofia M.", items: "Pão de Queijo x3, Guaraná", total: 29.0, channel: "iFood", status: "New", color: G },
