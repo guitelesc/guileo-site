@@ -525,6 +525,24 @@ function dailyBriefing(V) {
   bits.push(`${fc.peak} looks busiest`);
   return bits.join(" · ");
 }
+// R4 — auto weekly recap Gui writes itself, derived from the Impact ledger + created records.
+function weeklySummary(V) {
+  const L = V.label;
+  const impact = loadCreated(L, "impact");
+  const driven = impact.reduce((s, r) => s + (r.amt || 0), 0);
+  const created = ["liveorders", "schedule", "deliveries", "payments", "campaigns", "reviewreq"].reduce((s, k) => s + loadCreated(L, k).length, 0);
+  const handled = vnum(L, "wkhandled", 40, 220) + created;     // AI-handled conversations this week
+  const open = genPayments(V).filter((p) => p.status !== "Paid").length;
+  const fc = genForecast(V);
+  const hours = vnum(L, "wkhours", 9, 28);
+  return { driven, created, handled, open, peak: fc.peak, hours };
+}
+// R3 — standing automations Gui sets up ("every Monday chase overdue"). Persisted; shown on Overview.
+const autoKey = (L) => `${L}:automations`;
+const loadAutomations = (L) => portalApi.loadState(autoKey(L), []);
+function addAutomation(L, rec) { const cur = loadAutomations(L); portalApi.saveState(autoKey(L), [{ ...rec, _id: Date.now(), on: true }, ...cur].slice(0, 12)); }
+function toggleAutomation(L, id) { const cur = loadAutomations(L); portalApi.saveState(autoKey(L), cur.map((a) => (a._id === id ? { ...a, on: !a.on } : a))); }
+function removeAutomation(L, id) { portalApi.saveState(autoKey(L), loadAutomations(L).filter((a) => a._id !== id)); }
 
 function Overview({ V, onNav, sections = [], period = "30 days" }) {
   const [resolved, setResolved] = useState(() => portalApi.loadState(`${V.label}:alerts`, []));
@@ -533,6 +551,9 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
   const resolveAlert = (i) => { portalApi.resolveAlert(i); setResolved((r) => { const n = [...r, i]; portalApi.saveState(`${V.label}:alerts`, n); return n; }); toast("Marked as handled ✓"); };
   const validViews = new Set(sections.map(([k]) => k));
   const ops = growthOps(V).filter((o) => validViews.has(o.view)).slice(0, 3);
+  const [autoTick, setAutoTick] = useState(0);                 // force re-render on automation toggle/remove
+  const automations = loadAutomations(V.label); void autoTick;
+  const wk = weeklySummary(V);
   // Monthly revenue goal — editable + persisted; tracks current + projection.
   const defGoal = Math.max(500, Math.round((V.impact.total * 2.4) / 100) * 100);
   const [goal, setGoal] = useState(() => portalApi.loadState(`${V.label}:goal`, defGoal));
@@ -690,6 +711,38 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
           </div>
         </Card>
       ) : null; })()}
+
+      {/* R4 — WEEKLY RECAP Gui writes itself */}
+      <Card className="bg-gradient-to-br from-g-gold/[0.08] to-transparent border-g-gold/25">
+        <div className="flex items-start gap-3">
+          <span className="grid place-items-center h-10 w-10 rounded-xl bg-g-gold/15 text-g-gold shrink-0"><FaWandMagicSparkles /></span>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-extrabold text-g-word">Your week, by Gui</div>
+            <div className="text-xs text-g-muted mt-1 leading-relaxed">This week your AI handled <span className="text-g-word font-bold">{wk.handled}</span> conversations, created <span className="text-g-word font-bold">{wk.created || vnum(V.label, "wkc", 6, 24)}</span> bookings &amp; orders{wk.driven ? <> and drove <span className="text-g-green font-bold">${wk.driven.toLocaleString()}</span> in tracked revenue</> : ""} — saving you about <span className="text-g-word font-bold">{wk.hours}h</span>. {wk.open ? <>Next: <span className="text-g-word font-semibold">{wk.open} invoice{wk.open !== 1 ? "s" : ""}</span> still to collect, and <span className="text-g-word font-semibold">{wk.peak}</span> looks busiest.</> : <>Next week <span className="text-g-word font-semibold">{wk.peak}</span> looks busiest — want a promo to fill the quiet days?</>}</div>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              <button onClick={() => onNav("impact")} className="btn-ghost text-xs px-3 py-1.5">See the impact →</button>
+              {wk.open > 0 && <button onClick={() => onNav("payments")} className="btn-ghost text-xs px-3 py-1.5">Collect now →</button>}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* R3 — STANDING AUTOMATIONS Gui set up */}
+      {automations.length > 0 && (
+        <Card className="p-0 overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">⚙️ Automations on autopilot</span><span className="text-[10px] text-g-muted">{automations.filter((a) => a.on).length} active</span></div>
+          <div className="divide-y divide-white/[0.05]">
+            {automations.map((a) => (
+              <div key={a._id} className="flex items-center gap-3 px-5 py-3">
+                <span className="text-base shrink-0">{a.ic || "⚡"}</span>
+                <div className="flex-1 min-w-0"><div className={`text-xs font-bold truncate ${a.on ? "text-g-word" : "text-g-muted line-through"}`}>{a.what}</div><div className="text-[10px] text-g-muted">{a.when}</div></div>
+                <Toggle on={!!a.on} onClick={() => { toggleAutomation(V.label, a._id); setAutoTick((t) => t + 1); }} />
+                <button onClick={() => { removeAutomation(V.label, a._id); setAutoTick((t) => t + 1); toast("Automation removed"); }} aria-label="Remove" className="text-g-muted hover:text-red-400 transition shrink-0"><FaTrash size={11} /></button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className={`grid gap-4 grid-cols-2 ${V.kpis.length >= 6 ? "md:grid-cols-3 xl:grid-cols-6" : "sm:grid-cols-2 lg:grid-cols-4"}`}>
         {V.kpis.map((k, i) => (
@@ -2958,6 +3011,20 @@ function guiPlan(text, V, ctx = {}) {
   if (/(instagram|\bpost\b|publica|story|stories|\bfeed\b|social)/.test(s)) { const ok = connected("Instagram"); return { cost: ok ? 5 : 0, ctx, reply: ok ? L("Posted ✓ — your AI scheduled an on-brand post to Instagram & Facebook, timed for when your audience is most active. It's in Social.", "Publicado ✓ — sua IA agendou um post na cara da marca pro Instagram e Facebook, na hora de pico do seu público. Está em Social.") : L("Instagram isn't connected yet — connect it in Integrations and I'll post for you.", "O Instagram ainda não está conectado — conecte em Integrações que eu publico por você."), next: ok ? undefined : [{ label: L("🔌 Open Integrations", "🔌 Abrir Integrações"), cmd: "open integrations" }], run: (onNav) => onNav?.(ok ? "social" : "integrations") }; }
   if (/(quickbooks|accounting|contabil|sync.*(book|nota)|nota fiscal|bookkeep)/.test(s)) { const ok = connected("QuickBooks"); return { cost: ok ? 3 : 0, ctx, reply: ok ? L("Synced ✓ — every sale and invoice is flowing into QuickBooks automatically. Your books stay current with zero data entry.", "Sincronizado ✓ — cada venda e fatura entra no QuickBooks automaticamente. Sua contabilidade fica em dia sem digitar nada.") : L("QuickBooks isn't connected — connect it in Integrations and I'll keep your books in sync.", "O QuickBooks não está conectado — conecte em Integrações que eu mantenho a contabilidade sincronizada."), next: ok ? undefined : [{ label: L("🔌 Open Integrations", "🔌 Abrir Integrações"), cmd: "open integrations" }], run: (onNav) => onNav?.(ok ? "payments" : "integrations") }; }
   if (/(integration|integra[çc]|connect|conect|stack|my tools|minhas ferramentas)/.test(s)) return { cost: 0, ctx, reply: L("Here's your connected stack — toggle any tool and I start acting through it.", "Aqui está seu stack conectado — ligue qualquer ferramenta e eu começo a agir através dela."), run: (onNav) => onNav?.("integrations") };
+  if (/(open|go to|abrir?|ver)\s+(overview|home|in[íi]cio|dashboard|automa)/.test(s)) return { cost: 0, ctx, reply: L("Here's your Overview — your automations and weekly recap are here.", "Aqui está seu Overview — suas automações e o resumo da semana estão aqui."), run: (onNav) => onNav?.("overview") };
+  // R3 — recurring automations: "every Monday chase overdue", "toda semana peça avaliações".
+  if (/\b(every|each|always|recurring|weekly|daily|automat|toda|todo|todas|todos|sempre|cada|recorrente|autom[áa]tic)/.test(s) && /(chase|overdue|remind|cobr|invoice|fatur|review|avali|promo|campaign|follow|nudge|post|instagram|social|report|resumo|recap)/.test(s)) {
+    const day = /(monday|segunda)/.test(s) ? L("every Monday", "toda segunda") : /(friday|sexta)/.test(s) ? L("every Friday", "toda sexta") : /(daily|every day|todo dia|diari)/.test(s) ? L("every day", "todo dia") : /(month|m[êe]s)/.test(s) ? L("monthly", "todo mês") : L("every week", "toda semana");
+    let what, ic;
+    if (/(chase|overdue|remind|cobr|invoice|fatur)/.test(s)) { what = L("chase overdue invoices", "cobrar faturas atrasadas"); ic = "💳"; }
+    else if (/(review|avali)/.test(s)) { what = L("request reviews from happy customers", "pedir avaliações aos clientes felizes"); ic = "⭐"; }
+    else if (/(promo|campaign)/.test(s)) { what = L("launch a promo to quiet days", "lançar promoção nos dias parados"); ic = "📣"; }
+    else if (/(follow|nudge)/.test(s)) { what = L("nudge warm leads with a follow-up", "cutucar leads quentes com follow-up"); ic = "🔁"; }
+    else if (/(post|instagram|social)/.test(s)) { what = L("post to Instagram & Facebook", "postar no Instagram e Facebook"); ic = "📸"; }
+    else { what = L("send you a recap", "te mandar um resumo"); ic = "📊"; }
+    const when = day.charAt(0).toUpperCase() + day.slice(1);
+    return { cost: 3, ctx, reply: L(`Set ✓ — from now on I'll ${what} ${day}, automatically. It's on your Overview under Automations, where you can pause it anytime.`, `Pronto ✓ — de agora em diante eu vou ${what} ${day}, automaticamente. Está no seu Overview em Automações, onde você pausa quando quiser.`), next: [{ label: L("⚙️ See automations", "⚙️ Ver automações"), cmd: "open overview" }], run: (onNav) => { addAutomation(V.label, { what: what.charAt(0).toUpperCase() + what.slice(1), when, ic }); onNav?.("overview"); } };
+  }
   if (/(remind|chase|collect all|chase all|overdue|atrasad|cobrar todos|all unpaid)/.test(s)) { const open = genPayments(V).filter((p) => p.status !== "Paid"); return { cost: 5, ctx, reply: L(`Done ✓ — I sent payment reminders to ${open.length} customer${open.length !== 1 ? "s" : ""} with open invoices. They're in Payments.`, `Pronto ✓ — enviei lembretes de pagamento para ${open.length} cliente${open.length !== 1 ? "s" : ""} com faturas em aberto. Estão em Pagamentos.`), next: [{ label: L("⭐ Ask them for reviews too", "⭐ Pedir avaliações também"), cmd: "request reviews from my recent customers" }], run: (onNav) => onNav?.("payments") }; }
   if (/(invoice|charge|bill|cobr|fatur|payment|receb)/.test(s)) return { cost: 5, ctx: C(target), reply: L(`Done ✓ — invoice sent to ${target} with a payment link, tracked in Payments. I'll chase it until it's paid.`, `Pronto ✓ — fatura enviada para ${target} com link de pagamento, registrada em Pagamentos. Eu cobro até ser paga.`), next: [{ label: L(`📅 Book ${target} too`, `📅 Agendar ${target} também`), cmd: `book them` }, { label: L("⭐ Request a review", "⭐ Pedir avaliação"), cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: target, amount: vnum(V.label, "guiinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); onNav?.("payments"); return undoer([{ view: "payments", id }], "payments"); } };
   if (/(review|avalia|rating|estrela)/.test(s)) return { cost: 5, ctx: C(who || ctx.customer), reply: L(`On it ✓ — I queued review requests${who ? ` to ${target}` : " to your happiest recent customers"}. Tracked in Reputation.`, `Feito ✓ — enviei pedidos de avaliação${who ? ` para ${target}` : " aos seus clientes mais satisfeitos"}. Registrado em Reputação.`), next: [{ label: L("📣 Turn 5★ reviews into ads", "📣 Virar avaliações 5★ em anúncios"), cmd: "launch a promo" }], run: (onNav) => { const rows = (who ? [{ name: target, channel: "WhatsApp" }] : customers.slice(0, 3)).map((c) => ({ view: "reviewreq", id: pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel }) })); onNav?.("reputation"); return undoer(rows, "reputation"); } };
