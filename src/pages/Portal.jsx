@@ -2007,9 +2007,20 @@ function genRecommendations(V) {
     { ic: "🔁", text: "Several customers lapsed in the last 30 days — a win-back sequence recovers ~1 in 4.", cta: "Start win-back", view: "followups", apply: (onNav) => { toast("Win-back sequence started ✓"); onNav?.("followups"); } },
   ];
 }
+// Predictive AI — demand forecast + no-show risk, derived deterministically per sector.
+function genForecast(V) {
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const load = days.map((d) => vnum(V.label, `fc${d}`, 45, 130));
+  const peakIdx = load.indexOf(Math.max(...load));
+  const lowIdx = load.indexOf(Math.min(...load));
+  const risk = (V.ops?.schedule || []).filter((r) => /pending|new|risk|follow|unconfirmed/i.test(r.status)).slice(0, 3).map((r) => r.name);
+  return { days, load, peak: days[peakIdx], peakLoad: load[peakIdx], low: days[lowIdx], risk };
+}
 function AIAnalytics({ V, onNav, sections = [] }) {
   const has = new Set(sections.map(([k]) => k));
   const recs = genRecommendations(V).filter((r) => has.has(r.view));
+  const fc = genForecast(V);
+  const fcMax = Math.max(...fc.load);
   const sentiment = [["Positive", 82, "#3E9468"], ["Neutral", 13, "#D6C29A"], ["Negative", 5, "#EF4444"]];
   const intents = aiIntents(V);
   const missed = aiMissed(V);
@@ -2047,6 +2058,36 @@ function AIAnalytics({ V, onNav, sections = [] }) {
         </div>
         <div className="px-5 py-2.5 border-t border-white/[0.06] text-[11px] text-g-muted">{missed[0]}</div>
       </Card>
+
+      {/* Predictive AI — demand forecast + no-show risk */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        <Card>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-1">🔮 Predicted demand · next 7 days</div>
+          <div className="text-[11px] text-g-muted mb-3"><b className="text-g-green">{fc.peak}</b> peaks at <b className="text-g-word">{fc.peakLoad}%</b> — open more capacity. <b className="text-g-muted">{fc.low}</b> is quietest — a promo fills it.</div>
+          <div className="flex items-end gap-1.5 h-24">
+            {fc.load.map((v, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                <div className="w-full rounded-t" style={{ height: `${(v / fcMax) * 100}%`, background: v >= 100 ? "#EF4444" : v >= 80 ? "#D6C29A" : "#3E9468", minHeight: "4px" }} title={`${v}%`} />
+                <span className="text-[9px] text-g-muted">{fc.days[i]}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex items-center gap-3 text-[9px] text-g-muted"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-g-green" />Normal</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: "#D6C29A" }} />Busy</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-red-500" />Over capacity</span></div>
+        </Card>
+        <Card className="p-0 overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">⚠ No-show risk · AI flagged</div>
+          <div className="divide-y divide-white/[0.06]">
+            {fc.risk.length ? fc.risk.map((name, i) => (
+              <div key={i} className="flex items-center gap-3 px-5 py-3">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-400 shrink-0" />
+                <div className="flex-1 min-w-0 text-sm font-bold text-g-word truncate">{name}</div>
+                <button onClick={() => toast(`Deposit + reminder sent to ${name} ✓`)} className="text-[11px] font-bold rounded-full border border-white/12 px-2.5 py-1 text-g-word hover:border-g-gold/40 transition">Secure</button>
+              </div>
+            )) : <Empty icon="✅" text="No high-risk bookings — your AI's reminders are keeping no-shows low." />}
+          </div>
+          {fc.risk.length > 0 && <div className="px-5 py-2.5 border-t border-white/[0.06] text-[11px] text-g-muted">The AI auto-sends deposit requests + reminders to high-risk bookings.</div>}
+        </Card>
+      </div>
       <div className="grid lg:grid-cols-2 gap-4">
         {T.map((t, i) => (
           <Card key={i} className="p-0 overflow-hidden">
@@ -2643,12 +2684,35 @@ export default function Portal() {
   const switchVertical = (k) => { setVertical(k); setView("overview"); setVertOpen(false); setNotifsRead(portalApi.loadState(`${k}:notifsRead`, false)); };
   const markAllRead = () => { setNotifsRead(true); portalApi.saveState(`${vertical}:notifsRead`, true); setBellOpen(false); toast("All caught up ✓"); };
   const logout = () => portalApi.logout().then(() => setAuthed(false));
+  // Polished, print-ready monthly report (open → Cmd/Ctrl-P → Save as PDF).
   const exportReport = () => {
-    const rows = [["Metric", "Value"], ...V.kpis.map((k) => [k.label, `${k.pre || ""}${k.num}${k.suf || ""}`])];
-    const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    const a = document.createElement("a"); a.href = url; a.download = `guileo-${vertical}-report.csv`; a.click(); URL.revokeObjectURL(url);
-    toast("Report downloaded ✓");
+    const impact = genImpact(V);
+    const share = Math.round((impact.total * impact.sharePct) / 100);
+    const kpiRows = V.kpis.map((k) => `<tr><td>${k.label}</td><td style="text-align:right;font-weight:700">${k.pre || ""}${k.num.toLocaleString?.() || k.num}${k.suf || ""}</td></tr>`).join("");
+    const eventRows = impact.events.map(([t, what, amt]) => `<tr><td>${what}</td><td style="text-align:right;color:#1f9d57;font-weight:700">+$${amt}</td></tr>`).join("");
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Guileo Monthly Report · ${V.business.name}</title><style>
+      *{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1a1f1c;max-width:760px;margin:40px auto;padding:0 24px;line-height:1.5}
+      h1{font-size:26px;margin:0}.muted{color:#6b7280}.hero{background:linear-gradient(135deg,#e9f6ef,#fbf6e8);border:1px solid #d9e9df;border-radius:16px;padding:24px;margin:20px 0}
+      .big{font-size:44px;font-weight:900;letter-spacing:-1px}.share{background:#fff7e6;border:1px solid #f0d99b;border-radius:12px;padding:14px;margin-top:14px}
+      table{width:100%;border-collapse:collapse;margin:8px 0 24px}td{padding:9px 4px;border-bottom:1px solid #eee;font-size:14px}h3{margin:24px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#9a7b1f}
+      .foot{color:#9ca3af;font-size:12px;margin-top:30px;border-top:1px solid #eee;padding-top:14px}@media print{body{margin:0}}
+    </style></head><body>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end">
+        <div><h1>${V.business.name}</h1><div class="muted">${V.business.place} · Monthly growth report</div></div>
+        <div style="font-weight:900;color:#1f9d57">GUILEO</div>
+      </div>
+      <div class="hero"><div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#9a7b1f;font-weight:700">Growth Guileo drove this month</div>
+        <div class="big">$${impact.total.toLocaleString()}</div>
+        <div class="share"><b>Guileo's share · ${impact.sharePct}% of growth: $${share.toLocaleString()}</b><br><span class="muted">You keep $${(impact.total - share).toLocaleString()} — we only win when you win.</span></div>
+      </div>
+      <h3>Key metrics</h3><table>${kpiRows}</table>
+      <h3>Growth ledger</h3><table>${eventRows}<tr><td><b>Total</b></td><td style="text-align:right"><b>$${impact.total.toLocaleString()}</b></td></tr></table>
+      <div class="foot">Generated by Guileo · ${V.business.name} · This report reflects activity handled by your AI. Tip: print → Save as PDF.</div>
+    </body></html>`;
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    toast("Monthly report opened — print → Save as PDF ✓");
   };
   const content = {
     overview: <Overview V={V} onNav={setView} sections={sections} period={period} />,
