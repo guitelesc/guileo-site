@@ -54,6 +54,20 @@ const DEPOSIT = { "Restaurant": 20, "Clinic": 30, "Medical": 40, "Salon & Spa": 
 function vhash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
 function vnum(label, salt, min, max) { return min + (vhash(`${label}|${salt}`) % (max - min + 1)); }
 
+// Records created FROM a conversation (chat/call) persist so they genuinely appear
+// at the top of the target tab — closes the "action lands in its tab" loop.
+const createdKey = (label, view) => `${label}:created:${view}`;
+function pushCreated(label, view, rec) {
+  const cur = portalApi.loadState(createdKey(label, view), []);
+  portalApi.saveState(createdKey(label, view), [{ ...rec, fromChat: true, _id: Date.now() }, ...cur].slice(0, 25));
+}
+const loadCreated = (label, view) => portalApi.loadState(createdKey(label, view), []);
+function recordFor(view, who, channel) {
+  if (view === "liveorders") return { id: `#${1000 + (Date.now() % 9000)}`, customer: who, items: `New order · via ${channel}`, total: 0, channel, status: "New", color: "#3E9468" };
+  if (view === "schedule") return { time: "ASAP", name: who, meta: `Booked via ${channel}`, status: "Pending", ch: channel, color: "#D6C29A" };
+  return null;
+}
+
 // ── Delivery / dispatch config per sector ──
 // Restaurants plug into Uber Eats / DoorDash / Grubhub AND run their own drivers;
 // every other vertical gets the equivalent logistics layer (carriers, field techs,
@@ -944,7 +958,7 @@ function Docs() {
 
 /* ───────────────────────── Sector screens (restaurant + reusable) ───────────────────────── */
 function LiveOrders({ V }) {
-  const rows = V.liveOrders || [];
+  const rows = [...loadCreated(V.label, "liveorders"), ...(V.liveOrders || [])];
   const [sel, setSel] = useState(null);
   return (
     <>
@@ -954,7 +968,7 @@ function LiveOrders({ V }) {
         {rows.map((o, i) => (
           <button key={i} onClick={() => setSel(o)} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
             <span className="text-xs font-bold text-g-light w-16 shrink-0">{o.id}</span>
-            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{o.customer}</div><div className="text-[11px] text-g-muted truncate">{o.items} · {o.channel}</div></div>
+            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{o.customer}{o.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">from chat</span>}</div><div className="text-[11px] text-g-muted truncate">{o.items} · {o.channel}</div></div>
             <span className="text-sm font-extrabold text-g-word">${o.total.toFixed(2)}</span>
             <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: o.color + "22", color: o.color }}>{o.status}</span>
           </button>
@@ -1286,9 +1300,10 @@ function convoAction(V) {
 function ConvoActions({ V, who, channel, onNav, onDone }) {
   const act = convoAction(V);
   const fire = (msg, view) => { toast(msg); onDone?.(); if (view) onNav?.(view); };
+  const firePrimary = () => { const rec = recordFor(act.view, who, channel); if (rec) pushCreated(V.label, act.view, rec); fire(`${act.done} from ${who}'s ${channel} ✓ — see it in the tab`, act.view); };
   return (
     <div className="flex flex-wrap gap-2">
-      <button onClick={() => fire(`${act.done} from ${who}'s ${channel} ✓`, act.view)} className="text-[11px] font-bold rounded-full border border-g-green/40 bg-g-green/[0.1] px-3 py-1.5 text-g-green hover:bg-g-green/20 transition">{act.label}</button>
+      <button onClick={firePrimary} className="text-[11px] font-bold rounded-full border border-g-green/40 bg-g-green/[0.1] px-3 py-1.5 text-g-green hover:bg-g-green/20 transition">{act.label}</button>
       <button onClick={() => fire(`${who} added to follow-ups ✓`, "followups")} className="text-[11px] font-bold rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">⏰ Follow-up</button>
       <button onClick={() => fire(`Saved to ${who}'s customer profile ✓`, "customers")} className="text-[11px] font-bold rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">👤 Save to customer</button>
     </div>
@@ -1481,7 +1496,7 @@ function SettingsView({ V }) {
       </Card>
       <Card className="flex flex-wrap items-center justify-between gap-3">
         <div><div className="text-sm font-bold text-g-word">Demo data</div><div className="text-[11px] text-g-muted">Reset resolved alerts, won deals, filled slots & read flags back to the sample state.</div></div>
-        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
+        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "integrations", "owndelivery"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
       </Card>
       <p className="text-center text-[11px] text-g-muted">Changes apply instantly. Need something custom? Your team's a tap away. 💬</p>
     </div>
@@ -1745,7 +1760,7 @@ function Billing({ V }) {
 
 function ScheduleScreen({ V }) {
   const o = V.ops || {};
-  const sch = o.schedule || [];
+  const sch = [...loadCreated(V.label, "schedule"), ...(o.schedule || [])];
   const [sel, setSel] = useState(null);
   return (
     <div className="space-y-4">
@@ -1777,7 +1792,7 @@ function ScheduleScreen({ V }) {
             return (
               <button key={i} onClick={() => setSel({ r, i, who })} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
                 <span className="text-xs font-bold text-g-light w-20 shrink-0 inline-block truncate align-middle" title={r.time}>{r.time}</span>
-                <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted truncate">{r.meta}{who ? <> · <span className="text-g-light">{who}</span></> : ""}{r.ch && r.ch !== "—" ? ` · ${r.ch}` : ""}</div></div>
+                <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{r.name}{r.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">from chat</span>}</div><div className="text-[11px] text-g-muted truncate">{r.meta}{who ? <> · <span className="text-g-light">{who}</span></> : ""}{r.ch && r.ch !== "—" ? ` · ${r.ch}` : ""}</div></div>
                 <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span>
               </button>
             );
