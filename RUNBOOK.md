@@ -61,6 +61,18 @@ rsync -a --delete --exclude node_modules --exclude dist --exclude .git /tmp/guil
 cd /Users/guiteles/guileo-site && git add -A && git commit -m "…"   # author: Luis Teles <luistelesc@gmail.com>
 ```
 
+## 6. The improvement route (100x loop — multi-agent design → serial integrate)
+
+Portal.jsx is one huge file, so parallel agents must NOT edit it. Use agents for the **conflict-free** phase (design/content/research); integrate yourself.
+
+1. **Pick** the top `✅ self` item from `memory/reference_guileo_money_roadmap.md` (only items with real $/ops payoff).
+2. **Fan out** a `Workflow` of schema'd agents that return structured JSON — e.g. a translation dictionary, per-sector config map, a settings schema, a research summary, or the next $-ranked backlog. Agents read the repo but write nothing. (Proven: 4 agents, ~115k tok, 69s produced i18n+onboarding+settings+backlog.)
+3. **Integrate serially**: paste agent JSON into a const / new component. For bulk data (100+ dictionary entries) inject via a one-off `python3` script instead of huge Edits — keeps context lean.
+4. **Deploy + validate**: `npm run deploy` → `window.__g` 1-second routes + `?v=<id>` across verticals → console clean.
+5. **Commit** (author Luis Teles) + update the roadmap (mark done) and `project_guileo_website.md`.
+
+This is why each feature now lands fast: the thinking is parallel, the editing is serial, the validation is one call.
+
 ## 5. Deferred (needs the user — NOT in preview flow)
 
 Supabase keys + `// CONNECT:` branches · `guileoai.com` DNS → Cloudflare · production publish · real OAuth for integrations. Seams are ready: `:stack`→real APIs, `:automations`→cron, `guiAlerts`→push, `guiPlan`→LLM tool-calling.
