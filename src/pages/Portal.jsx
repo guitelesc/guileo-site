@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { portalApi, CONNECTED, toast, onToast } from "../lib/portalApi.js";
 import {
@@ -2826,6 +2826,19 @@ function Login({ onEnter }) {
 // ── Gui — the in-portal AI assistant that EXECUTES tasks ──
 // Interprets a request and runs the matching action (reusing the same stitches the
 // rest of the app uses), so "send an invoice" actually creates one in Payments.
+// Proactive radar: scan real generated data for things that need action right now.
+// Returns prioritized alerts with a one-tap command + bilingual copy. Drives the
+// launcher badge and Gui's opening nudge — Gui surfaces money on the table unasked.
+function guiAlerts(V) {
+  const out = [];
+  const overdue = genPayments(V).filter((p) => p.status === "Overdue");
+  if (overdue.length) out.push({ key: "overdue", count: overdue.length, cmd: "remind all overdue invoices", en: `${overdue.length} invoice${overdue.length !== 1 ? "s" : ""} overdue — want me to chase them?`, pt: `${overdue.length} fatura${overdue.length !== 1 ? "s" : ""} atrasada${overdue.length !== 1 ? "s" : ""} — quer que eu cobre?`, chipEn: "💳 Chase them", chipPt: "💳 Cobrar agora" });
+  const waiting = genWaitlist(V).length;
+  if (waiting) out.push({ key: "waitlist", count: waiting, cmd: "request reviews", en: `${waiting} people are on your waitlist — fill those slots before they leave.`, pt: `${waiting} pessoas na sua lista de espera — preencha essas vagas antes que saiam.`, chipEn: "📅 Fill slots", chipPt: "📅 Preencher vagas" });
+  const follow = genFollowups(V).length;
+  if (follow) out.push({ key: "followups", count: follow, cmd: "start follow-ups", en: `${follow} warm lead${follow !== 1 ? "s" : ""} waiting on a follow-up — I can nudge them now.`, pt: `${follow} lead${follow !== 1 ? "s" : ""} quente${follow !== 1 ? "s" : ""} esperando follow-up — posso cutucar agora.`, chipEn: "🔁 Nudge them", chipPt: "🔁 Cutucar" });
+  return out;
+}
 function guiPlan(text, V, ctx = {}) {
   const s = text.toLowerCase();
   const act = convoAction(V);
@@ -2856,10 +2869,17 @@ function guiPlan(text, V, ctx = {}) {
 function Gui({ V, onNav }) {
   const [open, setOpen] = useState(false);
   const [credits, setCredits] = useState(() => portalApi.loadState("gui_credits", 250));
-  const [msgs, setMsgs] = useState(() => [
-    { from: "gui", text: "Hi! I'm Gui — your AI assistant 👋 Tell me what to do and I'll handle it." },
-    { from: "gui", text: `Quick read on today: ${dailyBriefing(V)}. Want me to get started?` },
-  ]);
+  const alerts = useMemo(() => guiAlerts(V), [V]);     // proactive radar — real pending items
+  const alertCount = alerts.reduce((n, a) => n + (a.count || 0), 0);
+  const [msgs, setMsgs] = useState(() => {
+    const base = [
+      { from: "gui", text: "Hi! I'm Gui — your AI assistant 👋 Tell me what to do and I'll handle it." },
+      { from: "gui", text: `Quick read on today: ${dailyBriefing(V)}. Want me to get started?` },
+    ];
+    const al = guiAlerts(V);
+    if (al.length) base.push({ from: "gui", text: `👀 Heads up — ${al[0].en}`, next: al.slice(0, 2).map((a) => ({ label: a.chipEn, cmd: a.cmd })) });
+    return base;
+  });
   const [q, setQ] = useState("");
   const [ctx, setCtx] = useState({});            // conversation memory (last customer, etc.)
   const [listening, setListening] = useState(false);
@@ -2908,9 +2928,13 @@ function Gui({ V, onNav }) {
   return (
     <>
       {!open && (
-        <button onClick={() => setOpen(true)} aria-label="Open Gui assistant" className="fixed bottom-5 right-5 z-[55] grid place-items-center h-14 w-14 rounded-full bg-gradient-to-br from-g-green to-g-dark text-white shadow-lift hover:scale-105 active:scale-95 transition">
+        <button onClick={() => setOpen(true)} aria-label={alertCount ? `Open Gui assistant — ${alertCount} items need action` : "Open Gui assistant"} className="fixed bottom-5 right-5 z-[55] grid place-items-center h-14 w-14 rounded-full bg-gradient-to-br from-g-green to-g-dark text-white shadow-lift hover:scale-105 active:scale-95 transition">
           <FaWandMagicSparkles size={18} />
-          <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-g-gold border-2 border-g-deep" />
+          {alertCount > 0 ? (
+            <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 grid place-items-center rounded-full bg-g-gold text-[11px] font-black text-black border-2 border-g-deep animate-pulse">{alertCount > 9 ? "9+" : alertCount}</span>
+          ) : (
+            <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-g-gold border-2 border-g-deep" />
+          )}
         </button>
       )}
       {open && (
