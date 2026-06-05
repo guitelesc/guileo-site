@@ -479,10 +479,13 @@ function growthOps(V) {
   const wait = genWaitlist(V);
   const fups = genFollowups(V);
   const recur = genRecurring(V);
+  const pay = genPayments(V).filter((p) => p.status !== "Paid");
   const pipeline = fups.reduce((s, r) => s + (r.value || 0), 0);
   const atRisk = recur.filter((r) => r.status === "At risk");
   const atRiskMo = atRisk.reduce((s, r) => s + (r.value || 0), 0);
+  const outstanding = pay.reduce((s, r) => s + (r.amount || 0), 0);
   return [
+    { ic: "💳", view: "payments", text: pay.length === 1 ? "invoice to collect" : "invoices to collect", n: pay.length, value: `$${outstanding.toLocaleString()}` },
     { ic: "🪑", view: "waitlist", text: wait.length === 1 ? "person waiting for an open slot" : "people waiting for an open slot", n: wait.length, value: "$1,240" },
     { ic: "🎯", view: "followups", text: fups.length === 1 ? "follow-up about to convert" : "follow-ups about to convert", n: fups.length, value: `$${pipeline.toLocaleString()}` },
     { ic: "🛟", view: "recurring", text: atRisk.length === 1 ? "at-risk plan to save this week" : "at-risk plans to save this week", n: atRisk.length, value: `$${atRiskMo}/mo` },
@@ -2038,7 +2041,16 @@ function AIAnalytics({ V }) {
 
 function Palette({ V, sections, onNav, onClose }) {
   const [q, setQ] = useState("");
+  const has = new Set(sections.map(([k]) => k));
+  const act = convoAction(V);
+  // Quick ACTIONS — ⌘K isn't just search, it fires commands that land in their tab.
+  const quickActions = [
+    has.has(act.view) && { icon: "⚡", label: act.label.replace(/^[^A-Za-z]+/, ""), sub: "Quick action", run: () => { const rec = recordFor(act.view, "Walk-in", "manual", V); if (rec) pushCreated(V.label, act.view, rec); toast(`${act.done} ✓`); onNav(act.view); onClose(); } },
+    has.has("payments") && { icon: "💳", label: "New invoice", sub: "Quick action", run: () => { const c = (V.customers || genCustomers(V))[0]; pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: c?.name || "New customer", amount: vnum(V.label, "qkinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); toast("Payment link sent ✓"); onNav("payments"); onClose(); } },
+    has.has("reputation") && { icon: "⭐", label: "Request reviews", sub: "Quick action", run: () => { (V.customers || genCustomers(V)).slice(0, 3).forEach((c) => pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel })); toast("Review blast queued ✓"); onNav("reputation"); onClose(); } },
+  ].filter(Boolean);
   const items = [
+    ...quickActions,
     ...sections.map(([k, l]) => ({ icon: "›", label: l, sub: "Section", key: k })),
     ...(V.customers || genCustomers(V)).map((c) => ({ icon: "👤", label: c.name, sub: "Customer", key: "customers" })),
     ...(V.convos || genConvos(V)).map((c) => ({ icon: "💬", label: c.name, sub: "Conversation", key: "whatsapp" })),
@@ -2050,12 +2062,13 @@ function Palette({ V, sections, onNav, onClose }) {
     <>
       <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="fixed left-1/2 top-20 sm:top-24 -translate-x-1/2 z-50 w-[92%] max-w-lg rounded-xl3 border border-white/12 bg-g-cream/95 backdrop-blur-xl shadow-2xl overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10"><FaMagnifyingGlass size={13} className="text-g-muted" /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search sections, customers, conversations…" className="flex-1 bg-transparent text-sm text-g-word placeholder:text-g-muted outline-none" /><span className="text-[10px] text-g-muted border border-white/15 rounded px-1.5 py-0.5">ESC</span></div>
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10"><FaMagnifyingGlass size={13} className="text-g-muted" /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search or run a command…" className="flex-1 bg-transparent text-sm text-g-word placeholder:text-g-muted outline-none" /><span className="text-[10px] text-g-muted border border-white/15 rounded px-1.5 py-0.5">ESC</span></div>
         <div className="max-h-80 overflow-y-auto p-1.5">
           {res.length ? res.map((it, i) => (
-            <button key={i} onClick={() => { onNav(it.key); onClose(); }} className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-white/[0.06] transition">
+            <button key={i} onClick={() => { if (it.run) it.run(); else { onNav(it.key); onClose(); } }} className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-white/[0.06] transition">
               <span className="text-base w-5 text-center text-g-gold">{it.icon}</span>
               <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{it.label}</div><div className="text-[11px] text-g-muted truncate">{it.sub}</div></div>
+              {it.run && <span className="text-[9px] font-black uppercase text-g-gold bg-g-gold/15 rounded px-1.5 py-0.5">Run</span>}
             </button>
           )) : <div className="px-3 py-6 text-center text-xs text-g-muted">No matches</div>}
         </div>
