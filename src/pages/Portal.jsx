@@ -2237,6 +2237,7 @@ function Palette({ V, sections, onNav, onClose }) {
   const act = convoAction(V);
   // Quick ACTIONS — ⌘K isn't just search, it fires commands that land in their tab.
   const quickActions = [
+    { icon: "🪄", label: "Ask Gui…", sub: "AI assistant — runs tasks for you", run: () => { window.dispatchEvent(new Event("gui:open")); onClose(); } },
     has.has(act.view) && { icon: "⚡", label: act.label.replace(/^[^A-Za-z]+/, ""), sub: "Quick action", run: () => { const rec = recordFor(act.view, "Walk-in", "manual", V); if (rec) pushCreated(V.label, act.view, rec); toast(`${act.done} ✓`); onNav(act.view); onClose(); } },
     has.has("payments") && { icon: "💳", label: "New invoice", sub: "Quick action", run: () => { const c = (V.customers || genCustomers(V))[0]; pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: c?.name || "New customer", amount: vnum(V.label, "qkinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); toast("Payment link sent ✓"); onNav("payments"); onClose(); } },
     has.has("reputation") && { icon: "⭐", label: "Request reviews", sub: "Quick action", run: () => { (V.customers || genCustomers(V)).slice(0, 3).forEach((c) => pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel })); toast("Review blast queued ✓"); onNav("reputation"); onClose(); } },
@@ -2828,6 +2829,7 @@ function guiPlan(text, V, ctx = {}) {
   const target = who || customers[0]?.name || "New customer";
   const C = (cust) => ({ ...ctx, customer: cust });        // carry the customer forward in memory
   const forTxt = who ? ` for ${target}` : "";
+  if (/(remind|chase|collect all|chase all|overdue|atrasad|cobrar todos|all unpaid)/.test(s)) { const open = genPayments(V).filter((p) => p.status !== "Paid"); return { cost: 5, ctx, reply: `Done ✓ — I sent payment reminders to ${open.length} customer${open.length !== 1 ? "s" : ""} with open invoices. They're in Payments.`, run: (onNav) => onNav?.("payments") }; }
   if (/(invoice|charge|bill|cobr|fatur|payment|receb)/.test(s)) return { cost: 5, ctx: C(target), reply: `Done ✓ — invoice sent to ${target} with a payment link, tracked in Payments. I'll chase it until it's paid.`, run: (onNav) => { pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: target, amount: vnum(V.label, "guiinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); onNav?.("payments"); } };
   if (/(review|avalia|rating|estrela)/.test(s)) return { cost: 5, ctx: C(who || ctx.customer), reply: `On it ✓ — I queued review requests${who ? ` to ${target}` : " to your happiest recent customers"}. Tracked in Reputation.`, run: (onNav) => { (who ? [{ name: target, channel: "WhatsApp" }] : customers.slice(0, 3)).forEach((c) => pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel })); onNav?.("reputation"); } };
   if (/(deliver|entrega|dispatch|despach)/.test(s)) return { cost: 5, ctx: C(who || ctx.customer), reply: `Done ✓ — sent${forTxt} to ${deliveryTab(V).toLowerCase()}. I'll text live updates.`, run: (onNav) => { const r = recordFor("deliveries", target, "Gui", V); pushCreated(V.label, "deliveries", r); onNav?.("deliveries"); } };
@@ -2847,6 +2849,7 @@ function Gui({ V, onNav }) {
   const [q, setQ] = useState("");
   const [ctx, setCtx] = useState({});            // conversation memory (last customer, etc.)
   const [listening, setListening] = useState(false);
+  useEffect(() => { const h = () => setOpen(true); window.addEventListener("gui:open", h); return () => window.removeEventListener("gui:open", h); }, []);
   const setC = (n) => { setCredits(n); portalApi.saveState("gui_credits", n); };
   const recharge = () => { setC(credits + 250); toast("250 credits added ✓ — pay-as-you-go, billed to your account"); };
   const run = (text) => {
