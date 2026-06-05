@@ -967,10 +967,64 @@ function Deliveries({ V }) {
    ENTIRE stack a business already runs on, and the AI acts ACROSS all of
    them. Each tool shows what Guileo *does* through it, not just "connected".
 */
+// Industry-specific tools per sector — the systems THAT trade actually runs on.
+// Icons are emoji (these niche SaaS brands have no brand-icon glyphs). [name, emoji, color, doesEn, doesPt, default-connected]
+const SECTOR_STACK = {
+  "Restaurant": [
+    ["Toast POS", "🍞", "#FF4C00", "Pulls every order & table into one view, syncs the menu live", "Puxa cada pedido e mesa numa visão só, sincroniza o cardápio ao vivo", true],
+    ["Uber Eats", "🛵", "#06C167", "Accepts, preps and dispatches delivery orders automatically", "Aceita, prepara e despacha pedidos de delivery automaticamente", false],
+    ["OpenTable", "📅", "#DA3743", "Fills tables, confirms reservations and kills no-shows", "Enche mesas, confirma reservas e acaba com no-shows", false],
+  ],
+  "Clinic": [
+    ["Dentrix", "🦷", "#0090DA", "Books recalls, confirms appointments, syncs patient charts", "Agenda retornos, confirma consultas, sincroniza prontuários", true],
+    ["Weave", "📞", "#5B34DA", "Routes calls, texts reminders, collects copays", "Encaminha ligações, lembra por SMS, cobra coparticipação", false],
+  ],
+  "Medical": [
+    ["Epic / EHR", "🩺", "#B11116", "Syncs records, confirms visits, files follow-ups", "Sincroniza prontuários, confirma visitas, registra retornos", true],
+    ["Zocdoc", "🗓️", "#FFB81C", "Fills open slots from new-patient demand", "Preenche horários vagos com demanda de novos pacientes", false],
+  ],
+  "Salon & Spa": [
+    ["Mindbody", "💆", "#6C2EB9", "Books, rebooks and fills last-minute openings", "Agenda, reagenda e preenche vagas de última hora", true],
+    ["Fresha", "💈", "#0E1B39", "Takes online bookings and deposits, cuts no-shows", "Recebe agendamentos e sinais online, reduz faltas", false],
+  ],
+  "Law Firm": [
+    ["Clio", "⚖️", "#1F3A93", "Intakes leads, schedules consults, logs matters", "Capta leads, marca consultas, registra processos", true],
+    ["DocuSign", "✍️", "#FFB200", "Sends and chases engagement letters & e-signatures", "Envia e cobra contratos e assinaturas eletrônicas", false],
+  ],
+  "Real Estate": [
+    ["Zillow", "🏠", "#006AFF", "Captures and instantly replies to property leads", "Capta e responde na hora os leads de imóveis", true],
+    ["DocuSign", "✍️", "#FFB200", "Sends offers and closes paperwork by e-signature", "Envia propostas e fecha papelada por assinatura digital", false],
+  ],
+  "Gym & Fitness": [
+    ["Mindbody", "💪", "#6C2EB9", "Books classes, recovers cancellations, wins back lapsed members", "Agenda aulas, recupera cancelamentos, reativa ex-alunos", true],
+    ["ClassPass", "🤸", "#0B2A3C", "Fills empty class spots from new-member demand", "Preenche vagas de aulas com demanda de novos alunos", false],
+  ],
+  "Auto Dealership": [
+    ["DealerSocket", "🚗", "#E11B22", "Replies to leads, books test-drives, follows up on quotes", "Responde leads, agenda test-drives, faz follow-up de orçamentos", true],
+    ["CarGurus", "🚙", "#1E7B47", "Captures listing inquiries and books appointments", "Capta interessados nos anúncios e agenda visitas", false],
+  ],
+  "Plumbing & HVAC": [
+    ["ServiceTitan", "🔧", "#0B5FFF", "Books jobs, dispatches techs, sends 'on the way' texts", "Agenda serviços, despacha técnicos, avisa 'a caminho'", true],
+    ["Jobber", "🧰", "#1FA463", "Quotes, schedules and collects payment on site", "Orça, agenda e cobra no local", false],
+  ],
+  "Education": [
+    ["Canvas LMS", "📚", "#E72429", "Answers student questions, books trials, nudges enrollments", "Responde alunos, agenda aulas teste, puxa matrículas", true],
+    ["Zoom", "🎥", "#2D8CFF", "Schedules classes and sends join links automatically", "Agenda aulas e envia os links automaticamente", false],
+  ],
+  "Construction": [
+    ["Procore", "🏗️", "#F47E20", "Logs estimates, schedules site visits, chases approvals", "Registra orçamentos, agenda visitas, cobra aprovações", true],
+    ["Buildertrend", "🧱", "#1C6FB7", "Keeps clients updated and collects draw payments", "Mantém clientes informados e cobra parcelas da obra", false],
+  ],
+  "E-Commerce": [
+    ["WooCommerce", "🛒", "#7F54B3", "Recovers carts, answers order questions, upsells buyers", "Recupera carrinhos, responde dúvidas de pedido, revende", false],
+    ["Klaviyo", "✉️", "#232426", "Runs win-back & post-purchase flows on autopilot", "Roda fluxos de recompra e pós-venda no automático", false],
+  ],
+};
 function genIntegrations(V) {
-  const C = "currentColor";
-  // [name, IconComponent, brandColor, what Guileo does through it (EN), (PT), default-connected]
+  const sector = SECTOR_STACK[V.label] || [];
+  // [name, IconComponent|emoji, brandColor, what Guileo does through it (EN), (PT), default-connected]
   return [
+    ...(sector.length ? [[`${V.label} tools`, sector]] : []),
     ["Messaging & Social", [
       ["WhatsApp", FaWhatsapp, "#25D366", "Answers, books and follows up with customers 24/7", "Atende, agenda e faz follow-up com clientes 24/7", true],
       ["Instagram", FaInstagram, "#E1306C", "Replies to DMs & comments, turns followers into bookings", "Responde DMs e comentários, vira seguidores em agendamentos", true],
@@ -1022,13 +1076,32 @@ function Integrations({ V, onNav }) {
 
       <MiniStats items={[["Connected", `${liveCount}/${flat.length}`, "good"], ["Acting 24/7", "Always-on"], ["Hours saved / wk", `${vnum(V.label, "stackhrs", 8, 26)}h`, "good"], ["Setup", "Done-for-you"]]} />
 
+      {/* Gui recommends connecting — surfaces the highest-value disconnected tools */}
+      {(() => {
+        const off = flat.filter(([n]) => !conn[n]).slice(0, 2);
+        return off.length ? (
+          <Card className="border-g-green/30 bg-g-green/[0.06]">
+            <div className="flex items-center gap-2 mb-2.5"><span className="grid place-items-center h-7 w-7 rounded-full bg-g-green/15 text-g-green"><FaWandMagicSparkles size={12} /></span><div className="text-xs font-extrabold text-g-word">Gui recommends connecting</div></div>
+            <div className="space-y-2">
+              {off.map(([name, Icon, color, doesEn]) => (
+                <div key={name} className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-black/15 px-3 py-2.5">
+                  <span className="grid place-items-center h-8 w-8 rounded-lg text-base" style={{ background: color + "22", color }}>{typeof Icon === "string" ? <span>{Icon}</span> : <Icon size={14} />}</span>
+                  <div className="flex-1 min-w-0"><div className="text-xs font-bold text-g-word">{name}</div><div className="text-[10px] text-g-muted leading-snug">{doesEn}</div></div>
+                  <button onClick={() => toggle(name)} className="btn-bright text-[11px] px-3 py-1.5 shrink-0">Connect</button>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : null;
+      })()}
+
       {groups.map(([cat, tools]) => (
         <Card key={cat} className="p-0 overflow-hidden">
           <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{cat}</div>
           <div className="divide-y divide-white/[0.06]">
             {tools.map(([name, Icon, color, doesEn]) => (
               <div key={name} className="flex items-center gap-3 px-5 py-3.5">
-                <span className="grid place-items-center h-10 w-10 rounded-xl text-lg" style={{ background: color + "22", color }}><Icon /></span>
+                <span className="grid place-items-center h-10 w-10 rounded-xl text-lg" style={{ background: color + "22", color }}>{typeof Icon === "string" ? <span>{Icon}</span> : <Icon />}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold text-g-word flex items-center gap-2">{name}{conn[name] && <span className="text-[9px] font-black uppercase text-g-green inline-flex items-center gap-1"><FaCircleCheck size={9} /> Live</span>}</div>
                   <div className="text-[11px] text-g-muted leading-snug">{doesEn}</div>
@@ -2979,7 +3052,17 @@ function guiAlerts(V) {
   if (waiting) out.push({ key: "waitlist", count: waiting, cmd: "request reviews", en: `${waiting} people are on your waitlist — fill those slots before they leave.`, pt: `${waiting} pessoas na sua lista de espera — preencha essas vagas antes que saiam.`, chipEn: "📅 Fill slots", chipPt: "📅 Preencher vagas" });
   const follow = genFollowups(V).length;
   if (follow) out.push({ key: "followups", count: follow, cmd: "start follow-ups", en: `${follow} warm lead${follow !== 1 ? "s" : ""} waiting on a follow-up — I can nudge them now.`, pt: `${follow} lead${follow !== 1 ? "s" : ""} quente${follow !== 1 ? "s" : ""} esperando follow-up — posso cutucar agora.`, chipEn: "🔁 Nudge them", chipPt: "🔁 Cutucar" });
+  // Suggest a missing high-value connection (count 0 — a suggestion, not an urgent count).
+  const m = missingConnection(V);
+  if (m) out.push({ key: "connect", count: 0, cmd: "open integrations", en: `${m[0]} isn't connected yet — link it and I'll ${m[3].toLowerCase()}.`, pt: `${m[0]} ainda não está conectado — conecte e eu ${m[4].toLowerCase()}.`, chipEn: "🔌 Connect it", chipPt: "🔌 Conectar" });
   return out;
+}
+// The most valuable tool the business hasn't connected yet (industry tool first, else a universal one).
+function missingConnection(V) {
+  const stack = portalApi.loadState(`${V.label}:stack`, {});
+  const off = ([n, , , , , def]) => (stack[n] === undefined ? !def : !stack[n]);
+  const sector = SECTOR_STACK[V.label] || [];
+  return sector.find(off) || null;
 }
 function guiPlan(text, V, ctx = {}) {
   const s = text.toLowerCase();
@@ -3164,7 +3247,15 @@ export default function Portal() {
   const [booting, setBooting] = useState(true);
   const [view, setView] = useState("overview");
   const [period, setPeriod] = useState("30 days");
-  const [vertical, setVertical] = useState("restaurant");
+  // Vertical can be deep-linked via ?v=<id> (shareable per-sector links) and is remembered.
+  const [vertical, setVertical] = useState(() => {
+    try {
+      const q = new URLSearchParams(window.location.search).get("v");
+      const saved = portalApi.loadState("vertical", null);
+      const pick = q || saved || "restaurant";
+      return VERTICALS[pick] ? pick : "restaurant";
+    } catch { return "restaurant"; }
+  });
   const [vertOpen, setVertOpen] = useState(false);
   const [notifsRead, setNotifsRead] = useState(() => portalApi.loadState(`${vertical}:notifsRead`, false));
   const [bellOpen, setBellOpen] = useState(false);
@@ -3185,7 +3276,7 @@ export default function Portal() {
   const notifList = notifsRead ? [] : sections.map(([k, l]) => ({ k, l, n: notifFor(k, V) })).filter((x) => x.n > 0);
   const cur = sections.find((s) => s[0] === view);
   const title = view === "operations" ? `${V.label} operations` : (cur ? cur[1] : "Overview");
-  const switchVertical = (k) => { setVertical(k); setView("overview"); setVertOpen(false); setNotifsRead(portalApi.loadState(`${k}:notifsRead`, false)); };
+  const switchVertical = (k) => { setVertical(k); portalApi.saveState("vertical", k); setView("overview"); setVertOpen(false); setNotifsRead(portalApi.loadState(`${k}:notifsRead`, false)); };
   const markAllRead = () => { setNotifsRead(true); portalApi.saveState(`${vertical}:notifsRead`, true); setBellOpen(false); toast("All caught up ✓"); };
   const logout = () => portalApi.logout().then(() => setAuthed(false));
   // Polished, print-ready monthly report (open → Cmd/Ctrl-P → Save as PDF).

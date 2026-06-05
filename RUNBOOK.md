@@ -46,7 +46,13 @@ __g.state(/automations|stack|payments/) // dump matching localStorage
 | Gui automation | `__g.ask('every monday chase overdue')` | "Set ✓ … every Monday" + `__g.state(/automations/)` |
 | Proactive radar | `__g.openGui()` | "👀 Heads up — …" + launcher badge count |
 | Weekly summary | `__g.nav('Overview')` | "Your week, by Gui" card |
+| Sector integrations | `__g.nav('Integrations')` | "{Vertical} tools" category (Toast/Dentrix/Clio/…) + "Gui recommends connecting" card |
+| Gui suggests connections | `__g.openGui()` | a "🔌 Connect it" nudge when a high-value tool is off |
+| Per-vertical (deep link) | navigate `…/portal?v=<id>` then `__g.sweep()` | `{empty:0}` + the vertical's sector tools |
+| Landing demo + voice | open `/#demo`, click any chip / "Say it" | result row + KPI tick; voice maps speech→action |
 | Full sweep | `__g.sweep()` | `{empty: 0}` |
+
+**Vertical deep-link ids** (for `?v=`): `restaurant, clinic, salon, law, ecommerce, realestate, gym, medical, homeservices, auto, education, construction`. The portal reads `?v=` (and remembers the last vertical) — so QA across all 12 is just 12 navigations.
 
 ## 4. Backup (never lose progress)
 

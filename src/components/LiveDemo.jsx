@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   FaWandMagicSparkles, FaCalendarCheck, FaCreditCard, FaStar, FaInstagram,
   FaPhoneVolume, FaWhatsapp, FaStripe, FaGoogle, FaCircleCheck,
+  FaArrowsRotate, FaClockRotateLeft, FaMicrophone,
 } from "react-icons/fa6";
 
 /* ───────────────────────────────────────────────────────────────
@@ -32,6 +33,12 @@ const ACTIONS = [
   { key: "call", icon: FaPhoneVolume, color: "#38BDF8", chip: "Answer a call", tool: "WhatsApp",
     say: (n) => `Answered ${n}'s call, qualified them and booked a callback ✓`,
     row: (n) => ({ ic: "📞", t: `Call handled · ${n}`, s: "Qualified + callback booked", color: "#38BDF8" }), rev: 0, kpi: "bookings" },
+  { key: "winback", icon: FaArrowsRotate, color: "#3E9468", chip: "Win back a customer", tool: "WhatsApp",
+    say: (n) => `Re-engaged ${n} (quiet for 60 days) with a tailored offer — they're back ✓`,
+    row: (n) => ({ ic: "🔁", t: `Win-back · ${n}`, s: "Lapsed 60 days → re-booked", color: "#3E9468" }), rev: 90, kpi: "revenue" },
+  { key: "noshow", icon: FaClockRotateLeft, color: "#EF8E3E", chip: "Recover a no-show", tool: "WhatsApp",
+    say: (n) => `${n} missed their slot — I rebooked them and filled the gap from your waitlist ✓`,
+    row: (n) => ({ ic: "⏰", t: `No-show recovered · ${n}`, s: "Rebooked + slot refilled", color: "#EF8E3E" }), rev: 0, kpi: "bookings" },
 ];
 
 const STACK = [
@@ -49,7 +56,31 @@ export default function LiveDemo() {
   const [busy, setBusy] = useState(null);     // action key currently "working"
   const [hot, setHot] = useState(null);       // stack tool lighting up
   const [used, setUsed] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [heard, setHeard] = useState("");
   const idRef = useRef(1);
+
+  // Voice: speak a request, Guileo maps it to the right action by keyword.
+  const SR = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
+  const matchAction = (t) => {
+    const s = t.toLowerCase();
+    if (/invoice|pay|bill|charge/.test(s)) return ACTIONS.find((a) => a.key === "invoice");
+    if (/review|rating|star/.test(s)) return ACTIONS.find((a) => a.key === "review");
+    if (/insta|post|social/.test(s)) return ACTIONS.find((a) => a.key === "post");
+    if (/call|phone/.test(s)) return ACTIONS.find((a) => a.key === "call");
+    if (/win.?back|lapsed|come back/.test(s)) return ACTIONS.find((a) => a.key === "winback");
+    if (/no.?show|missed|recover/.test(s)) return ACTIONS.find((a) => a.key === "noshow");
+    return ACTIONS.find((a) => a.key === "book"); // default: book
+  };
+  const dictate = () => {
+    if (!SR) { setHeard("Voice isn't supported in this browser — tap an action instead."); return; }
+    const rec = new SR(); rec.lang = "en-US"; rec.interimResults = false; rec.maxAlternatives = 1;
+    setListening(true); setHeard("");
+    rec.onresult = (ev) => { const t = ev.results[0][0].transcript; setHeard(`"${t}"`); setListening(false); run(matchAction(t)); };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    rec.start();
+  };
 
   const run = (a) => {
     const n = NAMES[idRef.current % NAMES.length];
@@ -94,7 +125,12 @@ export default function LiveDemo() {
       <div className="grid md:grid-cols-2 gap-4">
         {/* actions */}
         <div>
-          <div className="text-[10px] font-black uppercase tracking-wide text-g-gold mb-2">Ask Guileo to…</div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-[10px] font-black uppercase tracking-wide text-g-gold">Ask Guileo to…</div>
+            <button onClick={dictate} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold transition ${listening ? "border-red-400 bg-red-500/15 text-red-400 animate-pulse" : "border-g-green/40 bg-g-green/10 text-g-green hover:bg-g-green/20"}`}>
+              <FaMicrophone size={10} /> {listening ? "Listening…" : "Say it"}
+            </button>
+          </div>
           <div className="flex flex-wrap gap-2">
             {ACTIONS.map((a) => {
               const Icon = a.icon;
@@ -108,6 +144,7 @@ export default function LiveDemo() {
               );
             })}
           </div>
+          {heard && <div className="mt-2 text-[11px] text-g-light">🎙️ Heard {heard} — running it…</div>}
           <div className="mt-3 text-[11px] text-g-muted leading-relaxed">
             Every tap runs a <span className="text-g-light font-semibold">real action</span> across your connected tools — bookings, payments, reviews, posts, calls. This is exactly what your customers experience, 24/7.
           </div>
