@@ -14,7 +14,7 @@ export default function Navbar() {
     const h = () => setScrolled(window.scrollY > 16);
     window.addEventListener("scroll", h); return () => window.removeEventListener("scroll", h);
   }, []);
-  const LINKS = [[t.nav.solutions,"/#pillars"],[t.nav.engine,"/#engine"],[t.nav.industries,"/#industries"],[t.nav.results,"/#results"],[t.nav.academy,"/#academy"],[t.nav.pricing,"/#pricing"],[t.nav.services,"/servicos"]];
+  const LINKS = [["Demo","/#demo"],[t.nav.solutions,"/#pillars"],[t.nav.engine,"/#engine"],[t.nav.industries,"/#industries"],[t.nav.results,"/#results"],[t.nav.academy,"/#academy"],[t.nav.pricing,"/#pricing"],[t.nav.services,"/servicos"]];
   return (
     <header className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${scrolled ? "bg-g-cream/80 backdrop-blur-xl shadow-soft border-b border-white/5" : "bg-transparent"}`}>
       <ScrollProgress />

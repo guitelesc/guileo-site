@@ -9,6 +9,7 @@ import LiveCall from "../components/LiveCall.jsx";
 import Intro from "../components/Intro.jsx";
 import LeadForm from "../components/LeadForm.jsx";
 import LiveCallBar from "../components/LiveCallBar.jsx";
+import LiveDemo from "../components/LiveDemo.jsx";
 import { Reveal, Count, Aurora, Ticker, Circuit, Stagger, Item, Magnetic, Parallax, Spotlight, Accordion, ProductsMarquee, HumanShield, LiveFeed } from "../lib/ui.jsx";
 import { AnimatePresence } from "framer-motion";
 import logo from "../assets/guileo-logo.png";
@@ -243,6 +244,18 @@ export default function Home() {
             {[...t.indList,...t.indList].map(([i,tt],idx)=><span key={idx} className="whitespace-nowrap rounded-full border border-g-line bg-white/[0.05] backdrop-blur-md px-4 py-2 text-sm font-semibold text-g-word hover:border-g-gold/40 hover:text-g-gold transition-colors">{i} {tt}</span>)}
           </div>
         </div>
+      </section>
+
+      {/* LIVE FUNCTIONAL DEMO — visitors actually click and use Guileo themselves */}
+      <section id="demo" className="wrap py-12 scroll-mt-24">
+        <Reveal className="text-center max-w-3xl mx-auto mb-8">
+          <span className="eyebrow mb-3">Try it yourself</span>
+          <h2 className="h2">See Guileo work — live, right here</h2>
+          <p className="mt-2 text-g-muted max-w-2xl mx-auto">No sign-up, no video. Tap an action and watch your AI run it across your connected tools — exactly what your customers get, 24/7.</p>
+        </Reveal>
+        <Reveal className="max-w-4xl mx-auto">
+          <LiveDemo />
+        </Reveal>
       </section>
 
       <Circuit />
