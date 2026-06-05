@@ -213,7 +213,7 @@ export default function Home() {
               <div key="trust" className="mt-5 flex flex-wrap gap-2">
                 {t.hero.trust.map(([ic,tx])=>(<span key={tx} className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] backdrop-blur-md px-3 py-1.5 text-xs font-semibold text-g-word hover:border-g-green/40 hover:text-g-light transition-colors">{ic} {tx}</span>))}
               </div>,
-              <div key="b" className="mt-7 flex flex-wrap items-center gap-3"><Magnetic><a href="#why" className="btn">{t.hero.cta1}</a></Magnetic><a href="#contact" className="btn-ghost">{t.hero.cta2}</a><a href="/experience.html" className="inline-flex items-center gap-1.5 text-sm font-bold text-g-gold hover:gap-2.5 transition-all">▶ Watch the experience</a></div>,
+              <div key="b" className="mt-7 flex flex-wrap items-center gap-3"><Magnetic><a href="#demo" className="btn">{t.hero.cta1}</a></Magnetic><a href="#contact" className="btn-ghost">{t.hero.cta2}</a><a href="/experience.html" className="inline-flex items-center gap-1.5 text-sm font-bold text-g-gold hover:gap-2.5 transition-all">▶ Watch the experience</a></div>,
             ].map((el,i)=>(
               <motion.div key={i} variants={{ hide:{ opacity:0, y:30, filter:"blur(8px)" }, show:{ opacity:1, y:0, filter:"blur(0px)", transition:{ type:"spring", stiffness:80, damping:18, mass:0.8 } } }}>{el}</motion.div>
             ))}

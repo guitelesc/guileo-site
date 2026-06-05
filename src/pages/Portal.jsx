@@ -504,6 +504,219 @@ const PT_UI = {
   // topbar
   "Report": "Relatório", "Search…": "Buscar…",
   "Plans": "Planos", "Current": "Atual", "mo": "mês", "Your plan": "Seu plano", "Upgrade →": "Fazer upgrade →", "Switch →": "Trocar →",
+  "Growth Cockpit": "Growth Cockpit",
+  "Sign in to your private dashboard": "Acesse seu painel privado",
+  "Create your account": "Crie sua conta",
+  "Welcome back": "Bem-vindo de volta",
+  "Create account →": "Criar conta →",
+  "Sign in →": "Entrar →",
+  "Enter Growth Cockpit →": "Entrar no Growth Cockpit →",
+  "Already have an account? Sign in": "Já tem uma conta? Entre",
+  "New here? Create an account": "Novo por aqui? Crie uma conta",
+  "Confirm your email": "Confirme seu e-mail",
+  "We sent a confirmation to": "Enviamos uma confirmação para",
+  ". Click the link, then come back and sign in.": ". Clique no link e volte para entrar.",
+  "I confirmed — sign in →": "Confirmei — entrar →",
+  "Password (min 6 chars)": "Senha (mín. 6 caracteres)",
+  "← Back to guileo.ai": "← Voltar para guileo.ai",
+  "Loading your cockpit…": "Carregando seu cockpit…",
+  "· AI assistant": "· assistente de IA",
+  "Executes tasks for you, 24/7": "Executa tarefas por você, 24/7",
+  "Credits": "Créditos",
+  "left": "restantes",
+  "Pay-as-you-go · ~5 credits per task": "Pré-pago · ~5 créditos por tarefa",
+  "Listening…": "Ouvindo…",
+  "Ask Gui to do something…": "Peça ao Gui para fazer algo…",
+  "Send": "Enviar",
+  "Need a human? Talk to your team →": "Precisa de um humano? Fale com sua equipe →",
+  "↩ Undo this": "↩ Desfazer isto",
+  "Recent commands · tap to run again": "Comandos recentes · toque para rodar de novo",
+  "Launch a promo": "Lançar uma promoção",
+  "Hi! I'm Gui — your AI assistant 👋 Tell me what to do and I'll handle it.": "Oi! Eu sou o Gui — seu assistente de IA 👋 Me diga o que fazer e eu cuido disso.",
+  "Nothing to undo yet — I'll only undo the last thing I created.": "Nada pra desfazer ainda — só desfaço a última coisa que criei.",
+  "Voice isn't supported in this browser": "A voz não é suportada neste navegador",
+  "Open Gui assistant": "Abrir o assistente Gui",
+  "Search… ⌘K": "Buscar… ⌘K",
+  "Language": "Idioma",
+  "Notifications": "Notificações",
+  "view →": "ver →",
+  "✅ All caught up": "✅ Tudo em dia",
+  "All caught up ✓": "Tudo em dia ✓",
+  "7 days": "7 dias",
+  "30 days": "30 dias",
+  "90 days": "90 dias",
+  "Demo data — each client sees their own industry.": "Dados de demonstração — cada cliente vê o próprio segmento.",
+  "Preview industry": "Pré-visualizar segmento",
+  "Industry · demo": "Segmento · demo",
+  "operations": "operações",
+  "Demo mode": "Modo demonstração",
+  "Staff · admin": "Equipe · admin",
+  "Monthly report opened — print → Save as PDF ✓": "Relatório mensal aberto — imprima → Salvar como PDF ✓",
+  "Close menu": "Fechar menu",
+  "Upgrade →": "Fazer upgrade →",
+  "AI voice agent · 24/7": "Agente de voz com IA · 24/7",
+  "WhatsApp, SMS & social replies": "Respostas no WhatsApp, SMS e redes sociais",
+  "Bookings & reviews automation": "Automação de agendamentos e avaliações",
+  "A real human managing it for you": "Um humano de verdade cuidando disso por você",
+  "Gui — AI assistant credits": "Gui — créditos do assistente de IA",
+  "Powers every task Gui runs for you · ~5 credits per action": "Movem cada tarefa que o Gui executa por você · ~5 créditos por ação",
+  "credits left": "créditos restantes",
+  "credits": "créditos",
+  "Auto top-up (pay-as-you-go)": "Recarga automática (pré-pago)",
+  "credits used this month": "créditos usados este mês",
+  "Top-ups are billed securely to your account on file — we never ask for card details in chat.": "As recargas são cobradas com segurança na conta registrada — nunca pedimos dados do cartão no chat.",
+  "credits this week": "créditos esta semana",
+  "No Gui activity yet — ask Gui to do something and it'll show up here.": "Nenhuma atividade do Gui ainda — peça algo ao Gui e aparecerá aqui.",
+  "AI task": "Tarefa de IA",
+  "Your plan": "Seu plano",
+  "Switch →": "Trocar →",
+  "Give 250, get 250 credits": "Dê 250, ganhe 250 créditos",
+  "Invite another business — you both get": "Convide outro negócio — vocês dois ganham",
+  "when they join.": "quando ele entrar.",
+  "joined so far.": "entraram até agora.",
+  "Simulate a referral →": "Simular uma indicação →",
+  "Invite link copied ✓": "Link de convite copiado ✓",
+  "Front ready": "Frente pronta",
+  "Product, AI & dashboard": "Produto, IA e painel",
+  "Built & validated": "Construído e validado",
+  "Accounts that persist (Supabase)": "Contas que persistem (Supabase)",
+  "Needs your project keys": "Precisa das suas chaves de projeto",
+  "Charge for credits & plans (Stripe)": "Cobrar créditos e planos (Stripe)",
+  "Needs your Stripe keys": "Precisa das suas chaves do Stripe",
+  "Real integrations (OAuth)": "Integrações reais (OAuth)",
+  "Needs your app approvals": "Precisa das aprovações dos seus apps",
+  "Public domain & publish": "Domínio público e publicação",
+  "Needs your DNS + your OK": "Precisa do seu DNS + seu OK",
+  "I'll wire each one with you when you have the keys.": "Vou conectar cada uma com você quando tiver as chaves.",
+  "I have the keys →": "Eu tenho as chaves →",
+  "Payment is handled securely with your team — we never ask for card details in chat.": "O pagamento é feito com segurança junto à sua equipe — nunca pedimos dados do cartão no chat.",
+  "feeds your AI's answers": "alimenta as respostas da sua IA",
+  "Your AI uses these facts when customers ask.": "Sua IA usa esses dados quando os clientes perguntam.",
+  "Save & update AI": "Salvar e atualizar a IA",
+  "Business profile saved — your AI is updated ✓": "Perfil do negócio salvo — sua IA está atualizada ✓",
+  "Address / location": "Endereço / localização",
+  "Tone": "Tom",
+  "Friendly": "Amigável",
+  "Professional": "Profissional",
+  "Warm & casual": "Acolhedor e descontraído",
+  "Concise": "Conciso",
+  "Enthusiastic": "Entusiasmado",
+  "Custom greeting": "Saudação personalizada",
+  "Hand off to a human on request": "Encaminhar para um humano quando pedido",
+  "When a customer asks for a person, the AI alerts your team.": "Quando um cliente pede uma pessoa, a IA avisa sua equipe.",
+  "Saved automatically · your AI uses this on every channel ✓": "Salvo automaticamente · sua IA usa isto em todos os canais ✓",
+  "New booking or order": "Nova reserva ou pedido",
+  "Missed call or lead": "Chamada perdida ou lead",
+  "New review": "Nova avaliação",
+  "Daily summary from Gui": "Resumo diário do Gui",
+  "Auto top-up Gui credits": "Recarregar créditos do Gui automaticamente",
+  "Never let the AI pause mid-task — refill when low (pay-as-you-go).": "Nunca deixe a IA parar no meio de uma tarefa — recarrega quando estiver baixo (pré-pago).",
+  "Quiet hours": "Horário de silêncio",
+  "From": "De",
+  "To": "Até",
+  "Languages": "Idiomas",
+  "Live webhook events": "Eventos de webhook ao vivo",
+  "Demo data": "Dados de demonstração",
+  "Reset resolved alerts, won deals, filled slots & read flags back to the sample state.": "Redefina alertas resolvidos, negócios fechados, vagas preenchidas e marcações de leitura para o estado de exemplo.",
+  "↻ Reset demo data": "↻ Redefinir dados de demonstração",
+  "Demo data reset — reloading…": "Dados de demonstração redefinidos — recarregando…",
+  "Changes apply instantly. Need something custom? Your team's a tap away. 💬": "As mudanças valem na hora. Precisa de algo sob medida? Sua equipe está a um toque. 💬",
+  "On": "Ligado",
+  "🧠 Your AI's brain": "🧠 O cérebro da sua IA",
+  "Test it live below.": "Teste ao vivo abaixo.",
+  "Teach it something": "Ensine algo a ela",
+  "things learned": "coisas aprendidas",
+  "Last trained": "Último treino",
+  "just now": "agora mesmo",
+  "2 days ago": "2 dias atrás",
+  "Test your AI · see exactly how it answers your customers": "Teste sua IA · veja exatamente como ela responde seus clientes",
+  "Ask your AI anything a customer might ask 👇": "Pergunte à sua IA qualquer coisa que um cliente perguntaria 👇",
+  "Your AI": "Sua IA",
+  "Teach a better answer": "Ensine uma resposta melhor",
+  "Ask your AI a question…": "Faça uma pergunta à sua IA…",
+  "Ask": "Perguntar",
+  "Knowledge base · what your AI knows": "Base de conhecimento · o que sua IA sabe",
+  "Add": "Adicionar",
+  "Nothing trained yet — add your first answer above.": "Nada treinado ainda — adicione sua primeira resposta acima.",
+  "Your AI uses this the moment you save it": "Sua IA usa isto no instante em que você salva",
+  "Topic": "Tópico",
+  "When customers ask about…": "Quando os clientes perguntam sobre…",
+  "(keywords, optional)": "(palavras-chave, opcional)",
+  "Your AI should reply": "Sua IA deve responder",
+  "Save & retrain": "Salvar e retreinar",
+  "Cancel": "Cancelar",
+  "AI retrained ✓ — it'll use this on the next conversation": "IA retreinada ✓ — ela usará isto na próxima conversa",
+  "What are your hours?": "Qual é o horário de vocês?",
+  "Can I book for tomorrow?": "Posso agendar para amanhã?",
+  "How much does it cost?": "Quanto custa?",
+  "Where are you located?": "Onde vocês ficam?",
+  "Location & address": "Localização e endereço",
+  "Pricing & quotes": "Preços e orçamentos",
+  "Services offered": "Serviços oferecidos",
+  "Want more? Add a channel or service — we set it up, you keep one login and one bill. Growth on tap.": "Quer mais? Adicione um canal ou serviço — nós configuramos, você mantém um login e uma conta só. Crescimento na hora.",
+  "Talk to my team →": "Falar com minha equipe →",
+  "Don't see what you need?": "Não encontrou o que precisa?",
+  "Tell us what you wish we offered — we're always adding services, and your idea shapes what we build next.": "Conte o que você gostaria que oferecêssemos — estamos sempre adicionando serviços, e sua ideia define o que construímos a seguir.",
+  "Send request →": "Enviar pedido →",
+  "✅ Got it — thanks! Our team will look into it.": "✅ Recebido — obrigado! Nossa equipe vai analisar.",
+  "On request": "Sob solicitação",
+  "Auto top-up on ✓": "Recarga automática ligada ✓",
+  "Auto top-up off": "Recarga automática desligada",
+  "Need something custom?": "Precisa de algo sob medida?",
+  "Mark restocked": "Marcar reabastecido",
+  "Out of stock": "Sem estoque",
+  "Mark handled": "Marcar como tratado",
+  "Mark delivered": "Marcar como entregue",
+  "Mark ready": "Marcar como pronto",
+  "Mark won": "Marcar como ganho",
+  "Reassign": "Reatribuir",
+  "Share tracking": "Compartilhar rastreamento",
+  "Use in campaign": "Usar em campanha",
+  "Won": "Ganho",
+  "Nudge": "Cutucar",
+  "Offer slot": "Oferecer vaga",
+  "En route": "A caminho",
+  "Arriving": "Chegando",
+  "Save to customer": "Salvar no cliente",
+  "Create order": "Criar pedido",
+  "Book appointment": "Agendar consulta",
+  "Follow-up": "Follow-up",
+  "To delivery": "Para entrega",
+  "Next best action": "Próxima melhor ação",
+  "Re-order": "Repetir pedido",
+  "Request review": "Solicitar avaliação",
+  "Boost as ad": "Impulsionar como anúncio",
+  "Talk to your team": "Fale com sua equipe",
+  "Reset demo data": "Redefinir dados de demonstração",
+  "Last trained {trainedAt}": "Último treino {trainedAt}",
+  "Loading…": "Carregando…",
+  "Waitlist is empty": "A lista de espera está vazia",
+  "Save changes": "Salvar alterações",
+  "Save": "Salvar",
+  "Invite teammate": "Convidar colega de equipe",
+  "Resolve": "Resolver",
+  "items need your attention": "itens precisam da sua atenção",
+  "Mark all as read": "Marcar tudo como lido",
+  "No results": "Nenhum resultado",
+  "Nothing here yet": "Nada por aqui ainda",
+  "Ask Gui…": "Perguntar ao Gui…",
+  "AI assistant — runs tasks for you": "Assistente de IA — executa tarefas por você",
+  "Go to": "Ir para",
+  "Type a command or search…": "Digite um comando ou busque…",
+  "Recent": "Recente",
+  "Suggestions": "Sugestões",
+  "Apply": "Aplicar",
+  "Dismiss": "Dispensar",
+  "Connect": "Conectar",
+  "Disconnect": "Desconectar",
+  "Manage": "Gerenciar",
+  "Confirm": "Confirmar",
+  "Send invoice": "Enviar fatura",
+  "Download": "Baixar",
+  "Download invoice": "Baixar fatura",
+  "Try again": "Tentar novamente",
+  "Loading your data…": "Carregando seus dados…",
+  "Something went wrong": "Algo deu errado",
   "+ Recharge": "+ Recarregar",
   "+ Recharge credits": "+ Recarregar créditos",
   "250 free credits": "250 créditos grátis",
@@ -1036,7 +1249,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
                           <span className="flex-1 min-w-0 text-xs text-g-light leading-snug">{a.text}</span>
                           <div className="flex items-center gap-1.5 shrink-0">
                             {target && <button onClick={() => onNav(target.view)} className="text-[11px] font-bold text-g-muted hover:text-g-word transition px-2 py-1 rounded-lg hover:bg-white/[0.05] opacity-0 group-hover:opacity-100">{target.label} →</button>}
-                            <button onClick={() => resolveAlert(i)} className="text-[11px] font-bold text-g-green border border-g-green/25 hover:bg-g-green/10 transition px-2.5 py-1 rounded-lg">Resolve</button>
+                            <button onClick={() => resolveAlert(i)} className="text-[11px] font-bold text-g-green border border-g-green/25 hover:bg-g-green/10 transition px-2.5 py-1 rounded-lg">{tr("Resolve")}</button>
                           </div>
                         </div>
                       );
@@ -1072,7 +1285,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
               ))}
             </div>
           </div>
-          <a href={waLink("I'd like to review my Guileo results")} target="_blank" rel="noopener" className="btn-bright text-sm">Talk to my team →</a>
+          <a href={waLink("I'd like to review my Guileo results")} target="_blank" rel="noopener" className="btn-bright text-sm">{tr("Talk to my team →")}</a>
         </div>
       </Card>
 
@@ -1126,7 +1339,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
               <button key={i} onClick={() => onNav(a.view)} className="group w-full text-left flex items-center gap-3 px-5 py-2.5 hover:bg-white/[0.03] transition">
                 <span className="text-base shrink-0">{a.ic}</span>
                 <div className="flex-1 min-w-0 text-xs text-g-word truncate">{a.text}</div>
-                <span className="text-[10px] text-g-muted shrink-0">just now</span>
+                <span className="text-[10px] text-g-muted shrink-0">{tr("just now")}</span>
                 <span className="text-g-muted group-hover:text-g-word transition shrink-0">→</span>
               </button>
             ))}
@@ -1160,7 +1373,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
                 <div className="flex-1 min-w-0"><div className={`text-xs font-bold truncate ${a.on ? "text-g-word" : "text-g-muted line-through"}`}>{a.what}</div><div className="text-[10px] text-g-muted">{a.when}{a.lastRun ? ` · last run ${new Date(a.lastRun).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : " · not run yet"}</div></div>
                 {a.on && <button onClick={() => runAutoNow(a)} className="text-[10px] font-bold text-g-green hover:text-g-light shrink-0 whitespace-nowrap">▶ Run now</button>}
                 <Toggle on={!!a.on} onClick={() => { toggleAutomation(V.label, a._id); setAutoTick((t) => t + 1); }} />
-                <button onClick={() => { removeAutomation(V.label, a._id); setAutoTick((t) => t + 1); toast("Automation removed"); }} aria-label="Remove" className="text-g-muted hover:text-red-400 transition shrink-0"><FaTrash size={11} /></button>
+                <button onClick={() => { removeAutomation(V.label, a._id); setAutoTick((t) => t + 1); toast("Automation removed"); }} aria-label={tr("Remove")} className="text-g-muted hover:text-red-400 transition shrink-0"><FaTrash size={11} /></button>
               </div>
             ))}
           </div>
@@ -1220,7 +1433,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
           <div className="flex items-start justify-between mb-4">
             <div>
               <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Revenue & order volume")}</div>
-              <div className="mt-1 flex items-center gap-3 text-[10px] text-g-muted"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-gold" />Revenue</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-green" />Orders</span></div>
+              <div className="mt-1 flex items-center gap-3 text-[10px] text-g-muted"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-gold" />{tr("Revenue")}</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-green" />{tr("Orders")}</span></div>
             </div>
             <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-g-green"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />Live sync</span>
           </div>
@@ -1537,7 +1750,7 @@ function Integrations({ V, onNav, lang = "en" }) {
               <div className="text-sm font-extrabold text-g-word">{lang === "pt" ? "Já deixamos sua IA pronta pro seu setor" : "We set your AI up for your industry"}</div>
               <div className="text-xs text-g-light mt-0.5">{lang === "pt" ? onb.pt : onb.en} <span className="text-g-muted">{lang === "pt" ? "Ajuste o que quiser abaixo." : "Tweak anything below."}</span></div>
             </div>
-            <button onClick={dismissOnb} aria-label="Dismiss" className="text-g-muted hover:text-g-word text-sm shrink-0">✕</button>
+            <button onClick={dismissOnb} aria-label={tr("Dismiss")} className="text-g-muted hover:text-g-word text-sm shrink-0">✕</button>
           </div>
         </Card>
       )}
@@ -1579,7 +1792,7 @@ function Integrations({ V, onNav, lang = "en" }) {
                 <div key={name} className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-black/15 px-3 py-2.5">
                   <span className="grid place-items-center h-8 w-8 rounded-lg text-base" style={{ background: color + "22", color }}>{typeof Icon === "string" ? <span>{Icon}</span> : <Icon size={14} />}</span>
                   <div className="flex-1 min-w-0"><div className="text-xs font-bold text-g-word">{name}</div><div className="text-[10px] text-g-muted leading-snug">{lang === "pt" ? doesPt : doesEn}</div></div>
-                  <button onClick={() => toggle(name)} className="btn-bright text-[11px] px-3 py-1.5 shrink-0">Connect</button>
+                  <button onClick={() => toggle(name)} className="btn-bright text-[11px] px-3 py-1.5 shrink-0">{tr("Connect")}</button>
                 </div>
               ))}
             </div>
@@ -1794,7 +2007,7 @@ function Support() {
         {!sent ? (
           <form onSubmit={(e) => { e.preventDefault(); setSent(true); }} className="mt-3 space-y-2">
             <textarea required rows={3} aria-label="Describe your change request" placeholder="e.g. Add a Telegram agent and a weekend promo campaign…" className="w-full rounded-xl2 border border-white/15 bg-black/20 px-4 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-            <button className="btn-bright text-sm w-full">Send request →</button>
+            <button className="btn-bright text-sm w-full">{tr("Send request →")}</button>
           </form>
         ) : (
           <div className="mt-3 rounded-xl2 border border-g-green/40 bg-g-green/[0.1] p-4 text-sm font-bold text-g-light text-center">✅ Got it — your team will follow up shortly.</div>
@@ -2002,7 +2215,7 @@ function Customers({ V, onNav }) {
           onClose={() => setSel(null)}
         >
           <div className="mt-1">
-            <div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">Recent activity</div>
+            <div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">{tr("Recent activity")}</div>
             <div className="space-y-2.5">
               {custTimeline(sel.c, V).map((e, k) => (
                 <div key={k} className="flex items-start gap-2.5 text-xs">
@@ -2097,7 +2310,7 @@ function CallLogs({ V, onNav }) {
         <Drawer
           title={sel.name}
           subtitle={sel.phone}
-          badge={<span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-g-green/15 text-g-green">Positive</span>}
+          badge={<span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-g-green/15 text-g-green">{tr("Positive")}</span>}
           fields={[["Outcome", sel.outcome], ["Duration", sel.dur], ["When", sel.time], ["Channel", "Phone · AI"], ["Resolved", "By AI ✓"]]}
           note={<>Transcript summary:<div className="mt-1.5 space-y-1 text-g-word">{[["📞", `${sel.name}: ${sel.outcome.replace(/·.*/, "").trim() || "Hi, calling about my booking."}`], ["🤖", "Guileo AI: Happy to help — all sorted! Anything else?"], ["📞", `${sel.name}: That's perfect, thank you!`]].map(([ic, t], j) => <div key={j}>{ic} {t}</div>)}</div></>}
           actions={<><a href={`tel:${sel.phone.replace(/[^0-9+]/g, "")}`} className="btn-bright text-sm">📞 Call back</a><a href={waLink(`Hi ${sel.name}! `)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
@@ -2133,7 +2346,7 @@ function Dialer() {
         <div className="h-10 rounded-xl2 bg-black/20 border border-white/10 grid place-items-center text-g-word font-bold mb-3 tracking-wide">{fmt(num)}</div>
         <div className="grid grid-cols-3 gap-2">{keys.map((k) => <button key={k} onClick={() => press(k)} className="h-12 rounded-xl2 border border-white/10 bg-white/[0.04] text-g-word font-bold hover:border-g-gold/40 active:scale-95 transition">{k}</button>)}</div>
         <div className="flex gap-2 mt-3">
-          <button onClick={() => setNum((n) => n.slice(0, -1))} disabled={!num} className="rounded-xl2 border border-white/15 px-4 text-g-muted hover:text-g-word disabled:opacity-30 transition" aria-label="Delete">⌫</button>
+          <button onClick={() => setNum((n) => n.slice(0, -1))} disabled={!num} className="rounded-xl2 border border-white/15 px-4 text-g-muted hover:text-g-word disabled:opacity-30 transition" aria-label={tr("Delete")}>⌫</button>
           <button onClick={start} disabled={calling} className="btn-bright flex-1 text-sm disabled:opacity-70">{calling ? "Calling…" : "📞 Start AI call"}</button>
         </div>
         <p className="mt-2.5 text-[10px] text-g-muted">The AI places the call, talks to the customer, and logs the outcome for you.</p>
@@ -2370,7 +2583,7 @@ function SettingsView({ V }) {
         </div>
         <div className="px-5 py-3 border-t border-white/10 flex items-center justify-between gap-3">
           <span className="text-[11px] text-g-muted">{dirty ? "Unsaved changes" : "Your AI uses these facts when customers ask."}</span>
-          <button onClick={saveProfile} disabled={!dirty} className="btn-bright text-sm disabled:opacity-40 disabled:cursor-not-allowed">Save & update AI</button>
+          <button onClick={saveProfile} disabled={!dirty} className="btn-bright text-sm disabled:opacity-40 disabled:cursor-not-allowed">{tr("Save & update AI")}</button>
         </div>
       </Card>
 
@@ -2380,11 +2593,11 @@ function SettingsView({ V }) {
         <div className="divide-y divide-white/[0.06]">
           <label className="block px-5 py-3"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">Tone</span>
             <select value={st.tone} onChange={(e) => setS("tone", e.target.value)} className={fieldCls}>{["Friendly", "Professional", "Warm & casual", "Concise", "Enthusiastic"].map((o) => <option key={o} value={o}>{o}</option>)}</select></label>
-          <label className="block px-5 py-3"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">Custom greeting</span>
+          <label className="block px-5 py-3"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr("Custom greeting")}</span>
             <textarea value={st.greeting} onChange={(e) => setS("greeting", e.target.value)} placeholder={`e.g. "Hi! Thanks for contacting ${draft.name || V.business.name} 👋 How can I help?"`} rows={2} className={fieldCls} /></label>
-          <div className="flex items-center justify-between px-5 py-3.5"><div><div className="text-sm text-g-word font-semibold">Hand off to a human on request</div><div className="text-[11px] text-g-muted">When a customer asks for a person, the AI alerts your team.</div></div><Toggle on={st.human_handoff !== false} onClick={() => setS("human_handoff", st.human_handoff === false)} /></div>
+          <div className="flex items-center justify-between px-5 py-3.5"><div><div className="text-sm text-g-word font-semibold">{tr("Hand off to a human on request")}</div><div className="text-[11px] text-g-muted">{tr("When a customer asks for a person, the AI alerts your team.")}</div></div><Toggle on={st.human_handoff !== false} onClick={() => setS("human_handoff", st.human_handoff === false)} /></div>
         </div>
-        <div className="px-5 py-2.5 border-t border-white/10 text-[11px] text-g-green">Saved automatically · your AI uses this on every channel ✓</div>
+        <div className="px-5 py-2.5 border-t border-white/10 text-[11px] text-g-green">{tr("Saved automatically · your AI uses this on every channel ✓")}</div>
       </Card>
 
       {/* Notifications & billing — when the owner gets pinged + auto top-up (revenue safety) */}
@@ -2394,8 +2607,8 @@ function SettingsView({ V }) {
           {[["on_booking", "New booking or order"], ["on_missed", "Missed call or lead"], ["on_review", "New review"], ["daily_summary", "Daily summary from Gui"]].map(([k, label]) => (
             <div key={k} className="flex items-center justify-between px-5 py-3.5"><span className="text-sm text-g-word font-semibold">{label}</span><Toggle on={st[k] !== false} onClick={() => setS(k, st[k] === false)} /></div>
           ))}
-          <div className="flex items-center justify-between px-5 py-3.5"><div><div className="text-sm text-g-word font-semibold">Auto top-up Gui credits</div><div className="text-[11px] text-g-muted">Never let the AI pause mid-task — refill when low (pay-as-you-go).</div></div><Toggle on={payg} onClick={flipPayg} /></div>
-          <div className="flex items-center justify-between px-5 py-3.5"><div className="flex items-center gap-3"><span className="text-sm text-g-word font-semibold">Quiet hours</span></div><Toggle on={!!st.quiet_enabled} onClick={() => setS("quiet_enabled", !st.quiet_enabled)} /></div>
+          <div className="flex items-center justify-between px-5 py-3.5"><div><div className="text-sm text-g-word font-semibold">{tr("Auto top-up Gui credits")}</div><div className="text-[11px] text-g-muted">{tr("Never let the AI pause mid-task — refill when low (pay-as-you-go).")}</div></div><Toggle on={payg} onClick={flipPayg} /></div>
+          <div className="flex items-center justify-between px-5 py-3.5"><div className="flex items-center gap-3"><span className="text-sm text-g-word font-semibold">{tr("Quiet hours")}</span></div><Toggle on={!!st.quiet_enabled} onClick={() => setS("quiet_enabled", !st.quiet_enabled)} /></div>
           {st.quiet_enabled && (
             <div className="flex items-center gap-3 px-5 py-3">
               <label className="flex-1"><span className="text-[10px] uppercase tracking-wide text-g-muted">From</span><input type="time" value={st.quiet_start} onChange={(e) => setS("quiet_start", e.target.value)} className={fieldCls} /></label>
@@ -2429,7 +2642,7 @@ function SettingsView({ V }) {
           ))}
         </div>
         <div className="px-5 py-3 border-t border-white/10">
-          <div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">Live webhook events</div>
+          <div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">{tr("Live webhook events")}</div>
           <div className="space-y-1.5 font-mono text-[10px] text-g-muted">
             {[["order.created", "→ POS · just now"], ["booking.confirmed", "→ Calendar · 2m"], ["payment.succeeded", "→ Stripe · 6m"], ["review.received", "→ Reputation · 11m"]].map(([ev, meta]) => (
               <div key={ev} className="flex items-center gap-2"><span className="text-g-green">●</span><span className="text-g-word">{ev}</span><span className="flex-1" /><span>{meta}</span></div>
@@ -2438,10 +2651,10 @@ function SettingsView({ V }) {
         </div>
       </Card>
       <Card className="flex flex-wrap items-center justify-between gap-3">
-        <div><div className="text-sm font-bold text-g-word">Demo data</div><div className="text-[11px] text-g-muted">Reset resolved alerts, won deals, filled slots & read flags back to the sample state.</div></div>
-        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "created:deliveries", "created:campaigns", "created:impact", "created:audiences", "created:reviewreq", "created:payments", "created:team", "created:locations", "created:giftcards", "integrations", "owndelivery", "loyalty", "goal"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
+        <div><div className="text-sm font-bold text-g-word">{tr("Demo data")}</div><div className="text-[11px] text-g-muted">{tr("Reset resolved alerts, won deals, filled slots & read flags back to the sample state.")}</div></div>
+        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "created:deliveries", "created:campaigns", "created:impact", "created:audiences", "created:reviewreq", "created:payments", "created:team", "created:locations", "created:giftcards", "integrations", "owndelivery", "loyalty", "goal"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">{tr("↻ Reset demo data")}</button>
       </Card>
-      <p className="text-center text-[11px] text-g-muted">Changes apply instantly. Need something custom? Your team's a tap away. 💬</p>
+      <p className="text-center text-[11px] text-g-muted">{tr("Changes apply instantly. Need something custom? Your team's a tap away. 💬")}</p>
     </div>
   );
 }
@@ -2454,8 +2667,8 @@ function Grow() {
     <div className="space-y-4 stagger">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word">Grow with Guileo</div><div className="text-xs text-g-muted mt-0.5">Want more? Add a channel or service — we set it up, you keep one login and one bill. Growth on tap.</div></div>
-          <a href={waLink("Hi Guileo! I'd like to add a new service to my plan")} target="_blank" rel="noopener" className="btn-bright text-sm">Talk to my team →</a>
+          <div><div className="text-sm font-extrabold text-g-word">Grow with Guileo</div><div className="text-xs text-g-muted mt-0.5">{tr("Want more? Add a channel or service — we set it up, you keep one login and one bill. Growth on tap.")}</div></div>
+          <a href={waLink("Hi Guileo! I'd like to add a new service to my plan")} target="_blank" rel="noopener" className="btn-bright text-sm">{tr("Talk to my team →")}</a>
         </div>
       </Card>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -2469,15 +2682,15 @@ function Grow() {
       </div>
       {/* Demand learning — request something we don't offer yet */}
       <Card>
-        <div className="text-sm font-extrabold text-g-word">Don't see what you need?</div>
-        <p className="text-xs text-g-muted mt-0.5">Tell us what you wish we offered — we're always adding services, and your idea shapes what we build next.</p>
+        <div className="text-sm font-extrabold text-g-word">{tr("Don't see what you need?")}</div>
+        <p className="text-xs text-g-muted mt-0.5">{tr("Tell us what you wish we offered — we're always adding services, and your idea shapes what we build next.")}</p>
         {!sent ? (
           <form onSubmit={submit} className="mt-3 flex flex-col sm:flex-row gap-2">
             <input required value={txt} onChange={(e) => setTxt(e.target.value)} aria-label="Request a service we don't offer yet" placeholder="e.g. A reservations widget for my website…" className="flex-1 rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-            <button className="btn-bright text-sm whitespace-nowrap">Send request →</button>
+            <button className="btn-bright text-sm whitespace-nowrap">{tr("Send request →")}</button>
           </form>
         ) : (
-          <div className="mt-3 rounded-xl2 border border-g-green/40 bg-g-green/[0.1] p-3 text-sm font-bold text-g-light text-center">✅ Got it — thanks! Our team will look into it.</div>
+          <div className="mt-3 rounded-xl2 border border-g-green/40 bg-g-green/[0.1] p-3 text-sm font-bold text-g-light text-center">{tr("✅ Got it — thanks! Our team will look into it.")}</div>
         )}
       </Card>
     </div>
@@ -2577,7 +2790,7 @@ function AIBrain({ V }) {
     <div className="space-y-4 stagger">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word">🧠 Your AI's brain</div><div className="text-xs text-g-muted mt-0.5">Teach it in plain words — it answers your <b className="text-g-light">very next customer</b> with it. Test it live below.</div></div>
+          <div><div className="text-sm font-extrabold text-g-word">{tr("🧠 Your AI's brain")}</div><div className="text-xs text-g-muted mt-0.5">Teach it in plain words — it answers your <b className="text-g-light">very next customer</b> with it. Test it live below.</div></div>
           <button onClick={() => setEditing({ topic: "", triggers: "", answer: "" })} className="btn-bright text-sm inline-flex items-center gap-2"><FaPlus size={11} /> Teach it something</button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -2589,9 +2802,9 @@ function AIBrain({ V }) {
 
       {/* THE DIFFERENTIATOR — test your AI live */}
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />Test your AI · see exactly how it answers your customers</div>
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{tr("Test your AI · see exactly how it answers your customers")}</div>
         <div className="p-4 space-y-2.5 min-h-[8rem] max-h-72 overflow-y-auto">
-          {chat.length === 0 && <div className="text-center text-xs text-g-muted py-6">Ask your AI anything a customer might ask 👇</div>}
+          {chat.length === 0 && <div className="text-center text-xs text-g-muted py-6">{tr("Ask your AI anything a customer might ask 👇")}</div>}
           {chat.map((m, i) => (
             <div key={i} className="space-y-2">
               <div className="flex justify-end"><div className="max-w-[78%] rounded-2xl px-3.5 py-2 text-xs bg-g-gold/15 text-g-word border border-g-gold/30">{m.q}</div></div>
@@ -2604,7 +2817,7 @@ function AIBrain({ V }) {
         </div>
         {chat.length === 0 && <div className="px-4 pb-2 flex flex-wrap gap-2">{suggestions.map((s) => <button key={s} onClick={() => setChat([{ q: s, a: aiAnswer(s, V, kb), trained: !!kbMatch(s, kb) }])} className="rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-[11px] font-bold text-g-muted hover:text-g-word transition">{s}</button>)}</div>}
         <form onSubmit={ask} className="p-3 border-t border-white/10 flex gap-2">
-          <input value={q} onChange={(e) => setQ(e.target.value)} aria-label="Ask your AI" placeholder="Ask your AI a question…" className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} aria-label="Ask your AI" placeholder={tr("Ask your AI a question…")} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
           <button className="btn-bright text-sm px-5">Ask</button>
         </form>
       </Card>
@@ -2624,11 +2837,11 @@ function AIBrain({ V }) {
               </div>
               <div className="flex items-center gap-2 shrink-0 opacity-60 group-hover:opacity-100 transition">
                 <button onClick={() => setEditing(e)} aria-label="Edit" className="text-g-muted hover:text-g-word transition"><FaPen size={11} /></button>
-                <button onClick={() => delEntry(e.id)} aria-label="Delete" className="text-g-muted hover:text-red-400 transition"><FaTrash size={11} /></button>
+                <button onClick={() => delEntry(e.id)} aria-label={tr("Delete")} className="text-g-muted hover:text-red-400 transition"><FaTrash size={11} /></button>
               </div>
             </div>
           ))}
-          {kb.length === 0 && <div className="px-5 py-8 text-center text-xs text-g-muted">Nothing trained yet — add your first answer above.</div>}
+          {kb.length === 0 && <div className="px-5 py-8 text-center text-xs text-g-muted">{tr("Nothing trained yet — add your first answer above.")}</div>}
         </div>
       </Card>
 
@@ -2636,7 +2849,7 @@ function AIBrain({ V }) {
         open={!!editing}
         onClose={() => setEditing(null)}
         title={editing?.id ? "Edit knowledge" : "Teach your AI"}
-        subtitle="Your AI uses this the moment you save it"
+        subtitle={tr("Your AI uses this the moment you save it")}
         fields={null}
         actions={null}
       >
@@ -2656,13 +2869,13 @@ function KBForm({ entry, onSave, onCancel }) {
     <div className="space-y-3">
       <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">Topic</span>
         <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. Parking & access" className={`mt-1 ${field}`} /></label>
-      <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">When customers ask about… <span className="normal-case font-normal text-g-muted/70">(keywords, optional)</span></span>
+      <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">When customers ask about… <span className="normal-case font-normal text-g-muted/70">{tr("(keywords, optional)")}</span></span>
         <input value={triggers} onChange={(e) => setTriggers(e.target.value)} placeholder="parking park garage valet" className={`mt-1 ${field}`} /></label>
-      <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">Your AI should reply</span>
+      <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr("Your AI should reply")}</span>
         <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} rows={4} placeholder="Free parking is available right behind the building…" className={`mt-1 ${field} resize-none`} /></label>
       <div className="flex gap-2 pt-1">
-        <button disabled={!valid} onClick={() => onSave({ ...entry, topic: topic.trim(), triggers: triggers.trim(), answer: answer.trim() })} className="btn-bright text-sm flex-1 disabled:opacity-40 disabled:cursor-not-allowed">Save & retrain</button>
-        <button onClick={onCancel} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word transition">Cancel</button>
+        <button disabled={!valid} onClick={() => onSave({ ...entry, topic: topic.trim(), triggers: triggers.trim(), answer: answer.trim() })} className="btn-bright text-sm flex-1 disabled:opacity-40 disabled:cursor-not-allowed">{tr("Save & retrain")}</button>
+        <button onClick={onCancel} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word transition">{tr("Cancel")}</button>
       </div>
     </div>
   );
@@ -2694,7 +2907,7 @@ function Billing({ V }) {
         <Card className="lg:col-span-2">
           <div className="flex items-center justify-between gap-3">
             <div><div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Current plan")}</div><div className="text-xl font-extrabold text-g-word mt-1">{plan.label}</div></div>
-            <a href={waLink("I'd like to upgrade my Guileo plan")} target="_blank" rel="noopener" className="btn-bright text-sm">Upgrade →</a>
+            <a href={waLink("I'd like to upgrade my Guileo plan")} target="_blank" rel="noopener" className="btn-bright text-sm">{tr("Upgrade →")}</a>
           </div>
           <div className="mt-4"><div className="flex justify-between text-xs mb-1"><span className="text-g-muted">{plan.unit}</span><span className="text-g-word font-bold">{plan.used} / {plan.total.toLocaleString()}</span></div><div className="h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${Math.max(2, pct)}%` }} /></div></div>
         </Card>
@@ -2709,24 +2922,24 @@ function Billing({ V }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="grid place-items-center h-10 w-10 rounded-xl bg-g-green/15 text-g-green"><FaWandMagicSparkles /></span>
-            <div><div className="text-sm font-extrabold text-g-word">Gui — AI assistant credits</div><div className="text-xs text-g-muted mt-0.5">Powers every task Gui runs for you · ~5 credits per action</div></div>
+            <div><div className="text-sm font-extrabold text-g-word">{tr("Gui — AI assistant credits")}</div><div className="text-xs text-g-muted mt-0.5">{tr("Powers every task Gui runs for you · ~5 credits per action")}</div></div>
           </div>
-          <div className="text-right"><div className={`text-2xl font-extrabold ${low ? "text-red-400" : "text-g-word"}`}>{credits}</div><div className="text-[10px] uppercase tracking-wide text-g-muted">credits left</div></div>
+          <div className="text-right"><div className={`text-2xl font-extrabold ${low ? "text-red-400" : "text-g-word"}`}>{credits}</div><div className="text-[10px] uppercase tracking-wide text-g-muted">{tr("credits left")}</div></div>
         </div>
         <div className="mt-3 h-2 rounded-full bg-white/10 overflow-hidden"><div className={`h-full rounded-full ${low ? "bg-red-500" : "bg-gradient-to-r from-g-green to-g-gold"}`} style={{ width: `${cpct}%` }} /></div>
         <div className="mt-3 grid sm:grid-cols-3 gap-2">
           {[["+250", 250, "$9"], ["+500", 500, "$16"], ["+1,200", 1200, "$32"]].map(([label, n, price]) => (
             <button key={n} onClick={() => topUp(n)} className="rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2.5 text-center hover:border-g-green/50 hover:bg-white/[0.07] transition">
-              <div className="text-sm font-extrabold text-g-word">{label} <span className="text-g-muted font-normal">credits</span></div>
+              <div className="text-sm font-extrabold text-g-word">{label} <span className="text-g-muted font-normal">{tr("credits")}</span></div>
               <div className="text-[10px] text-g-gold font-bold">{price}</div>
             </button>
           ))}
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-          <div className="flex items-center gap-2"><Toggle on={payg} onClick={() => { const v = !payg; setPayg(v); portalApi.saveState("gui_payg", v); toast(v ? "Pay-as-you-go on — auto-top-up when low" : "Pay-as-you-go off — Gui pauses when out of credits"); }} /><span className="text-g-muted">Auto top-up (pay-as-you-go)</span></div>
+          <div className="flex items-center gap-2"><Toggle on={payg} onClick={() => { const v = !payg; setPayg(v); portalApi.saveState("gui_payg", v); toast(v ? "Pay-as-you-go on — auto-top-up when low" : "Pay-as-you-go off — Gui pauses when out of credits"); }} /><span className="text-g-muted">{tr("Auto top-up (pay-as-you-go)")}</span></div>
           <span className="text-g-muted">{usedThisMonth} credits used this month</span>
         </div>
-        <p className="mt-2 text-[10px] text-g-muted">Top-ups are billed securely to your account on file — we never ask for card details in chat.</p>
+        <p className="mt-2 text-[10px] text-g-muted">{tr("Top-ups are billed securely to your account on file — we never ask for card details in chat.")}</p>
       </Card>
 
       {/* Gui usage history — what your credits bought, by day */}
@@ -2755,7 +2968,7 @@ function Billing({ V }) {
                     <div key={u._id} className="flex items-center gap-3 py-2"><span className="text-sm">🪄</span><div className="flex-1 min-w-0 text-xs text-g-word truncate">{u.label || "AI task"}</div><span className="text-[11px] text-g-muted shrink-0">{u.day}</span><span className="text-[11px] font-bold text-g-gold shrink-0">−{u.cost} cr</span></div>
                   ))}
                 </div>
-              ) : <p className="mt-3 text-[11px] text-g-muted text-center">No Gui activity yet — ask Gui to do something and it'll show up here.</p>}
+              ) : <p className="mt-3 text-[11px] text-g-muted text-center">{tr("No Gui activity yet — ask Gui to do something and it'll show up here.")}</p>}
             </div>
           </Card>
         );
@@ -2790,12 +3003,12 @@ function Billing({ V }) {
           <Card className="border-g-gold/25 bg-g-gold/[0.05]">
             <div className="flex items-center gap-3">
               <span className="grid place-items-center h-10 w-10 rounded-xl bg-g-gold/15 text-g-gold"><FaGift /></span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word">Give 250, get 250 credits</div><div className="text-xs text-g-muted mt-0.5">Invite another business — you both get <span className="text-g-gold font-bold">{tr("250 free credits")}</span> when they join. {refs > 0 && <span className="text-g-green font-bold">{refs} joined so far.</span>}</div></div>
+              <div className="flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word">{tr("Give 250, get 250 credits")}</div><div className="text-xs text-g-muted mt-0.5">Invite another business — you both get <span className="text-g-gold font-bold">{tr("250 free credits")}</span> when they join. {refs > 0 && <span className="text-g-green font-bold">{refs} joined so far.</span>}</div></div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <code className="flex-1 min-w-[140px] rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-xs font-mono text-g-light truncate">{link}</code>
-              <button onClick={copy} className="btn-ghost text-sm">Copy link</button>
-              <button onClick={grant} className="btn-bright text-sm">Simulate a referral →</button>
+              <button onClick={copy} className="btn-ghost text-sm">{tr("Copy link")}</button>
+              <button onClick={grant} className="btn-bright text-sm">{tr("Simulate a referral →")}</button>
             </div>
           </Card>
         );
@@ -2803,7 +3016,7 @@ function Billing({ V }) {
 
       {/* Go-live readiness — what's done vs what needs your keys to operate */}
       <Card className="p-0 overflow-hidden border-g-green/20">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("🚀 Go-live readiness")}</span><span className="text-[10px] font-black uppercase text-g-green">Front ready</span></div>
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("🚀 Go-live readiness")}</span><span className="text-[10px] font-black uppercase text-g-green">{tr("Front ready")}</span></div>
         <div className="divide-y divide-white/[0.06]">
           {[
             ["Product, AI & dashboard", "Built & validated", true],
@@ -2820,7 +3033,7 @@ function Billing({ V }) {
         </div>
         <div className="px-5 py-3 border-t border-white/10 flex items-center justify-between gap-3">
           <span className="text-[11px] text-g-muted">Step-by-step in <span className="text-g-light font-semibold">LAUNCH.md</span>. I'll wire each one with you when you have the keys.</span>
-          <a href={waLink("I'm ready to take Guileo live — let's connect the backend")} target="_blank" rel="noopener" className="btn-bright text-sm shrink-0">I have the keys →</a>
+          <a href={waLink("I'm ready to take Guileo live — let's connect the backend")} target="_blank" rel="noopener" className="btn-bright text-sm shrink-0">{tr("I have the keys →")}</a>
         </div>
       </Card>
 
@@ -2832,7 +3045,7 @@ function Billing({ V }) {
           ))}
         </div>
       </Card>
-      <p className="text-center text-[11px] text-g-muted">Payment is handled securely with your team — we never ask for card details in chat.</p>
+      <p className="text-center text-[11px] text-g-muted">{tr("Payment is handled securely with your team — we never ask for card details in chat.")}</p>
     </div>
   );
 }
@@ -3371,7 +3584,7 @@ function Loyalty({ V }) {
                   <span className="text-base">{isJoined ? "🎉" : "✉️"}</span>
                   <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted truncate">{isJoined ? "referred a friend who joined" : r.note}</div></div>
                   {isJoined
-                    ? <span className="text-[10px] font-black uppercase text-g-green">Joined</span>
+                    ? <span className="text-[10px] font-black uppercase text-g-green">{tr("Joined")}</span>
                     : <button onClick={() => convert(r, i)} className="text-[11px] font-bold rounded-full border border-g-green/40 bg-g-green/[0.1] px-2.5 py-1 text-g-green hover:bg-g-green/20 transition">Mark joined</button>}
                 </div>
               );
@@ -3434,19 +3647,19 @@ function GuileoImpact({ V }) {
           <div className="divide-y divide-white/[0.06]">{events.map(([t, what, amt], i) => (<div key={i} className="flex items-center gap-3 px-5 py-3"><span className="grid place-items-center h-8 w-8 rounded-full bg-g-green/15 text-g-green text-sm font-black">＋</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{what}</div><div className="text-[11px] text-g-muted">{t === "now" ? "just now" : `${t} ago`}</div></div><span className="text-sm font-extrabold text-g-green">+${amt}</span></div>))}</div>
         </Card>
         <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">{tr("Partnership")}</div>
-          <div className="text-sm text-g-muted">You grew <b className="text-g-word">${total.toLocaleString()}</b> with Guileo this month.</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">{tr("Your return")}</div>
+          <div className="text-sm text-g-muted">Gui drove <b className="text-g-word">${total.toLocaleString()}</b> in growth for you this month.</div>
           <div className="mt-3 rounded-xl2 border border-g-gold/30 bg-g-gold/[0.06] p-3">
-            <div className="text-[10px] uppercase tracking-wide text-g-gold font-bold">Guileo's share · {d.sharePct}% of growth</div>
-            <div className="text-2xl font-extrabold text-g-word mt-1">${share.toLocaleString()}</div>
-            <div className="text-[11px] text-g-muted mt-0.5">You keep ${(total - share).toLocaleString()} — we only win when you win.</div>
+            <div className="text-[10px] uppercase tracking-wide text-g-gold font-bold">Return on Gui</div>
+            <div className="text-2xl font-extrabold text-g-word mt-1">{share > 0 ? `${(total / share).toFixed(1)}×` : "—"}</div>
+            <div className="text-[11px] text-g-muted mt-0.5">Every $1 of Gui credits returned <b className="text-g-word">${share > 0 ? (total / share).toFixed(1) : "0"}</b> in growth. Pay-as-you-go credits power every action — no cut of your revenue.</div>
             <button onClick={() => {
-              const lines = [["Date", "Growth event", "Amount"], ...events.map(([t, what, amt]) => [t === "now" ? "just now" : `${t} ago`, what, `$${amt}`]), ["", "Total growth", `$${total}`], ["", `Guileo share (${d.sharePct}%)`, `$${share}`], ["", "You keep", `$${total - share}`]];
+              const lines = [["Date", "Growth event", "Amount"], ...events.map(([t, what, amt]) => [t === "now" ? "just now" : `${t} ago`, what, `$${amt}`]), ["", "Total growth Gui drove", `$${total}`], ["", "Return on Gui", share > 0 ? `${(total / share).toFixed(1)}x` : "-"]];
               const csv = lines.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
               const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
               const a = document.createElement("a"); a.href = url; a.download = `guileo-growth-statement-${V.label}.csv`; a.click(); URL.revokeObjectURL(url);
               toast("Growth statement downloaded ✓");
-            }} className="btn-bright text-sm w-full mt-3 justify-center"><FaDownload size={11} /> Download statement</button>
+            }} className="btn-bright text-sm w-full mt-3 justify-center"><FaDownload size={11} /> Download growth statement</button>
           </div>
           <div className="mt-3"><Bars data={V.revenue} /></div>
         </Card>
@@ -3526,7 +3739,7 @@ function Waitlist({ V }) {
             <button key={i} onClick={() => setSel({ r, i })} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition">
               <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{r.name[0]}</span>
               <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted">{r.want} · via {r.ch} · {r.since}</div></div>
-              <span onClick={(e) => { e.stopPropagation(); offer(i, r.name, r.want); }} role="button" className="btn-bright text-xs px-3 shrink-0">Offer slot</span>
+              <span onClick={(e) => { e.stopPropagation(); offer(i, r.name, r.want); }} role="button" className="btn-bright text-xs px-3 shrink-0">{tr("Offer slot")}</span>
             </button>
           ))}
           {open.length === 0 && <div className="px-5 py-8 text-center text-xs text-g-muted">No one waiting — capacity is full. 🎉</div>}
@@ -3716,32 +3929,32 @@ function Login({ onEnter }) {
     <div className="min-h-screen grid place-items-center px-5">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm rounded-xl3 border border-white/12 bg-white/[0.04] backdrop-blur-xl p-8 shadow-lift text-center">
         <img src={logo} alt="Guileo" className="h-12 w-12 object-contain mx-auto" />
-        <div className="mt-3 text-xl font-black uppercase tracking-tight bg-gradient-to-r from-g-green via-g-gold to-g-green bg-[length:200%_auto] bg-clip-text text-transparent animate-shimmer">Growth Cockpit</div>
+        <div className="mt-3 text-xl font-black uppercase tracking-tight bg-gradient-to-r from-g-green via-g-gold to-g-green bg-[length:200%_auto] bg-clip-text text-transparent animate-shimmer">{tr("Growth Cockpit")}</div>
         {confirm ? (
           <div className="mt-6">
             <div className="text-3xl mb-2">📬</div>
-            <div className="text-sm font-extrabold text-g-word">Confirm your email</div>
-            <p className="text-xs text-g-muted mt-1">We sent a confirmation to <span className="text-g-light font-semibold">{email}</span>. Click the link, then come back and sign in.</p>
-            <button onClick={() => { setConfirm(false); setMode("signin"); }} className="mt-4 btn-bright text-sm w-full">I confirmed — sign in →</button>
+            <div className="text-sm font-extrabold text-g-word">{tr("Confirm your email")}</div>
+            <p className="text-xs text-g-muted mt-1">We sent a confirmation to <span className="text-g-light font-semibold">{email}</span>{tr(". Click the link, then come back and sign in.")}</p>
+            <button onClick={() => { setConfirm(false); setMode("signin"); }} className="mt-4 btn-bright text-sm w-full">{tr("I confirmed — sign in →")}</button>
           </div>
         ) : (
           <>
-            <p className="text-xs text-g-muted mt-1">{CONNECTED ? (mode === "signup" ? "Create your account" : "Welcome back") : "Sign in to your private dashboard"}</p>
+            <p className="text-xs text-g-muted mt-1">{tr(CONNECTED ? (mode === "signup" ? "Create your account" : "Welcome back") : "Sign in to your private dashboard")}</p>
             <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="mt-6 space-y-2.5 text-left">
               <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-              <input type="password" required minLength={6} value={pw} onChange={(e) => setPw(e.target.value)} placeholder={CONNECTED ? "Password (min 6 chars)" : "Password"} className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-              <button disabled={busy} className="btn-bright text-sm w-full disabled:opacity-70">{busy ? "…" : (CONNECTED ? (mode === "signup" ? "Create account →" : "Sign in →") : "Enter Growth Cockpit →")}</button>
+              <input type="password" required minLength={6} value={pw} onChange={(e) => setPw(e.target.value)} placeholder={CONNECTED ? tr("Password (min 6 chars)") : tr("Password")} className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+              <button disabled={busy} className="btn-bright text-sm w-full disabled:opacity-70">{busy ? "…" : tr(CONNECTED ? (mode === "signup" ? "Create account →" : "Sign in →") : "Enter Growth Cockpit →")}</button>
               {err && <div className="text-[11px] text-red-400 text-center">{err}</div>}
             </form>
             {CONNECTED && (
               <button onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setErr(""); }} className="mt-3 text-xs font-bold text-g-gold hover:underline">
-                {mode === "signup" ? "Already have an account? Sign in" : "New here? Create an account"}
+                {tr(mode === "signup" ? "Already have an account? Sign in" : "New here? Create an account")}
               </button>
             )}
             <button onClick={demoEnter} disabled={busy} className="block mx-auto mt-3 text-xs font-bold text-g-muted hover:text-g-word disabled:opacity-60">{tr("▶ Enter demo (sample data)")}</button>
           </>
         )}
-        <div className="mt-4 text-[11px] text-g-muted"><a href="/" className="hover:text-g-word">← Back to guileo.ai</a></div>
+        <div className="mt-4 text-[11px] text-g-muted"><a href="/" className="hover:text-g-word">{tr("← Back to guileo.ai")}</a></div>
       </motion.div>
     </div>
   );
@@ -3911,14 +4124,14 @@ function Gui({ V, onNav }) {
         <motion.div initial={{ opacity: 0, y: 20, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="fixed bottom-5 right-5 z-[55] w-[92vw] max-w-sm rounded-xl3 border border-white/12 bg-[#0c100d]/98 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden" style={{ height: "min(78vh, 560px)" }}>
           <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2.5 shrink-0">
             <span className="grid place-items-center h-9 w-9 rounded-full bg-gradient-to-br from-g-green to-g-dark text-white"><FaWandMagicSparkles size={15} /></span>
-            <div className="flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word flex items-center gap-1.5">Gui <span className="text-[9px] font-black uppercase text-g-green">· AI assistant</span></div><div className="text-[10px] text-g-muted">Executes tasks for you, 24/7</div></div>
+            <div className="flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word flex items-center gap-1.5">Gui <span className="text-[9px] font-black uppercase text-g-green">{tr("· AI assistant")}</span></div><div className="text-[10px] text-g-muted">{tr("Executes tasks for you, 24/7")}</div></div>
             <button onClick={() => setOpen(false)} aria-label="Close" className="text-g-muted hover:text-g-word text-lg px-1">✕</button>
           </div>
           {/* credit meter */}
           <div className="px-4 py-2 border-b border-white/[0.06] shrink-0">
-            <div className="flex items-center justify-between text-[10px] mb-1"><span className="text-g-muted font-bold uppercase tracking-wide">Credits</span><span className={`font-bold ${low ? "text-red-400" : "text-g-word"}`}>{credits} left</span></div>
+            <div className="flex items-center justify-between text-[10px] mb-1"><span className="text-g-muted font-bold uppercase tracking-wide">{tr("Credits")}</span><span className={`font-bold ${low ? "text-red-400" : "text-g-word"}`}>{credits} left</span></div>
             <div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className={`h-full rounded-full ${low ? "bg-red-500" : "bg-gradient-to-r from-g-green to-g-gold"}`} style={{ width: `${pct}%` }} /></div>
-            <div className="mt-1 flex items-center justify-between text-[10px] text-g-muted"><span>Pay-as-you-go · ~5 credits per task</span><button onClick={recharge} className="font-bold text-g-gold hover:underline">{tr("+ Recharge")}</button></div>
+            <div className="mt-1 flex items-center justify-between text-[10px] text-g-muted"><span>{tr("Pay-as-you-go · ~5 credits per task")}</span><button onClick={recharge} className="font-bold text-g-gold hover:underline">{tr("+ Recharge")}</button></div>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
             {msgs.map((m, i) => (
@@ -3928,7 +4141,7 @@ function Gui({ V, onNav }) {
                   {m.text}
                   {m.cost > 0 && <span className="ml-1.5 text-[9px] text-g-muted">−{m.cost} cr</span>}
                   {m.lowCredit && <button onClick={recharge} className="block mt-1.5 text-[11px] font-bold text-g-gold hover:underline">{tr("+ Recharge credits")}</button>}
-                  {m.canUndo && i === msgs.length - 1 && <button onClick={doUndo} className="block mt-1.5 text-[11px] font-bold text-g-muted hover:text-g-word">↩ Undo this</button>}
+                  {m.canUndo && i === msgs.length - 1 && <button onClick={doUndo} className="block mt-1.5 text-[11px] font-bold text-g-muted hover:text-g-word">{tr("↩ Undo this")}</button>}
                   {m.next && m.next.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5">{m.next.map((n) => <button key={n.cmd} onClick={() => run(n.cmd)} className="rounded-full border border-g-gold/30 bg-g-gold/10 px-2.5 py-1 text-[10px] font-bold text-g-gold hover:bg-g-gold/20 transition">{n.label}</button>)}</div>
                   )}
@@ -3941,7 +4154,7 @@ function Gui({ V, onNav }) {
           )}
           {showHist && history.length > 0 && (
             <div className="px-3 pb-1 shrink-0">
-              <div className="text-[9px] font-black uppercase text-g-muted mb-1">Recent commands · tap to run again</div>
+              <div className="text-[9px] font-black uppercase text-g-muted mb-1">{tr("Recent commands · tap to run again")}</div>
               <div className="flex flex-wrap gap-1.5">{history.map((h) => <button key={h} onClick={() => run(h)} className="rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1 text-[10px] text-g-light hover:text-g-word hover:border-g-green/40 transition truncate max-w-[180px]">{h}</button>)}</div>
             </div>
           )}
@@ -3951,7 +4164,7 @@ function Gui({ V, onNav }) {
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={listening ? "Listening…" : "Ask Gui to do something…"} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
             <button className="btn-bright text-sm px-4">Send</button>
           </form>
-          <a href={waLink("Hi Guileo team! I need help")} target="_blank" rel="noopener" className="px-4 pb-3 text-[10px] text-g-muted hover:text-g-word text-center shrink-0">Need a human? Talk to your team →</a>
+          <a href={waLink("Hi Guileo team! I need help")} target="_blank" rel="noopener" className="px-4 pb-3 text-[10px] text-g-muted hover:text-g-word text-center shrink-0">{tr("Need a human? Talk to your team →")}</a>
         </motion.div>
       )}
     </>
@@ -4033,9 +4246,9 @@ export default function Portal() {
         <div><h1>${V.business.name}</h1><div class="muted">${V.business.place} · Monthly growth report</div></div>
         <div style="font-weight:900;color:#1f9d57">GUILEO</div>
       </div>
-      <div class="hero"><div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#9a7b1f;font-weight:700">Growth Guileo drove this month</div>
+      <div class="hero"><div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#9a7b1f;font-weight:700">Growth Gui drove this month</div>
         <div class="big">$${impact.total.toLocaleString()}</div>
-        <div class="share"><b>Guileo's share · ${impact.sharePct}% of growth: $${share.toLocaleString()}</b><br><span class="muted">You keep $${(impact.total - share).toLocaleString()} — we only win when you win.</span></div>
+        <div class="share"><b>Return on Gui: ${share > 0 ? (impact.total / share).toFixed(1) : "0"}× on credits used</b><br><span class="muted">Pay-as-you-go credits power every action — Guileo never takes a cut of your revenue.</span></div>
       </div>
       <h3>Key metrics</h3><table>${kpiRows}</table>
       <h3>Growth ledger</h3><table>${eventRows}<tr><td><b>Total</b></td><td style="text-align:right"><b>$${impact.total.toLocaleString()}</b></td></tr></table>
@@ -4089,7 +4302,7 @@ export default function Portal() {
     settings: <SettingsView V={V} />,
   }[view] || <Overview V={V} onNav={setView} />;
 
-  if (booting) return <div className="min-h-screen grid place-items-center text-g-muted text-sm">Loading your cockpit…</div>;
+  if (booting) return <div className="min-h-screen grid place-items-center text-g-muted text-sm">{tr("Loading your cockpit…")}</div>;
   if (!authed) return <div className="min-h-screen text-g-ink"><Login onEnter={() => setAuthed(true)} /></div>;
   if (!onboarded) return <div className="min-h-screen text-g-ink"><OnboardingWizard onDone={(vid, extra) => {
     setVertical(vid); setView("overview"); setOnboarded(true);
@@ -4108,8 +4321,8 @@ export default function Portal() {
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[82vw] overflow-y-auto transform transition-transform duration-300 ${navOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static lg:z-auto lg:w-60 lg:max-w-none lg:min-h-screen border-r border-white/10 bg-[#070b10]/98 lg:bg-white/[0.03] backdrop-blur-xl lg:sticky lg:top-0 flex flex-col`}>
         <div className="flex items-center gap-2 px-5 py-4">
           <img src={logo} alt="Guileo" className="h-8 w-8 object-contain" />
-          <div className="leading-tight flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word">Growth Cockpit</div><div className="text-[10px] text-g-muted truncate">{V.icon} {V.business.name}</div></div>
-          <button onClick={() => setNavOpen(false)} className="lg:hidden text-g-muted hover:text-g-word text-lg leading-none px-1" aria-label="Close menu">✕</button>
+          <div className="leading-tight flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word">{tr("Growth Cockpit")}</div><div className="text-[10px] text-g-muted truncate">{V.icon} {V.business.name}</div></div>
+          <button onClick={() => setNavOpen(false)} className="lg:hidden text-g-muted hover:text-g-word text-lg leading-none px-1" aria-label={tr("Close menu")}>✕</button>
         </div>
         <nav aria-label="Dashboard sections" className="flex flex-col gap-1 px-3 pb-3 overflow-y-auto">
           {(() => {
@@ -4155,7 +4368,7 @@ export default function Portal() {
           <div className="flex items-center gap-2">
             <span className="grid place-items-center h-8 w-8 rounded-full bg-g-green/15 text-xs font-bold text-g-light">JS</span>
             <div className="leading-tight min-w-0 flex-1"><div className="text-xs font-bold text-g-word truncate">Jane Staff</div><div className="text-[10px] text-g-muted truncate">{CONNECTED ? "Staff · admin" : "Demo mode"}</div></div>
-            <button onClick={logout} title="Sign out" className="text-g-muted hover:text-red-400 transition text-[11px] font-bold">Sign out</button>
+            <button onClick={logout} title={tr("Sign out")} className="text-g-muted hover:text-red-400 transition text-[11px] font-bold">{tr("Sign out")}</button>
           </div>
         </div>
       </aside>
@@ -4165,29 +4378,29 @@ export default function Portal() {
         {/* topbar */}
         <header className="flex items-center justify-between gap-3 px-5 sm:px-8 py-4 border-b border-white/10 bg-white/[0.02] backdrop-blur-md sticky top-0 z-20">
           <div className="flex items-center gap-3 min-w-0">
-            <button onClick={() => setNavOpen(true)} className="lg:hidden grid place-items-center h-9 w-9 rounded-xl border border-white/12 bg-white/[0.04] text-g-word shrink-0" aria-label="Open menu">☰</button>
+            <button onClick={() => setNavOpen(true)} className="lg:hidden grid place-items-center h-9 w-9 rounded-xl border border-white/12 bg-white/[0.04] text-g-word shrink-0" aria-label={tr("Open menu")}>☰</button>
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-extrabold text-g-word truncate">{tr(title, lang)}</h1>
               <p className="text-[11px] text-g-muted truncate">{V.business.name} · {V.business.place} · {V.business.since}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <button onClick={() => setPaletteOpen(true)} className="hidden md:flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs text-g-muted w-40 hover:border-g-gold/40 transition"><FaMagnifyingGlass size={11} /><span className="truncate">Search… ⌘K</span></button>
+            <button onClick={() => setPaletteOpen(true)} className="hidden md:flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs text-g-muted w-40 hover:border-g-gold/40 transition"><FaMagnifyingGlass size={11} /><span className="truncate">{tr("Search… ⌘K")}</span></button>
             <button onClick={exportReport} className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word hover:border-g-gold/40 transition"><FaDownload size={11} /> {tr("Report", lang)}</button>
-            <button onClick={toggleLang} title="Language" aria-label="Toggle language" className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-black text-g-word hover:border-g-gold/40 transition"><span className={lang === "en" ? "text-g-gold" : "text-g-muted"}>EN</span><span className="text-g-muted">·</span><span className={lang === "pt" ? "text-g-gold" : "text-g-muted"}>PT</span></button>
+            <button onClick={toggleLang} title={tr("Language")} aria-label={tr("Toggle language")} className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-black text-g-word hover:border-g-gold/40 transition"><span className={lang === "en" ? "text-g-gold" : "text-g-muted"}>EN</span><span className="text-g-muted">·</span><span className={lang === "pt" ? "text-g-gold" : "text-g-muted"}>PT</span></button>
             <div className="relative">
               <button onClick={() => setBellOpen((o) => !o)} className="relative grid place-items-center h-9 w-9 rounded-full border border-white/12 bg-white/[0.04] text-g-muted hover:text-g-word transition" aria-label={`Notifications (${totalNotif})`}><FaBell size={13} />{totalNotif > 0 && <span className="absolute -top-1 -right-1 inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black shadow-[0_0_8px_rgba(239,68,68,0.6)]">{totalNotif}</span>}</button>
               {bellOpen && (
                 <>
                   <div className="fixed inset-0 z-20" onClick={() => setBellOpen(false)} />
                   <div className="absolute right-0 mt-2 w-72 max-h-96 overflow-y-auto rounded-xl2 border border-white/12 bg-g-cream/95 backdrop-blur-xl shadow-lift z-30 p-1.5">
-                    <div className="flex items-center justify-between px-2.5 py-1.5"><span className="text-[10px] font-bold uppercase tracking-wide text-g-muted">Notifications</span>{totalNotif > 0 && <button onClick={markAllRead} className="text-[10px] font-bold text-g-gold hover:underline">{tr("Mark all read")}</button>}</div>
+                    <div className="flex items-center justify-between px-2.5 py-1.5"><span className="text-[10px] font-bold uppercase tracking-wide text-g-muted">{tr("Notifications")}</span>{totalNotif > 0 && <button onClick={markAllRead} className="text-[10px] font-bold text-g-gold hover:underline">{tr("Mark all read")}</button>}</div>
                     {notifList.length ? notifList.map(({ k, l, n }) => (
                       <button key={k} onClick={() => { setView(k); setBellOpen(false); }} className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-bold text-left text-g-muted hover:text-g-word hover:bg-white/[0.06] transition">
                         <span className="grid place-items-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black">{n}</span>
-                        <span className="flex-1 text-g-word">{l}</span><span className="text-g-muted">view →</span>
+                        <span className="flex-1 text-g-word">{l}</span><span className="text-g-muted">{tr("view →")}</span>
                       </button>
-                    )) : <div className="px-2.5 py-6 text-center text-xs text-g-muted">✅ All caught up</div>}
+                    )) : <div className="px-2.5 py-6 text-center text-xs text-g-muted">{tr("✅ All caught up")}</div>}
                   </div>
                 </>
               )}
@@ -4207,7 +4420,7 @@ export default function Portal() {
             <span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" /> Demo data — each client sees their own industry.
           </div>
           <div className="ml-auto relative">
-            <span className="text-[11px] font-bold uppercase tracking-wide text-g-muted hidden md:inline mr-2">Preview industry</span>
+            <span className="text-[11px] font-bold uppercase tracking-wide text-g-muted hidden md:inline mr-2">{tr("Preview industry")}</span>
             <button onClick={() => setVertOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={vertOpen}
               className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-3.5 py-2 text-xs font-bold text-g-word hover:border-g-gold/40 transition">
               <span className="text-base">{V.icon}</span><span>{V.label}</span><FaChevronDown size={10} className={`transition-transform ${vertOpen ? "rotate-180" : ""}`} />
@@ -4216,7 +4429,7 @@ export default function Portal() {
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setVertOpen(false)} />
                 <div role="listbox" className="absolute right-0 mt-2 w-56 max-h-80 overflow-y-auto rounded-xl2 border border-white/12 bg-g-cream/95 backdrop-blur-xl shadow-lift z-30 p-1.5">
-                  <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-g-muted">Industry · demo</div>
+                  <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-g-muted">{tr("Industry · demo")}</div>
                   {VERTICAL_KEYS.map((k) => {
                     const on = vertical === k;
                     return (

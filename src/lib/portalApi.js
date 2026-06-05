@@ -32,10 +32,12 @@ function _queueUpsert(key, value) {
   if (_flushTimer) return;
   _flushTimer = setTimeout(_flush, 900);
 }
+let _warnedSync = false;
 async function _flush() {
   _flushTimer = null;
   if (!supabase || !_uid) return;
-  try { await supabase.auth.updateUser({ data: { kv: _cloud } }); } catch { /* offline — localStorage already has it */ }
+  try { await supabase.auth.updateUser({ data: { kv: _cloud } }); _warnedSync = false; }
+  catch { if (!_warnedSync) { _warnedSync = true; toast("Saved locally — couldn't sync to the cloud just now. I'll retry."); } }
 }
 
 // ── Tiny toast bus (action feedback across every screen) ──

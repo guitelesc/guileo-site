@@ -86,7 +86,7 @@ export const FAQ = [
   ["How fast can we go live?", "Most clients are live in under 7 days. We map your workflow, train the agent in your brand voice, connect your calendar/CRM, and launch."],
   ["What if the AI makes a mistake?", "The agent is trained on your business and escalates to a human whenever needed. Every call is recorded and reviewed. Voice quality is non-negotiable — if it ever sounds off, we fix it."],
   ["Is my data safe and compliant?", "Yes. Multi-tenant isolation, encryption at rest and in transit, and a 3-tier consent model. We comply with HIPAA, GDPR, LGPD, CCPA and PCI. Your customers stay yours."],
-  ["How much does it cost?", "A fixed monthly subscription plus a one-time setup fee — never a percentage of your revenue. 30-day money-back guarantee. Book a demo for a plan tailored to your volume."],
+  ["How much does it cost?", "Pay-as-you-go credits power every action Gui takes — roughly 5 credits per task — on plans sized to your volume, plus a one-time setup. You only pay for work done, never a percentage of your revenue. 30-day money-back guarantee. Book a demo for a plan tailored to your volume."],
   ["Do you only serve one industry?", "No. Restaurants, clinics, salons, law firms, contractors, e-commerce and more — each gets a tailored agent on the same powerful platform."],
 ];
 
@@ -147,7 +147,7 @@ export const ONBOARDING = [
 ];
 
 // Risk reversal
-export const GUARANTEE = "30-day money-back guarantee · fixed monthly fee, never a % of your revenue · cancel anytime.";
+export const GUARANTEE = "30-day money-back guarantee · pay-as-you-go credits, you only pay for work Gui does · never a % of your revenue · cancel anytime.";
 
 // ---- Sharpened positioning: Sales & Marketing automation + growth clarity ----
 
