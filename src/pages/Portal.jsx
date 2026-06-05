@@ -252,7 +252,7 @@ function sectionsFor(vid, V) {
     ["deliveries", deliveryTab(V)],
     ["followups", "Follow-ups"], ["waitlist", "Waitlist"], ["recurring", "Recurring"], ["reputation", "Reputation"],
     ["customers", "Customers"], ["campaigns", "Campaigns"], ["audiences", "Ad Audiences"],
-    ["calllogs", "Call Logs"], ["dialer", "Call Dialer"], ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"],
+    ["inbox", "Inbox"], ["calllogs", "Call Logs"], ["dialer", "Call Dialer"], ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"],
     ["grow", "Grow with Guileo"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
   ];
 }
@@ -263,6 +263,7 @@ function notifFor(key, V) {
     case "liveorders": return (V.liveOrders || []).filter((o) => o.status !== "Delivered").length;
     case "kitchen": return ((V.kitchen?.new || []).length + (V.kitchen?.preparing || []).length);
     case "deliveries": return genDeliveries(V).filter((r) => r.status !== "Delivered").length;
+    case "inbox": return genInbox(V).filter((c) => c.unread).length;
     case "schedule": return (V.ops?.schedule || []).filter((r) => /pending|new|unassigned|risk|follow/i.test(r.status)).length;
     case "calllogs": return 2;
     case "whatsapp": return 1;
@@ -277,7 +278,7 @@ function notifFor(key, V) {
 const SECTION_ICON = {
   overview: FaGaugeHigh, operations: FaListCheck, schedule: FaListCheck, catalog: FaBookOpen, brain: FaBrain, analytics: FaChartLine, liveorders: FaReceipt,
   kitchen: FaUtensils, menu: FaBookOpen, deliveries: FaTruck, customers: FaUsers, campaigns: FaBullhorn, audiences: FaBullseye,
-  calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, social: FaShareNodes, grow: FaStore, billing: FaCreditCard,
+  inbox: FaComments, calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, social: FaShareNodes, grow: FaStore, billing: FaCreditCard,
   impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock, recurring: FaIdCard, reputation: FaStar,
   channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, docs: FaFileLines, settings: FaGear,
 };
@@ -287,7 +288,7 @@ const NAV_GROUPS = [
   ["", ["overview"]],
   ["Your AI ✨", ["brain", "analytics"]],
   ["Operations", ["liveorders", "kitchen", "menu", "schedule", "catalog", "deliveries", "operations"]],
-  ["Conversations", ["calllogs", "dialer", "whatsapp", "sms", "social"]],
+  ["Conversations", ["inbox", "calllogs", "dialer", "whatsapp", "sms", "social"]],
   ["Customers", ["customers"]],
   ["Grow revenue", ["impact", "followups", "waitlist", "recurring", "reputation", "campaigns", "audiences", "grow"]],
   ["Account", ["billing", "support", "settings"]],
@@ -1174,7 +1175,7 @@ function Audiences({ V }) {
     </div>
   );
 }
-function CallLogs({ V }) {
+function CallLogs({ V, onNav }) {
   const rows = V.callLogs || genCalls(V);
   const [sel, setSel] = useState(null);
   return (
@@ -1202,7 +1203,9 @@ function CallLogs({ V }) {
           note={<>Transcript summary:<div className="mt-1.5 space-y-1 text-g-word">{[["📞", `${sel.name}: ${sel.outcome.replace(/·.*/, "").trim() || "Hi, calling about my booking."}`], ["🤖", "Guileo AI: Happy to help — all sorted! Anything else?"], ["📞", `${sel.name}: That's perfect, thank you!`]].map(([ic, t], j) => <div key={j}>{ic} {t}</div>)}</div></>}
           actions={<><a href={`tel:${sel.phone.replace(/[^0-9+]/g, "")}`} className="btn-bright text-sm">📞 Call back</a><a href={waLink(`Hi ${sel.name}! `)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
           onClose={() => setSel(null)}
-        />
+        >
+          <div><div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">Turn this call into action</div><ConvoActions V={V} who={sel.name} channel="call" onNav={onNav} onDone={() => setSel(null)} /></div>
+        </Drawer>
       )}
     </div>
   );
@@ -1239,6 +1242,136 @@ function Dialer() {
     </div>
   );
 }
+// Channel metadata — one place to map a channel to its icon + brand color.
+const CHANNEL_META = {
+  Phone: [FaPhone, "#3E9468"], WhatsApp: [FaWhatsapp, "#25D366"], SMS: [FaCommentSms, "#38BDF8"],
+  Instagram: [FaInstagram, "#E4405F"], Facebook: [FaFacebook, "#1877F2"], TikTok: [FaTiktok, "#9ca3af"],
+};
+// Unified omnichannel inbox feed — every channel normalized to the same shape so
+// the operator thinks in "conversations", not "which app". Names/threads draw from
+// the sector's own data so it reads true everywhere.
+function genInbox(V) {
+  const sch = (V.ops?.schedule || []).map((r) => r.name).filter(Boolean);
+  const nm = (i, f) => sch[i] || f;
+  const items = [
+    { name: nm(0, "Sofia M."), channel: "WhatsApp", last: "Can I get this for tonight?", t: "2m", unread: 1, sentiment: "Positive" },
+    { name: nm(1, "Diego R."), channel: "Phone", last: "Called — asked about availability", t: "8m", unread: 0, sentiment: "Neutral" },
+    { name: nm(2, "Júlia P."), channel: "Instagram", last: "Loved it! Do you do events?", t: "15m", unread: 1, sentiment: "Positive" },
+    { name: nm(3, "Marco T."), channel: "SMS", last: "Yes, 7pm works — thanks!", t: "32m", unread: 0, sentiment: "Positive" },
+    { name: nm(4, "Bianca L."), channel: "Facebook", last: "What are your Sunday hours?", t: "1h", unread: 0, sentiment: "Neutral" },
+    { name: "New lead", channel: "WhatsApp", last: "Hi! Are you available this week?", t: "1h", unread: 1, sentiment: "Positive" },
+  ];
+  return items.map((c, id) => ({ ...c, id }));
+}
+// From any conversation (call or text) the operator can FIRE an action that lands
+// in the right tab — the actual "integration". Per-sector verb + target view.
+function convoAction(V) {
+  return {
+    "Restaurant": { label: "🧾 Create order", view: "liveorders", done: "Order created" },
+    "E-Commerce": { label: "🧾 Create order", view: "schedule", done: "Order created" },
+    "Clinic": { label: "📅 Book appointment", view: "schedule", done: "Appointment booked" },
+    "Medical": { label: "📅 Book appointment", view: "schedule", done: "Appointment booked" },
+    "Salon & Spa": { label: "📅 Book appointment", view: "schedule", done: "Appointment booked" },
+    "Gym & Fitness": { label: "📅 Book a class", view: "schedule", done: "Class booked" },
+    "Law Firm": { label: "📅 Book consult", view: "schedule", done: "Consult booked" },
+    "Real Estate": { label: "📅 Book viewing", view: "schedule", done: "Viewing booked" },
+    "Plumbing & HVAC": { label: "🔧 Schedule a job", view: "schedule", done: "Job scheduled" },
+    "Auto Dealership": { label: "📅 Book service", view: "schedule", done: "Service booked" },
+    "Education": { label: "📅 Book a class", view: "schedule", done: "Class booked" },
+    "Construction": { label: "📅 Schedule site visit", view: "schedule", done: "Site visit scheduled" },
+  }[V.label] || { label: "📅 Book", view: "schedule", done: "Booked" };
+}
+// A compact, reusable action bar — drop it in the inbox thread AND the call drawer
+// so a call or a text can spawn an order / booking / follow-up that lands in its tab.
+function ConvoActions({ V, who, channel, onNav, onDone }) {
+  const act = convoAction(V);
+  const fire = (msg, view) => { toast(msg); onDone?.(); if (view) onNav?.(view); };
+  return (
+    <div className="flex flex-wrap gap-2">
+      <button onClick={() => fire(`${act.done} from ${who}'s ${channel} ✓`, act.view)} className="text-[11px] font-bold rounded-full border border-g-green/40 bg-g-green/[0.1] px-3 py-1.5 text-g-green hover:bg-g-green/20 transition">{act.label}</button>
+      <button onClick={() => fire(`${who} added to follow-ups ✓`, "followups")} className="text-[11px] font-bold rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">⏰ Follow-up</button>
+      <button onClick={() => fire(`Saved to ${who}'s customer profile ✓`, "customers")} className="text-[11px] font-bold rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">👤 Save to customer</button>
+    </div>
+  );
+}
+const inboxThread = (c) => [
+  { from: "them", text: c.last },
+  { from: "ai", text: "Hi! 😊 Thanks for reaching out — I can take care of that right now." },
+  { from: "them", text: "Perfect, yes please." },
+  { from: "ai", text: `All set ✅ I've noted it and you'll get a confirmation on ${c.channel}. Anything else?` },
+];
+
+function Inbox({ V, onNav }) {
+  const all = genInbox(V);
+  const FILTERS = ["All", "Phone", "WhatsApp", "SMS", "Social"];
+  const inFilter = (c, f) => f === "All" || (f === "Social" ? ["Instagram", "Facebook", "TikTok"].includes(c.channel) : c.channel === f);
+  const [filter, setFilter] = useState("All");
+  const [activeId, setActiveId] = useState(all[0]?.id ?? 0);
+  const [threads, setThreads] = useState(() => Object.fromEntries(all.map((c) => [c.id, inboxThread(c)])));
+  const [draft, setDraft] = useState("");
+  const count = (f) => all.filter((c) => inFilter(c, f)).length;
+  const unread = (f) => all.filter((c) => inFilter(c, f) && c.unread).length;
+  const list = all.filter((c) => inFilter(c, filter));
+  const cur = list.find((c) => c.id === activeId) || list[0];
+  const send = (e) => { e.preventDefault(); if (!draft.trim() || !cur) return; portalApi.sendMessage(cur.channel, cur.id, draft); setThreads((t) => ({ ...t, [cur.id]: [...(t[cur.id] || []), { from: "you", text: draft }] })); setDraft(""); toast(`Reply sent on ${cur.channel} ✓`); };
+  const [Icon, color] = cur ? (CHANNEL_META[cur.channel] || CHANNEL_META.WhatsApp) : CHANNEL_META.WhatsApp;
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {FILTERS.map((f) => (
+          <button key={f} onClick={() => setFilter(f)} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold border transition ${filter === f ? "border-g-gold/50 bg-g-gold/15 text-g-gold" : "border-white/12 bg-white/[0.04] text-g-muted hover:text-g-word"}`}>
+            {f === "All" ? "All channels" : f} <span className="text-g-muted">{count(f)}</span>{unread(f) > 0 && <span className="inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black">{unread(f)}</span>}
+          </button>
+        ))}
+      </div>
+      <div className="grid lg:grid-cols-3 gap-4 lg:h-[32rem]">
+        <Card className="p-0 overflow-hidden lg:col-span-1 flex flex-col">
+          <div className="px-4 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold shrink-0">Unified inbox · {list.length}</div>
+          <div className="divide-y divide-white/[0.06] overflow-y-auto">
+            {list.map((c) => {
+              const [CI, cc] = CHANNEL_META[c.channel] || CHANNEL_META.WhatsApp;
+              return (
+                <button key={c.id} onClick={() => setActiveId(c.id)} className={`w-full text-left flex items-center gap-3 px-4 py-3 transition ${c.id === (cur?.id) ? "bg-white/[0.06]" : "hover:bg-white/[0.03]"}`}>
+                  <span className="relative grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] shrink-0 text-sm font-bold text-g-word">{c.name[0]}<span className="absolute -bottom-1 -right-1 grid place-items-center h-4 w-4 rounded-full bg-g-cream" style={{ color: cc }}><CI size={9} /></span></span>
+                  <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name}</div><div className="text-[11px] text-g-muted truncate">{c.last}</div></div>
+                  <div className="text-right shrink-0"><div className="text-[10px] text-g-muted">{c.t}</div>{c.unread > 0 && <span className="inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-g-green text-[10px] font-bold text-black mt-0.5">{c.unread}</span>}</div>
+                </button>
+              );
+            })}
+            {list.length === 0 && <Empty icon="💬" text="No conversations on this channel right now." />}
+          </div>
+        </Card>
+        <Card className="p-0 overflow-hidden lg:col-span-2 flex flex-col">
+          {cur && <>
+            <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2 shrink-0">
+              <span className="grid place-items-center h-8 w-8 rounded-full bg-white/[0.06]" style={{ color }}><Icon size={14} /></span>
+              <div className="min-w-0"><div className="text-sm font-bold text-g-word truncate">{cur.name}</div><div className="text-[10px] text-g-muted">{cur.channel} · {cur.sentiment}</div></div>
+              <button onClick={() => onNav?.("customers")} className="ml-auto text-[11px] font-bold text-g-gold hover:underline shrink-0">Customer →</button>
+              <span className="text-[10px] font-bold uppercase text-g-green inline-flex items-center gap-1 shrink-0"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />AI active</span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-2.5 min-h-[14rem]">
+              {(threads[cur.id] || []).map((m, i) => (
+                <div key={i} className={`flex ${m.from === "them" ? "justify-start" : "justify-end"}`}>
+                  <div className={`max-w-[78%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed ${m.from === "them" ? "bg-white/[0.06] text-g-word" : m.from === "ai" ? "bg-g-green/15 text-g-light border border-g-green/30" : "bg-g-gold/15 text-g-word border border-g-gold/30"}`}>
+                    {m.from === "ai" && <div className="text-[9px] font-black uppercase text-g-green mb-0.5">Guileo AI</div>}
+                    {m.from === "you" && <div className="text-[9px] font-black uppercase text-g-gold mb-0.5">You</div>}
+                    {m.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="px-3 pt-3 shrink-0"><ConvoActions V={V} who={cur.name} channel={cur.channel} onNav={onNav} /></div>
+            <form onSubmit={send} className="p-3 border-t-0 flex gap-2 shrink-0">
+              <input value={draft} onChange={(e) => setDraft(e.target.value)} aria-label="Reply" placeholder={`Reply on ${cur.channel}…`} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+              <button className="btn-bright text-sm px-5">Send</button>
+            </form>
+          </>}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 function Convos({ V, title }) {
   const list = V.convos || genConvos(V);
   const [active, setActive] = useState(0);
@@ -2104,6 +2237,7 @@ export default function Portal() {
   const content = {
     overview: <Overview V={V} onNav={setView} sections={sections} period={period} />,
     deliveries: <Deliveries V={V} />,
+    inbox: <Inbox V={V} onNav={setView} />,
     impact: <GuileoImpact V={V} />,
     followups: <Followups V={V} />,
     waitlist: <Waitlist V={V} />,
@@ -2120,7 +2254,7 @@ export default function Portal() {
     customers: <Customers V={V} />,
     campaigns: <Campaigns V={V} />,
     audiences: <Audiences V={V} />,
-    calllogs: <CallLogs V={V} />,
+    calllogs: <CallLogs V={V} onNav={setView} />,
     dialer: <Dialer />,
     whatsapp: <Convos V={V} title="WhatsApp" />,
     sms: <Convos V={V} title="SMS" />,

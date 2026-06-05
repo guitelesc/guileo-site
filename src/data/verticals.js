@@ -41,7 +41,7 @@ export const VERTICALS = {
     sections: [
       ["overview", "Overview"], ["impact", "Guileo Impact"], ["brain", "Train your AI"], ["analytics", "AI Analytics"], ["liveorders", "Live Orders"],
       ["kitchen", "Kitchen View"], ["menu", "Menu"], ["deliveries", "Delivery"], ["followups", "Follow-ups"], ["waitlist", "Waitlist"], ["recurring", "Recurring"], ["reputation", "Reputation"], ["customers", "Customers"], ["campaigns", "Campaigns"],
-      ["audiences", "Ad Audiences"], ["calllogs", "Call Logs"], ["dialer", "Call Dialer"],
+      ["audiences", "Ad Audiences"], ["inbox", "Inbox"], ["calllogs", "Call Logs"], ["dialer", "Call Dialer"],
       ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"], ["grow", "Grow with Guileo"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
     ],
     liveOrders: [
