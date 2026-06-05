@@ -113,6 +113,15 @@ const loyaltyCfg = (V) => LOYALTY[V.label] || { unit: "points", reward: "a rewar
 function genLoyaltyMembers(V) {
   return (V.customers || genCustomers(V)).map((c, i) => ({ name: c.name, pts: vnum(V.label, `${c.name}pts`, 120, 940), tier: i === 0 ? "Gold" : i === 1 ? "Silver" : "Bronze", channel: c.channel }));
 }
+function genPayments(V) {
+  const names = (V.customers || genCustomers(V)).map((c) => c.name);
+  const ST = [["Paid", "#3E9468"], ["Pending", "#D6C29A"], ["Overdue", "#EF4444"], ["Paid", "#3E9468"], ["Pending", "#D6C29A"]];
+  const M = ["Card", "Apple Pay", "Cash", "Transfer", "Card"];
+  return (names.length ? names : ["Ana R.", "Bruno T.", "Carla M.", "Diego P."]).slice(0, 5).map((n, i) => {
+    const [status, color] = ST[i % ST.length];
+    return { id: `INV-${2040 + i}`, customer: n, amount: vnum(V.label, `${n}inv`, 40, 480), status, color, method: M[i % M.length], due: status === "Paid" ? "Paid" : `in ${2 + i} days` };
+  });
+}
 function genReferrals(V) {
   const sch = (V.ops?.schedule || []).map((r) => r.name).filter(Boolean);
   const reward = 20;
@@ -299,7 +308,7 @@ function sectionsFor(vid, V) {
     ["overview", "Overview"], ["impact", "Guileo Impact"], ["brain", "Train your AI"], ["analytics", "AI Analytics"],
     ...sec,
     ["deliveries", deliveryTab(V)],
-    ["followups", "Follow-ups"], ["waitlist", "Waitlist"], ["recurring", "Recurring"], ["reputation", "Reputation"], ["loyalty", "Loyalty"],
+    ["payments", "Payments"], ["followups", "Follow-ups"], ["waitlist", "Waitlist"], ["recurring", "Recurring"], ["reputation", "Reputation"], ["loyalty", "Loyalty"],
     ["customers", "Customers"], ["campaigns", "Campaigns"], ["audiences", "Ad Audiences"],
     ["inbox", "Inbox"], ["calllogs", "Call Logs"], ["dialer", "Call Dialer"], ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"],
     ["grow", "Grow with Guileo"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
@@ -328,7 +337,7 @@ const SECTION_ICON = {
   overview: FaGaugeHigh, operations: FaListCheck, schedule: FaListCheck, catalog: FaBookOpen, brain: FaBrain, analytics: FaChartLine, liveorders: FaReceipt,
   kitchen: FaUtensils, menu: FaBookOpen, deliveries: FaTruck, customers: FaUsers, campaigns: FaBullhorn, audiences: FaBullseye,
   inbox: FaComments, calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, social: FaShareNodes, grow: FaStore, billing: FaCreditCard,
-  impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock, recurring: FaIdCard, reputation: FaStar, loyalty: FaGift,
+  impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock, recurring: FaIdCard, reputation: FaStar, loyalty: FaGift, payments: FaReceipt,
   channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, docs: FaFileLines, settings: FaGear,
 };
 // Group the (long) nav into scannable categories
@@ -339,7 +348,7 @@ const NAV_GROUPS = [
   ["Operations", ["liveorders", "kitchen", "menu", "schedule", "catalog", "deliveries", "operations"]],
   ["Conversations", ["inbox", "calllogs", "dialer", "whatsapp", "sms", "social"]],
   ["Customers", ["customers"]],
-  ["Grow revenue", ["impact", "followups", "waitlist", "recurring", "reputation", "loyalty", "campaigns", "audiences", "grow"]],
+  ["Grow revenue", ["impact", "payments", "followups", "waitlist", "recurring", "reputation", "loyalty", "campaigns", "audiences", "grow"]],
   ["Account", ["billing", "support", "settings"]],
 ];
 
@@ -1538,7 +1547,7 @@ function SettingsView({ V }) {
       </Card>
       <Card className="flex flex-wrap items-center justify-between gap-3">
         <div><div className="text-sm font-bold text-g-word">Demo data</div><div className="text-[11px] text-g-muted">Reset resolved alerts, won deals, filled slots & read flags back to the sample state.</div></div>
-        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "created:deliveries", "created:campaigns", "created:impact", "created:audiences", "created:reviewreq", "integrations", "owndelivery", "loyalty"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
+        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "created:deliveries", "created:campaigns", "created:impact", "created:audiences", "created:reviewreq", "created:payments", "integrations", "owndelivery", "loyalty"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
       </Card>
       <p className="text-center text-[11px] text-g-muted">Changes apply instantly. Need something custom? Your team's a tap away. 💬</p>
     </div>
@@ -2014,6 +2023,57 @@ function Palette({ V, sections, onNav, onClose }) {
   );
 }
 
+// Payments & invoicing — the AI sends invoices/payment links and chases unpaid ones.
+// Collecting a payment feeds the Guileo Impact ledger.
+function Payments({ V }) {
+  const rows = [...loadCreated(V.label, "payments"), ...genPayments(V)];
+  const [paid, setPaid] = useState([]); // ids marked paid this session
+  const [sel, setSel] = useState(null);
+  const statusOf = (r) => (paid.includes(r.id) ? "Paid" : r.status);
+  const colorOf = (r) => (paid.includes(r.id) ? "#3E9468" : r.color);
+  const collected = rows.filter((r) => statusOf(r) === "Paid").reduce((s, r) => s + r.amount, 0);
+  const outstanding = rows.filter((r) => statusOf(r) !== "Paid").reduce((s, r) => s + r.amount, 0);
+  const markPaid = (r) => { setPaid((p) => [...p, r.id]); logImpact(V.label, `${r.id} paid by ${r.customer}`, r.amount); setSel(null); toast(`${r.id} marked paid ✓ — $${r.amount} logged to Guileo Impact`); };
+  const newInvoice = () => { const c = (V.customers || genCustomers(V))[0]; pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: c?.name || "New customer", amount: vnum(V.label, "newinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); toast("Payment link sent ✓ — invoice added"); };
+  return (
+    <div className="space-y-4">
+      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaCreditCard className="text-g-green" /> Payments & invoicing</div><div className="text-xs text-g-muted mt-0.5">Your AI sends invoices + payment links and chases unpaid ones automatically — you just watch the money land.</div></div>
+          <button onClick={newInvoice} className="btn-bright text-sm inline-flex items-center gap-2"><FaPlus size={11} /> New invoice</button>
+        </div>
+      </Card>
+      <MiniStats items={[["Collected", `$${collected.toLocaleString()}`, "good"], ["Outstanding", `$${outstanding.toLocaleString()}`], ["Paid invoices", `${rows.filter((r) => statusOf(r) === "Paid").length}`, "good"], ["Avg. days to pay", `${vnum(V.label, "daystopay", 1, 6)}`]]} />
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Invoices & payments</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap to manage</span></div>
+        <div className="divide-y divide-white/[0.06]">
+          {rows.map((r, i) => (
+            <button key={i} onClick={() => setSel(r)} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
+              <span className="text-xs font-bold text-g-light w-20 shrink-0">{r.id}</span>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{r.customer}{r.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">new</span>}</div><div className="text-[11px] text-g-muted">{r.method} · {r.due}</div></div>
+              <span className="text-sm font-extrabold text-g-word">${r.amount.toLocaleString()}</span>
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: colorOf(r) + "22", color: colorOf(r) }}>{statusOf(r)}</span>
+            </button>
+          ))}
+        </div>
+      </Card>
+      {sel && (
+        <Drawer
+          title={`${sel.id} · ${sel.customer}`}
+          subtitle={`${sel.method} · ${sel.due}`}
+          badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: colorOf(sel) + "22", color: colorOf(sel) }}>{statusOf(sel)}</span>}
+          fields={[["Amount", `$${sel.amount.toLocaleString()}`], ["Method", sel.method], ["Due", sel.due], ["Status", statusOf(sel)]]}
+          note={statusOf(sel) === "Paid" ? "Paid & reconciled — logged to your growth." : statusOf(sel) === "Overdue" ? "⚠ Overdue — the AI is sending payment reminders automatically." : "Awaiting payment — the AI follows up until it's settled."}
+          actions={statusOf(sel) === "Paid"
+            ? <a href={waLink(`Hi ${sel.customer}, thanks for your payment on ${sel.id}!`)} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Thank</a>
+            : <><button onClick={() => markPaid(sel)} className="btn-bright text-sm">✓ Mark paid</button><button onClick={() => { toast(`Payment link re-sent to ${sel.customer} ✓`); setSel(null); }} className="btn-ghost text-sm">🔗 Send link</button><button onClick={() => { toast("Reminder sent ✓"); setSel(null); }} className="btn-ghost text-sm">⏰ Remind</button></>}
+          onClose={() => setSel(null)}
+        />
+      )}
+    </div>
+  );
+}
+
 // Loyalty & referrals — recurring engagement + word-of-mouth growth. Rewards and
 // converted referrals feed the Guileo Impact ledger (real growth Guileo drove).
 function Loyalty({ V }) {
@@ -2399,6 +2459,7 @@ export default function Portal() {
     recurring: <Recurring V={V} />,
     reputation: <Reputation V={V} onNav={setView} />,
     loyalty: <Loyalty V={V} />,
+    payments: <Payments V={V} />,
     operations: <Operations V={V} />,
     schedule: <ScheduleScreen V={V} />,
     catalog: <CatalogScreen V={V} />,
