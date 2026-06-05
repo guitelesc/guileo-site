@@ -2174,6 +2174,13 @@ function GuileoImpact({ V }) {
             <div className="text-[10px] uppercase tracking-wide text-g-gold font-bold">Guileo's share · {d.sharePct}% of growth</div>
             <div className="text-2xl font-extrabold text-g-word mt-1">${share.toLocaleString()}</div>
             <div className="text-[11px] text-g-muted mt-0.5">You keep ${(total - share).toLocaleString()} — we only win when you win.</div>
+            <button onClick={() => {
+              const lines = [["Date", "Growth event", "Amount"], ...events.map(([t, what, amt]) => [t === "now" ? "just now" : `${t} ago`, what, `$${amt}`]), ["", "Total growth", `$${total}`], ["", `Guileo share (${d.sharePct}%)`, `$${share}`], ["", "You keep", `$${total - share}`]];
+              const csv = lines.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+              const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+              const a = document.createElement("a"); a.href = url; a.download = `guileo-growth-statement-${V.label}.csv`; a.click(); URL.revokeObjectURL(url);
+              toast("Growth statement downloaded ✓");
+            }} className="btn-bright text-sm w-full mt-3 justify-center"><FaDownload size={11} /> Download statement</button>
           </div>
           <div className="mt-3"><Bars data={V.revenue} /></div>
         </Card>
