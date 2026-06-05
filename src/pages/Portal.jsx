@@ -513,6 +513,16 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
   const resolveAlert = (i) => { portalApi.resolveAlert(i); setResolved((r) => { const n = [...r, i]; portalApi.saveState(`${V.label}:alerts`, n); return n; }); toast("Marked as handled ✓"); };
   const validViews = new Set(sections.map(([k]) => k));
   const ops = growthOps(V).filter((o) => validViews.has(o.view)).slice(0, 3);
+  // Monthly revenue goal — editable + persisted; tracks current + projection.
+  const defGoal = Math.max(500, Math.round((V.impact.total * 2.4) / 100) * 100);
+  const [goal, setGoal] = useState(() => portalApi.loadState(`${V.label}:goal`, defGoal));
+  const [editGoal, setEditGoal] = useState(false);
+  const [goalDraft, setGoalDraft] = useState(goal);
+  useEffect(() => { const g = portalApi.loadState(`${V.label}:goal`, defGoal); setGoal(g); setGoalDraft(g); }, [V.label]); // eslint-disable-line
+  const saveGoal = () => { const g = Math.max(100, parseInt(String(goalDraft).replace(/\D/g, ""), 10) || defGoal); setGoal(g); portalApi.saveState(`${V.label}:goal`, g); setEditGoal(false); toast(`Monthly goal set to $${g.toLocaleString()} ✓`); };
+  const projected = Math.round(V.impact.total * 1.6);
+  const pctNow = Math.min(100, Math.round((V.impact.total / goal) * 100));
+  const pctProj = Math.round((projected / goal) * 100);
   // The seed data represents a 30-day window; 7d/90d scale the cumulative money.
   const periodFactor = { "7 days": 7 / 30, "30 days": 1, "90 days": 3 }[period] || 1;
   const periodLabel = period === "30 days" ? "this month" : `last ${period}`;
@@ -597,6 +607,27 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
             </div>
           </div>
           <a href={waLink("I'd like to review my Guileo results")} target="_blank" rel="noopener" className="btn-bright text-sm">Talk to my team →</a>
+        </div>
+      </Card>
+
+      {/* MONTHLY GOAL — editable target + progress + projection vs goal */}
+      <Card>
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold">🎯 Monthly goal</div>
+          {editGoal ? (
+            <div className="flex items-center gap-1.5"><span className="text-g-muted text-sm">$</span><input autoFocus value={goalDraft} onChange={(e) => setGoalDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveGoal()} className="w-24 rounded-lg border border-white/15 bg-black/20 px-2 py-1 text-sm text-g-word outline-none focus:border-g-green/70" /><button onClick={saveGoal} className="text-[11px] font-bold text-g-green hover:underline">Save</button></div>
+          ) : (
+            <button onClick={() => { setGoalDraft(goal); setEditGoal(true); }} className="text-sm font-extrabold text-g-word inline-flex items-center gap-1.5">${goal.toLocaleString()} <FaPen size={9} className="text-g-muted" /></button>
+          )}
+        </div>
+        <div className="relative h-3 rounded-full bg-white/10 overflow-hidden">
+          <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-g-green to-g-gold transition-all" style={{ width: `${pctNow}%` }} />
+          {pctProj > pctNow && pctProj <= 100 && <div className="absolute inset-y-0 rounded-full bg-g-gold/30 transition-all" style={{ left: `${pctNow}%`, width: `${Math.min(100, pctProj) - pctNow}%` }} />}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+          <span className="text-g-muted"><b className="text-g-word">${V.impact.total.toLocaleString()}</b> of ${goal.toLocaleString()} · <b className={pctProj >= 100 ? "text-g-green" : "text-g-gold"}>on pace for {pctProj}%</b></span>
+          {pctProj < 100 && ops[0] && <button onClick={() => onNav(ops[0].view)} className="font-bold text-g-green hover:underline">Close the gap →</button>}
+          {pctProj >= 100 && <span className="font-bold text-g-green">🎉 On track to beat it!</span>}
         </div>
       </Card>
 
@@ -1608,7 +1639,7 @@ function SettingsView({ V }) {
       </Card>
       <Card className="flex flex-wrap items-center justify-between gap-3">
         <div><div className="text-sm font-bold text-g-word">Demo data</div><div className="text-[11px] text-g-muted">Reset resolved alerts, won deals, filled slots & read flags back to the sample state.</div></div>
-        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "created:deliveries", "created:campaigns", "created:impact", "created:audiences", "created:reviewreq", "created:payments", "created:team", "created:locations", "created:giftcards", "integrations", "owndelivery", "loyalty"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
+        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "created:deliveries", "created:campaigns", "created:impact", "created:audiences", "created:reviewreq", "created:payments", "created:team", "created:locations", "created:giftcards", "integrations", "owndelivery", "loyalty", "goal"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
       </Card>
       <p className="text-center text-[11px] text-g-muted">Changes apply instantly. Need something custom? Your team's a tap away. 💬</p>
     </div>
