@@ -411,6 +411,71 @@ const PT_UI = {
   "Billing & Plan": "Plano e cobrança", "Support": "Suporte", "Settings": "Ajustes", "Operations": "Operações",
   // topbar
   "Report": "Relatório", "Search…": "Buscar…",
+  "Plans": "Planos", "Current": "Atual", "mo": "mês", "Your plan": "Seu plano", "Upgrade →": "Fazer upgrade →", "Switch →": "Trocar →",
+  "+ Recharge": "+ Recarregar",
+  "+ Recharge credits": "+ Recarregar créditos",
+  "250 free credits": "250 créditos grátis",
+  "AI Call Dialer": "Discador da IA",
+  "AI voice & greeting": "Voz e saudação da IA",
+  "Business profile": "Perfil do negócio",
+  "Connect accounts →": "Conectar contas →",
+  "Connect your delivery platforms": "Conecte suas plataformas de entrega",
+  "Copy link": "Copiar link",
+  "Current plan": "Plano atual",
+  "Customer →": "Cliente →",
+  "Documents &amp; billing": "Documentos e cobrança",
+  "Growth Guileo drove · this month": "Crescimento que a Guileo gerou · este mês",
+  "Growth ledger · every $ the AI generated": "Razão de crescimento · cada $ que a IA gerou",
+  "Gui usage · last 7 days": "Uso do Gui · últimos 7 dias",
+  "Integrations &amp; webhooks": "Integrações e webhooks",
+  "Invoices": "Faturas",
+  "Invoices & payments": "Faturas e pagamentos",
+  "Label": "Etiqueta",
+  "Live activity": "Atividade ao vivo",
+  "Live orders": "Pedidos ao vivo",
+  "Mark all read": "Marcar tudo como lido",
+  "New campaign →": "Nova campanha →",
+  "Notifications & billing": "Notificações e cobrança",
+  "Partnership": "Parceria",
+  "Quick actions": "Ações rápidas",
+  "Rating breakdown": "Distribuição de avaliações",
+  "Recent activity": "Atividade recente",
+  "Recent calls · answered by AI": "Chamadas recentes · atendidas pela IA",
+  "Recent leads": "Leads recentes",
+  "Recent reviews · collected by AI": "Avaliações recentes · coletadas pela IA",
+  "Recurring revenue · the AI keeps it renewing": "Receita recorrente · a IA mantém renovando",
+  "Request this →": "Pedir isto →",
+  "Revenue &amp; order volume": "Receita e volume de pedidos",
+  "Run": "Rodar",
+  "See all →": "Ver tudo →",
+  "Sentiment": "Sentimento",
+  "Social inbox · AI replies on Instagram, Facebook &amp; TikTok": "Caixa social · IA responde no Instagram, Facebook e TikTok",
+  "Sync to ads": "Sincronizar com anúncios",
+  "Top members": "Principais membros",
+  "Waitlist · turn empty slots into revenue": "Lista de espera · transforme vagas em receita",
+  "What your AI handles": "O que sua IA cuida",
+  "What's included": "O que está incluído",
+  "Why people contact you": "Por que as pessoas te procuram",
+  "Your team": "Sua equipe",
+  "from chat": "do chat",
+  "invited": "convidado",
+  "new": "novo",
+  "routes to human": "encaminha p/ humano",
+  "soon": "em breve",
+  "· from your training": "· do seu treinamento",
+  "▶ Enter demo (sample data)": "▶ Entrar no demo (dados de exemplo)",
+  "⚙️ Automations on autopilot": "⚙️ Automações no piloto automático",
+  "⚠ No-show risk · AI flagged": "⚠ Risco de falta · sinalizado pela IA",
+  "⚡ Next best action": "⚡ Próxima melhor ação",
+  "⚡ Recommended by your AI · apply in one click": "⚡ Recomendado pela sua IA · aplique em 1 clique",
+  "⚡ This week's growth moves": "⚡ Jogadas de crescimento da semana",
+  "⭐ Review requests in flight": "⭐ Pedidos de avaliação em andamento",
+  "🎁 Reward": "🎁 Recompensa",
+  "🎯 Monthly goal": "🎯 Meta do mês",
+  "🔮 Predicted demand · next 7 days": "🔮 Demanda prevista · próximos 7 dias",
+  "🚀 Go-live readiness": "🚀 Prontidão para o lançamento",
+  "Recent reviews": "Avaliações recentes",
+  "The AI is chasing these — so you never lose them": "A IA está atrás destes — pra você nunca perder",
   "Active": "Ativo",
   "Paid": "Pago",
   "Pending": "Pendente",
@@ -601,14 +666,18 @@ const PT_UI = {
   "Customer": "Cliente",
   "Toggle language": "Alternar idioma",
 };
-const tr = (s, lang) => (lang === "pt" && PT_UI[s]) ? PT_UI[s] : s;
+// Global UI language — set once by Portal on each render, read by tr() anywhere with
+// no prop/context threading. Makes wrapping any string a 1-token change: {tr("Label")}.
+let UI_LANG = "en";
+const setUiLang = (l) => { UI_LANG = l; };
+const tr = (s, lang) => { const L = lang || UI_LANG; return (L === "pt" && PT_UI[s]) ? PT_UI[s] : s; };
 
 function Card({ children, className = "" }) {
   return <div className={`rounded-xl2 border border-white/10 bg-white/[0.04] backdrop-blur-md p-5 ${className}`}>{children}</div>;
 }
 // Consistent empty state for any list that can run dry.
 function Empty({ icon = "✅", text }) {
-  return <div className="px-5 py-10 text-center text-xs text-g-muted">{icon} {text}</div>;
+  return <div className="px-5 py-10 text-center text-xs text-g-muted">{icon} {tr(text)}</div>;
 }
 // Transient action feedback, bottom-center
 function Toaster() {
@@ -672,7 +741,7 @@ function MiniStats({ items }) {
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {items.map(([label, value, tone], i) => (
         <Card key={i} className="py-3.5">
-          <div className="text-[10px] uppercase tracking-wide text-g-muted">{label}</div>
+          <div className="text-[10px] uppercase tracking-wide text-g-muted">{tr(label)}</div>
           <div className={`text-lg font-extrabold mt-0.5 ${tone === "good" ? "text-g-green" : tone === "bad" ? "text-red-400" : "text-g-word"}`}>{value}</div>
         </Card>
       ))}
@@ -913,7 +982,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
       {/* MONTHLY GOAL — editable target + progress + projection vs goal */}
       <Card>
         <div className="flex items-center justify-between gap-3 mb-2">
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold">🎯 Monthly goal</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("🎯 Monthly goal")}</div>
           {editGoal ? (
             <div className="flex items-center gap-1.5"><span className="text-g-muted text-sm">$</span><input autoFocus value={goalDraft} onChange={(e) => setGoalDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveGoal()} className="w-24 rounded-lg border border-white/15 bg-black/20 px-2 py-1 text-sm text-g-word outline-none focus:border-g-green/70" /><button onClick={saveGoal} className="text-[11px] font-bold text-g-green hover:underline">Save</button></div>
           ) : (
@@ -935,7 +1004,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
       {ops.length > 0 && (
         <Card className="p-0 overflow-hidden">
           <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wide text-g-gold">⚡ This week's growth moves</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("⚡ This week's growth moves")}</span>
             <span className="text-[10px] text-g-muted">· spotted by your AI</span>
           </div>
           <div className="divide-y divide-white/[0.05]">
@@ -954,7 +1023,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
       {/* RECENT ACTIVITY — the latest things you + Gui did, across every tab */}
       {(() => { const acts = recentActivity(V).filter((a) => validViews.has(a.view)); return acts.length > 0 ? (
         <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Recent activity</span><span className="text-[10px] text-g-muted inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />live</span></div>
+          <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recent activity")}</span><span className="text-[10px] text-g-muted inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />live</span></div>
           <div className="divide-y divide-white/[0.05]">
             {acts.map((a, i) => (
               <button key={i} onClick={() => onNav(a.view)} className="group w-full text-left flex items-center gap-3 px-5 py-2.5 hover:bg-white/[0.03] transition">
@@ -986,7 +1055,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
       {/* R3 — STANDING AUTOMATIONS Gui set up */}
       {automations.length > 0 && (
         <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">⚙️ Automations on autopilot</span><span className="text-[10px] text-g-muted">{automations.filter((a) => a.on).length} active</span></div>
+          <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("⚙️ Automations on autopilot")}</span><span className="text-[10px] text-g-muted">{automations.filter((a) => a.on).length} active</span></div>
           <div className="divide-y divide-white/[0.05]">
             {automations.map((a) => (
               <div key={a._id} className="flex items-center gap-3 px-5 py-3">
@@ -1024,7 +1093,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
         <Card className="lg:col-span-2 p-0 overflow-hidden">
           <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{V.ops.scheduleTitle} · next up</span>
-            <button onClick={() => onNav("operations")} className="text-[11px] font-bold text-g-gold hover:underline">See all →</button>
+            <button onClick={() => onNav("operations")} className="text-[11px] font-bold text-g-gold hover:underline">{tr("See all →")}</button>
           </div>
           <div className="divide-y divide-white/[0.06]">
             {V.ops.schedule.slice(0, 3).map((r, i) => (
@@ -1037,7 +1106,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
           </div>
         </Card>
         <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Quick actions</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("Quick actions")}</div>
           <div className="space-y-2">
             {quick.map((q) => q.href ? (
               <a key={q.label} href={q.href} target="_blank" rel="noopener" className="flex items-center gap-3 rounded-xl2 border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-g-word hover:border-g-gold/40 hover:-translate-y-0.5 transition-all"><span>{q.ic}</span>{q.label}<span className="ml-auto text-g-gold">→</span></a>
@@ -1053,7 +1122,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
         <Card className="lg:col-span-2">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Revenue &amp; order volume</div>
+              <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Revenue &amp; order volume")}</div>
               <div className="mt-1 flex items-center gap-3 text-[10px] text-g-muted"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-gold" />Revenue</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-green" />Orders</span></div>
             </div>
             <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-g-green"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />Live sync</span>
@@ -1073,7 +1142,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
           </Card>
         ) : (
           <Card>
-            <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Live activity</div>
+            <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("Live activity")}</div>
             <ul className="space-y-3">
               {V.activity.map(([ic, ch, msg, t], i) => (
                 <li key={ch + t + i} className="flex items-start gap-3">
@@ -1108,7 +1177,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
           )}
           {V.channelMix && (
           <Card>
-            <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Recent activity</div>
+            <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("Recent activity")}</div>
             <ul className="space-y-3">
               {V.activity.map(([ic, ch, msg, t], i) => (
                 <li key={ch + t + i} className="flex items-start gap-3">
@@ -1156,7 +1225,7 @@ function Deliveries({ V }) {
       {/* Integrations — connect the platforms */}
       {cfg.partners.length > 0 && (
         <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Connect your delivery platforms</div>
+          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Connect your delivery platforms")}</div>
           <div className="divide-y divide-white/[0.06]">
             {cfg.partners.map(([name, ic, color]) => (
               <div key={name} className="flex items-center gap-3 px-5 py-3.5">
@@ -1191,7 +1260,7 @@ function Deliveries({ V }) {
           {rows.map((r, i) => (
             <button key={i} onClick={() => setSel(r)} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition">
               <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06]" style={{ color: r.color }}><FaTruck size={13} /></span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{r.customer}{r.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">from chat</span>} <span className="text-g-muted font-normal">· {r.via}</span></div><div className="text-[11px] text-g-muted truncate">{r.who} · {r.addr}</div></div>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{r.customer}{r.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">{tr("from chat")}</span>} <span className="text-g-muted font-normal">· {r.via}</span></div><div className="text-[11px] text-g-muted truncate">{r.who} · {r.addr}</div></div>
               <div className="text-right shrink-0"><div className="text-[11px] font-bold" style={{ color: r.color }}>{r.eta}</div><span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: r.color + "22", color: r.color }}>{r.status}</span></div>
             </button>
           ))}
@@ -1548,7 +1617,7 @@ function Ads() {
         <Card><div className="text-[11px] uppercase tracking-wide text-g-muted">Avg. ROAS</div><div className="text-2xl font-extrabold text-g-green mt-1">4.1×</div></Card>
       </div>
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Campaigns</div>
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Campaigns")}</div>
         <div className="divide-y divide-white/[0.06]">
           {CAMPAIGNS.map((c) => (
             <div key={c.name} className="flex items-center gap-4 px-5 py-3.5">
@@ -1559,7 +1628,7 @@ function Ads() {
           ))}
         </div>
       </Card>
-      <p className="text-xs text-g-muted text-center">Connect Meta &amp; Google Ads to see live campaign data here. <a href={waLink("I want to connect my ad accounts to Guileo")} target="_blank" rel="noopener" className="text-g-gold font-semibold hover:underline">Connect accounts →</a></p>
+      <p className="text-xs text-g-muted text-center">Connect Meta &amp; Google Ads to see live campaign data here. <a href={waLink("I want to connect my ad accounts to Guileo")} target="_blank" rel="noopener" className="text-g-gold font-semibold hover:underline">{tr("Connect accounts →")}</a></p>
     </div>
   );
 }
@@ -1568,7 +1637,7 @@ function Leads() {
   return (
     <Card className="p-0 overflow-hidden">
       <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
-        <span className="text-xs font-bold uppercase tracking-wide text-g-gold">Recent leads</span>
+        <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recent leads")}</span>
         <span className="text-[11px] text-g-muted">{LEADS.length} this hour</span>
       </div>
       <div className="divide-y divide-white/[0.06]">
@@ -1616,7 +1685,7 @@ function Support() {
 function Docs() {
   return (
     <Card className="p-0 overflow-hidden">
-      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Documents &amp; billing</div>
+      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Documents &amp; billing")}</div>
       <div className="divide-y divide-white/[0.06]">
         {DOCS.map(([ic, name, meta, action]) => (
           <div key={name} className="flex items-center gap-3 px-5 py-3.5">
@@ -1638,12 +1707,12 @@ function LiveOrders({ V }) {
   return (
     <>
     <Card className="p-0 overflow-hidden">
-      <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Live orders</span><span className="text-[11px] text-g-muted inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{rows.length} active</span></div>
+      <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Live orders")}</span><span className="text-[11px] text-g-muted inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{rows.length} active</span></div>
       <div className="divide-y divide-white/[0.06]">
         {rows.map((o, i) => (
           <button key={i} onClick={() => setSel(o)} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
             <span className="text-xs font-bold text-g-light w-16 shrink-0">{o.id}</span>
-            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{o.customer}{o.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">from chat</span>}</div><div className="text-[11px] text-g-muted truncate">{o.items} · {o.channel}</div></div>
+            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{o.customer}{o.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">{tr("from chat")}</span>}</div><div className="text-[11px] text-g-muted truncate">{o.items} · {o.channel}</div></div>
             <span className="text-sm font-extrabold text-g-word">${o.total.toFixed(2)}</span>
             <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: o.color + "22", color: o.color }}>{o.status}</span>
           </button>
@@ -1778,12 +1847,12 @@ function Customers({ V, onNav }) {
     <div className="space-y-4 stagger">
       <MiniStats items={[["Total customers", `${rows.length * 104}`], ["New this week", `+${rows.length * 6}`, "good"], ["Avg. value", `$${rows.length ? Math.round(totalSpent / rows.length) : 0}`], ["Repeat rate", `${vnum(V.label, "repeat", 31, 47)}%`, "good"]]} />
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Customers</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for profile</span></div>
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Customers")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for profile</span></div>
         <div className="divide-y divide-white/[0.06]">
           {rows.map((c, i) => (
             <button key={i} onClick={() => setSel({ c, i })} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
               <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{c.name[0]}</span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{c.name}{i === 0 && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-g-gold/15 text-g-gold">TOP</span>}</div><div className="text-[11px] text-g-muted truncate">{c.orders} {c.noun || "orders"} · {c.channel} · {c.last}</div></div>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{c.name}{i === 0 && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-g-gold/15 text-g-gold">{tr("TOP")}</span>}</div><div className="text-[11px] text-g-muted truncate">{c.orders} {c.noun || "orders"} · {c.channel} · {c.last}</div></div>
               <span className="text-sm font-extrabold text-g-green">${c.spent.toFixed(2)}</span>
             </button>
           ))}
@@ -1794,9 +1863,9 @@ function Customers({ V, onNav }) {
         <Drawer
           title={sel.c.name}
           subtitle={`${sel.c.orders} ${sel.c.noun || "orders"} · via ${sel.c.channel}`}
-          badge={sel.i === 0 ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-g-gold/15 text-g-gold">VIP</span> : null}
+          badge={sel.i === 0 ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-g-gold/15 text-g-gold">{tr("VIP")}</span> : null}
           fields={[["Lifetime value", `$${sel.c.spent.toFixed(2)}`], [(sel.c.noun || "orders"), sel.c.orders], ["Preferred channel", sel.c.channel], ["Last seen", sel.c.last], ["Status", sel.i === 0 ? "Top spender" : "Active"]]}
-          note={<><div className="text-[10px] font-black uppercase text-g-gold mb-1">⚡ Next best action</div>{nextBestAction(sel.c, sel.i)}</>}
+          note={<><div className="text-[10px] font-black uppercase text-g-gold mb-1">{tr("⚡ Next best action")}</div>{nextBestAction(sel.c, sel.i)}</>}
           actions={<>
             <a href={waLink(`Hi ${sel.c.name}! `)} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Message</a>
             <button onClick={() => rebook(sel.c)} className="btn-ghost text-sm">🔁 {REBOOK[V.label] || "Rebook"}</button>
@@ -1831,11 +1900,11 @@ function Campaigns({ V, onNav }) {
     <div className="space-y-4 stagger">
       <MiniStats items={[["Campaigns", `${rows.length}`], ["Messages sent", sent.toLocaleString()], ["Avg. open rate", `${open}%`, "good"], ["Revenue", `$${rev.toLocaleString()}`, "good"]]} />
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Campaigns</span><a href={waLink("I'd like to launch a campaign")} target="_blank" rel="noopener" className="text-[11px] font-bold text-g-gold hover:underline">New campaign →</a></div>
+        <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Campaigns")}</span><a href={waLink("I'd like to launch a campaign")} target="_blank" rel="noopener" className="text-[11px] font-bold text-g-gold hover:underline">{tr("New campaign →")}</a></div>
         <div className="divide-y divide-white/[0.06]">
           {rows.map((c, i) => (
             <button key={i} onClick={() => setSel(c)} className="w-full text-left flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.04] transition">
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{c.name}{c.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">new</span>}</div><div className="text-[11px] text-g-muted">{c.channel} · {c.sent} sent · {c.opened}% opened</div></div>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{c.name}{c.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">{tr("new")}</span>}</div><div className="text-[11px] text-g-muted">{c.channel} · {c.sent} sent · {c.opened}% opened</div></div>
               <span className="text-sm font-extrabold text-g-green">${c.revenue.toLocaleString()}</span>
               <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: (c.status === "Active" ? "#3E9468" : "#D6C29A") + "22", color: c.status === "Active" ? "#3E9468" : "#D6C29A" }}>{c.status}</span>
             </button>
@@ -1864,11 +1933,11 @@ function Audiences({ V, onNav }) {
     <div className="grid sm:grid-cols-2 gap-4">
       {rows.map((a, i) => (
         <Card key={i} className="flex flex-col">
-          <div className="flex items-center justify-between"><div className="text-sm font-bold text-g-word flex items-center gap-1.5">{a.name}{a.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">new</span>}</div><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/[0.06] text-g-muted">{a.source}</span></div>
+          <div className="flex items-center justify-between"><div className="text-sm font-bold text-g-word flex items-center gap-1.5">{a.name}{a.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">{tr("new")}</span>}</div><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/[0.06] text-g-muted">{a.source}</span></div>
           <div className="mt-2 text-2xl font-extrabold text-g-word"><Count to={a.size} /></div>
           <div className="text-[11px] text-g-muted">people reachable</div>
           <div className="mt-3 flex gap-2">
-            <button onClick={() => toast(`"${a.name}" synced to ${a.source === "Meta" ? "Meta Ads" : a.source === "Google" ? "Google Ads" : "your ad platforms"} ✓`)} className="text-[11px] font-bold rounded-full border border-g-gold/35 bg-g-gold/[0.08] px-3 py-1.5 text-g-gold hover:bg-g-gold/[0.16] transition">Sync to ads</button>
+            <button onClick={() => toast(`"${a.name}" synced to ${a.source === "Meta" ? "Meta Ads" : a.source === "Google" ? "Google Ads" : "your ad platforms"} ✓`)} className="text-[11px] font-bold rounded-full border border-g-gold/35 bg-g-gold/[0.08] px-3 py-1.5 text-g-gold hover:bg-g-gold/[0.16] transition">{tr("Sync to ads")}</button>
             <button onClick={() => launch(a)} className="text-[11px] font-bold rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">Use in a campaign →</button>
           </div>
         </Card>
@@ -1884,7 +1953,7 @@ function CallLogs({ V, onNav }) {
     <div className="space-y-4 stagger">
       <MiniStats items={[["Calls answered", `${vnum(V.label, "callsans", 210, 540)}`], ["Missed calls", "0", "good"], ["Avg. duration", `1m ${vnum(V.label, "calldur", 2, 54)}s`], ["Handled by AI", "100%", "good"]]} />
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Recent calls · answered by AI</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for transcript</span></div>
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recent calls · answered by AI")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for transcript</span></div>
         <div className="divide-y divide-white/[0.06]">
           {rows.map((c, i) => (
           <button key={i} onClick={() => setSel(c)} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
@@ -1932,7 +2001,7 @@ function Dialer() {
   return (
     <div className="max-w-xs mx-auto">
       <Card className="text-center">
-        <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">AI Call Dialer</div>
+        <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("AI Call Dialer")}</div>
         <div className="h-10 rounded-xl2 bg-black/20 border border-white/10 grid place-items-center text-g-word font-bold mb-3 tracking-wide">{fmt(num)}</div>
         <div className="grid grid-cols-3 gap-2">{keys.map((k) => <button key={k} onClick={() => press(k)} className="h-12 rounded-xl2 border border-white/10 bg-white/[0.04] text-g-word font-bold hover:border-g-gold/40 active:scale-95 transition">{k}</button>)}</div>
         <div className="flex gap-2 mt-3">
@@ -2052,7 +2121,7 @@ function Inbox({ V, onNav }) {
             <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2 shrink-0">
               <span className="grid place-items-center h-8 w-8 rounded-full bg-white/[0.06]" style={{ color }}><Icon size={14} /></span>
               <div className="min-w-0"><div className="text-sm font-bold text-g-word truncate">{cur.name}</div><div className="text-[10px] text-g-muted">{cur.channel} · {cur.sentiment}</div></div>
-              <button onClick={() => onNav?.("customers")} className="ml-auto text-[11px] font-bold text-g-gold hover:underline shrink-0">Customer →</button>
+              <button onClick={() => onNav?.("customers")} className="ml-auto text-[11px] font-bold text-g-gold hover:underline shrink-0">{tr("Customer →")}</button>
               <span className="text-[10px] font-bold uppercase text-g-green inline-flex items-center gap-1 shrink-0"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />AI active</span>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2.5 min-h-[14rem]">
@@ -2060,7 +2129,7 @@ function Inbox({ V, onNav }) {
                 <div key={i} className={`flex ${m.from === "them" ? "justify-start" : "justify-end"}`}>
                   <div className={`max-w-[78%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed ${m.from === "them" ? "bg-white/[0.06] text-g-word" : m.from === "ai" ? "bg-g-green/15 text-g-light border border-g-green/30" : "bg-g-gold/15 text-g-word border border-g-gold/30"}`}>
                     {m.from === "ai" && <div className="text-[9px] font-black uppercase text-g-green mb-0.5">Guileo AI</div>}
-                    {m.from === "you" && <div className="text-[9px] font-black uppercase text-g-gold mb-0.5">You</div>}
+                    {m.from === "you" && <div className="text-[9px] font-black uppercase text-g-gold mb-0.5">{tr("You")}</div>}
                     {m.text}
                   </div>
                 </div>
@@ -2112,7 +2181,7 @@ function Convos({ V, title }) {
             <div key={i} className={`flex ${m.from === "them" ? "justify-start" : "justify-end"}`}>
               <div className={`max-w-[78%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed ${m.from === "them" ? "bg-white/[0.06] text-g-word" : m.from === "ai" ? "bg-g-green/15 text-g-light border border-g-green/30" : "bg-g-gold/15 text-g-word border border-g-gold/30"}`}>
                 {m.from === "ai" && <div className="text-[9px] font-black uppercase text-g-green mb-0.5">Guileo AI</div>}
-                {m.from === "you" && <div className="text-[9px] font-black uppercase text-g-gold mb-0.5">You</div>}
+                {m.from === "you" && <div className="text-[9px] font-black uppercase text-g-gold mb-0.5">{tr("You")}</div>}
                 {m.text}
               </div>
             </div>
@@ -2162,7 +2231,7 @@ function SettingsView({ V }) {
     <div className="space-y-4 stagger">
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Business profile</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Business profile")}</div>
           <span className="text-[10px] text-g-muted inline-flex items-center gap-1"><FaWandMagicSparkles size={9} className="text-g-green" /> feeds your AI's answers</span>
         </div>
         <div className="divide-y divide-white/[0.06]">
@@ -2179,7 +2248,7 @@ function SettingsView({ V }) {
 
       {/* AI behavior — tone + custom greeting shape every customer interaction */}
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">AI voice & greeting</div>
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("AI voice & greeting")}</div>
         <div className="divide-y divide-white/[0.06]">
           <label className="block px-5 py-3"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">Tone</span>
             <select value={st.tone} onChange={(e) => setS("tone", e.target.value)} className={fieldCls}>{["Friendly", "Professional", "Warm & casual", "Concise", "Enthusiastic"].map((o) => <option key={o} value={o}>{o}</option>)}</select></label>
@@ -2192,7 +2261,7 @@ function SettingsView({ V }) {
 
       {/* Notifications & billing — when the owner gets pinged + auto top-up (revenue safety) */}
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Notifications & billing</div>
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Notifications & billing")}</div>
         <div className="divide-y divide-white/[0.06]">
           {[["on_booking", "New booking or order"], ["on_missed", "Missed call or lead"], ["on_review", "New review"], ["daily_summary", "Daily summary from Gui"]].map(([k, label]) => (
             <div key={k} className="flex items-center justify-between px-5 py-3.5"><span className="text-sm text-g-word font-semibold">{label}</span><Toggle on={st[k] !== false} onClick={() => setS(k, st[k] === false)} /></div>
@@ -2209,7 +2278,7 @@ function SettingsView({ V }) {
       </Card>
 
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Account</div>
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Account")}</div>
         <div className="divide-y divide-white/[0.06]">
           {[["Plan", V.plan?.label || "Growth Plan"], ["Languages", "English · Português · Español"], ["Timezone", "Local"]].map(([k, v], i) => (
             <div key={i} className="flex items-center justify-between px-5 py-3.5"><span className="text-sm text-g-muted">{k}</span><span className="text-sm font-bold text-g-word text-right">{v}</span></div>
@@ -2217,7 +2286,7 @@ function SettingsView({ V }) {
         </div>
       </Card>
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">What your AI handles</div>
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("What your AI handles")}</div>
         <div className="divide-y divide-white/[0.06]">
           {Object.keys(LBL).map((k) => (
             <div key={k} className="flex items-center justify-between px-5 py-3.5"><span className="text-sm text-g-word font-semibold">{LBL[k]}</span><Toggle on={toggles[k]} onClick={() => flip(k)} /></div>
@@ -2225,7 +2294,7 @@ function SettingsView({ V }) {
         </div>
       </Card>
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Integrations &amp; webhooks</div>
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Integrations &amp; webhooks")}</div>
         <div className="divide-y divide-white/[0.06]">
           {[["📅 Calendar (Google/Apple)", "Connected"], ["💳 Stripe payments", "Connected"], ["🍔 POS / orders", "Connected"], ["📣 Meta & Google Ads", "Connected"], ["🛵 Delivery platforms", "Connected"]].map(([name, st]) => (
             <div key={name} className="flex items-center justify-between px-5 py-3"><span className="text-sm text-g-word font-semibold">{name}</span><span className="text-[10px] font-black uppercase text-g-green inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{st}</span></div>
@@ -2266,7 +2335,7 @@ function Grow() {
           <Card key={i} className="flex flex-col">
             <div className="flex items-center gap-3"><span className="grid place-items-center h-11 w-11 rounded-xl bg-white/[0.06] text-xl shrink-0">{ic}</span><div className="text-sm font-bold text-g-word">{name}</div></div>
             <p className="text-xs text-g-muted mt-2 flex-1">{desc}</p>
-            <a href={waLink(`Hi Guileo! I'd like to add: ${name}`)} target="_blank" rel="noopener" className="mt-3 inline-flex items-center justify-center gap-1 rounded-full border border-g-gold/40 bg-g-gold/[0.08] px-4 py-2 text-xs font-bold text-g-gold hover:bg-g-gold/[0.16] transition">Request this →</a>
+            <a href={waLink(`Hi Guileo! I'd like to add: ${name}`)} target="_blank" rel="noopener" className="mt-3 inline-flex items-center justify-center gap-1 rounded-full border border-g-gold/40 bg-g-gold/[0.08] px-4 py-2 text-xs font-bold text-g-gold hover:bg-g-gold/[0.16] transition">{tr("Request this →")}</a>
           </Card>
         ))}
       </div>
@@ -2399,7 +2468,7 @@ function AIBrain({ V }) {
             <div key={i} className="space-y-2">
               <div className="flex justify-end"><div className="max-w-[78%] rounded-2xl px-3.5 py-2 text-xs bg-g-gold/15 text-g-word border border-g-gold/30">{m.q}</div></div>
               <div className="flex justify-start"><div className="max-w-[80%] space-y-1">
-                <div className="rounded-2xl px-3.5 py-2 text-xs bg-g-green/15 text-g-light border border-g-green/30"><div className="text-[9px] font-black uppercase text-g-green mb-0.5 flex items-center gap-1">Your AI {m.trained && <span className="text-g-gold normal-case">· from your training</span>}</div>{m.a}</div>
+                <div className="rounded-2xl px-3.5 py-2 text-xs bg-g-green/15 text-g-light border border-g-green/30"><div className="text-[9px] font-black uppercase text-g-green mb-0.5 flex items-center gap-1">Your AI {m.trained && <span className="text-g-gold normal-case">{tr("· from your training")}</span>}</div>{m.a}</div>
                 {!m.trained && <button onClick={() => setEditing({ topic: "", triggers: m.q, answer: "" })} className="ml-1 text-[11px] font-bold text-g-gold hover:text-g-word transition inline-flex items-center gap-1"><FaPen size={9} /> Teach a better answer</button>}
               </div></div>
             </div>
@@ -2422,7 +2491,7 @@ function AIBrain({ V }) {
           {kb.map((e) => (
             <div key={e.id} className="px-5 py-3 flex items-start gap-3 group">
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold text-g-word flex items-center gap-2">{e.topic}{e.locked && <span className="text-[9px] font-black uppercase text-g-gold border border-g-gold/30 rounded px-1.5 py-0.5">routes to human</span>}</div>
+                <div className="text-sm font-bold text-g-word flex items-center gap-2">{e.topic}{e.locked && <span className="text-[9px] font-black uppercase text-g-gold border border-g-gold/30 rounded px-1.5 py-0.5">{tr("routes to human")}</span>}</div>
                 <p className="text-xs text-g-muted leading-relaxed mt-0.5">{e.answer}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0 opacity-60 group-hover:opacity-100 transition">
@@ -2471,6 +2540,12 @@ function KBForm({ entry, onSave, onCancel }) {
   );
 }
 
+// Plan tiers — the upgrade ladder (display + entitlement basis; real charge = Stripe at launch).
+const PLANS = [
+  { key: "starter", name: "Starter", price: 49, credits: 500, current: false, features: ["AI on 1 channel", "Bookings & reviews", "500 Gui credits / mo", "Email support"], featuresPt: ["IA em 1 canal", "Agendamentos e avaliações", "500 créditos do Gui / mês", "Suporte por e-mail"] },
+  { key: "growth", name: "Growth", price: 149, credits: 2000, current: true, features: ["AI on all channels", "Full integrations stack", "2,000 Gui credits / mo", "Automations + radar", "A human managing it"], featuresPt: ["IA em todos os canais", "Stack de integrações completo", "2.000 créditos do Gui / mês", "Automações + radar", "Um humano cuidando"] },
+  { key: "scale", name: "Scale", price: 399, credits: 6000, current: false, features: ["Everything in Growth", "Multi-location", "6,000 Gui credits / mo", "Priority + phone support", "Custom integrations"], featuresPt: ["Tudo do Growth", "Multi-unidade", "6.000 créditos do Gui / mês", "Suporte prioritário + telefone", "Integrações sob medida"] },
+];
 function Billing({ V }) {
   const plan = V.plan || { label: "Growth Plan", used: 1, total: 2000, unit: "Actions this month" };
   const pct = Math.round((plan.used / plan.total) * 100);
@@ -2490,13 +2565,13 @@ function Billing({ V }) {
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <div className="flex items-center justify-between gap-3">
-            <div><div className="text-xs font-bold uppercase tracking-wide text-g-gold">Current plan</div><div className="text-xl font-extrabold text-g-word mt-1">{plan.label}</div></div>
+            <div><div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Current plan")}</div><div className="text-xl font-extrabold text-g-word mt-1">{plan.label}</div></div>
             <a href={waLink("I'd like to upgrade my Guileo plan")} target="_blank" rel="noopener" className="btn-bright text-sm">Upgrade →</a>
           </div>
           <div className="mt-4"><div className="flex justify-between text-xs mb-1"><span className="text-g-muted">{plan.unit}</span><span className="text-g-word font-bold">{plan.used} / {plan.total.toLocaleString()}</span></div><div className="h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${Math.max(2, pct)}%` }} /></div></div>
         </Card>
         <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">What's included</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">{tr("What's included")}</div>
           <ul className="space-y-1.5 text-xs text-g-word">{includes.map((x, i) => <li key={i} className="flex gap-2"><span className="text-g-green">✓</span>{x}</li>)}</ul>
         </Card>
       </div>
@@ -2534,7 +2609,7 @@ function Billing({ V }) {
         const recent = portalApi.loadState("gui_usage", []).slice(0, 6);
         return (
           <Card className="p-0 overflow-hidden">
-            <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Gui usage · last 7 days</span><span className="text-[11px] text-g-muted">{weekTotal} credits this week</span></div>
+            <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Gui usage · last 7 days")}</span><span className="text-[11px] text-g-muted">{weekTotal} credits this week</span></div>
             <div className="p-5">
               <div className="flex items-end gap-2 h-24">
                 {days.map((d) => (
@@ -2558,6 +2633,24 @@ function Billing({ V }) {
         );
       })()}
 
+      {/* Plan tiers — the upgrade ladder */}
+      <div>
+        <div className="px-1 mb-2 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Plans")}</div>
+        <div className="grid sm:grid-cols-3 gap-3">
+          {PLANS.map((p) => (
+            <Card key={p.key} className={`relative ${p.current ? "border-g-gold/50 bg-g-gold/[0.06]" : ""}`}>
+              {p.current && <span className="absolute -top-2 left-4 text-[9px] font-black uppercase tracking-wide bg-g-gold text-black rounded-full px-2 py-0.5">{tr("Current")}</span>}
+              <div className="text-sm font-extrabold text-g-word">{p.name}</div>
+              <div className="mt-1 flex items-baseline gap-1"><span className="text-2xl font-extrabold text-g-word">${p.price}</span><span className="text-[11px] text-g-muted">/{tr("mo")}</span></div>
+              <ul className="mt-3 space-y-1.5 text-[11px] text-g-word">{(UI_LANG === "pt" ? p.featuresPt : p.features).map((f, i) => <li key={i} className="flex gap-1.5"><span className="text-g-green">✓</span>{f}</li>)}</ul>
+              {p.current
+                ? <div className="mt-3 text-center text-[11px] font-bold text-g-muted">{tr("Your plan")}</div>
+                : <a href={waLink(`I'd like the ${p.name} plan ($${p.price}/mo)`)} target="_blank" rel="noopener" className={`mt-3 block text-center text-sm ${p.price > 149 ? "btn-bright" : "btn-ghost"}`}>{p.price > 149 ? tr("Upgrade →") : tr("Switch →")}</a>}
+            </Card>
+          ))}
+        </div>
+      </div>
+
       {/* Referral credits — a CAC-reducing growth loop on the existing credit system */}
       {(() => {
         const code = `GUI-${(V.business.name || "GUILEO").replace(/[^A-Za-z]/g, "").slice(0, 4).toUpperCase()}${vnum(V.label, "refcode", 100, 999)}`;
@@ -2569,7 +2662,7 @@ function Billing({ V }) {
           <Card className="border-g-gold/25 bg-g-gold/[0.05]">
             <div className="flex items-center gap-3">
               <span className="grid place-items-center h-10 w-10 rounded-xl bg-g-gold/15 text-g-gold"><FaGift /></span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word">Give 250, get 250 credits</div><div className="text-xs text-g-muted mt-0.5">Invite another business — you both get <span className="text-g-gold font-bold">250 free credits</span> when they join. {refs > 0 && <span className="text-g-green font-bold">{refs} joined so far.</span>}</div></div>
+              <div className="flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word">Give 250, get 250 credits</div><div className="text-xs text-g-muted mt-0.5">Invite another business — you both get <span className="text-g-gold font-bold">{tr("250 free credits")}</span> when they join. {refs > 0 && <span className="text-g-green font-bold">{refs} joined so far.</span>}</div></div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <code className="flex-1 min-w-[140px] rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-xs font-mono text-g-light truncate">{link}</code>
@@ -2582,7 +2675,7 @@ function Billing({ V }) {
 
       {/* Go-live readiness — what's done vs what needs your keys to operate */}
       <Card className="p-0 overflow-hidden border-g-green/20">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">🚀 Go-live readiness</span><span className="text-[10px] font-black uppercase text-g-green">Front ready</span></div>
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("🚀 Go-live readiness")}</span><span className="text-[10px] font-black uppercase text-g-green">Front ready</span></div>
         <div className="divide-y divide-white/[0.06]">
           {[
             ["Product, AI & dashboard", "Built & validated", true],
@@ -2604,7 +2697,7 @@ function Billing({ V }) {
       </Card>
 
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Invoices</div>
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Invoices")}</div>
         <div className="divide-y divide-white/[0.06]">
           {invoices.map(([n, d, s], i) => (
             <div key={i} className="flex items-center gap-3 px-5 py-3"><span className="text-lg">🧾</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word">{n}</div><div className="text-[11px] text-g-muted">{d}</div></div><span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-g-green/15 text-g-green">{s}</span><button onClick={() => toast(`${n} downloaded ✓`)} aria-label={`Download ${n}`} className="text-g-gold hover:text-g-word transition"><FaDownload size={12} /></button></div>
@@ -2658,7 +2751,7 @@ function ScheduleScreen({ V }) {
             return (
               <button key={i} onClick={() => setSel({ r, i, who })} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
                 <span className="text-xs font-bold text-g-light w-20 shrink-0 inline-block truncate align-middle" title={r.time}>{r.time}</span>
-                <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{r.name}{r.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">from chat</span>}</div><div className="text-[11px] text-g-muted truncate">{r.meta}{who ? <> · <span className="text-g-light">{who}</span></> : ""}{r.ch && r.ch !== "—" ? ` · ${r.ch}` : ""}</div></div>
+                <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{r.name}{r.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">{tr("from chat")}</span>}</div><div className="text-[11px] text-g-muted truncate">{r.meta}{who ? <> · <span className="text-g-light">{who}</span></> : ""}{r.ch && r.ch !== "—" ? ` · ${r.ch}` : ""}</div></div>
                 <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span>
               </button>
             );
@@ -2724,7 +2817,7 @@ function SocialInbox({ V }) {
         ))}
       </div>
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Social inbox · AI replies on Instagram, Facebook &amp; TikTok</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap to open</span></div>
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Social inbox · AI replies on Instagram, Facebook &amp; TikTok")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap to open</span></div>
         <div className="divide-y divide-white/[0.06]">
           {rows.map((c, i) => {
             const [Icon, color, net] = nets[i % 4];
@@ -2811,7 +2904,7 @@ function AIInsights({ V, onNav, sections = [] }) {
       </Card>
 
       <Card className="border-g-gold/30 bg-g-gold/[0.05] p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">⚡ Recommended by your AI · apply in one click</div>
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("⚡ Recommended by your AI · apply in one click")}</div>
         <div className="divide-y divide-white/[0.06]">
           {recs.map((r, i) => (
             <div key={i} className="flex items-center gap-3 px-5 py-3">
@@ -2826,7 +2919,7 @@ function AIInsights({ V, onNav, sections = [] }) {
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-1">🔮 Predicted demand · next 7 days</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-1">{tr("🔮 Predicted demand · next 7 days")}</div>
           <div className="text-[11px] text-g-muted mb-3"><b className="text-g-green">{fc.peak}</b> peaks at <b className="text-g-word">{fc.peakLoad}%</b> — open more capacity. <b className="text-g-muted">{fc.low}</b> is quietest — a promo fills it.</div>
           <div className="flex items-end gap-1.5 h-24">
             {fc.load.map((v, i) => (
@@ -2839,7 +2932,7 @@ function AIInsights({ V, onNav, sections = [] }) {
           <div className="mt-2 flex items-center gap-3 text-[9px] text-g-muted"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-g-green" />Normal</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: "#D6C29A" }} />Busy</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-red-500" />Over capacity</span></div>
         </Card>
         <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">⚠ No-show risk · AI flagged</div>
+          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("⚠ No-show risk · AI flagged")}</div>
           <div className="divide-y divide-white/[0.06]">
             {fc.risk.length ? fc.risk.map((name, i) => (
               <div key={i} className="flex items-center gap-3 px-5 py-3">
@@ -2885,11 +2978,11 @@ function AIAnalytics({ V, onNav, sections = [] }) {
       <MiniStats items={[["Conversations analyzed", vnum(V.label, "convan", 980, 3200).toLocaleString()], ["Avg sentiment", "Positive 👍", "good"], ["Resolved by AI", `${vnum(V.label, "resai", 86, 95)}%`, "good"], ["Avg handle time", `1m ${vnum(V.label, "handle", 4, 52)}s`]]} />
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Sentiment</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("Sentiment")}</div>
           {sentiment.map(([l, v, c]) => (<div key={l} className="mb-2.5 last:mb-0"><div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{l}</span><span className="text-g-muted">{v}%</span></div><div className="h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full" style={{ width: `${v}%`, background: c }} /></div></div>))}
         </Card>
         <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Why people contact you</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("Why people contact you")}</div>
           {intents.map(([l, v]) => (<div key={l} className="mb-2.5 last:mb-0"><div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{l}</span><span className="text-g-muted">{v}%</span></div><div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-g-green" style={{ width: `${(v / 41) * 100}%` }} /></div></div>))}
         </Card>
       </div>
@@ -2935,7 +3028,7 @@ function Palette({ V, sections, onNav, onClose }) {
             <button key={i} onClick={() => { if (it.run) it.run(); else { onNav(it.key); onClose(); } }} className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-white/[0.06] transition">
               <span className="text-base w-5 text-center text-g-gold">{it.icon}</span>
               <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{it.label}</div><div className="text-[11px] text-g-muted truncate">{it.sub}</div></div>
-              {it.run && <span className="text-[9px] font-black uppercase text-g-gold bg-g-gold/15 rounded px-1.5 py-0.5">Run</span>}
+              {it.run && <span className="text-[9px] font-black uppercase text-g-gold bg-g-gold/15 rounded px-1.5 py-0.5">{tr("Run")}</span>}
             </button>
           )) : <div className="px-3 py-6 text-center text-xs text-g-muted">No matches</div>}
         </div>
@@ -2964,7 +3057,7 @@ function Locations({ V }) {
           <button key={i} onClick={() => setSel(r)} className="text-left">
             <Card className="hover:border-g-gold/30 transition">
               <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{r.name}{r.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">new</span>}</div><div className="text-[11px] text-g-muted">{r.addr}</div></div>
+                <div className="min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{r.name}{r.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">{tr("new")}</span>}</div><div className="text-[11px] text-g-muted">{r.addr}</div></div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ background: (r.status === "Open" ? "#3E9468" : r.status === "Busy" ? "#D6C29A" : "#38BDF8") + "22", color: r.status === "Open" ? "#3E9468" : r.status === "Busy" ? "#D6C29A" : "#38BDF8" }}>{r.status}</span>
               </div>
               <div className="mt-3 flex items-center gap-4 text-xs"><span className="font-extrabold text-g-word">${(r.revenue || 0).toLocaleString()}<span className="text-g-muted font-normal"> /mo</span></span><span className="text-g-muted">{r.staff} staff</span><span className="text-g-muted">{r.today} today</span></div>
@@ -3005,12 +3098,12 @@ function Team({ V }) {
       </Card>
       <MiniStats items={[["Team size", `${rows.length}`], ["Bookings handled", `${active.reduce((s, r) => s + (r.handled || 0), 0)}`, "good"], ["Revenue (team)", `$${totalRev.toLocaleString()}`, "good"], ["Avg rating", `${avgRating} ★`, "good"]]} />
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Your team</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap a member</span></div>
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Your team")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap a member</span></div>
         <div className="divide-y divide-white/[0.06]">
           {rows.map((m, i) => (
             <button key={i} onClick={() => setSel(m)} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
               <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{m.name[0]}</span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{m.name}{m.status === "Invited" && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">invited</span>}</div><div className="text-[11px] text-g-muted">{m.role}{m.status === "Active" ? ` · ${m.handled} handled · ${m.rating}★` : " · awaiting join"}</div></div>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{m.name}{m.status === "Invited" && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">{tr("invited")}</span>}</div><div className="text-[11px] text-g-muted">{m.role}{m.status === "Active" ? ` · ${m.handled} handled · ${m.rating}★` : " · awaiting join"}</div></div>
               {m.status === "Active" && <span className="text-sm font-extrabold text-g-green">${(m.revenue || 0).toLocaleString()}</span>}
             </button>
           ))}
@@ -3053,12 +3146,12 @@ function Payments({ V }) {
       </Card>
       <MiniStats items={[["Collected", `$${collected.toLocaleString()}`, "good"], ["Outstanding", `$${outstanding.toLocaleString()}`], ["Paid invoices", `${rows.filter((r) => statusOf(r) === "Paid").length}`, "good"], ["Avg. days to pay", `${vnum(V.label, "daystopay", 1, 6)}`]]} />
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Invoices & payments</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap to manage</span></div>
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Invoices & payments")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap to manage</span></div>
         <div className="divide-y divide-white/[0.06]">
           {rows.map((r, i) => (
             <button key={i} onClick={() => setSel(r)} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
               <span className="text-xs font-bold text-g-light w-20 shrink-0">{r.id}</span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{r.customer}{r.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">new</span>}</div><div className="text-[11px] text-g-muted">{r.method} · {r.due}</div></div>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{r.customer}{r.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">{tr("new")}</span>}</div><div className="text-[11px] text-g-muted">{r.method} · {r.due}</div></div>
               <span className="text-sm font-extrabold text-g-word">${r.amount.toLocaleString()}</span>
               <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: colorOf(r) + "22", color: colorOf(r) }}>{statusOf(r)}</span>
             </button>
@@ -3116,13 +3209,13 @@ function Loyalty({ V }) {
       <div className="grid lg:grid-cols-2 gap-4">
         {/* Loyalty members */}
         <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Top members</div>
+          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Top members")}</div>
           <div className="divide-y divide-white/[0.06]">
             {members.map((m, i) => (
               <div key={i} className="flex items-center gap-3 px-5 py-3">
                 <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{m.name[0]}</span>
                 <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{m.name}<span className="text-[9px] font-black uppercase rounded px-1.5 py-0.5" style={{ background: tierColor(m.tier) + "22", color: tierColor(m.tier) }}>{m.tier}</span></div><div className="text-[11px] text-g-muted">{m.pts.toLocaleString()} {cfg.unit}</div></div>
-                <button onClick={() => reward(m)} className="text-[11px] font-bold rounded-full border border-g-gold/35 bg-g-gold/[0.08] px-3 py-1.5 text-g-gold hover:bg-g-gold/[0.16] transition">🎁 Reward</button>
+                <button onClick={() => reward(m)} className="text-[11px] font-bold rounded-full border border-g-gold/35 bg-g-gold/[0.08] px-3 py-1.5 text-g-gold hover:bg-g-gold/[0.16] transition">{tr("🎁 Reward")}</button>
               </div>
             ))}
           </div>
@@ -3134,7 +3227,7 @@ function Loyalty({ V }) {
           <div className="p-4 border-b border-white/[0.06]">
             <div className="flex items-center gap-2 rounded-xl2 border border-white/12 bg-black/20 px-3 py-2">
               <span className="flex-1 min-w-0 text-[11px] text-g-muted truncate">refer.guileo.ai/{V.label.toLowerCase().replace(/\W+/g, "")}</span>
-              <button onClick={copyLink} className="text-[11px] font-bold text-g-gold hover:text-g-word transition shrink-0">Copy link</button>
+              <button onClick={copyLink} className="text-[11px] font-bold text-g-gold hover:text-g-word transition shrink-0">{tr("Copy link")}</button>
             </div>
             <div className="mt-1.5 text-[10px] text-g-muted">Each friend who joins earns both sides {cfg.reward}.</div>
           </div>
@@ -3198,18 +3291,18 @@ function GuileoImpact({ V }) {
       <Card className="relative overflow-hidden bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] border-g-green/30">
         <div className="absolute -top-16 -right-12 h-44 w-44 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
         <div className="relative">
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Growth Guileo drove · this month</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Growth Guileo drove · this month")}</div>
           <div className="text-4xl sm:text-5xl font-black text-g-word tracking-tight mt-1"><Count key={total} to={total} prefix="$" /></div>
           <div className="mt-2.5 flex flex-wrap gap-2">{d.parts.map(([label, val]) => (<span key={label} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold"><span className="text-g-green">{val}</span><span className="text-g-muted">{label}</span></span>))}</div>
         </div>
       </Card>
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2 p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Growth ledger · every $ the AI generated</div>
+          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Growth ledger · every $ the AI generated")}</div>
           <div className="divide-y divide-white/[0.06]">{events.map(([t, what, amt], i) => (<div key={i} className="flex items-center gap-3 px-5 py-3"><span className="grid place-items-center h-8 w-8 rounded-full bg-g-green/15 text-g-green text-sm font-black">＋</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{what}</div><div className="text-[11px] text-g-muted">{t === "now" ? "just now" : `${t} ago`}</div></div><span className="text-sm font-extrabold text-g-green">+${amt}</span></div>))}</div>
         </Card>
         <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">Partnership</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">{tr("Partnership")}</div>
           <div className="text-sm text-g-muted">You grew <b className="text-g-word">${total.toLocaleString()}</b> with Guileo this month.</div>
           <div className="mt-3 rounded-xl2 border border-g-gold/30 bg-g-gold/[0.06] p-3">
             <div className="text-[10px] uppercase tracking-wide text-g-gold font-bold">Guileo's share · {d.sharePct}% of growth</div>
@@ -3242,7 +3335,7 @@ function Followups({ V }) {
     <div className="space-y-4 stagger">
       <MiniStats items={[["Active sequences", `${open.length}`], ["Pipeline value", `$${pipeline.toLocaleString()}`], ["Won this week", `${vnum(V.label, "won", 4, 14)}`, "good"], ["Auto-nudged", `${vnum(V.label, "nudge", 18, 44)}`, "good"]]} />
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">The AI is chasing these — so you never lose them</div>
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("The AI is chasing these — so you never lose them")}</div>
         <div className="divide-y divide-white/[0.06]">
           {open.map(({ r, i }) => (
             <button key={i} onClick={() => setSel({ r, i })} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition">
@@ -3295,7 +3388,7 @@ function Waitlist({ V }) {
     <div className="space-y-4 stagger">
       <MiniStats items={[["Waiting now", `${open.length}`], ["Filled today", `${vnum(V.label, "filled", 5, 16)}`, "good"], ["No-shows saved", `${vnum(V.label, "noshow", 3, 11)}`, "good"], ["Revenue recovered", `$${vnum(V.label, "wrev", 800, 2600).toLocaleString()}`, "good"]]} />
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Waitlist · turn empty slots into revenue</div>
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Waitlist · turn empty slots into revenue")}</div>
         <div className="divide-y divide-white/[0.06]">
           {open.map(({ r, i }) => (
             <button key={i} onClick={() => setSel({ r, i })} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition">
@@ -3334,18 +3427,18 @@ function Reputation({ V, onNav }) {
       <MiniStats items={[["Avg rating", `${((46 + vnum(V.label, "rate", 0, 3)) / 10).toFixed(1)} ★`, "good"], ["Reviews this month", `${vnum(V.label, "revc", 40, 140)}`, "good"], ["Requests sent", `${vnum(V.label, "reqs", 200, 420) + reqs.length}`], ["Request → review", `${vnum(V.label, "conv", 24, 38)}%`, "good"]]} />
       {reqs.length > 0 && (
         <Card className="border-g-gold/25 bg-g-gold/[0.05]">
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">⭐ Review requests in flight</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">{tr("⭐ Review requests in flight")}</div>
           <div className="flex flex-wrap gap-2">{reqs.map((r, i) => (<span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word">{r.name} <span className="text-g-muted">· {r.ch || "WhatsApp"} · awaiting</span></span>))}</div>
         </Card>
       )}
       <div className="grid lg:grid-cols-3 gap-4">
         <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Rating breakdown</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("Rating breakdown")}</div>
           {dist.map(([l, v]) => (<div key={l} className="mb-2 last:mb-0 flex items-center gap-2"><span className="text-xs text-g-muted w-8">{l}</span><div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-gold to-g-green" style={{ width: `${v}%` }} /></div><span className="text-[11px] text-g-muted w-8 text-right">{v}%</span></div>))}
           <button onClick={blast} className="btn-bright text-sm w-full mt-4 justify-center">Request reviews now</button>
         </Card>
         <Card className="lg:col-span-2 p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Recent reviews · collected by AI</div>
+          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recent reviews · collected by AI")}</div>
           <div className="divide-y divide-white/[0.06]">{reviews.map((r, i) => (<button key={i} onClick={() => setSel(r)} className="w-full text-left px-5 py-3 hover:bg-white/[0.04] transition"><div className="flex items-center justify-between"><span className="text-sm font-bold text-g-word">{r.name}</span><span className="text-xs text-g-gold">{"★".repeat(r.stars)}<span className="text-g-muted">{"★".repeat(5 - r.stars)}</span></span></div><div className="text-[12px] text-g-muted mt-0.5">"{r.text}" <span className="text-g-light">· {r.ch}</span></div></button>))}</div>
         </Card>
       </div>
@@ -3372,7 +3465,7 @@ function Recurring({ V }) {
     <div className="space-y-4 stagger">
       <MiniStats items={[["Active plans", `${rows.length * 23}`], ["Monthly recurring", `$${(perMo * 23).toLocaleString()}`, "good"], ["Renewals due", `${vnum(V.label, "renew", 4, 14)}`], ["Churn risk", `${vnum(V.label, "churn", 1, 6)}`, "bad"]]} />
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Recurring revenue · the AI keeps it renewing</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for plan</span></div>
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recurring revenue · the AI keeps it renewing")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for plan</span></div>
         <div className="divide-y divide-white/[0.06]">{rows.map((r, i) => (<button key={i} onClick={() => setSel(r)} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition"><span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{r.name[0]}</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted">{r.plan} · ${r.value}/mo</div></div><span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span></button>))}{rows.length === 0 && <Empty icon="🔁" text="No recurring plans yet — offer one to start predictable monthly revenue." />}</div>
       </Card>
       <p className="text-center text-[11px] text-g-muted">Recurring revenue is the most valuable revenue — your AI renews, reminds and rescues it automatically.</p>
@@ -3483,7 +3576,7 @@ function Login({ onEnter }) {
           <input type="password" required placeholder="Password" className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
           <button disabled={busy} className="btn-bright text-sm w-full disabled:opacity-70">{busy ? "Signing in…" : "Enter Growth Cockpit →"}</button>
         </form>
-        <button onClick={() => go()} disabled={busy} className="mt-3 text-xs font-bold text-g-gold hover:underline disabled:opacity-60">▶ Enter demo (sample data)</button>
+        <button onClick={() => go()} disabled={busy} className="mt-3 text-xs font-bold text-g-gold hover:underline disabled:opacity-60">{tr("▶ Enter demo (sample data)")}</button>
         <div className="mt-4 text-[11px] text-g-muted"><a href="/" className="hover:text-g-word">← Back to guileo.ai</a></div>
       </motion.div>
     </div>
@@ -3658,7 +3751,7 @@ function Gui({ V, onNav }) {
           <div className="px-4 py-2 border-b border-white/[0.06] shrink-0">
             <div className="flex items-center justify-between text-[10px] mb-1"><span className="text-g-muted font-bold uppercase tracking-wide">Credits</span><span className={`font-bold ${low ? "text-red-400" : "text-g-word"}`}>{credits} left</span></div>
             <div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className={`h-full rounded-full ${low ? "bg-red-500" : "bg-gradient-to-r from-g-green to-g-gold"}`} style={{ width: `${pct}%` }} /></div>
-            <div className="mt-1 flex items-center justify-between text-[10px] text-g-muted"><span>Pay-as-you-go · ~5 credits per task</span><button onClick={recharge} className="font-bold text-g-gold hover:underline">+ Recharge</button></div>
+            <div className="mt-1 flex items-center justify-between text-[10px] text-g-muted"><span>Pay-as-you-go · ~5 credits per task</span><button onClick={recharge} className="font-bold text-g-gold hover:underline">{tr("+ Recharge")}</button></div>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
             {msgs.map((m, i) => (
@@ -3667,7 +3760,7 @@ function Gui({ V, onNav }) {
                   {m.from === "gui" && <div className="text-[9px] font-black uppercase text-g-green mb-0.5">Gui</div>}
                   {m.text}
                   {m.cost > 0 && <span className="ml-1.5 text-[9px] text-g-muted">−{m.cost} cr</span>}
-                  {m.lowCredit && <button onClick={recharge} className="block mt-1.5 text-[11px] font-bold text-g-gold hover:underline">+ Recharge credits</button>}
+                  {m.lowCredit && <button onClick={recharge} className="block mt-1.5 text-[11px] font-bold text-g-gold hover:underline">{tr("+ Recharge credits")}</button>}
                   {m.canUndo && i === msgs.length - 1 && <button onClick={doUndo} className="block mt-1.5 text-[11px] font-bold text-g-muted hover:text-g-word">↩ Undo this</button>}
                   {m.next && m.next.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5">{m.next.map((n) => <button key={n.cmd} onClick={() => run(n.cmd)} className="rounded-full border border-g-gold/30 bg-g-gold/10 px-2.5 py-1 text-[10px] font-bold text-g-gold hover:bg-g-gold/20 transition">{n.label}</button>)}</div>
@@ -3705,6 +3798,7 @@ export default function Portal() {
   const [view, setView] = useState("overview");
   const [period, setPeriod] = useState("30 days");
   const [lang, setLang] = useState(() => portalApi.loadState("portal_lang", "en"));
+  setUiLang(lang); // publish current UI language so tr() works anywhere, no prop threading
   const toggleLang = () => setLang((l) => { const n = l === "pt" ? "en" : "pt"; portalApi.saveState("portal_lang", n); return n; });
   // Vertical can be deep-linked via ?v=<id> (shareable per-sector links) and is remembered.
   const [vertical, setVertical] = useState(() => {
@@ -3852,7 +3946,7 @@ export default function Portal() {
                   {on && <motion.span layoutId="navpill" className="absolute inset-0 rounded-xl2 bg-white/[0.07] border border-g-gold/30" transition={{ type: "spring", stiffness: 380, damping: 30 }} />}
                   <Icon size={15} className="relative" /><span className="relative">{tr(label, lang)}</span>
                   {flag === "soon"
-                    ? <span className="relative ml-auto text-[8px] font-black uppercase tracking-wider text-g-gold/90 bg-g-gold/10 rounded px-1 py-0.5">soon</span>
+                    ? <span className="relative ml-auto text-[8px] font-black uppercase tracking-wider text-g-gold/90 bg-g-gold/10 rounded px-1 py-0.5">{tr("soon")}</span>
                     : notif > 0 && <span className="relative ml-auto inline-grid place-items-center h-5 min-w-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-black shadow-[0_0_8px_rgba(239,68,68,0.55)]">{notif}</span>}
                 </button>
               );
@@ -3910,7 +4004,7 @@ export default function Portal() {
                 <>
                   <div className="fixed inset-0 z-20" onClick={() => setBellOpen(false)} />
                   <div className="absolute right-0 mt-2 w-72 max-h-96 overflow-y-auto rounded-xl2 border border-white/12 bg-g-cream/95 backdrop-blur-xl shadow-lift z-30 p-1.5">
-                    <div className="flex items-center justify-between px-2.5 py-1.5"><span className="text-[10px] font-bold uppercase tracking-wide text-g-muted">Notifications</span>{totalNotif > 0 && <button onClick={markAllRead} className="text-[10px] font-bold text-g-gold hover:underline">Mark all read</button>}</div>
+                    <div className="flex items-center justify-between px-2.5 py-1.5"><span className="text-[10px] font-bold uppercase tracking-wide text-g-muted">Notifications</span>{totalNotif > 0 && <button onClick={markAllRead} className="text-[10px] font-bold text-g-gold hover:underline">{tr("Mark all read")}</button>}</div>
                     {notifList.length ? notifList.map(({ k, l, n }) => (
                       <button key={k} onClick={() => { setView(k); setBellOpen(false); }} className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-bold text-left text-g-muted hover:text-g-word hover:bg-white/[0.06] transition">
                         <span className="grid place-items-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black">{n}</span>
