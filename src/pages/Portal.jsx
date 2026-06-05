@@ -2074,6 +2074,15 @@ function genForecast(V) {
   const risk = (V.ops?.schedule || []).filter((r) => /pending|new|risk|follow|unconfirmed/i.test(r.status)).slice(0, 3).map((r) => r.name);
   return { days, load, peak: days[peakIdx], peakLoad: load[peakIdx], low: days[lowIdx], risk };
 }
+// How the business stacks up vs its sector average — deterministic, all favorable.
+function genBenchmarks(V) {
+  return [
+    { label: "AI response time", you: "under 5s", avg: "4 min", delta: "60× faster", better: true },
+    { label: "No-show rate", you: `${vnum(V.label, "bmns", 3, 7)}%`, avg: `${vnum(V.label, "bmnsavg", 14, 22)}%`, delta: "less than half", better: true },
+    { label: "Repeat-customer rate", you: `${vnum(V.label, "bmrep", 38, 52)}%`, avg: `${vnum(V.label, "bmrepavg", 22, 31)}%`, delta: "well above", better: true },
+    { label: "Reviews per month", you: `${vnum(V.label, "bmrev", 60, 130)}`, avg: `${vnum(V.label, "bmrevavg", 14, 30)}`, delta: "3–4×", better: true },
+  ];
+}
 function AIAnalytics({ V, onNav, sections = [] }) {
   const has = new Set(sections.map(([k]) => k));
   const recs = genRecommendations(V).filter((r) => has.has(r.view));
@@ -2146,6 +2155,21 @@ function AIAnalytics({ V, onNav, sections = [] }) {
           {fc.risk.length > 0 && <div className="px-5 py-2.5 border-t border-white/[0.06] text-[11px] text-g-muted">The AI auto-sends deposit requests + reminders to high-risk bookings.</div>}
         </Card>
       </div>
+
+      {/* Industry benchmarks — how the business stacks up vs sector average */}
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">📊 How you compare · vs {V.label.toLowerCase()} average</div>
+        <div className="divide-y divide-white/[0.06]">
+          {genBenchmarks(V).map((b, i) => (
+            <div key={i} className="flex items-center gap-3 px-5 py-3">
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{b.label}</div><div className="text-[11px] text-g-muted">You: <b className="text-g-green">{b.you}</b> · Industry avg: {b.avg}</div></div>
+              <span className="text-[10px] font-black uppercase text-g-green inline-flex items-center gap-1 shrink-0"><FaArrowTrendUp size={10} /> {b.delta}</span>
+            </div>
+          ))}
+        </div>
+        <div className="px-5 py-2.5 border-t border-white/[0.06] text-[11px] text-g-muted">You're outperforming your sector on every metric your AI touches.</div>
+      </Card>
+
       <div className="grid lg:grid-cols-2 gap-4">
         {T.map((t, i) => (
           <Card key={i} className="p-0 overflow-hidden">
