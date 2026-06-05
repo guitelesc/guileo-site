@@ -219,7 +219,99 @@ function genCampaigns(V) {
     { name: "Win-back · 30 days inactive", channel: "SMS", sent: 300, opened: 41, revenue: 560, status: "Scheduled" },
   ];
 }
-function genAudiences() {
+// ── Per-sector intelligence: one source of truth that makes every vertical feel
+// "this AI understands MY business" — feeds Impact events, recommendations, the
+// radar, the daily briefing, audiences, next-best-action and missed-ops. ──
+const SECTOR_IQ = {
+  "Restaurant": { slot: 62, brief: "tables fill fast tonight",
+    radar: { n: (V) => genWaitlist(V).length || 3, en: (n) => `It's almost service and ${n} tables are still open tonight — fill them from your waitlist?`, pt: (n) => `Tá quase na hora e ${n} mesas seguem vazias hoje — encher pela lista de espera?`, chipEn: "🍽️ Fill tables", chipPt: "🍽️ Encher mesas", cmd: "request reviews" },
+    recs: ["Tonight runs ~30% below capacity — blast your waitlist + regulars a same-day offer to fill the room.", "A dozen happy diners haven't been asked for a review yet — reviews drive new tables.", "Several regulars haven't ordered in 30 days — a win-back nudge brings them back."],
+    impact: ["Filled a dead-night table → re-sold the slot", "Killed a no-show and re-sold the table", "Won back a regular gone 30 days"],
+    missed: ["callers asked for catering / large parties — a line you don't list yet", "after-hours 'are you open?' calls now answered automatically"],
+    aud: ["Regulars · 3+ visits", "Lapsed diners · 30d", "Big-spender lookalike", "Local · delivery radius"],
+    nb: { top: "orders weekly — invite to your VIP club with a treat next visit.", risk: "hasn't ordered in a while — a 'we miss you' offer brings them back.", base: "loved their last meal — ask for a review while it's fresh." } },
+  "Clinic": { slot: 160, brief: "recalls due this week",
+    radar: { n: (V) => genFollowups(V).length || 38, en: (n) => `${n} patients are overdue for a recall — reactivate them this week (high-margin).`, pt: (n) => `${n} pacientes estão com retorno atrasado — reative esta semana (alta margem).`, chipEn: "🦷 Reactivate", chipPt: "🦷 Reativar", cmd: "start follow-ups" },
+    recs: ["38 patients are overdue for a recall — a reactivation sequence books ~1 in 5.", "Happy patients haven't been asked to review — reviews win new patients.", "Several unconfirmed visits risk no-shows — confirm them now."],
+    impact: ["Reactivated a 9-month overdue recall", "Recovered a no-show with an auto-reschedule", "Confirmed a wobbly appointment before it cancelled"],
+    missed: ["patients asked about whitening/Invisalign you don't promote — high-margin demand", "after-hours 'do you take my insurance?' calls now answered"],
+    aud: ["Recall-due patients", "New-patient lookalike", "Lapsed · 12mo+", "Treatment-plan follow-up"],
+    nb: { top: "is due for a 6-month recall soon — pre-book the cleaning while they're warm.", risk: "lapsed on recalls — a reactivation note usually re-books them.", base: "had a great visit — ask for a review and pre-book the next." } },
+  "Medical": { slot: 180, brief: "follow-ups awaiting",
+    radar: { n: (V) => genFollowups(V).length || 24, en: (n) => `${n} patients need a follow-up or recall — re-engage before they drift to another provider.`, pt: (n) => `${n} pacientes precisam de retorno — reengaje antes que migrem pra outro lugar.`, chipEn: "🩺 Re-engage", chipPt: "🩺 Reengajar", cmd: "start follow-ups" },
+    recs: ["Open slots this week sit unfilled — pull from your new-patient demand.", "Reviews from happy patients drive new-patient search — request a batch.", "Unconfirmed visits risk no-shows — confirm them now."],
+    impact: ["Filled an open slot from new-patient demand", "Recovered a no-show with an auto-reschedule", "Reactivated a patient overdue for a follow-up"],
+    missed: ["patients asked about telehealth options you don't list yet", "after-hours intake calls now captured instead of lost"],
+    aud: ["Recall-due patients", "New-patient lookalike", "Lapsed · 12mo+", "Telehealth-interested"],
+    nb: { top: "is a high-value patient due for follow-up — book it while top of mind.", risk: "hasn't been seen in a while — a check-in note re-engages them.", base: "had a good visit — ask for a review and schedule the next." } },
+  "Salon & Spa": { slot: 70, brief: "chairs to fill tomorrow",
+    radar: { n: (V) => genWaitlist(V).length || 5, en: (n) => `${n} chairs sit empty tomorrow — push expiring packages + regulars to fill them.`, pt: (n) => `${n} cadeiras vazias amanhã — empurre pacotes vencendo + clientes fiéis pra preencher.`, chipEn: "💈 Fill chairs", chipPt: "💈 Preencher", cmd: "launch a promo" },
+    recs: ["Tomorrow has open chairs — offer same-week slots to regulars and waitlist.", "Clients haven't rebooked — a rebooking nudge keeps the chair full.", "Ask happy clients for reviews — they fill new chairs."],
+    impact: ["Filled an empty chair with a same-day offer", "Rebooked a client before they drifted", "Sold an expiring package before it lapsed"],
+    missed: ["clients asked for treatments you don't offer yet — upsell demand", "after-hours booking requests now captured"],
+    aud: ["Rebook-due clients", "Lapsed · 60d", "Package holders", "High-value lookalike"],
+    nb: { top: "is a VIP — offer a loyalty perk and pre-book the next visit.", risk: "hasn't rebooked — a 'we saved your spot' note works.", base: "loved the service — ask for a review and rebook." } },
+  "Law Firm": { slot: 2500, brief: "intakes awaiting follow-up",
+    radar: { n: (V) => genFollowups(V).length || 11, en: (n) => `${n} intakes never got a follow-up call — each unsigned lead is worth thousands.`, pt: (n) => `${n} atendimentos não tiveram retorno — cada lead sem assinar vale milhares.`, chipEn: "⚖️ Follow up", chipPt: "⚖️ Dar retorno", cmd: "start follow-ups" },
+    recs: ["Several consults never got a follow-up — each unsigned lead is ~$2.5k.", "Engagement letters are unsigned — chase the e-signatures.", "Past clients are a referral goldmine — ask for intros + reviews."],
+    impact: ["Captured an after-hours injury intake → signed", "Chased an unsigned engagement letter to signature", "Turned a past client into a referral"],
+    missed: ["callers asked about practice areas you don't list yet", "after-hours intakes now captured instead of going to voicemail"],
+    aud: ["Unsigned consults", "Past clients (referral)", "PI lookalike", "Practice-area searchers"],
+    nb: { top: "is a high-value matter — fast-track the engagement letter.", risk: "consult never signed — a follow-up call recovers many.", base: "had a good outcome — ask for a review + referral." } },
+  "Real Estate": { slot: 9000, brief: "hot leads to follow",
+    radar: { n: (V) => genFollowups(V).length || 3, en: (n) => `${n} hot buyers viewed but never got matching listings — send them now before they go cold.`, pt: (n) => `${n} compradores quentes viram mas não receberam imóveis compatíveis — envie agora.`, chipEn: "🏠 Send listings", chipPt: "🏠 Enviar imóveis", cmd: "start follow-ups" },
+    recs: ["Hot buyers haven't gotten matching listings — send them today.", "Past clients drive referrals — ask for intros and reviews.", "New leads need instant replies — your AI answers in seconds."],
+    impact: ["Replied to a Zillow lead in seconds → booked a showing", "Sent matching listings to a warm buyer", "Turned a past client into a referral"],
+    missed: ["buyers asked about financing/mortgage — partner-referral revenue you're missing", "after-hours listing inquiries now answered instantly"],
+    aud: ["Buyers by budget band", "Renters", "Past clients · referral", "Just-listed alerts"],
+    nb: { top: "is an active buyer — send the newest matching listings now.", risk: "viewed but went quiet — a fresh listing re-engages them.", base: "closed happy — ask for a review and referrals." } },
+  "Gym & Fitness": { slot: 90, brief: "at-risk members",
+    radar: { n: (V) => genFollowups(V).length || 22, en: (n) => `${n} members went quiet (>14 days) — they churn next month without a nudge.`, pt: (n) => `${n} alunos sumiram (>14 dias) — vão cancelar mês que vem sem um empurrão.`, chipEn: "💪 Re-engage", chipPt: "💪 Reengajar", cmd: "start follow-ups" },
+    recs: ["22 members went quiet — re-engage before they cancel.", "Trial users didn't convert — a follow-up turns them into members.", "Class spots sit empty — fill them from your waitlist."],
+    impact: ["Re-engaged a member quiet 18 days", "Converted a trial that almost slipped away", "Filled an empty class spot from the waitlist"],
+    missed: ["callers wanted personal training — an upsell you're not offering", "after-hours 'how much is membership?' calls now answered"],
+    aud: ["At-risk members", "Trial no-shows", "Class waitlist", "Lapsed · 60d"],
+    nb: { top: "is a loyal member — offer a referral perk or PT upsell.", risk: "hasn't checked in 18 days — a 'we miss you' + guest pass saves them.", base: "is engaged — ask for a review and a friend referral." } },
+  "Auto Dealership": { slot: 400, brief: "leads + service-due",
+    radar: { n: (V) => genFollowups(V).length || 6, en: (n) => `${n} shoppers test-drove or inquired but never got a follow-up — re-engage before they buy elsewhere.`, pt: (n) => `${n} compradores fizeram test-drive mas não tiveram retorno — reengaje antes que comprem em outro lugar.`, chipEn: "🚗 Follow up", chipPt: "🚗 Dar retorno", cmd: "start follow-ups" },
+    recs: ["Test-drivers haven't been followed up — each is a near-sale.", "Service-due owners are easy revenue — book them in.", "New leads need instant replies — your AI answers 24/7."],
+    impact: ["Followed up a test-drive → booked a sit-down", "Booked a service-due owner", "Replied to an AutoTrader lead in seconds"],
+    missed: ["callers asked about trade-in values after hours — now answered", "service-plan demand you're not promoting"],
+    aud: ["Service-due owners", "Test-drove · no buy", "Lease-ending", "In-market lookalike"],
+    nb: { top: "is a repeat buyer — invite to a VIP trade-in offer.", risk: "test-drove but didn't buy — a follow-up recovers many.", base: "is due for service — book the appointment now." } },
+  "Plumbing & HVAC": { slot: 480, brief: "jobs + after-hours calls",
+    radar: { n: (V) => genFollowups(V).length || 4, en: (n) => `${n} quotes are sitting unbooked and ${"emergency"} calls come after hours — capture them before a competitor does.`, pt: (n) => `${n} orçamentos parados e chamados de emergência chegam fora do horário — capture antes do concorrente.`, chipEn: "🔧 Book jobs", chipPt: "🔧 Agendar", cmd: "start follow-ups" },
+    recs: ["Open quotes haven't been booked — a nudge converts them.", "Maintenance-plan customers are recurring revenue — offer it.", "After-hours emergencies are pure margin — your AI books them 24/7."],
+    impact: ["Booked a 2 AM emergency leak → won the job", "Converted an open quote into a booked job", "Sold a maintenance plan for recurring revenue"],
+    missed: ["callers needed services outside your area — partner-referral revenue", "after-hours emergency calls now booked instead of lost"],
+    aud: ["Open-quote leads", "Maintenance-plan prospects", "Past customers · service-due", "Local emergency lookalike"],
+    nb: { top: "is a repeat customer — offer an annual maintenance plan.", risk: "got a quote but didn't book — a follow-up wins many.", base: "had a great job — ask for a review and referral." } },
+  "Education": { slot: 120, brief: "trials + at-risk students",
+    radar: { n: (V) => genFollowups(V).length || 9, en: (n) => `${n} trial students didn't enroll yet — a follow-up turns trials into tuition.`, pt: (n) => `${n} alunos de aula teste ainda não matricularam — um retorno vira matrícula.`, chipEn: "📚 Follow up", chipPt: "📚 Dar retorno", cmd: "start follow-ups" },
+    recs: ["Trial students haven't enrolled — nudge them to convert.", "At-risk students may drop — re-engage before they go.", "Happy parents/students drive referrals — ask for reviews."],
+    impact: ["Converted a trial student into an enrollment", "Re-engaged a student about to drop", "Turned a happy parent into a referral"],
+    missed: ["callers asked about courses you don't offer yet", "after-hours enrollment questions now answered"],
+    aud: ["Trial · not enrolled", "At-risk students", "Past students · referral", "Course-interest lookalike"],
+    nb: { top: "is highly engaged — offer an advanced course or referral perk.", risk: "is at risk of dropping — a check-in keeps them on track.", base: "is doing well — ask for a review and referral." } },
+  "Construction": { slot: 44000, brief: "estimates awaiting",
+    radar: { n: (V) => genFollowups(V).length || 5, en: (n) => `${n} estimates are awaiting a decision — a timely follow-up wins the bid.`, pt: (n) => `${n} orçamentos aguardam decisão — um retorno na hora ganha a obra.`, chipEn: "🏗️ Follow up", chipPt: "🏗️ Dar retorno", cmd: "start follow-ups" },
+    recs: ["Open estimates need follow-up — each is a major project.", "Past clients drive referrals — ask for intros and reviews.", "New leads need fast replies — your AI answers instantly."],
+    impact: ["Followed up an estimate → won the project", "Captured an after-hours project lead", "Turned a past client into a referral"],
+    missed: ["leads asked about services outside your scope — partner-referral revenue", "after-hours project inquiries now captured"],
+    aud: ["Open-estimate leads", "Past clients · referral", "Permit-pulled lookalike", "Project-type searchers"],
+    nb: { top: "is a high-value client — fast-track the proposal.", risk: "got an estimate but didn't decide — a follow-up wins many.", base: "had a great project — ask for a review and referral." } },
+  "E-Commerce": { slot: 124, brief: "carts recovering",
+    radar: { n: (V) => genFollowups(V).length || 41, en: (n) => `${n} carts worth a few thousand are abandoning right now — start the recovery flow?`, pt: (n) => `${n} carrinhos de alguns milhares estão sendo abandonados agora — disparar a recuperação?`, chipEn: "🛒 Recover carts", chipPt: "🛒 Recuperar", cmd: "start follow-ups" },
+    recs: ["41 carts worth ~$2.4k are unrecovered right now — fire the recovery flow.", "Past buyers haven't been re-engaged — a win-back sells again.", "Happy buyers drive social proof — request reviews."],
+    impact: ["Chased an abandoned cart ($124) → paid", "Won back a buyer lapsed 60 days", "Turned a 5★ review into an ad"],
+    missed: ["size/fit questions bounced — a size guide + AI sizing would have closed them", "after-hours order questions now answered instantly"],
+    aud: ["Abandoned-cart · 7d", "High-AOV buyers", "Browsed · no buy", "Post-purchase · 30d"],
+    nb: { top: "is a repeat buyer — offer a replenish subscription or VIP perk.", risk: "lapsed 60 days — a win-back offer brings them back.", base: "bought happy — ask for a review and cross-sell." } },
+};
+const iqOf = (V) => SECTOR_IQ[V.label] || SECTOR_IQ["Restaurant"];
+function genAudiences(V) {
+  const iq = V && SECTOR_IQ[V.label];
+  if (iq) return iq.aud.map((name, i) => ({ name, size: vnum(V.label, `aud${i}`, 90, 620), source: "CRM" }));
   return [
     { name: "Repeat customers", size: 412, source: "CRM" },
     { name: "Lapsed (no activity 30d)", size: 188, source: "CRM" },
@@ -229,14 +321,14 @@ function genAudiences() {
 }
 // Growth attribution ledger — the basis of the revenue-share model
 function genImpact(V) {
-  const events = [
-    ["now", "Recovered a missed call → booking", 120],
-    ["14m", "Filled a cancelled slot from waitlist", 80],
-    ["1h", "Won back a lapsed customer", 240],
-    ["2h", "Reactivated a recall / repeat visit", 160],
-    ["3h", "Turned a 5★ review into a new lead", 90],
-    ["5h", "Captured an after-hours inquiry", 180],
-  ];
+  const iq = SECTOR_IQ[V.label];
+  const times = ["now", "18m", "1h", "2h", "4h", "6h"];
+  const amt = (i) => Math.min(1500, Math.max(40, Math.round((iq?.slot || 120) * (0.5 + vnum(V.label, `imp${i}`, 0, 80) / 100))));
+  const events = iq
+    ? [...iq.impact.map((what, i) => [times[i], what, amt(i)]),
+       ["3h", "Captured an after-hours inquiry → booked", amt(4)],
+       ["5h", "Turned a 5★ review into a new lead", amt(5)]]
+    : [["now", "Recovered a missed call → booking", 120], ["14m", "Filled a cancelled slot from waitlist", 80], ["1h", "Won back a lapsed customer", 240], ["2h", "Reactivated a recall / repeat visit", 160], ["3h", "Turned a 5★ review into a new lead", 90], ["5h", "Captured an after-hours inquiry", 180]];
   return { total: V.impact?.total || 0, parts: V.impact?.parts || [], events, sharePct: 12 };
 }
 // Universal "money leak" engine — un-converted leads, stalled quotes, trials, recalls the AI chases
@@ -423,11 +515,11 @@ const PT_UI = {
   "Copy link": "Copiar link",
   "Current plan": "Plano atual",
   "Customer →": "Cliente →",
-  "Documents &amp; billing": "Documentos e cobrança",
+  "Documents & billing": "Documentos e cobrança",
   "Growth Guileo drove · this month": "Crescimento que a Guileo gerou · este mês",
   "Growth ledger · every $ the AI generated": "Razão de crescimento · cada $ que a IA gerou",
   "Gui usage · last 7 days": "Uso do Gui · últimos 7 dias",
-  "Integrations &amp; webhooks": "Integrações e webhooks",
+  "Integrations & webhooks": "Integrações e webhooks",
   "Invoices": "Faturas",
   "Invoices & payments": "Faturas e pagamentos",
   "Label": "Etiqueta",
@@ -445,11 +537,11 @@ const PT_UI = {
   "Recent reviews · collected by AI": "Avaliações recentes · coletadas pela IA",
   "Recurring revenue · the AI keeps it renewing": "Receita recorrente · a IA mantém renovando",
   "Request this →": "Pedir isto →",
-  "Revenue &amp; order volume": "Receita e volume de pedidos",
+  "Revenue & order volume": "Receita e volume de pedidos",
   "Run": "Rodar",
   "See all →": "Ver tudo →",
   "Sentiment": "Sentimento",
-  "Social inbox · AI replies on Instagram, Facebook &amp; TikTok": "Caixa social · IA responde no Instagram, Facebook e TikTok",
+  "Social inbox · AI replies on Instagram, Facebook & TikTok": "Caixa social · IA responde no Instagram, Facebook e TikTok",
   "Sync to ads": "Sincronizar com anúncios",
   "Top members": "Principais membros",
   "Waitlist · turn empty slots into revenue": "Lista de espera · transforme vagas em receita",
@@ -788,12 +880,15 @@ function growthOps(V) {
   const atRisk = recur.filter((r) => r.status === "At risk");
   const atRiskMo = atRisk.reduce((s, r) => s + (r.value || 0), 0);
   const outstanding = pay.reduce((s, r) => s + (r.amount || 0), 0);
+  const slot = SECTOR_IQ[V.label]?.slot || 120;           // sector value per open slot
+  const waitValue = wait.length * slot;                    // truthful, sector-scaled (no flat $1,240)
+  const happy = (V.customers || genCustomers(V)).filter((c) => (c.rating || 5) >= 4).length || Math.min(12, (V.customers || []).length || 12);
   return [
     { ic: "💳", view: "payments", text: pay.length === 1 ? "invoice to collect" : "invoices to collect", n: pay.length, value: `$${outstanding.toLocaleString()}` },
-    { ic: "🪑", view: "waitlist", text: wait.length === 1 ? "person waiting for an open slot" : "people waiting for an open slot", n: wait.length, value: "$1,240" },
+    { ic: "🪑", view: "waitlist", text: wait.length === 1 ? "person waiting for an open slot" : "people waiting for an open slot", n: wait.length, value: `$${waitValue.toLocaleString()}` },
     { ic: "🎯", view: "followups", text: fups.length === 1 ? "follow-up about to convert" : "follow-ups about to convert", n: fups.length, value: `$${pipeline.toLocaleString()}` },
     { ic: "🛟", view: "recurring", text: atRisk.length === 1 ? "at-risk plan to save this week" : "at-risk plans to save this week", n: atRisk.length, value: `$${atRiskMo}/mo` },
-    { ic: "⭐", view: "reputation", text: "happy customers to ask for a review", n: 12, value: "+rating" },
+    { ic: "⭐", view: "reputation", text: "happy customers to ask for a review", n: happy, value: "+rating" },
   ].filter((o) => o.n > 0);
 }
 
@@ -817,6 +912,8 @@ function dailyBriefing(V) {
   const bits = [];
   bits.push(alerts ? `${alerts} thing${alerts !== 1 ? "s" : ""} need you` : "you're all caught up");
   if (outstanding) bits.push(`$${outstanding.toLocaleString()} to collect`);
+  const iq = SECTOR_IQ[V.label];
+  if (iq) bits.push(iq.brief);                 // the sector's signature daily signal
   bits.push(`${fc.peak} looks busiest`);
   return bits.join(" · ");
 }
@@ -1043,7 +1140,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
           <span className="grid place-items-center h-10 w-10 rounded-xl bg-g-gold/15 text-g-gold shrink-0"><FaWandMagicSparkles /></span>
           <div className="min-w-0 flex-1">
             <div className="text-sm font-extrabold text-g-word">Your week, by Gui</div>
-            <div className="text-xs text-g-muted mt-1 leading-relaxed">This week your AI handled <span className="text-g-word font-bold">{wk.handled}</span> conversations, created <span className="text-g-word font-bold">{wk.created || vnum(V.label, "wkc", 6, 24)}</span> bookings &amp; orders{wk.driven ? <> and drove <span className="text-g-green font-bold">${wk.driven.toLocaleString()}</span> in tracked revenue</> : ""} — saving you about <span className="text-g-word font-bold">{wk.hours}h</span>. {wk.open ? <>Next: <span className="text-g-word font-semibold">{wk.open} invoice{wk.open !== 1 ? "s" : ""}</span> still to collect, and <span className="text-g-word font-semibold">{wk.peak}</span> looks busiest.</> : <>Next week <span className="text-g-word font-semibold">{wk.peak}</span> looks busiest — want a promo to fill the quiet days?</>}</div>
+            <div className="text-xs text-g-muted mt-1 leading-relaxed">This week your AI handled <span className="text-g-word font-bold">{wk.handled}</span> conversations, created <span className="text-g-word font-bold">{wk.created || vnum(V.label, "wkc", 6, 24)}</span> bookings & orders{wk.driven ? <> and drove <span className="text-g-green font-bold">${wk.driven.toLocaleString()}</span> in tracked revenue</> : ""} — saving you about <span className="text-g-word font-bold">{wk.hours}h</span>. {wk.open ? <>Next: <span className="text-g-word font-semibold">{wk.open} invoice{wk.open !== 1 ? "s" : ""}</span> still to collect, and <span className="text-g-word font-semibold">{wk.peak}</span> looks busiest.</> : <>Next week <span className="text-g-word font-semibold">{wk.peak}</span> looks busiest — want a promo to fill the quiet days?</>}</div>
             <div className="mt-2.5 flex flex-wrap gap-2">
               <button onClick={() => onNav("impact")} className="btn-ghost text-xs px-3 py-1.5">See the impact →</button>
               {wk.open > 0 && <button onClick={() => onNav("payments")} className="btn-ghost text-xs px-3 py-1.5">Collect now →</button>}
@@ -1122,7 +1219,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
         <Card className="lg:col-span-2">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Revenue &amp; order volume")}</div>
+              <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Revenue & order volume")}</div>
               <div className="mt-1 flex items-center gap-3 text-[10px] text-g-muted"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-gold" />Revenue</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-green" />Orders</span></div>
             </div>
             <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-g-green"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />Live sync</span>
@@ -1478,10 +1575,10 @@ function Integrations({ V, onNav, lang = "en" }) {
           <Card className="border-g-green/30 bg-g-green/[0.06]">
             <div className="flex items-center gap-2 mb-2.5"><span className="grid place-items-center h-7 w-7 rounded-full bg-g-green/15 text-g-green"><FaWandMagicSparkles size={12} /></span><div className="text-xs font-extrabold text-g-word">Gui recommends connecting</div></div>
             <div className="space-y-2">
-              {off.map(([name, Icon, color, doesEn]) => (
+              {off.map(([name, Icon, color, doesEn, doesPt]) => (
                 <div key={name} className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-black/15 px-3 py-2.5">
                   <span className="grid place-items-center h-8 w-8 rounded-lg text-base" style={{ background: color + "22", color }}>{typeof Icon === "string" ? <span>{Icon}</span> : <Icon size={14} />}</span>
-                  <div className="flex-1 min-w-0"><div className="text-xs font-bold text-g-word">{name}</div><div className="text-[10px] text-g-muted leading-snug">{doesEn}</div></div>
+                  <div className="flex-1 min-w-0"><div className="text-xs font-bold text-g-word">{name}</div><div className="text-[10px] text-g-muted leading-snug">{lang === "pt" ? doesPt : doesEn}</div></div>
                   <button onClick={() => toggle(name)} className="btn-bright text-[11px] px-3 py-1.5 shrink-0">Connect</button>
                 </div>
               ))}
@@ -1494,12 +1591,12 @@ function Integrations({ V, onNav, lang = "en" }) {
         <Card key={cat} className="p-0 overflow-hidden">
           <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{cat}</div>
           <div className="divide-y divide-white/[0.06]">
-            {tools.map(([name, Icon, color, doesEn]) => (
+            {tools.map(([name, Icon, color, doesEn, doesPt]) => (
               <div key={name} className="flex items-center gap-3 px-5 py-3.5">
                 <span className="grid place-items-center h-10 w-10 rounded-xl text-lg" style={{ background: color + "22", color }}>{typeof Icon === "string" ? <span>{Icon}</span> : <Icon />}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold text-g-word flex items-center gap-2">{name}{conn[name] && <span className="text-[9px] font-black uppercase text-g-green inline-flex items-center gap-1"><FaCircleCheck size={9} /> Live</span>}</div>
-                  <div className="text-[11px] text-g-muted leading-snug">{doesEn}</div>
+                  <div className="text-[11px] text-g-muted leading-snug">{lang === "pt" ? doesPt : doesEn}</div>
                 </div>
                 <Toggle on={!!conn[name]} onClick={() => toggle(name)} />
               </div>
@@ -1653,7 +1750,7 @@ function Ads() {
           ))}
         </div>
       </Card>
-      <p className="text-xs text-g-muted text-center">Connect Meta &amp; Google Ads to see live campaign data here. <a href={waLink("I want to connect my ad accounts to Guileo")} target="_blank" rel="noopener" className="text-g-gold font-semibold hover:underline">{tr("Connect accounts →")}</a></p>
+      <p className="text-xs text-g-muted text-center">Connect Meta & Google Ads to see live campaign data here. <a href={waLink("I want to connect my ad accounts to Guileo")} target="_blank" rel="noopener" className="text-g-gold font-semibold hover:underline">{tr("Connect accounts →")}</a></p>
     </div>
   );
 }
@@ -1710,7 +1807,7 @@ function Support() {
 function Docs() {
   return (
     <Card className="p-0 overflow-hidden">
-      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Documents &amp; billing")}</div>
+      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Documents & billing")}</div>
       <div className="divide-y divide-white/[0.06]">
         {DOCS.map(([ic, name, meta, action]) => (
           <div key={name} className="flex items-center gap-3 px-5 py-3.5">
@@ -1857,7 +1954,13 @@ function custTimeline(c, V) {
   return [...real, ...base];
 }
 // The revenue-share thesis, made concrete: tell the owner the single best move.
-function nextBestAction(c, i) {
+function nextBestAction(c, i, V) {
+  const nb = V && SECTOR_IQ[V.label]?.nb;
+  if (nb) {
+    if (i === 0) return `Your top customer — ${nb.top} The AI can do it now.`;
+    if ((c.orders || 0) < 3) return `Going quiet — ${nb.risk} The AI can handle it.`;
+    return `${c.name?.split(" ")[0] || "They"} ${nb.base} The AI can send it.`;
+  }
   if (i === 0) return "Your top spender. A personal thank-you + a small perk usually unlocks a referral. The AI can send it now.";
   if ((c.orders || 0) >= 15) return "Loyal & frequent — a perfect fit for a membership/subscription. Offer it to lock in recurring revenue.";
   return "Active but not yet loyal. One well-timed nudge with a returning-customer offer tends to convert them. The AI can handle it.";
@@ -1890,7 +1993,7 @@ function Customers({ V, onNav }) {
           subtitle={`${sel.c.orders} ${sel.c.noun || "orders"} · via ${sel.c.channel}`}
           badge={sel.i === 0 ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-g-gold/15 text-g-gold">{tr("VIP")}</span> : null}
           fields={[["Lifetime value", `$${sel.c.spent.toFixed(2)}`], [(sel.c.noun || "orders"), sel.c.orders], ["Preferred channel", sel.c.channel], ["Last seen", sel.c.last], ["Status", sel.i === 0 ? "Top spender" : "Active"]]}
-          note={<><div className="text-[10px] font-black uppercase text-g-gold mb-1">{tr("⚡ Next best action")}</div>{nextBestAction(sel.c, sel.i)}</>}
+          note={<><div className="text-[10px] font-black uppercase text-g-gold mb-1">{tr("⚡ Next best action")}</div>{nextBestAction(sel.c, sel.i, V)}</>}
           actions={<>
             <a href={waLink(`Hi ${sel.c.name}! `)} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Message</a>
             <button onClick={() => rebook(sel.c)} className="btn-ghost text-sm">🔁 {REBOOK[V.label] || "Rebook"}</button>
@@ -1952,7 +2055,7 @@ function Campaigns({ V, onNav }) {
   );
 }
 function Audiences({ V, onNav }) {
-  const rows = [...loadCreated(V.label, "audiences"), ...(V.audiences || genAudiences())];
+  const rows = [...loadCreated(V.label, "audiences"), ...(V.audiences || genAudiences(V))];
   const launch = (a) => { pushCreated(V.label, "campaigns", { name: `Campaign · ${a.name}`, channel: a.source === "Meta" ? "Meta" : a.source === "Google" ? "Google" : "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); toast(`Campaign launched to "${a.name}" ✓ — see it in Campaigns`); onNav?.("campaigns"); };
   return (
     <div className="grid sm:grid-cols-2 gap-4">
@@ -2319,7 +2422,7 @@ function SettingsView({ V }) {
         </div>
       </Card>
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Integrations &amp; webhooks")}</div>
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Integrations & webhooks")}</div>
         <div className="divide-y divide-white/[0.06]">
           {[["📅 Calendar (Google/Apple)", "Connected"], ["💳 Stripe payments", "Connected"], ["🍔 POS / orders", "Connected"], ["📣 Meta & Google Ads", "Connected"], ["🛵 Delivery platforms", "Connected"]].map(([name, st]) => (
             <div key={name} className="flex items-center justify-between px-5 py-3"><span className="text-sm text-g-word font-semibold">{name}</span><span className="text-[10px] font-black uppercase text-g-green inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{st}</span></div>
@@ -2842,7 +2945,7 @@ function SocialInbox({ V }) {
         ))}
       </div>
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Social inbox · AI replies on Instagram, Facebook &amp; TikTok")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap to open</span></div>
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Social inbox · AI replies on Instagram, Facebook & TikTok")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap to open</span></div>
         <div className="divide-y divide-white/[0.06]">
           {rows.map((c, i) => {
             const [Icon, color, net] = nets[i % 4];
@@ -2880,6 +2983,8 @@ function aiIntents(V) {
   return [[primary, 41], ["Hours & location", 22], ["Pricing", 18], ["Status / follow-up", 12], ["Complaint", 7]];
 }
 function aiMissed(V) {
+  const iq = SECTOR_IQ[V.label];
+  if (iq) return [...iq.missed, "Demand peaks beyond capacity at busy hours — push the waitlist / pre-booking to capture it."];
   const svc = (V.ops?.list?.[0]?.name) || "a service";
   return [
     `3 callers asked for ${svc.toLowerCase()}-adjacent services you don't offer yet — a possible new revenue line.`,
@@ -2889,10 +2994,12 @@ function aiMissed(V) {
 }
 // Proactive AI recommendations — each one applies in a click and lands in its tab.
 function genRecommendations(V) {
+  const iq = SECTOR_IQ[V.label];
+  const t = iq ? iq.recs : ["Your quietest weekday runs ~30% below capacity — a targeted promo fills it.", "A dozen happy customers haven't been asked for a review yet — reviews drive new demand.", "Several customers lapsed in the last 30 days — a win-back sequence recovers ~1 in 4."];
   return [
-    { ic: "📣", text: "Your quietest weekday runs ~30% below capacity — a targeted promo fills it.", cta: "Launch promo", view: "campaigns", apply: (onNav) => { pushCreated(V.label, "campaigns", { name: "Slow-day filler promo", channel: "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); toast("Promo launched ✓ — see it in Campaigns"); onNav?.("campaigns"); } },
-    { ic: "⭐", text: "A dozen happy customers haven't been asked for a review yet — reviews drive new demand.", cta: "Request reviews", view: "reputation", apply: (onNav) => { (V.customers || genCustomers(V)).slice(0, 3).forEach((c) => pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel })); toast("Review blast queued ✓"); onNav?.("reputation"); } },
-    { ic: "🔁", text: "Several customers lapsed in the last 30 days — a win-back sequence recovers ~1 in 4.", cta: "Start win-back", view: "followups", apply: (onNav) => { toast("Win-back sequence started ✓"); onNav?.("followups"); } },
+    { ic: "📣", text: t[0], cta: "Launch promo", view: "campaigns", apply: (onNav) => { pushCreated(V.label, "campaigns", { name: "Slow-day filler promo", channel: "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); toast("Promo launched ✓ — see it in Campaigns"); onNav?.("campaigns"); } },
+    { ic: "⭐", text: t[1], cta: "Request reviews", view: "reputation", apply: (onNav) => { (V.customers || genCustomers(V)).slice(0, 3).forEach((c) => pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel })); toast("Review blast queued ✓"); onNav?.("reputation"); } },
+    { ic: "🔁", text: t[2], cta: "Start win-back", view: "followups", apply: (onNav) => { toast("Win-back sequence started ✓"); onNav?.("followups"); } },
   ];
 }
 // Predictive AI — demand forecast + no-show risk, derived deterministically per sector.
@@ -3648,6 +3755,9 @@ function Login({ onEnter }) {
 // launcher badge and Gui's opening nudge — Gui surfaces money on the table unasked.
 function guiAlerts(V) {
   const out = [];
+  // Sector signature alert — the visceral, this-is-MY-business hook (top of the radar).
+  const iq = SECTOR_IQ[V.label];
+  if (iq?.radar) { const n = iq.radar.n(V); if (n) out.push({ key: "sector", count: n, cmd: iq.radar.cmd, en: iq.radar.en(n), pt: iq.radar.pt(n), chipEn: iq.radar.chipEn, chipPt: iq.radar.chipPt }); }
   const credits = portalApi.loadState("gui_credits", 250);
   if (credits < 50) out.push({ key: "lowcredit", count: 0, cmd: "open billing", en: `Gui credits are low (${credits} left) — top up so I never pause mid-task.`, pt: `Seus créditos do Gui estão baixos (${credits}) — recarregue pra eu não parar no meio.`, chipEn: "⚡ Top up", chipPt: "⚡ Recarregar" });
   const overdue = genPayments(V).filter((p) => p.status === "Overdue");

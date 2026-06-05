@@ -125,28 +125,34 @@ export function ScrollProgress() {
 
 // Animated counter — counts up when scrolled into view
 export function Count({ to, prefix = "", suffix = "", dur = 1400, decimals = 0 }) {
+  const reduce = useReducedMotion();
   const ref = useRef(null);
-  const [val, setVal] = useState(0);
+  // Start AT the value when reduced-motion (never animate from 0) so the number is never $0.
+  const [val, setVal] = useState(reduce ? to : 0);
   useEffect(() => {
+    if (reduce) { setVal(to); return; }
     const el = ref.current;
     if (!el) return;
     let raf, started = false;
-    const io = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting && !started) {
-        started = true;
-        const t0 = performance.now();
-        const tick = (t) => {
-          const p = Math.min(1, (t - t0) / dur);
-          const eased = 1 - Math.pow(1 - p, 3);
-          setVal(to * eased);
-          if (p < 1) raf = requestAnimationFrame(tick);
-        };
-        raf = requestAnimationFrame(tick);
-      }
-    }, { threshold: 0.4 });
+    const finish = () => setVal(to);
+    const animate = () => {
+      if (started) return; started = true;
+      const t0 = performance.now();
+      const tick = (t) => {
+        const p = Math.min(1, (t - t0) / dur);
+        setVal(to * (1 - Math.pow(1 - p, 3)));
+        if (p < 1) raf = requestAnimationFrame(tick); else finish();
+      };
+      raf = requestAnimationFrame(tick);
+    };
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) animate(); }, { threshold: 0.4 });
     io.observe(el);
-    return () => { io.disconnect(); cancelAnimationFrame(raf); };
-  }, [to, dur]);
+    // If the tab is hidden (rAF throttled) or backgrounded, snap to the final value so it never sticks at 0.
+    const onVis = () => { if (document.visibilityState === "visible") finish(); };
+    document.addEventListener("visibilitychange", onVis);
+    const safety = setTimeout(finish, dur + 1200);   // belt-and-suspenders: never leave it at 0
+    return () => { io.disconnect(); cancelAnimationFrame(raf); document.removeEventListener("visibilitychange", onVis); clearTimeout(safety); };
+  }, [to, dur, reduce]);
   const shown = decimals ? val.toFixed(decimals) : Math.round(val).toLocaleString("en-US");
   return <span ref={ref}>{prefix}{shown}{suffix}</span>;
 }

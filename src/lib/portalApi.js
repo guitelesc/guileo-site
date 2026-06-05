@@ -82,8 +82,22 @@ export const portalApi = {
   async logout() {
     if (supabase) { try { await supabase.auth.signOut(); } catch { /* */ } }
     _uid = null;
+    _cloud = {};                       // drop the cloud mirror so the next user doesn't inherit it
+    if (_flushTimer) { clearTimeout(_flushTimer); _flushTimer = null; }
     try { localStorage.removeItem(SESSION_KEY); } catch { /* private mode */ }
     return true;
+  },
+
+  /** Clear a set of state keys from BOTH localStorage and the cloud mirror, then push the
+   *  cleared blob — so reset/wipe is durable and deleted data doesn't resurrect on next sync. */
+  clearKeys(stateKeys = []) {
+    stateKeys.forEach((k) => {
+      const full = `guileo_state_${k}`;
+      try { localStorage.removeItem(full); } catch { /* */ }
+      delete _cloud[full];
+    });
+    if (supabase && _uid) _flush();    // push the now-smaller blob to the cloud
+    return { ok: true };
   },
 
   /** Pull this user's saved state from Supabase into localStorage (one-time, on sign-in),

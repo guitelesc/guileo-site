@@ -175,8 +175,12 @@ export default function LiveDemo() {
       </div>
 
       {used && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 text-center text-[11px] text-g-muted">
-          That's Gui working <span className="text-g-light font-semibold">inside your stack</span>. Imagine it doing this for every customer, all day. <span className="text-g-gold font-bold">It works on us → it works for you.</span>
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 pt-4 border-t border-white/[0.07] text-center">
+          <div className="text-[11px] text-g-muted">That's Gui working <span className="text-g-light font-semibold">inside your stack</span>, for every customer, all day. <span className="text-g-gold font-bold">It works on us → it works for you.</span></div>
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2.5">
+            <a href="#contact" className="btn-bright text-sm">Get Gui doing this for me →</a>
+            <a href="#contact" className="btn-ghost text-sm">📞 Have Gui call me now</a>
+          </div>
         </motion.div>
       )}
     </div>
