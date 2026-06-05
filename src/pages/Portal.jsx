@@ -1811,8 +1811,16 @@ function Billing({ V }) {
 
 function ScheduleScreen({ V }) {
   const o = V.ops || {};
+  const [tick, setTick] = useState(0);
   const sch = [...loadCreated(V.label, "schedule"), ...(o.schedule || [])];
   const [sel, setSel] = useState(null);
+  const fillFromWaitlist = () => {
+    const w = genWaitlist(V)[0];
+    if (!w) { toast("Waitlist is empty"); return; }
+    pushCreated(V.label, "schedule", { time: "Filled", name: w.name, meta: `Filled from waitlist · ${w.want}`, status: "Pending", ch: w.ch, color: "#D6C29A" });
+    logImpact(V.label, `Filled a no-show slot from waitlist (${w.name})`, vnum(V.label, "fillval", 40, 160));
+    setTick((t) => t + 1); toast(`Open slot filled from waitlist with ${w.name} ✓ — logged to Guileo Impact`);
+  };
   return (
     <div className="space-y-4">
       {o.stats && (
@@ -1824,7 +1832,7 @@ function ScheduleScreen({ V }) {
         <Card className="border-g-green/25 bg-g-green/[0.05]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div><div className="text-sm font-extrabold text-g-word">🛡️ No-show protection · on</div><div className="text-xs text-g-muted mt-0.5">${DEPOSIT[V.label]} deposit held per booking · <b className="text-g-green">7 no-shows prevented</b> · $980 secured this month</div></div>
-            <button onClick={() => toast("Deposit rules updated ✓")} className="btn-ghost text-sm">Manage rules</button>
+            <div className="flex gap-2"><button onClick={fillFromWaitlist} className="btn-bright text-sm">Fill from waitlist →</button><button onClick={() => toast("Deposit rules updated ✓")} className="btn-ghost text-sm">Manage rules</button></div>
           </div>
         </Card>
       )}
@@ -2088,6 +2096,8 @@ function Loyalty({ V }) {
   const convert = (r, i) => { setJoined((j) => [...j, i]); logImpact(V.label, `Referral from ${r.name} joined`, r.reward * 6); toast(`Referral converted ✓ — $${r.reward * 6} new-customer value logged to Guileo Impact`); };
   const copyLink = () => { try { navigator.clipboard?.writeText(`https://refer.guileo.ai/${V.label.toLowerCase().replace(/\W+/g, "")}`); } catch { /* blocked */ } toast("Referral link copied ✓"); };
   const tierColor = (t) => (t === "Gold" ? "#D4A520" : t === "Silver" ? "#9ca3af" : "#B0764A");
+  const [sold, setSold] = useState(0);
+  const sellGift = (amt) => { setSold((s) => s + 1); logImpact(V.label, `Gift card sold ($${amt})`, amt); toast(`$${amt} gift card sold ✓ — logged to Guileo Impact`); };
 
   return (
     <div className="space-y-4">
@@ -2141,6 +2151,22 @@ function Loyalty({ V }) {
           </div>
         </Card>
       </div>
+
+      {/* Gift cards — instant prepaid revenue, sold by the AI on chat/checkout */}
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2"><FaGift size={11} /> Gift cards</div>
+        <div className="p-4 flex flex-wrap items-center gap-4">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            {[["Active balance", `$${vnum(V.label, "giftbal", 800, 5200).toLocaleString()}`], ["Sold this month", `${vnum(V.label, "giftsold", 8, 40) + sold}`], ["Redeemed", `${vnum(V.label, "giftredeem", 4, 22)}`]].map(([l, v]) => (
+              <div key={l} className="rounded-xl2 border border-white/10 bg-white/[0.03] px-3 py-2"><div className="text-[10px] uppercase tracking-wide text-g-muted">{l}</div><div className="text-base font-extrabold text-g-word mt-0.5">{v}</div></div>
+            ))}
+          </div>
+          <div className="flex-1 min-w-[180px]">
+            <div className="text-[11px] text-g-muted mb-1.5">Sell a gift card — the AI delivers it instantly on WhatsApp or at checkout.</div>
+            <div className="flex flex-wrap gap-2">{[25, 50, 100].map((amt) => (<button key={amt} onClick={() => sellGift(amt)} className="text-sm font-bold rounded-full border border-g-gold/35 bg-g-gold/[0.08] px-4 py-1.5 text-g-gold hover:bg-g-gold/[0.16] transition">Sell ${amt}</button>))}</div>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }
