@@ -3564,19 +3564,42 @@ function OnboardingWizard({ onDone }) {
 function Login({ onEnter }) {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
-  const go = async (em) => { setBusy(true); try { await portalApi.login(em); onEnter(); } catch { setBusy(false); } };
+  const [sent, setSent] = useState(false);
+  const [err, setErr] = useState("");
+  // Real backend = passwordless magic link; demo = instant local session.
+  const submit = async (em) => {
+    setBusy(true); setErr("");
+    try {
+      const res = await portalApi.login(em);
+      if (res?.pending) { if (res.error) { setErr(res.error); setBusy(false); } else setSent(true); }
+      else onEnter();
+    } catch { setBusy(false); }
+  };
+  const demoEnter = () => { try { localStorage.setItem("guileo_portal_session", JSON.stringify({ email: "demo@guileo.ai", name: "Jane Staff", role: "Staff", demo: true, at: Date.now() })); } catch { /* */ } onEnter(); };
   return (
     <div className="min-h-screen grid place-items-center px-5">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm rounded-xl3 border border-white/12 bg-white/[0.04] backdrop-blur-xl p-8 shadow-lift text-center">
         <img src={logo} alt="Guileo" className="h-12 w-12 object-contain mx-auto" />
         <div className="mt-3 text-xl font-black uppercase tracking-tight bg-gradient-to-r from-g-green via-g-gold to-g-green bg-[length:200%_auto] bg-clip-text text-transparent animate-shimmer">Growth Cockpit</div>
-        <p className="text-xs text-g-muted mt-1">Sign in to your private dashboard</p>
-        <form onSubmit={(e) => { e.preventDefault(); go(email); }} className="mt-6 space-y-2.5 text-left">
-          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-          <input type="password" required placeholder="Password" className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-          <button disabled={busy} className="btn-bright text-sm w-full disabled:opacity-70">{busy ? "Signing in…" : "Enter Growth Cockpit →"}</button>
-        </form>
-        <button onClick={() => go()} disabled={busy} className="mt-3 text-xs font-bold text-g-gold hover:underline disabled:opacity-60">{tr("▶ Enter demo (sample data)")}</button>
+        {sent ? (
+          <div className="mt-6">
+            <div className="text-3xl mb-2">📬</div>
+            <div className="text-sm font-extrabold text-g-word">Check your email</div>
+            <p className="text-xs text-g-muted mt-1">We sent a secure sign-in link to <span className="text-g-light font-semibold">{email}</span>. Open it on this device to enter.</p>
+            <button onClick={() => setSent(false)} className="mt-4 text-xs font-bold text-g-gold hover:underline">Use a different email</button>
+          </div>
+        ) : (
+          <>
+            <p className="text-xs text-g-muted mt-1">{CONNECTED ? "Sign in with a secure link — no password." : "Sign in to your private dashboard"}</p>
+            <form onSubmit={(e) => { e.preventDefault(); submit(email); }} className="mt-6 space-y-2.5 text-left">
+              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+              {!CONNECTED && <input type="password" required placeholder="Password" className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />}
+              <button disabled={busy} className="btn-bright text-sm w-full disabled:opacity-70">{busy ? (CONNECTED ? "Sending link…" : "Signing in…") : (CONNECTED ? "Email me a sign-in link →" : "Enter Growth Cockpit →")}</button>
+              {err && <div className="text-[11px] text-red-400 text-center">{err}</div>}
+            </form>
+            <button onClick={demoEnter} disabled={busy} className="mt-3 text-xs font-bold text-g-gold hover:underline disabled:opacity-60">{tr("▶ Enter demo (sample data)")}</button>
+          </>
+        )}
         <div className="mt-4 text-[11px] text-g-muted"><a href="/" className="hover:text-g-word">← Back to guileo.ai</a></div>
       </motion.div>
     </div>
@@ -3817,7 +3840,17 @@ export default function Portal() {
   const [onboarded, setOnboarded] = useState(() => { try { return !!localStorage.getItem("guileo_onboarded"); } catch { return true; } });
   const [tourDone, setTourDone] = useState(() => { try { return !!localStorage.getItem("guileo_tour_done"); } catch { return true; } });
   const finishTour = () => { setTourDone(true); try { localStorage.setItem("guileo_tour_done", "1"); } catch { /* private */ } };
-  useEffect(() => { portalApi.session().then((s) => { if (s) setAuthed(true); }).finally(() => setBooting(false)); }, []);
+  useEffect(() => {
+    let unsub = () => {};
+    (async () => {
+      const s = await portalApi.session();
+      if (s) { if (!s.demo) await portalApi.hydrate(); setAuthed(true); }
+      setBooting(false);
+    })();
+    // React to magic-link sign-in (the email link lands back on /portal).
+    if (CONNECTED) unsub = portalApi.onAuthChange((sess) => { if (sess) setAuthed(true); else setAuthed(false); });
+    return () => unsub();
+  }, []);
   useEffect(() => {
     const h = (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPaletteOpen((o) => !o); } if (e.key === "Escape") { setPaletteOpen(false); setNavOpen(false); setBellOpen(false); } };
     window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h);

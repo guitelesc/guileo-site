@@ -9,14 +9,32 @@
 // …then implement the `// CONNECT:` branches below. No screen changes needed.
 // ───────────────────────────────────────────────────────────────────────────
 
-const SB_URL = import.meta?.env?.VITE_SUPABASE_URL || "";
-const SB_KEY = import.meta?.env?.VITE_SUPABASE_ANON_KEY || "";
+import { supabase, hasSupabase } from "./supabase.js";
 
 /** True once real backend keys are present. UI shows "Demo" until then. */
-export const CONNECTED = Boolean(SB_URL && SB_KEY);
+export const CONNECTED = hasSupabase;
 
 const wait = (ms = 320) => new Promise((r) => setTimeout(r, ms));
 const SESSION_KEY = "guileo_portal_session";
+
+// ── Background sync to Supabase (localStorage stays the synchronous source of truth;
+// the cloud is mirrored so state persists across devices). Writes are debounced. ──
+let _uid = null;                       // current auth user id (set on hydrate)
+const _pending = new Map();            // key -> value awaiting upsert
+let _flushTimer = null;
+function _queueUpsert(key, value) {
+  if (!supabase || !_uid) return;
+  _pending.set(key, value);
+  if (_flushTimer) return;
+  _flushTimer = setTimeout(_flush, 800);
+}
+async function _flush() {
+  _flushTimer = null;
+  if (!supabase || !_uid || _pending.size === 0) return;
+  const rows = [..._pending.entries()].map(([k, v]) => ({ user_id: _uid, k, v }));
+  _pending.clear();
+  try { await supabase.from("app_kv").upsert(rows); } catch { /* offline — localStorage already has it */ }
+}
 
 // ── Tiny toast bus (action feedback across every screen) ──
 let _toastListeners = [];
@@ -28,23 +46,55 @@ export const portalApi = {
 
   /** Current session (or null). */
   async session() {
-    // CONNECT: return (await supabase.auth.getSession()).data.session
+    if (supabase) {
+      const { data } = await supabase.auth.getSession();
+      const s = data?.session;
+      return s ? { email: s.user.email, name: s.user.user_metadata?.name || s.user.email, role: "Owner", demo: false, at: Date.now(), uid: s.user.id } : null;
+    }
     try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch { return null; }
   },
 
-  /** Sign in. In demo mode any credentials work. */
+  /** Sign in. Real backend = passwordless magic link (no passwords handled). Demo = any creds. */
   async login(email) {
+    if (supabase) {
+      const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${location.origin}/portal` } });
+      return { pending: true, email, error: error?.message || null };
+    }
     await wait();
-    // CONNECT: const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    const sess = { email: email || "demo@guileo.ai", name: "Jane Staff", role: "Staff", demo: !CONNECTED, at: Date.now() };
+    const sess = { email: email || "demo@guileo.ai", name: "Jane Staff", role: "Staff", demo: true, at: Date.now() };
     try { localStorage.setItem(SESSION_KEY, JSON.stringify(sess)); } catch { /* private mode */ }
     return sess;
   },
 
   async logout() {
-    // CONNECT: await supabase.auth.signOut()
+    if (supabase) { try { await supabase.auth.signOut(); } catch { /* */ } }
+    _uid = null;
     try { localStorage.removeItem(SESSION_KEY); } catch { /* private mode */ }
     return true;
+  },
+
+  /** Pull this user's saved state from Supabase into localStorage (one-time, on sign-in),
+   *  so the synchronous loadState() reads work instantly afterward. Returns row count. */
+  async hydrate() {
+    if (!supabase) return 0;
+    const { data: u } = await supabase.auth.getUser();
+    if (!u?.user) return 0;
+    _uid = u.user.id;
+    const { data, error } = await supabase.from("app_kv").select("k,v");
+    if (error || !data) return 0;
+    data.forEach(({ k, v }) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* */ } });
+    return data.length;
+  },
+
+  /** Subscribe to auth changes; hydrates on sign-in, then calls cb(session|null). */
+  onAuthChange(cb) {
+    if (!supabase) return () => {};
+    const { data } = supabase.auth.onAuthStateChange(async (_evt, sess) => {
+      if (sess?.user) { await this.hydrate(); }
+      else { _uid = null; }
+      cb?.(sess ? { email: sess.user.email, uid: sess.user.id } : null);
+    });
+    return () => data?.subscription?.unsubscribe();
   },
 
   // ── Data reads/writes route through here too (mock now, real later) ──
@@ -89,8 +139,8 @@ export const portalApi = {
   },
 
   saveKB(vertical, entries) {
-    // CONNECT: await supabase.from("kb_entries").upsert(entries.map(e => ({ ...e, vertical })));
     try { localStorage.setItem(`guileo_kb_${vertical}`, JSON.stringify(entries)); } catch { /* private mode */ }
+    _queueUpsert(`guileo_kb_${vertical}`, entries);
     return { ok: true, count: entries.length };
   },
 
@@ -107,8 +157,8 @@ export const portalApi = {
   },
 
   saveProfile(vertical, profile) {
-    // CONNECT: await supabase.from("business_profile").upsert({ ...profile, vertical });
     try { localStorage.setItem(`guileo_profile_${vertical}`, JSON.stringify(profile)); } catch { /* private mode */ }
+    _queueUpsert(`guileo_profile_${vertical}`, profile);
     return { ok: true };
   },
 
@@ -127,8 +177,8 @@ export const portalApi = {
   },
 
   saveState(key, value) {
-    // CONNECT: upsert into `ui_state` (tenant, key, value)
     try { localStorage.setItem(`guileo_state_${key}`, JSON.stringify(value)); } catch { /* private mode */ }
+    _queueUpsert(`guileo_state_${key}`, value);
     return { ok: true };
   },
 };
