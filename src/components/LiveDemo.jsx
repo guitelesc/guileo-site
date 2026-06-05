@@ -97,13 +97,14 @@ export default function LiveDemo() {
   };
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-4 sm:p-6 shadow-2xl">
+    <div className={`relative rounded-2xl border bg-white/[0.04] backdrop-blur-xl p-4 sm:p-6 shadow-2xl transition-all duration-500 ${used ? "border-white/10" : "border-g-green/45 shadow-[0_0_44px_-8px_rgba(62,148,104,0.5)]"}`}>
+      {!used && <span className="pointer-events-none absolute -inset-px rounded-2xl ring-1 ring-g-green/40 animate-pulse" />}
       {/* header */}
       <div className="flex items-center gap-3 mb-4">
         <span className="grid place-items-center h-11 w-11 rounded-full bg-g-green/10 ring-1 ring-g-green/30 overflow-hidden shrink-0"><img src={logo} alt="Guileo" className="h-9 w-9 object-contain" /></span>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-extrabold text-g-word flex items-center gap-2">Gui <span className="text-[9px] font-black uppercase text-g-green">· AI assistant</span> <span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" /></div>
-          <div className="text-[11px] text-g-muted">Not a video — actually click and use it.</div>
+          <div className="text-[11px] text-g-muted">{used ? "Not a video — actually click and use it." : "👋 Test your assistant — tap any action below."}</div>
         </div>
         {/* connected stack */}
         <div className="hidden sm:flex items-center gap-1.5">
@@ -127,7 +128,7 @@ export default function LiveDemo() {
         {/* actions */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <div className="text-[10px] font-black uppercase tracking-wide text-g-gold">Ask Gui to…</div>
+            <div className="text-[10px] font-black uppercase tracking-wide text-g-gold inline-flex items-center gap-1.5">Ask Gui to… {!used && <span className="text-g-green normal-case font-bold animate-pulse">— tap one 👇</span>}</div>
             <button onClick={dictate} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold transition ${listening ? "border-red-400 bg-red-500/15 text-red-400 animate-pulse" : "border-g-green/40 bg-g-green/10 text-g-green hover:bg-g-green/20"}`}>
               <FaMicrophone size={10} /> {listening ? "Listening…" : "Say it"}
             </button>

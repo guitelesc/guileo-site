@@ -254,14 +254,20 @@ export default function Home() {
         </div>
       </section>
 
-      {/* LIVE FUNCTIONAL DEMO — visitors actually click and use Guileo themselves */}
-      <section id="demo" className="wrap py-12 scroll-mt-24">
-        <Reveal className="text-center max-w-3xl mx-auto mb-8">
-          <span className="eyebrow mb-3">Try it yourself</span>
+      {/* LIVE FUNCTIONAL DEMO — visitors actually click and use Gui themselves */}
+      <section id="demo" className="relative wrap py-12 scroll-mt-24 overflow-hidden">
+        {/* playful animated backdrop so it reads as "use me" */}
+        <div className="pointer-events-none absolute inset-0 -z-0">
+          <div className="absolute left-1/2 top-1/3 h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-g-green/[0.10] blur-[110px] animate-breathe" />
+          <div className="absolute right-[12%] top-[12%] h-64 w-64 rounded-full bg-g-gold/[0.10] blur-[90px] animate-floatslow" />
+          <div className="absolute left-[10%] bottom-[8%] h-56 w-56 rounded-full bg-g-green/[0.08] blur-[90px] animate-floatslow" style={{ animationDelay: "-4s" }} />
+        </div>
+        <Reveal className="relative text-center max-w-3xl mx-auto mb-8">
+          <span className="eyebrow mb-3">✨ Try it free — no sign-up</span>
           <h2 className="h2">Meet Gui 🪄 — your AI assistant, live</h2>
-          <p className="mt-2 text-g-muted max-w-2xl mx-auto">No sign-up, no video. Tap an action and watch Gui run it across your connected tools — exactly what your customers get, 24/7.</p>
+          <p className="mt-2 text-g-muted max-w-2xl mx-auto">It's not a video. <span className="text-g-light font-semibold">Tap an action below</span> and watch Gui actually do it across your tools — exactly what your customers get, 24/7.</p>
         </Reveal>
-        <Reveal className="max-w-4xl mx-auto">
+        <Reveal className="relative max-w-4xl mx-auto">
           <LiveDemo />
         </Reveal>
       </section>
