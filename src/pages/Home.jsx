@@ -406,53 +406,12 @@ export default function Home() {
       {/* NUMBERS */}
       <section id="results" className="bg-g-deep text-white py-14 relative overflow-hidden">
         <div className="absolute -top-24 right-0 h-96 w-96 rounded-full bg-g-green/20 blur-3xl animate-aurora" />
-        <div className="wrap relative grid lg:grid-cols-[0.82fr_1.18fr] gap-10 items-center">
-          {/* left — narrative */}
-          <Reveal variant="left">
-            <span className="eyebrow mb-4">{t.numbers.eyebrow}</span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold leading-tight bg-gradient-to-r from-white via-g-gold to-white bg-[length:220%_auto] bg-clip-text text-transparent animate-shimmer">{t.numbers.h2}</h2>
-            <p className="mt-4 text-white/70 leading-relaxed">{t.more.numbersMission}</p>
-            {/* the loss → gain contrast (red = what you lose without us) */}
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <div className="rounded-xl2 border border-red-500/25 bg-red-500/[0.07] p-3">
-                <div className="text-[11px] uppercase tracking-wide text-red-400/80 font-bold">Without Guileo</div>
-                <div className="text-2xl font-extrabold text-red-400 drop-shadow-[0_0_14px_rgba(239,68,68,0.25)]">−$300k<span className="text-sm">/yr</span></div>
-                <div className="text-[11px] text-white/50">35% of calls lost</div>
-              </div>
-              <div className="rounded-xl2 border border-g-green/30 bg-g-green/[0.08] p-3">
-                <div className="text-[11px] uppercase tracking-wide text-g-light font-bold">With Guileo</div>
-                <div className="text-2xl font-extrabold text-g-light drop-shadow-[0_0_14px_rgba(123,200,124,0.3)]">+$300k<span className="text-sm">/yr</span></div>
-                <div className="text-[11px] text-white/50">recovered & growing</div>
-              </div>
-            </div>
-          </Reveal>
-
-          {/* right — live dashboard panel */}
-          <Reveal variant="right">
-            <div className="rounded-xl3 border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-lift overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 bg-white/[0.03]">
-                <span className="h-3 w-3 rounded-full bg-red-400/70" /><span className="h-3 w-3 rounded-full bg-g-gold/70" /><span className="h-3 w-3 rounded-full bg-g-green/70" />
-                <span className="ml-2 text-xs font-semibold text-white/45 tracking-wide">guileo · live results</span>
-                <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-bold uppercase text-g-light"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />live</span>
-              </div>
-              <Stagger className="grid grid-cols-2 sm:grid-cols-3" gap={0.07}>
-                {[["💰","$",15000,"+"],["📞","",0,""],["📈","+",286,"%"],["⚡","",3.2,"x"],["🎯","-",40,"%"],["📅","+",40,"%"]].map(([icon,pre,val,suf],idx)=>(
-                  <Item key={idx} variant="up">
-                    <div className="group h-full p-5 border-b border-r border-white/[0.06] transition-colors duration-300 hover:bg-white/[0.05]">
-                      <div className="flex items-center gap-1.5 text-base mb-2">{icon}</div>
-                      <div className="text-3xl sm:text-4xl font-extrabold text-sky-400 leading-none tracking-tight drop-shadow-[0_0_16px_rgba(56,189,248,0.35)]">
-                        <Count to={val} prefix={pre} suffix={suf} decimals={String(val).includes(".")?1:0} />
-                      </div>
-                      <div className="mt-1.5 font-bold text-white text-sm">{t.numbers.stats[idx][3]}</div>
-                      <div className="text-[11px] text-white/45 mt-0.5 leading-snug">{t.numbers.stats[idx][4]}</div>
-                    </div>
-                  </Item>
-                ))}
-              </Stagger>
-            </div>
-          </Reveal>
-        </div>
-        <div className="wrap relative mt-12"><LiveCall /></div>
+        <Reveal className="wrap relative max-w-2xl mx-auto text-center mb-9">
+          <span className="eyebrow mb-4">{t.numbers.calleyebrow || "The proof, live"}</span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold leading-tight bg-gradient-to-r from-white via-g-gold to-white bg-[length:220%_auto] bg-clip-text text-transparent animate-shimmer">{t.numbers.callh2 || "Don't take our word for it — Gui calls you"}</h2>
+          <p className="mt-4 text-white/70 leading-relaxed">{t.numbers.callsub || "Drop your number and Gui rings you in seconds — answering, booking and quoting live, 24/7. It works on us, so you know it works for you."}</p>
+        </Reveal>
+        <div className="wrap relative"><LiveCall /></div>
       </section>
 
       <Circuit flip />
