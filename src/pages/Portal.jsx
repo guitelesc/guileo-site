@@ -494,6 +494,18 @@ function growthOps(V) {
   ].filter((o) => o.n > 0);
 }
 
+// One-line AI briefing for the home screen — derived from real signals.
+function dailyBriefing(V) {
+  const alerts = V.alerts ? V.alerts.items.length : 0;
+  const outstanding = genPayments(V).filter((p) => p.status !== "Paid").reduce((s, r) => s + (r.amount || 0), 0);
+  const fc = genForecast(V);
+  const bits = [];
+  bits.push(alerts ? `${alerts} thing${alerts !== 1 ? "s" : ""} need you` : "you're all caught up");
+  if (outstanding) bits.push(`$${outstanding.toLocaleString()} to collect`);
+  bits.push(`${fc.peak} looks busiest`);
+  return bits.join(" · ");
+}
+
 function Overview({ V, onNav, sections = [], period = "30 days" }) {
   const [resolved, setResolved] = useState(() => portalApi.loadState(`${V.label}:alerts`, []));
   const [alertsOpen, setAlertsOpen] = useState(false);
@@ -516,6 +528,17 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
         <h2 className="text-lg font-extrabold text-g-word">Dashboard Overview</h2>
         <p className="text-xs text-g-muted">Welcome back — here's what's happening at {V.business.name} today.</p>
       </div>
+
+      {/* AI DAILY BRIEFING — a friendly, data-driven one-liner + where to start */}
+      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.05] border-g-green/25">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <span className="grid place-items-center h-9 w-9 rounded-full bg-g-green/15 text-g-green shrink-0"><FaBrain size={15} /></span>
+            <div className="min-w-0"><div className="text-sm font-extrabold text-g-word flex items-center gap-2">Your AI briefing <span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" /></div><div className="text-xs text-g-muted mt-0.5">{dailyBriefing(V)}.</div></div>
+          </div>
+          {ops[0] && <button onClick={() => onNav(ops[0].view)} className="btn-bright text-sm shrink-0">Start here →</button>}
+        </div>
+      </Card>
 
       {/* NEEDS ATTENTION — one quiet line by default; expands only on click */}
       {V.alerts && (
@@ -564,6 +587,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
           <div>
             <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Guileo profit impact · {periodLabel}</div>
             <div className="text-4xl sm:text-5xl font-black text-g-word tracking-tight mt-1"><Count key={period} to={Math.round(V.impact.total * periodFactor)} prefix="$" /></div>
+            {period === "30 days" && <div className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-bold text-g-green"><FaArrowTrendUp size={10} /> On pace for ${Math.round(V.impact.total * 1.6).toLocaleString()} by month-end</div>}
             <div className="mt-2.5 flex flex-wrap gap-2">
               {V.impact.parts.map(([label, val]) => (
                 <span key={label} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold">
