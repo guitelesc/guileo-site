@@ -1999,7 +1999,17 @@ function aiMissed(V) {
     "5 pricing questions didn't convert — a small, well-timed offer could win them back.",
   ];
 }
-function AIAnalytics({ V }) {
+// Proactive AI recommendations — each one applies in a click and lands in its tab.
+function genRecommendations(V) {
+  return [
+    { ic: "📣", text: "Your quietest weekday runs ~30% below capacity — a targeted promo fills it.", cta: "Launch promo", view: "campaigns", apply: (onNav) => { pushCreated(V.label, "campaigns", { name: "Slow-day filler promo", channel: "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); toast("Promo launched ✓ — see it in Campaigns"); onNav?.("campaigns"); } },
+    { ic: "⭐", text: "A dozen happy customers haven't been asked for a review yet — reviews drive new demand.", cta: "Request reviews", view: "reputation", apply: (onNav) => { (V.customers || genCustomers(V)).slice(0, 3).forEach((c) => pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel })); toast("Review blast queued ✓"); onNav?.("reputation"); } },
+    { ic: "🔁", text: "Several customers lapsed in the last 30 days — a win-back sequence recovers ~1 in 4.", cta: "Start win-back", view: "followups", apply: (onNav) => { toast("Win-back sequence started ✓"); onNav?.("followups"); } },
+  ];
+}
+function AIAnalytics({ V, onNav, sections = [] }) {
+  const has = new Set(sections.map(([k]) => k));
+  const recs = genRecommendations(V).filter((r) => has.has(r.view));
   const sentiment = [["Positive", 82, "#3E9468"], ["Neutral", 13, "#D6C29A"], ["Negative", 5, "#EF4444"]];
   const intents = aiIntents(V);
   const missed = aiMissed(V);
@@ -2024,9 +2034,18 @@ function AIAnalytics({ V }) {
           {intents.map(([l, v]) => (<div key={l} className="mb-2.5 last:mb-0"><div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{l}</span><span className="text-g-muted">{v}%</span></div><div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-g-green" style={{ width: `${(v / 41) * 100}%` }} /></div></div>))}
         </Card>
       </div>
-      <Card className="border-g-gold/30 bg-g-gold/[0.05]">
-        <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">⚡ Missed opportunities the AI spotted</div>
-        <div className="space-y-2">{missed.map((m, i) => (<div key={i} className="rounded-xl2 border-l-2 border-g-gold/50 bg-white/[0.05] px-3 py-2.5 text-xs text-g-word">{m}</div>))}</div>
+      <Card className="border-g-gold/30 bg-g-gold/[0.05] p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">⚡ Recommended by your AI · apply in one click</div>
+        <div className="divide-y divide-white/[0.06]">
+          {recs.map((r, i) => (
+            <div key={i} className="flex items-center gap-3 px-5 py-3">
+              <span className="text-lg shrink-0">{r.ic}</span>
+              <div className="flex-1 min-w-0 text-xs text-g-word leading-snug">{r.text}</div>
+              <button onClick={() => r.apply(onNav)} className="text-[11px] font-bold rounded-full border border-g-green/40 bg-g-green/[0.1] px-3 py-1.5 text-g-green hover:bg-g-green/20 transition shrink-0">{r.cta} →</button>
+            </div>
+          ))}
+        </div>
+        <div className="px-5 py-2.5 border-t border-white/[0.06] text-[11px] text-g-muted">{missed[0]}</div>
       </Card>
       <div className="grid lg:grid-cols-2 gap-4">
         {T.map((t, i) => (
@@ -2648,7 +2667,7 @@ export default function Portal() {
     schedule: <ScheduleScreen V={V} />,
     catalog: <CatalogScreen V={V} />,
     social: <SocialInbox V={V} />,
-    analytics: <AIAnalytics V={V} />,
+    analytics: <AIAnalytics V={V} onNav={setView} sections={sections} />,
     liveorders: <LiveOrders V={V} />,
     kitchen: <Kitchen V={V} />,
     menu: <MenuView V={V} />,
