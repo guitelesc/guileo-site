@@ -769,6 +769,25 @@ const loadAutomations = (L) => portalApi.loadState(autoKey(L), []);
 function addAutomation(L, rec) { const cur = loadAutomations(L); portalApi.saveState(autoKey(L), [{ ...rec, _id: Date.now(), on: true }, ...cur].slice(0, 12)); }
 function toggleAutomation(L, id) { const cur = loadAutomations(L); portalApi.saveState(autoKey(L), cur.map((a) => (a._id === id ? { ...a, on: !a.on } : a))); }
 function removeAutomation(L, id) { portalApi.saveState(autoKey(L), loadAutomations(L).filter((a) => a._id !== id)); }
+function setAutoLastRun(L, id) { const cur = loadAutomations(L); portalApi.saveState(autoKey(L), cur.map((a) => (a._id === id ? { ...a, lastRun: Date.now() } : a))); }
+// Execute one automation: map its "what" to the real stitch (records + Impact ledger).
+function runAutomation(V, a) {
+  const s = (a.what || "").toLowerCase(); const L = V.label;
+  let msg;
+  if (/overdue|chase|cobr|invoice|fatur/.test(s)) { const open = genPayments(V).filter((p) => p.status !== "Paid"); logImpact(L, `Auto · chased ${open.length} overdue invoice${open.length !== 1 ? "s" : ""}`, 0); msg = `chased ${open.length} overdue invoice${open.length !== 1 ? "s" : ""}`; }
+  else if (/review|avali/.test(s)) { (V.customers || genCustomers(V)).slice(0, 3).forEach((c) => pushCreated(L, "reviewreq", { name: c.name, ch: c.channel })); logImpact(L, "Auto · requested 3 reviews", 0); msg = "requested 3 reviews"; }
+  else if (/promo|campaign/.test(s)) { pushCreated(L, "campaigns", { name: "Auto promo", channel: "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); logImpact(L, "Auto · launched a promo", 0); msg = "launched a promo"; }
+  else if (/follow|nudge/.test(s)) { logImpact(L, "Auto · nudged warm leads", 0); msg = "nudged warm leads"; }
+  else if (/post|instagram|social/.test(s)) { logImpact(L, "Auto · scheduled a social post", 0); msg = "scheduled a social post"; }
+  else { msg = "sent you a recap"; }
+  setAutoLastRun(L, a._id);
+  logUsage(2, `Automation · ${a.what}`);
+  return msg;
+}
+// Cadence → minimum ms between runs. A "due" automation has never run or is past its window.
+const CADENCE_MS = { daily: 864e5, weekly: 6048e5, monthly: 2592e6 };
+function cadenceMs(when) { const w = (when || "").toLowerCase(); if (/dia|daily|day/.test(w)) return CADENCE_MS.daily; if (/m[êe]s|month/.test(w)) return CADENCE_MS.monthly; return CADENCE_MS.weekly; }
+function dueAutomations(V) { const now = Date.now(); return loadAutomations(V.label).filter((a) => a.on && (!a.lastRun || now - a.lastRun >= cadenceMs(a.when))); }
 
 function Overview({ V, onNav, sections = [], period = "30 days" }) {
   const [resolved, setResolved] = useState(() => portalApi.loadState(`${V.label}:alerts`, []));
@@ -779,6 +798,17 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
   const ops = growthOps(V).filter((o) => validViews.has(o.view)).slice(0, 3);
   const [autoTick, setAutoTick] = useState(0);                 // force re-render on automation toggle/remove
   const automations = loadAutomations(V.label); void autoTick;
+  // Scheduler — on load, run any automations that are due (the client-side cron).
+  const ranRef = useRef(false);
+  useEffect(() => {
+    if (ranRef.current) return; ranRef.current = true;
+    const due = dueAutomations(V).slice(0, 2);
+    if (due.length) {
+      const msgs = due.map((a) => runAutomation(V, a));
+      setTimeout(() => { setAutoTick((t) => t + 1); toast(`Automations ran ✓ — Gui ${msgs.join(" & ")}`); }, 900);
+    }
+  }, [V.label]); // eslint-disable-line
+  const runAutoNow = (a) => { const msg = runAutomation(V, a); setAutoTick((t) => t + 1); toast(`Done ✓ — Gui ${msg}`); };
   const wk = weeklySummary(V);
   // Monthly revenue goal — editable + persisted; tracks current + projection.
   const defGoal = Math.max(500, Math.round((V.impact.total * 2.4) / 100) * 100);
@@ -961,7 +991,8 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
             {automations.map((a) => (
               <div key={a._id} className="flex items-center gap-3 px-5 py-3">
                 <span className="text-base shrink-0">{a.ic || "⚡"}</span>
-                <div className="flex-1 min-w-0"><div className={`text-xs font-bold truncate ${a.on ? "text-g-word" : "text-g-muted line-through"}`}>{a.what}</div><div className="text-[10px] text-g-muted">{a.when}</div></div>
+                <div className="flex-1 min-w-0"><div className={`text-xs font-bold truncate ${a.on ? "text-g-word" : "text-g-muted line-through"}`}>{a.what}</div><div className="text-[10px] text-g-muted">{a.when}{a.lastRun ? ` · last run ${new Date(a.lastRun).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : " · not run yet"}</div></div>
+                {a.on && <button onClick={() => runAutoNow(a)} className="text-[10px] font-bold text-g-green hover:text-g-light shrink-0 whitespace-nowrap">▶ Run now</button>}
                 <Toggle on={!!a.on} onClick={() => { toggleAutomation(V.label, a._id); setAutoTick((t) => t + 1); }} />
                 <button onClick={() => { removeAutomation(V.label, a._id); setAutoTick((t) => t + 1); toast("Automation removed"); }} aria-label="Remove" className="text-g-muted hover:text-red-400 transition shrink-0"><FaTrash size={11} /></button>
               </div>
@@ -2526,6 +2557,52 @@ function Billing({ V }) {
           </Card>
         );
       })()}
+
+      {/* Referral credits — a CAC-reducing growth loop on the existing credit system */}
+      {(() => {
+        const code = `GUI-${(V.business.name || "GUILEO").replace(/[^A-Za-z]/g, "").slice(0, 4).toUpperCase()}${vnum(V.label, "refcode", 100, 999)}`;
+        const link = `https://guileoai.com/?ref=${code}`;
+        const refs = portalApi.loadState("gui_referrals", 0);
+        const grant = () => { setC(credits + 250); portalApi.saveState("gui_referrals", refs + 1); toast("250 credits added ✓ — referral reward"); };
+        const copy = () => { try { navigator.clipboard.writeText(link); } catch { /* */ } toast("Invite link copied ✓"); };
+        return (
+          <Card className="border-g-gold/25 bg-g-gold/[0.05]">
+            <div className="flex items-center gap-3">
+              <span className="grid place-items-center h-10 w-10 rounded-xl bg-g-gold/15 text-g-gold"><FaGift /></span>
+              <div className="flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word">Give 250, get 250 credits</div><div className="text-xs text-g-muted mt-0.5">Invite another business — you both get <span className="text-g-gold font-bold">250 free credits</span> when they join. {refs > 0 && <span className="text-g-green font-bold">{refs} joined so far.</span>}</div></div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <code className="flex-1 min-w-[140px] rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-xs font-mono text-g-light truncate">{link}</code>
+              <button onClick={copy} className="btn-ghost text-sm">Copy link</button>
+              <button onClick={grant} className="btn-bright text-sm">Simulate a referral →</button>
+            </div>
+          </Card>
+        );
+      })()}
+
+      {/* Go-live readiness — what's done vs what needs your keys to operate */}
+      <Card className="p-0 overflow-hidden border-g-green/20">
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">🚀 Go-live readiness</span><span className="text-[10px] font-black uppercase text-g-green">Front ready</span></div>
+        <div className="divide-y divide-white/[0.06]">
+          {[
+            ["Product, AI & dashboard", "Built & validated", true],
+            ["Accounts that persist (Supabase)", "Needs your project keys", false],
+            ["Charge for credits & plans (Stripe)", "Needs your Stripe keys", false],
+            ["Real integrations (OAuth)", "Needs your app approvals", false],
+            ["Public domain & publish", "Needs your DNS + your OK", false],
+          ].map(([label, st, done]) => (
+            <div key={label} className="flex items-center gap-3 px-5 py-3">
+              <span className={done ? "text-g-green" : "text-g-muted"}>{done ? <FaCircleCheck size={14} /> : "○"}</span>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word">{label}</div><div className="text-[11px] text-g-muted">{st}</div></div>
+            </div>
+          ))}
+        </div>
+        <div className="px-5 py-3 border-t border-white/10 flex items-center justify-between gap-3">
+          <span className="text-[11px] text-g-muted">Step-by-step in <span className="text-g-light font-semibold">LAUNCH.md</span>. I'll wire each one with you when you have the keys.</span>
+          <a href={waLink("I'm ready to take Guileo live — let's connect the backend")} target="_blank" rel="noopener" className="btn-bright text-sm shrink-0">I have the keys →</a>
+        </div>
+      </Card>
+
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Invoices</div>
         <div className="divide-y divide-white/[0.06]">
