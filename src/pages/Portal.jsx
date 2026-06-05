@@ -536,7 +536,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
     <div className="space-y-5 stagger">
       <div>
         <h2 className="text-lg font-extrabold text-g-word">Dashboard Overview</h2>
-        <p className="text-xs text-g-muted">Welcome back — here's what's happening at {V.business.name} today.</p>
+        <p className="text-xs text-g-muted">Welcome back 👋 Here's where your money is today — and the fastest way to grow it.</p>
       </div>
 
       {/* AI DAILY BRIEFING — a friendly, data-driven one-liner + where to start */}
@@ -796,7 +796,7 @@ function Deliveries({ V }) {
   const onTime = vnum(V.label, "ontime", 92, 99);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaTruck className="text-g-green" /> {cfg.title}</div><div className="text-xs text-g-muted mt-0.5">{cfg.partners.length ? "Every order — third-party apps and your own delivery — in one place. " : "Dispatch and track every job in one place. "}Your AI texts customers live ETAs automatically.</div></div>
@@ -875,7 +875,7 @@ function Deliveries({ V }) {
 function Operations({ V }) {
   const o = V.ops;
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <div className="grid sm:grid-cols-3 gap-4">
         {o.stats.map((s) => (
           <Card key={s.label}>
@@ -897,7 +897,7 @@ function Operations({ V }) {
             ))}
           </div>
         </Card>
-        <div className="space-y-4">
+        <div className="space-y-4 stagger">
           {o.grid && (
             <Card>
               <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{o.gridTitle}</div>
@@ -989,7 +989,7 @@ function Ads() {
   const totalSpend = CAMPAIGNS.reduce((s, c) => s + c.spend, 0);
   const totalLeads = CAMPAIGNS.reduce((s, c) => s + c.leads, 0);
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <div className="grid sm:grid-cols-3 gap-4">
         <Card><div className="text-[11px] uppercase tracking-wide text-g-muted">Ad spend</div><div className="text-2xl font-extrabold text-g-word mt-1"><Count to={totalSpend} prefix="$" /></div></Card>
         <Card><div className="text-[11px] uppercase tracking-wide text-g-muted">Leads generated</div><div className="text-2xl font-extrabold text-g-light mt-1"><Count to={totalLeads} /></div></Card>
@@ -1214,7 +1214,7 @@ function Customers({ V, onNav }) {
   const [sel, setSel] = useState(null);
   const rebook = (c) => { const act = convoAction(V); const rec = recordFor(act.view, c.name, c.channel, V); if (rec) pushCreated(V.label, act.view, rec); setSel(null); toast(`${REBOOK[V.label] || "Rebook"} created for ${c.name} ✓ — see it in the tab`); onNav?.(act.view); };
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <MiniStats items={[["Total customers", `${rows.length * 104}`], ["New this week", `+${rows.length * 6}`, "good"], ["Avg. value", `$${rows.length ? Math.round(totalSpent / rows.length) : 0}`], ["Repeat rate", `${vnum(V.label, "repeat", 31, 47)}%`, "good"]]} />
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Customers</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for profile</span></div>
@@ -1267,7 +1267,7 @@ function Campaigns({ V, onNav }) {
   const open = Math.round(rows.reduce((s, c) => s + c.opened, 0) / rows.length);
   const [sel, setSel] = useState(null);
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <MiniStats items={[["Campaigns", `${rows.length}`], ["Messages sent", sent.toLocaleString()], ["Avg. open rate", `${open}%`, "good"], ["Revenue", `$${rev.toLocaleString()}`, "good"]]} />
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Campaigns</span><a href={waLink("I'd like to launch a campaign")} target="_blank" rel="noopener" className="text-[11px] font-bold text-g-gold hover:underline">New campaign →</a></div>
@@ -1320,7 +1320,7 @@ function CallLogs({ V, onNav }) {
   const rows = V.callLogs || genCalls(V);
   const [sel, setSel] = useState(null);
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <MiniStats items={[["Calls answered", `${vnum(V.label, "callsans", 210, 540)}`], ["Missed calls", "0", "good"], ["Avg. duration", `1m ${vnum(V.label, "calldur", 2, 54)}s`], ["Handled by AI", "100%", "good"]]} />
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Recent calls · answered by AI</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for transcript</span></div>
@@ -1591,7 +1591,7 @@ function SettingsView({ V }) {
   const fieldCls = "mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-3.5 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70";
   const PROFILE_FIELDS = [["Business name", "name", "Your business name"], ["Address / location", "place", "123 Main St, City"], ["Opening hours", "hours", "Mon–Sun, 9am–10pm"], ["Public phone", "phone", "(optional)"]];
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Business profile</div>
@@ -1654,10 +1654,10 @@ function Grow() {
   const [txt, setTxt] = useState("");
   const submit = (e) => { e.preventDefault(); setSent(true); window.open(waLink(`Hi Guileo! I wish you offered: ${txt}`), "_blank"); };
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word">Grow with Guileo</div><div className="text-xs text-g-muted mt-0.5">Add a service or channel — your team sets it up for you. No extra logins, one bill.</div></div>
+          <div><div className="text-sm font-extrabold text-g-word">Grow with Guileo</div><div className="text-xs text-g-muted mt-0.5">Want more? Add a channel or service — we set it up, you keep one login and one bill. Growth on tap.</div></div>
           <a href={waLink("Hi Guileo! I'd like to add a new service to my plan")} target="_blank" rel="noopener" className="btn-bright text-sm">Talk to my team →</a>
         </div>
       </Card>
@@ -1777,10 +1777,10 @@ function AIBrain({ V }) {
   const suggestions = ["What are your hours?", "Can I book for tomorrow?", "How much does it cost?", "Where are you located?"];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word">🧠 Your AI's brain</div><div className="text-xs text-g-muted mt-0.5">Add what your AI should know — it starts using it instantly. Test it live below.</div></div>
+          <div><div className="text-sm font-extrabold text-g-word">🧠 Your AI's brain</div><div className="text-xs text-g-muted mt-0.5">Teach it in plain words — it answers your <b className="text-g-light">very next customer</b> with it. Test it live below.</div></div>
           <button onClick={() => setEditing({ topic: "", triggers: "", answer: "" })} className="btn-bright text-sm inline-flex items-center gap-2"><FaPlus size={11} /> Teach it something</button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -1877,7 +1877,7 @@ function Billing({ V }) {
   const includes = ["AI voice agent · 24/7", "WhatsApp, SMS & social replies", "Bookings & reviews automation", "Live dashboard & monthly reports", "A real human managing it for you"];
   const invoices = [["Invoice #0012", "Jun 1, 2026", "Paid"], ["Invoice #0011", "May 1, 2026", "Paid"], ["Invoice #0010", "Apr 1, 2026", "Paid"]];
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <div className="flex items-center justify-between gap-3">
@@ -1917,7 +1917,7 @@ function ScheduleScreen({ V }) {
     setTick((t) => t + 1); toast(`Open slot filled from waitlist with ${w.name} ✓ — logged to Guileo Impact`);
   };
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       {o.stats && (
         <div className="grid sm:grid-cols-3 gap-4">
           {o.stats.map((s) => (<Card key={s.label}><div className="text-[11px] uppercase tracking-wide text-g-muted">{s.label}</div><div className={`text-2xl font-extrabold mt-1 ${s.tone === "good" ? "text-g-green" : "text-g-word"}`}>{s.value}</div></Card>))}
@@ -2005,7 +2005,7 @@ function SocialInbox({ V }) {
   const rows = (V.activity || []).slice(0, 4).map((a, i) => ({ name: (V.ops?.schedule?.[i]?.name) || "New DM", last: a[2], t: a[3], unread: i % 2, ...{ net: nets[i % 4][2], color: nets[i % 4][1] } }));
   const [sel, setSel] = useState(null);
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <div className="flex flex-wrap gap-2">
         {[["Instagram", "#E4405F", 18], ["Facebook", "#1877F2", 9], ["TikTok", "#e7e7e7", 6]].map(([n, c, v]) => (
           <span key={n} className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word"><span className="h-2 w-2 rounded-full" style={{ background: c }} />{n} <span className="text-g-muted">{v} replies today</span></span>
@@ -2091,7 +2091,7 @@ function AIAnalytics({ V, onNav, sections = [] }) {
     { who: names[1] || "Another customer", ch: "WhatsApp", sent: "Positive", lines: [["them", `How much is ${svc.toLowerCase()}?`], ["ai", `Happy to help — it depends on a couple of details. Can I ask what you need?`], ["them", "Just the basics for now."], ["ai", `Got it — I'll send a quick quote on WhatsApp and can book you in if it looks good. 👍`]] },
   ];
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <MiniStats items={[["Conversations analyzed", vnum(V.label, "convan", 980, 3200).toLocaleString()], ["Avg sentiment", "Positive 👍", "good"], ["Resolved by AI", `${vnum(V.label, "resai", 86, 95)}%`, "good"], ["Avg handle time", `1m ${vnum(V.label, "handle", 4, 52)}s`]]} />
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
@@ -2203,7 +2203,7 @@ function Locations({ V }) {
   const [sel, setSel] = useState(null);
   const addLocation = () => { pushCreated(V.label, "locations", { name: `${V.business.name} · New branch`, addr: "New address", status: "Onboarding", revenue: 0, staff: 0, today: 0 }); toast("Location added ✓ — your AI is now covering it too"); };
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaLocationDot className="text-g-green" /> Locations</div><div className="text-xs text-g-muted mt-0.5">One AI, every branch — calls, bookings and orders routed to the right location automatically.</div></div>
@@ -2248,7 +2248,7 @@ function Team({ V }) {
   const [sel, setSel] = useState(null);
   const invite = () => { pushCreated(V.label, "team", { name: "New teammate", role: TEAM_ROLE[V.label] || "Team member", status: "Invited", handled: 0, revenue: 0, rating: 0 }); toast("Invite link sent ✓ — they'll appear once they join"); };
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaUsers className="text-g-green" /> Team & staff</div><div className="text-xs text-g-muted mt-0.5">Your AI routes bookings, calls and chats to the right person — and tracks who's performing.</div></div>
@@ -2296,7 +2296,7 @@ function Payments({ V }) {
   const markPaid = (r) => { setPaid((p) => [...p, r.id]); logImpact(V.label, `${r.id} paid by ${r.customer}`, r.amount); setSel(null); toast(`${r.id} marked paid ✓ — $${r.amount} logged to Guileo Impact`); };
   const newInvoice = () => { const c = (V.customers || genCustomers(V))[0]; pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: c?.name || "New customer", amount: vnum(V.label, "newinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); toast("Payment link sent ✓ — invoice added"); };
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaCreditCard className="text-g-green" /> Payments & invoicing</div><div className="text-xs text-g-muted mt-0.5">Your AI sends invoices + payment links and chases unpaid ones automatically — you just watch the money land.</div></div>
@@ -2355,7 +2355,7 @@ function Loyalty({ V }) {
   const liveBalance = cards.reduce((s, c) => s + (c.balance || 0), 0);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaGift className="text-g-gold" /> Loyalty & referrals</div><div className="text-xs text-g-muted mt-0.5">Earn rule: {cfg.earn} · Reward: {cfg.reward}. Your AI enrolls, reminds and rewards automatically.</div></div>
@@ -2446,7 +2446,7 @@ function GuileoImpact({ V }) {
   const total = d.total + extra;
   const share = Math.round((total * d.sharePct) / 100);
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <Card className="relative overflow-hidden bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] border-g-green/30">
         <div className="absolute -top-16 -right-12 h-44 w-44 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
         <div className="relative">
@@ -2491,7 +2491,7 @@ function Followups({ V }) {
   const pipeline = open.reduce((s, { r }) => s + r.value, 0);
   const markWon = (i, name, value) => { setDone((d) => { const n = [...d, i]; portalApi.saveState(`${V.label}:fups`, n); return n; }); logImpact(V.label, `Won back ${name}`, value || 120); setSel(null); toast(`${name} marked won 🎉 — $${value || 120} logged to Guileo Impact`); };
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <MiniStats items={[["Active sequences", `${open.length}`], ["Pipeline value", `$${pipeline.toLocaleString()}`], ["Won this week", `${vnum(V.label, "won", 4, 14)}`, "good"], ["Auto-nudged", `${vnum(V.label, "nudge", 18, 44)}`, "good"]]} />
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">The AI is chasing these — so you never lose them</div>
@@ -2544,7 +2544,7 @@ function Waitlist({ V }) {
     }
   };
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <MiniStats items={[["Waiting now", `${open.length}`], ["Filled today", `${vnum(V.label, "filled", 5, 16)}`, "good"], ["No-shows saved", `${vnum(V.label, "noshow", 3, 11)}`, "good"], ["Revenue recovered", `$${vnum(V.label, "wrev", 800, 2600).toLocaleString()}`, "good"]]} />
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">Waitlist · turn empty slots into revenue</div>
@@ -2582,7 +2582,7 @@ function Reputation({ V, onNav }) {
   const blast = () => { (V.customers || genCustomers(V)).slice(0, 3).forEach((c) => pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel })); setReqs(loadCreated(V.label, "reviewreq")); toast("Review blast queued to recent customers ✓"); };
   const boost = (r) => { pushCreated(V.label, "campaigns", { name: `⭐ ${r.name}'s ${r.stars}★ review → ad`, channel: r.ch || "Meta", sent: 0, opened: 0, revenue: 0, status: "Active" }); setSel(null); toast(`Review boosted as an ad ✓ — see it in Campaigns`); onNav?.("campaigns"); };
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <MiniStats items={[["Avg rating", `${((46 + vnum(V.label, "rate", 0, 3)) / 10).toFixed(1)} ★`, "good"], ["Reviews this month", `${vnum(V.label, "revc", 40, 140)}`, "good"], ["Requests sent", `${vnum(V.label, "reqs", 200, 420) + reqs.length}`], ["Request → review", `${vnum(V.label, "conv", 24, 38)}%`, "good"]]} />
       {reqs.length > 0 && (
         <Card className="border-g-gold/25 bg-g-gold/[0.05]">
@@ -2621,7 +2621,7 @@ function Recurring({ V }) {
   const perMo = rows.reduce((s, r) => s + r.value, 0);
   const [sel, setSel] = useState(null);
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 stagger">
       <MiniStats items={[["Active plans", `${rows.length * 23}`], ["Monthly recurring", `$${(perMo * 23).toLocaleString()}`, "good"], ["Renewals due", `${vnum(V.label, "renew", 4, 14)}`], ["Churn risk", `${vnum(V.label, "churn", 1, 6)}`, "bad"]]} />
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Recurring revenue · the AI keeps it renewing</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for plan</span></div>
