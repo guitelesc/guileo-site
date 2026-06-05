@@ -1120,7 +1120,7 @@ function Customers({ V, onNav }) {
           actions={<>
             <a href={waLink(`Hi ${sel.c.name}! `)} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Message</a>
             <button onClick={() => rebook(sel.c)} className="btn-ghost text-sm">🔁 {REBOOK[V.label] || "Rebook"}</button>
-            <button onClick={() => { toast(`Review request sent to ${sel.c.name} ✓`); setSel(null); }} className="btn-ghost text-sm">⭐ Request review</button>
+            <button onClick={() => { pushCreated(V.label, "reviewreq", { name: sel.c.name, ch: sel.c.channel }); toast(`Review request sent to ${sel.c.name} ✓ — tracked in Reputation`); setSel(null); onNav?.("reputation"); }} className="btn-ghost text-sm">⭐ Request review</button>
           </>}
           onClose={() => setSel(null)}
         >
@@ -1140,8 +1140,9 @@ function Customers({ V, onNav }) {
     </div>
   );
 }
-function Campaigns({ V }) {
+function Campaigns({ V, onNav }) {
   const rows = [...loadCreated(V.label, "campaigns"), ...(V.campaigns || genCampaigns(V))];
+  const buildAudience = (c) => { pushCreated(V.label, "audiences", { name: `${c.name} · engagers`, size: vnum(V.label, c.name, 1200, 9000), source: "CRM" }); setSel(null); toast(`Audience built from "${c.name}" ✓ — see it in Ad Audiences`); onNav?.("audiences"); };
   const sent = rows.reduce((s, c) => s + c.sent, 0);
   const rev = rows.reduce((s, c) => s + c.revenue, 0);
   const open = Math.round(rows.reduce((s, c) => s + c.opened, 0) / rows.length);
@@ -1169,25 +1170,26 @@ function Campaigns({ V }) {
           badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: (sel.status === "Active" ? "#3E9468" : "#D6C29A") + "22", color: sel.status === "Active" ? "#3E9468" : "#D6C29A" }}>{sel.status}</span>}
           fields={[["Channel", sel.channel], ["Sent", sel.sent.toLocaleString()], ["Open rate", `${sel.opened}%`], ["Revenue", `$${sel.revenue.toLocaleString()}`], ["ROI", `${(sel.revenue / (sel.sent * 0.05) || 0).toFixed(1)}×`]]}
           note={`Run automatically by Guileo. ${sel.status === "Active" ? "Live now — driving revenue while you focus on the business." : "Scheduled — will launch and optimize itself."}`}
-          actions={<><button onClick={() => { toast("Campaign duplicated ✓"); setSel(null); }} className="btn-bright text-sm">⧉ Duplicate</button><button onClick={() => { toast(sel.status === "Active" ? "Campaign paused" : "Campaign resumed"); setSel(null); }} className="btn-ghost text-sm">{sel.status === "Active" ? "⏸ Pause" : "▶ Resume"}</button></>}
+          actions={<><button onClick={() => { toast("Campaign duplicated ✓"); setSel(null); }} className="btn-bright text-sm">⧉ Duplicate</button><button onClick={() => buildAudience(sel)} className="btn-ghost text-sm">🎯 Build audience</button><button onClick={() => { toast(sel.status === "Active" ? "Campaign paused" : "Campaign resumed"); setSel(null); }} className="btn-ghost text-sm">{sel.status === "Active" ? "⏸ Pause" : "▶ Resume"}</button></>}
           onClose={() => setSel(null)}
         />
       )}
     </div>
   );
 }
-function Audiences({ V }) {
-  const rows = V.audiences || genAudiences();
+function Audiences({ V, onNav }) {
+  const rows = [...loadCreated(V.label, "audiences"), ...(V.audiences || genAudiences())];
+  const launch = (a) => { pushCreated(V.label, "campaigns", { name: `Campaign · ${a.name}`, channel: a.source === "Meta" ? "Meta" : a.source === "Google" ? "Google" : "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); toast(`Campaign launched to "${a.name}" ✓ — see it in Campaigns`); onNav?.("campaigns"); };
   return (
     <div className="grid sm:grid-cols-2 gap-4">
       {rows.map((a, i) => (
         <Card key={i} className="flex flex-col">
-          <div className="flex items-center justify-between"><div className="text-sm font-bold text-g-word">{a.name}</div><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/[0.06] text-g-muted">{a.source}</span></div>
+          <div className="flex items-center justify-between"><div className="text-sm font-bold text-g-word flex items-center gap-1.5">{a.name}{a.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">new</span>}</div><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/[0.06] text-g-muted">{a.source}</span></div>
           <div className="mt-2 text-2xl font-extrabold text-g-word"><Count to={a.size} /></div>
           <div className="text-[11px] text-g-muted">people reachable</div>
           <div className="mt-3 flex gap-2">
             <button onClick={() => toast(`"${a.name}" synced to ${a.source === "Meta" ? "Meta Ads" : a.source === "Google" ? "Google Ads" : "your ad platforms"} ✓`)} className="text-[11px] font-bold rounded-full border border-g-gold/35 bg-g-gold/[0.08] px-3 py-1.5 text-g-gold hover:bg-g-gold/[0.16] transition">Sync to ads</button>
-            <a href={waLink(`Hi Guileo! Launch a campaign to the "${a.name}" audience (${a.size.toLocaleString()} people)`)} target="_blank" rel="noopener" className="text-[11px] font-bold rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">Use in a campaign →</a>
+            <button onClick={() => launch(a)} className="text-[11px] font-bold rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">Use in a campaign →</button>
           </div>
         </Card>
       ))}
@@ -1505,7 +1507,7 @@ function SettingsView({ V }) {
       </Card>
       <Card className="flex flex-wrap items-center justify-between gap-3">
         <div><div className="text-sm font-bold text-g-word">Demo data</div><div className="text-[11px] text-g-muted">Reset resolved alerts, won deals, filled slots & read flags back to the sample state.</div></div>
-        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "created:deliveries", "created:campaigns", "created:impact", "integrations", "owndelivery"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
+        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "created:deliveries", "created:campaigns", "created:impact", "created:audiences", "created:reviewreq", "integrations", "owndelivery"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">↻ Reset demo data</button>
       </Card>
       <p className="text-center text-[11px] text-g-muted">Changes apply instantly. Need something custom? Your team's a tap away. 💬</p>
     </div>
@@ -2112,10 +2114,17 @@ function Reputation({ V, onNav }) {
   const reviews = genReviews(V);
   const dist = [["5★", 78], ["4★", 15], ["3★", 4], ["2★", 2], ["1★", 1]];
   const [sel, setSel] = useState(null);
+  const reqs = loadCreated(V.label, "reviewreq"); // pending review requests from Customers
   const boost = (r) => { pushCreated(V.label, "campaigns", { name: `⭐ ${r.name}'s ${r.stars}★ review → ad`, channel: r.ch || "Meta", sent: 0, opened: 0, revenue: 0, status: "Active" }); setSel(null); toast(`Review boosted as an ad ✓ — see it in Campaigns`); onNav?.("campaigns"); };
   return (
     <div className="space-y-4">
-      <MiniStats items={[["Avg rating", `${((46 + vnum(V.label, "rate", 0, 3)) / 10).toFixed(1)} ★`, "good"], ["Reviews this month", `${vnum(V.label, "revc", 40, 140)}`, "good"], ["Requests sent", `${vnum(V.label, "reqs", 200, 420)}`], ["Request → review", `${vnum(V.label, "conv", 24, 38)}%`, "good"]]} />
+      <MiniStats items={[["Avg rating", `${((46 + vnum(V.label, "rate", 0, 3)) / 10).toFixed(1)} ★`, "good"], ["Reviews this month", `${vnum(V.label, "revc", 40, 140)}`, "good"], ["Requests sent", `${vnum(V.label, "reqs", 200, 420) + reqs.length}`], ["Request → review", `${vnum(V.label, "conv", 24, 38)}%`, "good"]]} />
+      {reqs.length > 0 && (
+        <Card className="border-g-gold/25 bg-g-gold/[0.05]">
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">⭐ Review requests in flight</div>
+          <div className="flex flex-wrap gap-2">{reqs.map((r, i) => (<span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word">{r.name} <span className="text-g-muted">· {r.ch || "WhatsApp"} · awaiting</span></span>))}</div>
+        </Card>
+      )}
       <div className="grid lg:grid-cols-3 gap-4">
         <Card>
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">Rating breakdown</div>
@@ -2161,7 +2170,7 @@ function Recurring({ V }) {
           badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: sel.color + "22", color: sel.color }}>{sel.status}</span>}
           fields={[["Plan", sel.plan], ["Value", `$${sel.value}/mo`], ["Annual value", `$${(sel.value * 12).toLocaleString()}`], ["Status", sel.status], ["Member since", "Apr 2026"]]}
           note={sel.status === "At risk" ? "⚠ Engagement dropped — the AI is running a win-back sequence to save this plan." : sel.status === "Renews soon" ? "Renewal coming up — the AI will remind and auto-renew." : "Active and healthy — auto-renewing each cycle."}
-          actions={<><button onClick={() => { toast(`${sel.name} renewed ✓`); setSel(null); }} className="btn-bright text-sm">↻ Renew now</button><a href={waLink(`Hi ${sel.name}, about your ${sel.plan}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
+          actions={<><button onClick={() => { logImpact(V.label, `${sel.name} renewed · ${sel.plan}`, sel.value || 49); toast(`${sel.name} renewed ✓ — $${sel.value || 49} logged to Guileo Impact`); setSel(null); }} className="btn-bright text-sm">↻ Renew now</button><a href={waLink(`Hi ${sel.name}, about your ${sel.plan}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
           onClose={() => setSel(null)}
         />
       )}
@@ -2293,8 +2302,8 @@ export default function Portal() {
     kitchen: <Kitchen V={V} />,
     menu: <MenuView V={V} />,
     customers: <Customers V={V} onNav={setView} />,
-    campaigns: <Campaigns V={V} />,
-    audiences: <Audiences V={V} />,
+    campaigns: <Campaigns V={V} onNav={setView} />,
+    audiences: <Audiences V={V} onNav={setView} />,
     calllogs: <CallLogs V={V} onNav={setView} />,
     dialer: <Dialer />,
     whatsapp: <Convos V={V} title="WhatsApp" />,
