@@ -59,9 +59,16 @@ function vnum(label, salt, min, max) { return min + (vhash(`${label}|${salt}`) %
 const createdKey = (label, view) => `${label}:created:${view}`;
 function pushCreated(label, view, rec) {
   const cur = portalApi.loadState(createdKey(label, view), []);
-  portalApi.saveState(createdKey(label, view), [{ ...rec, fromChat: true, _id: Date.now() }, ...cur].slice(0, 25));
+  const id = Date.now();
+  portalApi.saveState(createdKey(label, view), [{ ...rec, fromChat: true, _id: id }, ...cur].slice(0, 25));
+  return id;
 }
 const loadCreated = (label, view) => portalApi.loadState(createdKey(label, view), []);
+// Undo a chat-created record: drop it from its tab's created list by _id.
+function removeCreated(label, view, id) {
+  const cur = portalApi.loadState(createdKey(label, view), []);
+  portalApi.saveState(createdKey(label, view), cur.filter((r) => r._id !== id));
+}
 function recordFor(view, who, channel, V) {
   if (view === "liveorders") return { id: `#${1000 + (Date.now() % 9000)}`, customer: who, items: `New order · via ${channel}`, total: 0, channel, status: "New", color: "#3E9468" };
   if (view === "schedule") return { time: "ASAP", name: who, meta: `Booked via ${channel}`, status: "Pending", ch: channel, color: "#D6C29A" };
@@ -2829,15 +2836,18 @@ function guiPlan(text, V, ctx = {}) {
   const target = who || customers[0]?.name || "New customer";
   const C = (cust) => ({ ...ctx, customer: cust });        // carry the customer forward in memory
   const forTxt = who ? ` for ${target}` : "";
-  if (/(remind|chase|collect all|chase all|overdue|atrasad|cobrar todos|all unpaid)/.test(s)) { const open = genPayments(V).filter((p) => p.status !== "Paid"); return { cost: 5, ctx, reply: `Done ✓ — I sent payment reminders to ${open.length} customer${open.length !== 1 ? "s" : ""} with open invoices. They're in Payments.`, run: (onNav) => onNav?.("payments") }; }
-  if (/(invoice|charge|bill|cobr|fatur|payment|receb)/.test(s)) return { cost: 5, ctx: C(target), reply: `Done ✓ — invoice sent to ${target} with a payment link, tracked in Payments. I'll chase it until it's paid.`, run: (onNav) => { pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: target, amount: vnum(V.label, "guiinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); onNav?.("payments"); } };
-  if (/(review|avalia|rating|estrela)/.test(s)) return { cost: 5, ctx: C(who || ctx.customer), reply: `On it ✓ — I queued review requests${who ? ` to ${target}` : " to your happiest recent customers"}. Tracked in Reputation.`, run: (onNav) => { (who ? [{ name: target, channel: "WhatsApp" }] : customers.slice(0, 3)).forEach((c) => pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel })); onNav?.("reputation"); } };
-  if (/(deliver|entrega|dispatch|despach)/.test(s)) return { cost: 5, ctx: C(who || ctx.customer), reply: `Done ✓ — sent${forTxt} to ${deliveryTab(V).toLowerCase()}. I'll text live updates.`, run: (onNav) => { const r = recordFor("deliveries", target, "Gui", V); pushCreated(V.label, "deliveries", r); onNav?.("deliveries"); } };
-  if (/(campaign|promo|an[úu]nci|\bad\b|marketing)/.test(s)) return { cost: 5, ctx, reply: "Launched ✓ — a promo is live and the AI will optimize it. It's in Campaigns.", run: (onNav) => { pushCreated(V.label, "campaigns", { name: "Gui promo", channel: "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); onNav?.("campaigns"); } };
-  if (/(order|pedido|book|appointment|agend|marcar|reserv|schedule)/.test(s)) return { cost: 5, ctx: C(target), reply: `${act.done}${forTxt} ✓ — it's in the right tab now.`, run: (onNav) => { const rec = recordFor(act.view, target, "Gui", V); if (rec) pushCreated(V.label, act.view, rec); onNav?.(act.view); } };
+  // undo a record-creating action: returns a closure that drops the created rows + navigates to show it
+  const undoer = (rows, nav) => (onNav) => { rows.forEach((r) => removeCreated(V.label, r.view, r.id)); onNav?.(nav); };
+  if (/(remind|chase|collect all|chase all|overdue|atrasad|cobrar todos|all unpaid)/.test(s)) { const open = genPayments(V).filter((p) => p.status !== "Paid"); return { cost: 5, ctx, reply: `Done ✓ — I sent payment reminders to ${open.length} customer${open.length !== 1 ? "s" : ""} with open invoices. They're in Payments.`, next: [{ label: "⭐ Ask them for reviews too", cmd: "request reviews from my recent customers" }], run: (onNav) => onNav?.("payments") }; }
+  if (/(invoice|charge|bill|cobr|fatur|payment|receb)/.test(s)) return { cost: 5, ctx: C(target), reply: `Done ✓ — invoice sent to ${target} with a payment link, tracked in Payments. I'll chase it until it's paid.`, next: [{ label: `📅 Book ${target} too`, cmd: `book them` }, { label: "⭐ Request a review", cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: target, amount: vnum(V.label, "guiinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); onNav?.("payments"); return undoer([{ view: "payments", id }], "payments"); } };
+  if (/(review|avalia|rating|estrela)/.test(s)) return { cost: 5, ctx: C(who || ctx.customer), reply: `On it ✓ — I queued review requests${who ? ` to ${target}` : " to your happiest recent customers"}. Tracked in Reputation.`, next: [{ label: "📣 Turn 5★ reviews into ads", cmd: "launch a promo" }], run: (onNav) => { const rows = (who ? [{ name: target, channel: "WhatsApp" }] : customers.slice(0, 3)).map((c) => ({ view: "reviewreq", id: pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel }) })); onNav?.("reputation"); return undoer(rows, "reputation"); } };
+  if (/(deliver|entrega|dispatch|despach)/.test(s)) return { cost: 5, ctx: C(who || ctx.customer), reply: `Done ✓ — sent${forTxt} to ${deliveryTab(V).toLowerCase()}. I'll text live updates.`, next: [{ label: "⭐ Ask for a review on arrival", cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "deliveries", recordFor("deliveries", target, "Gui", V)); onNav?.("deliveries"); return undoer([{ view: "deliveries", id }], "deliveries"); } };
+  if (/(campaign|promo|an[úu]nci|\bad\b|marketing)/.test(s)) return { cost: 5, ctx, reply: "Launched ✓ — a promo is live and the AI will optimize it. It's in Campaigns.", next: [{ label: "👥 Build an audience for it", cmd: "build an audience from my best customers" }], run: (onNav) => { const id = pushCreated(V.label, "campaigns", { name: "Gui promo", channel: "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); onNav?.("campaigns"); return undoer([{ view: "campaigns", id }], "campaigns"); } };
+  if (/(order|pedido|book|appointment|agend|marcar|reserv|schedule)/.test(s)) return { cost: 5, ctx: C(target), reply: `${act.done}${forTxt} ✓ — it's in the right tab now.`, next: [{ label: "💳 Send the invoice too", cmd: `send an invoice to them` }], run: (onNav) => { const rec = recordFor(act.view, target, "Gui", V); const id = rec ? pushCreated(V.label, act.view, rec) : null; onNav?.(act.view); return id ? undoer([{ view: act.view, id }], act.view) : undefined; } };
   if (/(follow|nudge|win-?back|lapse|reativ)/.test(s)) return { cost: 3, ctx, reply: "Done ✓ — I started a follow-up sequence. Check the Follow-ups tab.", run: (onNav) => onNav?.("followups") };
+  if (/(audience|p[úu]blico|segment)/.test(s)) return { cost: 5, ctx, reply: "Built ✓ — an audience of your most engaged customers is ready in Ad Audiences.", run: (onNav) => { const id = pushCreated(V.label, "audiences", { name: "Gui · best customers", size: vnum(V.label, "guiaud", 1200, 9000), source: "CRM" }); onNav?.("audiences"); return undoer([{ view: "audiences", id }], "audiences"); } };
   if (/(hour|open|close|price|cost|where|location|menu|service)/.test(s)) { const kb = portalApi.loadKB(V.label, seedKB(V, portalApi.loadProfile(V.label, defProfile(V)))); return { cost: 1, ctx, reply: aiAnswer(text, V, kb) }; }
-  return { cost: 0, ctx, reply: "I can create orders & bookings, send invoices, request reviews, launch promos, start follow-ups, or push to delivery. Try: \"send an invoice to my top customer\" — then \"book them too\"." };
+  return { cost: 0, ctx, reply: "I can create orders & bookings, send invoices, request reviews, launch promos, start follow-ups, build audiences, or push to delivery. Try: \"send an invoice to my top customer\" — then \"book them too\".", next: [{ label: "💳 Send an invoice", cmd: "send an invoice to my top customer" }, { label: "⭐ Request reviews", cmd: "request reviews" }, { label: "📣 Launch a promo", cmd: "launch a promo" }] };
 }
 function Gui({ V, onNav }) {
   const [open, setOpen] = useState(false);
@@ -2849,18 +2859,30 @@ function Gui({ V, onNav }) {
   const [q, setQ] = useState("");
   const [ctx, setCtx] = useState({});            // conversation memory (last customer, etc.)
   const [listening, setListening] = useState(false);
+  const [history, setHistory] = useState(() => portalApi.loadState("gui_history", []));   // past commands
+  const [showHist, setShowHist] = useState(false);
+  const lastUndo = useRef(null);                  // undo closure for the most recent action
   useEffect(() => { const h = () => setOpen(true); window.addEventListener("gui:open", h); return () => window.removeEventListener("gui:open", h); }, []);
   const setC = (n) => { setCredits(n); portalApi.saveState("gui_credits", n); };
   const recharge = () => { setC(credits + 250); toast("250 credits added ✓ — pay-as-you-go, billed to your account"); };
+  const remember = (t) => { setHistory((h) => { const next = [t, ...h.filter((x) => x !== t)].slice(0, 12); portalApi.saveState("gui_history", next); return next; }); };
+  const doUndo = () => {
+    if (!lastUndo.current) { setMsgs((m) => [...m, { from: "gui", text: "Nothing to undo yet — I'll only undo the last thing I created." }]); return; }
+    lastUndo.current(onNav); lastUndo.current = null;
+    setMsgs((m) => [...m, { from: "gui", text: "Undone ✓ — I removed the last thing I created. No charge for that." }]);
+  };
   const run = (text) => {
     const t = text.trim(); if (!t) return;
-    setMsgs((m) => [...m, { from: "you", text: t }]); setQ("");
+    setShowHist(false);
+    if (/^(undo|desfaz|desfazer|cancela|reverte|revert)/i.test(t)) { setMsgs((m) => [...m, { from: "you", text: t }]); setQ(""); doUndo(); return; }
+    setMsgs((m) => [...m, { from: "you", text: t }]); setQ(""); remember(t);
     const res = guiPlan(t, V, ctx);
     if (res.ctx) setCtx(res.ctx);
     if (res.cost > credits) { setMsgs((m) => [...m, { from: "gui", text: "You're out of credits for that one — top up and I'll get right on it.", lowCredit: true }]); return; }
-    if (res.run) res.run(onNav);
+    const undo = res.run ? res.run(onNav) : undefined;
+    lastUndo.current = typeof undo === "function" ? undo : null;
     setC(credits - res.cost);
-    setMsgs((m) => [...m, { from: "gui", text: res.reply, cost: res.cost }]);
+    setMsgs((m) => [...m, { from: "gui", text: res.reply, cost: res.cost, next: res.next, canUndo: typeof undo === "function" }]);
   };
   const send = (e) => { e.preventDefault(); run(q); };
   // Voice input via the Web Speech API (graceful no-op where unsupported).
@@ -2905,6 +2927,10 @@ function Gui({ V, onNav }) {
                   {m.text}
                   {m.cost > 0 && <span className="ml-1.5 text-[9px] text-g-muted">−{m.cost} cr</span>}
                   {m.lowCredit && <button onClick={recharge} className="block mt-1.5 text-[11px] font-bold text-g-gold hover:underline">+ Recharge credits</button>}
+                  {m.canUndo && i === msgs.length - 1 && <button onClick={doUndo} className="block mt-1.5 text-[11px] font-bold text-g-muted hover:text-g-word">↩ Undo this</button>}
+                  {m.next && m.next.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">{m.next.map((n) => <button key={n.cmd} onClick={() => run(n.cmd)} className="rounded-full border border-g-gold/30 bg-g-gold/10 px-2.5 py-1 text-[10px] font-bold text-g-gold hover:bg-g-gold/20 transition">{n.label}</button>)}</div>
+                  )}
                 </div>
               </div>
             ))}
@@ -2912,7 +2938,14 @@ function Gui({ V, onNav }) {
           {msgs.length <= 2 && (
             <div className="px-3 pb-1 flex flex-wrap gap-1.5 shrink-0">{["Create an order", "Send an invoice", "Request reviews", "Launch a promo"].map((s) => <button key={s} onClick={() => run(s)} className="rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold text-g-muted hover:text-g-word transition">{s}</button>)}</div>
           )}
+          {showHist && history.length > 0 && (
+            <div className="px-3 pb-1 shrink-0">
+              <div className="text-[9px] font-black uppercase text-g-muted mb-1">Recent commands · tap to run again</div>
+              <div className="flex flex-wrap gap-1.5">{history.map((h) => <button key={h} onClick={() => run(h)} className="rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1 text-[10px] text-g-light hover:text-g-word hover:border-g-green/40 transition truncate max-w-[180px]">{h}</button>)}</div>
+            </div>
+          )}
           <form onSubmit={send} className="p-3 border-t border-white/10 flex gap-2 shrink-0">
+            {history.length > 0 && <button type="button" onClick={() => setShowHist((v) => !v)} aria-label="Command history" className={`grid place-items-center h-10 w-10 rounded-full border shrink-0 transition ${showHist ? "border-g-green/50 bg-g-green/15 text-g-light" : "border-white/15 bg-white/[0.04] text-g-muted hover:text-g-word"}`}>↻</button>}
             {SR && <button type="button" onClick={dictate} aria-label="Dictate to Gui" className={`grid place-items-center h-10 w-10 rounded-full border shrink-0 transition ${listening ? "border-red-400 bg-red-500/15 text-red-400 animate-pulse" : "border-white/15 bg-white/[0.04] text-g-muted hover:text-g-word"}`}>🎙️</button>}
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={listening ? "Listening…" : "Ask Gui to do something…"} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
             <button className="btn-bright text-sm px-4">Send</button>
