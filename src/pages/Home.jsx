@@ -193,6 +193,49 @@ function RotatingAction({ words, suffix }) {
   );
 }
 
+// Common country dial codes for the discrete hero phone capture (flag + code).
+const DIAL_CODES = [["🇺🇸","+1"],["🇧🇷","+55"],["🇵🇹","+351"],["🇪🇸","+34"],["🇬🇧","+44"],["🇲🇽","+52"],["🇦🇷","+54"],["🇨🇦","+1"],["🇮🇳","+91"],["🇦🇺","+61"],["🇩🇪","+49"],["🇫🇷","+33"]];
+
+// Discrete in-hero "Gui calls you" capture — the killer proof, inline.
+// Required: phone (country code + number) and name. Optional: a one-line business description.
+// Posts the lead (/api/lead) and triggers the live call (/api/call) — same backend as LiveCallBar.
+function HeroCallForm({ t }) {
+  const C = t.hero;
+  const [cc, setCc] = useState("+1");
+  const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
+  const [biz, setBiz] = useState("");
+  const [st, setSt] = useState("idle"); // idle · calling · done
+  const submit = async (e) => {
+    e.preventDefault();
+    setSt("calling");
+    const full = `${cc} ${phone}`.trim();
+    fetch("/api/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: full, name, business: biz, source: "hero-call" }) }).catch(() => {});
+    try { await fetch("/api/call", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone: full, name }) }); } catch { /* noop */ }
+    setSt("done");
+  };
+  if (st === "done") return (
+    <div className="mt-6 max-w-md rounded-2xl border border-g-green/40 bg-g-green/[0.1] px-5 py-4 text-sm font-semibold text-g-light">
+      📞 {C.callDone || "Calling you now — pick up! Gui is on the line, live."}
+    </div>
+  );
+  const inputCls = "rounded-full border border-white/20 bg-black/25 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted/80 outline-none focus:border-g-green/70 transition";
+  return (
+    <form onSubmit={submit} className="mt-6 max-w-md grid gap-2">
+      <div className="flex gap-2">
+        <select value={cc} onChange={(e) => setCc(e.target.value)} aria-label={C.phCountry || "Country code"} className={`${inputCls} pr-2`}>
+          {DIAL_CODES.map(([flag, code], i) => <option key={code + i} value={code} className="bg-g-deep text-g-word">{flag} {code}</option>)}
+        </select>
+        <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} aria-label={C.phPhone || "Phone number"} placeholder={C.phPhone || "Your phone (area + number)"} className={`${inputCls} flex-1`} />
+      </div>
+      <input required value={name} onChange={(e) => setName(e.target.value)} aria-label={C.phName || "Your name"} placeholder={C.phName || "Your name"} className={inputCls} />
+      <input value={biz} onChange={(e) => setBiz(e.target.value)} aria-label={C.phBiz || "Describe your business"} placeholder={C.phBiz || "Describe your business (optional)"} className={inputCls} />
+      <Magnetic><button disabled={st === "calling"} className="btn-bright text-base w-full justify-center disabled:opacity-70">{st === "calling" ? (C.callingBtn || "Calling you…") : `📞 ${C.callBtn || "Call me now — hear Gui live"}`}</button></Magnetic>
+      <p className="text-[11px] text-g-muted/90">{C.callsmall || "Enter your number and Gui calls you — hear it live, right now."}</p>
+    </form>
+  );
+}
+
 export default function Home() {
   const { t } = useLang();
   // If the brand intro already played this session (or reduced-motion), paint the hero
@@ -243,12 +286,12 @@ export default function Home() {
                   <RotatingAction words={t.hero.rotors || ["answers your calls","books","quotes","sells","follows up"]} suffix="24/7" />
                 </div>
               </div>,
-              <p key="p" className="mt-6 text-base text-g-muted max-w-xl leading-relaxed">{t.hero.sub_a}<b className="text-g-word">{t.hero.sub_b}</b>{t.hero.sub_c}</p>,
+              <HeroCallForm key="call" t={t} />,
               <div key="trust" className="mt-5 flex flex-wrap gap-2">
                 {t.hero.trust.map(([ic,tx])=>(<span key={tx} className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] backdrop-blur-md px-3 py-1.5 text-xs font-semibold text-g-word hover:border-g-green/40 hover:text-g-light transition-colors">{ic} {tx}</span>))}
               </div>,
               t.hero.proof ? <p key="proof" className="mt-4 text-xs font-medium text-g-muted/90 max-w-xl leading-relaxed">{t.hero.proof}</p> : null,
-              <div key="b" className="mt-7 flex flex-wrap items-center gap-3"><Magnetic><a href="#demo" className="btn">{t.hero.cta1}</a></Magnetic><a href="#contact" className="btn-ghost">{t.hero.cta2}</a><a href="/experience.html" className="inline-flex items-center gap-1.5 text-sm font-bold text-g-gold hover:gap-2.5 transition-all">▶ Watch the experience</a></div>,
+              <div key="b" className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-bold"><a href="#demo" className="inline-flex items-center gap-1.5 text-g-light hover:text-g-gold transition-colors">{t.hero.cta1}</a><span className="text-g-line">·</span><a href="/experience.html" className="inline-flex items-center gap-1.5 text-g-gold hover:gap-2.5 transition-all">▶ {t.hero.watch || "Watch the experience"}</a></div>,
             ].map((el,i)=>(
               <motion.div key={i} variants={{ hide:{ opacity:0, y:30, filter:"blur(8px)" }, show:{ opacity:1, y:0, filter:"blur(0px)", transition:{ type:"spring", stiffness:80, damping:18, mass:0.8 } } }}>{el}</motion.div>
             ))}
@@ -263,13 +306,16 @@ export default function Home() {
             </motion.div>
             <div className="absolute top-3 right-3 rounded-full bg-white/[0.05] backdrop-blur-md shadow-soft px-3 py-1.5 text-xs font-bold text-g-light z-10 pointer-events-none animate-floatslow"><span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse"/>{t.hero.b1}</span></div>
             <div className="absolute bottom-3 left-3 rounded-full bg-white/[0.05] backdrop-blur-md shadow-soft px-3 py-1.5 text-xs font-bold text-g-gold z-10 pointer-events-none animate-floatslow" style={{ animationDelay:"-3.5s" }}>{t.hero.b2}</div>
-            {/* the fruits = results (the harvest) */}
-            {introDone && [["💰","$3k saved/mo","top-[10%] left-[1%]"],["📈","3× sales","top-[28%] right-[1%]"],["🛒","2 stores","top-[3%] right-[16%]"],["📅","+40 bookings","top-[48%] left-[2%]"]].map(([ic,tx,pos],i)=>(
+            {/* live actions Gui is taking — coherent with the live-call theme (not random KPIs) */}
+            {introDone && (t.hero.fruits || [["📞","Answered a call"],["📅","Booked a slot"],["💬","Replied instantly"],["✅","Sent a quote"]]).map((b,i)=>{
+              const [ic,tx]=b; const pos=["top-[10%] left-[1%]","top-[28%] right-[1%]","top-[3%] right-[16%]","top-[48%] left-[2%]"][i];
+              return (
               <motion.div key={tx} initial={{ opacity:0, scale:0.5, y:10 }} animate={{ opacity:1, scale:1, y:0 }} transition={{ delay:1.1+i*0.28, type:"spring", stiffness:150, damping:13 }}
                 className={`absolute ${pos} z-20 pointer-events-none animate-floatslow`} style={{ animationDelay:`${-i*1.3}s` }}>
                 <span className="inline-flex items-center gap-1 rounded-full border border-g-gold/45 bg-g-gold/[0.15] backdrop-blur-md px-2.5 py-1 text-[11px] font-extrabold text-g-gold shadow-[0_0_18px_rgba(214,194,154,0.3)]">{ic} {tx}</span>
               </motion.div>
-            ))}
+              );
+            })}
           </Parallax>
         </div>
         <div className="wrap mt-10"><Ticker items={TICKER} /></div>
