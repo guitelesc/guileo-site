@@ -175,7 +175,15 @@ function Pillars({ t }) {
 
 export default function Home() {
   const { t } = useLang();
-  const [introDone, setIntroDone] = useState(false);
+  // If the brand intro already played this session (or reduced-motion), paint the hero
+  // INSTANTLY — no dark first-frame on reloads/navigations. First-ever visit still gets it.
+  const [introDone, setIntroDone] = useState(() => {
+    try {
+      if (sessionStorage.getItem("guileo_intro_seen")) return true;
+      if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return true;
+    } catch { /* private mode */ }
+    return false;
+  });
   const [engineActive, setEngineActive] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setEngineActive((a) => (a + 1) % 4), 1400);
@@ -191,7 +199,7 @@ export default function Home() {
         <Aurora />
         <Spotlight />
         <div className="wrap grid lg:grid-cols-2 gap-12 items-center">
-          <motion.div initial="hide" animate={introDone ? "show" : "hide"} variants={{ show:{ transition:{ staggerChildren:0.14, delayChildren:0.05 } } }}>
+          <motion.div initial={introDone ? "show" : "hide"} animate={introDone ? "show" : "hide"} variants={{ hide:{}, show:{ transition:{ staggerChildren:0.14, delayChildren:0.05 } } }}>
             {[
               <span key="e" className="inline-flex items-center gap-2 rounded-full border border-g-green/40 bg-g-green/[0.08] px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-g-light shadow-[0_0_28px_rgba(62,148,104,0.28)] mb-5 backdrop-blur-md">
                 <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full rounded-full bg-g-green/60 animate-ping" /><span className="relative inline-flex h-2 w-2 rounded-full bg-g-green" /></span>{t.hero.eyebrow}
@@ -211,7 +219,7 @@ export default function Home() {
             ))}
           </motion.div>
           <Parallax distance={40} className="relative h-[340px] sm:h-[440px] lg:h-[500px]">
-            <motion.div className="absolute inset-0" initial={{ opacity:0, scale:0.88 }} animate={introDone ? { opacity:1, scale:1 } : { opacity:0, scale:0.88 }} transition={{ duration:1, delay:0.25, ease:[0.22,1,0.36,1] }}>
+            <motion.div className="absolute inset-0" initial={introDone ? { opacity:1, scale:1 } : { opacity:0, scale:0.88 }} animate={introDone ? { opacity:1, scale:1 } : { opacity:0, scale:0.88 }} transition={{ duration:1, delay:introDone ? 0 : 0.25, ease:[0.22,1,0.36,1] }}>
             <div className="absolute inset-6 rounded-full bg-gradient-to-tr from-g-green/20 via-transparent to-g-gold/25 blur-3xl pointer-events-none animate-breathe" />
             <div className="absolute inset-0 rounded-full border border-g-gold/10 pointer-events-none animate-aurora" />
             <Suspense fallback={<div className="w-full h-full grid place-items-center"><img src={logo} alt="Guileo" className="h-32 w-32 object-contain opacity-50 animate-floaty"/></div>}>
@@ -250,8 +258,8 @@ export default function Home() {
       <section id="demo" className="wrap py-12 scroll-mt-24">
         <Reveal className="text-center max-w-3xl mx-auto mb-8">
           <span className="eyebrow mb-3">Try it yourself</span>
-          <h2 className="h2">See Guileo work — live, right here</h2>
-          <p className="mt-2 text-g-muted max-w-2xl mx-auto">No sign-up, no video. Tap an action and watch your AI run it across your connected tools — exactly what your customers get, 24/7.</p>
+          <h2 className="h2">Meet Gui 🪄 — your AI assistant, live</h2>
+          <p className="mt-2 text-g-muted max-w-2xl mx-auto">No sign-up, no video. Tap an action and watch Gui run it across your connected tools — exactly what your customers get, 24/7.</p>
         </Reveal>
         <Reveal className="max-w-4xl mx-auto">
           <LiveDemo />

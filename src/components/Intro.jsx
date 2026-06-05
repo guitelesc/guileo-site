@@ -13,7 +13,7 @@ export default function Intro({ onDone }) {
   useEffect(() => {
     if (!show) { onDone?.(); return; }
     try { sessionStorage.setItem("guileo_intro_seen", "1"); } catch { /* private mode */ }
-    const t = setTimeout(() => { setShow(false); onDone?.(); }, 1500);
+    const t = setTimeout(() => { setShow(false); onDone?.(); }, 1100);
     return () => clearTimeout(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

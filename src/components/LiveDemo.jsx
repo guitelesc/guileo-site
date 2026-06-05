@@ -50,7 +50,7 @@ const STACK = [
 
 export default function LiveDemo() {
   const [feed, setFeed] = useState([
-    { ic: "🤖", t: "Guileo is online", s: "Try it — tap an action below", color: "#3E9468", _id: 0 },
+    { ic: "🪄", t: "Gui is online", s: "Try it — tap an action below", color: "#3E9468", _id: 0 },
   ]);
   const [kpis, setKpis] = useState({ bookings: 0, revenue: 0, reviews: 0, posts: 0 });
   const [busy, setBusy] = useState(null);     // action key currently "working"
@@ -101,7 +101,7 @@ export default function LiveDemo() {
       <div className="flex items-center gap-3 mb-4">
         <span className="grid place-items-center h-10 w-10 rounded-full bg-gradient-to-br from-g-green to-g-dark text-white"><FaWandMagicSparkles /></span>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-extrabold text-g-word flex items-center gap-2">Guileo — live demo <span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" /></div>
+          <div className="text-sm font-extrabold text-g-word flex items-center gap-2">Gui <span className="text-[9px] font-black uppercase text-g-green">· AI assistant</span> <span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" /></div>
           <div className="text-[11px] text-g-muted">Not a video — actually click and use it.</div>
         </div>
         {/* connected stack */}
@@ -126,7 +126,7 @@ export default function LiveDemo() {
         {/* actions */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <div className="text-[10px] font-black uppercase tracking-wide text-g-gold">Ask Guileo to…</div>
+            <div className="text-[10px] font-black uppercase tracking-wide text-g-gold">Ask Gui to…</div>
             <button onClick={dictate} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold transition ${listening ? "border-red-400 bg-red-500/15 text-red-400 animate-pulse" : "border-g-green/40 bg-g-green/10 text-g-green hover:bg-g-green/20"}`}>
               <FaMicrophone size={10} /> {listening ? "Listening…" : "Say it"}
             </button>
@@ -174,7 +174,7 @@ export default function LiveDemo() {
 
       {used && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 text-center text-[11px] text-g-muted">
-          That's Guileo working <span className="text-g-light font-semibold">inside your stack</span>. Imagine it doing this for every customer, all day. <span className="text-g-gold font-bold">It works on us → it works for you.</span>
+          That's Gui working <span className="text-g-light font-semibold">inside your stack</span>. Imagine it doing this for every customer, all day. <span className="text-g-gold font-bold">It works on us → it works for you.</span>
         </motion.div>
       )}
     </div>
