@@ -746,7 +746,7 @@ export default function Home() {
           ); })}
         </Stagger>
         <div className="mt-8 flex flex-wrap justify-center gap-3 text-sm">
-          {[["📈","+286% growth"],["⚡","3.2x ROI in 90 days"],["🚀","Live in 7 days"],["🛡️","30-day money-back"]].map(([ic,tx])=>(
+          {[["🔌",t.pricing.cap1||"Plugs into your whole stack"],["📞",t.pricing.cap2||"Answers 24/7, any language"],["🚀",t.pricing.cap3||"Live in 7 days"],["🛡️",t.pricing.cap4||"30-day money-back"]].map(([ic,tx])=>(
             <span key={tx} className="inline-flex items-center gap-1.5 rounded-full border border-g-green/25 bg-g-green/[0.06] px-4 py-2 font-bold text-g-light">{ic} {tx}</span>
           ))}
         </div>

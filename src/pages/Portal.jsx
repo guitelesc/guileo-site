@@ -1015,6 +1015,15 @@ const PT_UI = {
   "Caller": "Quem ligou",
   "Business name": "Nome da empresa",
   "Address / location": "Endereço / localização",
+  "Monthly report opened — print → Save as PDF ✓": "Relatório mensal aberto — imprimir → Salvar como PDF ✓",
+  "Report downloaded — open it, then print → Save as PDF ✓": "Relatório baixado — abra, depois imprimir → Salvar como PDF ✓",
+  "Teach it in plain words — it answers your": "Ensine em palavras simples — ela responde seu",
+  "very next customer": "próximo cliente",
+  "with it. Test it live below.": "com isso. Teste ao vivo abaixo.",
+  "Our team wires each connection with you — no code or config needed from you.": "Nossa equipe conecta cada integração com você — sem código nem configuração da sua parte.",
+  "✅ All caught up — every lead followed up.": "✅ Tudo em dia — todos os leads receberam follow-up.",
+  "Tone": "Tom", "Friendly": "Amigável", "Professional": "Profissional", "Warm & casual": "Caloroso e casual", "Concise": "Direto", "Enthusiastic": "Entusiasmado",
+  "Search or run a command…": "Buscar ou executar um comando…",
   "feeds your AI's answers": "alimenta as respostas da sua IA",
   "Your AI uses these facts when customers ask.": "Sua IA usa esses dados quando os clientes perguntam.",
   "Bookings & appointments": "Reservas e agendamentos",
@@ -2687,8 +2696,8 @@ function SettingsView({ V }) {
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("AI voice & greeting")}</div>
         <div className="divide-y divide-white/[0.06]">
-          <label className="block px-5 py-3"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">Tone</span>
-            <select value={st.tone} onChange={(e) => setS("tone", e.target.value)} className={fieldCls}>{["Friendly", "Professional", "Warm & casual", "Concise", "Enthusiastic"].map((o) => <option key={o} value={o}>{o}</option>)}</select></label>
+          <label className="block px-5 py-3"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr("Tone")}</span>
+            <select value={st.tone} onChange={(e) => setS("tone", e.target.value)} className={fieldCls}>{["Friendly", "Professional", "Warm & casual", "Concise", "Enthusiastic"].map((o) => <option key={o} value={o}>{tr(o)}</option>)}</select></label>
           <label className="block px-5 py-3"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr("Custom greeting")}</span>
             <textarea value={st.greeting} onChange={(e) => setS("greeting", e.target.value)} placeholder={`e.g. "Hi! Thanks for contacting ${draft.name || V.business.name} 👋 How can I help?"`} rows={2} className={fieldCls} /></label>
           <div className="flex items-center justify-between px-5 py-3.5"><div><div className="text-sm text-g-word font-semibold">{tr("Hand off to a human on request")}</div><div className="text-[11px] text-g-muted">{tr("When a customer asks for a person, the AI alerts your team.")}</div></div><Toggle on={st.human_handoff !== false} onClick={() => setS("human_handoff", st.human_handoff === false)} /></div>
@@ -2887,12 +2896,12 @@ function AIBrain({ V }) {
     <div className="space-y-4 stagger">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word">{tr("🧠 Your AI's brain")}</div><div className="text-xs text-g-muted mt-0.5">Teach it in plain words — it answers your <b className="text-g-light">very next customer</b> with it. Test it live below.</div></div>
-          <button onClick={() => setEditing({ topic: "", triggers: "", answer: "" })} className="btn-bright text-sm inline-flex items-center gap-2"><FaPlus size={11} /> Teach it something</button>
+          <div><div className="text-sm font-extrabold text-g-word">{tr("🧠 Your AI's brain")}</div><div className="text-xs text-g-muted mt-0.5">{tr("Teach it in plain words — it answers your")} <b className="text-g-light">{tr("very next customer")}</b> {tr("with it. Test it live below.")}</div></div>
+          <button onClick={() => setEditing({ topic: "", triggers: "", answer: "" })} className="btn-bright text-sm inline-flex items-center gap-2"><FaPlus size={11} /> {tr("Teach it something")}</button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word"><FaCircleCheck className="text-g-green" size={11} /> {kb.length} things learned</span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word"><span className="text-g-green">✓</span> Last trained {trainedAt}</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word"><FaCircleCheck className="text-g-green" size={11} /> {kb.length} {tr("things learned")}</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word"><span className="text-g-green">✓</span> {tr("Last trained")} {trainedAt}</span>
           {["🇺🇸 English", "🇧🇷 Português", "🇪🇸 Español"].map((l) => <span key={l} className="inline-flex items-center rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word">{l}</span>)}
         </div>
       </Card>
@@ -3129,7 +3138,7 @@ function Billing({ V }) {
           ))}
         </div>
         <div className="px-5 py-3 border-t border-white/10 flex items-center justify-between gap-3">
-          <span className="text-[11px] text-g-muted">Step-by-step in <span className="text-g-light font-semibold">LAUNCH.md</span>. I'll wire each one with you when you have the keys.</span>
+          <span className="text-[11px] text-g-muted">{tr("Our team wires each connection with you — no code or config needed from you.")}</span>
           <a href={waLink("I'm ready to take Guileo live — let's connect the backend")} target="_blank" rel="noopener" className="btn-bright text-sm shrink-0">{tr("I have the keys →")}</a>
         </div>
       </Card>
@@ -3464,7 +3473,7 @@ function Palette({ V, sections, onNav, onClose }) {
     <>
       <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="fixed left-1/2 top-20 sm:top-24 -translate-x-1/2 z-50 w-[92%] max-w-lg rounded-xl3 border border-white/12 bg-g-cream/95 backdrop-blur-xl shadow-2xl overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10"><FaMagnifyingGlass size={13} className="text-g-muted" /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} aria-label={tr("Search or run a command")} placeholder="Search or run a command…" className="flex-1 bg-transparent text-sm text-g-word placeholder:text-g-muted outline-none" /><span className="text-[10px] text-g-muted border border-white/15 rounded px-1.5 py-0.5">ESC</span></div>
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10"><FaMagnifyingGlass size={13} className="text-g-muted" /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} aria-label={tr("Search or run a command")} placeholder={tr("Search or run a command…")} className="flex-1 bg-transparent text-sm text-g-word placeholder:text-g-muted outline-none" /><span className="text-[10px] text-g-muted border border-white/15 rounded px-1.5 py-0.5">ESC</span></div>
         <div className="max-h-80 overflow-y-auto p-1.5">
           {res.length ? res.map((it, i) => (
             <button key={i} onClick={() => { if (it.run) it.run(); else { onNav(it.key); onClose(); } }} className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-white/[0.06] transition">
@@ -3789,7 +3798,7 @@ function Followups({ V }) {
               </div>
             </button>
           ))}
-          {open.length === 0 && <div className="px-5 py-8 text-center text-xs text-g-muted">✅ All caught up — every lead followed up.</div>}
+          {open.length === 0 && <div className="px-5 py-8 text-center text-xs text-g-muted">{tr("✅ All caught up — every lead followed up.")}</div>}
         </div>
       </Card>
       {sel && (
@@ -4443,50 +4452,63 @@ export default function Portal() {
       <div class="foot">Generated by Guileo · ${V.business.name} · This report reflects activity handled by your AI across your connected stack. Tip: print → Save as PDF.</div>
     </body></html>`;
     const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
-    window.open(url, "_blank");
-    setTimeout(() => URL.revokeObjectURL(url), 4000);
-    toast("Monthly report opened — print → Save as PDF ✓");
+    const win = window.open(url, "_blank");
+    if (win) {
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      toast(tr("Monthly report opened — print → Save as PDF ✓"));
+    } else {
+      // Popup blocked (common on mobile / without a direct gesture) — fall back to a download
+      // so the report never silently no-ops.
+      const a = document.createElement("a");
+      a.href = url; a.download = `${V.business.name.replace(/\s+/g, "-")}-guileo-report.html`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      toast(tr("Report downloaded — open it, then print → Save as PDF ✓"));
+    }
   };
-  const content = {
-    overview: <Overview V={V} onNav={setView} sections={sections} period={period} />,
-    deliveries: <Deliveries V={V} />,
-    inbox: <Inbox V={V} onNav={setView} />,
-    impact: <GuileoImpact V={V} />,
-    followups: <Followups V={V} />,
-    waitlist: <Waitlist V={V} />,
-    recurring: <Recurring V={V} />,
-    reputation: <Reputation V={V} onNav={setView} />,
-    loyalty: <Loyalty V={V} />,
-    payments: <Payments V={V} />,
-    team: <Team V={V} />,
-    locations: <Locations V={V} />,
-    operations: <Operations V={V} />,
-    schedule: <ScheduleScreen V={V} />,
-    catalog: <CatalogScreen V={V} />,
-    social: <SocialInbox V={V} />,
-    analytics: <AIAnalytics V={V} onNav={setView} sections={sections} />,
-    insights: <AIInsights V={V} onNav={setView} sections={sections} />,
-    integrations: <Integrations V={V} onNav={setView} lang={lang} />,
-    liveorders: <LiveOrders V={V} />,
-    kitchen: <Kitchen V={V} />,
-    menu: <MenuView V={V} />,
-    customers: <Customers V={V} onNav={setView} />,
-    campaigns: <Campaigns V={V} onNav={setView} />,
-    audiences: <Audiences V={V} onNav={setView} />,
-    calllogs: <CallLogs V={V} onNav={setView} />,
-    dialer: <Dialer />,
-    whatsapp: <Convos V={V} title="WhatsApp" />,
-    sms: <Convos V={V} title="SMS" />,
-    channels: <Channels />,
-    ads: <Ads />,
-    leads: <Leads />,
-    support: <Support />,
-    docs: <Docs />,
-    grow: <Grow />,
-    brain: <AIBrain V={V} />,
-    billing: <Billing V={V} />,
-    settings: <SettingsView V={V} />,
-  }[view] || <Overview V={V} onNav={setView} />;
+  // Lazy view registry: each entry is a thunk so ONLY the active view's element tree
+  // is built per render (was instantiating all ~40 components on every toast/lang/period change).
+  const views = {
+    overview: () => <Overview V={V} onNav={setView} sections={sections} period={period} />,
+    deliveries: () => <Deliveries V={V} />,
+    inbox: () => <Inbox V={V} onNav={setView} />,
+    impact: () => <GuileoImpact V={V} />,
+    followups: () => <Followups V={V} />,
+    waitlist: () => <Waitlist V={V} />,
+    recurring: () => <Recurring V={V} />,
+    reputation: () => <Reputation V={V} onNav={setView} />,
+    loyalty: () => <Loyalty V={V} />,
+    payments: () => <Payments V={V} />,
+    team: () => <Team V={V} />,
+    locations: () => <Locations V={V} />,
+    operations: () => <Operations V={V} />,
+    schedule: () => <ScheduleScreen V={V} />,
+    catalog: () => <CatalogScreen V={V} />,
+    social: () => <SocialInbox V={V} />,
+    analytics: () => <AIAnalytics V={V} onNav={setView} sections={sections} />,
+    insights: () => <AIInsights V={V} onNav={setView} sections={sections} />,
+    integrations: () => <Integrations V={V} onNav={setView} lang={lang} />,
+    liveorders: () => <LiveOrders V={V} />,
+    kitchen: () => <Kitchen V={V} />,
+    menu: () => <MenuView V={V} />,
+    customers: () => <Customers V={V} onNav={setView} />,
+    campaigns: () => <Campaigns V={V} onNav={setView} />,
+    audiences: () => <Audiences V={V} onNav={setView} />,
+    calllogs: () => <CallLogs V={V} onNav={setView} />,
+    dialer: () => <Dialer />,
+    whatsapp: () => <Convos V={V} title="WhatsApp" />,
+    sms: () => <Convos V={V} title="SMS" />,
+    channels: () => <Channels />,
+    ads: () => <Ads />,
+    leads: () => <Leads />,
+    support: () => <Support />,
+    docs: () => <Docs />,
+    grow: () => <Grow />,
+    brain: () => <AIBrain V={V} />,
+    billing: () => <Billing V={V} />,
+    settings: () => <SettingsView V={V} />,
+  };
+  const content = (views[view] || views.overview)();
 
   if (booting) return <div className="min-h-screen grid place-items-center text-g-muted text-sm">{tr("Loading your cockpit…")}</div>;
   if (!authed) return <div className="min-h-screen text-g-ink"><Login onEnter={() => setAuthed(true)} /></div>;
