@@ -533,7 +533,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
         : { ic, label, href: waLink(`Guileo — ${label}`) }
   );
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 stagger">
       <div>
         <h2 className="text-lg font-extrabold text-g-word">Dashboard Overview</h2>
         <p className="text-xs text-g-muted">Welcome back — here's what's happening at {V.business.name} today.</p>
@@ -596,7 +596,10 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Guileo profit impact · {periodLabel}</div>
-            <div className="text-4xl sm:text-5xl font-black text-g-word tracking-tight mt-1"><Count key={period} to={Math.round(V.impact.total * periodFactor)} prefix="$" /></div>
+            <div className="flex items-end gap-2.5 flex-wrap mt-1">
+              <div className="text-4xl sm:text-5xl font-black text-g-word tracking-tight"><Count key={period} to={Math.round(V.impact.total * periodFactor)} prefix="$" /></div>
+              {(() => { const last = Math.round(V.impact.total / 1.18); const up = Math.round(((V.impact.total - last) / last) * 100); return <span className="inline-flex items-center gap-1 mb-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full bg-g-green/15 text-g-green"><FaArrowTrendUp size={10} /> +{up}% vs last month</span>; })()}
+            </div>
             {period === "30 days" && <div className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-bold text-g-green"><FaArrowTrendUp size={10} /> On pace for ${Math.round(V.impact.total * 1.6).toLocaleString()} by month-end</div>}
             <div className="mt-2.5 flex flex-wrap gap-2">
               {V.impact.parts.map(([label, val]) => (
