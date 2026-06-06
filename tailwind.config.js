@@ -38,6 +38,8 @@ export default {
         shimmer: { "0%": { backgroundPosition: "-200% 0" }, "100%": { backgroundPosition: "200% 0" } },
         glowpulse: { "0%,100%": { opacity: "0.35" }, "50%": { opacity: "0.8" } },
         growx: { from: { transform: "scaleX(0)" }, to: { transform: "scaleX(1)" } },
+        rocketlaunch: { "0%": { transform: "translate(-50%,40px)", opacity: "0" }, "14%": { transform: "translate(-50%,14px)", opacity: "1" }, "82%": { transform: "translate(-50%,-150px)", opacity: "1" }, "100%": { transform: "translate(-50%,-182px)", opacity: "0" } },
+        flameflicker: { "0%,100%": { transform: "scaleY(1) scaleX(1)", opacity: "0.9" }, "30%": { transform: "scaleY(1.45) scaleX(0.9)", opacity: "1" }, "60%": { transform: "scaleY(0.82) scaleX(1.1)", opacity: "0.65" } },
       },
       animation: {
         marquee: "marquee 32s linear infinite",
@@ -49,6 +51,8 @@ export default {
         shimmer: "shimmer 3.5s linear infinite",
         glowpulse: "glowpulse 3s ease-in-out infinite",
         growx: "growx 4.2s linear forwards",
+        rocketlaunch: "rocketlaunch 4.4s ease-in infinite",
+        flameflicker: "flameflicker 0.4s ease-in-out infinite",
       },
     },
   },

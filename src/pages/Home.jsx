@@ -636,17 +636,15 @@ export default function Home() {
                 <motion.path d="M50 66 Q 46 42 50 26" fill="none" stroke="#D6C29A" strokeOpacity="0.45" strokeWidth="0.7" strokeDasharray="2 3"
                   initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 1.6 }} />
               </svg>
-              {/* ROCKET climbing + combustion (clean SVG art) */}
-              <motion.div className="absolute left-1/2 -translate-x-1/2" style={{ top: "30%" }}
-                animate={{ y: [6, -10, 6] }} transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}>
+              {/* ROCKET — actually LAUNCHES (pure-CSS keyframe so it always runs): climbs from the base (Performance) up past the fuel (Sales) to the moon (Growth), looping */}
+              <div className="absolute left-1/2 z-10 animate-rocketlaunch" style={{ top: "58%" }}>
                 <svg width="58" height="104" viewBox="0 0 64 110" fill="none" className="drop-shadow-[0_0_16px_rgba(214,194,154,0.45)]">
                   <defs>
                     <linearGradient id="rkBody" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#b9a884" /><stop offset="0.48" stopColor="#fbf6ea" /><stop offset="1" stopColor="#bda77e" /></linearGradient>
                     <linearGradient id="rkFlame" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fde68a" /><stop offset="0.45" stopColor="#fb923c" /><stop offset="1" stopColor="#ef4444" stopOpacity="0" /></linearGradient>
                   </defs>
-                  {/* flame */}
-                  <motion.path d="M23 64 Q32 110 41 64 Q32 80 23 64 Z" fill="url(#rkFlame)" style={{ transformOrigin: "32px 64px" }}
-                    animate={{ scaleY: [1, 1.55, 0.8, 1.35, 1], scaleX: [1, 0.9, 1.1, 0.95, 1], opacity: [0.9, 1, 0.65, 1, 0.9] }} transition={{ duration: 0.4, repeat: Infinity }} />
+                  {/* flame (CSS flicker) */}
+                  <path className="animate-flameflicker" style={{ transformOrigin: "32px 64px" }} d="M23 64 Q32 110 41 64 Q32 80 23 64 Z" fill="url(#rkFlame)" />
                   {/* fins */}
                   <path d="M21 48 L9 70 L21 62 Z" fill="#3E9468" /><path d="M43 48 L55 70 L43 62 Z" fill="#3E9468" />
                   {/* body */}
@@ -656,19 +654,19 @@ export default function Home() {
                   {/* highlight */}
                   <path d="M32 5 C 38 12 40 20 40 27 L33 24 Z" fill="#ffffff" opacity="0.28" />
                 </svg>
-              </motion.div>
+              </div>
               <span className="absolute left-1/2 -translate-x-1/2 text-[11px] font-black uppercase tracking-[0.16em] text-g-light whitespace-nowrap" style={{ top: "64%" }}>💰 Sales · the fuel</span>
               {/* LAUNCHPAD = Performance (the base) */}
               <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-center">
                 <div className="h-1.5 w-32 rounded-full bg-gradient-to-r from-transparent via-g-green/70 to-transparent blur-[1px]" />
                 <div className="h-3 w-20 rounded-b-md bg-white/[0.06] border-x border-b border-white/15" />
-                <span className="mt-1 text-[11px] font-black uppercase tracking-[0.16em] text-g-green whitespace-nowrap">📈 Performance · the base</span>
+                <span className="mt-1 text-[11px] font-black uppercase tracking-[0.16em] text-g-green whitespace-nowrap">⚡ Performance · the base</span>
               </div>
             </div>
 
             {/* the sequence beneath — Performance → Sales → Growth (like the method) */}
             <div className="relative mt-10 flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
-              {[["📈","Performance"],["💰","Sales"],["🚀","Growth"]].map(([ic,lb],i)=>{ const on=engineActive%3===i; return (
+              {[["⚡","Performance"],["💰","Sales"],["🚀","Growth"]].map(([ic,lb],i)=>{ const on=engineActive%3===i; return (
                 <div key={lb} className="flex items-center gap-2 sm:gap-3">
                   <div className={`flex items-center gap-2 rounded-full border px-3.5 sm:px-5 py-2.5 transition-all duration-500 ${on?"border-g-gold/60 bg-g-gold/15 scale-105 shadow-gold":"border-white/12 bg-white/[0.04]"}`}>
                     <span className="text-lg">{ic}</span><span className="text-sm font-extrabold text-g-word whitespace-nowrap">{lb}</span>
