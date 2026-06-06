@@ -199,6 +199,9 @@ const DIAL_CODES = [["🇺🇸","+1"],["🇧🇷","+55"],["🇵🇹","+351"],["�
 
 // What Gui actually DOES with each integration category (keyed by the English group name) — so the
 // tool chips aren't just logos: the visitor sees the job Gui does inside them.
+// The method as a dated journey: Day 01 → built & live → sales/growth compound.
+const STEP_DAYS = [["Day 01", "we study your business"], ["Days 2–7", "built & live for you"], ["Week 2 →", "sales & profit compound"]];
+
 const INTEG_DOES = {
   "Ads & Growth": "Gui launches & optimizes your ad campaigns",
   "E-commerce": "Gui recovers carts & sells right in chat",
@@ -633,13 +636,28 @@ export default function Home() {
                 <motion.path d="M50 66 Q 46 42 50 26" fill="none" stroke="#D6C29A" strokeOpacity="0.45" strokeWidth="0.7" strokeDasharray="2 3"
                   initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 1.6 }} />
               </svg>
-              {/* ROCKET climbing + combustion */}
-              <motion.div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center" style={{ top: "38%" }}
-                animate={{ y: [5, -9, 5] }} transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}>
-                <div className="text-5xl drop-shadow-[0_0_12px_rgba(214,194,154,0.5)]">🚀</div>
-                <motion.div className="text-2xl -mt-1 origin-top" animate={{ scaleY: [1, 1.45, 0.9, 1.35, 1], opacity: [0.85, 1, 0.7, 1, 0.85] }} transition={{ duration: 0.45, repeat: Infinity }}>🔥</motion.div>
+              {/* ROCKET climbing + combustion (clean SVG art) */}
+              <motion.div className="absolute left-1/2 -translate-x-1/2" style={{ top: "30%" }}
+                animate={{ y: [6, -10, 6] }} transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}>
+                <svg width="58" height="104" viewBox="0 0 64 110" fill="none" className="drop-shadow-[0_0_16px_rgba(214,194,154,0.45)]">
+                  <defs>
+                    <linearGradient id="rkBody" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#b9a884" /><stop offset="0.48" stopColor="#fbf6ea" /><stop offset="1" stopColor="#bda77e" /></linearGradient>
+                    <linearGradient id="rkFlame" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fde68a" /><stop offset="0.45" stopColor="#fb923c" /><stop offset="1" stopColor="#ef4444" stopOpacity="0" /></linearGradient>
+                  </defs>
+                  {/* flame */}
+                  <motion.path d="M23 64 Q32 110 41 64 Q32 80 23 64 Z" fill="url(#rkFlame)" style={{ transformOrigin: "32px 64px" }}
+                    animate={{ scaleY: [1, 1.55, 0.8, 1.35, 1], scaleX: [1, 0.9, 1.1, 0.95, 1], opacity: [0.9, 1, 0.65, 1, 0.9] }} transition={{ duration: 0.4, repeat: Infinity }} />
+                  {/* fins */}
+                  <path d="M21 48 L9 70 L21 62 Z" fill="#3E9468" /><path d="M43 48 L55 70 L43 62 Z" fill="#3E9468" />
+                  {/* body */}
+                  <path d="M32 3 C 45 17 47 42 44 63 L20 63 C 17 42 19 17 32 3 Z" fill="url(#rkBody)" stroke="#9c895f" strokeWidth="0.8" />
+                  {/* window */}
+                  <circle cx="32" cy="30" r="7.5" fill="#16201b" stroke="#3E9468" strokeWidth="2.2" /><circle cx="32" cy="30" r="3" fill="#7FC9A0" />
+                  {/* highlight */}
+                  <path d="M32 5 C 38 12 40 20 40 27 L33 24 Z" fill="#ffffff" opacity="0.28" />
+                </svg>
               </motion.div>
-              <span className="absolute left-1/2 -translate-x-1/2 text-[11px] font-black uppercase tracking-[0.16em] text-g-light whitespace-nowrap" style={{ top: "63%" }}>💰 Sales · the fuel</span>
+              <span className="absolute left-1/2 -translate-x-1/2 text-[11px] font-black uppercase tracking-[0.16em] text-g-light whitespace-nowrap" style={{ top: "64%" }}>💰 Sales · the fuel</span>
               {/* LAUNCHPAD = Performance (the base) */}
               <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-center">
                 <div className="h-1.5 w-32 rounded-full bg-gradient-to-r from-transparent via-g-green/70 to-transparent blur-[1px]" />
@@ -673,25 +691,35 @@ export default function Home() {
           <h2 className="h2">{t.steps.h2}</h2>
           {t.steps.sub && <p className="mt-3 text-g-muted">{t.steps.sub}</p>}
         </Reveal>
-        {/* growth scene: seed → sprout → tree, with a growing connector */}
+        {/* the journey — Day 01 → live → first sale → compounding growth */}
         <div className="relative">
-          <svg className="hidden md:block absolute top-12 left-0 w-full h-2 -z-0" viewBox="0 0 1000 8" preserveAspectRatio="none" aria-hidden>
-            <motion.line x1="120" y1="4" x2="880" y2="4" stroke="#3E9468" strokeWidth="2" strokeDasharray="4 6" strokeLinecap="round"
-              initial={{ pathLength:0 }} whileInView={{ pathLength:1 }} viewport={{ once:true }} transition={{ duration:1.8, ease:"easeInOut" }} />
-          </svg>
+          {/* animated rail with a traveling spark (the process moving forward) */}
+          <div className="hidden md:block absolute top-[5.4rem] left-[14%] right-[14%] -z-0">
+            <div className="relative h-0.5 w-full rounded-full bg-gradient-to-r from-g-green/40 via-g-gold/50 to-g-gold/80">
+              <motion.span className="absolute -top-[5px] h-3 w-3 rounded-full bg-g-gold shadow-[0_0_14px_#D6C29A]"
+                animate={{ left: ["-1%", "100%"] }} transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }} />
+            </div>
+          </div>
           <Stagger className="grid md:grid-cols-3 gap-6 relative" gap={0.2}>
-            {t.steps.items.map(([i,tt,d],idx)=>(
+            {t.steps.items.map(([i,tt,d],idx)=>{ const day = STEP_DAYS[idx] || ["", ""]; return (
               <Item key={idx} variant="up"><div className="card group text-center relative overflow-hidden">
                 <div className={`absolute -top-12 left-1/2 -translate-x-1/2 h-32 w-32 rounded-full blur-3xl pointer-events-none animate-aurora ${idx===2?"bg-g-gold/15":"bg-g-green/12"}`} style={{ animationDelay:`${-idx*3}s` }} />
                 <div className="relative">
-                  <div className="text-6xl mb-3 animate-floatslow transition-transform duration-300 group-hover:scale-110" style={{ animationDelay:`${-idx}s` }}>{i}</div>
-                  <div className="grid place-items-center h-9 w-9 mx-auto rounded-full border-2 border-g-green/50 bg-g-green/15 text-g-light font-extrabold mb-3 shadow-glow transition-transform duration-300 group-hover:scale-110">{idx+1}</div>
+                  <div className="text-6xl mb-2 animate-floatslow transition-transform duration-300 group-hover:scale-110" style={{ animationDelay:`${-idx}s` }}>{i}</div>
+                  <div className="inline-flex items-center rounded-full border border-g-gold/40 bg-g-gold/10 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-g-gold mb-2">{day[0]}</div>
+                  <div className="grid place-items-center h-8 w-8 mx-auto rounded-full border-2 border-g-green/50 bg-g-green/15 text-g-light font-extrabold mb-2 shadow-glow transition-transform duration-300 group-hover:scale-110">{idx+1}</div>
                   <h3 className="font-extrabold text-g-word text-lg">{tt}</h3>
                   <p className="mt-2 text-sm text-g-muted leading-relaxed">{d}</p>
+                  <div className="mt-3 text-[11px] font-bold text-g-green">{day[1]}</div>
                 </div>
               </div></Item>
-            ))}
+            ); })}
           </Stagger>
+          {/* endpoint — the payoff the journey leads to */}
+          <Reveal className="mt-8 flex flex-wrap items-center justify-center gap-2 text-sm font-extrabold">
+            <span className="text-g-muted">…and from there:</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-g-gold/45 bg-g-gold/10 px-4 py-2 text-g-gold shadow-gold">📈 Profit &amp; performance, compounding</span>
+          </Reveal>
         </div>
       </section>
 
@@ -755,66 +783,13 @@ export default function Home() {
           </Stagger>
           <p className="text-center text-[11px] text-g-muted mt-4 max-w-xl mx-auto">We build to these standards from day one — your stack, your data, your customers, fully governed.</p>
 
-          <div className="grid md:grid-cols-2 gap-6 mt-10 items-stretch">
-            {/* Real humans — featured with illustration */}
-            <Reveal variant="left">
-              <div className="card group relative overflow-hidden h-full flex flex-col sm:flex-row items-center gap-5">
-                <div className="absolute -bottom-16 -left-10 h-48 w-48 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
-                <HumanShield className="relative h-32 w-32 shrink-0 drop-shadow-[0_0_24px_rgba(79,176,124,0.25)] transition-transform duration-500 group-hover:scale-105" />
-                <div className="relative text-center sm:text-left">
-                  <h3 className="font-extrabold text-g-word text-lg">{t.proof.ally_t}</h3>
-                  <p className="mt-2 text-sm text-g-muted leading-relaxed">{t.proof.ally_d}</p>
-                </div>
-              </div>
-            </Reveal>
-            {/* Security & consent */}
-            <Reveal variant="right">
-              <div className="card group relative overflow-hidden h-full">
-                <div className="absolute -top-16 -right-10 h-48 w-48 rounded-full bg-g-gold/12 blur-3xl pointer-events-none animate-aurora" style={{ animationDelay:"-7s" }} />
-                <div className="relative">
-                  <span className="grid place-items-center h-14 w-14 rounded-2xl bg-g-green/10 border border-g-green/25 text-2xl mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">🔒</span>
-                  <h3 className="font-extrabold text-g-word text-lg">{t.proof.sec_t}</h3>
-                  <p className="mt-2 text-sm text-g-muted leading-relaxed">{t.proof.sec_d}</p>
-                  <div className="mt-4 flex flex-wrap gap-1.5">
-                    {COMPLIANCE.map(x=><span key={x} className="rounded-md bg-white/[0.04] border border-white/10 px-2 py-1 text-[11px] font-bold text-g-light">{x}</span>)}
-                  </div>
-                </div>
-              </div>
-            </Reveal>
+          {/* condensed to two tiny lines — the seals above already carry the trust visually */}
+          <div className="mt-8 flex flex-col items-center gap-2 text-center">
+            <p className="text-[11px] text-g-muted max-w-2xl leading-relaxed">
+              <span className="text-g-light font-semibold">🤝 A real founder builds & runs it with you</span> — not a bot, not a ticket queue. <span className="text-g-light font-semibold">🔒 Multi-tenant isolation, encryption in transit & at rest, 3-tier consent</span> — every Gui action logged & reviewable. Your data stays yours.
+            </p>
           </div>
         </div>
-      </section>
-
-      {/* COMPARISON — the obvious choice */}
-      <section className="wrap py-14">
-        <Reveal className="text-center max-w-2xl mx-auto mb-10">
-          <span className="eyebrow mb-3">{t.more.comp.eyebrow}</span>
-          <h2 className="h2">{t.more.comp.h2}</h2>
-          <p className="mt-3 text-g-muted">{t.more.comp.sub}</p>
-        </Reveal>
-        <Reveal>
-          <div className="overflow-x-auto rounded-xl3 border border-white/15 bg-gradient-to-br from-white/[0.10] to-white/[0.05] backdrop-blur-xl shadow-lift">
-            <table className="w-full text-sm min-w-[640px]">
-              <thead>
-                <tr>
-                  {t.more.comp.cols.map((c, i) => (
-                    <th key={i} className={`p-4 text-left font-extrabold ${i === 1 ? "bg-g-green/15 border-b-2 border-g-green/40 text-g-word rounded-t-xl relative after:absolute after:inset-0 after:rounded-t-xl after:shadow-[inset_0_0_30px_rgba(62,148,104,0.18)] after:animate-glowpulse after:pointer-events-none" : "text-g-muted"}`}>{c}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {t.more.comp.rows.map((r, i) => (
-                  <tr key={i} className="border-t border-g-line">
-                    {r.map((cell, j) => (
-                      <td key={j} className={`p-4 ${j === 0 ? "font-semibold text-g-word" : j === 1 ? "bg-g-green/[0.06] text-center font-bold text-g-light" : "text-center text-g-muted"}`}>{cell}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Reveal>
-        <div className="text-center mt-8"><Magnetic><a href="#contact" className="btn">{t.more.comp.cta}</a></Magnetic></div>
       </section>
 
       {/* Compact "AI calls you" bar — decision moment before pricing */}
@@ -848,6 +823,39 @@ export default function Home() {
             <span key={tx} className="inline-flex items-center gap-1.5 rounded-full border border-g-green/25 bg-g-green/[0.06] px-4 py-2 font-bold text-g-light">{ic} {tx}</span>
           ))}
         </div>
+      </section>
+
+      {/* COMPARISON — moved below pricing (decide on price, then see why Guileo wins) */}
+      <section className="wrap py-14">
+        <Reveal className="text-center max-w-2xl mx-auto mb-3">
+          <span className="eyebrow mb-3">{t.more.comp.eyebrow}</span>
+          <h2 className="h2">{t.more.comp.h2}</h2>
+          <p className="mt-3 text-g-muted">{t.more.comp.sub}</p>
+        </Reveal>
+        <p className="text-center text-[11px] text-g-muted mb-7">✅ = does it well · ⚠️ = partly · ❌ = not at all — <span className="text-g-light">scan the green column, that's Guileo</span></p>
+        <Reveal>
+          <div className="overflow-x-auto rounded-xl3 border border-white/15 bg-gradient-to-br from-white/[0.10] to-white/[0.05] backdrop-blur-xl shadow-lift">
+            <table className="w-full text-sm min-w-[640px]">
+              <thead>
+                <tr>
+                  {t.more.comp.cols.map((c, i) => (
+                    <th key={i} className={`p-4 text-left font-extrabold ${i === 1 ? "bg-g-green/15 border-b-2 border-g-green/40 text-g-word rounded-t-xl relative after:absolute after:inset-0 after:rounded-t-xl after:shadow-[inset_0_0_30px_rgba(62,148,104,0.18)] after:animate-glowpulse after:pointer-events-none" : "text-g-muted"}`}>{c}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {t.more.comp.rows.map((r, i) => (
+                  <tr key={i} className="border-t border-g-line">
+                    {r.map((cell, j) => (
+                      <td key={j} className={`p-4 ${j === 0 ? "font-semibold text-g-word" : j === 1 ? "bg-g-green/[0.06] text-center font-bold text-g-light" : "text-center text-g-muted"}`}>{cell}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Reveal>
+        <div className="text-center mt-8"><Magnetic><a href="#contact" className="btn">{t.more.comp.cta}</a></Magnetic></div>
       </section>
 
       {/* ACADEMY */}

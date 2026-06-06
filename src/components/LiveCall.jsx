@@ -45,10 +45,7 @@ export default function LiveCall() {
   const field = "rounded-full border border-white/20 bg-black/25 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70 transition w-full";
 
   return (
-    <div className="rounded-xl3 bg-gradient-to-br from-white/[0.16] via-white/[0.08] to-g-green/[0.08] backdrop-blur-xl border border-white/25 shadow-lift p-6 sm:p-8 max-w-3xl mx-auto">
-      <div className="grid lg:grid-cols-2 gap-6 lg:gap-9 lg:items-center">
-        {/* LEFT — the pitch + why */}
-        <div>
+    <div className="rounded-xl3 bg-gradient-to-br from-white/[0.16] via-white/[0.08] to-g-green/[0.08] backdrop-blur-xl border border-white/25 shadow-lift p-6 sm:p-8 max-w-xl mx-auto">
       <div className="flex items-start gap-4">
         <div className="relative shrink-0">
           <div className="grid place-items-center h-14 w-14 rounded-full bg-gradient-to-br from-g-green/25 to-g-gold/20 border border-white/15 text-3xl shadow-soft">🧑‍💼</div>
@@ -67,18 +64,15 @@ export default function LiveCall() {
       <p className="mt-3 text-sm text-g-muted">Drop your number and a line about your business. Gui rings your phone in seconds — and shows you exactly how it'll answer, qualify and sell for <span className="text-g-word font-semibold">you</span>. This is the product, working live.</p>
 
       {/* value strip — what happens on the call (boosts activation) */}
-      <div className="mt-5 grid gap-2">
-        {[["📞", "Rings your phone in seconds"], ["🤝", "Talks like your best sales rep"], ["📅", "Books & quotes you live"]].map(([ic, tx]) => (
-          <div key={tx} className="flex items-center gap-2.5 rounded-xl2 border border-white/10 bg-white/[0.04] px-3 py-2">
-            <span className="text-base leading-none">{ic}</span>
-            <span className="text-xs font-semibold text-g-word leading-tight">{tx}</span>
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        {[["📞", "Rings in seconds"], ["🤝", "Talks like your best rep"], ["📅", "Books & quotes live"]].map(([ic, tx]) => (
+          <div key={tx} className="rounded-xl2 border border-white/10 bg-white/[0.04] px-2 py-2.5 text-center">
+            <div className="text-lg leading-none">{ic}</div>
+            <div className="mt-1 text-[11px] font-semibold text-g-word leading-tight">{tx}</div>
           </div>
         ))}
       </div>
-        </div>
 
-        {/* RIGHT — the action (form / states) */}
-        <div>
       {state === "done" ? (
         <div className="mt-5 rounded-xl2 bg-g-green/10 p-4 text-center">
           <div className="text-2xl">📞</div>
@@ -125,8 +119,6 @@ export default function LiveCall() {
           <p className="text-[11px] text-g-muted text-center">No spam. One call to prove it works. Opt out anytime.</p>
         </form>
       )}
-        </div>
-      </div>
     </div>
   );
 }
