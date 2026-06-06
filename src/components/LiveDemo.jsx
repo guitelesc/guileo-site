@@ -1,9 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaCalendarCheck, FaCreditCard, FaStar, FaInstagram,
   FaPhoneVolume, FaWhatsapp, FaStripe, FaGoogle, FaCircleCheck,
-  FaArrowsRotate, FaClockRotateLeft, FaMicrophone,
+  FaArrowsRotate, FaClockRotateLeft, FaMicrophone, FaBullhorn, FaFileLines,
 } from "react-icons/fa6";
 import logo from "../assets/guileo-mark.png";
 
@@ -40,6 +40,12 @@ const ACTIONS = [
   { key: "noshow", icon: FaClockRotateLeft, color: "#EF8E3E", chip: "Recover a no-show", tool: "WhatsApp",
     say: (n) => `${n} missed their slot — I rebooked them and filled the gap from your waitlist ✓`,
     row: (n) => ({ ic: "⏰", t: `No-show recovered · ${n}`, s: "Rebooked + slot refilled", color: "#EF8E3E" }), rev: 0, kpi: "bookings" },
+  { key: "transcribe", icon: FaFileLines, color: "#A78BFA", chip: "Transcribe a call", tool: "WhatsApp",
+    say: (n) => `Transcribed ${n}'s call, summarized it and saved the action items to their profile ✓`,
+    row: (n) => ({ ic: "📝", t: `Call transcribed · ${n}`, s: "Summary + action items saved", color: "#A78BFA" }), rev: 0, kpi: "tasks" },
+  { key: "campaign", icon: FaBullhorn, color: "#F59E0B", chip: "Launch a campaign", tool: "Instagram",
+    say: () => `Launched a win-back campaign to 240 lapsed customers across WhatsApp + email ✓`,
+    row: () => ({ ic: "📣", t: "Campaign launched", s: "240 lapsed customers · WhatsApp + email", color: "#F59E0B" }), rev: 0, kpi: "tasks" },
 ];
 
 const STACK = [
@@ -51,7 +57,7 @@ const STACK = [
 
 export default function LiveDemo() {
   const [feed, setFeed] = useState([
-    { ic: "🪄", t: "Gui is online", s: "Try it — tap an action below", color: "#3E9468", _id: 0 },
+    { ic: "🪄", t: "Gui is online", s: "Working live — watch the feed…", color: "#3E9468", _id: 0 },
   ]);
   const [kpis, setKpis] = useState({ bookings: 0, revenue: 0, reviews: 0, posts: 0 });
   const [busy, setBusy] = useState(null);     // action key currently "working"
@@ -96,6 +102,17 @@ export default function LiveDemo() {
     setTimeout(() => { setBusy(null); setHot(null); }, 650);
   };
 
+  // AUTO-PLAY: Gui runs its rounds on its own — the visitor WATCHES it work (transcribing calls,
+  // launching campaigns, booking, collecting…), no tapping required. Tapping still works to try one.
+  const autoIdx = useRef(0);
+  useEffect(() => {
+    const tick = () => { run(ACTIONS[autoIdx.current % ACTIONS.length]); autoIdx.current++; };
+    const kick = setTimeout(tick, 1100);   // start moving almost immediately
+    const id = setInterval(tick, 3200);
+    return () => { clearTimeout(kick); clearInterval(id); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className={`relative rounded-2xl border bg-white/[0.04] backdrop-blur-xl p-4 sm:p-6 shadow-2xl transition-all duration-500 ${used ? "border-white/10" : "border-g-green/45 shadow-[0_0_44px_-8px_rgba(62,148,104,0.5)]"}`}>
       {!used && <span className="pointer-events-none absolute -inset-px rounded-2xl ring-1 ring-g-green/40 animate-pulse" />}
@@ -104,7 +121,7 @@ export default function LiveDemo() {
         <span className="grid place-items-center h-11 w-11 rounded-full bg-g-green/10 ring-1 ring-g-green/30 overflow-hidden shrink-0"><img src={logo} alt="Guileo" className="h-9 w-9 object-contain" /></span>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-extrabold text-g-word flex items-center gap-2">Gui <span className="text-[9px] font-black uppercase text-g-green">· AI assistant</span> <span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" /></div>
-          <div className="text-[11px] text-g-muted">{used ? "Not a video — actually click and use it." : "👋 Test your assistant — tap any action below."}</div>
+          <div className="text-[11px] text-g-muted">Working live across your stack — watch it, or tap to try one.</div>
         </div>
         {/* connected stack */}
         <div className="hidden sm:flex items-center gap-1.5">
@@ -128,7 +145,7 @@ export default function LiveDemo() {
         {/* actions */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <div className="text-[10px] font-black uppercase tracking-wide text-g-gold inline-flex items-center gap-1.5">Ask Gui to… {!used && <span className="text-g-green normal-case font-bold animate-pulse">— tap one 👇</span>}</div>
+            <div className="text-[10px] font-black uppercase tracking-wide text-g-gold inline-flex items-center gap-1.5">Gui is doing <span className="text-g-green normal-case font-bold">· or tap to try one</span></div>
             <button onClick={dictate} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold transition ${listening ? "border-red-400 bg-red-500/15 text-red-400 animate-pulse" : "border-g-green/40 bg-g-green/10 text-g-green hover:bg-g-green/20"}`}>
               <FaMicrophone size={10} /> {listening ? "Listening…" : "Say it"}
             </button>

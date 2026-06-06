@@ -253,7 +253,7 @@ function HeroCallForm({ t }) {
   );
   const inputCls = "rounded-full border border-white/20 bg-black/25 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted/80 outline-none focus:border-g-green/70 transition";
   return (
-    <form onSubmit={submit} onFocusCapture={() => setOpen(true)} className="mt-6 max-w-md grid gap-2">
+    <form onSubmit={submit} onFocusCapture={() => setOpen(true)} className="mt-4 max-w-md grid gap-2">
       <div className="flex gap-2">
         <select value={cc} onChange={(e) => setCc(e.target.value)} aria-label={C.phCountry || "Country code"} className={`${inputCls} pr-2`}>
           {DIAL_CODES.map(([flag, code], i) => <option key={code + i} value={code} className="bg-g-deep text-g-word">{flag} {code}</option>)}
@@ -325,7 +325,7 @@ export default function Home() {
                 <span className="block ml-[0.6em] sm:ml-[1.1em] bg-gradient-to-r from-g-green via-g-gold to-g-green bg-[length:200%_auto] bg-clip-text text-transparent animate-shimmer drop-shadow-[0_0_45px_rgba(214,194,154,0.45)]">{t.hero.h1b}</span>
                 <span className="block ml-[1.2em] sm:ml-[2.2em] text-g-word">{t.hero.h1c}</span>
               </h1>,
-              <div key="method" className="mt-5 flex flex-col gap-2">
+              <div key="method" className="mt-4 flex flex-col gap-2">
                 <div className="flex items-center gap-2 text-sm sm:text-base font-black uppercase tracking-[0.16em]">
                   {(t.hero.method || ["Performance","Sales","Growth"]).map((m,mi,arr)=>{
                     // combustion: heat rises across the three stages — cool emerald → champagne → ignited orange/red
@@ -340,7 +340,7 @@ export default function Home() {
                 </div>
               </div>,
               <HeroCallForm key="call" t={t} />,
-              t.hero.proof ? <p key="proof" className="mt-5 text-xs font-medium text-g-muted/90 max-w-xl leading-relaxed">{t.hero.proof}</p> : null,
+              t.hero.proof ? <p key="proof" className="mt-3 text-[11px] font-medium text-g-muted/80 max-w-md leading-relaxed">{t.hero.proof}</p> : null,
             ].map((el,i)=>(
               <motion.div key={i} variants={{ hide:{ opacity:0, y:30, filter:"blur(8px)" }, show:{ opacity:1, y:0, filter:"blur(0px)", transition:{ type:"spring", stiffness:80, damping:18, mass:0.8 } } }}>{el}</motion.div>
             ))}
