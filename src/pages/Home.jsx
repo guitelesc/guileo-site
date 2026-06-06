@@ -176,7 +176,7 @@ function Pillars({ t }) {
 
 // Small rotating verb under the headline — cycles what Gui DOES, with a fixed "24/7" anchor.
 // The 24/7 stays put (it's the promise); only the action swaps, so the eye reads "Gui ___ · 24/7".
-function RotatingAction({ words, suffix }) {
+function RotatingAction({ words, suffix, wordCls = "font-bold text-g-light", sufCls = "font-black text-g-green" }) {
   const [i, setI] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setI((n) => (n + 1) % words.length), 2100);
@@ -186,10 +186,10 @@ function RotatingAction({ words, suffix }) {
     <span className="inline-flex items-baseline gap-1.5">
       <span className="relative inline-grid">
         {/* sizer keeps width = longest word so the 24/7 never jumps */}
-        <span className="col-start-1 row-start-1 invisible font-bold" aria-hidden>{words.reduce((a, b) => (b.length > a.length ? b : a), "")}</span>
-        <motion.span key={i} initial={{ opacity: 0, y: 9 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 320, damping: 26 }} className="col-start-1 row-start-1 font-bold text-g-light">{words[i]}</motion.span>
+        <span className={`col-start-1 row-start-1 invisible ${wordCls}`} aria-hidden>{words.reduce((a, b) => (b.length > a.length ? b : a), "")}</span>
+        <motion.span key={i} initial={{ opacity: 0, y: 9 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 320, damping: 26 }} className={`col-start-1 row-start-1 ${wordCls}`}>{words[i]}</motion.span>
       </span>
-      <span className="font-black text-g-green">· {suffix}</span>
+      <span className={sufCls}>· {suffix}</span>
     </span>
   );
 }
@@ -271,12 +271,17 @@ function HeroCallForm({ t }) {
       </div>
       <Magnetic>
         <button disabled={st === "calling"} aria-label={C.callBtn || "Call me now — hear Gui live"}
-          className="group relative mt-0.5 inline-flex w-auto self-start items-center gap-2 overflow-hidden rounded-full border border-white/40 px-4 py-2 text-sm font-extrabold text-g-deep shadow-[0_3px_14px_rgba(0,0,0,0.45)] transition-transform hover:scale-[1.03] active:scale-95 disabled:opacity-70"
-          style={{ background: "linear-gradient(180deg,#fbf6ea 0%,#ecdfc2 42%,#cdb98c 52%,#e6d8b6 70%,#f6eed9 100%)" }}>
-          {/* metallic shine sweep */}
-          <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/70 to-transparent transition-transform duration-[900ms] group-hover:translate-x-full" />
-          <img src={mark} alt="" className="relative h-4 w-4 object-contain drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]" />
-          <span className="relative">{st === "calling" ? (C.callingBtn || "Calling you…") : (C.callBtn || "Call me now — hear Gui live")}</span>
+          className="group relative mt-0.5 inline-flex w-auto self-start items-center gap-2 overflow-hidden rounded-full border border-white/50 px-4 py-2 text-sm shadow-[0_3px_14px_rgba(0,0,0,0.4)] transition-transform hover:scale-[1.03] active:scale-95 disabled:opacity-70"
+          style={{ background: "linear-gradient(180deg,#fbfbfd 0%,#dfe3e8 42%,#b7bfc8 52%,#dde1e6 70%,#f5f7f9 100%)" }}>
+          {/* silver shine sweep */}
+          <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/80 to-transparent transition-transform duration-[900ms] group-hover:translate-x-full" />
+          <img src={mark} alt="" className="relative h-4 w-4 object-contain drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
+          {st === "calling"
+            ? <span className="relative font-extrabold text-g-deep">{C.callingBtn || "Calling you…"}</span>
+            : <span className="relative inline-flex items-baseline gap-1.5 text-g-deep">
+                <span className="font-extrabold">Gui</span>
+                <RotatingAction words={C.rotors || ["answers your calls","books","quotes","sells for you","follows up"]} suffix="24/7" wordCls="font-bold text-g-deep" sufCls="font-black text-emerald-700" />
+              </span>}
         </button>
       </Magnetic>
       <p className="text-[11px] text-g-muted/90">{C.callsmall || "Enter your number and Gui calls you — hear it live, right now."}</p>
@@ -332,11 +337,6 @@ export default function Home() {
                     </span>
                     );
                   })}
-                </div>
-                <div className="text-base sm:text-lg text-g-muted font-semibold inline-flex items-center gap-2">
-                  <img src={mark} alt="" className="h-5 w-5 object-contain drop-shadow-[0_0_6px_rgba(62,148,104,0.5)]" />
-                  <span className="text-g-word font-extrabold">Gui</span>
-                  <RotatingAction words={t.hero.rotors || ["answers your calls","books","quotes","sells","follows up"]} suffix="24/7" />
                 </div>
               </div>,
               <HeroCallForm key="call" t={t} />,
