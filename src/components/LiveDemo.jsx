@@ -8,44 +8,49 @@ import {
 import logo from "../assets/guileo-mark.png";
 
 /* ───────────────────────────────────────────────────────────────
-   LiveDemo — a REAL, functional mini Growth Cockpit on the landing.
-   Visitors click and actually use the features themselves: ask Guileo
-   to do something, watch the AI "work" across the connected stack, and
-   see the result land in a live feed while the counters tick up.
-   Fully client-side, self-contained — does not touch any other section.
+   LiveDemo — a clear, self-running showcase of Gui working.
+   One task at a time: Gui PICKS IT UP → THINKS (reads your stack) →
+   DOES IT → it lands in the live feed and the counters tick up.
+   You watch it work; you can also tap a task to try one yourself.
+   Fully client-side, self-contained.
    ─────────────────────────────────────────────────────────────── */
 
 const NAMES = ["Maria S.", "James T.", "Aisha K.", "Diego P.", "Lena M.", "Noah R.", "Priya V.", "Omar H."];
 
-// Each action: chip label/icon + how Guileo narrates it + the feed row it creates + which stack tool lights up
+// Each action: chip + what Gui "thinks" while doing it + how it narrates the result + the feed row + which tool lights up
 const ACTIONS = [
-  { key: "book", icon: FaCalendarCheck, color: "#D6C29A", chip: "Take a booking", tool: "WhatsApp",
-    say: (n) => `Booked ${n} for tomorrow 3:00 PM and sent a WhatsApp confirmation ✓`,
-    row: (n) => ({ ic: "📅", t: `Booking · ${n}`, s: "Tomorrow, 3:00 PM", color: "#D6C29A" }), rev: 0, kpi: "bookings" },
+  { key: "book", icon: FaCalendarCheck, color: "#D6C29A", chip: "Book an appointment", tool: "WhatsApp",
+    think: "Checking your calendar for the best open slot…",
+    say: (n) => `Booked ${n} for tomorrow 3:00 PM and sent a WhatsApp confirmation`,
+    row: (n) => ({ ic: "📅", t: `Booking · ${n}`, s: "Tomorrow, 3:00 PM" }), rev: 0, kpi: "bookings" },
   { key: "invoice", icon: FaCreditCard, color: "#3E9468", chip: "Send an invoice", tool: "Stripe",
-    say: (n) => `Sent ${n} a Stripe payment link for $${120} — I'll chase it until it's paid ✓`,
-    row: (n) => ({ ic: "💳", t: `Invoice · ${n}`, s: "$120 · payment link sent", color: "#3E9468" }), rev: 120, kpi: "revenue" },
+    think: "Generating a secure Stripe payment link…",
+    say: (n) => `Sent ${n} a Stripe payment link for $120 — I'll chase it until it's paid`,
+    row: (n) => ({ ic: "💳", t: `Invoice · ${n}`, s: "$120 · payment link sent" }), rev: 120, kpi: "revenue" },
   { key: "review", icon: FaStar, color: "#D6C29A", chip: "Request a review", tool: "Google",
-    say: (n) => `Asked ${n} for a Google review at the perfect moment ✓`,
-    row: (n) => ({ ic: "⭐", t: `Review requested · ${n}`, s: "via Google", color: "#D6C29A" }), rev: 0, kpi: "reviews" },
-  { key: "post", icon: FaInstagram, color: "#E1306C", chip: "Post to Instagram", tool: "Instagram",
-    say: () => `Scheduled an on-brand Instagram post for your audience's peak hour ✓`,
-    row: () => ({ ic: "📸", t: "Instagram post scheduled", s: "Peak hour · auto-optimized", color: "#E1306C" }), rev: 0, kpi: "posts" },
+    think: "Picking the perfect moment to ask…",
+    say: (n) => `Asked ${n} for a Google review right after a happy visit`,
+    row: (n) => ({ ic: "⭐", t: `Review requested · ${n}`, s: "via Google" }), rev: 0, kpi: "reviews" },
   { key: "call", icon: FaPhoneVolume, color: "#38BDF8", chip: "Answer a call", tool: "WhatsApp",
-    say: (n) => `Answered ${n}'s call, qualified them and booked a callback ✓`,
-    row: (n) => ({ ic: "📞", t: `Call handled · ${n}`, s: "Qualified + callback booked", color: "#38BDF8" }), rev: 0, kpi: "bookings" },
+    think: "Listening, understanding and qualifying the caller…",
+    say: (n) => `Answered ${n}'s call, qualified them and booked a callback`,
+    row: (n) => ({ ic: "📞", t: `Call handled · ${n}`, s: "Qualified + callback booked" }), rev: 0, kpi: "bookings" },
   { key: "winback", icon: FaArrowsRotate, color: "#3E9468", chip: "Win back a customer", tool: "WhatsApp",
-    say: (n) => `Re-engaged ${n} (quiet for 60 days) with a tailored offer — they're back ✓`,
-    row: (n) => ({ ic: "🔁", t: `Win-back · ${n}`, s: "Lapsed 60 days → re-booked", color: "#3E9468" }), rev: 90, kpi: "revenue" },
+    think: "Finding lapsed customers worth re-engaging…",
+    say: (n) => `Re-engaged ${n} (quiet 60 days) with a tailored offer — they're back`,
+    row: (n) => ({ ic: "🔁", t: `Win-back · ${n}`, s: "Lapsed 60 days → re-booked" }), rev: 90, kpi: "revenue" },
   { key: "noshow", icon: FaClockRotateLeft, color: "#EF8E3E", chip: "Recover a no-show", tool: "WhatsApp",
-    say: (n) => `${n} missed their slot — I rebooked them and filled the gap from your waitlist ✓`,
-    row: (n) => ({ ic: "⏰", t: `No-show recovered · ${n}`, s: "Rebooked + slot refilled", color: "#EF8E3E" }), rev: 0, kpi: "bookings" },
+    think: "Pulling the next person off your waitlist…",
+    say: (n) => `${n} missed their slot — I rebooked them and refilled it from your waitlist`,
+    row: (n) => ({ ic: "⏰", t: `No-show recovered · ${n}`, s: "Rebooked + slot refilled" }), rev: 0, kpi: "bookings" },
   { key: "transcribe", icon: FaFileLines, color: "#A78BFA", chip: "Transcribe a call", tool: "WhatsApp",
-    say: (n) => `Transcribed ${n}'s call, summarized it and saved the action items to their profile ✓`,
-    row: (n) => ({ ic: "📝", t: `Call transcribed · ${n}`, s: "Summary + action items saved", color: "#A78BFA" }), rev: 0, kpi: "tasks" },
+    think: "Transcribing and summarizing the conversation…",
+    say: (n) => `Transcribed ${n}'s call, summarized it and saved the action items`,
+    row: (n) => ({ ic: "📝", t: `Call transcribed · ${n}`, s: "Summary + action items saved" }), rev: 0, kpi: "tasks" },
   { key: "campaign", icon: FaBullhorn, color: "#F59E0B", chip: "Launch a campaign", tool: "Instagram",
-    say: () => `Launched a win-back campaign to 240 lapsed customers across WhatsApp + email ✓`,
-    row: () => ({ ic: "📣", t: "Campaign launched", s: "240 lapsed customers · WhatsApp + email", color: "#F59E0B" }), rev: 0, kpi: "tasks" },
+    think: "Segmenting 240 lapsed customers…",
+    say: () => `Launched a win-back campaign to 240 lapsed customers on WhatsApp + email`,
+    row: () => ({ ic: "📣", t: "Campaign launched", s: "240 customers · WhatsApp + email" }), rev: 0, kpi: "tasks" },
 ];
 
 const STACK = [
@@ -56,74 +61,78 @@ const STACK = [
 ];
 
 export default function LiveDemo() {
-  const [feed, setFeed] = useState([
-    { ic: "🪄", t: "Gui is online", s: "Working live — watch the feed…", color: "#3E9468", _id: 0 },
-  ]);
-  const [kpis, setKpis] = useState({ bookings: 0, revenue: 0, reviews: 0, posts: 0 });
-  const [busy, setBusy] = useState(null);     // action key currently "working"
-  const [hot, setHot] = useState(null);       // stack tool lighting up
-  const [used, setUsed] = useState(false);
+  const [feed, setFeed] = useState([]);
+  const [kpis, setKpis] = useState({ bookings: 0, revenue: 0, reviews: 0, tasks: 0 });
+  const [hot, setHot] = useState(null);          // stack tool lighting up
+  const [now, setNow] = useState(null);          // { a, n, phase: 'thinking' | 'done' }
   const [listening, setListening] = useState(false);
-  const [heard, setHeard] = useState("");
   const idRef = useRef(1);
+  const timers = useRef([]);
 
-  // Voice: speak a request, Guileo maps it to the right action by keyword.
+  // Complete an action: it lands in the feed + ticks the counters.
+  const complete = (a, n) => {
+    const row = { ...a.row(n), _id: idRef.current++, say: a.say(n), color: a.color };
+    setFeed((f) => [row, ...f].slice(0, 5));
+    setKpis((k) => ({ ...k, [a.kpi]: a.kpi === "revenue" ? k.revenue + a.rev : (k[a.kpi] || 0) + 1 }));
+  };
+
+  // Run one task as a clear sequence: pick it up → think → do it.
+  const play = (a, n = NAMES[idRef.current % NAMES.length]) => {
+    setNow({ a, n, phase: "thinking" });
+    setHot(a.tool);
+    const t1 = setTimeout(() => {
+      setNow({ a, n, phase: "done" });
+      complete(a, n);
+      const t2 = setTimeout(() => setHot(null), 500);
+      timers.current.push(t2);
+    }, 950);
+    timers.current.push(t1);
+  };
+
+  // AUTO-PLAY: Gui works through its rounds on its own — one task at a time.
+  const autoIdx = useRef(0);
+  useEffect(() => {
+    const tick = () => { play(ACTIONS[autoIdx.current % ACTIONS.length]); autoIdx.current++; };
+    const kick = setTimeout(tick, 700);
+    const id = setInterval(tick, 3000);
+    return () => { clearTimeout(kick); clearInterval(id); timers.current.forEach(clearTimeout); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Voice: speak a request, Gui maps it to the right action by keyword.
   const SR = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
-  const matchAction = (t) => {
-    const s = t.toLowerCase();
+  const matchAction = (s) => {
+    s = s.toLowerCase();
     if (/invoice|pay|bill|charge/.test(s)) return ACTIONS.find((a) => a.key === "invoice");
     if (/review|rating|star/.test(s)) return ACTIONS.find((a) => a.key === "review");
-    if (/insta|post|social/.test(s)) return ACTIONS.find((a) => a.key === "post");
     if (/call|phone/.test(s)) return ACTIONS.find((a) => a.key === "call");
-    if (/win.?back|lapsed|come back/.test(s)) return ACTIONS.find((a) => a.key === "winback");
-    if (/no.?show|missed|recover/.test(s)) return ACTIONS.find((a) => a.key === "noshow");
-    return ACTIONS.find((a) => a.key === "book"); // default: book
+    if (/win.?back|lapsed/.test(s)) return ACTIONS.find((a) => a.key === "winback");
+    if (/no.?show|missed/.test(s)) return ACTIONS.find((a) => a.key === "noshow");
+    if (/transcri|summar/.test(s)) return ACTIONS.find((a) => a.key === "transcribe");
+    if (/campaign|blast|promo/.test(s)) return ACTIONS.find((a) => a.key === "campaign");
+    return ACTIONS.find((a) => a.key === "book");
   };
   const dictate = () => {
-    if (!SR) { setHeard("Voice isn't supported in this browser — tap an action instead."); return; }
-    const rec = new SR(); rec.lang = "en-US"; rec.interimResults = false; rec.maxAlternatives = 1;
-    setListening(true); setHeard("");
-    rec.onresult = (ev) => { const t = ev.results[0][0].transcript; setHeard(`"${t}"`); setListening(false); run(matchAction(t)); };
+    if (!SR) { play(ACTIONS[0]); return; }
+    const rec = new SR(); rec.lang = "en-US"; rec.interimResults = false;
+    setListening(true);
+    rec.onresult = (ev) => { setListening(false); play(matchAction(ev.results[0][0].transcript)); };
     rec.onerror = () => setListening(false);
     rec.onend = () => setListening(false);
     rec.start();
   };
 
-  const run = (a) => {
-    const n = NAMES[idRef.current % NAMES.length];
-    // The result lands SYNCHRONOUSLY (robust — never stuck, works even in throttled/hidden tabs).
-    const row = { ...a.row(n), _id: idRef.current++, say: a.say(n) };
-    setFeed((f) => [row, ...f].slice(0, 6));
-    setKpis((k) => ({ ...k, [a.kpi]: a.kpi === "revenue" ? k.revenue + a.rev : (k[a.kpi] || 0) + 1 }));
-    setUsed(true);
-    // purely-cosmetic "working" flash on the chip + the stack tool lighting up
-    setBusy(a.key);
-    setHot(a.tool);
-    setTimeout(() => { setBusy(null); setHot(null); }, 650);
-  };
-
-  // AUTO-PLAY: Gui runs its rounds on its own — the visitor WATCHES it work (transcribing calls,
-  // launching campaigns, booking, collecting…), no tapping required. Tapping still works to try one.
-  const autoIdx = useRef(0);
-  useEffect(() => {
-    const tick = () => { run(ACTIONS[autoIdx.current % ACTIONS.length]); autoIdx.current++; };
-    const kick = setTimeout(tick, 1100);   // start moving almost immediately
-    const id = setInterval(tick, 3200);
-    return () => { clearTimeout(kick); clearInterval(id); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const Now = now?.a;
 
   return (
-    <div className={`relative rounded-2xl border bg-white/[0.04] backdrop-blur-xl p-4 sm:p-6 shadow-2xl transition-all duration-500 ${used ? "border-white/10" : "border-g-green/45 shadow-[0_0_44px_-8px_rgba(62,148,104,0.5)]"}`}>
-      {!used && <span className="pointer-events-none absolute -inset-px rounded-2xl ring-1 ring-g-green/40 animate-pulse" />}
+    <div className="relative rounded-2xl border border-g-green/30 bg-white/[0.04] backdrop-blur-xl p-4 sm:p-6 shadow-2xl">
       {/* header */}
       <div className="flex items-center gap-3 mb-4">
         <span className="grid place-items-center h-11 w-11 rounded-full bg-g-green/10 ring-1 ring-g-green/30 overflow-hidden shrink-0"><img src={logo} alt="Guileo" className="h-9 w-9 object-contain" /></span>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-extrabold text-g-word flex items-center gap-2">Gui <span className="text-[9px] font-black uppercase text-g-green">· AI assistant</span> <span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" /></div>
-          <div className="text-[11px] text-g-muted">Working live across your stack — watch it, or tap to try one.</div>
+          <div className="text-sm font-extrabold text-g-word flex items-center gap-2">Gui <span className="text-[9px] font-black uppercase text-g-green">· AI assistant</span> <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-g-green"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />live</span></div>
+          <div className="text-[11px] text-g-muted">Working your whole business — 24/7. Watch, or ask it yourself.</div>
         </div>
-        {/* connected stack */}
         <div className="hidden sm:flex items-center gap-1.5">
           {STACK.map(([name, Icon, color]) => (
             <span key={name} title={name} className="grid place-items-center h-7 w-7 rounded-lg transition-all duration-300" style={{ background: color + (hot === name ? "44" : "1f"), color, transform: hot === name ? "scale(1.18)" : "none", boxShadow: hot === name ? `0 0 14px ${color}88` : "none" }}><Icon size={13} /></span>
@@ -131,75 +140,88 @@ export default function LiveDemo() {
         </div>
       </div>
 
-      {/* KPI strip */}
+      {/* NOW — the one task Gui is handling right now (the intelligent focal point) */}
+      <div className="rounded-xl border border-g-green/30 bg-gradient-to-r from-g-green/[0.10] to-transparent p-3.5 mb-4 min-h-[64px] flex items-center gap-3">
+        <AnimatePresence mode="wait">
+          {Now ? (
+            <motion.div key={now.a.key + now.phase} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.25 }} className="flex items-center gap-3 w-full">
+              <span className="grid place-items-center h-9 w-9 rounded-lg shrink-0" style={{ background: Now.color + "22", color: Now.color }}><Now.icon size={17} /></span>
+              <div className="min-w-0 flex-1">
+                {now.phase === "thinking" ? (
+                  <>
+                    <div className="text-[11px] font-black uppercase tracking-wide text-g-green">Gui is on it…</div>
+                    <div className="text-xs text-g-word truncate">{Now.think}</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-[11px] font-black uppercase tracking-wide text-g-gold inline-flex items-center gap-1"><FaCircleCheck size={10} className="text-g-green" /> Done</div>
+                    <div className="text-xs text-g-word truncate">{Now.say(now.n)} ✓</div>
+                  </>
+                )}
+              </div>
+              {now.phase === "thinking" && <span className="shrink-0 inline-flex gap-1">{[0, 1, 2].map((i) => <motion.span key={i} className="h-1.5 w-1.5 rounded-full bg-g-green" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.2 }} />)}</span>}
+            </motion.div>
+          ) : (
+            <div className="text-xs text-g-muted">Gui is online — starting its rounds…</div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* KPIs */}
       <div className="grid grid-cols-3 gap-2 mb-4">
-        {[["Bookings", kpis.bookings], ["Revenue", `$${kpis.revenue}`], ["Reviews", kpis.reviews]].map(([label, val]) => (
+        {[["Booked", kpis.bookings], ["Revenue", `$${kpis.revenue}`], ["Reviews", kpis.reviews]].map(([label, val]) => (
           <div key={label} className="rounded-xl border border-white/[0.07] bg-black/20 px-3 py-2 text-center">
-            <div className="text-lg font-extrabold text-g-word tabular-nums">{val}</div>
+            <motion.div key={String(val)} initial={{ scale: 1.25, color: "#7FC9A0" }} animate={{ scale: 1, color: "#EDE7DC" }} transition={{ duration: 0.4 }} className="text-lg font-extrabold tabular-nums">{val}</motion.div>
             <div className="text-[10px] uppercase tracking-wide text-g-muted">{label}</div>
           </div>
         ))}
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        {/* actions */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-[10px] font-black uppercase tracking-wide text-g-gold inline-flex items-center gap-1.5">Gui is doing <span className="text-g-green normal-case font-bold">· or tap to try one</span></div>
-            <button onClick={dictate} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold transition ${listening ? "border-red-400 bg-red-500/15 text-red-400 animate-pulse" : "border-g-green/40 bg-g-green/10 text-g-green hover:bg-g-green/20"}`}>
-              <FaMicrophone size={10} /> {listening ? "Listening…" : "Say it"}
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {ACTIONS.map((a) => {
-              const Icon = a.icon;
-              return (
-                <button key={a.key} onClick={() => run(a)}
-                  className="group inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.05] px-3 py-2 text-xs font-bold text-g-word hover:border-g-green/60 hover:bg-white/[0.08] transition">
-                  <span style={{ color: a.color }}><Icon size={13} /></span>
-                  {a.chip}
-                  {busy === a.key ? <span className="ml-0.5 inline-block h-3 w-3 rounded-full border-2 border-g-green border-t-transparent animate-spin" /> : <span className="text-g-muted group-hover:text-g-green transition">→</span>}
-                </button>
-              );
-            })}
-          </div>
-          {heard && <div className="mt-2 text-[11px] text-g-light">🎙️ Heard {heard} — running it…</div>}
-          <div className="mt-3 text-[11px] text-g-muted leading-relaxed">
-            Every tap runs a <span className="text-g-light font-semibold">real action</span> across your connected tools — bookings, payments, reviews, posts, calls. This is exactly what your customers experience, 24/7.
-          </div>
-        </div>
-
-        {/* live feed */}
-        <div className="rounded-xl border border-white/[0.07] bg-black/20 overflow-hidden">
-          <div className="px-3 py-2 border-b border-white/[0.07] text-[10px] font-black uppercase tracking-wide text-g-muted flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" /> Live feed</div>
-          <div className="divide-y divide-white/[0.05] min-h-[180px]">
-            <AnimatePresence initial={false}>
-              {feed.map((r) => (
-                <motion.div key={r._id} initial={{ opacity: 0, y: -8, height: 0 }} animate={{ opacity: 1, y: 0, height: "auto" }} exit={{ opacity: 0 }} className="px-3 py-2.5">
-                  <div className="flex items-start gap-2.5">
-                    <span className="text-base shrink-0 mt-0.5">{r.ic}</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold text-g-word truncate">{r.t}</div>
-                      <div className="text-[10px] text-g-muted truncate">{r.s}</div>
-                      {r.say && <div className="mt-1 text-[10px] text-g-green inline-flex items-start gap-1"><FaCircleCheck size={9} className="mt-0.5 shrink-0" /> {r.say}</div>}
-                    </div>
+      {/* live feed */}
+      <div className="rounded-xl border border-white/[0.07] bg-black/20 overflow-hidden mb-4">
+        <div className="px-3 py-2 border-b border-white/[0.07] text-[10px] font-black uppercase tracking-wide text-g-muted flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" /> Done today</div>
+        <div className="divide-y divide-white/[0.05] min-h-[150px]">
+          <AnimatePresence initial={false}>
+            {feed.length === 0 && <div className="px-3 py-6 text-center text-[11px] text-g-muted">Completed tasks land here…</div>}
+            {feed.map((r) => (
+              <motion.div key={r._id} initial={{ opacity: 0, y: -8, height: 0 }} animate={{ opacity: 1, y: 0, height: "auto" }} exit={{ opacity: 0 }} className="px-3 py-2.5">
+                <div className="flex items-start gap-2.5">
+                  <span className="text-base shrink-0 mt-0.5">{r.ic}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold text-g-word truncate">{r.t}</div>
+                    <div className="text-[10px] text-g-muted truncate">{r.s}</div>
                   </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
+                  <span className="text-[10px] text-g-green font-bold whitespace-nowrap mt-0.5">✓</span>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       </div>
 
-      {used && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 pt-4 border-t border-white/[0.07] text-center">
-          <div className="text-[11px] text-g-muted">That's Gui working <span className="text-g-light font-semibold">inside your stack</span>, for every customer, all day. <span className="text-g-gold font-bold">It works on us → it works for you.</span></div>
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-2.5">
-            <a href="#contact" className="btn-bright text-sm">Get Gui doing this for me →</a>
-            <a href="#contact" className="btn-ghost text-sm">📞 Have Gui call me now</a>
-          </div>
-        </motion.div>
-      )}
+      {/* try it yourself — secondary, compact */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[10px] font-black uppercase tracking-wide text-g-gold">Or ask Gui yourself</div>
+        <button onClick={dictate} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold transition ${listening ? "border-red-400 bg-red-500/15 text-red-400 animate-pulse" : "border-g-green/40 bg-g-green/10 text-g-green hover:bg-g-green/20"}`}>
+          <FaMicrophone size={10} /> {listening ? "Listening…" : "Say it"}
+        </button>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {ACTIONS.map((a) => {
+          const Icon = a.icon;
+          return (
+            <button key={a.key} onClick={() => play(a)}
+              className="group inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-bold text-g-word hover:border-g-green/60 hover:bg-white/[0.08] transition">
+              <span style={{ color: a.color }}><Icon size={11} /></span>{a.chip}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 pt-3 border-t border-white/[0.07] flex flex-wrap items-center justify-center gap-2.5 text-center">
+        <span className="text-[11px] text-g-muted">This is the real product — it works on us, so you know it works for you.</span>
+        <a href="#contact" className="btn-bright text-xs">Get Gui doing this for me →</a>
+      </div>
     </div>
   );
 }
