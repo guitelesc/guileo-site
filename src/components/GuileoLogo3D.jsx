@@ -73,7 +73,25 @@ export default function GuileoLogo3D() {
     leafShape.moveTo(0, 0);
     leafShape.bezierCurveTo(0.34, 0.45, 0.46, 1.25, 0, 1.9);
     leafShape.bezierCurveTo(-0.46, 1.25, -0.34, 0.45, 0, 0);
-    const leafGeo = new THREE.ShapeGeometry(leafShape, 28);
+    const leafGeo = new THREE.ShapeGeometry(leafShape, 44);
+    // Give the flat blade a real 3D form: curl the tip back, cup it toward a central vein,
+    // and paint a base→tip gradient via vertex colors so it reads as a living leaf, not paper.
+    {
+      const pos = leafGeo.attributes.position;
+      const cBase = new THREE.Color(DARK), cTip = new THREE.Color(LIGHT), cv = new THREE.Color();
+      const colors = new Float32Array(pos.count * 3);
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i), y = pos.getY(i);
+        const tY = Math.min(1, Math.max(0, y / 1.9));      // 0 at base → 1 at tip
+        const z = -0.2 * Math.pow(tY, 1.7) - 0.12 * Math.abs(x) * (0.35 + tY); // tip curl + blade cup
+        pos.setZ(i, z);
+        const vein = 1 - Math.exp(-Math.abs(x) * 9) * 0.35; // central crease slightly darker
+        cv.copy(cBase).lerp(cTip, (0.22 + tY * 0.78) * vein);
+        colors[i * 3] = cv.r; colors[i * 3 + 1] = cv.g; colors[i * 3 + 2] = cv.b;
+      }
+      leafGeo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+      leafGeo.computeVertexNormals();
+    }
     disposables.push(leafGeo);
     const placements = [
       [0.55, 35, 55, 0.55], [0.55, 215, 55, 0.55], [1.05, 120, 48, 0.62], [1.05, 300, 48, 0.62],
@@ -86,14 +104,16 @@ export default function GuileoLogo3D() {
       g.position.set(Math.sin(rad) * 0.05, y, Math.cos(rad) * 0.05);
       g.rotation.y = rad;
       const mat = new THREE.MeshStandardMaterial({
-        color: i % 3 === 0 ? LIGHT : GREEN, side: THREE.DoubleSide,
-        roughness: 0.5, metalness: 0.02, emissive: GREEN, emissiveIntensity: 0.1,
+        vertexColors: true, color: 0xffffff, side: THREE.DoubleSide,
+        roughness: 0.42, metalness: 0.04, emissive: GREEN, emissiveIntensity: 0.07,
       });
       disposables.push(mat);
       const m = new THREE.Mesh(leafGeo, mat);
       m.rotation.x = (-(90 - tilt) * Math.PI) / 180;
       m.scale.setScalar(sc);
-      g.add(m); plant.add(g); leafGroups.push(g);
+      g.add(m);
+      g.userData = { baseRZ: g.rotation.z, baseRX: 0, phase: i * 1.7, sway: 0.05 + (i % 3) * 0.015 };
+      plant.add(g); leafGroups.push(g);
     });
 
     // --- Circuit roots + nodes + underground pulses (the "watering" feeding the plant) ---
@@ -143,7 +163,9 @@ export default function GuileoLogo3D() {
       mesh.position.set(x, y, z); mesh.scale.setScalar(0.001);
       plant.add(mesh);
       const glow = makeGlow(GREEN, 0.55, 0.0); glow.position.set(x, y, z); plant.add(glow);
-      return { mesh, mat, glow, base: new THREE.Vector3(x, y, z), ripe0: 0.6 + i * 0.07, phase: i * 1.1 };
+      // tiny offset specular dot — the dewy highlight that makes the fruit read as a real berry
+      const hl = makeGlow(0xffffff, 0.001, 0.0); plant.add(hl);
+      return { mesh, mat, glow, hl, base: new THREE.Vector3(x, y, z), ripe0: 0.6 + i * 0.07, phase: i * 1.1 };
     });
     const cGreen = new THREE.Color(GREEN), cGold = new THREE.Color(GOLD), cTmp = new THREE.Color();
 
@@ -151,6 +173,18 @@ export default function GuileoLogo3D() {
     const ringGeo = new THREE.TorusGeometry(1.15, 0.008, 8, 120);
     const ringMat = new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending });
     const ring = new THREE.Mesh(ringGeo, ringMat); ring.position.y = 1.3; ring.rotation.x = Math.PI / 2.3; plant.add(ring); disposables.push(ringGeo, ringMat);
+
+    // Subtle soil/contact shadow where the plant is rooted — grounds the composition (realism).
+    const soilTex = (() => {
+      const c = document.createElement("canvas"); c.width = c.height = 96;
+      const g = c.getContext("2d"); const gr = g.createRadialGradient(48, 48, 0, 48, 48, 48);
+      gr.addColorStop(0, "rgba(16,15,12,0.6)"); gr.addColorStop(0.55, "rgba(16,15,12,0.24)"); gr.addColorStop(1, "rgba(16,15,12,0)");
+      g.fillStyle = gr; g.fillRect(0, 0, 96, 96); return new THREE.CanvasTexture(c);
+    })();
+    const soilGeo = new THREE.PlaneGeometry(1.7, 0.75);
+    const soilMat = new THREE.MeshBasicMaterial({ map: soilTex, transparent: true, depthWrite: false, opacity: 0.55 });
+    const soil = new THREE.Mesh(soilGeo, soilMat); soil.rotation.x = -Math.PI / 2; soil.position.set(0, -0.21, 0); plant.add(soil);
+    disposables.push(soilGeo, soilMat, soilTex);
 
     // --- Growth state (seed → roots → stem → leaves → fruits) ---
     roots.scale.setScalar(0.001);
@@ -191,7 +225,13 @@ export default function GuileoLogo3D() {
       const gp = Math.min(1, Math.max(0, (t - GROW_DELAY) / GROW_DUR));
       roots.scale.setScalar(0.001 + ss(gp, 0.0, 0.4));
       stemMesh.scale.y = 0.001 + ss(gp, 0.18, 0.58);
-      leafGroups.forEach((g, i) => g.scale.setScalar(0.001 + ss(gp, 0.4 + (i % 8) * 0.03, 0.74 + (i % 8) * 0.02)));
+      leafGroups.forEach((g, i) => {
+        g.scale.setScalar(0.001 + ss(gp, 0.4 + (i % 8) * 0.03, 0.74 + (i % 8) * 0.02));
+        // per-leaf wind: each blade flutters on its own phase (independent sway = realism)
+        const ud = g.userData;
+        g.rotation.z = ud.baseRZ + Math.sin(t * 1.55 + ud.phase) * ud.sway;
+        g.rotation.x = Math.sin(t * 1.05 + ud.phase * 0.7) * ud.sway * 0.55;
+      });
 
       // Rising sap bead climbs the stem on a loop (the "watering" that feeds the harvest)
       const sapT = ((t % SAP_PERIOD) / SAP_PERIOD);
@@ -220,6 +260,11 @@ export default function GuileoLogo3D() {
         // gentle bob
         f.mesh.position.y = f.base.y + Math.sin(t * 1.1 + f.phase) * 0.02 * rp;
         f.glow.position.y = f.mesh.position.y;
+        // dewy specular highlight rides the fruit (upper-left toward the light)
+        const fs = f.mesh.scale.x;
+        f.hl.position.set(f.base.x - 0.045 * fs, f.mesh.position.y + 0.05 * fs, f.base.z + 0.09 * fs);
+        f.hl.scale.setScalar(0.11 * fs);
+        f.hl.material.opacity = 0.85 * rp;
       });
       const harvest = ripeSum / fruits.length; // 0..1 overall harvest
       harvestLight.intensity = harvest * 0.9 + Math.sin(t * 1.5) * 0.08 * harvest;
