@@ -45,17 +45,26 @@ export async function onRequestPost(context) {
       } catch { /* keep going — never fail the call */ }
     }
 
-    // Natural confirmation the agent speaks back to the caller.
+    // Natural confirmation the agent speaks back to the caller — covers EVERYTHING Gui does on a call.
     const who = rec.name || "you";
+    const amt = rec.amount ? `$${rec.amount}` : "";
     const msg = {
       book: `All set — booked for ${who}${rec.when ? ` on ${rec.when}` : ""}. You'll get a confirmation. Anything else?`,
       reschedule: `Done — moved ${who}'s booking${rec.when ? ` to ${rec.when}` : ""}.`,
       cancel: `Cancelled ${who}'s booking — no worries.`,
-      lead: `Got it, ${who}. I've saved your details and the team will follow up shortly.`,
+      order: `Order placed for ${who}${amt ? ` (${amt})` : ""} — I'll send a confirmation.`,
+      sale: `Sale logged${amt ? ` for ${amt}` : ""} — thank you, ${who}!`,
+      invoice: `I've sent ${who} a secure payment link${amt ? ` for ${amt}` : ""} — you can pay whenever you're ready.`,
+      quote: `I've captured your quote request, ${who} — you'll have it shortly.`,
+      lead: `Got it, ${who}. I've saved your details and the team will follow up.`,
+      qualify: `Thanks, ${who} — noted what you need; we'll match you to the right option.`,
       callback: `Perfect — I've scheduled a callback for ${who}${rec.when ? ` ${rec.when}` : ""}.`,
       review: `Thanks! I've sent ${who} a review request.`,
-      sale: `Order logged${rec.amount ? ` for ${rec.amount}` : ""} — thank you, ${who}!`,
-      quote: `I've captured your quote request, ${who} — you'll have it soon.`,
+      confirm: `Confirmation sent to ${who}.`,
+      message: `Message noted — ${who} will hear from us shortly.`,
+      winback: `Welcome back, ${who}! I've set up a special offer for you.`,
+      noshow: `No problem — I've rebooked ${who}${rec.when ? ` for ${rec.when}` : ""} and freed your old slot.`,
+      info: `Noted your question, ${who} — someone will get you the exact answer.`,
     }[action] || `Done — ${action} captured for ${who}.`;
 
     return json({ ok: true, stored, delivered, message: msg, record: rec });
