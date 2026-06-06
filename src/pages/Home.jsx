@@ -15,7 +15,7 @@ import { AnimatePresence } from "framer-motion";
 import logo from "../assets/guileo-logo.png";
 import mark from "../assets/guileo-mark.png";
 import { TECH, COMPLIANCE, TICKER, CHANNELS, CORE_OFFER, INTEGRATIONS, COMPARISON } from "../data/site";
-import { CONTACT, waLink } from "../data/contact.js";
+import { CONTACT, waLink, bookLink } from "../data/contact.js";
 import { useLang } from "../i18n.jsx";
 
 /* The leak — MULTICHANNEL interactive calculator (WHY) */
@@ -886,7 +886,7 @@ export default function Home() {
             </div>
             <div className="mt-5 flex flex-wrap justify-center gap-3">
               <a href={waLink(t.more.lead.wamsg)} target="_blank" rel="noopener" className="btn-ghost text-sm">{t.final.wa}</a>
-              <a href={CONTACT.calendly} className="btn-ghost text-sm">{t.final.demo}</a>
+              <a href={bookLink()} target="_blank" rel="noopener" className="btn-ghost text-sm">{t.final.demo}</a>
             </div>
           </div>
         </div>
