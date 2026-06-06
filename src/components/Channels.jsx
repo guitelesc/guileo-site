@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   FaInstagram, FaFacebook, FaLinkedin, FaXTwitter, FaTiktok, FaYoutube,
   FaTelegram, FaWhatsapp, FaThreads, FaPinterest, FaGoogle, FaSnapchat,
-  FaWifi, FaBatteryFull,
+  FaWifi, FaBatteryFull, FaLock,
 } from "react-icons/fa6";
 import { Reveal } from "../lib/ui.jsx";
 
@@ -61,27 +61,31 @@ export default function Channels({ t }) {
               <div className="absolute top-2.5 left-1/2 -translate-x-1/2 h-6 w-24 rounded-full bg-black z-30 flex items-center justify-end pr-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-g-green/70 animate-pulse" />
               </div>
-              {/* screen */}
-              <div className="relative h-full bg-gradient-to-b from-[#17150f] via-[#121009] to-[#0d0b07] pt-12">
+              {/* screen — real iOS lock screen (wallpaper + clock + stacked notifications) */}
+              <div className="relative h-full pt-11 overflow-hidden" style={{ background: "radial-gradient(120% 80% at 50% 0%, #21372d 0%, #16201b 45%, #0b0f0d 100%)" }}>
+                {/* soft wallpaper glow */}
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 h-40 w-56 rounded-full bg-g-green/20 blur-3xl pointer-events-none" />
                 {/* status bar */}
-                <div className="flex items-center justify-between px-7 text-[11px] font-bold text-white/80">
+                <div className="relative flex items-center justify-between px-7 text-[11px] font-bold text-white/85">
                   <span>9:41</span>
                   <span className="flex items-center gap-1.5">
-                    <span className="flex items-end gap-px h-3">{[3,5,7,9].map((h,i)=>(<span key={i} className="w-0.5 rounded-sm bg-white/80" style={{height:`${h}px`}}/>))}</span>
+                    <span className="flex items-end gap-px h-3">{[3,5,7,9].map((h,i)=>(<span key={i} className="w-0.5 rounded-sm bg-white/85" style={{height:`${h}px`}}/>))}</span>
                     <FaWifi size={12} />
                     <FaBatteryFull size={15} className="text-g-green" />
                   </span>
                 </div>
-                {/* app header */}
-                <div className="px-5 mt-5">
-                  <div className="flex items-center justify-between">
-                    <div className="text-lg font-black uppercase tracking-tight bg-gradient-to-r from-g-green via-g-gold to-g-green bg-[length:200%_auto] bg-clip-text text-transparent animate-shimmer">guileo live</div>
-                    <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-g-green"><span className="h-2 w-2 rounded-full bg-g-green animate-pulse" />on</span>
-                  </div>
-                  <div className="text-[11px] text-g-muted mt-0.5">Working across your social networks</div>
+                {/* lock-screen clock */}
+                <div className="relative text-center mt-5">
+                  <div className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-white/70"><FaLock size={9} /> Saturday, June 6</div>
+                  <div className="text-[64px] leading-none font-semibold text-white tracking-tight mt-0.5" style={{ textShadow: "0 2px 20px rgba(0,0,0,0.4)" }}>9:41</div>
                 </div>
-                {/* notification feed */}
-                <div className="px-3 mt-4 space-y-2.5">
+                {/* guileo live pill */}
+                <div className="relative flex justify-center mt-3">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-g-green"><span className="h-2 w-2 rounded-full bg-g-green animate-pulse" />guileo live · working</span>
+                </div>
+                {/* stacked notifications (iOS lock-screen style) */}
+                <div className="relative px-3 mt-4 space-y-2">
+                  <div className="px-1.5 text-[10px] font-semibold uppercase tracking-wide text-white/40">Notifications</div>
                   <AnimatePresence mode="popLayout" initial={false}>
                     {ordered.map((d, i) => {
                       const [Icon, name, color, msg, time] = d;
@@ -90,15 +94,17 @@ export default function Channels({ t }) {
                           initial={i === 0 ? { opacity: 0, y: -16, scale: 0.96 } : false}
                           animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}
                           transition={{ duration: 0.4 }}
-                          className={`flex items-center gap-3 rounded-2xl border p-3 backdrop-blur-md ${i === 0 ? "border-g-green/50 bg-g-green/[0.10] shadow-glow" : "border-white/10 bg-white/[0.05]"}`}>
-                          <span className="grid place-items-center h-10 w-10 rounded-xl bg-white/[0.08] shrink-0" style={{ color }}>
-                            <Icon size={20} />
+                          className={`flex items-start gap-2.5 rounded-2xl border p-2.5 backdrop-blur-xl ${i === 0 ? "border-g-green/40 bg-white/[0.14] shadow-glow" : "border-white/10 bg-white/[0.09]"}`}>
+                          <span className="grid place-items-center h-9 w-9 rounded-[11px] shrink-0 shadow-sm" style={{ background: color + "26", color }}>
+                            <Icon size={18} />
                           </span>
                           <div className="min-w-0 flex-1">
-                            <div className="text-xs font-extrabold text-g-word flex items-center gap-1.5">{name} <span className="text-g-green font-black">· AI</span></div>
-                            <div className="text-[11px] text-g-muted leading-snug">{msg}</div>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-bold uppercase tracking-wide text-white/65 truncate">{name} · Guileo AI</span>
+                              <span className="text-[10px] text-white/45 whitespace-nowrap">{time}</span>
+                            </div>
+                            <div className="text-[12px] font-semibold text-white leading-snug mt-0.5">{msg}</div>
                           </div>
-                          <span className="text-[10px] text-g-light font-bold whitespace-nowrap self-start">{time}</span>
                         </motion.div>
                       );
                     })}

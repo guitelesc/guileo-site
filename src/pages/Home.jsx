@@ -197,6 +197,16 @@ function RotatingAction({ words, suffix, wordCls = "font-bold text-g-light", suf
 // Common country dial codes for the discrete hero phone capture (flag + code).
 const DIAL_CODES = [["🇺🇸","+1"],["🇧🇷","+55"],["🇵🇹","+351"],["🇪🇸","+34"],["🇬🇧","+44"],["🇲🇽","+52"],["🇦🇷","+54"],["🇨🇦","+1"],["🇮🇳","+91"],["🇦🇺","+61"],["🇩🇪","+49"],["🇫🇷","+33"]];
 
+// What Gui actually DOES with each integration category (keyed by the English group name) — so the
+// tool chips aren't just logos: the visitor sees the job Gui does inside them.
+const INTEG_DOES = {
+  "Ads & Growth": "Gui launches & optimizes your ad campaigns",
+  "E-commerce": "Gui recovers carts & sells right in chat",
+  "Messaging & Social": "Gui answers & sells across every inbox",
+  "Calendar & CRM": "Gui books appointments & keeps your CRM current",
+  "Payments & Ops": "Gui collects payments & automates the busywork",
+};
+
 // The living business loop over the plant: capabilities drop IN as seeds (planted),
 // results float UP out of the fruits and fade (harvested) — a continuous cycle.
 // "Plant → water → fruit → harvest → repeat" — the business logic, made visible.
@@ -501,7 +511,17 @@ export default function Home() {
 
       <Circuit flip />
 
-      {/* RESULTS CHARTS — growth you can see */}
+      {/* PILLARS — moved above the charts (operation first, then the results it produces) */}
+      <section id="pillars" className="wrap py-14">
+        <Reveal className="text-center max-w-2xl mx-auto mb-8">
+          <span className="eyebrow mb-3">{t.pillars.eyebrow}</span>
+          <h2 className="h2">{t.pillars.h2}</h2>
+          <p className="mt-3 text-g-muted">{t.pillars.sub}</p>
+        </Reveal>
+        <Reveal variant="scale"><Pillars t={t} /></Reveal>
+      </section>
+
+      {/* RESULTS CHARTS — growth you can see (the results the operation above produces) */}
       <section className="wrap py-14">
         <Reveal className="text-center max-w-2xl mx-auto mb-10">
           <span className="eyebrow mb-3">{t.more.charts.eyebrow}</span>
@@ -548,19 +568,6 @@ export default function Home() {
         </Stagger>
       </section>
 
-      {/* PILLARS */}
-      <section id="pillars" className="wrap py-14">
-        <Reveal className="text-center max-w-2xl mx-auto mb-8">
-          <span className="eyebrow mb-3">{t.pillars.eyebrow}</span>
-          <h2 className="h2">{t.pillars.h2}</h2>
-          <p className="mt-3 text-g-muted">{t.pillars.sub}</p>
-        </Reveal>
-
-        {/* The 3 Guileo engines wired into your business */}
-        <Reveal><Pillars t={t} /></Reveal>
-
-      </section>
-
       {/* CHANNELS — real brand icons (phone mockup) */}
       <Channels t={t} />
 
@@ -588,7 +595,8 @@ export default function Home() {
             {INTEGRATIONS.map((g, gi) => (
               <Item key={g.group} variant="up">
                 <div className="card h-full">
-                  <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{t.more.integGroups[gi] || g.group}</div>
+                  <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{t.more.integGroups[gi] || g.group}</div>
+                  {INTEG_DOES[g.group] && <div className="text-[11px] text-g-light/90 font-medium mt-0.5 mb-3 inline-flex items-start gap-1"><span className="text-g-green">→</span>{INTEG_DOES[g.group]}</div>}
                   <div className="flex flex-wrap gap-2">
                     {g.items.map((it) => (
                       <span key={it} className="rounded-full bg-white/[0.035] border border-g-line px-3 py-1.5 text-xs font-semibold text-g-word hover:border-g-gold/50 hover:text-g-gold hover:-translate-y-0.5 transition-all cursor-default">{it}</span>
@@ -609,23 +617,35 @@ export default function Home() {
           <div className="mx-auto max-w-2xl rounded-xl3 border border-g-gold/35 bg-white/[0.04] backdrop-blur-xl p-8 sm:p-14 text-center shadow-lift relative overflow-hidden">
             <div className="absolute -top-20 -right-16 h-56 w-56 rounded-full bg-g-gold/10 blur-3xl pointer-events-none animate-aurora" />
             <div className="relative text-base sm:text-lg font-extrabold uppercase tracking-[0.2em] text-g-gold mb-8">{t.pillars.result}</div>
-            <div className="relative h-72 w-72 sm:h-80 sm:w-80 mx-auto">
-              <svg viewBox="0 0 200 200" className="absolute inset-0 animate-spin" style={{ animationDuration:"16s" }} aria-hidden>
-                <circle cx="100" cy="100" r="82" fill="none" stroke="#C2A878" strokeOpacity="0.35" strokeWidth="1.5" strokeDasharray="3 8" />
-              </svg>
-              <svg viewBox="0 0 200 200" className="absolute inset-0 animate-spin" style={{ animationDuration:"8s", animationDirection:"reverse" }} aria-hidden>
-                <defs><linearGradient id="psg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#3E9468" /><stop offset="1" stopColor="#D6C29A" /></linearGradient></defs>
-                <circle cx="100" cy="100" r="66" fill="none" stroke="url(#psg)" strokeWidth="3.5" strokeDasharray="100 250" strokeLinecap="round" />
-              </svg>
-              <div className="absolute inset-0 grid place-items-center text-center">
-                <div><div className="text-4xl animate-spin" style={{ animationDuration:"6s" }}>⚙️</div><div className="text-xs font-bold uppercase tracking-[0.25em] text-g-gold mt-2">Method</div></div>
+            {/* ROCKET LAUNCH — Performance is the launchpad, Sales is the fuel/combustion, Growth is the moon */}
+            <div className="relative h-72 w-64 sm:h-80 sm:w-72 mx-auto select-none">
+              {/* starfield */}
+              {[...Array(16)].map((_, i) => (
+                <span key={i} className="absolute rounded-full bg-white animate-pulse" style={{ height: 2, width: 2, left: `${(i * 53) % 96}%`, top: `${(i * 31) % 64}%`, opacity: 0.25 + ((i * 7) % 5) / 12, animationDelay: `${(i % 5) * 0.4}s` }} />
+              ))}
+              {/* MOON = Growth (the destination) */}
+              <div className="absolute left-1/2 -translate-x-1/2 top-0 flex flex-col items-center">
+                <div className="grid place-items-center h-16 w-16 rounded-full bg-gradient-to-br from-[#f6efe0] via-[#e6d8b6] to-[#bca87d] shadow-[0_0_46px_rgba(214,194,154,0.55)] text-2xl animate-breathe">🌙</div>
+                <span className="mt-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-g-gold whitespace-nowrap">🚀 Growth · the moon</span>
               </div>
-              {[["📈","Performance"],["💰","Sales"],["🚀","Growth"]].map(([ic,lb],i)=>{ const a=(i/3)*2*Math.PI - Math.PI/2; const x=100+78*Math.cos(a); const y=100+78*Math.sin(a); const on=engineActive%3===i; return (
-                <div key={lb} className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 transition-all duration-500 ${on?"scale-110":"scale-100 opacity-80"}`} style={{ left:`${x/2}%`, top:`${y/2}%` }}>
-                  <span className={`grid place-items-center h-14 w-14 rounded-full border text-2xl transition-all duration-500 ${on?"border-g-gold/60 bg-g-gold/15 shadow-gold":"border-white/15 bg-white/[0.05]"}`}>{ic}</span>
-                  <span className="text-xs font-bold text-g-word whitespace-nowrap">{lb}</span>
-                </div>
-              ); })}
+              {/* trajectory toward the moon */}
+              <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden>
+                <motion.path d="M50 66 Q 46 42 50 26" fill="none" stroke="#D6C29A" strokeOpacity="0.45" strokeWidth="0.7" strokeDasharray="2 3"
+                  initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 1.6 }} />
+              </svg>
+              {/* ROCKET climbing + combustion */}
+              <motion.div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center" style={{ top: "38%" }}
+                animate={{ y: [5, -9, 5] }} transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}>
+                <div className="text-5xl drop-shadow-[0_0_12px_rgba(214,194,154,0.5)]">🚀</div>
+                <motion.div className="text-2xl -mt-1 origin-top" animate={{ scaleY: [1, 1.45, 0.9, 1.35, 1], opacity: [0.85, 1, 0.7, 1, 0.85] }} transition={{ duration: 0.45, repeat: Infinity }}>🔥</motion.div>
+              </motion.div>
+              <span className="absolute left-1/2 -translate-x-1/2 text-[11px] font-black uppercase tracking-[0.16em] text-g-light whitespace-nowrap" style={{ top: "63%" }}>💰 Sales · the fuel</span>
+              {/* LAUNCHPAD = Performance (the base) */}
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-center">
+                <div className="h-1.5 w-32 rounded-full bg-gradient-to-r from-transparent via-g-green/70 to-transparent blur-[1px]" />
+                <div className="h-3 w-20 rounded-b-md bg-white/[0.06] border-x border-b border-white/15" />
+                <span className="mt-1 text-[11px] font-black uppercase tracking-[0.16em] text-g-green whitespace-nowrap">📈 Performance · the base</span>
+              </div>
             </div>
 
             {/* the sequence beneath — Performance → Sales → Growth (like the method) */}
