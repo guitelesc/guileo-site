@@ -257,11 +257,28 @@ export function HumanShield({ className = "" }) {
 
 // Products marquee — two rows sliding opposite directions, makes the full offer crystal clear
 export function ProductsMarquee({ line, items, sub, cta, ctaHref = "/servicos" }) {
-  const half = Math.ceil(items.length / 2);
-  const rows = [items.slice(0, half), items.slice(half)];
+  // Everything Guileo builds — concise inline labels (not i18n) so the marquee
+  // reads as a clear product catalog: websites, software, apps + the AI stack.
+  const PRODUCTS = items && items.length ? items : [
+    ["🌐", "Websites"],
+    ["🧩", "Custom software"],
+    ["📱", "Apps"],
+    ["🛒", "E-commerce"],
+    ["📞", "Voice AI"],
+    ["💬", "WhatsApp AI"],
+    ["📅", "Booking"],
+    ["⚙️", "Automations"],
+    ["🗂️", "CRM"],
+    ["⭐", "Reviews"],
+    ["📣", "Ads"],
+  ];
+  const half = Math.ceil(PRODUCTS.length / 2);
+  const rows = [PRODUCTS.slice(0, half), PRODUCTS.slice(half)];
   const Chip = (it, i) => (
     <span key={i} className="group inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.05] backdrop-blur-md px-4 py-2.5 text-sm font-semibold text-g-word whitespace-nowrap transition-all hover:border-g-gold/45 hover:bg-white/[0.08] hover:-translate-y-0.5">
-      <span className="grid place-items-center h-7 w-7 rounded-full bg-white/[0.06] border border-white/10 text-base drop-shadow-[0_0_10px_rgba(214,194,154,0.45)] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">{it[0]}</span>{it[1]}
+      <span className="grid place-items-center h-7 w-7 rounded-full bg-white/[0.06] border border-white/10 text-base drop-shadow-[0_0_10px_rgba(214,194,154,0.45)] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
+        <span className="inline-block animate-floatslow" style={{ animationDelay: `${-(i % 6) * 0.7}s` }}>{it[0]}</span>
+      </span>{it[1]}
     </span>
   );
   return (

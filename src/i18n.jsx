@@ -57,9 +57,9 @@ export const T = {
 
 // ---- Portuguese ----
 T.pt = {
-  nav:{ solutions:"Soluções", engine:"Motor", industries:"Indústrias", results:"Resultados", academy:"Academy", pricing:"Preços", services:"Serviços", cta:"Começar", cockpit:"Growth Cockpit", exp:"Experience" },
-  hero:{ eyebrow:"✨ Conheça a Gui · a IA que conecta no seu sistema e faz o trabalho", h1a:"Trabalhe Smart.", h1b:"Cresça Mais Rápido.", h1c:"Durma Melhor.",
-    sub_a:"A Gui é a sua IA que conecta nas ferramentas que você já usa e faz o trabalho de verdade — atende ligações, agenda, orça e faz follow-up em todos os canais, 24/7. ", sub_b:"Coloque seu número e a Gui te liga", sub_c:" — ouça ao vivo, agora.",
+  nav:{ solutions:"Soluções", engine:"Motor", industries:"Setores", results:"Resultados", academy:"Academy", pricing:"Preços", services:"Serviços", cta:"Começar", cockpit:"Growth Cockpit", exp:"Experience" },
+  hero:{ eyebrow:"✨ Conheça a Gui · a IA que se conecta ao seu sistema e faz o trabalho", h1a:"Trabalhe com Inteligência.", h1b:"Cresça Mais Rápido.", h1c:"Durma Melhor.",
+    sub_a:"A Gui é a sua IA que se conecta às ferramentas que você já usa e faz o trabalho de verdade — atende ligações, agenda, envia orçamentos e faz follow-up em todos os canais, 24/7. ", sub_b:"Coloque seu número e a Gui te liga", sub_c:" — ouça ao vivo, agora.",
     cta1:"Conheça a Gui — teste ao vivo →", cta2:"Fale com a Gui agora", b1:"📞 Gui, ao vivo", b2:"📅 Agenda por você",
     method:["Performance","Vendas","Crescimento"],
     rotors:["atende suas ligações","agenda horários","envia orçamentos","faz follow-up","cobra pagamentos","vende por você"],
@@ -86,15 +86,15 @@ T.pt = {
       { icon:"📈", name:"Guileo.AD", tag:"Sua operação inteira · gerida e automatizada", desc:"Não só automatizamos tarefas — cuidamos da operação inteira: conteúdo, anúncios, social e funis em todos os canais.", feats:["📝 Conteúdo automatizado, todos os canais","📣 Campanhas (-40% desperdício)","🎯 Qualificação de leads","🔄 Funis de venda","📈 Analytics de crescimento","♻️ Remarketing"] },
     ] },
   channels:{ eyebrow:"Todo canal, automatizado", h2:"Do LinkedIn ao Telegram — cuidamos de todos", sub:"Conteúdo criado, agendado e otimizado em todos os seus canais. Um cérebro, todas as plataformas, sempre ligado." },
-  industries:{ eyebrow:"Conhecemos seu negócio", h2:"Feito para a sua indústria", sub:"Um paciente liga às 21h. Um cliente quer orçamento no domingo. Alguém quer mesa agora. Sua IA resolve — na hora." },
+  industries:{ eyebrow:"Conhecemos seu negócio", h2:"Feito para o seu setor", sub:"Um paciente liga às 21h. Um cliente quer orçamento no domingo. Alguém quer mesa agora. Sua IA resolve — na hora." },
   steps:{ eyebrow:"3 passos pra receita", h2:"No ar em menos de 7 dias",
     items:[["🌰","Plante a Semente","Conte seus objetivos. Achamos seus vazamentos de receita e desenhamos uma IA que vende desde o dia um."],["🌿","Nutra o Crescimento","Construímos e lançamos em menos de 7 dias. Sua IA trabalha 24/7 — fechando, cortando custos, escalando."],["🌳","Colha Resultados","Veja o lucro subir. +286% de performance e ciclos de venda 3x mais rápidos em média."]] },
-  proof:{ eyebrow:"Resultados, não promessas", h2:"Confiável, comprovado, em conformidade", poweredby:"Tecnologia", compliant:"Conformidade",
-    seals:[["🤝","Setup com o fundador","um humano de verdade monta com você"],["📈","Lucrativo ou é de graça","resultado ou dinheiro de volta"],["🛡️","Garantia de 30 dias","cancele quando quiser, sem amarras"],["🔐","Seus dados são seus","exporte e leve com você"]],
-    sec_t:"Segurança e consentimento embutidos", sec_d:"Isolamento multi-tenant, criptografia em tudo e consentimento de 3 níveis com auditoria. Seus clientes continuam seus.",
-    ally_t:"Somos seu aliado, não um fornecedor", ally_d:"Suporte humano + IA, onboarding em menos de 7 dias, dashboard ao vivo e um time que responde em horas — não dias.",
+  proof:{ eyebrow:"A prova está nesta página", h2:"Não acredite na nossa palavra — a Gui acabou de te atender", poweredby:"Construído sobre a mesma tecnologia em que os gigantes confiam", compliant:"Padrões de governança independente que seguimos",
+    seals:[["🤝","Setup com o fundador","um humano de verdade monta com você"],["📈","Lucrativo ou é de graça","resultado ou dinheiro de volta"],["🛡️","Garantia de 30 dias","cancele quando quiser, sem amarras"],["🔐","Seus dados continuam seus","exporte e leve com você"]],
+    sec_t:"Segurança e consentimento embutidos — verificáveis, não promessas vazias", sec_d:"Isolamento multi-tenant, criptografia em trânsito e em repouso, e um modelo de consentimento em 3 níveis com trilha de auditoria completa — cada ação da Gui é registrada e revisável. Seus clientes e seus dados continuam seus.",
+    ally_t:"Um fundador constrói com você — não um bot, nem uma fila de tickets", ally_d:"Isto não é uma ferramenta self-service que você precisa decifrar sozinho. Uma pessoa de verdade estuda seu negócio, desenha seu sistema e implementa — e continua ao seu lado com um dashboard ao vivo e respostas em horas, não dias. A IA faz o trabalho; humanos respondem por cada parte dele.",
     testimonials:[["Agendamentos subiram 40% no primeiro mês. A IA nunca perde uma ligação — acordamos com a agenda cheia.","Clínica Odontológica · Nova York"],["Recuperamos milhares em pedidos perdidos. Se paga muitas vezes.","Restaurante · multilíngue · NY"],["Nosso desperdício em ads caiu 40% e os leads dobraram. A Guileo cuida do crescimento, a gente do negócio.","Med Spa · Flórida"]] },
-  pricing:{ eyebrow:"Preço sob medida", h2:"Sem planos genéricos. Um sistema feito pro seu negócio.", sub:"Um humano de verdade estuda seu negócio e orça exatamente o que você precisa — um plano mensal simples com créditos que medem o que a Gui faz por você. Garantia de 30 dias.", cap1:"Conecta no seu sistema inteiro", cap2:"Atende 24/7, qualquer idioma", cap3:"No ar em 7 dias", cap4:"Garantia de 30 dias" },
+  pricing:{ eyebrow:"Sob medida, não de prateleira", h2:"Sem planos genéricos. Um sistema feito pro seu negócio.", sub:"Um humano de verdade estuda seu negócio e orça exatamente o que você precisa — um plano mensal simples com créditos que medem o que a Gui faz por você. Garantia de 30 dias.", cap1:"Conecta no seu sistema inteiro", cap2:"Atende 24/7, qualquer idioma", cap3:"No ar em 7 dias", cap4:"Garantia de 30 dias" },
   academy:{ eyebrow:"Guileo Academy · grátis", h2:"Faça crescer o negócio por trás do negócio", sub:"Empreendedorismo, finanças e investimento para todo dono que atendemos — clínicas, restaurantes, salões, lojas e serviços. Guias grátis que te deixam mais afiado.", cta:"Pegar o guia grátis do dono →" },
   faq:{ eyebrow:"Perguntas, respondidas", h2:"FAQ", items:[
     ["O que exatamente a Guileo faz?","Substituímos sua recepção por uma IA que atende ligações, agenda, qualifica leads e faz follow-up — e transforma cada interação em inteligência de cliente que gera recompra. Também criamos seus sites, apps e cuidamos dos seus anúncios."],
@@ -105,7 +105,7 @@ T.pt = {
     ["Vocês só atendem uma indústria?","Não. Restaurantes, clínicas, salões, advocacia, prestadores, e-commerce e mais — cada um ganha uma IA sob medida na mesma plataforma."]] },
   final:{ h2:"Pare de perder clientes. Comece hoje à noite.", sub:"No ar em menos de 7 dias · garantia de 30 dias · fale com nossa IA agora.", wa:"💬 Começar no WhatsApp", demo:"📅 Agendar demo" },
   manifesto:{ quote:"Imagine seu negócio vendendo, agendando e crescendo — enquanto você dorme.", tag:"A gente não só imagina. A gente constrói pra você." },
-  footer:{ tagline:"Sistemas de IA para negócios — agentes de voz, sites, apps e crescimento. Trocamos o caos por automação que agenda, fecha e cresce. Trabalhe smart, cresça mais rápido, durma melhor.", company:"Empresa", findus:"Onde Achar", solutions:"Soluções", svc:"Serviços & Preços", academy:"Guileo Academy", faq:"FAQ" },
+  footer:{ tagline:"Sistemas de IA para negócios — agentes de voz, sites, apps e crescimento. Trocamos o caos por automação que agenda, fecha e cresce. Trabalhe com inteligência, cresça mais rápido, durma melhor.", company:"Empresa", findus:"Onde Achar", solutions:"Soluções", svc:"Serviços & Preços", academy:"Guileo Academy", faq:"FAQ" },
 };
 
 // ---- Spanish ----
@@ -126,6 +126,7 @@ T.es = {
     loop:"Y se repite — cada nueva conversación hace tu marketing más inteligente. 🔄",
     steps:[["📞","Cada conversación","Llamadas, WhatsApp, SMS y web — tu IA captura y entiende cada una."],["🧠","Se vuelve TU dato","Perfiles de clientes unificados con consentimiento: quiénes son, qué quieren, cuándo compran."],["📣","Impulsa tu marketing","Campañas y anuncios basados en el comportamiento real de TUS clientes — no en suposiciones."],["💰","Genera recompra","Más pedidos repetidos, menos ausencias, gasto en ads más inteligente — en automático."]] },
   numbers:{ eyebrow:"Los números que cambian tu negocio", h2:"Qué pasa cuando Guileo maneja tu recepción", cta:"Quiero estos números →",
+    calleyebrow:"La prueba, en vivo", callh2:"No nos creas a nosotros — Gui te llama", callsub:"Pon tu número y Gui te llama en segundos — contestando, agendando y cotizando en vivo, 24/7. Funciona con nosotros, así sabes que funciona para ti.",
     stats:[["$","15.000","+","Ingreso mensual","aumento medio del cliente"],["","0","","Llamadas perdidas","contestadas en segundos, 24/7"],["+","286","%","Crecimiento medio","en performance y ventas"],["","3,2","x","ROI en 90 días","garantizado o te devolvemos"],["-","40","%","Menos gasto en ads","cada dólar rinde más"],["+","40","%","Más reservas","de llamadas que perdías"]] },
   pillars:{ eyebrow:"Más que automatización — toda tu operación", h2:"No solo automatizamos. Manejamos tu operación y performance.", sub:"Agentes de IA que venden · webs y apps que convierten · contenido, ads y crecimiento en cada canal. Un socio para todo el motor.", getcta:"Quiero esto en mi negocio →", hub:"TU NEGOCIO", hubsub:"conectado · automatizado · creciendo 24/7", result:"El resultado — un ciclo de crecimiento que se mueve solo",
     items:[
@@ -137,12 +138,12 @@ T.es = {
   industries:{ eyebrow:"Conocemos tu negocio", h2:"Hecho para tu industria", sub:"Un paciente llama a las 21h. Un cliente quiere cotización el domingo. Alguien quiere mesa ahora. Tu IA lo resuelve — al instante." },
   steps:{ eyebrow:"3 pasos al ingreso", h2:"En vivo en menos de 7 días",
     items:[["🌰","Planta la Semilla","Cuéntanos tus metas. Encontramos tus fugas de ingreso y diseñamos una IA que vende desde el día uno."],["🌿","Nutre el Crecimiento","Construimos y lanzamos en menos de 7 días. Tu IA trabaja 24/7 — cerrando, recortando costos, escalando."],["🌳","Cosecha Resultados","Mira subir las ganancias. +286% de performance y ciclos de venta 3x más rápidos en promedio."]] },
-  proof:{ eyebrow:"Resultados, no promesas", h2:"Confiable, probado, en cumplimiento", poweredby:"Tecnología", compliant:"Cumplimiento",
-    seals:[["🤝","Garantía de Humano Real","siempre una persona real"],["📈","Rentable o es Gratis","resultados o te devolvemos"],["🛡️","Garantía de 30 días","cero riesgo para empezar"],["⚡","En vivo en 7 días","rápido, sin esperas"]],
-    sec_t:"Seguridad y consentimiento integrados", sec_d:"Aislamiento multi-tenant, cifrado en todo y consentimiento de 3 niveles con auditoría. Tus clientes siguen siendo tuyos.",
-    ally_t:"Somos tu aliado, no un proveedor", ally_d:"Soporte humano + IA, onboarding en menos de 7 días, dashboard en vivo y un equipo que responde en horas — no días.",
+  proof:{ eyebrow:"La prueba está en esta página", h2:"No nos creas a nosotros — Gui acaba de atenderte", poweredby:"Construido sobre la misma tecnología en la que confían los gigantes", compliant:"Estándares de gobernanza independiente que cumplimos",
+    seals:[["🤝","Setup con el fundador","una persona real lo construye contigo"],["📈","Rentable o es Gratis","resultados o te devolvemos el dinero"],["🛡️","Garantía de 30 días","cancela cuando quieras, sin ataduras"],["🔐","Tus datos siguen siendo tuyos","expórtalos y llévatelos"]],
+    sec_t:"Seguridad y consentimiento integrados — verificables, no palabras vacías", sec_d:"Aislamiento multi-tenant, cifrado en tránsito y en reposo, y un modelo de consentimiento de 3 niveles con trazabilidad completa — cada acción de Gui queda registrada y es revisable. Tus clientes y tus datos siguen siendo tuyos.",
+    ally_t:"Un fundador lo construye contigo — no un bot, ni una cola de tickets", ally_d:"Esto no es una herramienta self-service que tengas que descifrar solo. Una persona real estudia tu negocio, diseña tu sistema y lo implementa — y sigue a tu lado con un dashboard en vivo y respuestas en horas, no días. La IA hace el trabajo; los humanos respaldan cada parte de él.",
     testimonials:[["Las reservas subieron 40% el primer mes. La IA nunca pierde una llamada — despertamos con la agenda llena.","Clínica Dental · Nueva York"],["Recuperamos miles en pedidos perdidos. Se paga muchas veces.","Restaurante · multilingüe · NY"],["Nuestro gasto en ads bajó 40% y los leads se duplicaron. Guileo maneja el crecimiento, nosotros el negocio.","Med Spa · Florida"]] },
-  pricing:{ eyebrow:"Precio a tu medida", h2:"Sin planes genéricos. Un sistema hecho para tu negocio.", sub:"Un humano real estudia tu negocio y cotiza justo lo que necesitas — un plan mensual simple con créditos que miden lo que Gui hace por ti. Garantía de 30 días." },
+  pricing:{ eyebrow:"A tu medida, no de plantilla", h2:"Sin planes genéricos. Un sistema hecho para tu negocio.", sub:"Un humano real estudia tu negocio y cotiza justo lo que necesitas — un plan mensual simple con créditos que miden lo que Gui hace por ti. Garantía de 30 días.", cap1:"Se conecta a todo tu stack", cap2:"Atiende 24/7, cualquier idioma", cap3:"En vivo en 7 días", cap4:"Garantía de 30 días" },
   academy:{ eyebrow:"Guileo Academy · gratis", h2:"Haz crecer el negocio detrás del negocio", sub:"Emprendimiento, finanzas e inversión para cada dueño con quien trabajamos — clínicas, restaurantes, salones, tiendas y servicios. Guías gratis que te hacen más agudo.", cta:"Obtén la guía gratis del dueño →" },
   faq:{ eyebrow:"Preguntas, respondidas", h2:"FAQ", items:[
     ["¿Qué hace exactamente Guileo?","Reemplazamos tu recepción por una IA que contesta llamadas, agenda, califica leads y hace seguimiento — y convierte cada interacción en inteligencia de cliente que genera recompra. También creamos tus webs, apps y manejamos tus anuncios."],
@@ -190,7 +191,7 @@ T.hi = {
     sec_t:"सुरक्षा और सहमति अंतर्निहित", sec_d:"मल्टी-टेनेंट आइसोलेशन, हर जगह एन्क्रिप्शन, और पूर्ण ऑडिट के साथ 3-स्तरीय सहमति मॉडल। आपके ग्राहक आपके ही रहते हैं।",
     ally_t:"हम आपके सहयोगी हैं, विक्रेता नहीं", ally_d:"मानव + AI सपोर्ट, 7 दिनों से कम में ऑनबोर्डिंग, लाइव डैशबोर्ड, और एक टीम जो घंटों में जवाब देती है — दिनों में नहीं।",
     testimonials:[["पहले महीने में बुकिंग 40% बढ़ी। AI कभी कॉल नहीं चूकती — हम भरे कैलेंडर के साथ जागते हैं।","डेंटल क्लिनिक · न्यूयॉर्क"],["हमने हज़ारों के छूटे ऑर्डर वापस पाए। यह कई गुना वसूल हो जाता है।","रेस्टोरेंट · बहुभाषी · NY"],["हमारा ऐड खर्च 40% घटा और लीड दोगुने हुए। Guileo ग्रोथ संभालती है, हम व्यवसाय।","मेड स्पा · फ्लोरिडा"]] },
-  pricing:{ eyebrow:"आपके हिसाब से मूल्य", h2:"कोई जेनेरिक प्लान नहीं। आपके व्यवसाय के लिए बना सिस्टम।", sub:"एक असली इंसान आपके व्यवसाय को समझता है और ठीक वही कोट करता है जो आपको चाहिए — एक सरल मासिक प्लान, क्रेडिट के साथ जो मापते हैं कि Gui आपके लिए क्या करती है। 30-दिन मनी-बैक।" },
+  pricing:{ eyebrow:"आपके हिसाब से मूल्य", h2:"कोई जेनेरिक प्लान नहीं। आपके व्यवसाय के लिए बना सिस्टम।", sub:"एक असली इंसान आपके व्यवसाय को समझता है और ठीक वही कोट करता है जो आपको चाहिए — एक सरल मासिक प्लान, क्रेडिट के साथ जो मापते हैं कि Gui आपके लिए क्या करती है। 30-दिन मनी-बैक।", cap1:"आपके पूरे स्टैक से जुड़ता है", cap2:"24/7 जवाब, कोई भी भाषा", cap3:"7 दिनों में लाइव", cap4:"30-दिन मनी-बैक" },
   academy:{ eyebrow:"Guileo Academy · मुफ़्त", h2:"व्यवसाय के पीछे के व्यवसाय को बढ़ाएँ", sub:"हर उस मालिक के लिए उद्यमिता, वित्त और निवेश जिनके साथ हम काम करते हैं — क्लिनिक, रेस्टोरेंट, सैलून, दुकानें और सेवाएँ। मुफ़्त गाइड जो आपको और तेज़ बनाएँ।", cta:"मालिक की मुफ़्त गाइड पाएँ →" },
   faq:{ eyebrow:"सवाल, जवाब", h2:"FAQ", items:[
     ["Guileo वास्तव में क्या करती है?","हम आपके फ्रंट डेस्क को एक AI एजेंट से बदलते हैं जो कॉल का उत्तर देता है, बुकिंग करता है, लीड क्वालिफाई करता है और फॉलो-अप करता है — और हर इंटरैक्शन को ग्राहक इंटेलिजेंस में बदलता है जो दोबारा बिक्री लाती है। हम आपकी वेबसाइट, ऐप भी बनाते हैं और आपके विज्ञापन चलाते हैं।"],
@@ -277,7 +278,7 @@ const MORE = {
     coreLine:"Dois motores fazem seu negócio crescer — seu marketing e sua operação do dia a dia. Movidos por IA, geridos por humanos de verdade.",
     doesLabel:"O que faz", changesLabel:"O que muda",
     coreSupport:"E construímos os sites, apps e agentes de voz que fazem tudo rodar.",
-    charts:{ eyebrow:"Resultados reais", title:"Crescimento que dá pra ver", rows:[["💰","Crescimento de receita",92,"+286%"],["📞","Ligações atendidas",100,"24/7"],["🎯","Eficiência de ads",85,"−40% desperdício"],["📅","Recompra",78,"+40%"]] },
+    charts:{ eyebrow:"Seu potencial de crescimento", title:"Crescimento que dá pra ver", note:"Metas ilustrativas, não garantias — seus números dependem do seu negócio. A única prova que sustentamos é a Gui funcionando ao vivo nesta página.", rows:[["💰","Crescimento de receita",92,"+286%"],["📞","Ligações atendidas",100,"24/7"],["🎯","Eficiência de ads",85,"−40% desperdício"],["📅","Recompra",78,"+40%"]] },
     adv:{ eyebrow:"Por que a Guileo", line:"Tudo o que você ganha tendo a gente do seu lado.",
       items:[
         ["🌙","Nunca perca um cliente","+",35,"%","mais leads — atende 24/7"],
@@ -316,7 +317,7 @@ const MORE = {
     coreLine:"Dos motores hacen crecer tu negocio — tu marketing y tu operación diaria. Movidos por IA, gestionados por humanos de verdad.",
     doesLabel:"Qué hace", changesLabel:"Qué cambia",
     coreSupport:"Y construimos las webs, apps y agentes de voz que hacen que todo funcione.",
-    charts:{ eyebrow:"Resultados reales", title:"Crecimiento que se ve", rows:[["💰","Crecimiento de ingresos",92,"+286%"],["📞","Llamadas contestadas",100,"24/7"],["🎯","Eficiencia de ads",85,"−40% desperdicio"],["📅","Recompra",78,"+40%"]] },
+    charts:{ eyebrow:"Tu potencial de crecimiento", title:"Crecimiento que se ve", note:"Metas ilustrativas, no garantías — tus números dependen de tu negocio. La única prueba que sostenemos es Gui funcionando en vivo en esta página.", rows:[["💰","Crecimiento de ingresos",92,"+286%"],["📞","Llamadas contestadas",100,"24/7"],["🎯","Eficiencia de ads",85,"−40% desperdicio"],["📅","Recompra",78,"+40%"]] },
     adv:{ eyebrow:"Por qué Guileo", line:"Todo lo que ganas al tenernos de tu lado.",
       items:[
         ["🌙","Nunca pierdas un cliente","+",35,"%","más leads — 24/7"],
