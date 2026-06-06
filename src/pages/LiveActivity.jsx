@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase.js";
+import { createClient } from "@supabase/supabase-js";
+
+// Dedicated client for the Gui-actions store (public anon key, RLS-protected, read-only here).
+const supabase = createClient(
+  "https://fccwbafkbhkyrvauzshl.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjY3diYWZrYmhreXJ2YXV6c2hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTU3NzQsImV4cCI6MjA5NDI5MTc3NH0.knDpHzK_cfpqmUzpLI4rTndAumn1yepCiRwCSAqwSNs",
+  { auth: { persistSession: false } }
+);
 
 // /live — a real-time feed of everything Gui does (bookings, leads, reviews, sales) across calls.
 // Reads the public `gui_actions` table (anon, RLS-protected). Polls so new actions appear live.

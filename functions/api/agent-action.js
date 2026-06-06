@@ -23,9 +23,10 @@ export async function onRequestPost(context) {
       at: new Date().toISOString(),
     };
 
-    // 1) Persist to Supabase so it shows live on /live and in the portal (public anon key + RLS).
-    const SB_URL = env.SUPABASE_URL || "https://ynihodbknhjirkdogxby.supabase.co";
-    const SB_ANON = env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
+    // 1) Persist to Supabase so it shows live on /live (public anon key + RLS). Defaults to the
+    //    gui_actions store; override with GUI_ACTIONS_SUPABASE_URL/KEY env vars to move it.
+    const SB_URL = env.GUI_ACTIONS_SUPABASE_URL || "https://fccwbafkbhkyrvauzshl.supabase.co";
+    const SB_ANON = env.GUI_ACTIONS_SUPABASE_ANON || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjY3diYWZrYmhreXJ2YXV6c2hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTU3NzQsImV4cCI6MjA5NDI5MTc3NH0.knDpHzK_cfpqmUzpLI4rTndAumn1yepCiRwCSAqwSNs";
     let stored = false;
     try {
       const r = await fetch(`${SB_URL}/rest/v1/gui_actions`, {
