@@ -23,7 +23,20 @@ export async function onRequestPost(context) {
       at: new Date().toISOString(),
     };
 
-    // Forward so the owner SEES it (Zapier/Make/n8n catch hook → Google Sheet / CRM / email).
+    // 1) Persist to Supabase so it shows live on /live and in the portal (public anon key + RLS).
+    const SB_URL = env.SUPABASE_URL || "https://ynihodbknhjirkdogxby.supabase.co";
+    const SB_ANON = env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
+    let stored = false;
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/gui_actions`, {
+        method: "POST",
+        headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({ action: rec.action, name: rec.name, contact: rec.contact, slot: rec.when, details: rec.details, business: rec.business, industry: rec.industry, amount: rec.amount, source: rec.source }),
+      });
+      stored = r.ok;
+    } catch { /* never fail the call */ }
+
+    // 2) Also forward to the owner's webhook if they set one (Sheet/CRM/email).
     let delivered = false;
     if (env.LEAD_WEBHOOK) {
       try {
@@ -45,7 +58,7 @@ export async function onRequestPost(context) {
       quote: `I've captured your quote request, ${who} — you'll have it soon.`,
     }[action] || `Done — ${action} captured for ${who}.`;
 
-    return json({ ok: true, delivered, message: msg, record: rec });
+    return json({ ok: true, stored, delivered, message: msg, record: rec });
   } catch {
     return json({ ok: false, message: "Sorry, I couldn't save that just now — could you repeat it?" }, 400);
   }
