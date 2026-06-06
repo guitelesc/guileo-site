@@ -6,7 +6,7 @@
 export const CONTACT = {
   whatsapp: "19295350191",      // digits only, with country code (US +1 929 535 0191)
   email: "hello@guileo.ai",     // ← REPLACE with real inbox if different
-  calendly: "",                 // set a Calendly/Cal.com URL to use it; empty → "Book a demo" falls back to WhatsApp
+  calendly: "https://cal.com/guileo",   // Cal.com booking link for "Book a demo"
   socials: {
     instagram: "",
     linkedin: "",
