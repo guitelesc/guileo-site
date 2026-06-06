@@ -526,10 +526,11 @@ export default function Home() {
 
       {/* RESULTS CHARTS — growth you can see (the results the operation above produces) */}
       <section className="wrap py-14">
-        <Reveal className="text-center max-w-2xl mx-auto mb-10">
+        <Reveal className="text-center max-w-2xl mx-auto mb-3">
           <span className="eyebrow mb-3">{t.more.charts.eyebrow}</span>
           <h2 className="h2">{t.more.charts.title}</h2>
         </Reveal>
+        <p className="text-center text-[11px] text-g-muted mb-8 max-w-xl mx-auto">{t.more.charts.note || "Illustrative targets, not guarantees — your numbers depend on your business. The one proof we stand on is Gui working live on this page."}</p>
         <Stagger className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5" gap={0.1}>
           {t.more.charts.rows.map(([ic,label,pct,res],i)=>(
             <Item key={label} variant="scale">

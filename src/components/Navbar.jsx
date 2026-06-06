@@ -14,17 +14,22 @@ export default function Navbar() {
     const h = () => setScrolled(window.scrollY > 16);
     window.addEventListener("scroll", h); return () => window.removeEventListener("scroll", h);
   }, []);
-  const LINKS = [["Demo","/#demo"],[t.nav.solutions,"/#pillars"],[t.nav.engine,"/#engine"],[t.nav.industries,"/#industries"],[t.nav.results,"/#results"],[t.nav.academy,"/#academy"],[t.nav.pricing,"/#pricing"],[t.nav.services,"/servicos"]];
+  // Lean top nav (5 core) so it never crowds — the rest stay reachable by scroll + footer + mobile menu.
+  const LINKS = [["Demo","/#demo"],[t.nav.solutions,"/#pillars"],[t.nav.industries,"/#industries"],[t.nav.pricing,"/#pricing"],[t.nav.services,"/servicos"]];
+  const LINKS_MOBILE = [["Demo","/#demo"],[t.nav.solutions,"/#pillars"],[t.nav.engine,"/#engine"],[t.nav.industries,"/#industries"],[t.nav.results,"/#results"],[t.nav.academy,"/#academy"],[t.nav.pricing,"/#pricing"],[t.nav.services,"/servicos"]];
   return (
     <header className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${scrolled ? "bg-g-cream/80 backdrop-blur-xl shadow-soft border-b border-white/5" : "bg-transparent"}`}>
       <ScrollProgress />
-      <nav className={`wrap flex items-center justify-between transition-all duration-300 ${scrolled ? "h-14" : "h-16"}`}>
-        <a href="/" className="flex items-center gap-2 group"><img src={logo} alt="Guileo" className={`object-contain transition-all duration-300 group-hover:rotate-6 ${scrolled ? "h-8 w-8" : "h-9 w-9"}`} /><span className="text-lg font-extrabold text-g-word">Guileo</span></a>
-        <div className="hidden lg:flex items-center gap-6">
-          {LINKS.map(([t2,h]) => <a key={h} href={h} className="navlink text-sm font-semibold text-g-muted hover:text-g-word transition-colors">{t2}</a>)}
+      <nav className={`wrap flex items-center justify-between gap-4 transition-all duration-300 ${scrolled ? "h-14" : "h-16"}`}>
+        {/* left group — logo + nav links, kept together with a guaranteed gap so they never collide */}
+        <div className="flex items-center gap-6 xl:gap-9 min-w-0">
+          <a href="/" className="flex items-center gap-2 group shrink-0"><img src={logo} alt="Guileo" className={`object-contain transition-all duration-300 group-hover:rotate-6 ${scrolled ? "h-8 w-8" : "h-9 w-9"}`} /><span className="text-lg font-extrabold text-g-word">Guileo</span></a>
+          <div className="hidden lg:flex items-center gap-4 xl:gap-5">
+            {LINKS.map(([t2,h]) => <a key={h} href={h} className="navlink text-[13px] xl:text-sm font-semibold text-g-muted hover:text-g-word transition-colors whitespace-nowrap">{t2}</a>)}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="hidden sm:flex items-center gap-1 rounded-full border border-g-line bg-white/[0.06] px-1 py-1">
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="hidden xl:flex items-center gap-1 rounded-full border border-g-line bg-white/[0.06] px-1 py-1">
             {LANGS.map(([code,flag]) => (
               <button key={code} onClick={() => setLang(code)} title={code.toUpperCase()} aria-label={`${code.toUpperCase()}`} aria-pressed={lang===code}
                 className={`h-7 w-7 rounded-full text-sm transition ${lang===code ? "bg-g-green/15 scale-110" : "opacity-60 hover:opacity-100"}`}>{flag}</button>

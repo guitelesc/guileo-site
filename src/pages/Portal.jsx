@@ -329,7 +329,7 @@ function genImpact(V) {
        ["3h", "Captured an after-hours inquiry → booked", amt(4)],
        ["5h", "Turned a 5★ review into a new lead", amt(5)]]
     : [["now", "Recovered a missed call → booking", 120], ["14m", "Filled a cancelled slot from waitlist", 80], ["1h", "Won back a lapsed customer", 240], ["2h", "Reactivated a recall / repeat visit", 160], ["3h", "Turned a 5★ review into a new lead", 90], ["5h", "Captured an after-hours inquiry", 180]];
-  return { total: V.impact?.total || 0, parts: V.impact?.parts || [], events, sharePct: 12 };
+  return { total: V.impact?.total || 0, parts: V.impact?.parts || [], events };
 }
 // Universal "money leak" engine — un-converted leads, stalled quotes, trials, recalls the AI chases
 function genFollowups(V) {
@@ -3736,7 +3736,11 @@ function GuileoImpact({ V }) {
   const events = [...created.map((e) => [e.t, e.what, e.amt]), ...d.events];
   const extra = created.reduce((s, e) => s + (e.amt || 0), 0);
   const total = d.total + extra;
-  const share = Math.round((total * d.sharePct) / 100);
+  // HONEST return: based on REAL credits spent (gui_usage ledger), not a fabricated % of growth.
+  const usage = portalApi.loadState("gui_usage", []);
+  const creditsUsed = Array.isArray(usage) ? usage.reduce((s, u) => s + (u?.cost || 0), 0) : 0;
+  const spentUsd = creditsUsed * 0.04; // ~ $0.04 / credit (pay-as-you-go)
+  const roi = spentUsd > 0 ? total / spentUsd : 0;
   return (
     <div className="space-y-4 stagger">
       <Card className="relative overflow-hidden bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] border-g-green/30">
@@ -3754,13 +3758,13 @@ function GuileoImpact({ V }) {
         </Card>
         <Card>
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">{tr("Your return")}</div>
-          <div className="text-sm text-g-muted">Gui drove <b className="text-g-word">${total.toLocaleString()}</b> in growth for you this month.</div>
+          <div className="text-sm text-g-muted">Gui drove <b className="text-g-word">${total.toLocaleString()}</b> in growth for you this month{creditsUsed ? <> · powered by <b className="text-g-word">{creditsUsed.toLocaleString()} credits</b></> : ""}.</div>
           <div className="mt-3 rounded-xl2 border border-g-gold/30 bg-g-gold/[0.06] p-3">
-            <div className="text-[10px] uppercase tracking-wide text-g-gold font-bold">Return on Gui</div>
-            <div className="text-2xl font-extrabold text-g-word mt-1">{share > 0 ? `${(total / share).toFixed(1)}×` : "—"}</div>
-            <div className="text-[11px] text-g-muted mt-0.5">Every $1 of Gui credits returned <b className="text-g-word">${share > 0 ? (total / share).toFixed(1) : "0"}</b> in growth. Pay-as-you-go credits power every action — no cut of your revenue.</div>
+            <div className="text-[10px] uppercase tracking-wide text-g-gold font-bold">Return on credits</div>
+            <div className="text-2xl font-extrabold text-g-word mt-1">{roi > 0 ? `${roi.toFixed(1)}×` : "—"}</div>
+            <div className="text-[11px] text-g-muted mt-0.5">{roi > 0 ? <>Every $1 of credits returned <b className="text-g-word">${roi.toFixed(1)}</b> in growth.</> : "Run Gui this month to see your return."} Pay-as-you-go — you only pay for what Gui does. <b className="text-g-word">Guileo never takes a cut of your revenue.</b></div>
             <button onClick={() => {
-              const lines = [["Date", "Growth event", "Amount"], ...events.map(([t, what, amt]) => [t === "now" ? "just now" : `${t} ago`, what, `$${amt}`]), ["", "Total growth Gui drove", `$${total}`], ["", "Return on Gui", share > 0 ? `${(total / share).toFixed(1)}x` : "-"]];
+              const lines = [["Date", "Growth event", "Amount"], ...events.map(([t, what, amt]) => [t === "now" ? "just now" : `${t} ago`, what, `$${amt}`]), ["", "Total growth Gui drove", `$${total}`], ["", "Credits used", `${creditsUsed}`], ["", "Return on credits", roi > 0 ? `${roi.toFixed(1)}x` : "-"]];
               const csv = lines.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
               const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
               const a = document.createElement("a"); a.href = url; a.download = `guileo-growth-statement-${V.label}.csv`; a.click(); URL.revokeObjectURL(url);
@@ -4420,7 +4424,9 @@ export default function Portal() {
   // Polished, print-ready monthly report (open → Cmd/Ctrl-P → Save as PDF).
   const exportReport = () => {
     const impact = genImpact(V);
-    const share = Math.round((impact.total * impact.sharePct) / 100);
+    const usage = portalApi.loadState("gui_usage", []);
+    const creditsUsed = Array.isArray(usage) ? usage.reduce((s, u) => s + (u?.cost || 0), 0) : 0;
+    const roi = creditsUsed * 0.04 > 0 ? impact.total / (creditsUsed * 0.04) : 0;
     const kpiRows = V.kpis.map((k) => `<tr><td>${k.label}</td><td style="text-align:right;font-weight:700">${k.pre || ""}${k.num.toLocaleString?.() || k.num}${k.suf || ""}</td></tr>`).join("");
     const eventRows = impact.events.map(([t, what, amt]) => `<tr><td>${what}</td><td style="text-align:right;color:#1f9d57;font-weight:700">+$${amt}</td></tr>`).join("");
     // Sector-aware: which of this business's tools Guileo is acting through, + standing automations.
@@ -4443,7 +4449,7 @@ export default function Portal() {
       </div>
       <div class="hero"><div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#9a7b1f;font-weight:700">Growth Gui drove this month</div>
         <div class="big">$${impact.total.toLocaleString()}</div>
-        <div class="share"><b>Return on Gui: ${share > 0 ? (impact.total / share).toFixed(1) : "0"}× on credits used</b><br><span class="muted">Pay-as-you-go credits power every action — Guileo never takes a cut of your revenue.</span></div>
+        <div class="share"><b>${roi > 0 ? `Return on credits: ${roi.toFixed(1)}× ($${impact.total.toLocaleString()} growth from ${creditsUsed.toLocaleString()} credits)` : `Powered by ${creditsUsed.toLocaleString()} credits`}</b><br><span class="muted">Pay-as-you-go — you only pay for what Gui does. Guileo never takes a cut of your revenue.</span></div>
       </div>
       <h3>Key metrics</h3><table>${kpiRows}</table>
       <h3>Growth ledger</h3><table>${eventRows}<tr><td><b>Total</b></td><td style="text-align:right"><b>$${impact.total.toLocaleString()}</b></td></tr></table>

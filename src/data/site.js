@@ -96,11 +96,8 @@ export const ACADEMY = [
   ["📈", "Smart Investments", "Where your profit should go: building real wealth beyond the day-to-day of the business."],
 ];
 
-export const PRICING = [
-  { name: "Starter", tag: "Single channel", price: "from $299", per: "/mo", feats: ["1 AI agent (voice or text)", "Bookings & follow-ups", "Setup + training included", "30-day money-back"], cta: "Book a demo" },
-  { name: "Growth", tag: "Most popular", price: "from $699", per: "/mo", feats: ["Voice + text + WhatsApp", "Campaigns & Google Reviews", "Analytics dashboard", "Priority support"], cta: "Book a demo", featured: true },
-  { name: "Scale", tag: "Full platform", price: "Custom", per: "", feats: ["All channels + CDP", "Performance ads (Guileo.AD)", "Predictive ML & audiences", "White-glove onboarding"], cta: "Talk to us" },
-];
+// NOTE: obsolete fixed-price tiers removed (were $299/$699, contradicting the current
+// no-price "a human quotes you" model). Live tiers come from i18n PRICE/PRICE_SYNC.
 
 export const TICKER = [
   "📞 Call answered in 1.2s", "📅 Appointment booked", "💰 $240 recovered", "⭐ 5-star review requested",
