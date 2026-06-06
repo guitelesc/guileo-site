@@ -398,7 +398,7 @@ function genRecurring(V) {
   const p = PLAN[V.label] || "Membership";
   return (V.ops?.schedule || []).slice(0, 5).map((r, i) => ({ name: r.name, plan: p, value: 39 + i * 12, status: i === 3 ? "Renews soon" : i === 4 ? "At risk" : "Active", color: i === 3 ? "#D6C29A" : i === 4 ? "#EF4444" : "#3E9468" }));
 }
-import logo from "../assets/guileo-logo.png";
+import logo from "../assets/guileo-mark.png";
 import { Count } from "../lib/ui.jsx";
 import { waLink } from "../data/contact.js";
 import { VERTICALS, VERTICAL_KEYS } from "../data/verticals.js";

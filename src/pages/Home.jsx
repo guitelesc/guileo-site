@@ -12,7 +12,7 @@ import LiveCallBar from "../components/LiveCallBar.jsx";
 import LiveDemo from "../components/LiveDemo.jsx";
 import { Reveal, Count, Aurora, Ticker, Circuit, Stagger, Item, Magnetic, Parallax, Spotlight, Accordion, ProductsMarquee, HumanShield, LiveFeed } from "../lib/ui.jsx";
 import { AnimatePresence } from "framer-motion";
-import logo from "../assets/guileo-logo.png";
+import logo from "../assets/guileo-mark.png";
 import mark from "../assets/guileo-mark.png";
 import { TECH, COMPLIANCE, TICKER, CHANNELS, CORE_OFFER, INTEGRATIONS, COMPARISON } from "../data/site";
 import { CONTACT, waLink, bookLink } from "../data/contact.js";

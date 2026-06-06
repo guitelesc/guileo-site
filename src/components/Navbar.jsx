@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { FaGaugeHigh } from "react-icons/fa6";
-import logo from "../assets/guileo-logo.png";
+import logo from "../assets/guileo-mark.png";
 import { useLang } from "../i18n.jsx";
 import { ScrollProgress } from "../lib/ui.jsx";
 

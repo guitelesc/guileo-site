@@ -1,4 +1,4 @@
-import logo from "../assets/guileo-logo.png";
+import logo from "../assets/guileo-mark.png";
 import { useLang } from "../i18n.jsx";
 import { CONTACT, waLink, bookLink } from "../data/contact.js";
 const SOCIAL = [["Instagram","instagram"],["LinkedIn","linkedin"],["TikTok","tiktok"],["YouTube","youtube"],["Telegram","telegram"],["X","x"],["Google Business","google"]];

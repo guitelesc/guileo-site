@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import logo from "../assets/guileo-logo.png";
+import logo from "../assets/guileo-mark.png";
 
 // Seed → sprout opening. Plays once on mount, ~1.5s, skippable.
 // Calls onDone when it hands off to the hero (overlay then fades out).
