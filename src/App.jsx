@@ -7,6 +7,7 @@ const Servicos = lazy(() => import("./pages/Servicos"));
 const Portal = lazy(() => import("./pages/Portal"));
 const Contratos = lazy(() => import("./pages/Contratos"));
 const LiveActivity = lazy(() => import("./pages/LiveActivity"));
+const LandingV2 = lazy(() => import("./pages/LandingV2"));
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
             <Route path="/servicos" element={<Servicos />} />
             <Route path="/portal" element={<Portal />} />
             <Route path="/live" element={<LiveActivity />} />
+            <Route path="/v2" element={<LandingV2 />} />
             <Route path="/admin/contratos" element={<Contratos />} />
           </Routes>
         </Suspense>
