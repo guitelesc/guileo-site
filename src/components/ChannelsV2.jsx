@@ -1,22 +1,44 @@
-// ChannelsV2 — TEST (/v2): "Every channel, automated." Left = copy, right = a phone
-// lock-screen where Guileo's live notifications stream up (TikTok→LinkedIn→Telegram→…),
-// showing one brain working every platform, always on. Guileo design system + CSS motion.
+import { FaTiktok, FaLinkedinIn, FaTelegram, FaFacebookF, FaInstagram, FaWhatsapp, FaGoogle, FaXTwitter } from "react-icons/fa6";
+
+// ChannelsV2 — TEST (/v2): "Every channel, automated." REAL brand logos (react-icons),
+// phone lock-screen with live notifications streaming up. Guileo design system + CSS motion.
+
+const CH = {
+  TikTok: { Icon: FaTiktok, bg: "#010101" },
+  LinkedIn: { Icon: FaLinkedinIn, bg: "#0A66C2" },
+  Telegram: { Icon: FaTelegram, bg: "#26A5E4" },
+  Facebook: { Icon: FaFacebookF, bg: "#1877F2" },
+  Instagram: { Icon: FaInstagram, bg: "linear-gradient(45deg,#f09433,#dc2743,#bc1888)" },
+  WhatsApp: { Icon: FaWhatsapp, bg: "#25D366" },
+  Google: { Icon: FaGoogle, bg: "#4285F4" },
+  X: { Icon: FaXTwitter, bg: "#000000" },
+};
 
 const NOTIFS = [
-  { app: "TikTok", icon: "🎵", t: "3m", line: "Posted a clip · 12.4k views overnight" },
-  { app: "LinkedIn", icon: "💼", t: "6m", line: "Published an article · 18 new leads" },
-  { app: "Telegram", icon: "✈️", t: "9m", line: "Answered 30 group questions instantly" },
-  { app: "Facebook", icon: "📘", t: "12m", line: "Replied to 24 comments & messages" },
-  { app: "Instagram", icon: "📸", t: "15m", line: "Scheduled 5 reels for the week" },
-  { app: "WhatsApp", icon: "💬", t: "20m", line: "Closed 3 sales right in the chat" },
-  { app: "Google", icon: "🔍", t: "26m", line: "Replied to 7 reviews · kept 4.9★" },
-  { app: "X", icon: "✖️", t: "31m", line: "Posted a thread · 2.1k impressions" },
+  { app: "TikTok", t: "3m", line: "Posted a clip · 12.4k views overnight" },
+  { app: "LinkedIn", t: "6m", line: "Published an article · 18 new leads" },
+  { app: "Telegram", t: "9m", line: "Answered 30 group questions instantly" },
+  { app: "Facebook", t: "12m", line: "Replied to 24 comments & messages" },
+  { app: "Instagram", t: "15m", line: "Scheduled 5 reels for the week" },
+  { app: "WhatsApp", t: "20m", line: "Closed 3 sales right in the chat" },
+  { app: "Google", t: "26m", line: "Replied to 7 reviews · kept 4.9★" },
+  { app: "X", t: "31m", line: "Posted a thread · 2.1k impressions" },
 ];
+
+function Logo({ app, size = 16 }) {
+  const c = CH[app];
+  const Icon = c.Icon;
+  return (
+    <span className="grid shrink-0 place-items-center rounded-[9px] text-white" style={{ width: size + 16, height: size + 16, background: c.bg }}>
+      <Icon size={size} />
+    </span>
+  );
+}
 
 function Notif({ n }) {
   return (
     <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.08] px-3.5 py-2.5 backdrop-blur-md">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10 text-lg">{n.icon}</span>
+      <Logo app={n.app} size={16} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between">
           <span className="text-[12px] font-bold text-white">{n.app} · <span className="text-g-green">Guileo AI</span></span>
@@ -52,8 +74,10 @@ export default function ChannelsV2() {
             Content created, scheduled and optimized across <span className="font-semibold text-g-word">all</span> your channels. <span className="font-semibold text-g-green">One brain</span>, every platform, always on.
           </p>
           <div className="mt-6 flex flex-wrap gap-2" style={{ animation: "chreveal .8s ease .4s both" }}>
-            {["🎵 TikTok", "💼 LinkedIn", "✈️ Telegram", "📘 Facebook", "📸 Instagram", "💬 WhatsApp", "🔍 Google", "✖️ X"].map((c) => (
-              <span key={c} className="rounded-full border border-g-line bg-white/[0.04] px-3 py-1 text-[12px] font-semibold text-g-muted">{c}</span>
+            {Object.keys(CH).map((app) => (
+              <span key={app} className="inline-flex items-center gap-2 rounded-full border border-g-line bg-white/[0.04] py-1 pl-1 pr-3 text-[12.5px] font-semibold text-g-ink">
+                <Logo app={app} size={12} /> {app}
+              </span>
             ))}
           </div>
         </div>
@@ -64,7 +88,6 @@ export default function ChannelsV2() {
           <div className="relative rounded-[3rem] bg-gradient-to-b from-[#2a2a2a] to-[#0a0a0a] p-[8px] ring-1 ring-white/10 shadow-[0_60px_150px_-30px_rgba(0,0,0,0.9)]">
             <div className="relative overflow-hidden rounded-[2.6rem] bg-gradient-to-b from-[#10120f] to-[#0a0b08]">
               <div className="absolute left-1/2 top-2.5 z-20 h-6 w-28 -translate-x-1/2 rounded-full bg-black" />
-              {/* lock-screen header */}
               <div className="px-6 pb-3 pt-9 text-center">
                 <div className="text-[12px] font-semibold text-white/60">Saturday, June 7</div>
                 <div className="text-[56px] font-bold leading-none text-white">9:41</div>
@@ -72,7 +95,6 @@ export default function ChannelsV2() {
                   <span className="h-1.5 w-1.5 rounded-full bg-g-green" style={{ animation: "chpulse 1.6s ease-in-out infinite" }} /> guileo live · working
                 </div>
               </div>
-              {/* notifications stream */}
               <div className="relative h-[300px] overflow-hidden px-3 pb-5" style={{ maskImage: "linear-gradient(to bottom,transparent,#000 10%,#000 88%,transparent)", WebkitMaskImage: "linear-gradient(to bottom,transparent,#000 10%,#000 88%,transparent)" }}>
                 <div className="space-y-2.5" style={{ animation: "chscroll 22s linear infinite" }}>
                   {list.map((n, i) => <Notif key={i} n={n} />)}

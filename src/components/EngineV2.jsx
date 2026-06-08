@@ -31,7 +31,7 @@ export default function EngineV2() {
 
       <div className="mx-auto max-w-5xl text-center">
         <div className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold" style={{ animation: "ereveal .7s ease both" }}>
-          <span className="espin inline-block" style={{ animation: "espin 6s linear infinite" }}>♻️</span> Your customers = your growth engine
+          <span className="espin inline-block" style={{ animation: "espin 6s linear infinite" }}>♻️</span> Guileo AD · the marketing engine
         </div>
         <h2 className="mt-4 font-black leading-[0.96] tracking-tight" style={{ fontSize: "clamp(2rem,4.4vw,3.2rem)" }}>
           <span className="text-g-word" style={{ animation: "ereveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>Every conversation </span>
