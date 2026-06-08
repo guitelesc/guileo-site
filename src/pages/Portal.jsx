@@ -4063,7 +4063,7 @@ function OnboardingWizard({ onDone }) {
             <div className="text-4xl mb-2">🎉</div>
             <div className="text-lg font-extrabold text-g-word">You're all set, {name || "there"}!</div>
             <p className="text-xs text-g-muted mt-1">Your AI is live and your Growth Cockpit is ready.</p>
-            <button onClick={() => onDone(vid, { name: name.trim() })} className="btn-bright text-sm w-full mt-5">Enter my cockpit →</button>
+            <button onClick={() => { captureLead(); onDone(vid, { name: name.trim(), owner: owner.trim(), contact: contact.trim() }); }} className="btn-bright text-sm w-full mt-5">Enter my cockpit →</button>
           </div>
         )}
         {step < 3 && <button onClick={() => onDone(vid)} className="block mx-auto mt-4 text-[11px] font-bold text-g-muted hover:text-g-word">Skip setup</button>}
