@@ -4024,8 +4024,11 @@ function OnboardingWizard({ onDone }) {
   const [step, setStep] = useState(0);
   const [vid, setVid] = useState("restaurant");
   const [name, setName] = useState("");
+  const [owner, setOwner] = useState("");
+  const [contact, setContact] = useState("");
   const [chs, setChs] = useState({ "WhatsApp": true, "Phone calls": true, "Instagram": true, "SMS": false });
   const next = () => setStep((s) => s + 1);
+  const captureLead = () => { try { fetch("/api/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: owner.trim() || name.trim(), business: name.trim(), contact: contact.trim(), phone: contact.trim(), channel: "Portal signup", industry: vid, source: "portal-onboard" }) }); } catch { /* never block */ } };
   return (
     <div className="min-h-screen grid place-items-center px-5">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md rounded-xl3 border border-white/12 bg-white/[0.04] backdrop-blur-xl p-7 shadow-lift">
@@ -4042,9 +4045,11 @@ function OnboardingWizard({ onDone }) {
           </div>
         </>)}
         {step === 1 && (<>
-          <div className="text-lg font-extrabold text-g-word">Your business name</div>
-          <p className="text-xs text-g-muted mt-1">This is how your AI introduces itself to customers.</p>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Bella Pizza" className="mt-4 w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+          <div className="text-lg font-extrabold text-g-word">Tell us about you</div>
+          <p className="text-xs text-g-muted mt-1">So Gui represents your business — and we can reach you.</p>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Business name (e.g. Bella Pizza)" className="mt-4 w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+          <input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="Your name" className="mt-3 w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+          <input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Your WhatsApp / phone / email" className="mt-3 w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
           <button onClick={next} className="btn-bright text-sm w-full mt-4">Continue →</button>
         </>)}
         {step === 2 && (<>

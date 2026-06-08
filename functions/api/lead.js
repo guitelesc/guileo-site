@@ -1,60 +1,64 @@
-// Cloudflare Pages Function — POST /api/lead → captures a lead (name/email/phone/business).
-// Easiest setup: set a single secret LEAD_WEBHOOK in Cloudflare (a Zapier/Make/n8n "catch hook"
-// or any URL) and every lead is forwarded there (→ your email, a Google Sheet, a CRM, etc.).
-// Optional Supabase: set SUPABASE_URL + SUPABASE_KEY to also insert into a `leads` table.
+// Cloudflare Pages Function — POST /api/lead → captures a lead (name + email/phone/contact).
+// Leads ALWAYS land in the gui_actions store (the same feed /admin and /live read), so Luis
+// sees every lead and can close it. Optionally also forwards to LEAD_WEBHOOK (Zapier/Sheet/CRM)
+// and a Supabase `leads` table.
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
     const body = await request.json();
+    const s = (v, n = 200) => (v == null ? "" : v.toString().slice(0, n));
     const lead = {
-      name: (body.name || "").toString().slice(0, 120),
-      email: (body.email || "").toString().slice(0, 160),
-      phone: (body.phone || "").toString().slice(0, 40),
-      business: (body.business || "").toString().slice(0, 160),
-      message: (body.message || "").toString().slice(0, 800),
-      source: (body.source || "website").toString().slice(0, 60),
-      lang: (body.lang || "").toString().slice(0, 5),
+      name: s(body.name, 120),
+      email: s(body.email, 160),
+      phone: s(body.phone, 40),
+      contact: s(body.contact || body.phone || body.email, 160),
+      channel: s(body.channel, 40),
+      business: s(body.business, 160),
+      industry: s(body.industry, 80),
+      message: s(body.message, 800),
+      score: s(body.score, 12),
+      leak: s(body.leak, 16),
+      source: s(body.source || "website", 60),
+      lang: s(body.lang, 5),
       at: new Date().toISOString(),
     };
-    if (!lead.email && !lead.phone) return json({ error: "Need an email or phone" }, 400);
+    // need at least one way to reach them
+    if (!lead.email && !lead.phone && !lead.contact) return json({ error: "Need a contact" }, 400);
+
+    // human-readable detail line for the feed
+    const bits = [];
+    if (lead.industry) bits.push(lead.industry);
+    if (lead.score) bits.push(`score ${lead.score}/100`);
+    if (lead.leak) bits.push(`leak ${lead.leak}/mo`);
+    if (lead.message) bits.push(lead.message);
+    const details = bits.join(" · ");
 
     let stored = false;
 
-    // 1) Forward to a no-code webhook (Zapier / Make / n8n / your endpoint)
+    // 1) ALWAYS persist to the gui_actions store → shows on /admin + /live (Luis closes from there)
+    const SB_URL = env.GUI_ACTIONS_SUPABASE_URL || "https://fccwbafkbhkyrvauzshl.supabase.co";
+    const SB_ANON = env.GUI_ACTIONS_SUPABASE_ANON || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjY3diYWZrYmhreXJ2YXV6c2hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTU3NzQsImV4cCI6MjA5NDI5MTc3NH0.knDpHzK_cfpqmUzpLI4rTndAumn1yepCiRwCSAqwSNs";
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/gui_actions`, {
+        method: "POST",
+        headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({ action: "lead", name: lead.name, contact: lead.contact || lead.email || lead.phone, details, business: lead.business, industry: lead.industry, source: lead.source }),
+      });
+      stored = r.ok;
+    } catch { /* never fail the capture */ }
+
+    // 2) Optional: forward to a no-code webhook (email / Sheet / CRM)
     if (env.LEAD_WEBHOOK) {
-      try {
-        const r = await fetch(env.LEAD_WEBHOOK, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(lead),
-        });
-        if (r.ok) stored = true;
-      } catch { /* fall through */ }
+      try { const r = await fetch(env.LEAD_WEBHOOK, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(lead) }); if (r.ok) stored = true; } catch { /* keep going */ }
     }
-
-    // 2) Optional: insert into Supabase `leads` table
+    // 3) Optional: dedicated Supabase `leads` table
     if (env.SUPABASE_URL && env.SUPABASE_KEY) {
-      try {
-        const r = await fetch(`${env.SUPABASE_URL}/rest/v1/leads`, {
-          method: "POST",
-          headers: {
-            apikey: env.SUPABASE_KEY,
-            Authorization: `Bearer ${env.SUPABASE_KEY}`,
-            "Content-Type": "application/json",
-            Prefer: "return=minimal",
-          },
-          body: JSON.stringify(lead),
-        });
-        if (r.ok) stored = true;
-      } catch { /* fall through */ }
+      try { const r = await fetch(`${env.SUPABASE_URL}/rest/v1/leads`, { method: "POST", headers: { apikey: env.SUPABASE_KEY, Authorization: `Bearer ${env.SUPABASE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" }, body: JSON.stringify(lead) }); if (r.ok) stored = true; } catch { /* keep going */ }
     }
 
-    // Always acknowledge; tell the client whether it was stored so it can fall back
-    // (e.g. open a prefilled WhatsApp) when no destination is configured yet.
     return json({ ok: true, stored });
   } catch {
     return json({ error: "bad request" }, 400);
   }
 }
-const json = (obj, status = 200) =>
-  new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } });
+const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } });
