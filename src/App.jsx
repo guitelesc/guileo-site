@@ -9,6 +9,7 @@ const Contratos = lazy(() => import("./pages/Contratos"));
 const LiveActivity = lazy(() => import("./pages/LiveActivity"));
 const Quiz = lazy(() => import("./pages/Quiz"));
 const LandingV2 = lazy(() => import("./pages/LandingV2")); // backup of the rebuilt landing
+const Admin = lazy(() => import("./pages/Admin")); // Luis's private command center
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
             <Route path="/live" element={<LiveActivity />} />
             <Route path="/quiz" element={<Quiz />} />
             <Route path="/v2" element={<LandingV2 />} />
+            <Route path="/admin" element={<Admin />} />
             <Route path="/admin/contratos" element={<Contratos />} />
           </Routes>
         </Suspense>
