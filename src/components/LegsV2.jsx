@@ -13,9 +13,9 @@ const LEGS = [
 ];
 
 const C = {
-  green: { text: "text-g-green", ring: "border-g-green/50 bg-g-green/[0.07]", tile: "from-g-green/30 to-g-green/5", dot: "bg-g-green" },
-  copper: { text: "text-g-copper", ring: "border-g-copper/50 bg-g-copper/[0.07]", tile: "from-g-copper/30 to-g-copper/5", dot: "bg-g-copper" },
-  gold: { text: "text-g-gold", ring: "border-g-gold/50 bg-g-gold/[0.07]", tile: "from-g-gold/30 to-g-gold/5", dot: "bg-g-gold" },
+  green: { text: "text-g-green", on: "border-g-green/40 bg-g-green/[0.06] shadow-[0_22px_55px_-32px_rgba(62,148,104,0.75)]", tile: "from-g-green/35 to-g-green/10", tring: "ring-g-green/30", bar: "from-g-green to-g-light", chip: "border-g-green/25 bg-g-green/[0.08] text-g-green", dot: "bg-g-green" },
+  copper: { text: "text-g-copper", on: "border-g-copper/40 bg-g-copper/[0.06] shadow-[0_22px_55px_-32px_rgba(194,168,120,0.75)]", tile: "from-g-copper/35 to-g-copper/10", tring: "ring-g-copper/30", bar: "from-g-copper to-g-gold", chip: "border-g-copper/25 bg-g-copper/[0.08] text-g-copper", dot: "bg-g-copper" },
+  gold: { text: "text-g-gold", on: "border-g-gold/40 bg-g-gold/[0.06] shadow-[0_22px_55px_-32px_rgba(214,194,154,0.75)]", tile: "from-g-gold/35 to-g-gold/10", tring: "ring-g-gold/30", bar: "from-g-gold to-g-copper", chip: "border-g-gold/25 bg-g-gold/[0.08] text-g-gold", dot: "bg-g-gold" },
 };
 
 // money & good things the plant "produces"
@@ -57,18 +57,22 @@ export default function LegsV2() {
             const on = i === sel;
             return (
               <button key={leg.tag} onClick={() => { setSel(i); setAuto(false); }}
-                className={`flex w-full items-start gap-3.5 rounded-2xl border p-4 text-left transition-all duration-300 ${on ? `${c.ring} translate-x-1` : "border-g-line bg-white/[0.03] hover:bg-white/[0.05]"}`}
+                className={`group relative flex w-full items-start gap-4 overflow-hidden rounded-2xl border py-4 pl-6 pr-4 text-left transition-all duration-300 ${on ? `${c.on} translate-x-1` : "border-g-line bg-white/[0.025] hover:bg-white/[0.05]"}`}
                 style={{ animation: `lreveal .6s cubic-bezier(.2,.7,.2,1) ${0.15 + i * 0.1}s both` }}>
-                <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${c.tile} text-xl ring-1 ring-white/10`}>{leg.icon}</div>
+                {/* accent bar */}
+                <span className={`absolute left-0 top-0 h-full w-1 bg-gradient-to-b ${c.bar} transition-opacity duration-300 ${on ? "opacity-100" : "opacity-45 group-hover:opacity-80"}`} />
+                <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${c.tile} text-xl ring-1 ${c.tring} transition-transform duration-300 group-hover:scale-105`}>{leg.icon}</div>
                 <div className="min-w-0">
-                  <div className="flex items-baseline gap-2">
+                  <div className="flex flex-wrap items-baseline gap-x-2">
                     <span className="text-[15px] font-bold text-g-word">{leg.title}</span>
-                    <span className={`text-[10px] font-black uppercase tracking-wider ${c.text}`}>{leg.tag}</span>
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider ${c.text}`}>
+                      <span className={`h-1 w-1 rounded-full ${c.dot}`} />{leg.tag}
+                    </span>
                   </div>
-                  <p className="mt-0.5 text-[12.5px] leading-snug text-g-ink">{leg.desc}</p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
+                  <p className="mt-1 text-[12.5px] leading-snug text-g-ink">{leg.desc}</p>
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
                     {leg.chips.map((ch) => (
-                      <span key={ch} className="rounded-full border border-g-line bg-white/[0.04] px-2 py-0.5 text-[10.5px] font-semibold text-g-muted">{ch}</span>
+                      <span key={ch} className={`rounded-full border px-2.5 py-0.5 text-[10.5px] font-semibold ${c.chip}`}>{ch}</span>
                     ))}
                   </div>
                 </div>
