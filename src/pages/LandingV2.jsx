@@ -5,6 +5,7 @@ import MovementV2 from "../components/MovementV2";
 import LegsV2 from "../components/LegsV2";
 import BuildAllV2 from "../components/BuildAllV2";
 import EngineV2 from "../components/EngineV2";
+import ChannelsV2 from "../components/ChannelsV2";
 
 // /v2 — TEST surface for the new landing story (beat 1: realistic Hero).
 // Production "/" is untouched. We review here, one beat at a time, then promote.
@@ -26,6 +27,7 @@ export default function LandingV2() {
       <LegsV2 />
       <BuildAllV2 />
       <EngineV2 />
+      <ChannelsV2 />
     </div>
   );
 }
