@@ -14,7 +14,7 @@ export default function GrowthV2() {
   }, []);
 
   return (
-    <section className="relative overflow-hidden bg-g-deep px-5 py-24">
+    <section className="relative overflow-hidden px-5 py-24">
       <style>{`@keyframes grreveal{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}@keyframes grshine{to{background-position:220% center}}@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}`}</style>
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(700px_360px_at_50%_0%,rgba(62,148,104,0.16),transparent),radial-gradient(700px_360px_at_80%_100%,rgba(214,194,154,0.12),transparent)]" />
 

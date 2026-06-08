@@ -21,7 +21,7 @@ export default function ProofV2() {
   }
 
   return (
-    <section className="relative overflow-hidden bg-g-cream px-5 py-20">
+    <section className="relative overflow-hidden px-5 py-20">
       <style>{`@keyframes pvreveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}@keyframes pvpulse{0%,100%{opacity:.5}50%{opacity:1}}@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}`}</style>
 
       <div className="mx-auto max-w-5xl text-center">

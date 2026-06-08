@@ -32,7 +32,7 @@ export default function LegsV2() {
   }, [auto]);
 
   return (
-    <section className="relative overflow-hidden bg-g-cream px-5 py-20">
+    <section className="relative overflow-hidden px-5 py-20">
       <style>{`
         @keyframes lreveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
         @keyframes lshine{to{background-position:220% center}}

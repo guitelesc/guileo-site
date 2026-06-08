@@ -19,7 +19,7 @@ export default function EngineV2() {
   }, []);
 
   return (
-    <section className="relative overflow-hidden bg-g-creamd px-5 py-20">
+    <section className="relative overflow-hidden px-5 py-20">
       <style>{`
         @keyframes ereveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
         @keyframes eshine{to{background-position:220% center}}

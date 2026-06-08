@@ -39,7 +39,7 @@ export default function ResultsV2() {
   }, [idx]);
 
   return (
-    <section className="relative overflow-hidden bg-g-creamd px-5 py-20">
+    <section className="relative overflow-hidden px-5 py-20">
       <style>{`
         @keyframes rvreveal{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
         @keyframes rvshine{to{background-position:220% center}}

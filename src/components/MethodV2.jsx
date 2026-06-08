@@ -10,7 +10,7 @@ const STEPS = [
 
 export default function MethodV2() {
   return (
-    <section className="relative overflow-hidden bg-g-cream px-5 py-20">
+    <section className="relative overflow-hidden px-5 py-20">
       <style>{`
         @keyframes mvreveal{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
         @keyframes mvshine{to{background-position:220% center}}

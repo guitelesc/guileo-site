@@ -37,7 +37,7 @@ function Row({ dir = "l", speed = 38 }) {
 
 export default function BuildAllV2() {
   return (
-    <section className="relative overflow-hidden bg-g-cream px-5 py-20">
+    <section className="relative overflow-hidden px-5 py-20">
       <style>{`
         @keyframes breveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
         @keyframes bshine{to{background-position:220% center}}

@@ -39,7 +39,7 @@ export default function LeadCaptureV2() {
   }
 
   return (
-    <section id="contact" className="relative overflow-hidden bg-g-creamd px-5 py-24">
+    <section id="contact" className="relative overflow-hidden px-5 py-24">
       <style>{`@keyframes lcreveal{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}@keyframes lcshine{to{background-position:220% center}}@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}`}</style>
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(800px_400px_at_50%_0%,rgba(62,148,104,0.12),transparent)]" />
 

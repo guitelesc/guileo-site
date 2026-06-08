@@ -53,7 +53,7 @@ function Notif({ n }) {
 export default function ChannelsV2() {
   const list = [...NOTIFS, ...NOTIFS];
   return (
-    <section className="relative overflow-hidden bg-g-creamd px-5 py-20">
+    <section className="relative overflow-hidden px-5 py-20">
       <style>{`
         @keyframes chreveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
         @keyframes chshine{to{background-position:220% center}}
