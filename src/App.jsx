@@ -10,6 +10,7 @@ const LiveActivity = lazy(() => import("./pages/LiveActivity"));
 const Quiz = lazy(() => import("./pages/Quiz"));
 const Calculator = lazy(() => import("./pages/Calculator"));
 const Partners = lazy(() => import("./pages/Partners"));
+const LeadsInbox = lazy(() => import("./pages/LeadsInbox"));
 const LandingV2 = lazy(() => import("./pages/LandingV2")); // backup of the rebuilt landing
 const Admin = lazy(() => import("./pages/Admin")); // Luis's private command center
 
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="/quiz" element={<Quiz />} />
             <Route path="/calculator" element={<Calculator />} />
             <Route path="/partners" element={<Partners />} />
+            <Route path="/leads" element={<LeadsInbox />} />
             <Route path="/v2" element={<LandingV2 />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/contratos" element={<Contratos />} />
