@@ -2,6 +2,7 @@ import Navbar from "../components/Navbar";
 import HeroV2 from "../components/HeroV2";
 import IndustriesV2 from "../components/IndustriesV2";
 import MovementV2 from "../components/MovementV2";
+import LegsV2 from "../components/LegsV2";
 
 // /v2 — TEST surface for the new landing story (beat 1: realistic Hero).
 // Production "/" is untouched. We review here, one beat at a time, then promote.
@@ -20,6 +21,7 @@ export default function LandingV2() {
       <HeroV2 />
       <IndustriesV2 />
       <MovementV2 />
+      <LegsV2 />
     </div>
   );
 }
