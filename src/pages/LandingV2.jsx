@@ -1,7 +1,6 @@
 import Navbar from "../components/Navbar";
 import HeroV2 from "../components/HeroV2";
-import IndustriesV2 from "../components/IndustriesV2";
-import MovementV2 from "../components/MovementV2";
+import ResultsV2 from "../components/ResultsV2";
 import LegsV2 from "../components/LegsV2";
 import BuildAllV2 from "../components/BuildAllV2";
 import EngineV2 from "../components/EngineV2";
@@ -25,8 +24,7 @@ export default function LandingV2() {
         </div>
       </div>
       <HeroV2 />
-      <IndustriesV2 />
-      <MovementV2 />
+      <ResultsV2 />
       <LegsV2 />
       <BuildAllV2 />
       <EngineV2 />
