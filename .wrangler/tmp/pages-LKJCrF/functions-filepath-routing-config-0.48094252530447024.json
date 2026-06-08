@@ -1,0 +1,29 @@
+{
+  "routes": [
+    {
+      "routePath": "/api/agent-action",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/agent-action.js:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/call",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/call.js:onRequestPost"
+      ]
+    },
+    {
+      "routePath": "/api/lead",
+      "mountPath": "/api",
+      "method": "POST",
+      "module": [
+        "api/lead.js:onRequestPost"
+      ]
+    }
+  ],
+  "baseURL": "/"
+}
