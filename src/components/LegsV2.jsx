@@ -38,6 +38,7 @@ export default function LegsV2() {
         @keyframes lshine{to{background-position:220% center}}
         @keyframes lmoney{0%{transform:translateY(10px) scale(.7);opacity:0}18%{opacity:1}100%{transform:translateY(-120px) scale(1.15);opacity:0}}
         @keyframes lbreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+        @keyframes lsheen{0%{transform:translateX(-120%)}55%,100%{transform:translateX(120%)}}
         @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}
       `}</style>
 
@@ -60,8 +61,10 @@ export default function LegsV2() {
                 className={`group relative flex w-full items-start gap-4 overflow-hidden rounded-2xl border py-4 pl-6 pr-4 text-left transition-all duration-300 ${on ? `${c.on} translate-x-1` : "border-g-line bg-white/[0.025] hover:bg-white/[0.05]"}`}
                 style={{ animation: `lreveal .6s cubic-bezier(.2,.7,.2,1) ${0.15 + i * 0.1}s both` }}>
                 {/* accent bar */}
-                <span className={`absolute left-0 top-0 h-full w-1 bg-gradient-to-b ${c.bar} transition-opacity duration-300 ${on ? "opacity-100" : "opacity-45 group-hover:opacity-80"}`} />
-                <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${c.tile} text-xl ring-1 ${c.tring} transition-transform duration-300 group-hover:scale-105`}>{leg.icon}</div>
+                <span className={`absolute left-0 top-0 h-full bg-gradient-to-b ${c.bar} transition-all duration-300 ${on ? "w-1.5 opacity-100" : "w-1 opacity-45 group-hover:opacity-80"}`} />
+                {/* sheen sweep on the active card */}
+                {on && <span className="pointer-events-none absolute inset-0" style={{ animation: "lsheen 2.6s ease-in-out infinite", background: "linear-gradient(105deg,transparent,rgba(255,255,255,0.07),transparent)" }} />}
+                <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${c.tile} text-xl ring-1 ${c.tring} transition-all duration-300 ${on ? "scale-110 ring-2" : "group-hover:scale-105"}`}>{leg.icon}</div>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     <span className="text-[15px] font-bold text-g-word">{leg.title}</span>
