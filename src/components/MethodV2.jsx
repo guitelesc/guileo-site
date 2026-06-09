@@ -1,6 +1,7 @@
 // MethodV2 — TEST (/v2): "The Guileo Method" — led by real humans, seed → nurture →
 // harvest, live in under 7 days. Builds trust before the close. Content from guileoai.com.
 // Guileo design system + smooth CSS motion.
+import { useLang } from "../i18n.jsx";
 
 const STEPS = [
   { plant: "🌱", size: 38, when: "Day 01", n: "1", phase: "Implementation", title: "Plant the seed", desc: "A human studies your business, finds your revenue leaks, and designs the system around how you actually work.", tag: "we study & design it", rgb: "214,194,154" },
@@ -8,7 +9,18 @@ const STEPS = [
   { plant: "🌳", size: 88, when: "Week 2 →", n: "3", phase: "Harvest", title: "Harvest results", desc: "Profit climbs — +286% performance and 3× faster sales cycles on average — while we keep optimizing for you.", tag: "profit compounds", rgb: "194,168,120" },
 ];
 
+const MV_COPY = {
+  en: { h1a:"Led by real humans — ", h1b:"not just bots.", subA:"We get to know your business — ", subB:"we'll even visit you", subM:" — then design and build the system that grows your profit. ", subC:"Live in under 7 days.", phases:["Plant","Nurture","Harvest"] },
+  pt: { h1a:"Conduzido por humanos — ", h1b:"não só bots.", subA:"A gente conhece seu negócio — ", subB:"até visita você", subM:" — e então desenha e constrói o sistema que faz seu lucro crescer. ", subC:"No ar em menos de 7 dias.", phases:["Plantar","Nutrir","Colher"] },
+  es: { h1a:"Liderado por humanos — ", h1b:"no solo bots.", subA:"Conocemos tu negocio — ", subB:"incluso te visitamos", subM:" — y luego diseñamos y construimos el sistema que hace crecer tu ganancia. ", subC:"En vivo en menos de 7 días.", phases:["Plantar","Nutrir","Cosechar"] },
+  hi: { h1a:"असली इंसानों द्वारा संचालित — ", h1b:"सिर्फ़ बॉट नहीं।", subA:"हम आपका व्यवसाय जानते हैं — ", subB:"आपसे मिलने भी आते हैं", subM:" — फिर वह सिस्टम डिज़ाइन और बनाते हैं जो आपका मुनाफ़ा बढ़ाए। ", subC:"7 दिनों से कम में लाइव।", phases:["बोएँ","पोषें","काटें"] },
+};
+
 export default function MethodV2() {
+  const { t, lang } = useLang();
+  const M = MV_COPY[lang] || MV_COPY.en;
+  const dictSteps = (t.steps && t.steps.items) || [];
+  const eyebrow = (t.steps && t.steps.h2) || "The Guileo Method";
   return (
     <section className="relative overflow-hidden px-5 py-20">
       <style>{`
@@ -22,21 +34,21 @@ export default function MethodV2() {
       `}</style>
 
       <div className="mx-auto max-w-5xl text-center">
-        <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold" style={{ animation: "mvreveal .7s ease both" }}>The Guileo Method</div>
+        <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold" style={{ animation: "mvreveal .7s ease both" }}>{eyebrow}</div>
         <h2 className="mt-4 font-black leading-[0.98] tracking-tight" style={{ fontSize: "clamp(2rem,4.4vw,3.2rem)" }}>
-          <span className="text-g-word" style={{ animation: "mvreveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>Led by real humans — </span>
-          <span className="bg-gradient-to-r from-g-green via-g-gold to-g-copper bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "mvreveal .8s cubic-bezier(.2,.7,.2,1) .2s both, mvshine 7s linear infinite" }}>not just bots.</span>
+          <span className="text-g-word" style={{ animation: "mvreveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>{M.h1a}</span>
+          <span className="bg-gradient-to-r from-g-green via-g-gold to-g-copper bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "mvreveal .8s cubic-bezier(.2,.7,.2,1) .2s both, mvshine 7s linear infinite" }}>{M.h1b}</span>
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-g-ink" style={{ animation: "mvreveal .8s ease .3s both" }}>
-          We get to know your business — <span className="font-semibold text-g-word">we'll even visit you</span> — then design and build the system that grows your profit. <span className="font-semibold text-g-green">Live in under 7 days.</span>
+          {M.subA}<span className="font-semibold text-g-word">{M.subB}</span>{M.subM}<span className="font-semibold text-g-green">{M.subC}</span>
         </p>
       </div>
 
       {/* the metaphor framing — plant → nurture → harvest (implementation → harvest) */}
       <div className="mx-auto mt-7 flex max-w-md flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] font-black uppercase tracking-wider" style={{ animation: "mvreveal .8s ease .3s both" }}>
-        <span className="text-g-green">🌱 Plant</span><span className="text-g-muted">→</span>
-        <span className="text-g-green">💧 Nurture</span><span className="text-g-muted">→</span>
-        <span className="text-g-gold">🌾 Harvest</span>
+        <span className="text-g-green">🌱 {M.phases[0]}</span><span className="text-g-muted">→</span>
+        <span className="text-g-green">💧 {M.phases[1]}</span><span className="text-g-muted">→</span>
+        <span className="text-g-gold">🌾 {M.phases[2]}</span>
       </div>
 
       {/* GARDEN SCENE — the system is planted, nurtured & harvested; the plant literally grows */}
@@ -62,10 +74,10 @@ export default function MethodV2() {
 
                 {/* the message below the soil */}
                 <div className="mt-6 px-0.5" style={{ animation: `mvreveal .7s ease ${0.6 + i * 0.2}s both` }}>
-                  <div className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider" style={{ borderColor: `rgba(${s.rgb},0.4)`, color: `rgb(${s.rgb})` }}>{harvest ? "🌾" : "🛠️"} {s.phase}</div>
+                  <div className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider" style={{ borderColor: `rgba(${s.rgb},0.4)`, color: `rgb(${s.rgb})` }}>{harvest ? "🌾" : "🛠️"} {harvest ? M.phases[2] : M.phases[i === 0 ? 0 : 1]}</div>
                   <div className="mt-2 text-[11px] font-bold uppercase tracking-wider text-g-muted">{s.when}</div>
-                  <h3 className="mt-0.5 text-[17px] font-black text-g-word sm:text-[18px]">{s.title}</h3>
-                  <p className="mx-auto mt-2 max-w-[15rem] text-[12.5px] leading-relaxed text-g-ink sm:text-[13px]">{s.desc}</p>
+                  <h3 className="mt-0.5 text-[17px] font-black text-g-word sm:text-[18px]">{dictSteps[i]?.[1] || s.title}</h3>
+                  <p className="mx-auto mt-2 max-w-[15rem] text-[12.5px] leading-relaxed text-g-ink sm:text-[13px]">{dictSteps[i]?.[2] || s.desc}</p>
                   <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-g-line bg-white/[0.04] px-3 py-1 text-[11.5px] font-semibold" style={{ color: `rgb(${s.rgb})` }}>✓ {s.tag}</div>
                 </div>
               </div>

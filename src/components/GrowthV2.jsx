@@ -1,12 +1,21 @@
 import { useState, useEffect } from "react";
+import { useLang } from "../i18n.jsx";
+
+const GV_COPY = {
+  en: { h1a:"A growth cycle ", h1b:"that runs itself.", result:"The result", moon:"🚀 Growth · the moon", fuel:"💰 Sales · the fuel", base:"⚡ Performance · the base", pills:["Performance","Sales","Growth"], stats:[["+286%","performance"],["3×","faster sales cycles"],["24/7","on autopilot"]], cta:"Start your growth cycle" },
+  pt: { h1a:"Um ciclo de crescimento ", h1b:"que roda sozinho.", result:"O resultado", moon:"🚀 Crescimento · a lua", fuel:"💰 Vendas · o combustível", base:"⚡ Performance · a base", pills:["Performance","Vendas","Crescimento"], stats:[["+286%","performance"],["3×","ciclos de venda mais rápidos"],["24/7","no automático"]], cta:"Comece seu ciclo de crescimento" },
+  es: { h1a:"Un ciclo de crecimiento ", h1b:"que se mueve solo.", result:"El resultado", moon:"🚀 Crecimiento · la luna", fuel:"💰 Ventas · el combustible", base:"⚡ Rendimiento · la base", pills:["Rendimiento","Ventas","Crecimiento"], stats:[["+286%","rendimiento"],["3×","ciclos de venta más rápidos"],["24/7","en automático"]], cta:"Empieza tu ciclo de crecimiento" },
+  hi: { h1a:"एक ग्रोथ साइकल ", h1b:"जो खुद चलता है।", result:"नतीजा", moon:"🚀 ग्रोथ · चाँद", fuel:"💰 बिक्री · ईंधन", base:"⚡ परफ़ॉर्मेंस · आधार", pills:["Performance","Sales","Growth"], stats:[["+286%","परफ़ॉर्मेंस"],["3×","तेज़ बिक्री चक्र"],["24/7","ऑटोपायलट पर"]], cta:"अपना ग्रोथ साइकल शुरू करें" },
+};
 
 // GrowthV2 — TEST (/v2) finale: matched to the guileoai.com aesthetic — the real
 // rocket-launch (SVG body + flame, launchpad=Performance, fuel=Sales, moon=Growth)
 // inside the premium gold glass card. animate-rocketlaunch/flameflicker are global.
 
-const STATS = [["+286%", "performance"], ["3×", "faster sales cycles"], ["24/7", "on autopilot"]];
-
 export default function GrowthV2() {
+  const { lang } = useLang();
+  const G = GV_COPY[lang] || GV_COPY.en;
+  const STATS = G.stats;
   const [act, setAct] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setAct((i) => (i + 1) % 3), 1600);
@@ -20,14 +29,14 @@ export default function GrowthV2() {
 
       <div className="mx-auto max-w-3xl text-center">
         <h2 className="mx-auto max-w-2xl font-black leading-[0.96] tracking-tight" style={{ fontSize: "clamp(2.2rem,5vw,3.7rem)" }}>
-          <span className="text-g-word" style={{ animation: "grreveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>A growth cycle </span>
-          <span className="bg-gradient-to-r from-g-green via-g-gold to-g-copper bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "grreveal .8s cubic-bezier(.2,.7,.2,1) .2s both, grshine 6s linear infinite" }}>that runs itself.</span>
+          <span className="text-g-word" style={{ animation: "grreveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>{G.h1a}</span>
+          <span className="bg-gradient-to-r from-g-green via-g-gold to-g-copper bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "grreveal .8s cubic-bezier(.2,.7,.2,1) .2s both, grshine 6s linear infinite" }}>{G.h1b}</span>
         </h2>
 
         {/* premium gold glass card (guileoai.com aesthetic) */}
         <div className="relative mx-auto mt-10 max-w-2xl overflow-hidden rounded-xl3 border border-g-gold/35 bg-white/[0.04] p-8 text-center shadow-lift backdrop-blur-xl sm:p-12" style={{ animation: "grreveal .8s ease .3s both" }}>
           <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-g-gold/10 blur-3xl animate-aurora" />
-          <div className="relative mb-6 text-base font-extrabold uppercase tracking-[0.2em] text-g-gold sm:text-lg">The result</div>
+          <div className="relative mb-6 text-base font-extrabold uppercase tracking-[0.2em] text-g-gold sm:text-lg">{G.result}</div>
 
           {/* ROCKET LAUNCH scene */}
           <div className="relative mx-auto h-72 w-64 select-none sm:h-80 sm:w-72">
@@ -38,7 +47,7 @@ export default function GrowthV2() {
             {/* MOON = Growth */}
             <div className="absolute left-1/2 top-0 flex -translate-x-1/2 flex-col items-center">
               <div className="grid h-16 w-16 animate-breathe place-items-center rounded-full bg-gradient-to-br from-[#f6efe0] via-[#e6d8b6] to-[#bca87d] text-2xl shadow-[0_0_46px_rgba(214,194,154,0.55)]">🌙</div>
-              <span className="mt-1.5 whitespace-nowrap text-[11px] font-black uppercase tracking-[0.16em] text-g-gold">🚀 Growth · the moon</span>
+              <span className="mt-1.5 whitespace-nowrap text-[11px] font-black uppercase tracking-[0.16em] text-g-gold">{G.moon}</span>
             </div>
             {/* trajectory */}
             <svg viewBox="0 0 100 100" className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden>
@@ -58,18 +67,18 @@ export default function GrowthV2() {
                 <path d="M32 5 C 38 12 40 20 40 27 L33 24 Z" fill="#ffffff" opacity="0.28" />
               </svg>
             </div>
-            <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-black uppercase tracking-[0.16em] text-g-light" style={{ top: "64%" }}>💰 Sales · the fuel</span>
+            <span className="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-black uppercase tracking-[0.16em] text-g-light" style={{ top: "64%" }}>{G.fuel}</span>
             {/* LAUNCHPAD = Performance */}
             <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 flex-col items-center">
               <div className="h-1.5 w-32 rounded-full bg-gradient-to-r from-transparent via-g-green/70 to-transparent blur-[1px]" />
               <div className="h-3 w-20 rounded-b-md border-x border-b border-white/15 bg-white/[0.06]" />
-              <span className="mt-1 whitespace-nowrap text-[11px] font-black uppercase tracking-[0.16em] text-g-green">⚡ Performance · the base</span>
+              <span className="mt-1 whitespace-nowrap text-[11px] font-black uppercase tracking-[0.16em] text-g-green">{G.base}</span>
             </div>
           </div>
 
           {/* sequence pills */}
           <div className="relative mt-10 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-            {[["⚡", "Performance"], ["💰", "Sales"], ["🚀", "Growth"]].map(([ic, lb], i) => {
+            {[["⚡", G.pills[0]], ["💰", G.pills[1]], ["🚀", G.pills[2]]].map(([ic, lb], i) => {
               const on = act === i;
               return (
                 <div key={lb} className="flex items-center gap-2 sm:gap-3">
@@ -93,7 +102,7 @@ export default function GrowthV2() {
           ))}
         </div>
         <a href="#try" className="group mt-9 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-g-green to-g-dark px-7 py-3.5 text-[15px] font-bold text-white shadow-[0_18px_50px_-14px_rgba(62,148,104,0.7)] transition hover:scale-[1.03] hover:brightness-110" style={{ animation: "grreveal .8s ease .6s both" }}>
-          🚀 Start your growth cycle <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+          🚀 {G.cta} <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
         </a>
       </div>
     </section>

@@ -1,4 +1,12 @@
 import { useState, useEffect } from "react";
+import { useLang } from "../i18n.jsx";
+
+const EV_COPY = {
+  en: { eyebrow:"Guileo AD · the marketing engine", h1a:"Every conversation ", h1b:"compounds.", sub:["Guileo AD turns each call into ","data",", data into smarter ","marketing",", marketing into ","repeat revenue"," — on a loop."], running:"Running · processing in real time", loopA:"And it loops", loopB:" — revenue fuels the next conversation. Your engine spins faster every month." },
+  pt: { eyebrow:"Guileo AD · o motor de marketing", h1a:"Cada conversa ", h1b:"se acumula.", sub:["A Guileo AD transforma cada ligação em ","dados",", dados em ","marketing"," mais esperto, marketing em ","recompra"," — num ciclo."], running:"Rodando · processando em tempo real", loopA:"E faz um ciclo", loopB:" — a receita alimenta a próxima conversa. Seu motor gira mais rápido todo mês." },
+  es: { eyebrow:"Guileo AD · el motor de marketing", h1a:"Cada conversación ", h1b:"se acumula.", sub:["Guileo AD convierte cada llamada en ","datos",", datos en ","marketing"," más inteligente, marketing en ","recompra"," — en bucle."], running:"En marcha · procesando en tiempo real", loopA:"Y se repite", loopB:" — el ingreso alimenta la próxima conversación. Tu motor gira más rápido cada mes." },
+  hi: { eyebrow:"Guileo AD · मार्केटिंग इंजन", h1a:"हर बातचीत ", h1b:"जुड़ती जाती है।", sub:["Guileo AD हर कॉल को ","डेटा"," में बदलती है, डेटा को बेहतर ","मार्केटिंग"," में, मार्केटिंग को ","रिपीट कमाई"," में — एक चक्र में।"], running:"चल रहा है · रियल-टाइम प्रोसेसिंग", loopA:"और यह दोहराता है", loopB:" — कमाई अगली बातचीत को ईंधन देती है। आपका इंजन हर महीने तेज़ घूमता है।" },
+};
 
 // EngineV2 — TEST (/v2): Guileo AD — the marketing engine. The data flywheel (conversation
 // → YOUR data → marketing → repeat revenue → loops) inside the premium gold glass card
@@ -20,6 +28,9 @@ function liveStat(i, n) {
 }
 
 export default function EngineV2() {
+  const { t, lang } = useLang();
+  const E = EV_COPY[lang] || EV_COPY.en;
+  const dictSteps = (t.engine && t.engine.steps) || [];
   const [act, setAct] = useState(0);
   const [n, setN] = useState(0);
   useEffect(() => {
@@ -43,14 +54,14 @@ export default function EngineV2() {
 
       <div className="mx-auto max-w-5xl text-center">
         <div className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold" style={{ animation: "ereveal .7s ease both" }}>
-          <span className="espin inline-block" style={{ animation: "espin 6s linear infinite" }}>♻️</span> Guileo AD · the marketing engine
+          <span className="espin inline-block" style={{ animation: "espin 6s linear infinite" }}>♻️</span> {E.eyebrow}
         </div>
         <h2 className="mt-4 font-black leading-[0.96] tracking-tight" style={{ fontSize: "clamp(2rem,4.4vw,3.2rem)" }}>
-          <span className="text-g-word" style={{ animation: "ereveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>Every conversation </span>
-          <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "ereveal .8s cubic-bezier(.2,.7,.2,1) .2s both, eshine 7s linear infinite" }}>compounds.</span>
+          <span className="text-g-word" style={{ animation: "ereveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>{E.h1a}</span>
+          <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "ereveal .8s cubic-bezier(.2,.7,.2,1) .2s both, eshine 7s linear infinite" }}>{E.h1b}</span>
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-g-ink" style={{ animation: "ereveal .8s ease .3s both" }}>
-          Guileo AD turns each call into <span className="font-semibold text-g-word">data</span>, data into smarter <span className="font-semibold text-g-gold">marketing</span>, marketing into <span className="font-semibold text-g-green">repeat revenue</span> — on a loop.
+          {E.sub[0]}<span className="font-semibold text-g-word">{E.sub[1]}</span>{E.sub[2]}<span className="font-semibold text-g-gold">{E.sub[3]}</span>{E.sub[4]}<span className="font-semibold text-g-green">{E.sub[5]}</span>{E.sub[6]}
         </p>
       </div>
 
@@ -65,7 +76,7 @@ export default function EngineV2() {
           </span>
           <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-g-green">
             <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-g-green/50" /><span className="relative inline-flex h-2 w-2 rounded-full bg-g-green" /></span>
-            Running · processing in real time
+            {E.running}
           </span>
         </div>
 
@@ -85,8 +96,8 @@ export default function EngineV2() {
                     <div className={`grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br text-2xl ring-1 drop-shadow-[0_2px_6px_rgba(0,0,0,0.45)] transition-all duration-500 ${on ? "from-g-gold/60 to-g-gold/20 ring-g-gold/50" : "from-white/[0.08] to-white/[0.02] ring-white/10"}`} style={on ? { animation: "epulse 1.9s ease-in-out infinite" } : undefined}>{s.icon}</div>
                     <span className={`text-[28px] font-black transition-colors duration-500 ${on ? "text-g-gold/70" : "text-g-line"}`}>{s.n}</span>
                   </div>
-                  <div className="mt-4 text-[13.5px] font-black uppercase tracking-wide text-g-word">{s.title}</div>
-                  <p className="mt-1.5 text-[12.5px] leading-snug text-g-ink">{s.desc}</p>
+                  <div className="mt-4 text-[13.5px] font-black uppercase tracking-wide text-g-word">{dictSteps[i]?.[1] || s.title}</div>
+                  <p className="mt-1.5 text-[12.5px] leading-snug text-g-ink">{dictSteps[i]?.[2] || s.desc}</p>
                   {(() => { const st = liveStat(i, n); return (
                     <div className="mt-3 flex items-baseline gap-1.5 border-t border-white/[0.08] pt-2.5">
                       <span className="text-[10px] text-g-green">▲</span>
@@ -110,7 +121,7 @@ export default function EngineV2() {
 
         <div className="relative mx-auto mt-2 flex max-w-3xl items-center justify-center gap-2 rounded-full border border-g-green/30 bg-gradient-to-r from-g-green/[0.06] via-g-gold/[0.08] to-g-green/[0.06] bg-[length:200%_auto] px-5 py-2.5 text-center text-[13.5px] text-g-ink" style={{ animation: "eshine 6s linear infinite" }}>
           <span className="espin inline-block" style={{ animation: "espin 5s linear infinite" }}>♻️</span>
-          <span><span className="font-semibold text-g-green">And it loops</span> — revenue fuels the next conversation. Your engine spins faster every month.</span>
+          <span><span className="font-semibold text-g-green">{E.loopA}</span>{E.loopB}</span>
         </div>
       </div>
     </section>

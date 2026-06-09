@@ -1,5 +1,14 @@
 import { useState, useEffect } from "react";
 import mark from "../assets/guileo-mark.png";
+import { useLang } from "../i18n.jsx";
+
+// Hero copy that lives in the component (richer than the shared dict) — translated inline.
+const HERO_COPY = {
+  en: { eyebrow:"Meet Gui · the AI that runs the business", sub:["Never miss a call, a lead, or a sale."," answers, books, quotes & sells and follows up — 24/7. Stop trading hours for tasks — the offer "," fulfills itself","."], method:["⚡ Performance","Sales","Growth"], cta:"Hear Gui work", sub2:"Real AI · real calls · real bookings." },
+  pt: { eyebrow:"Conheça a Gui · a IA que toca o negócio", sub:["Nunca perca uma ligação, um lead ou uma venda."," atende, agenda, orça & vende e faz follow-up — 24/7. Pare de trocar horas por tarefas — a oferta "," se cumpre sozinha","."], method:["⚡ Performance","Vendas","Crescimento"], cta:"Ouça a Gui trabalhar", sub2:"IA de verdade · ligações reais · agendamentos reais." },
+  es: { eyebrow:"Conoce a Gui · la IA que maneja el negocio", sub:["Nunca pierdas una llamada, un lead ni una venta."," contesta, agenda, cotiza & vende y hace seguimiento — 24/7. Deja de cambiar horas por tareas — la oferta "," se cumple sola","."], method:["⚡ Rendimiento","Ventas","Crecimiento"], cta:"Escucha a Gui trabajar", sub2:"IA real · llamadas reales · reservas reales." },
+  hi: { eyebrow:"मिलिए Gui से · वह AI जो व्यवसाय चलाती है", sub:["कोई कॉल, लीड या बिक्री कभी न चूकें."," जवाब देती, बुकिंग, कोटेशन & बिक्री करती और फॉलो-अप करती है — 24/7। घंटे काम के बदले देना बंद करें — ऑफ़र "," खुद पूरा होता है","।"], method:["⚡ Performance","Sales","Growth"], cta:"Gui को काम करते सुनें", sub2:"असली AI · असली कॉल · असली बुकिंग।" },
+};
 
 // HeroV2 — TEST (/v2). Realistic, LIVING iPhone-2026 mockup of Gui working nonstop.
 // SMOOTH motion: the action feed is a continuous gliding marquee (no janky remounts),
@@ -173,16 +182,16 @@ function Phone() {
       </div>
 
       {/* floating proof cards — rotate (services + profit + numbers), soft crossfade + float */}
-      <div className="absolute -left-20 top-36 hidden w-[150px] rounded-xl2 border border-white/10 bg-white/[0.07] px-3 py-2 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.7)] backdrop-blur-md lg:block" style={{ animation: "gfloat 6s ease-in-out infinite" }}>
+      <div className="absolute -left-20 top-36 hidden w-[150px] rounded-xl2 border border-white/10 bg-[#14130F]/92 px-3 py-2 shadow-[0_24px_60px_-18px_rgba(0,0,0,0.85)] ring-1 ring-white/[0.06] backdrop-blur-xl lg:block" style={{ animation: "gfloat 6s ease-in-out infinite" }}>
         <div key={"l" + stat} style={{ animation: "gsoft .8s ease-in-out both" }}>
           <div className="text-[11px] font-bold text-g-word">{L.icon} {L.a}</div>
-          <div className="text-[10px] text-g-muted">{L.b}</div>
+          <div className="text-[10px] text-g-ink">{L.b}</div>
         </div>
       </div>
-      <div className="absolute -right-20 bottom-44 hidden w-[160px] rounded-xl2 border border-white/10 bg-white/[0.07] px-3 py-2 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.7)] backdrop-blur-md lg:block" style={{ animation: "gfloat 7s ease-in-out 1s infinite" }}>
+      <div className="absolute -right-20 bottom-44 hidden w-[160px] rounded-xl2 border border-white/10 bg-[#14130F]/92 px-3 py-2 shadow-[0_24px_60px_-18px_rgba(0,0,0,0.85)] ring-1 ring-white/[0.06] backdrop-blur-xl lg:block" style={{ animation: "gfloat 7s ease-in-out 1s infinite" }}>
         <div key={"r" + stat} style={{ animation: "gsoft .8s ease-in-out both" }}>
           <div className="text-[11px] font-bold text-g-word">{R.icon} {R.a}</div>
-          <div className="text-[10px] text-g-muted">{R.b}</div>
+          <div className="text-[10px] text-g-ink">{R.b}</div>
         </div>
       </div>
     </div>
@@ -190,6 +199,9 @@ function Phone() {
 }
 
 export default function HeroV2() {
+  const { t, lang } = useLang();
+  const H = t.hero || {};
+  const C = HERO_COPY[lang] || HERO_COPY.en;
   return (
     <section className="relative overflow-hidden px-5 pt-10 pb-20 sm:pt-16">
       <style>{`
@@ -210,34 +222,34 @@ export default function HeroV2() {
       <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
         <div className="min-w-0">
           <div className="inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border border-g-gold/25 bg-g-gold/10 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-g-gold">
-            <span className="h-1.5 w-1.5 rounded-full bg-g-green" /> Meet Gui · the AI that runs the business
+            <span className="h-1.5 w-1.5 rounded-full bg-g-green" /> {C.eyebrow}
           </div>
 
           <h1 className="mt-5 font-black leading-[0.92] tracking-tight" style={{ fontSize: "clamp(2.3rem,8.5vw,4.5rem)" }}>
-            <span className="block text-g-word" style={{ animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>Work Smart.</span>
-            <span className="block bg-gradient-to-r from-g-green via-g-light to-g-green bg-clip-text pl-[0.12em] text-transparent" style={{ backgroundSize: "220% auto", animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .2s both, gshine 7s linear infinite" }}>Grow Faster.</span>
-            <span className="block bg-gradient-to-r from-g-gold via-g-copper to-g-gold bg-clip-text pl-[0.24em] text-transparent" style={{ backgroundSize: "220% auto", animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .35s both, gshine 7s linear .6s infinite" }}>Sleep Better.</span>
+            <span className="block text-g-word" style={{ animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>{H.h1a || "Work Smart."}</span>
+            <span className="block bg-gradient-to-r from-g-green via-g-light to-g-green bg-clip-text pl-[0.12em] text-transparent" style={{ backgroundSize: "220% auto", animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .2s both, gshine 7s linear infinite" }}>{H.h1b || "Grow Faster."}</span>
+            <span className="block bg-gradient-to-r from-g-gold via-g-copper to-g-gold bg-clip-text pl-[0.24em] text-transparent" style={{ backgroundSize: "220% auto", animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .35s both, gshine 7s linear .6s infinite" }}>{H.h1c || "Sleep Better."}</span>
           </h1>
 
           <p className="mt-5 max-w-md text-[15.5px] leading-relaxed text-g-ink">
-            <span className="font-bold text-g-word">Never miss a call, a lead, or a sale.</span> Gui <span className="font-semibold text-g-green">answers</span>, <span className="font-semibold text-g-green">books</span>, <span className="font-semibold text-g-gold">quotes &amp; sells</span> and <span className="font-semibold text-g-green">follows up</span> — <span className="font-bold text-g-gold">24/7</span>. Stop trading hours for tasks — the offer <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text font-bold text-transparent">fulfills itself</span>.
+            <span className="font-bold text-g-word">{C.sub[0]}</span> Gui{C.sub[1]}<span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text font-bold text-transparent">{C.sub[2]}</span>{C.sub[3]}
           </p>
 
           <div className="mt-6 flex items-center gap-2 text-[13px] font-black uppercase tracking-wider">
-            <span className="text-g-green">⚡ Performance</span>
+            <span className="text-g-green">{C.method[0]}</span>
             <span className="text-g-muted">→</span>
-            <span className="text-g-gold">Sales</span>
+            <span className="text-g-gold">{C.method[1]}</span>
             <span className="text-g-muted">→</span>
-            <span className="text-g-copper">Growth</span>
+            <span className="text-g-copper">{C.method[2]}</span>
           </div>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
-            <a href="#" className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-b from-[#3a3a3a] to-[#181818] px-5 py-3 text-[14px] font-bold text-g-word ring-1 ring-white/15 shadow-[0_14px_40px_-14px_rgba(0,0,0,0.8)] transition hover:ring-g-green/40">
+            <a href="#try" className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-b from-[#3a3a3a] to-[#181818] px-5 py-3 text-[14px] font-bold text-g-word ring-1 ring-white/15 shadow-[0_14px_40px_-14px_rgba(0,0,0,0.8)] transition hover:ring-g-green/40">
               <span className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-br from-g-green/40 to-g-gold/30 text-xs">🌱</span>
-              Hear Gui work
+              {C.cta}
               <span className="text-g-green">· 24/7</span>
             </a>
-            <span className="text-[12px] text-g-muted">Real AI · real calls · real bookings.</span>
+            <span className="text-[12px] text-g-muted">{C.sub2}</span>
           </div>
         </div>
 

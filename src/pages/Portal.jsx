@@ -1194,6 +1194,49 @@ const PT_UI = {
   "Send re-order link": "Enviar link de recompra",
   "Customer": "Cliente",
   "Toggle language": "Alternar idioma",
+  // view-body CTAs
+  "Manage rules": "Gerenciar regras",
+  "Send nudge now": "Enviar lembrete agora",
+  "Offer next open slot": "Oferecer próximo horário",
+  "Request reviews now": "Pedir avaliações agora",
+  "Continue →": "Continuar →",
+  "Start here →": "Comece por aqui →",
+  "See the impact →": "Ver o impacto →",
+  "Collect now →": "Cobrar agora →",
+  "Connect a tool →": "Conectar uma ferramenta →",
+  "Train your AI on it →": "Treinar sua IA com isso →",
+  "Book a call": "Agendar uma conversa",
+  "Mark out of stock": "Marcar como esgotado",
+  "Fill from waitlist →": "Preencher da lista de espera →",
+  "Set up with my team →": "Configurar com minha equipe →",
+  "Close the gap →": "Fechar a diferença →",
+  "Enter my cockpit →": "Entrar no meu cockpit →",
+  "Reply": "Responder",
+  "Reply on": "Responder no",
+  "Jump in and reply…": "Entre e responda…",
+  "Ask your AI": "Pergunte à sua IA",
+  "No conversations yet — they'll show up here as customers message you.": "Nenhuma conversa ainda — elas aparecem aqui conforme os clientes te enviam mensagens.",
+  "🎉 Mark won": "🎉 Marcar como ganho",
+  "💬 Message": "💬 Mensagem",
+  "Live sync": "Sincronização ao vivo",
+  "Gui recommends connecting": "Gui recomenda conectar",
+  "Request a change": "Solicitar uma mudança",
+  "Topic": "Tópico",
+  "Mark joined": "Marcar como compareceu",
+  "Return on credits": "Retorno sobre créditos",
+  "Won": "Ganho",
+  "Tell us about you": "Conte sobre você",
+  // Integrations hub
+  "Guileo plugs into your whole stack": "A Guileo se conecta a todo o seu stack",
+  "connected": "conectados",
+  "Connected": "Conectados",
+  "Acting 24/7": "Agindo 24/7",
+  "Always-on": "Sempre ligado",
+  "Hours saved / wk": "Horas economizadas / sem",
+  "Done-for-you": "Feito por nós",
+  "Don't see your system? If it has an API (or Zapier/Make),": "Não vê seu sistema? Se tiver uma API (ou Zapier/Make),",
+  "your team wires it": "sua equipe conecta",
+  "— Guileo becomes the brain on top of everything you already run.": "— a Guileo vira o cérebro acima de tudo que você já usa.",
 };
 // Global UI language — set once by Portal on each render, read by tr() anywhere with
 // no prop/context threading. Makes wrapping any string a 1-token change: {tr("Label")}.
@@ -1446,7 +1489,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
             <span className="grid place-items-center h-9 w-9 rounded-full bg-g-green/15 text-g-green shrink-0"><FaBrain size={15} /></span>
             <div className="min-w-0"><div className="text-sm font-extrabold text-g-word flex items-center gap-2">Your AI briefing <span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" /></div><div className="text-xs text-g-muted mt-0.5">{dailyBriefing(V)}.</div></div>
           </div>
-          {ops[0] && <button onClick={() => onNav(ops[0].view)} className="btn-bright text-sm shrink-0">Start here →</button>}
+          {ops[0] && <button onClick={() => onNav(ops[0].view)} className="btn-bright text-sm shrink-0">{tr("Start here →")}</button>}
         </div>
       </Card>
 
@@ -1518,7 +1561,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
         <div className="flex items-center justify-between gap-3 mb-2">
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("🎯 Monthly goal")}</div>
           {editGoal ? (
-            <div className="flex items-center gap-1.5"><span className="text-g-muted text-sm">$</span><input autoFocus value={goalDraft} onChange={(e) => setGoalDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveGoal()} aria-label={tr("Monthly revenue goal")} className="w-24 rounded-lg border border-white/15 bg-black/20 px-2 py-1 text-sm text-g-word outline-none focus:border-g-green/70" /><button onClick={saveGoal} className="text-[11px] font-bold text-g-green hover:underline">Save</button></div>
+            <div className="flex items-center gap-1.5"><span className="text-g-muted text-sm">$</span><input autoFocus value={goalDraft} onChange={(e) => setGoalDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveGoal()} aria-label={tr("Monthly revenue goal")} className="w-24 rounded-lg border border-white/15 bg-black/20 px-2 py-1 text-sm text-g-word outline-none focus:border-g-green/70" /><button onClick={saveGoal} className="text-[11px] font-bold text-g-green hover:underline">{tr("Save")}</button></div>
           ) : (
             <button onClick={() => { setGoalDraft(goal); setEditGoal(true); }} className="text-sm font-extrabold text-g-word inline-flex items-center gap-1.5">${goal.toLocaleString()} <FaPen size={9} className="text-g-muted" /></button>
           )}
@@ -1529,7 +1572,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
         </div>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
           <span className="text-g-muted"><b className="text-g-word">${V.impact.total.toLocaleString()}</b> of ${goal.toLocaleString()} · <b className={pctProj >= 100 ? "text-g-green" : "text-g-gold"}>on pace for {pctProj}%</b></span>
-          {pctProj < 100 && ops[0] && <button onClick={() => onNav(ops[0].view)} className="font-bold text-g-green hover:underline">Close the gap →</button>}
+          {pctProj < 100 && ops[0] && <button onClick={() => onNav(ops[0].view)} className="font-bold text-g-green hover:underline">{tr("Close the gap →")}</button>}
           {pctProj >= 100 && <span className="font-bold text-g-green">🎉 On track to beat it!</span>}
         </div>
       </Card>
@@ -1579,8 +1622,8 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
             <div className="text-sm font-extrabold text-g-word">Your week, by Gui</div>
             <div className="text-xs text-g-muted mt-1 leading-relaxed">This week your AI handled <span className="text-g-word font-bold">{wk.handled}</span> conversations, created <span className="text-g-word font-bold">{wk.created || vnum(V.label, "wkc", 6, 24)}</span> bookings & orders{wk.driven ? <> and drove <span className="text-g-green font-bold">${wk.driven.toLocaleString()}</span> in tracked revenue</> : ""} — saving you about <span className="text-g-word font-bold">{wk.hours}h</span>. {wk.open ? <>Next: <span className="text-g-word font-semibold">{wk.open} invoice{wk.open !== 1 ? "s" : ""}</span> still to collect, and <span className="text-g-word font-semibold">{wk.peak}</span> looks busiest.</> : <>Next week <span className="text-g-word font-semibold">{wk.peak}</span> looks busiest — want a promo to fill the quiet days?</>}</div>
             <div className="mt-2.5 flex flex-wrap gap-2">
-              <button onClick={() => onNav("impact")} className="btn-ghost text-xs px-3 py-1.5">See the impact →</button>
-              {wk.open > 0 && <button onClick={() => onNav("payments")} className="btn-ghost text-xs px-3 py-1.5">Collect now →</button>}
+              <button onClick={() => onNav("impact")} className="btn-ghost text-xs px-3 py-1.5">{tr("See the impact →")}</button>
+              {wk.open > 0 && <button onClick={() => onNav("payments")} className="btn-ghost text-xs px-3 py-1.5">{tr("Collect now →")}</button>}
             </div>
           </div>
         </div>
@@ -1659,7 +1702,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
               <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Revenue & order volume")}</div>
               <div className="mt-1 flex items-center gap-3 text-[10px] text-g-muted"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-gold" />{tr("Revenue")}</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-green" />{tr("Orders")}</span></div>
             </div>
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-g-green"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />Live sync</span>
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-g-green"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{tr("Live sync")}</span>
           </div>
           <Bars data={V.revenue} />
         </Card>
@@ -1779,7 +1822,7 @@ function Deliveries({ V }) {
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaTruck className="text-g-green" /> {cfg.title}</div><div className="text-xs text-g-muted mt-0.5">{cfg.partners.length ? "Every order — third-party apps and your own delivery — in one place. " : "Dispatch and track every job in one place. "}Your AI texts customers live ETAs automatically.</div></div>
-          <a href={waLink(`Hi Guileo! Help me set up ${cfg.title.toLowerCase()}`)} target="_blank" rel="noopener" className="btn-bright text-sm">Set up with my team →</a>
+          <a href={waLink(`Hi Guileo! Help me set up ${cfg.title.toLowerCase()}`)} target="_blank" rel="noopener" className="btn-bright text-sm">{tr("Set up with my team →")}</a>
         </div>
       </Card>
 
@@ -2012,11 +2055,11 @@ function Integrations({ V, onNav, lang = "en" }) {
           <div className="flex items-center gap-3">
             <span className="grid place-items-center h-11 w-11 rounded-xl bg-g-green/15 text-g-green"><FaPlug /></span>
             <div>
-              <div className="text-sm font-extrabold text-g-word">Guileo plugs into your whole stack</div>
-              <div className="text-xs text-g-muted mt-0.5">We don't replace your tools — your AI works <span className="text-g-light font-semibold">inside</span> them, across all of them. <span className="text-g-green font-bold">{liveCount} connected</span> and acting right now.</div>
+              <div className="text-sm font-extrabold text-g-word">{tr("Guileo plugs into your whole stack")}</div>
+              <div className="text-xs text-g-muted mt-0.5">{lang === "pt" ? <>Não substituímos suas ferramentas — sua IA trabalha <span className="text-g-light font-semibold">dentro</span> delas, em todas. <span className="text-g-green font-bold">{liveCount} conectadas</span> e agindo agora.</> : <>We don't replace your tools — your AI works <span className="text-g-light font-semibold">inside</span> them, across all of them. <span className="text-g-green font-bold">{liveCount} connected</span> and acting right now.</>}</div>
             </div>
           </div>
-          <a href={waLink("Hi Guileo! Help me connect my tools/systems")} target="_blank" rel="noopener" className="btn-bright text-sm">Connect a tool →</a>
+          <a href={waLink("Hi Guileo! Help me connect my tools/systems")} target="_blank" rel="noopener" className="btn-bright text-sm">{tr("Connect a tool →")}</a>
         </div>
         {/* live data flow: connected tools → Guileo brain */}
         <div className="mt-4 flex items-center gap-2">
@@ -2032,14 +2075,14 @@ function Integrations({ V, onNav, lang = "en" }) {
         </div>
       </Card>
 
-      <MiniStats items={[["Connected", `${liveCount}/${flat.length}`, "good"], ["Acting 24/7", "Always-on"], ["Hours saved / wk", `${vnum(V.label, "stackhrs", 8, 26)}h`, "good"], ["Setup", "Done-for-you"]]} />
+      <MiniStats items={[[tr("Connected"), `${liveCount}/${flat.length}`, "good"], [tr("Acting 24/7"), tr("Always-on")], [tr("Hours saved / wk"), `${vnum(V.label, "stackhrs", 8, 26)}h`, "good"], [tr("Setup"), tr("Done-for-you")]]} />
 
       {/* Gui recommends connecting — surfaces the highest-value disconnected tools */}
       {(() => {
         const off = flat.filter(([n]) => !conn[n]).slice(0, 2);
         return off.length ? (
           <Card className="border-g-green/30 bg-g-green/[0.06]">
-            <div className="flex items-center gap-2 mb-2.5"><span className="grid place-items-center h-7 w-7 rounded-full bg-g-green/15 text-g-green"><FaWandMagicSparkles size={12} /></span><div className="text-xs font-extrabold text-g-word">Gui recommends connecting</div></div>
+            <div className="flex items-center gap-2 mb-2.5"><span className="grid place-items-center h-7 w-7 rounded-full bg-g-green/15 text-g-green"><FaWandMagicSparkles size={12} /></span><div className="text-xs font-extrabold text-g-word">{tr("Gui recommends connecting")}</div></div>
             <div className="space-y-2">
               {off.map(([name, Icon, color, doesEn, doesPt]) => (
                 <div key={name} className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-black/15 px-3 py-2.5">
@@ -2073,8 +2116,8 @@ function Integrations({ V, onNav, lang = "en" }) {
 
       <Card className="border-g-gold/25 bg-g-gold/[0.04]">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-xs text-g-muted">Don't see your system? If it has an API (or Zapier/Make), <span className="text-g-light font-semibold">your team wires it</span> — Guileo becomes the brain on top of everything you already run.</div>
-          <button onClick={() => onNav?.("brain")} className="btn-ghost text-sm shrink-0">Train your AI on it →</button>
+          <div className="text-xs text-g-muted">{tr("Don't see your system? If it has an API (or Zapier/Make),")} <span className="text-g-light font-semibold">{tr("your team wires it")}</span> {tr("— Guileo becomes the brain on top of everything you already run.")}</div>
+          <button onClick={() => onNav?.("brain")} className="btn-ghost text-sm shrink-0">{tr("Train your AI on it →")}</button>
         </div>
       </Card>
     </div>
@@ -2251,11 +2294,11 @@ function Support() {
         <p className="text-xs text-g-muted mt-1">A real human manages your system. Reach out anytime — usually replies within hours.</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <a href={waLink("Hi Guileo team! I need help with my account")} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Message my team</a>
-          <a href="/#contact" className="btn-ghost text-sm">Book a call</a>
+          <a href="/#contact" className="btn-ghost text-sm">{tr("Book a call")}</a>
         </div>
       </Card>
       <Card>
-        <div className="text-sm font-extrabold text-g-word">Request a change</div>
+        <div className="text-sm font-extrabold text-g-word">{tr("Request a change")}</div>
         <p className="text-xs text-g-muted mt-1">Want to tweak your AI, add a channel, or launch a campaign? Tell us.</p>
         {!sent ? (
           <form onSubmit={(e) => { e.preventDefault(); setSent(true); }} className="mt-3 space-y-2">
@@ -2314,7 +2357,7 @@ function LiveOrders({ V }) {
         badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: sel.color + "22", color: sel.color }}>{sel.status}</span>}
         fields={[["Items", sel.items], ["Total", `$${sel.total.toFixed(2)}`], ["Channel", sel.channel], ["Status", sel.status]]}
         note={`Taken by your AI via ${sel.channel}. Customer notified automatically with ETA + confirmation.`}
-        actions={<><button onClick={() => { logImpact(V.label, `${sel.id} fulfilled — taken by your AI`, Math.max(18, Math.round(sel.total) || 22)); toast(`${sel.id} marked ready ✓ — logged to Guileo Impact`); setSel(null); }} className="btn-bright text-sm">✓ Mark ready</button><a href={waLink(`Hi ${sel.customer}, about order ${sel.id}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
+        actions={<><button onClick={() => { logImpact(V.label, `${sel.id} fulfilled — taken by your AI`, Math.max(18, Math.round(sel.total) || 22)); toast(`${sel.id} marked ready ✓ — logged to Guileo Impact`); setSel(null); }} className="btn-bright text-sm">✓ Mark ready</button><a href={waLink(`Hi ${sel.customer}, about order ${sel.id}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">{tr("💬 Message")}</a></>}
         onClose={() => setSel(null)}
       />
     )}
@@ -2389,7 +2432,7 @@ function MenuView({ V }) {
           note="Your AI auto-pauses an item from suggestions when it's out of stock, and flags low stock here so you never sell what you can't deliver."
           actions={<>
             <button onClick={() => setStock(sel.i, "In stock", sel.m.name)} className="btn-bright text-sm">✓ Mark restocked</button>
-            <button onClick={() => setStock(sel.i, "Out", sel.m.name)} className="btn-ghost text-sm">Mark out of stock</button>
+            <button onClick={() => setStock(sel.i, "Out", sel.m.name)} className="btn-ghost text-sm">{tr("Mark out of stock")}</button>
           </>}
           onClose={() => setSel(null)}
         />
@@ -2566,7 +2609,7 @@ function CallLogs({ V, onNav }) {
           badge={<span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-g-green/15 text-g-green">{tr("Positive")}</span>}
           fields={[["Outcome", sel.outcome], ["Duration", sel.dur], ["When", sel.time], ["Channel", "Phone · AI"], ["Resolved", "By AI ✓"]]}
           note={<>Transcript summary:<div className="mt-1.5 space-y-1 text-g-word">{[["📞", `${sel.name}: ${sel.outcome.replace(/·.*/, "").trim() || "Hi, calling about my booking."}`], ["🤖", "Guileo AI: Happy to help — all sorted! Anything else?"], ["📞", `${sel.name}: That's perfect, thank you!`]].map(([ic, t], j) => <div key={j}>{ic} {t}</div>)}</div></>}
-          actions={<><a href={`tel:${sel.phone.replace(/[^0-9+]/g, "")}`} className="btn-bright text-sm">📞 Call back</a><a href={waLink(`Hi ${sel.name}! `)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
+          actions={<><a href={`tel:${sel.phone.replace(/[^0-9+]/g, "")}`} className="btn-bright text-sm">📞 Call back</a><a href={waLink(`Hi ${sel.name}! `)} target="_blank" rel="noopener" className="btn-ghost text-sm">{tr("💬 Message")}</a></>}
           onClose={() => setSel(null)}
         >
           <div><div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">Turn this call into action</div><ConvoActions V={V} who={sel.name} channel="call" onNav={onNav} onDone={() => setSel(null)} /></div>
@@ -2731,8 +2774,8 @@ function Inbox({ V, onNav }) {
             </div>
             <div className="px-3 pt-3 shrink-0"><ConvoActions V={V} who={cur.name} channel={cur.channel} onNav={onNav} /></div>
             <form onSubmit={send} className="p-3 border-t-0 flex gap-2 shrink-0">
-              <input value={draft} onChange={(e) => setDraft(e.target.value)} aria-label="Reply" placeholder={`Reply on ${cur.channel}…`} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-              <button className="btn-bright text-sm px-5">Send</button>
+              <input value={draft} onChange={(e) => setDraft(e.target.value)} aria-label={tr("Reply")} placeholder={`${tr("Reply on")} ${cur.channel}…`} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+              <button className="btn-bright text-sm px-5">{tr("Send")}</button>
             </form>
           </>}
         </Card>
@@ -2765,7 +2808,7 @@ function Convos({ V, title }) {
               <div className="text-right shrink-0"><div className="text-[10px] text-g-muted">{cc.t}</div>{cc.unread > 0 && <span className="inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-g-green text-[10px] font-bold text-black mt-0.5">{cc.unread}</span>}</div>
             </button>
           ))}
-          {list.length === 0 && <Empty icon="💬" text="No conversations yet — they'll show up here as customers message you." />}
+          {list.length === 0 && <Empty icon="💬" text={tr("No conversations yet — they'll show up here as customers message you.")} />}
         </div>
       </Card>
       <Card className="p-0 overflow-hidden lg:col-span-2 flex flex-col">
@@ -2782,8 +2825,8 @@ function Convos({ V, title }) {
           ))}
         </div>
         <form onSubmit={send} className="p-3 border-t border-white/10 flex gap-2 shrink-0">
-          <input value={draft} onChange={(e) => setDraft(e.target.value)} aria-label="Reply" placeholder="Jump in and reply…" className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-          <button className="btn-bright text-sm px-5">Send</button>
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} aria-label={tr("Reply")} placeholder={tr("Jump in and reply…")} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+          <button className="btn-bright text-sm px-5">{tr("Send")}</button>
         </form>
       </Card>
     </div>
@@ -3071,8 +3114,8 @@ function AIBrain({ V }) {
         </div>
         {chat.length === 0 && <div className="px-4 pb-2 flex flex-wrap gap-2">{suggestions.map((s) => <button key={s} onClick={() => setChat([{ q: s, a: aiAnswer(s, V, kb), trained: !!kbMatch(s, kb) }])} className="rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-[11px] font-bold text-g-muted hover:text-g-word transition">{s}</button>)}</div>}
         <form onSubmit={ask} className="p-3 border-t border-white/10 flex gap-2">
-          <input value={q} onChange={(e) => setQ(e.target.value)} aria-label="Ask your AI" placeholder={tr("Ask your AI a question…")} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-          <button className="btn-bright text-sm px-5">Ask</button>
+          <input value={q} onChange={(e) => setQ(e.target.value)} aria-label={tr("Ask your AI")} placeholder={tr("Ask your AI a question…")} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+          <button className="btn-bright text-sm px-5">{tr("Ask")}</button>
         </form>
       </Card>
 
@@ -3121,7 +3164,7 @@ function KBForm({ entry, onSave, onCancel }) {
   const field = "w-full rounded-xl border border-white/15 bg-black/20 px-3.5 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70";
   return (
     <div className="space-y-3">
-      <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">Topic</span>
+      <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr("Topic")}</span>
         <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. Parking & access" className={`mt-1 ${field}`} /></label>
       <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">When customers ask about… <span className="normal-case font-normal text-g-muted/70">{tr("(keywords, optional)")}</span></span>
         <input value={triggers} onChange={(e) => setTriggers(e.target.value)} placeholder="parking park garage valet" className={`mt-1 ${field}`} /></label>
@@ -3327,7 +3370,7 @@ function ScheduleScreen({ V }) {
         <Card className="border-g-green/25 bg-g-green/[0.05]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div><div className="text-sm font-extrabold text-g-word">🛡️ No-show protection · on</div><div className="text-xs text-g-muted mt-0.5">${DEPOSIT[V.label]} deposit held per booking · <b className="text-g-green">7 no-shows prevented</b> · $980 secured this month</div></div>
-            <div className="flex gap-2"><button onClick={fillFromWaitlist} className="btn-bright text-sm">Fill from waitlist →</button><button onClick={() => toast("Deposit rules updated ✓")} className="btn-ghost text-sm">Manage rules</button></div>
+            <div className="flex gap-2"><button onClick={fillFromWaitlist} className="btn-bright text-sm">{tr("Fill from waitlist →")}</button><button onClick={() => toast("Deposit rules updated ✓")} className="btn-ghost text-sm">{tr("Manage rules")}</button></div>
           </div>
         </Card>
       )}
@@ -3839,7 +3882,7 @@ function Loyalty({ V }) {
                   <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted truncate">{isJoined ? "referred a friend who joined" : r.note}</div></div>
                   {isJoined
                     ? <span className="text-[10px] font-black uppercase text-g-green">{tr("Joined")}</span>
-                    : <button onClick={() => convert(r, i)} className="text-[11px] font-bold rounded-full border border-g-green/40 bg-g-green/[0.1] px-2.5 py-1 text-g-green hover:bg-g-green/20 transition">Mark joined</button>}
+                    : <button onClick={() => convert(r, i)} className="text-[11px] font-bold rounded-full border border-g-green/40 bg-g-green/[0.1] px-2.5 py-1 text-g-green hover:bg-g-green/20 transition">{tr("Mark joined")}</button>}
                 </div>
               );
             })}
@@ -3908,7 +3951,7 @@ function GuileoImpact({ V }) {
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">{tr("Your return")}</div>
           <div className="text-sm text-g-muted">Gui drove <b className="text-g-word">${total.toLocaleString()}</b> in growth for you this month{creditsUsed ? <> · powered by <b className="text-g-word">{creditsUsed.toLocaleString()} credits</b></> : ""}.</div>
           <div className="mt-3 rounded-xl2 border border-g-gold/30 bg-g-gold/[0.06] p-3">
-            <div className="text-[10px] uppercase tracking-wide text-g-gold font-bold">Return on credits</div>
+            <div className="text-[10px] uppercase tracking-wide text-g-gold font-bold">{tr("Return on credits")}</div>
             <div className="text-2xl font-extrabold text-g-word mt-1">{roi > 0 ? `${roi.toFixed(1)}×` : "—"}</div>
             <div className="text-[11px] text-g-muted mt-0.5">{roi > 0 ? <>Every $1 of credits returned <b className="text-g-word">${roi.toFixed(1)}</b> in growth.</> : "Run Gui this month to see your return."} Pay-as-you-go — you only pay for what Gui does. <b className="text-g-word">Guileo never takes a cut of your revenue.</b></div>
             <button onClick={() => {
@@ -3946,7 +3989,7 @@ function Followups({ V }) {
               <span className="text-sm font-extrabold text-g-green">${r.value}</span>
               <div className="flex gap-1.5 shrink-0">
                 <span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); toast(`${r.name}: nudge sent`); }} className="text-[10px] font-bold rounded-full border border-white/15 px-2.5 py-1 text-g-word hover:border-g-gold/40 transition cursor-pointer">Nudge</span>
-                <span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); markWon(i, r.name, r.value); }} className="text-[10px] font-bold rounded-full bg-g-green/15 border border-g-green/40 px-2.5 py-1 text-g-green cursor-pointer">Won</span>
+                <span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); markWon(i, r.name, r.value); }} className="text-[10px] font-bold rounded-full bg-g-green/15 border border-g-green/40 px-2.5 py-1 text-g-green cursor-pointer">{tr("Won")}</span>
               </div>
             </button>
           ))}
@@ -3960,7 +4003,7 @@ function Followups({ V }) {
           badge={<span className="text-sm font-extrabold text-g-green">${sel.r.value}</span>}
           fields={[["Type", sel.r.type], ["Channel", sel.r.ch], ["Next touch", sel.r.next], ["Sequence stage", `${sel.r.stage} of 3`], ["Pipeline value", `$${sel.r.value}`]]}
           note={`The AI is running a ${sel.r.stage}-of-3 follow-up sequence via ${sel.r.ch}. It stops automatically the moment they convert or reply.`}
-          actions={<><button onClick={() => { toast(`${sel.r.name}: nudge sent`); setSel(null); }} className="btn-bright text-sm">Send nudge now</button><button onClick={() => markWon(sel.i, sel.r.name, sel.r.value)} className="btn-ghost text-sm">🎉 Mark won</button><a href={waLink(`Hi ${sel.r.name}, following up…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
+          actions={<><button onClick={() => { toast(`${sel.r.name}: nudge sent`); setSel(null); }} className="btn-bright text-sm">{tr("Send nudge now")}</button><button onClick={() => markWon(sel.i, sel.r.name, sel.r.value)} className="btn-ghost text-sm">{tr("🎉 Mark won")}</button><a href={waLink(`Hi ${sel.r.name}, following up…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">{tr("💬 Message")}</a></>}
           onClose={() => setSel(null)}
         />
       )}
@@ -4009,7 +4052,7 @@ function Waitlist({ V }) {
           subtitle={`Wants: ${sel.r.want}`}
           fields={[["Looking for", sel.r.want], ["Channel", sel.r.ch], ["Waiting", sel.r.since]]}
           note={`The AI will text ${sel.r.name} the instant a matching slot frees up — first to reply keeps it. No empty chairs, no manual calls.`}
-          actions={<><button onClick={() => offer(sel.i, sel.r.name, sel.r.want)} className="btn-bright text-sm">Offer next open slot</button><a href={waLink(`Hi ${sel.r.name}, a slot just opened for ${sel.r.want}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
+          actions={<><button onClick={() => offer(sel.i, sel.r.name, sel.r.want)} className="btn-bright text-sm">{tr("Offer next open slot")}</button><a href={waLink(`Hi ${sel.r.name}, a slot just opened for ${sel.r.want}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">{tr("💬 Message")}</a></>}
           onClose={() => setSel(null)}
         />
       )}
@@ -4038,7 +4081,7 @@ function Reputation({ V, onNav }) {
         <Card>
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("Rating breakdown")}</div>
           {dist.map(([l, v]) => (<div key={l} className="mb-2 last:mb-0 flex items-center gap-2"><span className="text-xs text-g-muted w-8">{l}</span><div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-gold to-g-green" style={{ width: `${v}%` }} /></div><span className="text-[11px] text-g-muted w-8 text-right">{v}%</span></div>))}
-          <button onClick={blast} className="btn-bright text-sm w-full mt-4 justify-center">Request reviews now</button>
+          <button onClick={blast} className="btn-bright text-sm w-full mt-4 justify-center">{tr("Request reviews now")}</button>
         </Card>
         <Card className="lg:col-span-2 p-0 overflow-hidden">
           <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recent reviews · collected by AI")}</div>
@@ -4079,7 +4122,7 @@ function Recurring({ V }) {
           badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: sel.color + "22", color: sel.color }}>{sel.status}</span>}
           fields={[["Plan", sel.plan], ["Value", `$${sel.value}/mo`], ["Annual value", `$${(sel.value * 12).toLocaleString()}`], ["Status", sel.status], ["Member since", "Apr 2026"]]}
           note={sel.status === "At risk" ? "⚠ Engagement dropped — the AI is running a win-back sequence to save this plan." : sel.status === "Renews soon" ? "Renewal coming up — the AI will remind and auto-renew." : "Active and healthy — auto-renewing each cycle."}
-          actions={<><button onClick={() => { logImpact(V.label, `${sel.name} renewed · ${sel.plan}`, sel.value || 49); toast(`${sel.name} renewed ✓ — $${sel.value || 49} logged to Guileo Impact`); setSel(null); }} className="btn-bright text-sm">↻ Renew now</button>{sel.status === "At risk" && <button onClick={() => { const saved = (sel.value || 49) * 12; logImpact(V.label, `Saved ${sel.name}'s ${sel.plan} (win-back)`, saved); toast(`Win-back run ✓ — $${saved.toLocaleString()}/yr saved, logged to Guileo Impact`); setSel(null); }} className="btn-ghost text-sm">🛟 Run win-back</button>}<a href={waLink(`Hi ${sel.name}, about your ${sel.plan}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Message</a></>}
+          actions={<><button onClick={() => { logImpact(V.label, `${sel.name} renewed · ${sel.plan}`, sel.value || 49); toast(`${sel.name} renewed ✓ — $${sel.value || 49} logged to Guileo Impact`); setSel(null); }} className="btn-bright text-sm">↻ Renew now</button>{sel.status === "At risk" && <button onClick={() => { const saved = (sel.value || 49) * 12; logImpact(V.label, `Saved ${sel.name}'s ${sel.plan} (win-back)`, saved); toast(`Win-back run ✓ — $${saved.toLocaleString()}/yr saved, logged to Guileo Impact`); setSel(null); }} className="btn-ghost text-sm">🛟 Run win-back</button>}<a href={waLink(`Hi ${sel.name}, about your ${sel.plan}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">{tr("💬 Message")}</a></>}
           onClose={() => setSel(null)}
         />
       )}
@@ -4204,25 +4247,25 @@ function OnboardingWizard({ onDone }) {
           </div>
         </>)}
         {step === 1 && (<>
-          <div className="text-lg font-extrabold text-g-word">Tell us about you</div>
+          <div className="text-lg font-extrabold text-g-word">{tr("Tell us about you")}</div>
           <p className="text-xs text-g-muted mt-1">So Gui represents your business — and we can reach you.</p>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Business name (e.g. Bella Pizza)" className="mt-4 w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
           <input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="Your name" className="mt-3 w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
           <input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Your WhatsApp / phone / email" className="mt-3 w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-          <button onClick={next} className="btn-bright text-sm w-full mt-4">Continue →</button>
+          <button onClick={next} className="btn-bright text-sm w-full mt-4">{tr("Continue →")}</button>
         </>)}
         {step === 2 && (<>
           <div className="text-lg font-extrabold text-g-word">Which channels should your AI cover?</div>
           <p className="text-xs text-g-muted mt-1">Your AI answers 24/7 on every one you turn on.</p>
           <div className="mt-4 space-y-2">{Object.keys(chs).map((c) => (<div key={c} className="flex items-center justify-between rounded-xl2 border border-white/10 bg-white/[0.03] px-4 py-3"><span className="text-sm font-semibold text-g-word">{c}</span><Toggle on={chs[c]} onClick={() => setChs((x) => ({ ...x, [c]: !x[c] }))} /></div>))}</div>
-          <button onClick={next} className="btn-bright text-sm w-full mt-4">Continue →</button>
+          <button onClick={next} className="btn-bright text-sm w-full mt-4">{tr("Continue →")}</button>
         </>)}
         {step === 3 && (
           <div className="text-center py-3">
             <div className="text-4xl mb-2">🎉</div>
             <div className="text-lg font-extrabold text-g-word">You're all set, {name || "there"}!</div>
             <p className="text-xs text-g-muted mt-1">Your AI is live and your Growth Cockpit is ready.</p>
-            <button onClick={() => { captureLead(); sendWelcome(); onDone(vid, { name: name.trim(), owner: owner.trim(), contact: contact.trim() }); }} className="btn-bright text-sm w-full mt-5">Enter my cockpit →</button>
+            <button onClick={() => { captureLead(); sendWelcome(); onDone(vid, { name: name.trim(), owner: owner.trim(), contact: contact.trim() }); }} className="btn-bright text-sm w-full mt-5">{tr("Enter my cockpit →")}</button>
           </div>
         )}
         {step < 3 && <button onClick={() => onDone(vid)} className="block mx-auto mt-4 text-[11px] font-bold text-g-muted hover:text-g-word">Skip setup</button>}
@@ -4454,7 +4497,7 @@ function Gui({ V, onNav }) {
   const SR = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
   const dictate = () => {
     if (!SR) { toast("Voice isn't supported in this browser"); return; }
-    const rec = new SR(); rec.lang = "en-US"; rec.interimResults = false; rec.maxAlternatives = 1;
+    const rec = new SR(); rec.lang = UI_LANG === "pt" ? "pt-BR" : "en-US"; rec.interimResults = false; rec.maxAlternatives = 1;
     setListening(true);
     rec.onresult = (ev) => { const t = ev.results[0][0].transcript; setQ(t); setListening(false); setTimeout(() => run(t), 200); };
     rec.onerror = () => setListening(false);

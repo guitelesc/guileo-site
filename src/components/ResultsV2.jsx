@@ -1,4 +1,12 @@
 import { useState, useEffect } from "react";
+import { useLang } from "../i18n.jsx";
+
+const RV_COPY = {
+  en: { eyebrow:"We know your business · results, not tools", h1a:"You don't buy AI.", h1b:"You buy results.", intro:["A patient calls at 9 PM. A client needs a quote on Sunday. A diner wants a table now. ","Pick your business"," — see what it's ","leaking"," and what Gui turns it into."], chips:"Everything you can't keep up with — ", chipsB:"Gui handles it", without:"Without Gui, every month", walks:"walks out — ", catches:"Gui catches it", withg:"With Gui", footer:["💡 ","Priced to the problem we solve"," — never the tech under the hood."] },
+  pt: { eyebrow:"Conhecemos seu negócio · resultado, não ferramenta", h1a:"Você não compra IA.", h1b:"Você compra resultado.", intro:["Um paciente liga às 21h. Um cliente quer orçamento no domingo. Alguém quer mesa agora. ","Escolha seu negócio"," — veja o que está ","vazando"," e no que a Gui transforma."], chips:"Tudo o que você não dá conta — ", chipsB:"a Gui resolve", without:"Sem a Gui, todo mês", walks:"vai embora — ", catches:"A Gui pega", withg:"Com a Gui", footer:["💡 ","Preço pelo problema que resolvemos"," — nunca pela tecnologia por trás."] },
+  es: { eyebrow:"Conocemos tu negocio · resultados, no herramientas", h1a:"No compras IA.", h1b:"Compras resultados.", intro:["Un paciente llama a las 21h. Un cliente quiere cotización el domingo. Alguien quiere mesa ahora. ","Elige tu negocio"," — mira lo que está ","perdiendo"," y en qué lo convierte Gui."], chips:"Todo lo que no alcanzas a atender — ", chipsB:"Gui lo resuelve", without:"Sin Gui, cada mes", walks:"se va — ", catches:"Gui lo atrapa", withg:"Con Gui", footer:["💡 ","Precio por el problema que resolvemos"," — nunca por la tecnología detrás."] },
+  hi: { eyebrow:"हम आपका व्यवसाय जानते हैं · परिणाम, टूल नहीं", h1a:"आप AI नहीं खरीदते।", h1b:"आप परिणाम खरीदते हैं।", intro:["रात 9 बजे मरीज़ कॉल करता है। रविवार को ग्राहक कोटेशन चाहता है। कोई अभी टेबल चाहता है। ","अपना व्यवसाय चुनें"," — देखें क्या ","रिस रहा है"," और Gui उसे किसमें बदलती है।"], chips:"जो कुछ आप संभाल नहीं पाते — ", chipsB:"Gui संभालती है", without:"Gui के बिना, हर महीने", walks:"चला जाता है — ", catches:"Gui उसे पकड़ती है", withg:"Gui के साथ", footer:["💡 ","हम जो समस्या हल करते हैं उसकी कीमत"," — कभी पीछे की तकनीक की नहीं।"] },
+};
 
 // ResultsV2 — TEST (/v2): "You don't buy AI / You buy results" merged with all 9 industries.
 // Industries scroll as a marquee (real-site movement) + are clickable (pause on hover).
@@ -20,6 +28,8 @@ const BIZ = [
 const fmt = (n) => "$" + Math.round(n).toLocaleString("en-US");
 
 export default function ResultsV2() {
+  const { lang } = useLang();
+  const C = RV_COPY[lang] || RV_COPY.en;
   const [idx, setIdx] = useState(6);
   const [paused, setPaused] = useState(false);
   const [count, setCount] = useState(0);
@@ -52,13 +62,13 @@ export default function ResultsV2() {
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(900px_420px_at_50%_-10%,rgba(62,148,104,0.08),transparent)]" />
 
       <div className="mx-auto max-w-5xl text-center">
-        <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold" style={{ animation: "rvreveal .7s ease both" }}>We know your business · results, not tools</div>
+        <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold" style={{ animation: "rvreveal .7s ease both" }}>{C.eyebrow}</div>
         <h2 className="mx-auto mt-4 max-w-3xl font-black leading-[0.95] tracking-tight" style={{ fontSize: "clamp(2.1rem,4.8vw,3.5rem)" }}>
-          <span className="block text-g-word" style={{ animation: "rvreveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>You don't buy AI.</span>
-          <span className="block bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "rvreveal .8s cubic-bezier(.2,.7,.2,1) .2s both, rvshine 7s linear infinite" }}>You buy results.</span>
+          <span className="block text-g-word" style={{ animation: "rvreveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>{C.h1a}</span>
+          <span className="block bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "rvreveal .8s cubic-bezier(.2,.7,.2,1) .2s both, rvshine 7s linear infinite" }}>{C.h1b}</span>
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-g-ink" style={{ animation: "rvreveal .8s ease .3s both" }}>
-          A patient calls at 9 PM. A client needs a quote on Sunday. A diner wants a table now. <span className="font-semibold text-g-word">Pick your business</span> — see what it's <span className="font-semibold text-[#d8916e]">leaking</span> and what Gui turns it into.
+          {C.intro[0]}<span className="font-semibold text-g-word">{C.intro[1]}</span>{C.intro[2]}<span className="font-semibold text-[#d8916e]">{C.intro[3]}</span>{C.intro[4]}
         </p>
       </div>
 
@@ -86,7 +96,7 @@ export default function ResultsV2() {
             <span><span className="font-bold text-g-word">{b.name}</span> — <span className="font-semibold text-g-green">Gui →</span> {b.does}</span>
           </div>
           <div className="mb-6">
-            <div className="mb-2 text-center text-[11px] font-bold uppercase tracking-wider text-g-muted">Everything you can't keep up with — <span className="text-g-green">Gui handles it</span></div>
+            <div className="mb-2 text-center text-[11px] font-bold uppercase tracking-wider text-g-muted">{C.chips}<span className="text-g-green">{C.chipsB}</span></div>
             <div className="flex flex-wrap justify-center gap-1.5">
               {b.acts.map((a) => (
                 <span key={a} className="rounded-full border border-g-green/25 bg-g-green/[0.07] px-2.5 py-0.5 text-[11.5px] font-semibold text-g-green">{a}</span>
@@ -96,13 +106,13 @@ export default function ResultsV2() {
 
           <div className="grid items-center gap-6 md:grid-cols-[1fr_auto_1fr]">
             <div className="text-center md:text-left">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-[#d8916e]">Without Gui, every month</div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-[#d8916e]">{C.without}</div>
               <div className="relative mt-1 inline-block">
                 <div className="text-[42px] font-black leading-none text-[#e0855f] sm:text-[50px]">{fmt(count)}</div>
                 <span className="pointer-events-none absolute -right-5 top-0 text-sm" style={{ animation: "rvfall 1.6s ease-in-out infinite" }}>💸</span>
                 <span className="pointer-events-none absolute -right-2 top-0 text-sm" style={{ animation: "rvfall 1.6s ease-in-out .8s infinite" }}>💸</span>
               </div>
-              <div className="mt-1 text-[13px] text-g-muted">walks out — {b.why}.</div>
+              <div className="mt-1 text-[13px] text-g-muted">{C.walks}{b.why}.</div>
             </div>
 
             <div className="flex flex-col items-center">
@@ -110,11 +120,11 @@ export default function ResultsV2() {
                 <div className="grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-g-green/30 to-g-gold/15 text-2xl ring-1 ring-white/15">🌱</div>
                 <span className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full bg-[#0c0c0c] text-g-green ring-2 ring-g-green/60 text-[11px]">🎙️</span>
               </div>
-              <div className="mt-2 text-[10px] font-bold uppercase tracking-widest text-g-green">Gui catches it</div>
+              <div className="mt-2 text-[10px] font-bold uppercase tracking-widest text-g-green">{C.catches}</div>
             </div>
 
             <div className="text-center md:text-right">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-g-green">With Gui</div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-g-green">{C.withg}</div>
               <div className="mt-1 text-[17px] font-bold leading-snug text-g-word">{b.result}</div>
               <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-g-green/30 bg-g-green/10 px-3 py-1 text-[13px] font-black text-g-green">▲ {b.gain}</div>
             </div>
@@ -123,7 +133,7 @@ export default function ResultsV2() {
       </div>
 
       <div className="mx-auto mt-7 max-w-2xl text-center" style={{ animation: "rvreveal .8s ease .6s both" }}>
-        <p className="text-[14px] text-g-muted">💡 <span className="font-semibold text-g-word">Priced to the problem we solve</span> — never the tech under the hood.</p>
+        <p className="text-[14px] text-g-muted">{C.footer[0]}<span className="font-semibold text-g-word">{C.footer[1]}</span>{C.footer[2]}</p>
       </div>
     </section>
   );

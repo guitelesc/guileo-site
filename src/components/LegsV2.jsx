@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
 import mark from "../assets/guileo-mark.png";
+import { useLang } from "../i18n.jsx";
+
+const LV_COPY = {
+  en: { eyebrow:"More than automation — your whole operation", h1a:"We don't just automate. ", h1b:"We grow your business.", biz:"YOUR BUSINESS", st:["● connected","automated","growing 24/7"], cta:"Get this for my business" },
+  pt: { eyebrow:"Mais que automação — sua operação inteira", h1a:"Não só automatizamos. ", h1b:"Fazemos você crescer.", biz:"SEU NEGÓCIO", st:["● conectado","automatizado","crescendo 24/7"], cta:"Quero isso no meu negócio" },
+  es: { eyebrow:"Más que automatización — toda tu operación", h1a:"No solo automatizamos. ", h1b:"Hacemos crecer tu negocio.", biz:"TU NEGOCIO", st:["● conectado","automatizado","creciendo 24/7"], cta:"Quiero esto en mi negocio" },
+  hi: { eyebrow:"सिर्फ़ ऑटोमेशन नहीं — आपका पूरा ऑपरेशन", h1a:"हम सिर्फ़ ऑटोमेट नहीं करते. ", h1b:"हम आपका व्यवसाय बढ़ाते हैं।", biz:"आपका व्यवसाय", st:["● कनेक्टेड","ऑटोमेटेड","24/7 बढ़ता"], cta:"मेरे व्यवसाय के लिए चाहिए" },
+};
 
 // LegsV2 — TEST (/v2) beat 3: "We run your operation." 2 columns:
 // LEFT = the 3 compact engines (Brain · Build · AD). RIGHT = the Guileo plant as the
@@ -24,6 +32,8 @@ const FRUITS = ["💰", "📈", "⭐", "🎯", "💵", "📅", "🚀", "💚"];
 const ACCENT_RGB = { green: "62,148,104", ocean: "78,157,176", gold: "214,194,154" };
 
 export default function LegsV2() {
+  const { lang } = useLang();
+  const L = LV_COPY[lang] || LV_COPY.en;
   const [sel, setSel] = useState(0);
   const [auto, setAuto] = useState(true);
 
@@ -48,10 +58,10 @@ export default function LegsV2() {
       `}</style>
 
       <div className="mx-auto max-w-5xl text-center">
-        <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold" style={{ animation: "lreveal .7s ease both" }}>More than automation — your whole operation</div>
+        <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold" style={{ animation: "lreveal .7s ease both" }}>{L.eyebrow}</div>
         <h2 className="mt-4 font-black leading-[0.96] tracking-tight" style={{ fontSize: "clamp(2rem,4.4vw,3.2rem)" }}>
-          <span className="text-g-word" style={{ animation: "lreveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>We don't just automate. </span>
-          <span className="bg-gradient-to-r from-g-green via-g-gold to-g-copper bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "lreveal .8s cubic-bezier(.2,.7,.2,1) .2s both, lshine 7s linear infinite" }}>We grow your business.</span>
+          <span className="text-g-word" style={{ animation: "lreveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>{L.h1a}</span>
+          <span className="bg-gradient-to-r from-g-green via-g-gold to-g-copper bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "lreveal .8s cubic-bezier(.2,.7,.2,1) .2s both, lshine 7s linear infinite" }}>{L.h1b}</span>
         </h2>
       </div>
 
@@ -122,14 +132,14 @@ export default function LegsV2() {
 
           <img src={mark} alt="Guileo" className="relative z-10 w-[230px] max-w-full drop-shadow-[0_20px_40px_rgba(0,0,0,0.5)]" style={{ animation: "lbreathe 6s ease-in-out infinite" }} />
           <div className="relative z-10 mt-2 text-center">
-            <div className="text-[18px] font-black tracking-tight text-g-word">YOUR BUSINESS</div>
+            <div className="text-[18px] font-black tracking-tight text-g-word">{L.biz}</div>
             <div className="mt-1 text-[11px] font-bold uppercase tracking-wider">
-              <span className="text-g-green">● connected</span> <span className="text-g-muted">·</span> <span className="text-g-gold">automated</span> <span className="text-g-muted">·</span> <span className="text-g-copper">growing 24/7</span>
+              <span className="text-g-green">{L.st[0]}</span> <span className="text-g-muted">·</span> <span className="text-g-gold">{L.st[1]}</span> <span className="text-g-muted">·</span> <span className="text-g-copper">{L.st[2]}</span>
             </div>
             <a href="#contact" className="group relative mt-5 inline-flex items-center gap-2 overflow-hidden rounded-full px-7 py-3 text-[14px] font-extrabold tracking-tight text-[#1a1a1a] ring-1 ring-white/40 shadow-[0_16px_42px_-12px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.85)] transition-transform duration-300 hover:scale-[1.03]"
               style={{ background: "linear-gradient(180deg,#f5f6f8 0%,#dde1e7 42%,#bcc2cc 100%)" }}>
               <span aria-hidden className="pointer-events-none absolute inset-0 -translate-x-[120%] bg-gradient-to-r from-transparent via-white/80 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-[120%]" />
-              <span className="relative">Get this for my business</span>
+              <span className="relative">{L.cta}</span>
               <span className="relative text-g-green transition-transform duration-300 group-hover:translate-x-0.5">→</span>
             </a>
           </div>

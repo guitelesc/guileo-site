@@ -1,4 +1,12 @@
 import { FaTiktok, FaLinkedinIn, FaTelegram, FaFacebookF, FaInstagram, FaWhatsapp, FaGoogle, FaXTwitter } from "react-icons/fa6";
+import { useLang } from "../i18n.jsx";
+
+const CV_COPY = {
+  en: { eyebrow:"Every channel, automated", h1a:"From LinkedIn to Telegram — ", h1b:"we run them all.", subA:"Content created, scheduled and optimized across ", subB:"all", subM:" your channels. ", subC:"One brain", subD:", every platform, always on.", live:"guileo live · working" },
+  pt: { eyebrow:"Todo canal, automatizado", h1a:"Do LinkedIn ao Telegram — ", h1b:"cuidamos de todos.", subA:"Conteúdo criado, agendado e otimizado em ", subB:"todos", subM:" os seus canais. ", subC:"Um cérebro", subD:", todas as plataformas, sempre ligado.", live:"guileo ao vivo · trabalhando" },
+  es: { eyebrow:"Cada canal, automatizado", h1a:"De LinkedIn a Telegram — ", h1b:"los manejamos todos.", subA:"Contenido creado, programado y optimizado en ", subB:"todos", subM:" tus canales. ", subC:"Un cerebro", subD:", cada plataforma, siempre activo.", live:"guileo en vivo · trabajando" },
+  hi: { eyebrow:"हर चैनल, ऑटोमेटेड", h1a:"LinkedIn से Telegram तक — ", h1b:"हम सब संभालते हैं।", subA:"आपके ", subB:"सभी", subM:" चैनलों पर कंटेंट बनाया, शेड्यूल और ऑप्टिमाइज़ किया जाता है। ", subC:"एक दिमाग", subD:", हर प्लेटफ़ॉर्म, हमेशा ऑन।", live:"guileo लाइव · काम कर रहा है" },
+};
 
 // ChannelsV2 — TEST (/v2): "Every channel, automated." REAL brand logos (react-icons),
 // phone lock-screen with live notifications streaming up. Guileo design system + CSS motion.
@@ -51,6 +59,8 @@ function Notif({ n }) {
 }
 
 export default function ChannelsV2() {
+  const { lang } = useLang();
+  const V = CV_COPY[lang] || CV_COPY.en;
   const list = [...NOTIFS, ...NOTIFS];
   return (
     <section className="relative overflow-hidden px-5 py-20">
@@ -65,13 +75,13 @@ export default function ChannelsV2() {
       <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
         {/* LEFT — copy */}
         <div>
-          <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold" style={{ animation: "chreveal .7s ease both" }}>Every channel, automated</div>
+          <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold" style={{ animation: "chreveal .7s ease both" }}>{V.eyebrow}</div>
           <h2 className="mt-4 font-black leading-[0.98] tracking-tight" style={{ fontSize: "clamp(2rem,4.4vw,3.2rem)" }}>
-            <span className="text-g-word" style={{ animation: "chreveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>From LinkedIn to Telegram — </span>
-            <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "chreveal .8s cubic-bezier(.2,.7,.2,1) .2s both, chshine 7s linear infinite" }}>we run them all.</span>
+            <span className="text-g-word" style={{ animation: "chreveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>{V.h1a}</span>
+            <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "chreveal .8s cubic-bezier(.2,.7,.2,1) .2s both, chshine 7s linear infinite" }}>{V.h1b}</span>
           </h2>
           <p className="mt-5 max-w-md text-[15px] leading-relaxed text-g-ink" style={{ animation: "chreveal .8s ease .3s both" }}>
-            Content created, scheduled and optimized across <span className="font-semibold text-g-word">all</span> your channels. <span className="font-semibold text-g-green">One brain</span>, every platform, always on.
+            {V.subA}<span className="font-semibold text-g-word">{V.subB}</span>{V.subM}<span className="font-semibold text-g-green">{V.subC}</span>{V.subD}
           </p>
           <div className="mt-7 flex flex-wrap gap-3" style={{ animation: "chreveal .8s ease .4s both" }}>
             {Object.entries(CH).map(([app, c]) => {
@@ -95,7 +105,7 @@ export default function ChannelsV2() {
                 <div className="text-[12px] font-semibold text-white/60">Saturday, June 7</div>
                 <div className="text-[56px] font-bold leading-none text-white">9:41</div>
                 <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-g-green/30 bg-g-green/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-g-green">
-                  <span className="h-1.5 w-1.5 rounded-full bg-g-green" style={{ animation: "chpulse 1.6s ease-in-out infinite" }} /> guileo live · working
+                  <span className="h-1.5 w-1.5 rounded-full bg-g-green" style={{ animation: "chpulse 1.6s ease-in-out infinite" }} /> {V.live}
                 </div>
               </div>
               <div className="relative h-[300px] overflow-hidden px-3 pb-5" style={{ maskImage: "linear-gradient(to bottom,transparent,#000 10%,#000 88%,transparent)", WebkitMaskImage: "linear-gradient(to bottom,transparent,#000 10%,#000 88%,transparent)" }}>
