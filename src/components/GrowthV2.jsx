@@ -73,10 +73,10 @@ export default function GrowthV2() {
               const on = act === i;
               return (
                 <div key={lb} className="flex items-center gap-2 sm:gap-3">
-                  <div className={`flex items-center gap-2 rounded-full border px-3.5 py-2.5 transition-all duration-500 sm:px-5 ${on ? "scale-105 border-g-gold/60 bg-g-gold/15 shadow-gold" : "border-white/12 bg-white/[0.04]"}`}>
-                    <span className="text-lg">{ic}</span><span className="whitespace-nowrap text-sm font-extrabold text-g-word">{lb}</span>
+                  <div className={`flex items-center gap-2 rounded-full border px-3.5 py-2.5 transition-all duration-500 sm:px-5 ${on ? "scale-110 border-g-gold/60 bg-g-gold/15 shadow-gold" : "border-white/12 bg-white/[0.04]"}`}>
+                    <span className={`text-lg transition-transform duration-500 ${on ? "scale-125" : ""}`}>{ic}</span><span className="whitespace-nowrap text-sm font-extrabold text-g-word">{lb}</span>
                   </div>
-                  {i < 2 && <span className="text-lg font-black text-g-gold">→</span>}
+                  {i < 2 && <span className={`text-lg font-black transition-all duration-500 ${on ? "scale-125 text-g-gold" : "text-g-gold/40"}`}>→</span>}
                 </div>
               );
             })}
@@ -92,8 +92,8 @@ export default function GrowthV2() {
             </div>
           ))}
         </div>
-        <a href="#contact" className="mt-9 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-g-green to-g-dark px-7 py-3.5 text-[15px] font-bold text-white shadow-[0_18px_50px_-14px_rgba(62,148,104,0.7)] transition hover:brightness-110" style={{ animation: "grreveal .8s ease .6s both" }}>
-          🚀 Start your growth cycle <span>→</span>
+        <a href="#try" className="group mt-9 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-g-green to-g-dark px-7 py-3.5 text-[15px] font-bold text-white shadow-[0_18px_50px_-14px_rgba(62,148,104,0.7)] transition hover:scale-[1.03] hover:brightness-110" style={{ animation: "grreveal .8s ease .6s both" }}>
+          🚀 Start your growth cycle <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
         </a>
       </div>
     </section>

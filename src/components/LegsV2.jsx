@@ -8,18 +8,20 @@ import mark from "../assets/guileo-mark.png";
 
 const LEGS = [
   { tag: "Guileo Brain", icon: "🧠", accent: "green", title: "AI agents that never sleep", desc: "Answer calls, book appointments, qualify leads & close — 24/7, any language.", chips: ["🎙️ Voice", "💬 WhatsApp", "📅 Bookings", "🎧 Support"] },
-  { tag: "Guileo Build", icon: "🛠️", accent: "copper", title: "Websites · Apps · Software", desc: "AI-crafted sites, intelligent apps & custom software — built to convert & scale.", chips: ["🌐 Websites", "📱 Apps", "🛒 Shopify", "⚙️ Automation"] },
+  { tag: "Guileo Build", icon: "🛠️", accent: "ocean", title: "Websites · Apps · Software", desc: "AI-crafted sites, intelligent apps & custom software — built to convert & scale.", chips: ["🌐 Websites", "📱 Apps", "🛒 Shopify", "⚙️ Automation"] },
   { tag: "Guileo.AD", icon: "📈", accent: "gold", title: "Your whole operation, run", desc: "Not just tasks — content, paid ads, social & funnels across every channel.", chips: ["📝 Content", "📣 Ads −40% waste", "🎯 Leads", "🔄 Funnels"] },
 ];
 
 const C = {
-  green: { text: "text-g-green", on: "border-g-green/40 bg-g-green/[0.06] shadow-[0_22px_55px_-32px_rgba(62,148,104,0.75)]", tile: "from-g-green/35 to-g-green/10", tring: "ring-g-green/30", bar: "from-g-green to-g-light", chip: "border-g-green/25 bg-g-green/[0.08] text-g-green", dot: "bg-g-green" },
-  copper: { text: "text-g-copper", on: "border-g-copper/40 bg-g-copper/[0.06] shadow-[0_22px_55px_-32px_rgba(194,168,120,0.75)]", tile: "from-g-copper/35 to-g-copper/10", tring: "ring-g-copper/30", bar: "from-g-copper to-g-gold", chip: "border-g-copper/25 bg-g-copper/[0.08] text-g-copper", dot: "bg-g-copper" },
-  gold: { text: "text-g-gold", on: "border-g-gold/40 bg-g-gold/[0.06] shadow-[0_22px_55px_-32px_rgba(214,194,154,0.75)]", tile: "from-g-gold/35 to-g-gold/10", tring: "ring-g-gold/30", bar: "from-g-gold to-g-copper", chip: "border-g-gold/25 bg-g-gold/[0.08] text-g-gold", dot: "bg-g-gold" },
+  green: { text: "text-g-green", on: "border-g-green/45 bg-g-green/[0.07] shadow-[0_22px_55px_-32px_rgba(62,148,104,0.8)]", tile: "from-g-green/70 to-g-green/25", tring: "ring-g-green/50", bar: "from-g-green to-g-light", chip: "border-g-green/30 bg-g-green/[0.10] text-g-green", dot: "bg-g-green" },
+  ocean: { text: "text-[#4E9DB0]", on: "border-[#4E9DB0]/45 bg-[#4E9DB0]/[0.07] shadow-[0_22px_55px_-32px_rgba(78,157,176,0.8)]", tile: "from-[#4E9DB0]/70 to-[#4E9DB0]/25", tring: "ring-[#4E9DB0]/50", bar: "from-[#4E9DB0] to-[#7FC3D0]", chip: "border-[#4E9DB0]/30 bg-[#4E9DB0]/[0.12] text-[#7FC3D0]", dot: "bg-[#4E9DB0]" },
+  gold: { text: "text-g-gold", on: "border-g-gold/45 bg-g-gold/[0.07] shadow-[0_22px_55px_-32px_rgba(214,194,154,0.8)]", tile: "from-g-gold/70 to-g-gold/25", tring: "ring-g-gold/50", bar: "from-g-gold to-g-copper", chip: "border-g-gold/30 bg-g-gold/[0.10] text-g-gold", dot: "bg-g-gold" },
 };
 
 // money & good things the plant "produces"
 const FRUITS = ["💰", "📈", "⭐", "🎯", "💵", "📅", "🚀", "💚"];
+// accent rgb for the live "energy feeding the business" connection
+const ACCENT_RGB = { green: "62,148,104", ocean: "78,157,176", gold: "214,194,154" };
 
 export default function LegsV2() {
   const [sel, setSel] = useState(0);
@@ -39,6 +41,9 @@ export default function LegsV2() {
         @keyframes lmoney{0%{transform:translateY(10px) scale(.7);opacity:0}18%{opacity:1}100%{transform:translateY(-120px) scale(1.15);opacity:0}}
         @keyframes lbreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
         @keyframes lsheen{0%{transform:translateX(-120%)}55%,100%{transform:translateX(120%)}}
+        @keyframes lsonar{0%{transform:scale(.55);opacity:.55}100%{transform:scale(1.7);opacity:0}}
+        @keyframes lflowin{0%{left:-2%;opacity:0}14%{opacity:1}86%{opacity:1}100%{left:100%;opacity:0}}
+        @keyframes lroot{to{stroke-dashoffset:-12}}
         @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}
       `}</style>
 
@@ -50,7 +55,25 @@ export default function LegsV2() {
         </h2>
       </div>
 
-      <div className="mx-auto mt-10 grid max-w-5xl items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+      <div className="relative mx-auto mt-10 grid max-w-5xl items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+        {/* ROOTS — the plant's roots reach out and plug into all 3 engines; energy feeds back into the business */}
+        <svg className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full lg:block" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          {LEGS.map((leg, i) => {
+            const rgb = ACCENT_RGB[leg.accent];
+            const on = i === sel;
+            const d = ["M68,47 C 60,30 56,16 50,16", "M68,47 C 60,47 56,47 50,47", "M68,47 C 60,64 56,78 50,78"][i];
+            return (
+              <g key={leg.tag}>
+                <path d={d} fill="none" stroke={`rgba(${rgb},${on ? 0.45 : 0.2})`} strokeWidth={on ? 1.1 : 0.6} strokeLinecap="round" />
+                <path d={d} fill="none" stroke={`rgba(${rgb},${on ? 0.95 : 0.5})`} strokeWidth={on ? 0.9 : 0.5} strokeLinecap="round" strokeDasharray="1.6 4" style={{ animation: `lroot ${on ? 1.0 : 1.6}s linear infinite` }} />
+                <circle r={on ? 1.5 : 1} fill={`rgb(${rgb})`} style={{ filter: `drop-shadow(0 0 4px rgba(${rgb},0.9))` }}>
+                  <animateMotion dur={`${on ? 1.0 : 1.6}s`} repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear" path={d} />
+                </circle>
+              </g>
+            );
+          })}
+        </svg>
+
         {/* LEFT — the 3 compact engines */}
         <div className="space-y-2.5" onMouseEnter={() => setAuto(false)} onMouseLeave={() => setAuto(true)}>
           {LEGS.map((leg, i) => {
@@ -64,10 +87,10 @@ export default function LegsV2() {
                 <span className={`absolute left-0 top-0 h-full bg-gradient-to-b ${c.bar} transition-all duration-300 ${on ? "w-1.5 opacity-100" : "w-1 opacity-45 group-hover:opacity-80"}`} />
                 {/* sheen sweep on the active card */}
                 {on && <span className="pointer-events-none absolute inset-0" style={{ animation: "lsheen 2.6s ease-in-out infinite", background: "linear-gradient(105deg,transparent,rgba(255,255,255,0.07),transparent)" }} />}
-                <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${c.tile} text-xl ring-1 ${c.tring} transition-all duration-300 ${on ? "scale-110 ring-2" : "group-hover:scale-105"}`}>{leg.icon}</div>
+                <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${c.tile} text-2xl ring-1 ${c.tring} drop-shadow-[0_2px_6px_rgba(0,0,0,0.45)] transition-all duration-300 ${on ? "scale-110 ring-2" : "group-hover:scale-105"}`}>{leg.icon}</div>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-baseline gap-x-2">
-                    <span className="text-[15px] font-bold text-g-word">{leg.title}</span>
+                    <span className="text-[14px] font-black uppercase tracking-wide text-g-word">{leg.title}</span>
                     <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider ${c.text}`}>
                       <span className={`h-1 w-1 rounded-full ${c.dot}`} />{leg.tag}
                     </span>
@@ -84,21 +107,30 @@ export default function LegsV2() {
           })}
         </div>
 
-        {/* RIGHT — the plant = the result, money growing out of it */}
+        {/* RIGHT — the plant = the result; the 3 engines FEED it, live */}
         <div className="relative grid place-items-center py-6">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(closest-side,rgba(62,148,104,0.18),transparent)] blur-2xl" />
+          <div className="pointer-events-none absolute inset-0 blur-2xl transition-colors duration-700" style={{ background: `radial-gradient(closest-side,rgba(${ACCENT_RGB[LEGS[sel].accent]},0.20),transparent)` }} />
+
           {/* money & fruit floating out */}
           {FRUITS.map((f, i) => (
             <span key={i} className="pointer-events-none absolute text-xl" style={{ left: `${18 + i * 9}%`, bottom: "42%", animation: `lmoney ${3 + (i % 3)}s ease-in ${i * 0.5}s infinite` }}>{f}</span>
           ))}
+
+          {/* sonar rings — the business "receiving" the energy, in the active engine's color */}
+          <span className="pointer-events-none absolute top-[42%] h-40 w-40 -translate-y-1/2 rounded-full border" style={{ borderColor: `rgba(${ACCENT_RGB[LEGS[sel].accent]},0.35)`, animation: "lsonar 2.6s ease-out infinite" }} />
+          <span className="pointer-events-none absolute top-[42%] h-40 w-40 -translate-y-1/2 rounded-full border" style={{ borderColor: `rgba(${ACCENT_RGB[LEGS[sel].accent]},0.35)`, animation: "lsonar 2.6s ease-out infinite 1.3s" }} />
+
           <img src={mark} alt="Guileo" className="relative z-10 w-[230px] max-w-full drop-shadow-[0_20px_40px_rgba(0,0,0,0.5)]" style={{ animation: "lbreathe 6s ease-in-out infinite" }} />
           <div className="relative z-10 mt-2 text-center">
             <div className="text-[18px] font-black tracking-tight text-g-word">YOUR BUSINESS</div>
             <div className="mt-1 text-[11px] font-bold uppercase tracking-wider">
               <span className="text-g-green">● connected</span> <span className="text-g-muted">·</span> <span className="text-g-gold">automated</span> <span className="text-g-muted">·</span> <span className="text-g-copper">growing 24/7</span>
             </div>
-            <a href="#contact" className="mt-5 inline-flex items-center gap-2 rounded-full bg-gradient-to-b from-[#3a3a3a] to-[#181818] px-6 py-3 text-[14px] font-bold text-g-word ring-1 ring-white/15 shadow-[0_14px_40px_-14px_rgba(0,0,0,0.8)] transition hover:ring-g-green/40">
-              Get this for my business <span className="text-g-green">→</span>
+            <a href="#contact" className="group relative mt-5 inline-flex items-center gap-2 overflow-hidden rounded-full px-7 py-3 text-[14px] font-extrabold tracking-tight text-[#1a1a1a] ring-1 ring-white/40 shadow-[0_16px_42px_-12px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.85)] transition-transform duration-300 hover:scale-[1.03]"
+              style={{ background: "linear-gradient(180deg,#f5f6f8 0%,#dde1e7 42%,#bcc2cc 100%)" }}>
+              <span aria-hidden className="pointer-events-none absolute inset-0 -translate-x-[120%] bg-gradient-to-r from-transparent via-white/80 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-[120%]" />
+              <span className="relative">Get this for my business</span>
+              <span className="relative text-g-green transition-transform duration-300 group-hover:translate-x-0.5">→</span>
             </a>
           </div>
         </div>

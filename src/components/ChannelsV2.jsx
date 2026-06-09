@@ -73,12 +73,15 @@ export default function ChannelsV2() {
           <p className="mt-5 max-w-md text-[15px] leading-relaxed text-g-ink" style={{ animation: "chreveal .8s ease .3s both" }}>
             Content created, scheduled and optimized across <span className="font-semibold text-g-word">all</span> your channels. <span className="font-semibold text-g-green">One brain</span>, every platform, always on.
           </p>
-          <div className="mt-6 flex flex-wrap gap-2" style={{ animation: "chreveal .8s ease .4s both" }}>
-            {Object.keys(CH).map((app) => (
-              <span key={app} className="inline-flex items-center gap-2 rounded-full border border-g-line bg-white/[0.04] py-1 pl-1 pr-3 text-[12.5px] font-semibold text-g-ink">
-                <Logo app={app} size={12} /> {app}
-              </span>
-            ))}
+          <div className="mt-7 flex flex-wrap gap-3" style={{ animation: "chreveal .8s ease .4s both" }}>
+            {Object.entries(CH).map(([app, c]) => {
+              const Icon = c.Icon;
+              return (
+                <span key={app} title={app} className="grid h-12 w-12 place-items-center rounded-full text-white ring-1 ring-white/15 shadow-[0_10px_24px_-10px_rgba(0,0,0,0.8)] transition-transform duration-300 hover:-rotate-6 hover:scale-110" style={{ background: c.bg }}>
+                  <Icon size={20} />
+                </span>
+              );
+            })}
           </div>
         </div>
 

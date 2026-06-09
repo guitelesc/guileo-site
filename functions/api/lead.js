@@ -56,6 +56,23 @@ export async function onRequestPost(context) {
       try { const r = await fetch(`${env.SUPABASE_URL}/rest/v1/leads`, { method: "POST", headers: { apikey: env.SUPABASE_KEY, Authorization: `Bearer ${env.SUPABASE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" }, body: JSON.stringify(lead) }); if (r.ok) stored = true; } catch { /* keep going */ }
     }
 
+    // 4) Email the owner instantly (works as soon as RESEND_API_KEY is set). Defaults to the
+    //    Resend account email so it delivers even before guileoai.com is DNS-verified.
+    if (env.RESEND_API_KEY) {
+      const OWNER = env.OWNER_EMAIL || "smart@guileoai.com";
+      const FROM = env.EMAIL_FROM || "Guileo <noreply@guileoai.com>";
+      const kind = lead.source === "configurator" ? "quote request" : lead.source === "portal-onboard" ? "new client signup" : "lead";
+      const rows = [
+        ["Name", lead.name], ["Contact", lead.contact || lead.email || lead.phone], ["Business", lead.business], ["Industry", lead.industry], ["Source", lead.source], ["Details", details || lead.message],
+      ].filter(([, v]) => v).map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#888">${k}</td><td style="padding:4px 0;font-weight:600">${String(v).replace(/</g, "&lt;")}</td></tr>`).join("");
+      try {
+        await fetch("https://api.resend.com/emails", {
+          method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ from: FROM, to: [OWNER], subject: `🌱 New ${kind}: ${lead.name}`, html: `<div style="font-family:system-ui,sans-serif;max-width:520px"><h2 style="color:#3E9468;margin:0 0 4px">New ${kind}</h2><p style="color:#888;margin:0 0 14px">via guileoai.com</p><table style="font-size:14px">${rows}</table><p style="margin-top:18px"><a href="https://www.guileoai.com/admin" style="color:#3E9468;font-weight:700">Open /admin →</a></p></div>` }),
+        });
+      } catch { /* never block the capture */ }
+    }
+
     return json({ ok: true, stored });
   } catch {
     return json({ error: "bad request" }, 400);

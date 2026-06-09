@@ -11,6 +11,17 @@ const supabase = createClient(
   { auth: { persistSession: false } }
 );
 
+// Second, lightweight client for the AUTH project (ynihodbknhjirkdogxby) where the
+// `clients` table lives. Anon key copied from src/lib/supabase.js — public by design.
+// NOTE: the `clients` RLS policies only let an `authenticated` user read their OWN row,
+// so this anon read will return nothing until Luis adds an admin-read RLS policy (or a
+// service-role-backed function). We do NOT put service-role keys in the frontend.
+const authSupabase = createClient(
+  "https://ynihodbknhjirkdogxby.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E",
+  { auth: { persistSession: false } }
+);
+
 const ADMIN_PASS = "guileo2026"; // change anytime; basic gate only
 const ICON = { book: "📅", reschedule: "🔁", cancel: "✖️", lead: "🎯", callback: "📞", review: "⭐", sale: "💳", quote: "🧾", order: "🛒", invoice: "🔗", qualify: "🎯", confirm: "✅", winback: "💚", noshow: "🔄", info: "💬" };
 const LABEL = { book: "Booked", reschedule: "Rescheduled", cancel: "Cancelled", lead: "Lead", callback: "Callback", review: "Review", sale: "Sale", quote: "Quote", order: "Order", invoice: "Payment link", qualify: "Qualified", confirm: "Confirmed", winback: "Win-back", noshow: "No-show", info: "Info" };
@@ -21,6 +32,8 @@ export default function Admin() {
   const [err, setErr] = useState("");
   const [rows, setRows] = useState([]);
   const [state, setState] = useState("loading");
+  const [clients, setClients] = useState([]);
+  const [clientsState, setClientsState] = useState("loading"); // loading | ok | err
 
   useEffect(() => {
     if (!unlocked) return;
@@ -33,6 +46,29 @@ export default function Admin() {
     };
     load();
     const id = setInterval(load, 5000);
+    return () => { alive = false; clearInterval(id); };
+  }, [unlocked]);
+
+  // Registered clients (AUTH project). Graceful: anon reads are blocked by the current
+  // RLS policies, so this falls back to a muted "not set up yet" note until an admin-read
+  // policy (or service-role function) exists.
+  useEffect(() => {
+    if (!unlocked) return;
+    let alive = true;
+    const loadClients = async () => {
+      try {
+        const { data, error } = await authSupabase
+          .from("clients")
+          .select("uid,email,name,business,sector,plan,created_at")
+          .order("created_at", { ascending: false })
+          .limit(100);
+        if (!alive) return;
+        if (error) { setClientsState("err"); return; }
+        setClients(data || []); setClientsState("ok");
+      } catch { if (alive) setClientsState("err"); }
+    };
+    loadClients();
+    const id = setInterval(loadClients, 15000);
     return () => { alive = false; clearInterval(id); };
   }, [unlocked]);
 
@@ -104,6 +140,39 @@ export default function Admin() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* registered clients */}
+        <div className="mt-8">
+          <div className="mb-2 flex items-center gap-2 text-[12px] font-bold uppercase tracking-wider text-g-muted">
+            Registered clients
+            {clientsState === "ok" && <span className="rounded-full border border-g-line bg-white/[0.04] px-2 py-0.5 text-[11px] text-g-word">{clients.length}</span>}
+          </div>
+          {clientsState === "loading" && <div className="text-center text-sm text-g-muted">Loading…</div>}
+          {clientsState === "err" && (
+            <div className="rounded-xl border border-g-line bg-white/[0.04] p-4 text-sm text-g-muted">
+              Clients registry not available with current policies — run <span className="font-mono text-g-word">db/clients.sql</span> and add an admin-read RLS policy to list all clients.
+            </div>
+          )}
+          {clientsState === "ok" && clients.length === 0 && (
+            <div className="rounded-xl border border-g-line bg-white/[0.04] p-6 text-center text-sm text-g-muted">
+              No clients visible yet — anon reads are blocked by RLS. Add an admin-read policy (or run <span className="font-mono text-g-word">db/clients.sql</span>) to populate this list.
+            </div>
+          )}
+          {clientsState === "ok" && clients.length > 0 && (
+            <div className="space-y-2">
+              {clients.map((c) => (
+                <div key={c.uid} className="flex items-start gap-3 rounded-xl border border-g-line bg-white/[0.04] p-3.5">
+                  <span className="text-lg">👤</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[13px] font-bold text-g-word">{[c.name, c.business].filter(Boolean).join(" · ") || c.email}</div>
+                    <div className="text-[12px] text-g-muted">{[c.email, c.sector, c.plan].filter(Boolean).join(" · ")}</div>
+                  </div>
+                  <span className="whitespace-nowrap text-[11px] text-g-muted">{timeAgo(c.created_at)}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -13,6 +13,7 @@ const Partners = lazy(() => import("./pages/Partners"));
 const LeadsInbox = lazy(() => import("./pages/LeadsInbox"));
 const LandingV2 = lazy(() => import("./pages/LandingV2")); // backup of the rebuilt landing
 const Admin = lazy(() => import("./pages/Admin")); // Luis's private command center
+const Marketing = lazy(() => import("./pages/Marketing")); // Guileo AD — dedicated growth/marketing page
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
             <Route path="/leads" element={<LeadsInbox />} />
             <Route path="/v2" element={<LandingV2 />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/marketing" element={<Marketing />} />
             <Route path="/admin/contratos" element={<Contratos />} />
           </Routes>
         </Suspense>

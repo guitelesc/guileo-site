@@ -11,11 +11,21 @@ const STEPS = [
   { n: "4", icon: "💰", title: "Drives repeat revenue", desc: "More repeat orders, fewer no-shows, smarter ad spend — on autopilot." },
 ];
 
+// live "the machine is processing this right now" metrics — derived from a ticking counter
+function liveStat(i, n) {
+  if (i === 0) return { val: (12840 + n * 3).toLocaleString("en-US"), label: "conversations captured" };
+  if (i === 1) return { val: (9210 + n * 2).toLocaleString("en-US"), label: "profiles enriched" };
+  if (i === 2) return { val: (43 + Math.floor(n / 3)).toLocaleString("en-US"), label: "campaigns live" };
+  return { val: "$" + (48200 + n * 140).toLocaleString("en-US"), label: "revenue driven" };
+}
+
 export default function EngineV2() {
   const [act, setAct] = useState(0);
+  const [n, setN] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setAct((i) => (i + 1) % STEPS.length), 1900);
-    return () => clearInterval(t);
+    const c = setInterval(() => setN((x) => x + 1), 1100);
+    return () => { clearInterval(t); clearInterval(c); };
   }, []);
 
   return (
@@ -24,6 +34,9 @@ export default function EngineV2() {
         @keyframes ereveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
         @keyframes eshine{to{background-position:220% center}}
         @keyframes espin{to{transform:rotate(360deg)}}
+        @keyframes eflow{0%{left:-8%;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:104%;opacity:0}}
+        @keyframes epulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(214,194,154,0.0)}50%{transform:scale(1.06);box-shadow:0 0 28px 4px rgba(214,194,154,0.25)}}
+        @keyframes eloop{to{stroke-dashoffset:-14}}
         @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}.espin{animation:none !important}}
       `}</style>
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(900px_420px_at_50%_-10%,rgba(214,194,154,0.08),transparent)]" />
@@ -45,26 +58,57 @@ export default function EngineV2() {
       <div className="relative mx-auto mt-10 max-w-5xl overflow-hidden rounded-xl3 border border-g-gold/30 bg-white/[0.03] p-6 shadow-lift backdrop-blur-xl sm:p-8" style={{ animation: "ereveal .8s ease .35s both" }}>
         <div className="pointer-events-none absolute -left-16 -top-20 h-56 w-56 rounded-full bg-g-gold/10 blur-3xl animate-aurora" />
 
-        <div className="relative grid items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {/* system header — reads as a real running machine, not an infographic */}
+        <div className="relative z-10 mb-5 flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+          <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-g-gold">
+            <span className="grid h-5 w-5 place-items-center rounded-md bg-g-gold/15 text-[11px] ring-1 ring-g-gold/30">⚙️</span> Guileo Engine
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-g-green">
+            <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-g-green/50" /><span className="relative inline-flex h-2 w-2 rounded-full bg-g-green" /></span>
+            Running · processing in real time
+          </span>
+        </div>
+
+        {/* live energy track behind the row — a pulse of "data" travels the engine left→right (lg) */}
+        <div className="pointer-events-none absolute inset-x-8 top-1/2 z-0 hidden h-px -translate-y-1 lg:block" style={{ background: "linear-gradient(90deg,transparent,rgba(214,194,154,0.28),rgba(62,148,104,0.28),transparent)" }}>
+          <span className="absolute top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-g-gold shadow-[0_0_16px_4px_rgba(214,194,154,0.55)]" style={{ animation: "eflow 3.2s linear infinite" }} />
+          <span className="absolute top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-g-green shadow-[0_0_12px_3px_rgba(62,148,104,0.5)]" style={{ animation: "eflow 3.2s linear infinite 1.6s" }} />
+        </div>
+
+        <div className="relative z-10 grid items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((s, i) => {
             const on = i === act;
             return (
               <div key={s.n} className="relative">
                 <div className={`h-full rounded-2xl border p-5 transition-all duration-500 ${on ? "-translate-y-1 border-g-gold/50 bg-g-gold/[0.08] shadow-gold" : "border-g-line bg-white/[0.03]"}`}>
                   <div className="flex items-center justify-between">
-                    <div className={`grid h-11 w-11 place-items-center rounded-xl text-xl ring-1 ring-white/10 transition-colors duration-500 ${on ? "bg-g-gold/25" : "bg-white/[0.05]"}`}>{s.icon}</div>
-                    <span className="text-[28px] font-black text-g-line">{s.n}</span>
+                    <div className={`grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br text-2xl ring-1 drop-shadow-[0_2px_6px_rgba(0,0,0,0.45)] transition-all duration-500 ${on ? "from-g-gold/60 to-g-gold/20 ring-g-gold/50" : "from-white/[0.08] to-white/[0.02] ring-white/10"}`} style={on ? { animation: "epulse 1.9s ease-in-out infinite" } : undefined}>{s.icon}</div>
+                    <span className={`text-[28px] font-black transition-colors duration-500 ${on ? "text-g-gold/70" : "text-g-line"}`}>{s.n}</span>
                   </div>
-                  <div className="mt-4 text-[15px] font-bold text-g-word">{s.title}</div>
+                  <div className="mt-4 text-[13.5px] font-black uppercase tracking-wide text-g-word">{s.title}</div>
                   <p className="mt-1.5 text-[12.5px] leading-snug text-g-ink">{s.desc}</p>
+                  {(() => { const st = liveStat(i, n); return (
+                    <div className="mt-3 flex items-baseline gap-1.5 border-t border-white/[0.08] pt-2.5">
+                      <span className="text-[10px] text-g-green">▲</span>
+                      <span className="text-[15px] font-black tabular-nums text-g-word">{st.val}</span>
+                      <span className="text-[10px] font-semibold leading-tight text-g-muted">{st.label}</span>
+                    </div>
+                  ); })()}
                 </div>
-                {i < STEPS.length - 1 && <span className="absolute -right-2.5 top-1/2 z-10 hidden -translate-y-1/2 text-g-gold lg:block">→</span>}
+                {i < STEPS.length - 1 && <span className={`absolute -right-2.5 top-1/2 z-20 hidden -translate-y-1/2 text-lg transition-all duration-500 lg:block ${on ? "scale-125 text-g-gold" : "text-g-gold/40"}`}>→</span>}
               </div>
             );
           })}
         </div>
 
-        <div className="relative mx-auto mt-6 flex max-w-3xl items-center justify-center gap-2 rounded-full border border-g-green/25 bg-g-green/[0.06] px-5 py-2.5 text-center text-[13.5px] text-g-ink">
+        {/* the flywheel CLOSES — revenue arcs back to feed the next conversation */}
+        <svg className="pointer-events-none mx-auto mt-2 hidden h-9 w-full max-w-5xl lg:block" viewBox="0 0 100 14" preserveAspectRatio="none" aria-hidden="true">
+          <defs><marker id="earrow" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#D6C29A" /></marker></defs>
+          <path d="M97,1 C97,12 3,12 3,3.5" fill="none" stroke="rgba(214,194,154,0.28)" strokeWidth="0.5" markerEnd="url(#earrow)" />
+          <path d="M97,1 C97,12 3,12 3,3.5" fill="none" stroke="rgba(214,194,154,0.9)" strokeWidth="0.6" strokeDasharray="2 5" style={{ animation: "eloop 1.3s linear infinite" }} />
+        </svg>
+
+        <div className="relative mx-auto mt-2 flex max-w-3xl items-center justify-center gap-2 rounded-full border border-g-green/30 bg-gradient-to-r from-g-green/[0.06] via-g-gold/[0.08] to-g-green/[0.06] bg-[length:200%_auto] px-5 py-2.5 text-center text-[13.5px] text-g-ink" style={{ animation: "eshine 6s linear infinite" }}>
           <span className="espin inline-block" style={{ animation: "espin 5s linear infinite" }}>♻️</span>
           <span><span className="font-semibold text-g-green">And it loops</span> — revenue fuels the next conversation. Your engine spins faster every month.</span>
         </div>

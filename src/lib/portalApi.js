@@ -67,7 +67,7 @@ export const portalApi = {
       return { error: "Sign-in failed" };
     }
     await wait();
-    const sess = { email: email || "demo@guileo.ai", name: "Jane Staff", role: "Staff", demo: true, at: Date.now() };
+    const sess = { email: email || "demo@guileoai.com", name: "Jane Staff", role: "Staff", demo: true, at: Date.now() };
     try { localStorage.setItem(SESSION_KEY, JSON.stringify(sess)); } catch { /* private mode */ }
     return { ok: true, demo: true };
   },
@@ -112,7 +112,32 @@ export const portalApi = {
     const kv = u.user.user_metadata?.kv || {};
     _cloud = { ...kv };
     Object.entries(kv).forEach(([k, v]) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* */ } });
+    // Ensure a real `clients` row exists/updates on every sign-in, using whatever
+    // profile facts we already know from user_metadata. Fully graceful (table may not exist yet).
+    try {
+      const md = u.user.user_metadata || {};
+      const partial = {};
+      if (md.name) partial.name = md.name;
+      if (md.business) partial.business = md.business;
+      if (md.sector) partial.sector = md.sector;
+      if (md.contact) partial.contact = md.contact;
+      await this.saveClient(partial);
+    } catch { /* never throw from hydrate */ }
     return Object.keys(kv).length;
+  },
+
+  /** Upsert the current user's row into the `clients` table on the AUTH project.
+   *  Silent no-op if there's no client/session or the table doesn't exist yet. */
+  async saveClient(partial = {}) {
+    try {
+      if (!supabase) return { ok: false };
+      const { data } = await supabase.auth.getUser();
+      const user = data?.user;
+      if (!user) return { ok: false };
+      const row = { uid: user.id, email: user.email, ...partial };
+      await supabase.from("clients").upsert(row, { onConflict: "uid" });
+      return { ok: true };
+    } catch { return { ok: false }; }
   },
 
   /** Subscribe to auth changes; hydrates on sign-in, then calls cb(session|null). */

@@ -203,6 +203,148 @@ function genCustomers(V) {
   const noun = _NOUN[V.label] || "orders";
   return (V.ops?.schedule || []).slice(0, 4).map((p, i) => ({ name: p.name, orders: 24 - i * 5, spent: (600 - i * 120) + 0.5, last: `${2 + i * 15} min ago`, channel: p.ch && p.ch !== "—" ? p.ch : "WhatsApp", noun }));
 }
+// ── Leads · Daily — the qualified-lead digest + one-tap action loop. The owner's
+// daily habit: Gui captured & categorized leads overnight; the owner decides with
+// one tap — respond myself (free) · Gui calls (−5 credits) · Gui messages (−2). Idle
+// 🔥 hot leads auto-escalate to Gui after a grace window (owner warned first). Every
+// action logs credit usage, so it stays connected to Billing/Overview across the app. ──
+const TEMP = {
+  hot:  { en: "Hot",  pt: "Quente", emoji: "🔥", dot: "#e0855f", ring: "border-[#e0855f]/45 bg-[#e0855f]/[0.06]" },
+  warm: { en: "Warm", pt: "Morno",  emoji: "🌤", dot: "#D6C29A", ring: "border-g-gold/35 bg-g-gold/[0.05]" },
+  cold: { en: "Cold", pt: "Frio",   emoji: "❄️", dot: "#8Fb0cf", ring: "border-white/12 bg-white/[0.025]" },
+};
+const TEMP_NOTE = {
+  hot:  { en: "Ready to book now — asked price & availability.", pt: "Pronto pra fechar — perguntou preço e disponibilidade." },
+  warm: { en: "Interested, comparing options — needs a nudge.", pt: "Interessado, comparando — precisa de um empurrão." },
+  cold: { en: "Just exploring — long-term nurture.", pt: "Só pesquisando — nutrir a longo prazo." },
+};
+const LEAD_SVC = {
+  "Restaurant": ["Table for 8 · Sat", "Catering · 40 people", "Birthday booking", "Private event"],
+  "Clinic": ["New patient · cleaning", "Implant consult", "Emergency · toothache", "Whitening"],
+  "Medical": ["New patient intake", "Annual check-up", "Specialist referral", "Follow-up"],
+  "Salon & Spa": ["Color + cut", "Bridal package", "Spa day", "Rebook · regular"],
+  "Gym & Fitness": ["Trial class", "Personal training", "Membership", "Bring-a-friend"],
+  "Auto Dealership": ["Test drive · SUV", "Trade-in quote", "Service booking", "Financing"],
+  "Plumbing & HVAC": ["AC not cooling · urgent", "Water heater quote", "Annual tune-up", "Leak repair"],
+  "Law Firm": ["Injury case intake", "Free consult", "Contract review", "Family matter"],
+  "Real Estate": ["Viewing · 3BR", "Seller valuation", "Investment inquiry", "Rental"],
+  "Education": ["Course enrollment", "Trial class", "Info session", "Scholarship"],
+  "Construction": ["Kitchen remodel · $40k", "Site visit", "Project quote", "Renovation"],
+  "E-Commerce": ["Bulk order inquiry", "VIP early access", "Wholesale", "Return/exchange"],
+};
+function genLeads(V) {
+  const names = (V.ops?.schedule || []).map((p) => p.name).filter(Boolean);
+  const pool = names.length ? names : ["Maria S.", "João P.", "Ana L.", "Carlos M.", "Sofia R.", "Pedro A."];
+  const svc = LEAD_SVC[V.label] || ["New inquiry", "Quote request", "Callback request", "Info request"];
+  const chans = (V.channelMix?.items || []).map((i) => i[0]).filter((c) => c && c !== "—");
+  const ch = chans.length ? chans : ["WhatsApp", "Call", "Instagram", "Web form"];
+  const temps = ["hot", "hot", "warm", "warm", "warm", "cold", "cold", "hot"];
+  const vals = [4200, 850, 320, 1500, 180, 90, 2600, 640];
+  const urg = ["Today", "Today", "This week", "This week", "No rush", "No rush", "Today", "This week"];
+  const ago = ["8 min", "26 min", "1 h", "2 h", "3 h", "5 h", "just now", "40 min"];
+  return pool.concat(pool).slice(0, 8).map((n, i) => ({
+    _id: `L${i}`, name: n, service: svc[i % svc.length], channel: ch[i % ch.length],
+    temp: temps[i], value: vals[i], urgency: urg[i], ago: ago[i], note: TEMP_NOTE[temps[i]],
+  }));
+}
+const urgPt = (u) => (u === "Today" ? "Hoje" : u === "This week" ? "Esta semana" : u === "No rush" ? "Sem pressa" : u);
+const leadStatus = (kind, pt) =>
+  kind === "call" ? (pt ? "📞 Gui ligando… −5 créditos" : "📞 Gui calling… −5 credits")
+  : kind === "msg" ? (pt ? "💬 Gui mandou mensagem · −2 créditos" : "💬 Gui messaged · −2 credits")
+  : kind === "self" ? (pt ? "✋ Você vai responder" : "✋ You'll respond")
+  : (pt ? "✖️ Descartado" : "✖️ Dismissed");
+
+function LeadsDigest({ V, onNav, lang }) {
+  const pt = lang === "pt";
+  const key = `${V.label}:leadActions`;
+  const [acts, setActs] = useState(() => portalApi.loadState(key, {}));
+  const leads = genLeads(V);
+  const act = (lead, kind) => {
+    const cost = kind === "call" ? 5 : kind === "msg" ? 2 : 0;
+    if (cost) logUsage(cost, `Gui ${kind === "call" ? "called" : "messaged"} ${lead.name} · ${lead.service}`);
+    const next = { ...acts, [lead._id]: { kind, at: Date.now() } };
+    portalApi.saveState(key, next); setActs(next);
+    toast(
+      kind === "call" ? (pt ? `Gui vai ligar pro ${lead.name} agora · −5 créditos` : `Gui is calling ${lead.name} now · −5 credits`)
+      : kind === "msg" ? (pt ? `Gui mandou mensagem pro ${lead.name} · −2 créditos` : `Gui messaged ${lead.name} · −2 credits`)
+      : kind === "self" ? (pt ? `Combinado: você responde ${lead.name}` : `Got it: you'll respond to ${lead.name}`)
+      : (pt ? "Lead descartado" : "Lead dismissed")
+    );
+  };
+  const reset = (lead) => { const n = { ...acts }; delete n[lead._id]; portalApi.saveState(key, n); setActs(n); };
+  const groups = ["hot", "warm", "cold"];
+  const counts = groups.reduce((m, g) => { m[g] = leads.filter((l) => l.temp === g).length; return m; }, {});
+  const open = leads.filter((l) => !acts[l._id]);
+  const totalVal = open.reduce((s, l) => s + l.value, 0);
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.02] p-5">
+        <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-g-gold"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{pt ? "Resumo de hoje · Gui qualificou enquanto você dormia" : "Today's digest · Gui qualified these while you slept"}</div>
+        <div className="mt-1 text-xl font-black text-g-word">{open.length} {pt ? "leads novos pra você decidir" : "new leads to decide on"}</div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {groups.map((g) => counts[g] ? (
+            <span key={g} className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold" style={{ borderColor: TEMP[g].dot + "55", color: TEMP[g].dot }}>{TEMP[g].emoji} {counts[g]} {pt ? TEMP[g].pt : TEMP[g].en}</span>
+          ) : null)}
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-g-green/30 bg-g-green/[0.06] px-3 py-1 text-xs font-bold text-g-light">💰 ${totalVal.toLocaleString()} {pt ? "em jogo" : "in play"}</span>
+        </div>
+        <p className="mt-3 text-[11px] text-g-muted leading-relaxed">{pt ? "Responda você (grátis) ou peça pro Gui ligar/mandar — aí ele executa e desconta créditos. Leads 🔥 quentes parados o Gui assume sozinho em 2h (avisa antes; você pode segurar)." : "Respond yourself (free) or let Gui call/message — Gui executes and uses credits. Idle 🔥 hot leads auto-escalate to Gui in 2h (you're warned first; you can grab them)."}</p>
+      </div>
+
+      {groups.map((g) => {
+        const list = leads.filter((l) => l.temp === g);
+        if (!list.length) return null;
+        return (
+          <div key={g}>
+            <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-wide" style={{ color: TEMP[g].dot }}>{TEMP[g].emoji} {pt ? TEMP[g].pt : TEMP[g].en} <span className="text-g-muted font-bold">· {list.length}</span></div>
+            <div className="space-y-2.5">
+              {list.map((lead) => {
+                const a = acts[lead._id];
+                return (
+                  <div key={lead._id} className={`rounded-xl border p-4 ${TEMP[g].ring}`}>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 text-sm font-extrabold text-g-word">{lead.name}<span className="text-[10px] font-bold text-g-muted">· {lead.channel} · {lead.ago}{pt ? " atrás" : " ago"}</span></div>
+                      <div className="mt-0.5 text-[12px] text-g-muted">{pt ? lead.note.pt : lead.note.en}</div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-g-light">{lead.service}</span>
+                        <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-g-light">💰 ${lead.value.toLocaleString()}</span>
+                        <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-g-light">⏱ {pt ? urgPt(lead.urgency) : lead.urgency}</span>
+                      </div>
+                    </div>
+                    {!a ? (
+                      <>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button onClick={() => act(lead, "self")} className="rounded-lg border border-white/15 bg-white/[0.05] px-3 py-1.5 text-[12px] font-bold text-g-word hover:bg-white/[0.09] transition">{pt ? "Respondo eu" : "Respond myself"}</button>
+                          <button onClick={() => act(lead, "call")} className="rounded-lg border border-g-green/40 bg-g-green/[0.10] px-3 py-1.5 text-[12px] font-bold text-g-light hover:bg-g-green/20 transition">📞 {pt ? "Gui liga" : "Gui calls"} <span className="text-g-muted font-semibold">−5</span></button>
+                          <button onClick={() => act(lead, "msg")} className="rounded-lg border border-g-gold/35 bg-g-gold/[0.08] px-3 py-1.5 text-[12px] font-bold text-g-gold hover:bg-g-gold/15 transition">💬 {pt ? "Gui manda" : "Gui messages"} <span className="text-g-muted font-semibold">−2</span></button>
+                          <button onClick={() => act(lead, "dismiss")} className="rounded-lg px-3 py-1.5 text-[12px] font-bold text-g-muted hover:text-g-word transition">{pt ? "Descartar" : "Dismiss"}</button>
+                        </div>
+                        {g === "hot" && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-[#e0855f]">⏱ {pt ? "Gui liga em 2h se você não cuidar" : "Gui auto-calls in 2h if you don't act"} <button onClick={() => act(lead, "self")} className="underline text-g-muted hover:text-g-word">{pt ? "deixa que eu cuido" : "I'll handle it"}</button></div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-black/20 px-3 py-2">
+                        <span className="text-[12px] font-bold text-g-light">{leadStatus(a.kind, pt)}</span>
+                        <button onClick={() => reset(lead)} className="text-[11px] font-bold text-g-muted hover:text-g-word underline">{pt ? "desfazer" : "undo"}</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="text-[12px] text-g-muted">{pt ? "Quer esse resumo no WhatsApp / e-mail / SMS todo dia?" : "Want this digest on WhatsApp / email / SMS every day?"}</div>
+        <button onClick={() => onNav("integrations")} className="btn-bright text-[12px] shrink-0">{pt ? "Ligar canais →" : "Turn on channels →"}</button>
+      </div>
+    </div>
+  );
+}
+
 function genCampaigns(V) {
   const ch = (V.channelMix?.items?.[0]?.[0]) || "WhatsApp";
   // Vertical-aware promo so each sector's campaigns read like its real marketing.
@@ -481,10 +623,14 @@ const SECTOR_NAV = {
 };
 // Every sector gets the full Guileo experience — voice/calls, WhatsApp, SMS, Social, AI training — because that IS what Guileo is.
 function sectionsFor(vid, V) {
-  if (V.sections) return V.sections; // restaurant has a bespoke nav from its reference tool
+  if (V.sections) { // restaurant has a bespoke nav from its reference tool — still inject Leads after Overview
+    if (V.sections.some((s) => s[0] === "leads")) return V.sections;
+    const i = V.sections.findIndex((s) => s[0] === "overview");
+    const out = V.sections.slice(); out.splice(i >= 0 ? i + 1 : 0, 0, ["leads", "Leads · Daily"]); return out;
+  }
   const sec = SECTOR_NAV[vid] || [["operations", "Operations"]];
   return [
-    ["overview", "Overview"], ["impact", "Guileo Impact"], ["brain", "Train your AI"], ["analytics", "AI Analytics"], ["insights", "AI Insights"], ["integrations", "Integrations"],
+    ["overview", "Overview"], ["leads", "Leads · Daily"], ["impact", "Guileo Impact"], ["brain", "Train your AI"], ["analytics", "AI Analytics"], ["insights", "AI Insights"], ["integrations", "Integrations"],
     ...sec,
     ["deliveries", deliveryTab(V)],
     ["payments", "Payments"], ["followups", "Follow-ups"], ["waitlist", "Waitlist"], ["recurring", "Recurring"], ["reputation", "Reputation"], ["loyalty", "Loyalty"],
@@ -497,6 +643,7 @@ function sectionsFor(vid, V) {
 function notifFor(key, V) {
   switch (key) {
     case "overview": return V.alerts ? V.alerts.items.length : 0;
+    case "leads": { const a = portalApi.loadState(`${V.label}:leadActions`, {}); return genLeads(V).filter((l) => l.temp === "hot" && !a[l._id]).length; }
     case "liveorders": return ([...loadCreated(V.label, "liveorders"), ...(V.liveOrders || [])]).filter((o) => o.status !== "Delivered").length;
     case "kitchen": return ((V.kitchen?.new || []).length + (V.kitchen?.preparing || []).length);
     case "deliveries": return ([...loadCreated(V.label, "deliveries"), ...genDeliveries(V)]).filter((r) => r.status !== "Delivered").length;
@@ -523,7 +670,7 @@ const SECTION_ICON = {
 // Group the (long) nav into scannable categories
 // Order = everyday use first (operations/conversations/customers), then growth/strategy, then account.
 const NAV_GROUPS = [
-  ["", ["overview"]],
+  ["", ["overview", "leads"]],
   ["Your AI ✨", ["brain", "analytics", "insights", "grow"]],
   ["Operations", ["liveorders", "kitchen", "menu", "schedule", "catalog", "deliveries", "operations"]],
   ["Conversations", ["inbox", "calllogs", "dialer", "whatsapp", "sms", "social"]],
@@ -534,6 +681,7 @@ const NAV_GROUPS = [
 // Portal UI translation (PT) — keyed by the English string. Covers the most-visible
 // chrome (nav groups, section titles, topbar). tr() returns PT when lang==='pt'.
 const PT_UI = {
+  "Leads · Daily": "Leads · Diário",
   // nav groups
   "Your AI ✨": "Sua IA ✨", "Operations": "Operações", "Conversations": "Conversas", "Customers": "Clientes", "Grow revenue": "Crescer receita", "Account": "Conta", "More": "Mais",
   // section labels
@@ -559,7 +707,7 @@ const PT_UI = {
   ". Click the link, then come back and sign in.": ". Clique no link e volte para entrar.",
   "I confirmed — sign in →": "Confirmei — entrar →",
   "Password (min 6 chars)": "Senha (mín. 6 caracteres)",
-  "← Back to guileo.ai": "← Voltar para guileo.ai",
+  "← Back to guileoai.com": "← Voltar para guileoai.com",
   "Loading your cockpit…": "Carregando seu cockpit…",
   "· AI assistant": "· assistente de IA",
   "Executes tasks for you, 24/7": "Executa tarefas por você, 24/7",
@@ -3638,7 +3786,7 @@ function Loyalty({ V }) {
   const [joined, setJoined] = useState([]); // referrals marked joined this session
   const reward = (m) => { logImpact(V.label, `${m.name} redeemed ${cfg.reward}`, 14); toast(`Reward sent to ${m.name} ✓ — logged to Guileo Impact`); };
   const convert = (r, i) => { setJoined((j) => [...j, i]); logImpact(V.label, `Referral from ${r.name} joined`, r.reward * 6); toast(`Referral converted ✓ — $${r.reward * 6} new-customer value logged to Guileo Impact`); };
-  const copyLink = () => { try { navigator.clipboard?.writeText(`https://refer.guileo.ai/${V.label.toLowerCase().replace(/\W+/g, "")}`); } catch { /* blocked */ } toast("Referral link copied ✓"); };
+  const copyLink = () => { try { navigator.clipboard?.writeText(`https://refer.guileoai.com/${V.label.toLowerCase().replace(/\W+/g, "")}`); } catch { /* blocked */ } toast("Referral link copied ✓"); };
   const tierColor = (t) => (t === "Gold" ? "#D4A520" : t === "Silver" ? "#9ca3af" : "#B0764A");
   const [cards, setCards] = useState(() => loadCreated(V.label, "giftcards"));
   useEffect(() => { setCards(loadCreated(V.label, "giftcards")); }, [V.label]);
@@ -3677,7 +3825,7 @@ function Loyalty({ V }) {
           <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2"><FaUserPlus size={11} /> Referrals</div>
           <div className="p-4 border-b border-white/[0.06]">
             <div className="flex items-center gap-2 rounded-xl2 border border-white/12 bg-black/20 px-3 py-2">
-              <span className="flex-1 min-w-0 text-[11px] text-g-muted truncate">refer.guileo.ai/{V.label.toLowerCase().replace(/\W+/g, "")}</span>
+              <span className="flex-1 min-w-0 text-[11px] text-g-muted truncate">refer.guileoai.com/{V.label.toLowerCase().replace(/\W+/g, "")}</span>
               <button onClick={copyLink} className="text-[11px] font-bold text-g-gold hover:text-g-word transition shrink-0">{tr("Copy link")}</button>
             </div>
             <div className="mt-1.5 text-[10px] text-g-muted">Each friend who joins earns both sides {cfg.reward}.</div>
@@ -4029,6 +4177,17 @@ function OnboardingWizard({ onDone }) {
   const [chs, setChs] = useState({ "WhatsApp": true, "Phone calls": true, "Instagram": true, "SMS": false });
   const next = () => setStep((s) => s + 1);
   const captureLead = () => { try { fetch("/api/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: owner.trim() || name.trim(), business: name.trim(), contact: contact.trim(), phone: contact.trim(), channel: "Portal signup", industry: vid, source: "portal-onboard" }) }); } catch { /* never block */ } };
+  const sendWelcome = () => {
+    try {
+      const c = contact.trim();
+      if (!c.includes("@")) return; // only email a real email address
+      const lang = portalApi.loadState("portal_lang", "en") === "pt" ? "pt" : "en";
+      const who = (owner.trim() || name.trim() || "there").split(" ")[0];
+      const biz = name.trim() || (lang === "pt" ? "seu negócio" : "your business");
+      // Branded welcome email (graphite + champagne template) is rendered server-side.
+      fetch("/api/welcome", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: c, name: who, business: biz, lang }) });
+    } catch { /* never block */ }
+  };
   return (
     <div className="min-h-screen grid place-items-center px-5">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md rounded-xl3 border border-white/12 bg-white/[0.04] backdrop-blur-xl p-7 shadow-lift">
@@ -4063,7 +4222,7 @@ function OnboardingWizard({ onDone }) {
             <div className="text-4xl mb-2">🎉</div>
             <div className="text-lg font-extrabold text-g-word">You're all set, {name || "there"}!</div>
             <p className="text-xs text-g-muted mt-1">Your AI is live and your Growth Cockpit is ready.</p>
-            <button onClick={() => { captureLead(); onDone(vid, { name: name.trim(), owner: owner.trim(), contact: contact.trim() }); }} className="btn-bright text-sm w-full mt-5">Enter my cockpit →</button>
+            <button onClick={() => { captureLead(); sendWelcome(); onDone(vid, { name: name.trim(), owner: owner.trim(), contact: contact.trim() }); }} className="btn-bright text-sm w-full mt-5">Enter my cockpit →</button>
           </div>
         )}
         {step < 3 && <button onClick={() => onDone(vid)} className="block mx-auto mt-4 text-[11px] font-bold text-g-muted hover:text-g-word">Skip setup</button>}
@@ -4091,7 +4250,7 @@ function Login({ onEnter }) {
       else onEnter();
     } catch (e) { setErr(String(e?.message || e)); setBusy(false); }
   };
-  const demoEnter = () => { try { localStorage.setItem("guileo_portal_session", JSON.stringify({ email: "demo@guileo.ai", name: "Jane Staff", role: "Staff", demo: true, at: Date.now() })); } catch { /* */ } onEnter(); };
+  const demoEnter = () => { try { localStorage.setItem("guileo_portal_session", JSON.stringify({ email: "demo@guileoai.com", name: "Jane Staff", role: "Staff", demo: true, at: Date.now() })); } catch { /* */ } onEnter(); };
   return (
     <div className="min-h-screen grid place-items-center px-5">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm rounded-xl3 border border-white/12 bg-white/[0.04] backdrop-blur-xl p-8 shadow-lift text-center">
@@ -4121,7 +4280,7 @@ function Login({ onEnter }) {
             <button onClick={demoEnter} disabled={busy} className="block mx-auto mt-3 text-xs font-bold text-g-muted hover:text-g-word disabled:opacity-60">{tr("▶ Enter demo (sample data)")}</button>
           </>
         )}
-        <div className="mt-4 text-[11px] text-g-muted"><a href="/" className="hover:text-g-word">{tr("← Back to guileo.ai")}</a></div>
+        <div className="mt-4 text-[11px] text-g-muted"><a href="/" className="hover:text-g-word">{tr("← Back to guileoai.com")}</a></div>
       </motion.div>
     </div>
   );
@@ -4481,6 +4640,7 @@ export default function Portal() {
   // is built per render (was instantiating all ~40 components on every toast/lang/period change).
   const views = {
     overview: () => <Overview V={V} onNav={setView} sections={sections} period={period} />,
+    leads: () => <LeadsDigest V={V} onNav={setView} lang={lang} />,
     deliveries: () => <Deliveries V={V} />,
     inbox: () => <Inbox V={V} onNav={setView} />,
     impact: () => <GuileoImpact V={V} />,
@@ -4511,7 +4671,6 @@ export default function Portal() {
     sms: () => <Convos V={V} title="SMS" />,
     channels: () => <Channels />,
     ads: () => <Ads />,
-    leads: () => <Leads />,
     support: () => <Support />,
     docs: () => <Docs />,
     grow: () => <Grow />,
@@ -4530,6 +4689,8 @@ export default function Portal() {
     // Carry the business name from onboarding straight into the profile + AI.
     const OV = VERTICALS[vid];
     if (extra?.name && OV) syncProfile(OV.label, OV, { ...defProfile(OV), name: extra.name });
+    // Persist the new client to the clients registry (graceful — no-op if table/auth absent).
+    try { portalApi.saveClient({ name: extra?.owner || extra?.name, business: extra?.name, sector: vid, contact: extra?.contact }); } catch { /* never block */ }
   }} /></div>;
 
   return (

@@ -20,6 +20,7 @@ import ChannelsV2 from "../components/ChannelsV2";
 import MethodV2 from "../components/MethodV2";
 import GrowthV2 from "../components/GrowthV2";
 import ProofV2 from "../components/ProofV2";
+import PricingConfigurator from "../components/PricingConfigurator";
 import { AnimatePresence } from "framer-motion";
 import logo from "../assets/guileo-mark.png";
 import mark from "../assets/guileo-mark.png";
@@ -312,7 +313,7 @@ function HeroCallForm({ t }) {
 }
 
 export default function Home() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   // If the brand intro already played this session (or reduced-motion), paint the hero
   // INSTANTLY — no dark first-frame on reloads/navigations. First-ever visit still gets it.
   const [introDone, setIntroDone] = useState(() => {
@@ -336,37 +337,53 @@ export default function Home() {
       <HeroV2 />
       <ResultsV2 />
       <LegsV2 />
-      <BuildAllV2 />
       <EngineV2 />
+      <BuildAllV2 />
       <ChannelsV2 />
       <MethodV2 />
       <GrowthV2 />
       <ProofV2 />
 
+      {/* LIVE LEAD CAPTURE — "Let Gui call you": the product working live + a sales-ready lead */}
+      <section id="try" className="relative px-5 py-16">
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(700px_360px_at_50%_0%,rgba(62,148,104,0.10),transparent)]" />
+        <div className="mx-auto mb-8 max-w-2xl text-center">
+          <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-green">Hear it for yourself</div>
+          <h2 className="mt-3 font-black leading-[0.98] tracking-tight" style={{ fontSize: "clamp(1.9rem,4vw,2.9rem)" }}>
+            <span className="text-g-word">Don't take our word — </span>
+            <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent">let Gui call you.</span>
+          </h2>
+        </div>
+        <LiveCall />
+      </section>
+
       {/* ── Original sales tail kept (pricing → manifesto); prune later ── */}
       {/* PRICING */}
       <section id="pricing" className="wrap py-14">
-        <Reveal className="text-center max-w-2xl mx-auto mb-10">
+        <Reveal className="text-center max-w-2xl mx-auto mb-8">
           <span className="eyebrow mb-3">{t.pricing.eyebrow}</span>
           <h2 className="h2">{t.pricing.h2}</h2>
           <p className="mt-3 text-g-muted">{t.pricing.sub}</p>
         </Reveal>
-        <Stagger className="grid md:grid-cols-3 gap-6" gap={0.1}>
-          {t.priceList.map((p,pi)=>{ const ICON=["🌱","⭐","🚀"][pi]||"✨"; const COL=["text-g-green","text-g-gold","text-sky-400"][pi]||"text-g-light"; const BG=["bg-g-green/10 border-g-green/30","bg-g-gold/10 border-g-gold/30","bg-sky-400/10 border-sky-400/30"][pi]||"bg-white/5 border-white/10"; return (
-            <Item key={p.name} variant="up">
-            <div className={`card flex flex-col h-full relative ${p.featured ? "ring-1 ring-g-gold/50 shadow-gold" : ""}`}>
-              {p.featured && <span aria-hidden className="absolute -inset-px rounded-xl2 animate-breathe pointer-events-none" />}
-              {p.featured && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-bold text-black bg-gradient-to-r from-g-gold via-g-word to-g-gold bg-[length:200%_100%] animate-shimmer">{p.tag}</span>}
-              <div className={`grid place-items-center h-12 w-12 rounded-2xl border text-2xl mb-3 relative ${BG}`}>{ICON}</div>
-              <div className="text-xs font-bold uppercase text-g-gold relative">{p.tag}</div>
-              <div className="text-xl font-extrabold text-g-word mt-1 relative">{p.name}</div>
-              <div className="mt-2 mb-4 relative"><span className="text-3xl font-extrabold text-g-word">{p.price}</span><span className="text-g-muted text-sm">{p.per}</span></div>
-              <ul className="space-y-2 mb-6 flex-1 relative">{p.feats.map((f)=><li key={f} className="flex items-start gap-2 text-sm text-g-word"><span className={COL}>✓</span>{f}</li>)}</ul>
-              <a href="#contact" className={`relative ${p.featured ? "btn-bright" : "btn-ghost"}`}>{p.cta}</a>
+
+        {/* FULL MENU — what Guileo actually sells (not just AI calls). Makes the scope crystal-clear at the close. */}
+        <Reveal className="mx-auto mb-10 max-w-4xl">
+          <div className="rounded-xl3 border border-g-gold/25 bg-gradient-to-br from-white/[0.05] to-white/[0.02] p-6 sm:p-7 backdrop-blur-sm">
+            <div className="text-center text-[12px] font-black uppercase tracking-[0.22em] text-g-gold">{lang === "pt" ? "Tudo isso entra no seu pacote" : "All of this goes into your package"}</div>
+            <p className="mx-auto mt-1.5 max-w-xl text-center text-sm text-g-muted">{lang === "pt" ? "Não é só IA. A gente cria, roda e gerencia o seu crescimento inteiro:" : "It's not just AI. We create, run & manage your whole growth:"}</p>
+            <div className="mt-5 flex flex-wrap justify-center gap-2.5">
+              {[["🎬", "Video production", "Produção de vídeo"], ["📣", "Paid ads", "Anúncios pagos"], ["✍️", "Content creation", "Criação de conteúdo"], ["📱", "Social media management", "Gestão de redes sociais"], ["🌐", "Websites", "Sites"], ["📲", "Mobile apps", "Apps"], ["⚙️", "Custom software", "Software sob medida"], ["🤖", "AI automation", "Automação com IA"], ["📞", "Voice AI agents", "Agentes de voz IA"], ["💬", "WhatsApp & SMS AI", "WhatsApp & SMS IA"], ["🛒", "E-commerce / Shopify", "E-commerce / Shopify"], ["📊", "Dashboards & CRM", "Dashboards & CRM"]].map(([ic, en, pt]) => (
+                <span key={en} className="group inline-flex items-center gap-2 rounded-full border border-g-line bg-white/[0.04] px-3.5 py-2 text-[13px] font-semibold text-g-word transition-all duration-300 hover:-translate-y-0.5 hover:border-g-green/45 hover:bg-g-green/[0.08] hover:text-g-light">
+                  <span className="text-base transition-transform duration-300 group-hover:scale-125">{ic}</span> {lang === "pt" ? pt : en}
+                </span>
+              ))}
             </div>
-            </Item>
-          ); })}
-        </Stagger>
+            <p className="mt-5 text-center text-[12px] text-g-muted">{lang === "pt" ? <>Você <span className="font-semibold text-g-word">não escolhe módulos soltos</span> — um humano monta o <span className="font-semibold text-g-green">pacote sob medida</span> com o que faz sentido pro seu negócio.</> : <>You <span className="font-semibold text-g-word">don't pick loose modules</span> — a human assembles the <span className="font-semibold text-g-green">tailored package</span> with what actually moves your business.</>}</p>
+          </div>
+        </Reveal>
+
+        {/* Build-your-package configurator — the interactive close (replaces the old 3-column table) */}
+        <Reveal><PricingConfigurator /></Reveal>
         <div className="mt-8 flex flex-wrap justify-center gap-3 text-sm">
           {[["🔌",t.pricing.cap1||"Plugs into your whole stack"],["📞",t.pricing.cap2||"Answers 24/7, any language"],["🚀",t.pricing.cap3||"Live in 7 days"],["🛡️",t.pricing.cap4||"30-day money-back"]].map(([ic,tx])=>(
             <span key={tx} className="inline-flex items-center gap-1.5 rounded-full border border-g-green/25 bg-g-green/[0.06] px-4 py-2 font-bold text-g-light">{ic} {tx}</span>

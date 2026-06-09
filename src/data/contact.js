@@ -5,7 +5,7 @@
 // ───────────────────────────────────────────────────────────
 export const CONTACT = {
   whatsapp: "19295350191",      // digits only, with country code (US +1 929 535 0191)
-  email: "hello@guileo.ai",     // ← REPLACE with real inbox if different
+  email: "hello@guileoai.com",     // ← REPLACE with real inbox if different
   calendly: "https://cal.com/guileo",   // Cal.com booking link for "Book a demo"
   socials: {
     instagram: "",

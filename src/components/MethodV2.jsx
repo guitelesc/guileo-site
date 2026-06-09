@@ -3,9 +3,9 @@
 // Guileo design system + smooth CSS motion.
 
 const STEPS = [
-  { icon: "🌰", when: "Day 01", n: "1", title: "Plant the Seed", desc: "A human studies your business, finds your revenue leaks, and designs a system built around how you actually work.", tag: "we study your business", accent: "text-g-gold" },
-  { icon: "🌿", when: "Days 2–7", n: "2", title: "Nurture Growth", desc: "We build & implement it in under 7 days — your AI working 24/7, automating sales & marketing across every channel.", tag: "built & live for you", accent: "text-g-green" },
-  { icon: "🌳", when: "Week 2 →", n: "3", title: "Harvest Results", desc: "Watch profits climb. +286% performance and 3× faster sales cycles on average — with us optimizing it for you.", tag: "sales & profit compound", accent: "text-g-copper" },
+  { plant: "🌱", size: 38, when: "Day 01", n: "1", phase: "Implementation", title: "Plant the seed", desc: "A human studies your business, finds your revenue leaks, and designs the system around how you actually work.", tag: "we study & design it", rgb: "214,194,154" },
+  { plant: "🌿", size: 60, when: "Days 2–7", n: "2", phase: "Implementation", title: "Nurture growth", desc: "We build & implement in under 7 days — your AI live 24/7, automating sales & marketing across every channel.", tag: "built & live for you", rgb: "62,148,104" },
+  { plant: "🌳", size: 88, when: "Week 2 →", n: "3", phase: "Harvest", title: "Harvest results", desc: "Profit climbs — +286% performance and 3× faster sales cycles on average — while we keep optimizing for you.", tag: "profit compounds", rgb: "194,168,120" },
 ];
 
 export default function MethodV2() {
@@ -15,6 +15,9 @@ export default function MethodV2() {
         @keyframes mvreveal{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
         @keyframes mvshine{to{background-position:220% center}}
         @keyframes mvgrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+        @keyframes mvsway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+        @keyframes mvfloat{0%{transform:translateY(8px) scale(.8);opacity:0}25%{opacity:1}100%{transform:translateY(-46px) scale(1.1);opacity:0}}
+        @keyframes mvsprout{from{transform:scale(0) translateY(20px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
         @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}
       `}</style>
 
@@ -29,24 +32,46 @@ export default function MethodV2() {
         </p>
       </div>
 
-      {/* growth line */}
-      <div className="mx-auto mt-10 hidden h-px max-w-4xl bg-gradient-to-r from-g-gold via-g-green to-g-copper md:block" style={{ transformOrigin: "left", animation: "mvgrow 1.2s ease .4s both" }} />
+      {/* the metaphor framing — plant → nurture → harvest (implementation → harvest) */}
+      <div className="mx-auto mt-7 flex max-w-md flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] font-black uppercase tracking-wider" style={{ animation: "mvreveal .8s ease .3s both" }}>
+        <span className="text-g-green">🌱 Plant</span><span className="text-g-muted">→</span>
+        <span className="text-g-green">💧 Nurture</span><span className="text-g-muted">→</span>
+        <span className="text-g-gold">🌾 Harvest</span>
+      </div>
 
-      <div className="mx-auto mt-3 grid max-w-5xl gap-4 md:grid-cols-3">
-        {STEPS.map((s, i) => (
-          <div key={s.n} className="rounded-2xl border border-g-line bg-white/[0.04] p-6 shadow-[0_30px_70px_-40px_rgba(0,0,0,0.8)] backdrop-blur-sm" style={{ animation: `mvreveal .7s cubic-bezier(.2,.7,.2,1) ${0.35 + i * 0.15}s both` }}>
-            <div className="flex items-center justify-between">
-              <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/[0.04] text-3xl ring-1 ring-white/10">{s.icon}</div>
-              <div className="text-right">
-                <div className={`text-[11px] font-black uppercase tracking-wider ${s.accent}`}>{s.when}</div>
-                <div className="text-[26px] font-black text-g-line">{s.n}</div>
+      {/* GARDEN SCENE — the system is planted, nurtured & harvested; the plant literally grows */}
+      <div className="relative mx-auto mt-10 max-w-5xl">
+        <div className="relative grid grid-cols-3 gap-2 sm:gap-6">
+          {/* soil line behind all three — the growing ground */}
+          <div className="pointer-events-none absolute inset-x-2 top-[160px] h-[3px] rounded-full bg-white/10" />
+          <div className="pointer-events-none absolute left-2 right-2 top-[160px] h-[3px] origin-left rounded-full bg-gradient-to-r from-g-gold via-g-green to-g-copper" style={{ animation: "mvgrow 1.8s ease .4s both" }} />
+
+          {STEPS.map((s, i) => {
+            const harvest = s.phase === "Harvest";
+            return (
+              <div key={s.n} className="relative flex flex-col items-center text-center">
+                {/* the plant — grows bigger each stage; fruit floats up at harvest */}
+                <div className="relative flex h-[160px] w-full items-end justify-center">
+                  {harvest && ["💰", "📈", "⭐"].map((f, k) => (
+                    <span key={k} className="pointer-events-none absolute text-lg" style={{ bottom: `${72 + k * 8}px`, left: `${28 + k * 16}%`, animation: `mvfloat ${3 + k}s ease-in ${k * 0.6}s infinite` }}>{f}</span>
+                  ))}
+                  <span className="inline-block" style={{ fontSize: s.size, lineHeight: 1, filter: `drop-shadow(0 10px 22px rgba(${s.rgb},0.5))`, transformOrigin: "bottom center", animation: `mvsprout .8s cubic-bezier(.2,.7,.2,1) ${0.5 + i * 0.25}s both, mvsway ${4 + i}s ease-in-out ${1 + i}s infinite` }}>{s.plant}</span>
+                </div>
+                {/* soil mound the plant is planted in */}
+                <div className="z-10 h-2.5 w-24 rounded-full sm:w-28" style={{ background: `rgba(${s.rgb},0.55)`, boxShadow: `0 0 26px rgba(${s.rgb},0.45)` }} />
+
+                {/* the message below the soil */}
+                <div className="mt-6 px-0.5" style={{ animation: `mvreveal .7s ease ${0.6 + i * 0.2}s both` }}>
+                  <div className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider" style={{ borderColor: `rgba(${s.rgb},0.4)`, color: `rgb(${s.rgb})` }}>{harvest ? "🌾" : "🛠️"} {s.phase}</div>
+                  <div className="mt-2 text-[11px] font-bold uppercase tracking-wider text-g-muted">{s.when}</div>
+                  <h3 className="mt-0.5 text-[17px] font-black text-g-word sm:text-[18px]">{s.title}</h3>
+                  <p className="mx-auto mt-2 max-w-[15rem] text-[12.5px] leading-relaxed text-g-ink sm:text-[13px]">{s.desc}</p>
+                  <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-g-line bg-white/[0.04] px-3 py-1 text-[11.5px] font-semibold" style={{ color: `rgb(${s.rgb})` }}>✓ {s.tag}</div>
+                </div>
               </div>
-            </div>
-            <h3 className="mt-4 text-[18px] font-bold text-g-word">{s.title}</h3>
-            <p className="mt-2 text-[13.5px] leading-relaxed text-g-ink">{s.desc}</p>
-            <div className={`mt-4 inline-flex items-center gap-1.5 rounded-full border border-g-line bg-white/[0.04] px-3 py-1 text-[11.5px] font-semibold ${s.accent}`}>✓ {s.tag}</div>
-          </div>
-        ))}
+            );
+          })}
+        </div>
       </div>
     </section>
   );

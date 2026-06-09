@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import mark from "../assets/guileo-mark.png";
 
 const DIAL = [["🇺🇸", "+1"], ["🇧🇷", "+55"], ["🇵🇹", "+351"], ["🇪🇸", "+34"], ["🇬🇧", "+44"], ["🇲🇽", "+52"], ["🇦🇷", "+54"], ["🇮🇳", "+91"], ["🇦🇺", "+61"]];
 const INDUSTRIES = ["Restaurant", "Clinic / Dental", "Salon & Spa", "Law Firm", "E-Commerce", "Real Estate", "Gym & Fitness", "Medical", "Home Services", "Auto", "Education", "Construction", "Other"];
@@ -45,18 +46,27 @@ export default function LiveCall() {
   const field = "rounded-full border border-white/20 bg-black/25 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70 transition w-full";
 
   return (
-    <div className="rounded-xl3 bg-gradient-to-br from-white/[0.16] via-white/[0.08] to-g-green/[0.08] backdrop-blur-xl border border-white/25 shadow-lift p-6 sm:p-8 max-w-xl mx-auto">
-      <div className="flex items-start gap-4">
+    <div className="relative overflow-hidden rounded-xl3 bg-gradient-to-br from-white/[0.16] via-white/[0.08] to-g-green/[0.08] backdrop-blur-xl border border-white/25 ring-1 ring-white/10 shadow-[0_40px_90px_-30px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.18)] p-6 sm:p-8 max-w-xl mx-auto">
+      <style>{`@keyframes lcwave{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}`}</style>
+      {/* screen sheen — premium device feel */}
+      <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.10] to-transparent" />
+      <div className="relative flex items-start gap-4">
         <div className="relative shrink-0">
-          <div className="grid place-items-center h-14 w-14 rounded-full bg-gradient-to-br from-g-green/25 to-g-gold/20 border border-white/15 text-3xl shadow-soft">🧑‍💼</div>
+          <div className="grid place-items-center h-14 w-14 overflow-hidden rounded-full bg-gradient-to-br from-g-green/30 to-g-gold/20 border border-white/20 shadow-soft"><img src={mark} alt="Gui" className="h-10 w-10 object-contain drop-shadow" /></div>
           <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4">
             <span className="absolute inline-flex h-full w-full rounded-full bg-g-green/60 animate-ping" />
             <span className="relative inline-flex h-4 w-4 rounded-full bg-g-green border-2 border-g-cream" />
           </span>
         </div>
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-bold uppercase tracking-wide text-g-green">Live · try it on yourself</span>
+            {/* live waveform — reads as a real AI on the line */}
+            <span className="flex items-end gap-[2px] h-3" aria-hidden>
+              {[0.5, 0.9, 0.4, 1, 0.6, 0.85, 0.45].map((h, i) => (
+                <span key={i} className="w-[2px] rounded-full bg-g-green/80" style={{ height: `${h * 100}%`, animation: `lcwave ${0.7 + (i % 3) * 0.18}s ease-in-out ${i * 0.07}s infinite`, transformOrigin: "bottom" }} />
+              ))}
+            </span>
           </div>
           <h3 className="text-2xl font-extrabold text-g-word leading-tight">Let Gui call you — and sell you, right now</h3>
         </div>
