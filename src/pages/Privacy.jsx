@@ -9,6 +9,7 @@ export default function Privacy() {
     <LegalDoc
       title="Política de Privacidade"
       updated="9 de junho de 2026"
+      note={<>ℹ️ Resumo de como tratamos dados, conforme <span className="font-bold text-g-word">LGPD, GDPR e CCPA</span>. Para clientes, o contrato assinado e eventual DPA/BAA complementam este aviso.</>}
       intro={<>A Guileo (operada pela Tribeca Global Inc., "Guileo", "nós") respeita a sua privacidade. Esta política explica quais dados coletamos, como usamos e quais são os seus direitos ao usar o site guileoai.com e os nossos serviços de IA, voz e marketing.</>}
       sections={[
         { h: "Quem somos", body: <p>Guileo é um serviço da <strong>Tribeca Global Inc.</strong>, com operações em New York (EUA) e Cuiabá, MT (Brasil). Para fins de proteção de dados, atuamos como <strong>controlador</strong> dos dados do site e como <strong>operador/processador</strong> dos dados que tratamos em nome dos nossos clientes.</p> },

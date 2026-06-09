@@ -5,7 +5,7 @@ import Footer from "./Footer.jsx";
 // Shared shell for legal pages (Privacy, Terms). Renders the site chrome + a clean
 // reading column. `sections` = [{ h: "Heading", body: <>...</> }]. A clearly-marked
 // banner reminds that these are templates pending lawyer review.
-export default function LegalDoc({ title, updated, intro, sections }) {
+export default function LegalDoc({ title, updated, intro, sections, note }) {
   useEffect(() => { document.title = `${title} · Guileo`; window.scrollTo(0, 0); }, [title]);
   return (
     <>
@@ -16,7 +16,7 @@ export default function LegalDoc({ title, updated, intro, sections }) {
           <div className="mt-2 text-[13px] text-g-muted">Última atualização: {updated}</div>
 
           <div className="mt-5 rounded-xl border border-g-gold/30 bg-g-gold/[0.06] p-4 text-[12.5px] leading-relaxed text-g-ink">
-            ⚠️ <span className="font-bold text-g-word">Modelo inicial.</span> Este documento é um ponto de partida e <span className="font-semibold">deve ser revisado por um advogado</span> antes de uso definitivo. Não constitui aconselhamento jurídico.
+            {note || <>ℹ️ Este é um <span className="font-bold text-g-word">resumo dos termos padrão da Guileo</span>. O contrato de prestação de serviços assinado entre as partes prevalece sobre este resumo.</>}
           </div>
 
           {intro && <p className="mt-6 text-[15px] leading-relaxed text-g-ink">{intro}</p>}
