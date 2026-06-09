@@ -88,7 +88,7 @@ export default function Pitch() {
   const goTo = (i) => document.getElementById(SLIDES[i].id)?.scrollIntoView({ behavior: "smooth" });
 
   return (
-    <div className="relative h-screen overflow-hidden bg-g-cream text-g-ink">
+    <div className="surface-real relative h-screen overflow-hidden text-g-ink">
       <style>{`
         @keyframes pfade{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
         @keyframes pshine{to{background-position:220% center}}
@@ -120,7 +120,7 @@ export default function Pitch() {
         <div className="h-full bg-gradient-to-r from-g-green to-g-gold transition-all duration-500" style={{ width: `${((active + 1) / SLIDES.length) * 100}%` }} />
       </div>
 
-      <div ref={scroller} className="pdeck h-screen snap-y snap-mandatory overflow-y-scroll scroll-smooth" style={{ scrollbarWidth: "none" }}>
+      <div ref={scroller} className="pdeck relative z-10 h-screen snap-y snap-mandatory overflow-y-scroll scroll-smooth" style={{ scrollbarWidth: "none" }}>
 
         {/* 1 — COVER: the one sentence */}
         <Slide id="cover">

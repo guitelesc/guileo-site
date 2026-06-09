@@ -69,7 +69,7 @@ export default function Parceiro() {
   const goTo = (i) => document.getElementById(SLIDES[i].id)?.scrollIntoView({ behavior: "smooth" });
 
   return (
-    <div className="relative h-screen overflow-hidden bg-g-cream text-g-ink">
+    <div className="surface-real relative h-screen overflow-hidden text-g-ink">
       <style>{`
         @keyframes cfade{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
         @keyframes cshine{to{background-position:220% center}}
@@ -86,7 +86,7 @@ export default function Parceiro() {
       </nav>
       <div className="absolute inset-x-0 top-0 z-30 h-0.5 bg-white/5"><div className="h-full bg-gradient-to-r from-g-green to-g-gold transition-all duration-500" style={{ width: `${((active + 1) / SLIDES.length) * 100}%` }} /></div>
 
-      <div ref={scroller} className="cdeck h-screen snap-y snap-mandatory overflow-y-scroll scroll-smooth" style={{ scrollbarWidth: "none" }}>
+      <div ref={scroller} className="cdeck relative z-10 h-screen snap-y snap-mandatory overflow-y-scroll scroll-smooth" style={{ scrollbarWidth: "none" }}>
 
         {/* 1 — COVER */}
         <Slide id="cover">

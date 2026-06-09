@@ -45,10 +45,10 @@ export default function Proposta() {
   const acceptHref = payLink || waLink(`Oi Guileo! Aceito a proposta${biz ? " da " + biz : ""} (${pkg} · ${money(price)}/mês). Quero começar.`);
 
   return (
-    <div className="min-h-screen bg-g-cream px-5 py-10 text-g-ink sm:py-16">
+    <div className="surface-real min-h-screen px-5 py-10 text-g-ink sm:py-16">
       <style>{`@media print{.no-print{display:none !important}body{background:#fff}}`}</style>
 
-      <div className="mx-auto max-w-3xl">
+      <div className="relative z-10 mx-auto max-w-3xl">
         {/* header */}
         <div className="flex items-center justify-between">
           <a href="/" className="flex items-center gap-2"><img src={logo} alt="Guileo" className="h-9 w-9 object-contain" /><span className="text-lg font-extrabold text-g-word">Guileo</span></a>
