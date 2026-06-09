@@ -40,7 +40,11 @@ export default function Footer() {
         </div>
         <div className="mt-12 pt-6 border-t border-white/10 flex flex-col sm:flex-row justify-between gap-2 text-xs text-white/50">
           <span>© 2026 Guileo · Tribeca Global Inc. · Luis Teles</span>
-          <span>EN · PT · ES · HI · Voice-first AI</span>
+          <span className="flex flex-wrap gap-x-4 gap-y-1">
+            <a href="/privacy" className="hover:text-white">Privacy</a>
+            <a href="/terms" className="hover:text-white">Terms</a>
+            <span className="text-white/30">EN · PT · ES · HI · Voice-first AI</span>
+          </span>
         </div>
       </div>
     </footer>
