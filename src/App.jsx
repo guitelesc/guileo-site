@@ -16,6 +16,7 @@ const Admin = lazy(() => import("./pages/Admin")); // Luis's private command cen
 const Marketing = lazy(() => import("./pages/Marketing")); // Guileo AD — dedicated growth/marketing page
 const Pitch = lazy(() => import("./pages/Pitch")); // ≤20-min client presentation deck (Growth Partner tool)
 const Proposta = lazy(() => import("./pages/Proposta")); // tailored proposal → payment (close-to-cash)
+const Parceiro = lazy(() => import("./pages/Parceiro")); // Growth Partner recruiting deck
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
 
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="/marketing" element={<Marketing />} />
             <Route path="/pitch" element={<Pitch />} />
             <Route path="/proposta" element={<Proposta />} />
+            <Route path="/parceiro" element={<Parceiro />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/admin/contratos" element={<Contratos />} />
