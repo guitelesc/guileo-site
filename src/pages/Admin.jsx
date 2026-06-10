@@ -22,12 +22,16 @@ const authSupabase = createClient(
   { auth: { persistSession: false } }
 );
 
-const ADMIN_PASS = "guileo2026"; // change anytime; basic gate only
+// SECURITY: the admin password is NOT hardcoded here anymore (would ship in the JS bundle).
+// It is verified SERVER-SIDE by the `admin_actions(token)` Postgres RPC, which only returns lead
+// data when the token matches; a wrong token raises and re-locks the page. Change the password in
+// the DB function (rotate `admin_actions`), not here.
 const ICON = { book: "📅", reschedule: "🔁", cancel: "✖️", lead: "🎯", callback: "📞", review: "⭐", sale: "💳", quote: "🧾", order: "🛒", invoice: "🔗", qualify: "🎯", confirm: "✅", winback: "💚", noshow: "🔄", info: "💬" };
 const LABEL = { book: "Booked", reschedule: "Rescheduled", cancel: "Cancelled", lead: "Lead", callback: "Callback", review: "Review", sale: "Sale", quote: "Quote", order: "Order", invoice: "Payment link", qualify: "Qualified", confirm: "Confirmed", winback: "Win-back", noshow: "No-show", info: "Info" };
 
 export default function Admin() {
-  const [unlocked, setUnlocked] = useState(() => { try { return sessionStorage.getItem("guileo_admin") === "1"; } catch { return false; } });
+  const [token, setToken] = useState(() => { try { return sessionStorage.getItem("guileo_admin_tok") || ""; } catch { return ""; } });
+  const [unlocked, setUnlocked] = useState(() => { try { return !!sessionStorage.getItem("guileo_admin_tok"); } catch { return false; } });
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
   const [rows, setRows] = useState([]);
@@ -53,15 +57,20 @@ export default function Admin() {
     if (!unlocked) return;
     let alive = true;
     const load = async () => {
-      const { data, error } = await supabase.from("gui_actions").select("*").order("created_at", { ascending: false }).limit(200);
+      // SECURITY: full lead data comes only via the token-gated SECURITY-DEFINER RPC. A wrong
+      // token raises → we clear the session and re-lock (real server-side auth, not a client check).
+      const { data, error } = await supabase.rpc("admin_actions", { p_token: token });
       if (!alive) return;
-      if (error) { setState("err"); return; }
+      if (error) {
+        try { sessionStorage.removeItem("guileo_admin_tok"); } catch { /* */ }
+        setToken(""); setUnlocked(false); setPass(""); setErr("Wrong password"); return;
+      }
       setRows(data || []); setState("ok");
     };
     load();
     const id = setInterval(load, 5000);
     return () => { alive = false; clearInterval(id); };
-  }, [unlocked]);
+  }, [unlocked, token]);
 
   // Registered clients (AUTH project). Graceful: anon reads are blocked by the current
   // RLS policies, so this falls back to a muted "not set up yet" note until an admin-read
@@ -89,7 +98,7 @@ export default function Admin() {
   if (!unlocked) {
     return (
       <div className="grid min-h-screen place-items-center bg-g-cream px-5 text-g-word">
-        <form onSubmit={(e) => { e.preventDefault(); if (pass === ADMIN_PASS) { try { sessionStorage.setItem("guileo_admin", "1"); } catch {} setUnlocked(true); } else setErr("Wrong password"); }}
+        <form onSubmit={(e) => { e.preventDefault(); const t = pass.trim(); if (!t) { setErr("Enter the password"); return; } try { sessionStorage.setItem("guileo_admin_tok", t); } catch { /* */ } setToken(t); setErr(""); setState("loading"); setUnlocked(true); }}
           className="w-full max-w-sm rounded-2xl border border-g-line bg-white/[0.04] p-7 text-center backdrop-blur-sm">
           <div className="text-3xl">🛡️</div>
           <div className="mt-2 text-[20px] font-black">Guileo Admin</div>

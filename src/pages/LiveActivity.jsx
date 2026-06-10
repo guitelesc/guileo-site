@@ -21,7 +21,9 @@ export default function LiveActivity() {
     if (!supabase) { setState("nodb"); return; }
     let alive = true;
     const load = async () => {
-      const { data, error } = await supabase.from("gui_actions").select("*").order("created_at", { ascending: false }).limit(50);
+      // SECURITY: read via the SECURITY-DEFINER RPC that returns a SANITIZED feed (no contact PII).
+      // The base gui_actions table is RLS-locked against anonymous reads.
+      const { data, error } = await supabase.rpc("recent_activity");
       if (!alive) return;
       if (error) { setState(error.code === "42P01" || /relation .* does not exist/i.test(error.message) ? "needsetup" : "ok"); return; }
       setRows(data || []); setState("ok");
@@ -60,15 +62,14 @@ export default function LiveActivity() {
 
         {state === "ok" && rows.length > 0 && (
           <div className="mt-8 space-y-2.5">
-            {rows.map((r) => (
-              <div key={r.id} className="flex items-start gap-3 rounded-xl2 border border-g-line bg-white/[0.05] p-4">
+            {rows.map((r, i) => (
+              <div key={i} className="flex items-start gap-3 rounded-xl2 border border-g-line bg-white/[0.05] p-4">
                 <span className="text-xl shrink-0">{ICON[r.action] || "✅"}</span>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-bold text-g-word">{LABEL[r.action] || r.action}{r.name ? ` · ${r.name}` : ""}</div>
+                  <div className="text-sm font-bold text-g-word">{LABEL[r.action] || r.action}{r.first_name ? ` · ${r.first_name}` : ""}</div>
                   <div className="text-[13px] text-g-muted leading-snug">
-                    {[r.business, r.slot, r.details, r.amount && `$${r.amount}`].filter(Boolean).join(" · ")}
+                    {[r.business, r.industry].filter(Boolean).join(" · ")}
                   </div>
-                  {r.contact && <div className="text-[11px] text-g-muted/80 mt-0.5">{r.contact}</div>}
                 </div>
                 <span className="text-[11px] text-g-muted whitespace-nowrap shrink-0">{timeAgo(r.created_at)}</span>
               </div>

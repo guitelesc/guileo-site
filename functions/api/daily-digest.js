@@ -30,12 +30,19 @@ export async function onRequest(context) {
     const SB_ANON = env.GUI_ACTIONS_SUPABASE_ANON || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjY3diYWZrYmhreXJ2YXV6c2hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTU3NzQsImV4cCI6MjA5NDI5MTc3NH0.knDpHzK_cfpqmUzpLI4rTndAumn1yepCiRwCSAqwSNs";
     const sinceISO = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
 
+    // Read leads via the token-gated SECURITY-DEFINER RPC (the base table is RLS-locked against
+    // anonymous SELECT). The admin token lives server-side here, never in the client bundle.
     let rows = [];
     try {
-      const r = await fetch(`${SB_URL}/rest/v1/gui_actions?action=eq.lead&created_at=gte.${encodeURIComponent(sinceISO)}&order=created_at.desc&limit=40`, {
-        headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}` },
+      const r = await fetch(`${SB_URL}/rest/v1/rpc/admin_actions`, {
+        method: "POST",
+        headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_token: env.ADMIN_TOKEN || "guileo2026" }),
       });
-      if (r.ok) rows = await r.json();
+      if (r.ok) {
+        const all = await r.json();
+        rows = (Array.isArray(all) ? all : []).filter((x) => x.action === "lead" && new Date(x.created_at) >= new Date(sinceISO)).slice(0, 40);
+      }
     } catch { /* fall through to empty */ }
 
     // Map gui_actions rows → digest lead cards. Heat is inferred from the source (we don't store it).

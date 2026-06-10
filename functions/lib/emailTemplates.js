@@ -35,6 +35,9 @@ const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&":
 // most modern webmail) get full mobile stacking; the rest fall back to the inline CSS gracefully.
 const HEAD_STYLE = `
   <style>
+    /* Inter — the site's exact typeface. Honored by Apple Mail & co; Gmail falls back to the
+       SF/Segoe stack (closest metrics). This is what makes the lettering match the site. */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
     /* base reset */
     body,table,td,a{ -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
     img{ -ms-interpolation-mode:bicubic; }
@@ -79,19 +82,19 @@ function shell({ preheader = "", eyebrow = "", body = "" }) {
   <a href="${B.site}" style="text-decoration:none;display:block;"><img src="${B.anim}" width="600" alt="Guileo — AI Systems for Business" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;" /></a>
 </td></tr>
 ${eyebrow ? `<tr><td class="g-pad-head" style="padding:20px 40px 0 40px;background:${B.card};" align="center">
-  <div style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:10.5px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${B.gold};">${eyebrow}</div>
+  <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:10.5px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${B.gold};">${eyebrow}</div>
 </td></tr>` : ""}
-<tr><td class="g-pad" style="padding:14px 40px 36px 40px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">${body}</td></tr>
+<tr><td class="g-pad" style="padding:14px 40px 36px 40px;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;">${body}</td></tr>
 <!-- footer -->
 <tr><td class="g-pad" style="padding:22px 40px 30px 40px;border-top:1px solid ${B.line};background:#100f0b;" align="center">
-  <div style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};line-height:1.85;">
+  <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};line-height:1.85;">
     <span style="color:${B.green};font-size:9px;vertical-align:middle;">●</span>&nbsp; <span style="color:${B.ink2};font-weight:600;">Guileo</span> — AI Systems for Business<br/>
     <a href="${B.site}" style="color:${B.gold};text-decoration:none;">guileoai.com</a>
     <span style="color:${B.faint};">&nbsp;·&nbsp;</span>Work smart. Grow faster. Sleep better.
   </div>
 </td></tr>
 </table>
-<div style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;color:${B.faint};margin-top:18px;">You're receiving this because you started with Guileo.</div>
+<div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;color:${B.faint};margin-top:18px;">You're receiving this because you started with Guileo.</div>
 </td></tr>
 </table>
 </body></html>`;
@@ -102,7 +105,7 @@ ${eyebrow ? `<tr><td class="g-pad-head" style="padding:20px 40px 0 40px;backgrou
 function cta(label, href) {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="g-btn-wrap" style="margin:6px auto 0 auto;"><tr>
   <td align="center" style="border-radius:999px;background:linear-gradient(180deg,#f5f6f8 0%,#dde1e7 42%,#bcc2cc 100%);box-shadow:0 16px 42px -12px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.85),inset 0 -1px 0 rgba(0,0,0,0.12),0 0 0 1px rgba(255,255,255,0.35);">
-    <a href="${href}" class="g-btn" style="display:inline-block;padding:15px 34px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:14.5px;font-weight:800;letter-spacing:.2px;color:#1a1813;text-decoration:none;border-radius:999px;text-shadow:0 1px 0 rgba(255,255,255,0.45);">${label}</a>
+    <a href="${href}" class="g-btn" style="display:inline-block;padding:15px 34px;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:14.5px;font-weight:800;letter-spacing:.2px;color:#1a1813;text-decoration:none;border-radius:999px;text-shadow:0 1px 0 rgba(255,255,255,0.45);">${label}</a>
   </td></tr></table>`;
 }
 
@@ -110,7 +113,7 @@ function cta(label, href) {
 function cta2(label, href) {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>
   <td align="center" style="border-radius:999px;background:linear-gradient(180deg,rgba(216,199,155,0.16) 0%,rgba(185,168,120,0.10) 100%);border:1px solid rgba(216,199,155,0.40);box-shadow:inset 0 1px 0 rgba(255,255,255,0.08);">
-    <a href="${href}" class="g-btn2" style="display:inline-block;padding:11px 24px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:.2px;color:${B.gold};text-decoration:none;border-radius:999px;">${label}</a>
+    <a href="${href}" class="g-btn2" style="display:inline-block;padding:11px 24px;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:.2px;color:${B.gold};text-decoration:none;border-radius:999px;">${label}</a>
   </td></tr></table>`;
 }
 
@@ -164,7 +167,7 @@ export function welcomeEmail({ name = "there", business = "your business", lang 
         <div style="font-size:13px;color:${B.muted};line-height:1.65;margin-top:3px;">${desc}</div>
       </td></tr></table></td></tr>`;
   const body = `
-  <div class="g-h1" style="font-size:27px;font-weight:800;color:${B.ink};line-height:1.22;letter-spacing:-.3px;">${t.h1}&nbsp;<span style="color:${B.green};">🌱</span></div>
+  <div class="g-h1" style="font-size:27px;font-weight:900;color:${B.ink};line-height:1.14;letter-spacing:-.6px;">${t.h1}&nbsp;<span style="color:${B.green};">🌱</span></div>
   <div class="g-intro" style="font-size:15px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
   <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
   ${panel(`
@@ -221,7 +224,7 @@ export function dailyLeadsEmail({ name = "there", dateLabel = "Today", leads = [
       </table></td></tr>`;
   };
   const body = `
-  <div class="g-h1 g-h1-sm" style="font-size:25px;font-weight:800;color:${B.ink};line-height:1.22;letter-spacing:-.3px;">${t.h1} — ${dateLabel}</div>
+  <div class="g-h1 g-h1-sm" style="font-size:25px;font-weight:900;color:${B.ink};line-height:1.14;letter-spacing:-.6px;">${t.h1} — ${dateLabel}</div>
   <div class="g-intro" style="font-size:14px;color:${B.ink2};line-height:1.65;margin-top:9px;">${t.intro1} <span style="color:${B.ink};">${t.intro2}</span></div>
   <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${B.panel};background-image:linear-gradient(180deg,#1f1d18 0%,${B.panel} 60%);border:1px solid ${B.line};border-radius:16px;box-shadow:inset 0 1px 0 ${B.edge},0 18px 40px -30px rgba(0,0,0,0.8);"><tr>
@@ -311,7 +314,7 @@ export function proposalEmail({ name = "there", business = "your business", lang
   const idea = (x) => `<tr><td style="padding:5px 0;font-family:'Segoe UI',Arial,sans-serif;font-size:13.5px;color:${B.ink2};line-height:1.55;">
     <span style="color:${B.gold};font-weight:800;">→</span> ${x}</td></tr>`;
   const body = `
-  <div class="g-h1" style="font-size:26px;font-weight:800;color:${B.ink};line-height:1.22;letter-spacing:-.3px;">${t.h1}&nbsp;<span style="color:${B.green};">🌱</span></div>
+  <div class="g-h1" style="font-size:26px;font-weight:900;color:${B.ink};line-height:1.14;letter-spacing:-.6px;">${t.h1}&nbsp;<span style="color:${B.green};">🌱</span></div>
   <div class="g-intro" style="font-size:15px;color:${B.ink2};line-height:1.72;margin-top:12px;">${t.intro}</div>
   <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
   ${panel(`
@@ -369,7 +372,7 @@ export function proofEmail({ name = "there", business = "your business", lang = 
     <td width="44" valign="top"><div style="width:34px;height:34px;border-radius:10px;background:${B.panel2};border:1px solid ${B.line};box-shadow:inset 0 1px 0 ${B.edge};font-size:17px;text-align:center;line-height:34px;">${ic}</div></td>
     <td valign="top" style="font-family:'Segoe UI',Arial,sans-serif;padding-left:6px;"><div style="font-size:14px;font-weight:700;color:${B.ink};">${ti}</div><div style="font-size:12.5px;color:${B.muted};line-height:1.55;margin-top:2px;">${de}</div></td></tr></table></td></tr>`;
   const body = `
-  <div class="g-h1" style="font-size:25px;font-weight:800;color:${B.ink};line-height:1.22;letter-spacing:-.3px;">${t.h1}&nbsp;<span style="color:${B.green};">🌱</span></div>
+  <div class="g-h1" style="font-size:25px;font-weight:900;color:${B.ink};line-height:1.14;letter-spacing:-.6px;">${t.h1}&nbsp;<span style="color:${B.green};">🌱</span></div>
   <div class="g-intro" style="font-size:15px;color:${B.ink2};line-height:1.7;margin-top:12px;">${t.intro}</div>
   <div style="height:16px;line-height:16px;font-size:0;">&nbsp;</div>
   ${panel(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${t.points.map(pt_).join("")}</table>`)}
@@ -406,7 +409,7 @@ export function reengageEmail({ name = "there", business = "your business", lang
     foot: "If now's not the time, no worries — reply here with any question.",
   };
   const body = `
-  <div class="g-h1" style="font-size:26px;font-weight:800;color:${B.ink};line-height:1.22;letter-spacing:-.3px;">${t.h1}&nbsp;<span style="color:${B.green};">🌱</span></div>
+  <div class="g-h1" style="font-size:26px;font-weight:900;color:${B.ink};line-height:1.14;letter-spacing:-.6px;">${t.h1}&nbsp;<span style="color:${B.green};">🌱</span></div>
   <div class="g-intro" style="font-size:15px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
   <div style="height:24px;line-height:24px;font-size:0;">&nbsp;</div>
   <div align="center">${cta(t.cta, B.site + "/quiz")}</div>
@@ -422,16 +425,16 @@ export function linksEmail({ name = "Luis", lang = "pt" } = {}) {
   const row = (href, icon, label, sub) => `
     <tr><td style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
       <a href="${href}" style="text-decoration:none;display:block;">
-        <span style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;color:${B.ink};">${icon}&nbsp; ${esc(label)}</span>
-        <span style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:11.5px;color:${B.muted};">&nbsp;·&nbsp;${esc(sub)}</span>
+        <span style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;color:${B.ink};">${icon}&nbsp; ${esc(label)}</span>
+        <span style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:11.5px;color:${B.muted};">&nbsp;·&nbsp;${esc(sub)}</span>
       </a>
     </td></tr>`;
   const group = (title, rows) => panel(`
-    <div style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:${B.gold};padding-bottom:6px;">${title}</div>
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:${B.gold};padding-bottom:6px;">${title}</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>`);
   const body = `
-    <h1 class="g-h1" style="margin:0 0 8px 0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:27px;line-height:1.2;font-weight:800;color:${B.ink};">${pt ? `Seus acessos, ${esc(name)}` : `Your links, ${esc(name)}`} <span style="color:${B.gold};">🌱</span></h1>
-    <p class="g-intro" style="margin:0 0 18px 0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:${B.ink2};">${pt ? "Tudo no ar em <b style='color:" + B.ink + "'>guileoai.com</b> — salve este e-mail." : "Everything live on <b style='color:" + B.ink + "'>guileoai.com</b> — keep this email handy."}</p>
+    <h1 class="g-h1" style="margin:0 0 8px 0;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:27px;line-height:1.2;font-weight:900;color:${B.ink};">${pt ? `Seus acessos, ${esc(name)}` : `Your links, ${esc(name)}`} <span style="color:${B.gold};">🌱</span></h1>
+    <p class="g-intro" style="margin:0 0 18px 0;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:${B.ink2};">${pt ? "Tudo no ar em <b style='color:" + B.ink + "'>guileoai.com</b> — salve este e-mail." : "Everything live on <b style='color:" + B.ink + "'>guileoai.com</b> — keep this email handy."}</p>
     ${group(pt ? "🌐 Vender" : "🌐 Sell", [
       row(`${B.site}/pitch`, "🎤", pt ? "Pitch do cliente" : "Client pitch", pt ? "apresentação ≤20min" : "≤20-min deck"),
       row(`${B.site}/proposta?to=Cliente&price=1497&recover=3900`, "📄", pt ? "Proposta" : "Proposal", pt ? "personalizada por link" : "URL-personalized"),
