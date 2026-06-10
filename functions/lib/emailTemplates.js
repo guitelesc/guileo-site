@@ -472,3 +472,95 @@ export function linksEmail({ name = "Luis", lang = "pt" } = {}) {
     html: shell({ preheader: pt ? "Todos os seus links Guileo, num lugar só." : "All your Guileo links in one place.", body }),
   };
 }
+
+// 7) PARTNER ONBOARDING — the complete starter package for a new collaborator.
+// Everything to start & understand: the sentence, the 3 tools, earnings, first 7 days.
+export function partnerOnboardEmail({ name = "parceiro(a)" } = {}) {
+  const row = (ic, ttl, sub, href) => `
+    <tr><td style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+      <a href="${href}" style="text-decoration:none;display:block;">
+        <span style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:14.5px;font-weight:800;color:${B.ink};">${ic}&nbsp; ${ttl}</span><br/>
+        <span style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};">${sub} &nbsp;<span style="color:${B.gold};font-weight:800;">abrir →</span></span>
+      </a>
+    </td></tr>`;
+  const day = (d, w) => `
+    <tr><td style="padding:6px 0;">
+      <span style="display:inline-block;min-width:54px;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:10.5px;font-weight:900;letter-spacing:1px;color:${B.gold};text-transform:uppercase;">${d}</span>
+      <span style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;color:${B.ink};">${w}</span>
+      <span style="float:right;color:${B.green};font-weight:800;">✓</span>
+    </td></tr>`;
+  const body = `
+  <img src="${B.site}/email/h1-team-pt.png" width="503" alt="Bem-vindo ao time" style="display:block;max-width:100%;height:auto;border:0;" />
+  <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;font-weight:800;letter-spacing:.2px;color:${B.gold};margin-top:10px;">${esc(name)} 🌱</div>
+  <div class="g-intro" style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;color:${B.ink2};line-height:1.72;margin-top:14px;">
+    Você agora é um <b style="color:${B.ink}">Growth Partner da Guileo</b>. Este e-mail tem TUDO pra você começar — salve ele.
+  </div>
+  <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
+  ${panel(`
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:10.5px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:${B.gold};padding-bottom:8px;">O que a gente vende — em uma frase</div>
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;line-height:1.6;color:${B.ink};">“A Guileo instala um time de IA + marketing que atende, vende e faz crescer o negócio do cliente sozinho, 24/7 — ele escolhe o resultado, a gente entrega.”</div>`)}
+  <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
+  ${panel(`
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:10.5px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:${B.gold};padding-bottom:4px;">🧰 Suas 3 ferramentas</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      ${row("🎓", "Partner Academy", "o treinamento completo: catálogo, como vender, treino com a Gui, prova e certificado (1 dia)", `${B.site}/academia`)}
+      ${row("📱", "Cola de bolso", "abre no celular 2 min antes de cada reunião — perguntas, objeções, roteiro", `${B.site}/cola`)}
+      ${row("🎤", "Pitch do cliente", "a apresentação de 20 min que você mostra na reunião (navega com as setas)", `${B.site}/pitch`)}
+    </table>`)}
+  <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
+  ${panel(`
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:10.5px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:${B.gold};padding-bottom:8px;">💰 Quanto você ganha</div>
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:13.5px;line-height:1.8;color:${B.ink2};">
+      <b style="color:${B.ink}">Nível 1 · Agendador:</b> você marca a demo, o Luis fecha com você — <b style="color:${B.green}">10% por venda</b><br/>
+      <b style="color:${B.ink}">Nível 2 · Closer:</b> você conduz tudo — <b style="color:${B.green}">20% por venda</b><br/>
+      <span style="color:${B.muted};font-size:12.5px;">Pacote típico ($990 + 3×$1.497) → <b style="color:${B.gold}">~$1.096 por venda fechada</b>. Sem teto.</span>
+    </div>`)}
+  <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
+  ${panel(`
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:10.5px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:${B.gold};padding-bottom:6px;">🗓️ Seus primeiros 7 dias</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      ${day("Dia 1", "Complete o Academy + passe no treino da Gui")}
+      ${day("Dia 1", "Liste 5 donos de negócio da sua rede")}
+      ${day("Dia 2", "Mande a primeira mensagem pros 5")}
+      ${day("Dia 3-4", "Agende 2 demos (“a IA te liga na hora”)")}
+      ${day("Dia 5-7", "Demos com o Luis · primeira comissão a caminho")}
+    </table>`)}
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  ${cta("🎓 Começar o Academy agora →", `${B.site}/academia`)}
+  <div style="height:10px;line-height:10px;font-size:0;">&nbsp;</div>
+  ${cta2("💬 Falar com o Luis", "https://wa.me/19295350191?text=" + encodeURIComponent("Oi Luis! Recebi o pacote do Growth Partner e tô começando o Academy."))}`;
+  return { subject: `🌱 Bem-vindo ao time, ${name} — seu pacote completo de Growth Partner`, html: shell({ preheader: "Tudo pra você começar: Academy, ferramentas, quanto ganha e o plano dos 7 dias.", body }) };
+}
+
+// 8) CLIENT INTRO — the first-touch email a partner (or Luis) sends a prospect.
+export function clientIntroEmail({ name = "tudo bem?", business = "seu negócio", from = "Luis" } = {}) {
+  const body = `
+  <img src="${B.site}/email/h1-client-pt.png" width="552" alt="Isso muda o seu mês" style="display:block;max-width:100%;height:auto;border:0;" />
+  <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;font-weight:800;letter-spacing:.2px;color:${B.gold};margin-top:10px;">${esc(name)} 👋</div>
+  <div class="g-intro" style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;color:${B.ink2};line-height:1.72;margin-top:14px;">
+    A Guileo instala um time de IA + marketing que <b style="color:${B.ink}">atende, vende e faz crescer ${esc(business)} sozinho, 24/7</b>. Você escolhe o resultado — a gente entrega.
+  </div>
+  <div style="height:16px;line-height:16px;font-size:0;">&nbsp;</div>
+  ${panel(`
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:10.5px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:${B.gold};padding-bottom:8px;">Na prática, a Gui (nossa IA):</div>
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:13.5px;line-height:2;color:${B.ink2};">
+      📞 Atende <b style="color:${B.ink}">toda</b> ligação e mensagem — qualquer idioma, qualquer hora<br/>
+      📅 Agenda, qualifica e <b style="color:${B.ink}">fecha vendas</b><br/>
+      🔁 Faz follow-up de quem sumiu<br/>
+      📣 E ainda toca seu marketing
+    </div>`)}
+  <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
+  ${panel(`
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:13.5px;line-height:1.8;color:${B.ink2};text-align:center;">
+      🌱 No ar em <b style="color:${B.green}">7 dias</b> &nbsp;·&nbsp; 🛡️ Garantia de <b style="color:${B.gold}">30 dias</b> &nbsp;·&nbsp; 🤝 Humano supervisionando
+    </div>`)}
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;color:${B.ink};text-align:center;">Quer ver funcionando? <span style="color:${B.gold};">A Gui pode te ligar agora.</span></div>
+  <div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div>
+  ${cta("📞 Quero ouvir a Gui — agendar demo →", "https://cal.com/guileo")}
+  <div style="height:10px;line-height:10px;font-size:0;">&nbsp;</div>
+  ${cta2("🌐 Conhecer a Guileo", B.site)}
+  <div style="height:16px;line-height:16px;font-size:0;">&nbsp;</div>
+  <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;">Abraço, ${esc(from)} · Guileo</div>`;
+  return { subject: `${name}, isso aqui pode mudar o seu mês 🌱`, html: shell({ preheader: "A IA que atende, vende e cresce o seu negócio 24/7 — no ar em 7 dias.", body }) };
+}
