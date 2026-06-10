@@ -19,7 +19,11 @@ export function sameOrigin(request) {
 // The owner's known inboxes. Email-sending endpoints may only deliver here (or to env override),
 // so they can never be turned into a phishing relay to arbitrary recipients.
 export function ownerEmails(env) {
-  const set = new Set(["smart@guileoai.com", "luistelesc@gmail.com"]);
+  const set = new Set([
+    "smart@guileoai.com", "luistelesc@gmail.com",
+    // TEAM — recipients Luis explicitly authorized (Growth Partners onboarding):
+    "horjanapatricia8@gmail.com",
+  ]);
   if (env && env.OWNER_EMAIL) env.OWNER_EMAIL.split(",").forEach((e) => set.add(e.trim().toLowerCase()));
   return set;
 }
