@@ -682,6 +682,41 @@ const NAV_GROUPS = [
 // chrome (nav groups, section titles, topbar). tr() returns PT when lang==='pt'.
 const PT_UI = {
   "Leads · Daily": "Leads · Diário",
+  // Overview first-screen strings
+  "Welcome back 👋 Here's where your money is today — and the fastest way to grow it.": "Bem-vindo de volta 👋 Aqui está onde seu dinheiro está hoje — e o caminho mais rápido pra crescer.",
+  "Guileo profit impact": "Lucro gerado pela Guileo",
+  "this month": "este mês", "last 7 days": "últimos 7 dias", "last 90 days": "últimos 90 dias",
+  "vs last month": "vs mês passado",
+  "On pace for": "No ritmo de", "by month-end": "até o fim do mês",
+  "item needs your attention": "item precisa da sua atenção",
+  "All clear — your AI is on top of everything.": "Tudo em ordem — sua IA está cuidando de tudo.",
+  "of": "de", "on pace for": "no ritmo de",
+  "🎉 On track to beat it!": "🎉 No caminho pra bater a meta!",
+  "· spotted by your AI": "· detectado pela sua IA",
+  "live": "ao vivo", "active": "ativas",
+  "· last run": "· última execução", "· not run yet": "· ainda não rodou",
+  "▶ Run now": "▶ Rodar agora",
+  "· next up": "· a seguir",
+  "Marked as handled ✓": "Marcado como resolvido ✓",
+  "invoice to collect": "fatura a cobrar", "invoices to collect": "faturas a cobrar",
+  "person waiting for an open slot": "pessoa esperando uma vaga", "people waiting for an open slot": "pessoas esperando uma vaga",
+  "follow-up about to convert": "follow-up prestes a converter", "follow-ups about to convert": "follow-ups prestes a converter",
+  "at-risk plan to save this week": "plano em risco pra salvar esta semana", "at-risk plans to save this week": "planos em risco pra salvar esta semana",
+  "happy customers to ask for a review": "clientes felizes pra pedir avaliação",
+  "thing needs you": "coisa precisa de você", "things need you": "coisas precisam de você",
+  "you're all caught up": "você está em dia", "to collect": "a cobrar", "looks busiest": "deve ser o mais cheio",
+  "This week your AI handled": "Esta semana sua IA cuidou de",
+  "conversations, created": "conversas, criou",
+  "bookings & orders": "reservas e pedidos",
+  "and drove": "e gerou",
+  "in tracked revenue": "em receita rastreada",
+  "— saving you about": "— economizando cerca de",
+  "Next:": "Próximo:",
+  "invoice": "fatura", "invoices": "faturas",
+  "still to collect, and": "ainda a cobrar, e",
+  "Next week": "Semana que vem",
+  "looks busiest — want a promo to fill the quiet days?": "deve ser o mais cheio — quer uma promo pra encher os dias calmos?",
+  "See today's operations": "Ver as operações de hoje", "Ask for a campaign": "Pedir uma campanha",
   // nav groups
   "Your AI ✨": "Sua IA ✨", "Operations": "Operações", "Conversations": "Conversas", "Customers": "Clientes", "Grow revenue": "Crescer receita", "Account": "Conta", "More": "Mais",
   // section labels
@@ -1454,11 +1489,11 @@ function growthOps(V) {
   const waitValue = wait.length * slot;                    // truthful, sector-scaled (no flat $1,240)
   const happy = (V.customers || genCustomers(V)).filter((c) => (c.rating || 5) >= 4).length || Math.min(12, (V.customers || []).length || 12);
   return [
-    { ic: "💳", view: "payments", text: pay.length === 1 ? "invoice to collect" : "invoices to collect", n: pay.length, value: `$${outstanding.toLocaleString()}` },
-    { ic: "🪑", view: "waitlist", text: wait.length === 1 ? "person waiting for an open slot" : "people waiting for an open slot", n: wait.length, value: `$${waitValue.toLocaleString()}` },
-    { ic: "🎯", view: "followups", text: fups.length === 1 ? "follow-up about to convert" : "follow-ups about to convert", n: fups.length, value: `$${pipeline.toLocaleString()}` },
-    { ic: "🛟", view: "recurring", text: atRisk.length === 1 ? "at-risk plan to save this week" : "at-risk plans to save this week", n: atRisk.length, value: `$${atRiskMo}/mo` },
-    { ic: "⭐", view: "reputation", text: "happy customers to ask for a review", n: happy, value: "+rating" },
+    { ic: "💳", view: "payments", text: tr(pay.length === 1 ? "invoice to collect" : "invoices to collect"), n: pay.length, value: `$${outstanding.toLocaleString()}` },
+    { ic: "🪑", view: "waitlist", text: tr(wait.length === 1 ? "person waiting for an open slot" : "people waiting for an open slot"), n: wait.length, value: `$${waitValue.toLocaleString()}` },
+    { ic: "🎯", view: "followups", text: tr(fups.length === 1 ? "follow-up about to convert" : "follow-ups about to convert"), n: fups.length, value: `$${pipeline.toLocaleString()}` },
+    { ic: "🛟", view: "recurring", text: tr(atRisk.length === 1 ? "at-risk plan to save this week" : "at-risk plans to save this week"), n: atRisk.length, value: `$${atRiskMo}/mo` },
+    { ic: "⭐", view: "reputation", text: tr("happy customers to ask for a review"), n: happy, value: "+rating" },
   ].filter((o) => o.n > 0);
 }
 
@@ -1480,11 +1515,11 @@ function dailyBriefing(V) {
   const outstanding = genPayments(V).filter((p) => p.status !== "Paid").reduce((s, r) => s + (r.amount || 0), 0);
   const fc = genForecast(V);
   const bits = [];
-  bits.push(alerts ? `${alerts} thing${alerts !== 1 ? "s" : ""} need you` : "you're all caught up");
-  if (outstanding) bits.push(`$${outstanding.toLocaleString()} to collect`);
+  bits.push(alerts ? `${alerts} ${tr(alerts !== 1 ? "things need you" : "thing needs you")}` : tr("you're all caught up"));
+  if (outstanding) bits.push(`$${outstanding.toLocaleString()} ${tr("to collect")}`);
   const iq = SECTOR_IQ[V.label];
-  if (iq) bits.push(iq.brief);                 // the sector's signature daily signal
-  bits.push(`${fc.peak} looks busiest`);
+  if (iq) bits.push(tr(iq.brief));                 // the sector's signature daily signal
+  bits.push(`${fc.peak} ${tr("looks busiest")}`);
   return bits.join(" · ");
 }
 // R4 — auto weekly recap Gui writes itself, derived from the Impact ledger + created records.
@@ -1529,7 +1564,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
   const [resolved, setResolved] = useState(() => portalApi.loadState(`${V.label}:alerts`, []));
   const [alertsOpen, setAlertsOpen] = useState(false);
   useEffect(() => { setResolved(portalApi.loadState(`${V.label}:alerts`, [])); }, [V.label]);
-  const resolveAlert = (i) => { portalApi.resolveAlert(i); setResolved((r) => { const n = [...r, i]; portalApi.saveState(`${V.label}:alerts`, n); return n; }); toast("Marked as handled ✓"); };
+  const resolveAlert = (i) => { portalApi.resolveAlert(i); setResolved((r) => { const n = [...r, i]; portalApi.saveState(`${V.label}:alerts`, n); return n; }); toast(tr("Marked as handled ✓")); };
   const validViews = new Set(sections.map(([k]) => k));
   const ops = growthOps(V).filter((o) => validViews.has(o.view)).slice(0, 3);
   const [autoTick, setAutoTick] = useState(0);                 // force re-render on automation toggle/remove
@@ -1569,7 +1604,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
     <div className="space-y-5 stagger">
       <div>
         <h2 className="text-lg font-extrabold text-g-word">{tr("Dashboard Overview")}</h2>
-        <p className="text-xs text-g-muted">Welcome back 👋 Here's where your money is today — and the fastest way to grow it.</p>
+        <p className="text-xs text-g-muted">{tr("Welcome back 👋 Here's where your money is today — and the fastest way to grow it.")}</p>
       </div>
 
       {/* AI DAILY BRIEFING — a friendly, data-driven one-liner + where to start */}
@@ -1588,12 +1623,12 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
         <div className="absolute -top-16 -right-12 h-40 w-40 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Guileo profit impact · {periodLabel}</div>
+            <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Guileo profit impact")} · {tr(periodLabel)}</div>
             <div className="flex items-end gap-2.5 flex-wrap mt-1">
               <div className="text-4xl sm:text-5xl font-black text-g-green money-glow num tracking-tight"><Count key={period} to={Math.round(V.impact.total * periodFactor)} prefix="$" /></div>
-              {(() => { const last = Math.round(V.impact.total / 1.18); const up = Math.round(((V.impact.total - last) / last) * 100); return <span className="inline-flex items-center gap-1 mb-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full bg-g-green/15 text-g-green"><FaArrowTrendUp size={10} /> +{up}% vs last month</span>; })()}
+              {(() => { const last = Math.round(V.impact.total / 1.18); const up = Math.round(((V.impact.total - last) / last) * 100); return <span className="inline-flex items-center gap-1 mb-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full bg-g-green/15 text-g-green"><FaArrowTrendUp size={10} /> +{up}% {tr("vs last month")}</span>; })()}
             </div>
-            {period === "30 days" && <div className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-bold text-g-green"><FaArrowTrendUp size={10} /> On pace for ${Math.round(V.impact.total * 1.6).toLocaleString()} by month-end</div>}
+            {period === "30 days" && <div className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-bold text-g-green"><FaArrowTrendUp size={10} /> {tr("On pace for")} ${Math.round(V.impact.total * 1.6).toLocaleString()} {tr("by month-end")}</div>}
             <div className="mt-2.5 flex flex-wrap gap-2">
               {V.impact.parts.map(([label, val]) => (
                 <span key={label} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold">
@@ -1612,7 +1647,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
           <div className="rounded-xl2 border border-white/[0.08] bg-white/[0.02] overflow-hidden">
             <button onClick={() => setAlertsOpen((o) => !o)} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left hover:bg-white/[0.02] transition">
               <span className="h-1.5 w-1.5 rounded-full bg-g-gold shrink-0" />
-              <span className="text-xs font-bold text-g-word">{openAlerts.length} {openAlerts.length === 1 ? "item needs" : "items need"} your attention</span>
+              <span className="text-xs font-bold text-g-word">{openAlerts.length} {openAlerts.length === 1 ? tr("item needs your attention") : tr("items need your attention")}</span>
               <span className="flex-1" />
               <FaChevronDown size={11} className={`text-g-muted transition-transform ${alertsOpen ? "rotate-180" : ""}`} />
             </button>
@@ -1641,7 +1676,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
           </div>
         ) : (
           <div className="flex items-center gap-2.5 rounded-xl2 border border-g-green/15 bg-g-green/[0.03] px-3.5 py-2 text-xs text-g-muted">
-            <span className="h-1.5 w-1.5 rounded-full bg-g-green shrink-0" /> All clear — your AI is on top of everything.
+            <span className="h-1.5 w-1.5 rounded-full bg-g-green shrink-0" /> {tr("All clear — your AI is on top of everything.")}
           </div>
         )
       )}
@@ -1661,9 +1696,9 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
           {pctProj > pctNow && pctProj <= 100 && <div className="absolute inset-y-0 rounded-full bg-g-gold/30 transition-all" style={{ left: `${pctNow}%`, width: `${Math.min(100, pctProj) - pctNow}%` }} />}
         </div>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-          <span className="text-g-muted"><b className="text-g-word">${V.impact.total.toLocaleString()}</b> of ${goal.toLocaleString()} · <b className={pctProj >= 100 ? "text-g-green" : "text-g-gold"}>on pace for {pctProj}%</b></span>
+          <span className="text-g-muted"><b className="text-g-word">${V.impact.total.toLocaleString()}</b> {tr("of")} ${goal.toLocaleString()} · <b className={pctProj >= 100 ? "text-g-green" : "text-g-gold"}>{tr("on pace for")} {pctProj}%</b></span>
           {pctProj < 100 && ops[0] && <button onClick={() => onNav(ops[0].view)} className="font-bold text-g-green hover:underline">{tr("Close the gap →")}</button>}
-          {pctProj >= 100 && <span className="font-bold text-g-green">🎉 On track to beat it!</span>}
+          {pctProj >= 100 && <span className="font-bold text-g-green">{tr("🎉 On track to beat it!")}</span>}
         </div>
       </Card>
 
@@ -1672,7 +1707,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
         <Card tone="green" className="p-0 overflow-hidden">
           <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("⚡ This week's growth moves")}</span>
-            <span className="text-[10px] text-g-muted">· spotted by your AI</span>
+            <span className="text-[10px] text-g-muted">{tr("· spotted by your AI")}</span>
           </div>
           <div className="divide-y divide-white/[0.05]">
             {ops.map((o) => (
@@ -1690,7 +1725,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
       {/* RECENT ACTIVITY — the latest things you + Gui did, across every tab */}
       {(() => { const acts = recentActivity(V).filter((a) => validViews.has(a.view)); return acts.length > 0 ? (
         <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recent activity")}</span><span className="text-[10px] text-g-muted inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />live</span></div>
+          <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recent activity")}</span><span className="text-[10px] text-g-muted inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("live")}</span></div>
           <div className="divide-y divide-white/[0.05]">
             {acts.map((a, i) => (
               <button key={i} onClick={() => onNav(a.view)} style={{ animationDelay: `${i * 60}ms` }} className="row-in group w-full text-left flex items-center gap-3 px-5 py-2.5 hover:bg-white/[0.03] transition">
@@ -1710,7 +1745,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
           <span className="grid place-items-center h-10 w-10 rounded-xl bg-g-gold/15 text-g-gold shrink-0"><FaWandMagicSparkles /></span>
           <div className="min-w-0 flex-1">
             <div className="text-sm font-extrabold text-g-word">{tr("Your week, by Gui")}</div>
-            <div className="text-xs text-g-muted mt-1 leading-relaxed">This week your AI handled <span className="text-g-word font-bold">{wk.handled}</span> conversations, created <span className="text-g-word font-bold">{wk.created || vnum(V.label, "wkc", 6, 24)}</span> bookings & orders{wk.driven ? <> and drove <span className="text-g-green font-bold">${wk.driven.toLocaleString()}</span> in tracked revenue</> : ""} — saving you about <span className="text-g-word font-bold">{wk.hours}h</span>. {wk.open ? <>Next: <span className="text-g-word font-semibold">{wk.open} invoice{wk.open !== 1 ? "s" : ""}</span> still to collect, and <span className="text-g-word font-semibold">{wk.peak}</span> looks busiest.</> : <>Next week <span className="text-g-word font-semibold">{wk.peak}</span> looks busiest — want a promo to fill the quiet days?</>}</div>
+            <div className="text-xs text-g-muted mt-1 leading-relaxed">{tr("This week your AI handled")} <span className="text-g-word font-bold">{wk.handled}</span> {tr("conversations, created")} <span className="text-g-word font-bold">{wk.created || vnum(V.label, "wkc", 6, 24)}</span> {tr("bookings & orders")}{wk.driven ? <> {tr("and drove")} <span className="text-g-green font-bold">${wk.driven.toLocaleString()}</span> {tr("in tracked revenue")}</> : ""} {tr("— saving you about")} <span className="text-g-word font-bold">{wk.hours}h</span>. {wk.open ? <>{tr("Next:")} <span className="text-g-word font-semibold">{wk.open} {wk.open !== 1 ? tr("invoices") : tr("invoice")}</span> {tr("still to collect, and")} <span className="text-g-word font-semibold">{wk.peak}</span> {tr("looks busiest")}.</> : <>{tr("Next week")} <span className="text-g-word font-semibold">{wk.peak}</span> {tr("looks busiest — want a promo to fill the quiet days?")}</>}</div>
             <div className="mt-2.5 flex flex-wrap gap-2">
               <button onClick={() => onNav("impact")} className="btn-ghost text-xs px-3 py-1.5">{tr("See the impact →")}</button>
               {wk.open > 0 && <button onClick={() => onNav("payments")} className="btn-ghost text-xs px-3 py-1.5">{tr("Collect now →")}</button>}
@@ -1722,13 +1757,13 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
       {/* R3 — STANDING AUTOMATIONS Gui set up */}
       {automations.length > 0 && (
         <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("⚙️ Automations on autopilot")}</span><span className="text-[10px] text-g-muted">{automations.filter((a) => a.on).length} active</span></div>
+          <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("⚙️ Automations on autopilot")}</span><span className="text-[10px] text-g-muted">{automations.filter((a) => a.on).length} {tr("active")}</span></div>
           <div className="divide-y divide-white/[0.05]">
             {automations.map((a) => (
               <div key={a._id} className="flex items-center gap-3 px-5 py-3">
                 <span className="text-base shrink-0">{a.ic || "⚡"}</span>
-                <div className="flex-1 min-w-0"><div className={`text-xs font-bold truncate ${a.on ? "text-g-word" : "text-g-muted line-through"}`}>{a.what}</div><div className="text-[10px] text-g-muted">{a.when}{a.lastRun ? ` · last run ${new Date(a.lastRun).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : " · not run yet"}</div></div>
-                {a.on && <button onClick={() => runAutoNow(a)} className="text-[10px] font-bold text-g-green hover:text-g-light shrink-0 whitespace-nowrap">▶ Run now</button>}
+                <div className="flex-1 min-w-0"><div className={`text-xs font-bold truncate ${a.on ? "text-g-word" : "text-g-muted line-through"}`}>{a.what}</div><div className="text-[10px] text-g-muted">{a.when}{a.lastRun ? ` ${tr("· last run")} ${new Date(a.lastRun).toLocaleDateString(UI_LANG === "pt" ? "pt-BR" : "en-US", { month: "short", day: "numeric" })}` : ` ${tr("· not run yet")}`}</div></div>
+                {a.on && <button onClick={() => runAutoNow(a)} className="text-[10px] font-bold text-g-green hover:text-g-light shrink-0 whitespace-nowrap">{tr("▶ Run now")}</button>}
                 <Toggle on={!!a.on} onClick={() => { toggleAutomation(V.label, a._id); setAutoTick((t) => t + 1); }} />
                 <button onClick={() => { removeAutomation(V.label, a._id); setAutoTick((t) => t + 1); toast("Automation removed"); }} aria-label={tr("Remove")} className="text-g-muted hover:text-red-400 transition shrink-0"><FaTrash size={11} /></button>
               </div>
@@ -1744,7 +1779,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
               <div className="flex items-center justify-between">
                 <span className="grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] text-xl">{k.ic}</span>
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: (k.good ? "#3E9468" : k.color) + "22", color: k.good ? "#3E9468" : k.color }}>
-                  {k.good ? <FaArrowTrendDown size={10} /> : <FaArrowTrendUp size={10} />} {k.note || (k.delta != null ? `+${k.delta}%` : "live")}
+                  {k.good ? <FaArrowTrendDown size={10} /> : <FaArrowTrendUp size={10} />} {k.note || (k.delta != null ? `+${k.delta}%` : tr("live"))}
                 </span>
               </div>
               <div className={`mt-3 text-2xl font-extrabold num tracking-tight ${k.pre === "$" ? "text-g-green money-glow" : "text-g-word"}`}><Count to={k.num} prefix={k.pre || ""} suffix={k.suf || ""} /></div>
@@ -1759,7 +1794,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2 p-0 overflow-hidden">
           <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{V.ops.scheduleTitle} · next up</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr(V.ops.scheduleTitle)} {tr("· next up")}</span>
             <button onClick={() => onNav("operations")} className="text-[11px] font-bold text-g-gold hover:underline">{tr("See all →")}</button>
           </div>
           <div className="divide-y divide-white/[0.06]">
@@ -1776,9 +1811,9 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("Quick actions")}</div>
           <div className="space-y-2">
             {quick.map((q) => q.href ? (
-              <a key={q.label} href={q.href} target="_blank" rel="noopener" className="flex items-center gap-3 rounded-xl2 border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-g-word hover:border-g-gold/40 hover:-translate-y-0.5 transition-all"><span>{q.ic}</span>{q.label}<span className="ml-auto text-g-gold">→</span></a>
+              <a key={q.label} href={q.href} target="_blank" rel="noopener" className="flex items-center gap-3 rounded-xl2 border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-g-word hover:border-g-gold/40 hover:-translate-y-0.5 transition-all"><span>{q.ic}</span>{tr(q.label)}<span className="ml-auto text-g-gold">→</span></a>
             ) : (
-              <button key={q.label} onClick={q.on} className="w-full text-left flex items-center gap-3 rounded-xl2 border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-g-word hover:border-g-gold/40 hover:-translate-y-0.5 transition-all"><span>{q.ic}</span>{q.label}<span className="ml-auto text-g-gold">→</span></button>
+              <button key={q.label} onClick={q.on} className="w-full text-left flex items-center gap-3 rounded-xl2 border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-g-word hover:border-g-gold/40 hover:-translate-y-0.5 transition-all"><span>{q.ic}</span>{tr(q.label)}<span className="ml-auto text-g-gold">→</span></button>
             ))}
           </div>
         </Card>

@@ -17,7 +17,37 @@ const T = {
     h1a: "Aprenda a vender o que",
     h1b: "vende sozinho.",
     sub: "O manual completo do Growth Partner — entenda, aprenda, pratique com a própria Gui e saia daqui pronto pra primeira venda.",
-    nav: ["Entenda", "A oferta", "Aprenda", "Pratique", "Níveis", "Comece"],
+    nav: ["Entenda", "Catálogo", "A oferta", "Aprenda", "Pratique", "Níveis", "Comece"],
+    // CATALOG (full — so a brand-new person understands everything we sell)
+    scTag: "Passo 2 · O catálogo",
+    scH: "Tudo que a Guileo vende — produtos e serviços",
+    scSub: "Você não precisa decorar — precisa saber que existe. Na venda, você descobre a dor e o time monta o pacote com as peças certas.",
+    svcH: "🛎️ SERVIÇOS — a gente OPERA pro cliente (todo mês)",
+    svcs: [
+      ["🎙️", "Agentes de voz (a Gui)", "Atende e faz ligações: pedidos, agendamentos, vendas, cobrança, confirmação"],
+      ["💬", "IA no WhatsApp & SMS", "Responde, vende e agenda nas mensagens — instantâneo, qualquer idioma"],
+      ["📣", "Anúncios & tráfego pago", "Campanhas no Google/Meta criadas a partir dos dados reais dos clientes dele"],
+      ["✍️", "Conteúdo & social media", "Posts, reels e calendário editorial — criados, agendados e respondidos"],
+      ["🎬", "Produção de vídeo", "Vídeos pro negócio: anúncios, institucional, redes"],
+      ["🔄", "Automações com IA", "Follow-up, no-show, reativação, cobrança — rotinas que rodam sozinhas"],
+      ["⭐", "Reviews & reputação", "Pede avaliação na hora certa, responde reviews, mantém a nota alta"],
+      ["🧠", "Consultoria & growth", "Um humano estudando o negócio e otimizando tudo todo mês"],
+    ],
+    prodH: "📦 PRODUTOS — a gente CONSTRÓI e entrega (projeto)",
+    prods: [
+      ["🌐", "Sites & landing pages", "Feitos pra converter visita em cliente — com a Gui embutida"],
+      ["📱", "Aplicativos mobile", "iOS e Android — do MVP ao marketplace"],
+      ["⚙️", "Software sob medida", "Sistemas internos, portais, ferramentas — o que o negócio precisar"],
+      ["🛒", "E-commerce / Shopify", "Loja completa com IA de suporte, recuperação de carrinho e win-back"],
+      ["📊", "Dashboards & CRM", "O negócio inteiro visível num painel — leads, vendas, clientes"],
+      ["📅", "Sistemas de agendamento", "Agenda online ligada à Gui — ela marca, confirma e remarca"],
+    ],
+    credH: "🪙 Como o cliente paga o uso: CRÉDITOS",
+    cred: "Cada tarefa que a Gui executa consome créditos (~5 por tarefa: uma ligação atendida, um follow-up, uma mensagem). Os planos incluem créditos mensais — Starter 500 · Growth 2.000 · Scale 6.000 — e dá pra comprar mais. É como o cliente VÊ o que está pagando: cada crédito é trabalho feito.",
+    guiJobsH: "🤖 O que a Gui faz, tarefa por tarefa (decore ESTAS)",
+    guiJobs: ["🛒 Anota pedidos", "📅 Agenda & confirma", "🎯 Qualifica leads", "💰 Fecha vendas", "🧾 Envia orçamentos", "🎧 Dá suporte", "🔁 Reativa sumidos", "📦 Rastreia pedidos", "📋 Faz fichas/intake", "🔔 Manda lembretes", "↩️ Faz follow-up", "⭐ Pede avaliações"],
+    cockH: "📟 O Growth Cockpit — o painel que o cliente recebe",
+    cock: "É onde o dono VÊ tudo: visão geral e leads do dia · treinar a IA, análises e insights · operações (pedidos, cozinha, agenda, entregas) · conversas (chamadas, WhatsApp, SMS, social) · clientes · crescer receita (pagamentos, follow-ups, lista de espera, recorrentes, reputação, fidelidade, campanhas, públicos) · conta e plano. ~30 telas. Na demo, mostrar o painel fecha venda.",
     // 1 UNDERSTAND
     s1tag: "Passo 1 · Entenda",
     s1h: "O que é a Guileo — em uma frase",
@@ -36,13 +66,13 @@ const T = {
     ],
     honestWhy: "Com garantia de 30 dias, venda exagerada = reembolso + reputação queimada. Venda honesta = cliente que fica e indica.",
     // 2 THE OFFER
-    s2tag: "Passo 2 · A oferta",
+    s2tag: "Passo 3 · A oferta",
     s2h: "Dois trilhos. Saiba qual oferecer.",
     trackA: { name: "Trilho A · Self-service", who: "Negócio pequeno, dono ocupado, quer começar simples", what: "Ele assina sozinho no site: Starter $49 · Growth $149 · Scale $399/mês (créditos da Gui inclusos)", you: "Você indica com seu link e ganha 20% das 3 primeiras mensalidades", ex: "Ex: Growth $149 → ~$89 pra você" },
     trackB: { name: "Trilho B · Sob medida ⭐", who: "Negócio estabelecido (clínica, restaurante movimentado, imobiliária) que perde dinheiro real todo mês", what: "Pacote desenhado pro negócio: a partir de $990 setup + $1.497+/mês — IA + marketing + o que ele precisar", you: "Você conduz a venda e ganha 20% do contrato (setup + 3 meses)", ex: "Ex: pacote típico → ~$1.096 pra você POR VENDA" },
     trackRule: "Regra de bolso: dono que reclama de \"perder ligação/cliente\" e fatura > $20k/mês → Trilho B. Resto → Trilho A. Na dúvida, agenda a demo — a conversa revela.",
     // 3 LEARN
-    s3tag: "Passo 3 · Aprenda",
+    s3tag: "Passo 4 · Aprenda",
     s3h: "Pra quem vender — e o que dizer",
     icpH: "Comece pela SUA rede (é por isso que você foi escolhido)",
     icp: "Pense agora em 5 donos de negócio que você conhece: o dono do restaurante que você almoça, sua dentista, o corretor do seu prédio, a dona do salão, o personal. Negócios que VIVEM de ligação e agenda. Esses são seus primeiros 5.",
@@ -57,10 +87,22 @@ const T = {
       ["\"Me manda uma proposta\"", "\"Mando sim — personalizada. Mas proposta sem demo é papel. Fecha 15 min comigo essa semana, a Gui te liga, e você recebe a proposta já sabendo o que tá comprando.\""],
       ["\"Vou pensar\"", "\"Claro. Só uma pergunta: o que precisaria ser verdade pra fazer sentido? ... Então deixa eu te mostrar exatamente isso na demo. E lembra: 30 dias de garantia — o risco é nosso.\""],
     ],
+    indH: "🏪 O que vender pra cada negócio (cola rápida)",
+    inds: [
+      ["🍽️", "Restaurante", "Pedidos e reservas por telefone/WhatsApp — nunca mais perder o rush"],
+      ["🏥", "Clínica / Médico", "Agendamento 24h + lembretes que cortam no-show"],
+      ["🦷", "Dentista", "Cadeira cheia: recalls de limpeza + follow-up de orçamento"],
+      ["⚖️", "Advocacia", "Intake de casos 24h + consulta agendada na hora"],
+      ["🔧", "Encanador / HVAC", "Emergência atendida na hora + orçamento enviado — ganha do concorrente"],
+      ["🏠", "Imobiliária", "Lead respondido em segundos + visita agendada"],
+      ["💪", "Academia", "Matrículas + win-back de alunos sumidos"],
+      ["🛒", "E-commerce", "Suporte instantâneo + recuperação de carrinho"],
+      ["🚗", "Concessionária", "Test drive agendado + follow-up de proposta"],
+    ],
     demoH: "Sua arma secreta: a demo ao vivo",
     demo: "Você não precisa convencer ninguém — a Gui convence. Em qualquer conversa, oferece: \"deixa a IA te ligar agora\". Ela liga, atende como se fosse o negócio da pessoa, agenda, vende. A venda praticamente se faz.",
     // 4 PRACTICE
-    s4tag: "Passo 4 · Pratique",
+    s4tag: "Passo 5 · Pratique",
     s4h: "Treine com a Gui — ela vai ser um cliente difícil",
     s4sub: "A Gui interpreta o Marcos, dono de restaurante cético. Responda como você responderia de verdade. Ela avalia cada resposta e te mostra a ideal.",
     start: "▶ Começar o treino",
@@ -72,12 +114,12 @@ const T = {
     fail: "Quase! Releia as respostas ideais acima e treine de novo — aprovação é 7+.",
     ideal: "💡 Resposta forte:",
     // 5 LEVELS
-    s5tag: "Passo 5 · Níveis",
+    s5tag: "Passo 6 · Níveis",
     s5h: "Comece agendando. Cresça fechando.",
     lvl1: { name: "Nível 1 · Agendador", what: "Você prospecta e agenda a demo. O Luis fecha com você junto (e você aprende vendo).", earn: "10% de cada venda fechada que você agendou", req: "Requisito: completar este Academy" },
     lvl2: { name: "Nível 2 · Closer ⭐", what: "Você conduz a venda inteira: demo, proposta, fechamento.", earn: "20% de cada venda fechada (~$1.096 no pacote típico)", req: "Requisito: 3 vendas fechadas como Agendador + aprovação no treino" },
     // 6 ACT
-    s6tag: "Passo 6 · Comece",
+    s6tag: "Passo 7 · Comece",
     s6h: "Seus primeiros 7 dias",
     week: [
       ["Dia 1", "Complete este Academy + passe no treino da Gui"],
@@ -96,7 +138,36 @@ const T = {
     h1a: "Learn to sell what",
     h1b: "sells itself.",
     sub: "The complete Growth Partner manual — understand, learn, practice against Gui herself, and leave ready for your first sale.",
-    nav: ["Understand", "The offer", "Learn", "Practice", "Levels", "Start"],
+    nav: ["Understand", "Catalog", "The offer", "Learn", "Practice", "Levels", "Start"],
+    scTag: "Step 2 · The catalog",
+    scH: "Everything Guileo sells — products and services",
+    scSub: "You don't need to memorize it — you need to know it exists. In the sale, you find the pain and the team assembles the package with the right pieces.",
+    svcH: "🛎️ SERVICES — we OPERATE for the client (monthly)",
+    svcs: [
+      ["🎙️", "Voice agents (Gui)", "Answers & makes calls: orders, bookings, sales, collections, confirmations"],
+      ["💬", "WhatsApp & SMS AI", "Replies, sells and books in messages — instant, any language"],
+      ["📣", "Ads & paid traffic", "Google/Meta campaigns built from their customers' real data"],
+      ["✍️", "Content & social media", "Posts, reels and editorial calendar — created, scheduled, answered"],
+      ["🎬", "Video production", "Videos for the business: ads, brand, social"],
+      ["🔄", "AI automations", "Follow-up, no-show, win-back, collections — routines that run themselves"],
+      ["⭐", "Reviews & reputation", "Asks for reviews at the right moment, replies, keeps the rating high"],
+      ["🧠", "Consulting & growth", "A human studying the business and optimizing everything monthly"],
+    ],
+    prodH: "📦 PRODUCTS — we BUILD and deliver (project)",
+    prods: [
+      ["🌐", "Websites & landing pages", "Built to convert visits into clients — with Gui embedded"],
+      ["📱", "Mobile apps", "iOS & Android — MVP to marketplace"],
+      ["⚙️", "Custom software", "Internal systems, portals, tools — whatever the business needs"],
+      ["🛒", "E-commerce / Shopify", "Full store with support AI, cart recovery and win-back"],
+      ["📊", "Dashboards & CRM", "The whole business visible in one panel — leads, sales, customers"],
+      ["📅", "Booking systems", "Online schedule wired to Gui — she books, confirms, reschedules"],
+    ],
+    credH: "🪙 How clients pay for usage: CREDITS",
+    cred: "Every task Gui executes spends credits (~5 per task: an answered call, a follow-up, a message). Plans include monthly credits — Starter 500 · Growth 2,000 · Scale 6,000 — and more can be bought. It's how the client SEES what they pay for: every credit is work done.",
+    guiJobsH: "🤖 What Gui does, task by task (memorize THESE)",
+    guiJobs: ["🛒 Takes orders", "📅 Books & confirms", "🎯 Qualifies leads", "💰 Closes sales", "🧾 Sends quotes", "🎧 Gives support", "🔁 Wins back ghosts", "📦 Tracks orders", "📋 Does intake", "🔔 Sends reminders", "↩️ Follows up", "⭐ Asks for reviews"],
+    cockH: "📟 The Growth Cockpit — the panel the client gets",
+    cock: "Where the owner SEES everything: overview & daily leads · train the AI, analytics & insights · operations (orders, kitchen, schedule, deliveries) · conversations (calls, WhatsApp, SMS, social) · customers · grow revenue (payments, follow-ups, waitlist, recurring, reputation, loyalty, campaigns, audiences) · account & plan. ~30 screens. Showing the panel in the demo closes deals.",
     s1tag: "Step 1 · Understand",
     s1h: "What Guileo is — in one sentence",
     sentence: "Guileo installs an AI + marketing team that answers, sells and grows the client's business on its own, 24/7 — they pick the result, we deliver it.",
@@ -113,12 +184,12 @@ const T = {
       ["🚫 Never promise", "That the AI never errs (it errs; humans correct) · exact $ results (show averages) · faster than 7 days · anything outside the package"],
     ],
     honestWhy: "With a 30-day guarantee, overselling = refund + burned reputation. Honest selling = clients who stay and refer.",
-    s2tag: "Step 2 · The offer",
+    s2tag: "Step 3 · The offer",
     s2h: "Two tracks. Know which to offer.",
     trackA: { name: "Track A · Self-service", who: "Small business, busy owner, wants to start simple", what: "They sign up on the site: Starter $49 · Growth $149 · Scale $399/mo (Gui credits included)", you: "You refer with your link and earn 20% of the first 3 months", ex: "E.g.: Growth $149 → ~$89 to you" },
     trackB: { name: "Track B · Tailored ⭐", who: "Established business (clinic, busy restaurant, realty) leaking real money monthly", what: "A package designed for them: from $990 setup + $1,497+/mo — AI + marketing + whatever they need", you: "You run the sale and earn 20% of the contract (setup + 3 months)", ex: "E.g.: typical package → ~$1,096 to you PER SALE" },
     trackRule: "Rule of thumb: an owner who complains about \"missing calls/clients\" and bills > $20k/mo → Track B. Everyone else → Track A. In doubt, book the demo — the conversation reveals it.",
-    s3tag: "Step 3 · Learn",
+    s3tag: "Step 4 · Learn",
     s3h: "Who to sell to — and what to say",
     icpH: "Start with YOUR network (that's why you were chosen)",
     icp: "Think of 5 business owners you know right now: the restaurant you lunch at, your dentist, your realtor, the salon owner, your trainer. Businesses that LIVE on calls and bookings. Those are your first 5.",
@@ -133,9 +204,21 @@ const T = {
       ["\"Send me a proposal\"", "\"Will do — personalized. But a proposal without the demo is paper. Give me 15 min this week, Gui calls you, and you'll read the proposal knowing what you're buying.\""],
       ["\"I'll think about it\"", "\"Of course. One question: what would need to be true for this to make sense? ... Then let me show you exactly that in the demo. And remember: 30-day guarantee — the risk is ours.\""],
     ],
+    indH: "🏪 What to sell each business (quick cheat sheet)",
+    inds: [
+      ["🍽️", "Restaurant", "Phone/WhatsApp orders & reservations — never lose the rush again"],
+      ["🏥", "Clinic / Medical", "24h booking + reminders that cut no-shows"],
+      ["🦷", "Dentist", "Full chair: cleaning recalls + treatment-quote follow-up"],
+      ["⚖️", "Law firm", "24h case intake + consult booked on the spot"],
+      ["🔧", "Plumber / HVAC", "Emergency answered instantly + quote sent — beat the competitor"],
+      ["🏠", "Real estate", "Lead answered in seconds + showing booked"],
+      ["💪", "Gym", "Sign-ups + win-back of lapsed members"],
+      ["🛒", "E-commerce", "Instant support + cart recovery"],
+      ["🚗", "Dealership", "Test drive booked + proposal follow-up"],
+    ],
     demoH: "Your secret weapon: the live demo",
     demo: "You don't have to convince anyone — Gui does. In any conversation, offer: \"let the AI call you right now\". She calls, answers as if she were their business, books, sells. The sale practically makes itself.",
-    s4tag: "Step 4 · Practice",
+    s4tag: "Step 5 · Practice",
     s4h: "Train against Gui — she'll be a tough customer",
     s4sub: "Gui plays Marcos, a skeptical restaurant owner. Reply like you would for real. She scores each answer and shows you the ideal one.",
     start: "▶ Start training",
@@ -146,11 +229,11 @@ const T = {
     pass: "🎉 Approved! You're ready to book for real. Send Luis the screenshot and get your first leads.",
     fail: "Almost! Re-read the ideal answers above and train again — passing is 7+.",
     ideal: "💡 Strong answer:",
-    s5tag: "Step 5 · Levels",
+    s5tag: "Step 6 · Levels",
     s5h: "Start by booking. Grow by closing.",
     lvl1: { name: "Level 1 · Setter", what: "You prospect and book the demo. Luis closes with you in the room (you learn by watching).", earn: "10% of every closed sale you booked", req: "Requirement: complete this Academy" },
     lvl2: { name: "Level 2 · Closer ⭐", what: "You run the whole sale: demo, proposal, close.", earn: "20% of every closed sale (~$1,096 on a typical package)", req: "Requirement: 3 closed sales as Setter + passing the training" },
-    s6tag: "Step 6 · Start",
+    s6tag: "Step 7 · Start",
     s6h: "Your first 7 days",
     week: [
       ["Day 1", "Finish this Academy + pass Gui's training"],
@@ -333,7 +416,7 @@ export default function Academia() {
   const [lang, setLang] = useState("pt");
   const t = T[lang];
   useEffect(() => { document.title = "Guileo Partner Academy"; window.scrollTo(0, 0); }, []);
-  const ids = ["entenda", "oferta", "aprenda", "pratique", "niveis", "comece"];
+  const ids = ["entenda", "catalogo", "oferta", "aprenda", "pratique", "niveis", "comece"];
   const { pct, active } = useScrollChrome(ids);
 
   return (
@@ -409,7 +492,50 @@ export default function Academia() {
             </Reveal>
           </section>
 
-          {/* 2 — THE OFFER (two tracks) */}
+          {/* 2 — THE CATALOG (full — products, services, credits, Gui's jobs, the Cockpit) */}
+          <section id="catalogo" className="scroll-mt-24">
+            <Reveal><Tag>{t.scTag}</Tag><H2>{t.scH}</H2><p className="mt-4 max-w-2xl text-[14.5px] leading-relaxed text-g-ink">{t.scSub}</p></Reveal>
+
+            <Reveal className="mt-8">
+              <div className="mb-3 text-[13px] font-black text-g-green">{t.svcH}</div>
+            </Reveal>
+            <Reveal stagger className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {t.svcs.map(([ic, n, d]) => (
+                <div key={n} className="card h-full !p-4"><div className="text-xl">{ic}</div><div className="mt-1.5 text-[13px] font-black text-g-word">{n}</div><p className="mt-1 text-[11.5px] leading-relaxed text-g-muted">{d}</p></div>
+              ))}
+            </Reveal>
+
+            <Reveal className="mt-8">
+              <div className="mb-3 text-[13px] font-black text-g-gold">{t.prodH}</div>
+            </Reveal>
+            <Reveal stagger className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {t.prods.map(([ic, n, d]) => (
+                <div key={n} className="card h-full !p-4"><div className="text-xl">{ic}</div><div className="mt-1.5 text-[13px] font-black text-g-word">{n}</div><p className="mt-1 text-[11.5px] leading-relaxed text-g-muted">{d}</p></div>
+              ))}
+            </Reveal>
+
+            <Reveal className="mt-8">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-xl3 border border-g-gold/30 bg-g-gold/[0.05] p-6">
+                  <div className="text-[13px] font-black text-g-gold">{t.credH}</div>
+                  <p className="mt-2 text-[13px] leading-relaxed text-g-ink">{t.cred}</p>
+                </div>
+                <div className="rounded-xl3 border border-g-line bg-white/[0.03] p-6">
+                  <div className="text-[13px] font-black text-g-word">{t.cockH}</div>
+                  <p className="mt-2 text-[12.5px] leading-relaxed text-g-muted">{t.cock}</p>
+                </div>
+              </div>
+            </Reveal>
+
+            <Reveal className="mt-8">
+              <div className="mb-3 text-[13px] font-black text-g-word">{t.guiJobsH}</div>
+              <div className="flex flex-wrap gap-2">
+                {t.guiJobs.map((j) => <span key={j} className="rounded-full border border-g-green/25 bg-g-green/[0.07] px-3 py-1.5 text-[12.5px] font-bold text-g-light">{j}</span>)}
+              </div>
+            </Reveal>
+          </section>
+
+          {/* 3 — THE OFFER (two tracks) */}
           <section id="oferta" className="scroll-mt-24">
             <Reveal><Tag>{t.s2tag}</Tag><H2>{t.s2h}</H2></Reveal>
             <Reveal className="mt-7">
@@ -438,6 +564,17 @@ export default function Academia() {
                 <div className="text-[13px] font-black text-g-gold">👥 {t.icpH}</div>
                 <p className="mt-2 text-[14px] leading-relaxed text-g-ink">{t.icp}</p>
               </div>
+            </Reveal>
+            <Reveal className="mt-6">
+              <div className="mb-3 text-[13px] font-black text-g-word">{t.indH}</div>
+            </Reveal>
+            <Reveal stagger className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+              {t.inds.map(([ic, n, d]) => (
+                <div key={n} className="flex h-full items-start gap-3 rounded-2xl border border-g-line bg-white/[0.03] p-4 transition hover:border-g-green/30">
+                  <span className="text-xl">{ic}</span>
+                  <div><div className="text-[13px] font-black text-g-word">{n}</div><p className="mt-0.5 text-[11.5px] leading-relaxed text-g-muted">{d}</p></div>
+                </div>
+              ))}
             </Reveal>
             <Reveal className="mt-4">
               <div className="rounded-xl3 border border-g-green/25 bg-g-green/[0.04] p-6">
