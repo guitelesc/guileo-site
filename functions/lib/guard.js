@@ -27,6 +27,23 @@ export function isOwnerEmail(to, env) {
   return ownerEmails(env).has((to || "").trim().toLowerCase());
 }
 
+// Per-IP fixed-window rate limiter on Cloudflare KV (binding RATE_LIMIT in wrangler.toml).
+// FAIL-OPEN by design: if KV isn't bound or errors, the request proceeds — abuse braking
+// must never break a real customer. Window buckets self-expire via TTL.
+export async function rateLimited(request, env, route, limit, windowSec = 60) {
+  try {
+    const kv = env && env.RATE_LIMIT;
+    if (!kv) return false;
+    const ip = request.headers.get("CF-Connecting-IP") || "noip";
+    const bucket = Math.floor(Date.now() / (windowSec * 1000));
+    const key = `rl:${route}:${ip}:${bucket}`;
+    const n = parseInt((await kv.get(key)) || "0", 10) + 1;
+    if (n > limit) return true;
+    await kv.put(key, String(n), { expirationTtl: windowSec * 2 });
+    return false;
+  } catch { return false; }
+}
+
 // SECURITY: Cloudflare Pages `_headers` does NOT apply to Function responses, so API responses
 // must carry their own hardening headers. nosniff stops MIME confusion; no-store keeps PII-bearing
 // JSON out of shared caches.

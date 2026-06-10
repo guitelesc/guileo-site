@@ -134,6 +134,7 @@ Você não fica sozinho: nosso time implementa tudo em 7 dias. Você prospecta, 
 Mercado quente, produto pronto, renda sem teto.
 
 Vê a apresentação completa: {link}/parceiro
+> E o treinamento que te deixa pronto em 1 dia: {link}/academia
 Quer entrar? Chama: {link wa}
 
 {Seu nome} · Guileo

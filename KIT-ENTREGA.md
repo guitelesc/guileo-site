@@ -76,6 +76,8 @@ https://www.guileoai.com/proposta?to=NOME&biz=EMPRESA&pkg=PACOTE&price=1497&setu
 
 | Material | Link | Usa quando |
 |---|---|---|
+| **Academy do parceiro** | guileoai.com/academia | onboarding do colaborador (treina + certifica) |
+| **Cola de bolso** | guileoai.com/cola | 2 min antes da reunião (celular) |
 | Pitch do cliente | guileoai.com/pitch | na reunião |
 | Proposta | guileoai.com/proposta?… | depois da reunião |
 | Deck do parceiro | guileoai.com/parceiro | recrutar colaborador |
@@ -83,5 +85,15 @@ https://www.guileoai.com/proposta?to=NOME&biz=EMPRESA&pkg=PACOTE&price=1497&setu
 | Calculadora | guileoai.com/calculator | "quanto tô perdendo?" |
 | Site | guileoai.com | tudo |
 | Agendar demo | cal.com/guileo | fechar horário |
+
+## 🔗 LINK PESSOAL DO PARCEIRO (comissão do Trilho A)
+Cada parceiro divulga com `?ref=nome` no final: `guileoai.com/quiz?ref=paula`.
+Todo lead que entrar por esse link chega no /admin marcado **👤ref:paula** — é assim que a comissão de indicação é contada. O gerador de links está no Academy (passo 7).
+
+## 🎓 ONBOARDING DO COLABORADOR NOVO (o caminho)
+1. Manda o deck: guileoai.com/parceiro
+2. Topou? Manda o Academy: guileoai.com/academia (ele treina com a Gui e tira o certificado)
+3. Certificado em mãos → entra como **Agendador (10%)**, recebe os primeiros leads
+4. 3 vendas fechadas → vira **Closer (20%)**
 
 Sequências de e-mail completas (5 do cliente + cold + parceiro): ver **EMAILS.md**.

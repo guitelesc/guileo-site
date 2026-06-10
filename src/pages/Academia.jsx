@@ -523,6 +523,44 @@ const money = (v) => "$" + Math.round(Number(v) || 0).toLocaleString("en-US");
 
 // Shareable certificate — appears on passing (≥7). Name → branded card + WhatsApp
 // share + print/PDF. Pride becomes viral recruiting.
+// Personal referral-link maker: type your first name → copy-ready ?ref= links.
+// Every lead from those links arrives in /admin tagged 👤ref:name → your commission.
+function RefLinks({ lang }) {
+  const pt = lang === "pt";
+  const [nm, setNm] = useState("");
+  const [copied, setCopied] = useState("");
+  const slug = nm.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").slice(0, 24);
+  const links = slug ? [
+    [pt ? "🎯 Quiz (manda pra todo mundo)" : "🎯 Quiz (send to everyone)", `https://guileoai.com/quiz?ref=${slug}`],
+    [pt ? "🌐 Site" : "🌐 Site", `https://guileoai.com/?ref=${slug}`],
+    [pt ? "🧮 Calculadora" : "🧮 Calculator", `https://guileoai.com/calculator?ref=${slug}`],
+  ] : [];
+  const copy = async (url) => { try { await navigator.clipboard.writeText(url); setCopied(url); setTimeout(() => setCopied(""), 1500); } catch { /* */ } };
+  return (
+    <div className="rounded-xl3 border border-g-green/30 bg-g-green/[0.04] p-6">
+      <div className="text-[13px] font-black text-g-green">🔗 {pt ? "Seu link pessoal de indicação" : "Your personal referral link"}</div>
+      <p className="mt-1.5 text-[12.5px] leading-relaxed text-g-muted">
+        {pt ? "Todo lead que entrar pelo SEU link chega marcado com seu nome no sistema — é assim que sua comissão do Trilho A é contada. Use em bio, stories, grupos." : "Every lead that comes through YOUR link arrives tagged with your name — that's how your Track-A commission is counted. Use it in bios, stories, groups."}
+      </p>
+      <input value={nm} onChange={(e) => setNm(e.target.value)} placeholder={pt ? "Seu primeiro nome (ex: paula)" : "Your first name (e.g. paula)"}
+        className="mt-4 w-full max-w-xs rounded-full border border-g-green/30 bg-white/[0.05] px-4 py-2.5 text-[13.5px] font-bold text-g-word outline-none placeholder:font-normal placeholder:text-g-muted/60 focus:border-g-green/60" />
+      {slug && (
+        <div className="mt-4 space-y-2">
+          {links.map(([label, url]) => (
+            <button key={url} onClick={() => copy(url)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-g-line bg-white/[0.03] px-4 py-2.5 text-left transition hover:border-g-green/40">
+              <span className="min-w-0">
+                <span className="block text-[11px] font-bold text-g-muted">{label}</span>
+                <span className="block truncate font-mono text-[12px] text-g-word">{url}</span>
+              </span>
+              <span className={`shrink-0 text-[11.5px] font-black ${copied === url ? "text-g-green" : "text-g-gold"}`}>{copied === url ? (pt ? "✓ copiado!" : "✓ copied!") : (pt ? "copiar" : "copy")}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Certificate({ lang, score }) {
   const pt = lang === "pt";
   const [name, setName] = useState("");
@@ -637,10 +675,13 @@ export default function Academia() {
             <nav className="hidden items-center gap-4 md:flex">
               {t.nav.map((n, i) => <a key={n} href={`#${ids[i]}`} className={`text-[12.5px] font-semibold transition ${active === ids[i] ? "text-g-gold" : "text-g-muted hover:text-g-word"}`}>{n}</a>)}
             </nav>
-            <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] p-1">
-              {[["pt", "🇧🇷"], ["en", "🇺🇸"]].map(([c, f]) => (
-                <button key={c} onClick={() => setLang(c)} aria-pressed={lang === c} className={`h-7 w-7 rounded-full text-sm transition ${lang === c ? "scale-110 bg-g-green/15 ring-1 ring-g-green/30" : "opacity-50 hover:opacity-100"}`}>{f}</button>
-              ))}
+            <div className="flex items-center gap-2">
+              <a href="/cola" className="inline-flex items-center gap-1.5 rounded-full border border-g-gold/35 bg-g-gold/[0.08] px-3 py-1.5 text-[11.5px] font-extrabold text-g-gold transition hover:bg-g-gold/[0.16]">📱 {lang === "pt" ? "Cola" : "Card"}</a>
+              <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] p-1">
+                {[["pt", "🇧🇷"], ["en", "🇺🇸"]].map(([c, f]) => (
+                  <button key={c} onClick={() => setLang(c)} aria-pressed={lang === c} className={`h-7 w-7 rounded-full text-sm transition ${lang === c ? "scale-110 bg-g-green/15 ring-1 ring-g-green/30" : "opacity-50 hover:opacity-100"}`}>{f}</button>
+                ))}
+              </div>
             </div>
           </div>
         </header>
@@ -919,6 +960,11 @@ export default function Academia() {
                   </div>
                 ))}
               </div>
+            </Reveal>
+
+            {/* personal ?ref= link maker — closes the attribution loop for the partner */}
+            <Reveal className="mt-10">
+              <RefLinks lang={lang} />
             </Reveal>
 
             <Reveal className="mt-10">

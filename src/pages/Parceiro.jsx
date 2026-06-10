@@ -233,6 +233,7 @@ export default function Parceiro() {
             <a href="/academia" className="btn-gold text-base">🎓 Fazer o Academy e entrar</a>
             <a href={waLink("Oi Guileo! Quero ser um Growth Partner.")} target="_blank" rel="noopener" className="btn text-base">💬 Falar com o Luis</a>
             <a href="/pitch" className="btn-ghost text-base">▶️ Ver o pitch do cliente</a>
+            <a href="/cola" className="btn-ghost text-base">📱 Cola de bolso</a>
           </div>
         </Slide>
 

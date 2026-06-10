@@ -5,7 +5,7 @@
 // FALLBACK: Vapi (VAPI_API_KEY, VAPI_ASSISTANT_ID, VAPI_PHONE_NUMBER_ID).
 // The caller's context (name/business/industry/need/lang) is passed as dynamic variables so the
 // agent greets by name and acts on it — reference {{name}} {{business}} {{need}} in the prompt.
-import { sameOrigin } from "../lib/guard.js";
+import { sameOrigin, rateLimited } from "../lib/guard.js";
 
 const ELEVEN_AGENT_ID = "agent_5901ktdkev68f5kb161fmeax1rdm";
 
@@ -15,6 +15,8 @@ export async function onRequestPost(context) {
     // SECURITY: outbound calls cost real money — only our own site may trigger them, and the
     // number must be a valid E.164 phone (blocks abuse / robocalling arbitrary numbers).
     if (!sameOrigin(request)) return json({ error: "forbidden" }, 403);
+    // outbound calls cost real money — hard per-IP brake (3/min) before anything else runs
+    if (await rateLimited(request, env, "call", 3)) return json({ error: "too many requests" }, 429);
     const body = await request.json();
     const phone = (body.phone || "").toString().trim();
     if (!phone) return json({ error: "Missing phone" }, 400);
