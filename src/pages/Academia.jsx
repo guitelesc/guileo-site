@@ -101,6 +101,35 @@ const T = {
     ],
     demoH: "Sua arma secreta: a demo ao vivo",
     demo: "Você não precisa convencer ninguém — a Gui convence. Em qualquer conversa, oferece: \"deixa a IA te ligar agora\". Ela liga, atende como se fosse o negócio da pessoa, agenda, vende. A venda praticamente se faz.",
+    discH: "🔍 As 5 perguntas de ouro (descoberta — faça ANTES de apresentar)",
+    discSub: "Quem pergunta, conduz. Essas 5 fazem o dono VER a própria dor — aí a Guileo vira a resposta óbvia.",
+    disc: [
+      "Quantas ligações vocês perdem por dia — almoço, noite, domingo?",
+      "Quem responde o WhatsApp quando vocês fecham?",
+      "O que acontece com quem pede orçamento e some?",
+      "Quantos clientes deixam de voltar porque ninguém chamou de volta?",
+      "Se cada ligação perdida vale uns $50–100… quanto vaza por mês?",
+    ],
+    meetH: "📋 O roteiro da reunião de 15 minutos",
+    meet: [
+      ["0–3 min", "Quebra-gelo + as 5 perguntas de ouro", "Deixa ELE falar da dor. Anota os números."],
+      ["3–5 min", "A frase + 'deixa eu te mostrar em vez de explicar'", "Não apresente slides ainda. Vá direto pra demo."],
+      ["5–9 min", "⚡ A DEMO: a Gui liga pro celular dele", "Silêncio. Deixa ele ouvir. Esse momento vende sozinho."],
+      ["9–12 min", "Mostra o Growth Cockpit + conecta com a dor dele", "\"Lembra das ligações do almoço? Aqui você veria cada uma atendida.\""],
+      ["12–15 min", "Próximo passo: proposta + garantia 30 dias", "\"Te mando a proposta hoje. Em 7 dias isso tá rodando no seu negócio.\""],
+    ],
+    storyH: "🎬 Uma venda de verdade, do \"oi\" ao pago",
+    storySub: "Acompanhe a Paula (colaboradora nova) vendendo pro Tony, dono de pizzaria:",
+    story: [
+      ["Seg, 10:00", "Paula manda a 1ª mensagem pro Tony (cliente do restaurante dela há anos)", "msg"],
+      ["Seg, 14:30", "Tony: \"quanto custa?\" — Paula segura o preço e oferece a demo: \"a IA te liga, você precisa ouvir\"", "obj"],
+      ["Ter, 16:00", "Reunião de 15 min: 5 perguntas → Tony admite que perde ~10 ligações/dia no rush", "meet"],
+      ["Ter, 16:07", "A Gui liga pro celular do Tony e anota um pedido completo com upsell. Tony ri sozinho", "demo"],
+      ["Ter, 16:15", "Paula mostra o Cockpit e fecha o próximo passo: \"te mando a proposta hoje\"", "cock"],
+      ["Ter, 18:00", "Proposta personalizada no WhatsApp: $990 setup + $1.497/mês · recupera ~$3.900/mês", "prop"],
+      ["Qui, 09:00", "Tony: \"e se não funcionar?\" — Paula: \"30 dias de garantia, o risco é nosso\" → ✅ ACEITO", "close"],
+      ["7 dias depois", "Sistema no ar. Paula recebe ~$1.096 de comissão. Tony vira o case dela pro próximo cliente", "win"],
+    ],
     // 4 PRACTICE
     s4tag: "Passo 5 · Pratique",
     s4h: "Treine com a Gui — ela vai ser um cliente difícil",
@@ -119,6 +148,34 @@ const T = {
     lvl1: { name: "Nível 1 · Agendador", what: "Você prospecta e agenda a demo. O Luis fecha com você junto (e você aprende vendo).", earn: "10% de cada venda fechada que você agendou", req: "Requisito: completar este Academy" },
     lvl2: { name: "Nível 2 · Closer ⭐", what: "Você conduz a venda inteira: demo, proposta, fechamento.", earn: "20% de cada venda fechada (~$1.096 no pacote típico)", req: "Requisito: 3 vendas fechadas como Agendador + aprovação no treino" },
     // 6 ACT
+    simH: "🧮 Simula seus ganhos",
+    simDeals: "Vendas fechadas / mês",
+    simLevel: "Seu nível",
+    simNote: "Base: pacote típico $990 setup + $1.497/mês (valor da venda = setup + 3 meses).",
+    faqH: "❓ Dúvidas de parceiro (as que todo mundo tem)",
+    faq: [
+      ["Preciso pagar algo pra entrar?", "Não. Zero taxa, zero mensalidade. Você investe seu tempo; a Guileo investe o produto, a entrega e o treinamento."],
+      ["Preciso de CNPJ / empresa?", "Pra começar, não — você pode receber como pessoa física (RPA) ou via PIX/transferência conforme combinado no contrato de parceria. Formalizamos junto quando escalar."],
+      ["Quando e como recebo a comissão?", "Após o pagamento do cliente ser confirmado — normalmente até 7 dias depois. Direto na sua conta."],
+      ["E se o cliente cancelar na garantia de 30 dias?", "A comissão é paga sobre venda CONFIRMADA (passada a garantia ou cliente ativo). Se houver reembolso total, a comissão não é devida — por isso vendemos honesto."],
+      ["Posso vender fora da minha cidade?", "Sim — a demo é por telefone e a entrega é remota. Brasil e EUA desde o dia 1."],
+      ["Quem atende o cliente depois que eu vendo?", "O time Guileo: implantação em 7 dias, suporte e otimização contínua. Você mantém o relacionamento (e ganha pontos por isso), mas não carrega a operação."],
+      ["Não entendo de tecnologia. Consigo?", "Sim — esse Academy + a demo fazem o trabalho técnico por você. Você precisa entender a DOR do dono de negócio, não o código."],
+      ["E se me perguntarem algo que não sei?", "Resposta padrão: \"Ótima pergunta — vou confirmar com o time e te trago hoje ainda.\" Anota e manda pro Luis. Nunca invente."],
+    ],
+    glosH: "📖 Glossário rápido",
+    glos: [
+      ["Lead", "pessoa interessada que deixou contato"],
+      ["Follow-up", "voltar a falar com quem não respondeu"],
+      ["No-show", "cliente que marcou e não apareceu"],
+      ["Ticket", "valor médio que o cliente gasta"],
+      ["Setup", "valor único de implantação"],
+      ["Mensalidade (MRR)", "receita que se repete todo mês"],
+      ["ICP", "perfil de cliente ideal (quem mais precisa)"],
+      ["Win-back", "reativar cliente que sumiu"],
+      ["Demo", "demonstração ao vivo (a Gui ligando)"],
+      ["Fechar", "cliente aceitou e pagou"],
+    ],
     s6tag: "Passo 7 · Comece",
     s6h: "Seus primeiros 7 dias",
     week: [
@@ -218,6 +275,35 @@ const T = {
     ],
     demoH: "Your secret weapon: the live demo",
     demo: "You don't have to convince anyone — Gui does. In any conversation, offer: \"let the AI call you right now\". She calls, answers as if she were their business, books, sells. The sale practically makes itself.",
+    discH: "🔍 The 5 golden questions (discovery — ask BEFORE presenting)",
+    discSub: "Whoever asks, leads. These 5 make the owner SEE their own pain — then Guileo becomes the obvious answer.",
+    disc: [
+      "How many calls do you miss per day — lunch rush, nights, Sundays?",
+      "Who answers WhatsApp after you close?",
+      "What happens to people who ask for a quote and go quiet?",
+      "How many customers never come back because nobody called them back?",
+      "If every missed call is worth $50–100… how much leaks per month?",
+    ],
+    meetH: "📋 The 15-minute meeting script",
+    meet: [
+      ["0–3 min", "Icebreaker + the 5 golden questions", "Let THEM talk about the pain. Write down the numbers."],
+      ["3–5 min", "The sentence + 'let me show you instead of explaining'", "No slides yet. Go straight to the demo."],
+      ["5–9 min", "⚡ THE DEMO: Gui calls their phone", "Silence. Let them listen. This moment sells by itself."],
+      ["9–12 min", "Show the Growth Cockpit + connect to their pain", "\"Remember the lunch-rush calls? Here you'd see every one answered.\""],
+      ["12–15 min", "Next step: proposal + 30-day guarantee", "\"Proposal in your inbox today. In 7 days this runs your business.\""],
+    ],
+    storyH: "🎬 A real sale, from \"hi\" to paid",
+    storySub: "Follow Paula (a brand-new partner) selling to Tony, a pizzeria owner:",
+    story: [
+      ["Mon, 10:00", "Paula sends the first message to Tony (she's been his customer for years)", "msg"],
+      ["Mon, 2:30 PM", "Tony: \"how much?\" — Paula holds the price and offers the demo: \"the AI calls you, you have to hear it\"", "obj"],
+      ["Tue, 4:00 PM", "15-min meeting: 5 questions → Tony admits losing ~10 calls/day in the rush", "meet"],
+      ["Tue, 4:07 PM", "Gui calls Tony's phone and takes a full order with an upsell. Tony laughs out loud", "demo"],
+      ["Tue, 4:15 PM", "Paula shows the Cockpit and locks the next step: \"proposal today\"", "cock"],
+      ["Tue, 6:00 PM", "Personalized proposal on WhatsApp: $990 setup + $1,497/mo · recovers ~$3,900/mo", "prop"],
+      ["Thu, 9:00 AM", "Tony: \"what if it doesn't work?\" — Paula: \"30-day guarantee, the risk is ours\" → ✅ ACCEPTED", "close"],
+      ["7 days later", "System live. Paula earns ~$1,096 commission. Tony becomes her case study for the next client", "win"],
+    ],
     s4tag: "Step 5 · Practice",
     s4h: "Train against Gui — she'll be a tough customer",
     s4sub: "Gui plays Marcos, a skeptical restaurant owner. Reply like you would for real. She scores each answer and shows you the ideal one.",
@@ -233,6 +319,34 @@ const T = {
     s5h: "Start by booking. Grow by closing.",
     lvl1: { name: "Level 1 · Setter", what: "You prospect and book the demo. Luis closes with you in the room (you learn by watching).", earn: "10% of every closed sale you booked", req: "Requirement: complete this Academy" },
     lvl2: { name: "Level 2 · Closer ⭐", what: "You run the whole sale: demo, proposal, close.", earn: "20% of every closed sale (~$1,096 on a typical package)", req: "Requirement: 3 closed sales as Setter + passing the training" },
+    simH: "🧮 Simulate your earnings",
+    simDeals: "Closed sales / month",
+    simLevel: "Your level",
+    simNote: "Basis: typical package $990 setup + $1,497/mo (sale value = setup + 3 months).",
+    faqH: "❓ Partner questions (the ones everyone has)",
+    faq: [
+      ["Do I pay anything to join?", "No. Zero fees, zero monthly. You invest your time; Guileo invests the product, delivery and training."],
+      ["Do I need a company / LLC?", "Not to start — you can be paid as an individual per the partnership agreement. We formalize together when you scale."],
+      ["When and how do I get paid?", "After the client's payment is confirmed — typically within 7 days. Straight to your account."],
+      ["What if the client cancels within the 30-day guarantee?", "Commission is paid on CONFIRMED sales (guarantee passed or client active). On a full refund, commission isn't due — which is why we sell honest."],
+      ["Can I sell outside my city?", "Yes — the demo is by phone and delivery is remote. Brazil and the US from day 1."],
+      ["Who serves the client after I sell?", "The Guileo team: 7-day implementation, support and ongoing optimization. You keep the relationship (and earn for it), but you don't run the operation."],
+      ["I don't get technology. Can I do this?", "Yes — this Academy + the demo do the technical work for you. You need to understand the owner's PAIN, not the code."],
+      ["What if they ask something I don't know?", "Standard answer: \"Great question — let me confirm with the team and get back to you today.\" Note it, send it to Luis. Never invent."],
+    ],
+    glosH: "📖 Quick glossary",
+    glos: [
+      ["Lead", "an interested person who left contact info"],
+      ["Follow-up", "reaching back out to someone who went quiet"],
+      ["No-show", "booked and didn't show up"],
+      ["Ticket", "average amount a customer spends"],
+      ["Setup", "one-time implementation fee"],
+      ["MRR", "revenue that repeats every month"],
+      ["ICP", "ideal customer profile (who needs it most)"],
+      ["Win-back", "reactivating a vanished customer"],
+      ["Demo", "live demonstration (Gui calling)"],
+      ["Close", "client accepted and paid"],
+    ],
     s6tag: "Step 7 · Start",
     s6h: "Your first 7 days",
     week: [
@@ -369,6 +483,42 @@ function Roleplay({ lang, t }) {
     </div>
   );
 }
+
+// Earnings simulator: deals/month slider × level (Setter 10% / Closer 20%).
+// Sale value = $990 setup + 3 × $1,497 (the locked comp basis).
+function EarnSim({ t }) {
+  const [deals, setDeals] = useState(4);
+  const [closer, setCloser] = useState(true);
+  const saleValue = 990 + 1497 * 3;
+  const pct = closer ? 0.2 : 0.1;
+  const monthly = Math.round(saleValue * pct * deals);
+  return (
+    <div className="rounded-xl3 border border-g-green/30 bg-white/[0.03] p-6 shadow-lift">
+      <div className="text-[13px] font-black text-g-word">{t.simH}</div>
+      <div className="mt-5 grid items-center gap-6 sm:grid-cols-[1fr_auto]">
+        <div className="space-y-5">
+          <div>
+            <div className="mb-2 flex items-baseline justify-between text-[12px] font-bold text-g-muted"><span>{t.simDeals}</span><span className="text-[15px] font-black text-g-word">{deals}</span></div>
+            <input type="range" min="1" max="15" value={deals} onChange={(e) => setDeals(+e.target.value)} className="w-full accent-[#3E9468]" />
+          </div>
+          <div>
+            <div className="mb-2 text-[12px] font-bold text-g-muted">{t.simLevel}</div>
+            <div className="flex gap-2">
+              <button onClick={() => setCloser(false)} className={`rounded-full border px-4 py-1.5 text-[12.5px] font-bold transition ${!closer ? "border-g-green/50 bg-g-green/15 text-g-word" : "border-g-line text-g-muted"}`}>Setter · 10%</button>
+              <button onClick={() => setCloser(true)} className={`rounded-full border px-4 py-1.5 text-[12.5px] font-bold transition ${closer ? "border-g-gold/50 bg-g-gold/15 text-g-word" : "border-g-line text-g-muted"}`}>Closer · 20% ⭐</button>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl bg-g-green/10 px-7 py-5 text-center">
+          <div key={monthly} className="text-[36px] font-black leading-none text-g-word" style={{ animation: "apop .4s cubic-bezier(.34,1.56,.64,1) both" }}>{money(monthly)}</div>
+          <div className="mt-1 text-[11px] font-bold uppercase tracking-wide text-g-green">/ {t.simDeals.includes("mês") || t.simDeals.includes("month") ? (t.simDeals.includes("mês") ? "mês" : "month") : "mo"}</div>
+        </div>
+      </div>
+      <p className="mt-4 text-[11px] text-g-muted">{t.simNote}</p>
+    </div>
+  );
+}
+const money = (v) => "$" + Math.round(Number(v) || 0).toLocaleString("en-US");
 
 const Tag = ({ children }) => <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-g-gold/25 bg-g-gold/[0.08] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-g-gold">{children}</div>;
 const H2 = ({ children }) => <h2 className="max-w-2xl font-black leading-[1.05] tracking-tight text-g-word" style={{ fontSize: "clamp(1.6rem,3.4vw,2.5rem)" }}>{children}</h2>;
@@ -601,6 +751,55 @@ export default function Academia() {
                 <p className="mt-2 text-[14px] leading-relaxed text-g-ink">{t.demo}</p>
               </div>
             </Reveal>
+
+            {/* discovery questions — who asks, leads */}
+            <Reveal className="mt-8">
+              <div className="rounded-xl3 border border-g-green/25 bg-g-green/[0.04] p-6">
+                <div className="text-[13px] font-black text-g-green">{t.discH}</div>
+                <p className="mt-1.5 text-[12.5px] text-g-muted">{t.discSub}</p>
+                <ol className="mt-4 space-y-2.5">
+                  {t.disc.map((q, i) => (
+                    <li key={i} className="flex items-start gap-3 text-[13.5px] leading-relaxed text-g-word">
+                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-g-green/15 text-[11px] font-black text-g-green ring-1 ring-g-green/30">{i + 1}</span>{q}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </Reveal>
+
+            {/* the 15-minute meeting script */}
+            <Reveal className="mt-8">
+              <div className="mb-3 text-[13px] font-black text-g-word">{t.meetH}</div>
+            </Reveal>
+            <Reveal stagger className="space-y-2">
+              {t.meet.map(([when, what, how], i) => (
+                <div key={i} className={`flex flex-col gap-1 rounded-2xl border px-5 py-3.5 sm:flex-row sm:items-center sm:gap-4 ${i === 2 ? "border-g-gold/40 bg-g-gold/[0.06]" : "border-g-line bg-white/[0.03]"}`}>
+                  <span className={`w-20 shrink-0 font-mono text-[11px] font-black ${i === 2 ? "text-g-gold" : "text-g-muted"}`}>{when}</span>
+                  <span className="text-[13.5px] font-bold text-g-word">{what}</span>
+                  <span className="text-[12px] italic text-g-muted sm:ml-auto sm:max-w-[40%] sm:text-right">{how}</span>
+                </div>
+              ))}
+            </Reveal>
+
+            {/* a real sale, narrated start to finish */}
+            <Reveal className="mt-10">
+              <div className="text-[13px] font-black text-g-word">{t.storyH}</div>
+              <p className="mt-1 text-[12.5px] text-g-muted">{t.storySub}</p>
+            </Reveal>
+            <Reveal stagger className="relative mt-5 space-y-0">
+              {t.story.map(([when, what, kind], i) => (
+                <div key={i} className="relative flex gap-4 pb-5 pl-1">
+                  {i < t.story.length - 1 && <span className="absolute left-[15px] top-7 h-full w-px bg-gradient-to-b from-g-green/40 to-g-gold/20" />}
+                  <span className={`relative z-10 mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-[12px] ring-1 ${kind === "win" ? "bg-g-gold/20 ring-g-gold/50" : kind === "demo" ? "bg-g-green/20 ring-g-green/50" : "bg-white/[0.05] ring-white/15"}`}>
+                    {{ msg: "💬", obj: "🛡️", meet: "🤝", demo: "📞", cock: "📟", prop: "📄", close: "✅", win: "💰" }[kind]}
+                  </span>
+                  <div>
+                    <div className="text-[11px] font-black uppercase tracking-wide text-g-gold">{when}</div>
+                    <p className="mt-0.5 text-[13.5px] leading-relaxed text-g-ink">{what}</p>
+                  </div>
+                </div>
+              ))}
+            </Reveal>
           </section>
 
           {/* 4 — PRACTICE (roleplay) */}
@@ -624,6 +823,10 @@ export default function Academia() {
                 ))}
               </Reveal>
             </Reveal>
+            {/* earnings simulator — slider × level */}
+            <Reveal className="mt-6">
+              <EarnSim t={t} />
+            </Reveal>
           </section>
 
           {/* 6 — ACT */}
@@ -640,7 +843,35 @@ export default function Academia() {
                 ))}
               </Reveal>
             </Reveal>
-            <Reveal className="mt-8">
+            {/* partner FAQ */}
+            <Reveal className="mt-10">
+              <div className="mb-3 text-[13px] font-black text-g-word">{t.faqH}</div>
+            </Reveal>
+            <Reveal stagger className="space-y-2.5">
+              {t.faq.map(([q, a]) => (
+                <details key={q} className="group rounded-2xl border border-g-line bg-white/[0.03] transition open:border-g-green/30 open:bg-g-green/[0.03]">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-3.5 text-[13.5px] font-bold text-g-word [&::-webkit-details-marker]:hidden">
+                    {q}<span className="text-g-green transition group-open:rotate-45">＋</span>
+                  </summary>
+                  <p className="px-5 pb-4 text-[13px] leading-relaxed text-g-ink">{a}</p>
+                </details>
+              ))}
+            </Reveal>
+
+            {/* glossary */}
+            <Reveal className="mt-10">
+              <div className="mb-3 text-[13px] font-black text-g-word">{t.glosH}</div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {t.glos.map(([term, def]) => (
+                  <div key={term} className="flex items-baseline gap-2 rounded-xl border border-g-line bg-white/[0.03] px-4 py-2.5">
+                    <span className="shrink-0 text-[12.5px] font-black text-g-gold">{term}</span>
+                    <span className="text-[12px] leading-snug text-g-muted">— {def}</span>
+                  </div>
+                ))}
+              </div>
+            </Reveal>
+
+            <Reveal className="mt-10">
               <div className="mb-3 text-[12px] font-bold uppercase tracking-wider text-g-muted">{t.kitH}</div>
               <div className="flex flex-wrap gap-2">
                 {t.kit.map(([n, href]) => (
