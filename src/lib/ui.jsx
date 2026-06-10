@@ -320,7 +320,7 @@ export function Accordion({ items }) {
             {open === i && (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.32, ease: "easeInOut" }} className="overflow-hidden">
-                <p className="pb-4 text-sm text-g-muted leading-relaxed">{a}</p>
+                <p className="pb-4 text-sm text-g-ink leading-relaxed">{a}</p>
               </motion.div>
             )}
           </AnimatePresence>

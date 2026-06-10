@@ -1,60 +1,92 @@
-import { useState, useEffect } from "react";
 import mark from "../assets/guileo-mark.png";
 import { useLang } from "../i18n.jsx";
 
+// LegsV2 — "We grow your business": each Guileo part OWNS one sector of the client's
+// company, in the same clean station-over-line language as MethodV2 (the approved look):
+// 🧠 BRAIN owns PERFORMANCE (does the work of employees) → 📈 AD owns SALES (sells daily)
+// → 🚀 the consequence: GROWTH (every lead followed up, monitored 24/7). Energy flows
+// left→right along the line and converges on the plant = YOUR BUSINESS growing.
+
 const LV_COPY = {
-  en: { eyebrow:"More than automation — your whole operation", h1a:"We don't just automate. ", h1b:"We grow your business.", biz:"YOUR BUSINESS", st:["● connected","automated","growing 24/7"], cta:"Get this for my business" },
-  pt: { eyebrow:"Mais que automação — sua operação inteira", h1a:"Não só automatizamos. ", h1b:"Fazemos você crescer.", biz:"SEU NEGÓCIO", st:["● conectado","automatizado","crescendo 24/7"], cta:"Quero isso no meu negócio" },
-  es: { eyebrow:"Más que automatización — toda tu operación", h1a:"No solo automatizamos. ", h1b:"Hacemos crecer tu negocio.", biz:"TU NEGOCIO", st:["● conectado","automatizado","creciendo 24/7"], cta:"Quiero esto en mi negocio" },
-  hi: { eyebrow:"सिर्फ़ ऑटोमेशन नहीं — आपका पूरा ऑपरेशन", h1a:"हम सिर्फ़ ऑटोमेट नहीं करते. ", h1b:"हम आपका व्यवसाय बढ़ाते हैं।", biz:"आपका व्यवसाय", st:["● कनेक्टेड","ऑटोमेटेड","24/7 बढ़ता"], cta:"मेरे व्यवसाय के लिए चाहिए" },
+  en: {
+    eyebrow: "More than automation — your whole operation",
+    h1a: "We don't just automate. ", h1b: "We grow your business.",
+    sub: "Each part of Guileo owns one part of your company — together, they grow it.",
+    strip: ["Performance", "Sales", "Growth"],
+    steps: [
+      { badge: "Guileo Brain", owns: "Owns your performance", title: "Does the work of employees", desc: "Answers every call & message, books, quotes and supports — 24/7, any language. Output goes up, payroll doesn't.", tag: "performance, elevated" },
+      { badge: "Guileo.AD", owns: "Owns your sales", title: "Sells while you work", desc: "Your ads, content & funnels run every day — you reach more people, close more deals, waste less ad money.", tag: "you sell more" },
+      { badge: "The result", owns: "Your growth", title: "Growth that compounds", desc: "Every lead followed up every single day — monitored 24/7, nothing slips. Your business grows on autopilot.", tag: "monitored 24/7" },
+    ],
+    buildA: "And ", buildB: "Guileo Build", buildC: " crafts the websites, apps & software it all runs on.",
+    biz: "YOUR BUSINESS", st: ["● connected", "automated", "growing 24/7"], cta: "Get this for my business",
+  },
+  pt: {
+    eyebrow: "Mais que automação — sua operação inteira",
+    h1a: "Não só automatizamos. ", h1b: "Fazemos você crescer.",
+    sub: "Cada parte do Guileo cuida de uma parte da sua empresa — juntas, elas fazem você crescer.",
+    strip: ["Performance", "Vendas", "Crescimento"],
+    steps: [
+      { badge: "Guileo Brain", owns: "Dono da sua performance", title: "Faz o trabalho de funcionários", desc: "Atende toda ligação e mensagem, agenda, orça e dá suporte — 24/7, em qualquer idioma. O rendimento sobe, a folha não.", tag: "performance elevada" },
+      { badge: "Guileo.AD", owns: "Dono das suas vendas", title: "Vende enquanto você trabalha", desc: "Seus anúncios, conteúdo e funis rodando todo dia — você alcança mais gente, fecha mais e desperdiça menos.", tag: "você vende mais" },
+      { badge: "O resultado", owns: "Seu crescimento", title: "Crescimento que compõe", desc: "Cada lead acompanhado todos os dias — monitorado 24h, nada escapa. Seu negócio cresce no automático.", tag: "monitorado 24/7" },
+    ],
+    buildA: "E o ", buildB: "Guileo Build", buildC: " constrói os sites, apps e softwares que fazem tudo rodar.",
+    biz: "SEU NEGÓCIO", st: ["● conectado", "automatizado", "crescendo 24/7"], cta: "Quero isso no meu negócio",
+  },
+  es: {
+    eyebrow: "Más que automatización — toda tu operación",
+    h1a: "No solo automatizamos. ", h1b: "Hacemos crecer tu negocio.",
+    sub: "Cada parte de Guileo es dueña de una parte de tu empresa — juntas, la hacen crecer.",
+    strip: ["Performance", "Ventas", "Crecimiento"],
+    steps: [
+      { badge: "Guileo Brain", owns: "Dueño de tu performance", title: "Hace el trabajo de empleados", desc: "Atiende cada llamada y mensaje, agenda, cotiza y da soporte — 24/7, en cualquier idioma. El rendimiento sube, la nómina no.", tag: "performance elevada" },
+      { badge: "Guileo.AD", owns: "Dueño de tus ventas", title: "Vende mientras trabajas", desc: "Tus anuncios, contenido y embudos corren cada día — llegas a más gente, cierras más y desperdicias menos.", tag: "vendes más" },
+      { badge: "El resultado", owns: "Tu crecimiento", title: "Crecimiento que se acumula", desc: "Cada lead con seguimiento todos los días — monitoreado 24/7, nada se escapa. Tu negocio crece en automático.", tag: "monitoreado 24/7" },
+    ],
+    buildA: "Y ", buildB: "Guileo Build", buildC: " construye las webs, apps y software donde todo corre.",
+    biz: "TU NEGOCIO", st: ["● conectado", "automatizado", "creciendo 24/7"], cta: "Quiero esto en mi negocio",
+  },
+  hi: {
+    eyebrow: "सिर्फ़ ऑटोमेशन नहीं — आपका पूरा ऑपरेशन",
+    h1a: "हम सिर्फ़ ऑटोमेट नहीं करते. ", h1b: "हम आपका व्यवसाय बढ़ाते हैं।",
+    sub: "Guileo का हर हिस्सा आपकी कंपनी के एक हिस्से का मालिक है — मिलकर, वे उसे बढ़ाते हैं।",
+    strip: ["परफ़ॉर्मेंस", "बिक्री", "ग्रोथ"],
+    steps: [
+      { badge: "Guileo Brain", owns: "आपकी परफ़ॉर्मेंस का मालिक", title: "कर्मचारियों का काम करता है", desc: "हर कॉल और मैसेज का जवाब, बुकिंग, कोटेशन और सपोर्ट — 24/7, किसी भी भाषा में। आउटपुट बढ़ता है, पेरोल नहीं।", tag: "परफ़ॉर्मेंस ऊँची" },
+      { badge: "Guileo.AD", owns: "आपकी बिक्री का मालिक", title: "आप काम करें, यह बेचता है", desc: "आपके विज्ञापन, कंटेंट और फ़नल हर दिन चलते हैं — ज़्यादा लोग, ज़्यादा डील, कम बर्बादी।", tag: "आप ज़्यादा बेचते हैं" },
+      { badge: "नतीजा", owns: "आपकी ग्रोथ", title: "ग्रोथ जो बढ़ती जाती है", desc: "हर लीड का हर दिन फ़ॉलो-अप — 24/7 निगरानी, कुछ नहीं छूटता। आपका व्यवसाय ऑटोपायलट पर बढ़ता है।", tag: "24/7 निगरानी" },
+    ],
+    buildA: "और ", buildB: "Guileo Build", buildC: " वे वेबसाइट, ऐप और सॉफ़्टवेयर बनाता है जिन पर सब चलता है।",
+    biz: "आपका व्यवसाय", st: ["● कनेक्टेड", "ऑटोमेटेड", "24/7 बढ़ता"], cta: "मेरे व्यवसाय के लिए चाहिए",
+  },
 };
 
-// LegsV2 — TEST (/v2) beat 3: "We run your operation." 2 columns:
-// LEFT = the 3 compact engines (Brain · Build · AD). RIGHT = the Guileo plant as the
-// RESULT — money & good things growing out of it (the business bearing fruit).
-// Content adapted from guileoai.com. Guileo design system + smooth CSS motion.
-
-const LEGS = [
-  { tag: "Guileo Brain", icon: "🧠", accent: "green", title: "AI agents that never sleep", desc: "Answer calls, book appointments, qualify leads & close — 24/7, any language.", chips: ["🎙️ Voice", "💬 WhatsApp", "📅 Bookings", "🎧 Support"] },
-  { tag: "Guileo Build", icon: "🛠️", accent: "ocean", title: "Websites, apps & software", desc: "AI-crafted sites, intelligent apps & custom software — built to convert & scale.", chips: ["🌐 Websites", "📱 Apps", "🛒 Shopify", "⚙️ Automation"] },
-  { tag: "Guileo.AD", icon: "📈", accent: "gold", title: "Marketing that grows you", desc: "Content, paid ads, social & funnels — run for you across every channel.", chips: ["📝 Content", "📣 Ads −40% waste", "🎯 Leads", "🔄 Funnels"] },
+// station art — emoji grows in presence left→right (cause → cause → result)
+const STATIONS = [
+  { emoji: "🧠", size: 54, sIcon: "⚡", rgb: "62,148,104" },
+  { emoji: "📈", size: 62, sIcon: "💰", rgb: "214,194,154" },
+  { emoji: "🚀", size: 74, sIcon: "🚀", rgb: "194,168,120" },
 ];
-
-const C = {
-  green: { text: "text-g-green", on: "border-g-green/45 bg-g-green/[0.07] shadow-[0_22px_55px_-32px_rgba(62,148,104,0.8)]", tile: "from-g-green/70 to-g-green/25", tring: "ring-g-green/50", bar: "from-g-green to-g-light", chip: "border-g-green/30 bg-g-green/[0.10] text-g-green", dot: "bg-g-green" },
-  ocean: { text: "text-[#4E9DB0]", on: "border-[#4E9DB0]/45 bg-[#4E9DB0]/[0.07] shadow-[0_22px_55px_-32px_rgba(78,157,176,0.8)]", tile: "from-[#4E9DB0]/70 to-[#4E9DB0]/25", tring: "ring-[#4E9DB0]/50", bar: "from-[#4E9DB0] to-[#7FC3D0]", chip: "border-[#4E9DB0]/30 bg-[#4E9DB0]/[0.12] text-[#7FC3D0]", dot: "bg-[#4E9DB0]" },
-  gold: { text: "text-g-gold", on: "border-g-gold/45 bg-g-gold/[0.07] shadow-[0_22px_55px_-32px_rgba(214,194,154,0.8)]", tile: "from-g-gold/70 to-g-gold/25", tring: "ring-g-gold/50", bar: "from-g-gold to-g-copper", chip: "border-g-gold/30 bg-g-gold/[0.10] text-g-gold", dot: "bg-g-gold" },
-};
-
-// money & good things the plant "produces"
-const FRUITS = ["💰", "📈", "⭐", "🎯", "💵", "📅", "🚀", "💚"];
-// accent rgb for the live "energy feeding the business" connection
-const ACCENT_RGB = { green: "62,148,104", ocean: "78,157,176", gold: "214,194,154" };
+// money & good things floating out of the result station + the business plant
+const FRUITS = ["💰", "📈", "⭐"];
 
 export default function LegsV2() {
   const { lang } = useLang();
   const L = LV_COPY[lang] || LV_COPY.en;
-  const [sel, setSel] = useState(0);
-  const [auto, setAuto] = useState(true);
-
-  useEffect(() => {
-    if (!auto) return;
-    const t = setInterval(() => setSel((i) => (i + 1) % LEGS.length), 2600);
-    return () => clearInterval(t);
-  }, [auto]);
 
   return (
     <section className="relative overflow-hidden px-5 py-20">
       <style>{`
         @keyframes lreveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
         @keyframes lshine{to{background-position:220% center}}
-        @keyframes lmoney{0%{transform:translateY(10px) scale(.7);opacity:0}18%{opacity:1}100%{transform:translateY(-120px) scale(1.15);opacity:0}}
+        @keyframes lgrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+        @keyframes lsway{0%,100%{transform:rotate(-3deg) translateY(0)}50%{transform:rotate(3deg) translateY(-7px)}}
+        @keyframes lrise{0%{transform:translateY(8px) scale(.8);opacity:0}25%{opacity:1}100%{transform:translateY(-46px) scale(1.1);opacity:0}}
+        @keyframes lpop{from{transform:scale(0) translateY(16px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+        @keyframes lflow{0%{left:0%;opacity:0}12%{opacity:1}88%{opacity:1}100%{left:100%;opacity:0}}
         @keyframes lbreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
-        @keyframes lsheen{0%{transform:translateX(-120%)}55%,100%{transform:translateX(120%)}}
-        @keyframes lsonar{0%{transform:scale(.55);opacity:.55}100%{transform:scale(1.7);opacity:0}}
-        @keyframes lfloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-9px) rotate(3deg)}}
-        @keyframes lflowin{0%{left:-2%;opacity:0}14%{opacity:1}86%{opacity:1}100%{left:100%;opacity:0}}
-        @keyframes lroot{to{stroke-dashoffset:-12}}
+        @keyframes lpulse{0%,100%{opacity:.5}50%{opacity:1}}
         @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}
       `}</style>
 
@@ -64,76 +96,62 @@ export default function LegsV2() {
           <span className="text-g-word" style={{ animation: "lreveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>{L.h1a}</span>
           <span className="bg-gradient-to-r from-g-green via-g-gold to-g-copper bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "lreveal .8s cubic-bezier(.2,.7,.2,1) .2s both, lshine 7s linear infinite" }}>{L.h1b}</span>
         </h2>
+        <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-g-ink" style={{ animation: "lreveal .8s ease .3s both" }}>{L.sub}</p>
       </div>
 
-      <div className="relative mx-auto mt-10 grid max-w-5xl items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-        {/* ROOTS — the plant's roots reach out and plug into all 3 engines; energy feeds back into the business */}
-        <svg className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full lg:block" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          {LEGS.map((leg, i) => {
-            const rgb = ACCENT_RGB[leg.accent];
-            const on = i === sel;
-            const d = ["M68,47 C 60,30 56,16 50,16", "M68,47 C 60,47 56,47 50,47", "M68,47 C 60,64 56,78 50,78"][i];
-            return (
-              <g key={leg.tag}>
-                <path d={d} fill="none" stroke={`rgba(${rgb},${on ? 0.45 : 0.2})`} strokeWidth={on ? 1.1 : 0.6} strokeLinecap="round" />
-                <path d={d} fill="none" stroke={`rgba(${rgb},${on ? 0.95 : 0.5})`} strokeWidth={on ? 0.9 : 0.5} strokeLinecap="round" strokeDasharray="1.6 4" style={{ animation: `lroot ${on ? 1.0 : 1.6}s linear infinite` }} />
-                <circle r={on ? 1.5 : 1} fill={`rgb(${rgb})`} style={{ filter: `drop-shadow(0 0 4px rgba(${rgb},0.9))` }}>
-                  <animateMotion dur={`${on ? 1.0 : 1.6}s`} repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear" path={d} />
-                </circle>
-              </g>
-            );
-          })}
-        </svg>
+      {/* sector framing — each part owns one sector, growth is the consequence */}
+      <div className="mx-auto mt-7 flex max-w-md flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] font-black uppercase tracking-wider" style={{ animation: "lreveal .8s ease .3s both" }}>
+        <span className="text-g-green">⚡ {L.strip[0]}</span><span className="text-g-muted" style={{ animation: "lpulse 2s ease-in-out infinite" }}>→</span>
+        <span className="text-g-gold">💰 {L.strip[1]}</span><span className="text-g-muted" style={{ animation: "lpulse 2s ease-in-out .5s infinite" }}>→</span>
+        <span className="text-g-copper">🚀 {L.strip[2]}</span>
+      </div>
 
-        {/* LEFT — the 3 compact engines */}
-        <div className="space-y-2.5" onMouseEnter={() => setAuto(false)} onMouseLeave={() => setAuto(true)}>
-          {LEGS.map((leg, i) => {
-            const c = C[leg.accent];
-            const on = i === sel;
+      {/* STATION SCENE — same visual language as the Method section (approved look) */}
+      <div className="relative mx-auto mt-10 max-w-5xl">
+        <div className="relative grid grid-cols-3 gap-2 sm:gap-6">
+          {/* energy line behind all three stations */}
+          <div className="pointer-events-none absolute inset-x-2 top-[120px] h-[3px] rounded-full bg-white/10" />
+          <div className="pointer-events-none absolute left-2 right-2 top-[120px] h-[3px] origin-left rounded-full bg-gradient-to-r from-g-green via-g-gold to-g-copper" style={{ animation: "lgrow 1.8s ease .4s both" }} />
+          {/* energy pulse traveling along the line into the result */}
+          <span className="pointer-events-none absolute top-[117px] h-[9px] w-[9px] rounded-full bg-g-gold shadow-[0_0_14px_rgba(214,194,154,0.9)]" style={{ animation: "lflow 3.2s linear 1.6s infinite" }} />
+
+          {L.steps.map((s, i) => {
+            const st = STATIONS[i];
+            const result = i === 2;
             return (
-              <button key={leg.tag} onClick={() => { setSel(i); setAuto(false); }}
-                className={`group relative flex w-full items-start gap-4 overflow-hidden rounded-2xl border py-5 pl-6 pr-4 text-left transition-all duration-300 ${on ? `${c.on} translate-x-1` : "border-g-line bg-white/[0.025] hover:bg-white/[0.05]"}`}
-                style={{ animation: `lreveal .6s cubic-bezier(.2,.7,.2,1) ${0.15 + i * 0.1}s both` }}>
-                {/* accent bar */}
-                <span className={`absolute left-0 top-0 h-full bg-gradient-to-b ${c.bar} transition-all duration-300 ${on ? "w-1.5 opacity-100" : "w-1 opacity-45 group-hover:opacity-80"}`} />
-                {/* sheen sweep on the active card */}
-                {on && <span className="pointer-events-none absolute inset-0" style={{ animation: "lsheen 2.6s ease-in-out infinite", background: "linear-gradient(105deg,transparent,rgba(255,255,255,0.07),transparent)" }} />}
-                {/* free-floating emoji — no box, just a soft accent glow so it keeps presence */}
-                <span className={`shrink-0 select-none text-[44px] leading-none transition-transform duration-300 ${on ? "scale-110" : "group-hover:scale-105"}`}
-                  style={{ animation: `lfloat ${3 + i * 0.6}s ease-in-out ${i * 0.5}s infinite`, filter: `drop-shadow(0 6px 14px rgba(${ACCENT_RGB[leg.accent]},${on ? 0.55 : 0.32}))` }}>{leg.icon}</span>
-                <div className="min-w-0">
-                  {/* small colored tag eyebrow ABOVE — frees the title to be big & tall */}
-                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${c.text}`}>
-                    <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />{leg.tag}
-                  </span>
-                  {/* BIG free title on its own line */}
-                  <h3 className="mt-1.5 font-black leading-[1.08] tracking-tight text-g-word" style={{ fontSize: "clamp(1.15rem,2vw,1.45rem)" }}>{leg.title}</h3>
-                  <p className="mt-2 text-[13px] leading-snug text-g-ink">{leg.desc}</p>
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
-                    {leg.chips.map((ch) => (
-                      <span key={ch} className={`rounded-full border px-2.5 py-0.5 text-[10.5px] font-semibold ${c.chip}`}>{ch}</span>
-                    ))}
-                  </div>
+              <div key={i} className="relative flex flex-col items-center text-center">
+                {/* the station emoji — floats free above its glowing platform */}
+                <div className="relative flex h-[120px] w-full items-end justify-center">
+                  {result && FRUITS.map((f, k) => (
+                    <span key={k} className="pointer-events-none absolute text-lg" style={{ bottom: `${56 + k * 8}px`, left: `${28 + k * 16}%`, animation: `lrise ${3 + k}s ease-in ${k * 0.6}s infinite` }}>{f}</span>
+                  ))}
+                  <span className="inline-block select-none" style={{ fontSize: st.size, lineHeight: 1, filter: `drop-shadow(0 10px 22px rgba(${st.rgb},0.5))`, transformOrigin: "bottom center", animation: `lpop .8s cubic-bezier(.2,.7,.2,1) ${0.5 + i * 0.25}s both, lsway ${4 + i}s ease-in-out ${1 + i}s infinite` }}>{st.emoji}</span>
                 </div>
-              </button>
+                {/* glowing platform the station stands on */}
+                <div className="z-10 h-2.5 w-24 rounded-full sm:w-28" style={{ background: `rgba(${st.rgb},0.55)`, boxShadow: `0 0 26px rgba(${st.rgb},0.45)` }} />
+
+                {/* the message below the platform */}
+                <div className="mt-6 px-0.5" style={{ animation: `lreveal .7s ease ${0.6 + i * 0.2}s both` }}>
+                  <div className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider" style={{ borderColor: `rgba(${st.rgb},0.4)`, color: `rgb(${st.rgb})` }}>{st.sIcon} {s.badge}</div>
+                  <div className="mt-2 text-[11px] font-bold uppercase tracking-wider text-g-ink">{s.owns}</div>
+                  <h3 className="mt-1 font-black leading-[1.08] tracking-tight text-g-word" style={{ fontSize: "clamp(1.15rem,2vw,1.45rem)" }}>{s.title}</h3>
+                  <p className="mx-auto mt-2 max-w-[15rem] text-[12.5px] leading-relaxed text-g-ink sm:text-[13px]">{s.desc}</p>
+                  <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-g-line bg-white/[0.04] px-3 py-1 text-[11.5px] font-semibold" style={{ color: `rgb(${st.rgb})` }}>✓ {s.tag}</div>
+                </div>
+              </div>
             );
           })}
         </div>
 
-        {/* RIGHT — the plant = the result; the 3 engines FEED it, live */}
-        <div className="relative grid place-items-center py-6">
-          <div className="pointer-events-none absolute inset-0 blur-2xl transition-colors duration-700" style={{ background: `radial-gradient(closest-side,rgba(${ACCENT_RGB[LEGS[sel].accent]},0.20),transparent)` }} />
+        {/* foundation line — Guileo Build carries it all */}
+        <p className="mx-auto mt-10 max-w-xl text-center text-[13.5px] leading-relaxed text-g-ink" style={{ animation: "lreveal .8s ease 1.1s both" }}>
+          🛠️ {L.buildA}<span className="font-bold text-[#4E9DB0]">{L.buildB}</span>{L.buildC}
+        </p>
 
-          {/* money & fruit floating out */}
-          {FRUITS.map((f, i) => (
-            <span key={i} className="pointer-events-none absolute text-xl" style={{ left: `${18 + i * 9}%`, bottom: "42%", animation: `lmoney ${3 + (i % 3)}s ease-in ${i * 0.5}s infinite` }}>{f}</span>
-          ))}
-
-          {/* sonar rings — the business "receiving" the energy, in the active engine's color */}
-          <span className="pointer-events-none absolute top-[42%] h-40 w-40 -translate-y-1/2 rounded-full border" style={{ borderColor: `rgba(${ACCENT_RGB[LEGS[sel].accent]},0.35)`, animation: "lsonar 2.6s ease-out infinite" }} />
-          <span className="pointer-events-none absolute top-[42%] h-40 w-40 -translate-y-1/2 rounded-full border" style={{ borderColor: `rgba(${ACCENT_RGB[LEGS[sel].accent]},0.35)`, animation: "lsonar 2.6s ease-out infinite 1.3s" }} />
-
-          <img src={mark} alt="Guileo" className="relative z-10 w-[230px] max-w-full drop-shadow-[0_20px_40px_rgba(0,0,0,0.5)]" style={{ animation: "lbreathe 6s ease-in-out infinite" }} />
+        {/* convergence — it all feeds YOUR BUSINESS, growing */}
+        <div className="relative mt-10 grid place-items-center">
+          <div className="pointer-events-none absolute inset-0 blur-2xl" style={{ background: "radial-gradient(closest-side,rgba(62,148,104,0.16),transparent)" }} />
+          <img src={mark} alt="Guileo" className="relative z-10 w-[170px] max-w-full drop-shadow-[0_20px_40px_rgba(0,0,0,0.5)]" style={{ animation: "lbreathe 6s ease-in-out infinite" }} />
           <div className="relative z-10 mt-2 text-center">
             <div className="text-[18px] font-black tracking-tight text-g-word">{L.biz}</div>
             <div className="mt-1 text-[11px] font-bold uppercase tracking-wider">

@@ -69,7 +69,7 @@ export default function BuildAllV2() {
         {CATS.map((c, ci) => (
           <div key={c.emoji}
             className="group relative flex flex-col overflow-hidden rounded-2xl border border-g-line bg-white/[0.03] p-6 transition-all duration-300 hover:-translate-y-1 hover:bg-white/[0.05] shadow-[0_18px_46px_-30px_rgba(0,0,0,0.85)]"
-            style={{ animation: `breveal .7s cubic-bezier(.2,.7,.2,1) ${0.35 + ci * 0.12}s both`, "--cat": c.rgb }}
+            style={{ animation: `breveal .7s cubic-bezier(.2,.7,.2,1) ${0.35 + ci * 0.12}s both` }}
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = `rgba(${c.rgb},0.45)`; }}
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = ""; }}>
             {/* soft accent halo */}

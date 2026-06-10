@@ -18,18 +18,20 @@ export default function ProofV2() {
   const P = PV_COPY[lang] || PV_COPY.en;
   return (
     <section className="relative overflow-hidden px-5 py-20">
-      <style>{`@keyframes pvreveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}@keyframes pvpulse{0%,100%{opacity:.5}50%{opacity:1}}@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}`}</style>
+      <style>{`@keyframes pvreveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}@keyframes pvpulse{0%,100%{opacity:.5}50%{opacity:1}}@keyframes pvfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}`}</style>
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(640px_300px_at_50%_20%,rgba(62,148,104,0.09),transparent)]" />
 
       <div className="mx-auto max-w-5xl text-center">
         <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold" style={{ animation: "pvreveal .7s ease both" }}>{P.eyebrow}</div>
 
         {/* compliance badges */}
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5" style={{ animation: "pvreveal .8s ease .1s both" }}>
-          {BADGES.map((b) => (
-            <div key={b} className="inline-flex items-center gap-2 rounded-full border border-g-line bg-white/[0.04] px-4 py-2">
-              <span className="text-base">🛡️</span>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
+          {BADGES.map((b, i) => (
+            <div key={b} className="inline-flex items-center gap-2 rounded-full border border-g-line bg-white/[0.04] px-4 py-2 transition-all duration-300 hover:-translate-y-1 hover:border-g-green/45 hover:bg-g-green/[0.07] hover:shadow-[0_16px_36px_-20px_rgba(62,148,104,0.7)]"
+              style={{ animation: `pvreveal .7s cubic-bezier(.2,.7,.2,1) ${0.1 + i * 0.09}s both` }}>
+              <span className="text-base" style={{ animation: `pvfloat ${2.8 + (i % 3) * 0.5}s ease-in-out ${i * 0.35}s infinite`, filter: "drop-shadow(0 3px 8px rgba(62,148,104,0.5))" }}>🛡️</span>
               <span className="text-[13px] font-bold text-g-word">{b}</span>
-              <span className="text-g-green">✓</span>
+              <span className="text-g-green" style={{ animation: "pvpulse 2.4s ease-in-out infinite", animationDelay: `${i * 0.3}s` }}>✓</span>
             </div>
           ))}
         </div>

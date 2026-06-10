@@ -410,7 +410,7 @@ export default function Home() {
               </thead>
               <tbody>
                 {t.more.comp.rows.map((r, i) => (
-                  <tr key={i} className="border-t border-g-line">
+                  <tr key={i} className="border-t border-g-line transition-colors duration-300 hover:bg-white/[0.04]">
                     {r.map((cell, j) => (
                       <td key={j} className={`p-4 ${j === 0 ? "font-semibold text-g-word" : j === 1 ? "bg-g-green/[0.06] text-center font-bold text-g-light" : "text-center text-g-muted"}`}>{cell}</td>
                     ))}

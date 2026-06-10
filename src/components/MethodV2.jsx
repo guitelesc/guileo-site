@@ -75,8 +75,8 @@ export default function MethodV2() {
                 {/* the message below the soil */}
                 <div className="mt-6 px-0.5" style={{ animation: `mvreveal .7s ease ${0.6 + i * 0.2}s both` }}>
                   <div className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider" style={{ borderColor: `rgba(${s.rgb},0.4)`, color: `rgb(${s.rgb})` }}>{harvest ? "🌾" : "🛠️"} {harvest ? M.phases[2] : M.phases[i === 0 ? 0 : 1]}</div>
-                  <div className="mt-2 text-[11px] font-bold uppercase tracking-wider text-g-muted">{s.when}</div>
-                  <h3 className="mt-0.5 text-[17px] font-black text-g-word sm:text-[18px]">{dictSteps[i]?.[1] || s.title}</h3>
+                  <div className="mt-2 text-[11px] font-bold uppercase tracking-wider text-g-ink">{s.when}</div>
+                  <h3 className="mt-1 font-black leading-[1.08] tracking-tight text-g-word" style={{ fontSize: "clamp(1.15rem,2vw,1.45rem)" }}>{dictSteps[i]?.[1] || s.title}</h3>
                   <p className="mx-auto mt-2 max-w-[15rem] text-[12.5px] leading-relaxed text-g-ink sm:text-[13px]">{dictSteps[i]?.[2] || s.desc}</p>
                   <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-g-line bg-white/[0.04] px-3 py-1 text-[11.5px] font-semibold" style={{ color: `rgb(${s.rgb})` }}>✓ {s.tag}</div>
                 </div>

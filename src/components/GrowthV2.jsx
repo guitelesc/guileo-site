@@ -95,9 +95,9 @@ export default function GrowthV2() {
         {/* stats + CTA */}
         <div className="mx-auto mt-10 grid max-w-2xl grid-cols-3 gap-4" style={{ animation: "grreveal .8s ease .5s both" }}>
           {STATS.map(([n, l]) => (
-            <div key={l} className="rounded-2xl border border-g-line bg-white/[0.03] p-4">
+            <div key={l} className="rounded-2xl border border-g-line bg-white/[0.03] p-4 transition-all duration-300 hover:-translate-y-1 hover:border-g-gold/35 hover:bg-white/[0.05] hover:shadow-[0_22px_50px_-28px_rgba(0,0,0,0.85)]">
               <div className="bg-gradient-to-r from-g-green to-g-gold bg-clip-text text-[28px] font-black text-transparent sm:text-[36px]">{n}</div>
-              <div className="mt-0.5 text-[12px] font-semibold uppercase tracking-wide text-g-muted">{l}</div>
+              <div className="mt-0.5 text-[12px] font-semibold uppercase tracking-wide text-g-ink">{l}</div>
             </div>
           ))}
         </div>

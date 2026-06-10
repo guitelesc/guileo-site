@@ -69,6 +69,7 @@ export default function ChannelsV2() {
         @keyframes chshine{to{background-position:220% center}}
         @keyframes chscroll{from{transform:translateY(0)}to{transform:translateY(-50%)}}
         @keyframes chpulse{0%,100%{opacity:.5}50%{opacity:1}}
+        @keyframes chfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
         @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}
       `}</style>
 
@@ -98,7 +99,7 @@ export default function ChannelsV2() {
         {/* RIGHT — phone lock-screen with streaming notifications */}
         <div className="relative mx-auto w-[330px] max-w-full" style={{ animation: "chreveal .9s ease .35s both" }}>
           <div className="pointer-events-none absolute -inset-10 bg-[radial-gradient(closest-side,rgba(62,148,104,0.18),transparent)] blur-2xl" />
-          <div className="relative rounded-[3rem] bg-gradient-to-b from-[#2a2a2a] to-[#0a0a0a] p-[8px] ring-1 ring-white/10 shadow-[0_60px_150px_-30px_rgba(0,0,0,0.9)]">
+          <div className="relative rounded-[3rem] bg-gradient-to-b from-[#2a2a2a] to-[#0a0a0a] p-[8px] ring-1 ring-white/10 shadow-[0_60px_150px_-30px_rgba(0,0,0,0.9)]" style={{ animation: "chfloat 7s ease-in-out 1.4s infinite" }}>
             <div className="relative overflow-hidden rounded-[2.6rem] bg-gradient-to-b from-[#10120f] to-[#0a0b08]">
               <div className="absolute left-1/2 top-2.5 z-20 h-6 w-28 -translate-x-1/2 rounded-full bg-black" />
               <div className="px-6 pb-3 pt-9 text-center">

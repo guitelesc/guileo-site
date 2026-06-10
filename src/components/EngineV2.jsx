@@ -46,7 +46,8 @@ export default function EngineV2() {
         @keyframes eshine{to{background-position:220% center}}
         @keyframes espin{to{transform:rotate(360deg)}}
         @keyframes eflow{0%{left:-8%;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:104%;opacity:0}}
-        @keyframes epulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(214,194,154,0.0)}50%{transform:scale(1.06);box-shadow:0 0 28px 4px rgba(214,194,154,0.25)}}
+        @keyframes epulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+        @keyframes efloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-7px) rotate(2deg)}}
         @keyframes eloop{to{stroke-dashoffset:-14}}
         @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}.espin{animation:none !important}}
       `}</style>
@@ -91,12 +92,14 @@ export default function EngineV2() {
             const on = i === act;
             return (
               <div key={s.n} className="relative">
-                <div className={`h-full rounded-2xl border p-5 transition-all duration-500 ${on ? "-translate-y-1 border-g-gold/50 bg-g-gold/[0.08] shadow-gold" : "border-g-line bg-white/[0.03]"}`}>
-                  <div className="flex items-center justify-between">
-                    <div className={`grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br text-2xl ring-1 drop-shadow-[0_2px_6px_rgba(0,0,0,0.45)] transition-all duration-500 ${on ? "from-g-gold/60 to-g-gold/20 ring-g-gold/50" : "from-white/[0.08] to-white/[0.02] ring-white/10"}`} style={on ? { animation: "epulse 1.9s ease-in-out infinite" } : undefined}>{s.icon}</div>
+                <div className={`h-full rounded-2xl border p-5 transition-all duration-500 hover:-translate-y-1 ${on ? "-translate-y-1 border-g-gold/50 bg-g-gold/[0.08] shadow-gold" : "border-g-line bg-white/[0.03] hover:border-g-gold/35 hover:bg-white/[0.05]"}`}>
+                  <div className="flex items-start justify-between">
+                    {/* free-floating emoji — no box tile, gold glow swells when active */}
+                    <span className="select-none text-[38px] leading-none transition-all duration-500"
+                      style={{ animation: `efloat ${3 + i * 0.5}s ease-in-out ${i * 0.4}s infinite${on ? ", epulse 1.9s ease-in-out infinite" : ""}`, filter: `drop-shadow(0 6px 14px rgba(214,194,154,${on ? 0.55 : 0.28}))` }}>{s.icon}</span>
                     <span className={`text-[28px] font-black transition-colors duration-500 ${on ? "text-g-gold/70" : "text-g-line"}`}>{s.n}</span>
                   </div>
-                  <div className="mt-4 text-[13.5px] font-black uppercase tracking-wide text-g-word">{dictSteps[i]?.[1] || s.title}</div>
+                  <div className="mt-3.5 font-black leading-[1.1] tracking-tight text-g-word" style={{ fontSize: "clamp(1.05rem,1.5vw,1.25rem)" }}>{dictSteps[i]?.[1] || s.title}</div>
                   <p className="mt-1.5 text-[12.5px] leading-snug text-g-ink">{dictSteps[i]?.[2] || s.desc}</p>
                   {(() => { const st = liveStat(i, n); return (
                     <div className="mt-3 flex items-baseline gap-1.5 border-t border-white/[0.08] pt-2.5">
