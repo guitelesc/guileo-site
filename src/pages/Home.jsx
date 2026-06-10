@@ -348,10 +348,9 @@ export default function Home() {
       <section id="try" className="relative px-5 py-16">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(700px_360px_at_50%_0%,rgba(62,148,104,0.10),transparent)]" />
         <div className="mx-auto mb-8 max-w-2xl text-center">
-          <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-green">Hear it for yourself</div>
+          <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-green">{t.numbers.calleyebrow}</div>
           <h2 className="mt-3 font-black leading-[0.98] tracking-tight" style={{ fontSize: "clamp(1.9rem,4vw,2.9rem)" }}>
-            <span className="text-g-word">Don't take our word — </span>
-            <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent">let Gui call you.</span>
+            <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent">{t.numbers.callh2}</span>
           </h2>
         </div>
         <LiveCall />
@@ -398,7 +397,7 @@ export default function Home() {
           <h2 className="h2">{t.more.comp.h2}</h2>
           <p className="mt-3 text-g-muted">{t.more.comp.sub}</p>
         </Reveal>
-        <p className="text-center text-[11px] text-g-muted mb-7">✅ = does it well · ⚠️ = partly · ❌ = not at all — <span className="text-g-light">scan the green column, that's Guileo</span></p>
+        <p className="text-center text-[11px] text-g-muted mb-7">{lang === "pt" ? "✅ = faz bem · ⚠️ = em parte · ❌ = não faz — " : lang === "es" ? "✅ = lo hace bien · ⚠️ = en parte · ❌ = no lo hace — " : lang === "hi" ? "✅ = अच्छे से करता है · ⚠️ = आंशिक · ❌ = बिल्कुल नहीं — " : "✅ = does it well · ⚠️ = partly · ❌ = not at all — "}<span className="text-g-light">{lang === "pt" ? "olhe a coluna verde, é a Guileo" : lang === "es" ? "mira la columna verde, es Guileo" : lang === "hi" ? "हरे कॉलम को देखें, वही Guileo है" : "scan the green column, that's Guileo"}</span></p>
         <Reveal>
           <div className="overflow-x-auto rounded-xl3 border border-white/15 bg-gradient-to-br from-white/[0.10] to-white/[0.05] backdrop-blur-xl shadow-lift">
             <table className="w-full text-sm min-w-[640px]">
@@ -465,7 +464,7 @@ export default function Home() {
         <Accordion items={t.faq.items} />
         <div className="mt-8 text-center">
           <button onClick={()=>{ const el=document.querySelector("elevenlabs-convai"); const b=el?.shadowRoot?.querySelector("button"); if(b)b.click(); }}
-            className="btn-bright inline-flex"><span className="relative flex h-2 w-2 mr-1"><span className="absolute inline-flex h-full w-full rounded-full bg-black/40 animate-ping" /><span className="relative inline-flex h-2 w-2 rounded-full bg-black/60" /></span>🎙️ Still have questions? Ask our live AI</button>
+            className="btn-bright inline-flex"><span className="relative flex h-2 w-2 mr-1"><span className="absolute inline-flex h-full w-full rounded-full bg-black/40 animate-ping" /><span className="relative inline-flex h-2 w-2 rounded-full bg-black/60" /></span>🎙️ {lang === "pt" ? "Ainda tem dúvidas? Fale com nossa IA ao vivo" : lang === "es" ? "¿Aún tienes dudas? Habla con nuestra IA en vivo" : lang === "hi" ? "अब भी सवाल हैं? हमारी लाइव AI से पूछें" : "Still have questions? Ask our live AI"}</button>
         </div>
       </section>
 

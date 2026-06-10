@@ -2,6 +2,8 @@
 // Powers welcome emails, new-lead alerts to the owner, and the daily lead digest.
 // Set RESEND_API_KEY (and optionally EMAIL_FROM) in Cloudflare Pages env to go live.
 // Without a key it no-ops gracefully (returns {ok:false, reason:"no key"}) so nothing breaks.
+import { isOwnerEmail } from "../lib/guard.js";
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
@@ -11,6 +13,9 @@ export async function onRequestPost(context) {
     const html = (body.html || body.text || "").toString();
     const text = (body.text || "").toString();
     if (!to || !html) return json({ ok: false, reason: "need to + html" }, 400);
+    // SECURITY: this endpoint sends arbitrary HTML — restrict the recipient to the owner so it
+    // can never be abused as an open phishing/spam relay from noreply@guileoai.com.
+    if (!isOwnerEmail(to, env)) return json({ ok: false, reason: "recipient not allowed" }, 403);
 
     const KEY = env.RESEND_API_KEY;
     // Default to Resend's instant test sender so it works before guileoai.com is DNS-verified.

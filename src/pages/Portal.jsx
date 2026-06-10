@@ -1052,6 +1052,7 @@ const PT_UI = {
   "Bookings handled": "Reservas atendidas",
   "Avg rating": "Avaliação média",
   "Appointments": "Consultas",
+  "Procedures": "Procedimentos",
   "Amount": "Valor",
   "Agent": "Agente",
   "Waiting": "Aguardando",

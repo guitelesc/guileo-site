@@ -19,7 +19,7 @@ export default function Footer() {
           <div className="md:col-span-3">
             <div className="text-xs font-bold uppercase tracking-wide text-g-light mb-3">{t.footer.company}</div>
             <ul className="space-y-2 text-sm text-white/70">
-              <li><a href="/#pillars" className="inline-block hover:text-white hover:translate-x-1 transition-all">{t.footer.solutions}</a></li>
+              <li><a href="/#industries" className="inline-block hover:text-white hover:translate-x-1 transition-all">{t.footer.solutions}</a></li>
               <li><a href="/servicos" className="inline-block hover:text-white hover:translate-x-1 transition-all">{t.footer.svc}</a></li>
               <li><a href="/#academy" className="inline-block hover:text-white hover:translate-x-1 transition-all">{t.footer.academy}</a></li>
               <li><a href="/#faq" className="inline-block hover:text-white hover:translate-x-1 transition-all">{t.footer.faq}</a></li>

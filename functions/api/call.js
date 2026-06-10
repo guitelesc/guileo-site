@@ -5,14 +5,20 @@
 // FALLBACK: Vapi (VAPI_API_KEY, VAPI_ASSISTANT_ID, VAPI_PHONE_NUMBER_ID).
 // The caller's context (name/business/industry/need/lang) is passed as dynamic variables so the
 // agent greets by name and acts on it — reference {{name}} {{business}} {{need}} in the prompt.
+import { sameOrigin } from "../lib/guard.js";
+
 const ELEVEN_AGENT_ID = "agent_5901ktdkev68f5kb161fmeax1rdm";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
+    // SECURITY: outbound calls cost real money — only our own site may trigger them, and the
+    // number must be a valid E.164 phone (blocks abuse / robocalling arbitrary numbers).
+    if (!sameOrigin(request)) return json({ error: "forbidden" }, 403);
     const body = await request.json();
     const phone = (body.phone || "").toString().trim();
     if (!phone) return json({ error: "Missing phone" }, 400);
+    if (!/^\+?[1-9]\d{7,14}$/.test(phone.replace(/[\s()-]/g, ""))) return json({ error: "Invalid phone" }, 400);
 
     const vars = {
       name: (body.name || "").toString().slice(0, 120),

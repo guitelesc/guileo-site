@@ -19,6 +19,7 @@ const Proposta = lazy(() => import("./pages/Proposta")); // tailored proposal â†
 const Parceiro = lazy(() => import("./pages/Parceiro")); // Growth Partner recruiting deck
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
+const WebsiteGrader = lazy(() => import("./pages/WebsiteGrader")); // lead magnet: website audit â†’ lead
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="/quiz" element={<Quiz />} />
             <Route path="/calculator" element={<Calculator />} />
             <Route path="/partners" element={<Partners />} />
+            <Route path="/grader" element={<WebsiteGrader />} />
             <Route path="/leads" element={<LeadsInbox />} />
             <Route path="/v2" element={<LandingV2 />} />
             <Route path="/admin" element={<Admin />} />

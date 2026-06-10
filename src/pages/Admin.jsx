@@ -34,6 +34,20 @@ export default function Admin() {
   const [state, setState] = useState("loading");
   const [clients, setClients] = useState([]);
   const [clientsState, setClientsState] = useState("loading"); // loading | ok | err
+  const [sentMap, setSentMap] = useState({}); // `${id}:${step}` -> "sending" | "ok" | "err"
+
+  // 1-click: send a branded nurture email (welcome/proof/proposal/reengage) to a lead.
+  const nurture = async (r, step) => {
+    const to = (r.contact || "").trim();
+    if (!to.includes("@")) return;
+    const k = `${r.id}:${step}`;
+    setSentMap((m) => ({ ...m, [k]: "sending" }));
+    try {
+      const res = await fetch("/api/nurture", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to, name: r.name || "there", business: r.business || "your business", lang: "pt", step }) });
+      const d = await res.json().catch(() => ({}));
+      setSentMap((m) => ({ ...m, [k]: d.ok ? "ok" : "err" }));
+    } catch { setSentMap((m) => ({ ...m, [k]: "err" })); }
+  };
 
   useEffect(() => {
     if (!unlocked) return;
@@ -135,6 +149,19 @@ export default function Admin() {
                   <div className="text-[13px] font-bold text-g-word">{LABEL[r.action] || r.action}{r.name ? ` · ${r.name}` : ""}</div>
                   <div className="text-[12px] text-g-muted">{[r.business, r.slot, r.details, r.amount && `$${r.amount}`].filter(Boolean).join(" · ")}</div>
                   {r.contact && <div className="text-[11px] text-g-muted/80">{r.contact}</div>}
+                  {String(r.contact || "").includes("@") && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {[["welcome", "👋 Boas-vindas"], ["proof", "📊 Prova"], ["proposal", "💼 Proposta"], ["reengage", "🔁 Re-engaja"]].map(([step, label]) => {
+                        const st = sentMap[`${r.id}:${step}`];
+                        return (
+                          <button key={step} onClick={() => nurture(r, step)} disabled={st === "sending" || st === "ok"}
+                            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${st === "ok" ? "border-g-green/40 bg-g-green/10 text-g-green" : st === "err" ? "border-[#e0855f]/40 text-[#e0855f]" : "border-g-line bg-white/[0.04] text-g-ink hover:text-g-word hover:border-g-green/40"}`}>
+                            {st === "sending" ? "…" : st === "ok" ? "✓ enviado" : st === "err" ? "✕ erro" : label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
                 <span className="whitespace-nowrap text-[11px] text-g-muted">{timeAgo(r.created_at)}</span>
               </div>

@@ -7,6 +7,12 @@
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
+    // SECURITY: this webhook records bookings/sales/leads — require a shared secret so nobody can
+    // forge actions. Secure-by-default: if AGENT_ACTION_SECRET isn't configured, reject everything.
+    // When connecting ElevenLabs Tools → Webhook, set AGENT_ACTION_SECRET and pass it as the
+    // `x-guileo-secret` header (or ?secret= query) in the tool config.
+    const provided = request.headers.get("x-guileo-secret") || new URL(request.url).searchParams.get("secret") || "";
+    if (!env.AGENT_ACTION_SECRET || provided !== env.AGENT_ACTION_SECRET) return json({ error: "unauthorized" }, 401);
     const b = await request.json();
     const s = (v, n = 200) => (v == null ? "" : v.toString().slice(0, n));
     const action = s(b.action || "lead", 40);

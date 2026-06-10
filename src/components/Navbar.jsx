@@ -85,7 +85,7 @@ export default function Navbar() {
         </div>
         {/* right — language, experience, cockpit, CTA */}
         <div className="flex shrink-0 items-center gap-2">
-          <div className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-1 py-1 ring-1 ring-white/[0.04] backdrop-blur-md xl:flex">
+          <div className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-1 py-1 ring-1 ring-white/[0.04] backdrop-blur-md lg:flex">
             {LANGS.map(([code, flag]) => (
               <button key={code} onClick={() => setLang(code)} title={code.toUpperCase()} aria-label={code.toUpperCase()} aria-pressed={lang === code}
                 className={`h-7 w-7 rounded-full text-sm transition ${lang === code ? "scale-110 bg-g-green/15 ring-1 ring-g-green/30" : "opacity-60 hover:opacity-100"}`}>{flag}</button>

@@ -27,6 +27,10 @@ const B = {
   green: "#5a8f6f",      // muted graphite-green — DETAIL ONLY
 };
 
+// SECURITY: HTML-escape any attacker-controllable field (name/business/lead text) before it is
+// interpolated into the email HTML or subject — prevents script/markup injection into branded mail.
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
 // Responsive + render-quality rules. Email clients that honor <style> (Apple Mail, Gmail app,
 // most modern webmail) get full mobile stacking; the rest fall back to the inline CSS gracefully.
 const HEAD_STYLE = `
@@ -118,6 +122,7 @@ function panel(inner, pad = "18px 20px") {
 
 // 1) WELCOME EMAIL — new business owner just signed up.
 export function welcomeEmail({ name = "there", business = "your business", lang = "en" } = {}) {
+  name = esc(name); business = esc(business);
   const t = lang === "pt" ? {
     subject: `Bem-vindo à Guileo, ${name} 🌱`,
     pre: `O Gui está configurado para ${business}. Veja como começar.`,
@@ -177,6 +182,8 @@ export function welcomeEmail({ name = "there", business = "your business", lang 
 
 // 2) DAILY LEAD DIGEST — owner's morning brief of qualified leads.
 export function dailyLeadsEmail({ name = "there", dateLabel = "Today", leads = [], lang = "en" } = {}) {
+  name = esc(name); dateLabel = esc(dateLabel);
+  leads = (Array.isArray(leads) ? leads : []).map((l) => ({ heat: l.heat, name: esc(l.name), channel: esc(l.channel), want: esc(l.want), action: esc(l.action) }));
   const t = lang === "pt" ? {
     eyebrow: "Resumo de leads do dia", h1: "Seus leads", intro1: `Bom dia ${name} — aqui está quem o Gui capturou e qualificou enquanto você estava ocupado.`, intro2: "Nada escapou.",
     sNew: "Novos leads", sHot: "Quentes", sDone: "Respondidos", cta: "Ver todos os leads →", cta2: "Abrir painel 🚀",
@@ -238,6 +245,7 @@ export function dailyLeadsEmail({ name = "there", dateLabel = "Today", leads = [
 
 // 3) PROPOSAL / SERVICES EMAIL — "what Guileo can do for you": services + ideas + a proposal CTA.
 export function proposalEmail({ name = "there", business = "your business", lang = "en" } = {}) {
+  name = esc(name); business = esc(business);
   const t = lang === "pt" ? {
     subject: `${name}, o que a Guileo pode fazer por ${business} 🌱`,
     pre: `Atendimento IA, anúncios, conteúdo, site, automação — ideias prontas pra ${business}.`,
@@ -319,4 +327,135 @@ export function proposalEmail({ name = "there", business = "your business", lang
   <div align="center">${cta2(t.cta2, B.site)}</div>
   <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
   return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body }) };
+}
+
+// 4) PROOF EMAIL (drip day ~2) — "what Gui already does for businesses like yours".
+export function proofEmail({ name = "there", business = "your business", lang = "en" } = {}) {
+  name = esc(name); business = esc(business);
+  const t = lang === "pt" ? {
+    subject: `${name}, veja o que o Gui faz por negócios como o seu`,
+    pre: `Atende, agenda e fecha 24/7 — enquanto você cuida do resto.`,
+    eyebrow: "Prova · resultados reais",
+    h1: `O que o Gui já faz, ${name}`,
+    intro: `Você não precisa imaginar — é isto que o Gui faz todo dia por negócios como <span style="color:${B.ink};font-weight:600;">${business}</span>:`,
+    points: [
+      ["📞", "Atende toda ligação", "Mesmo às 21h, fim de semana, feriado — nenhuma chamada vira caixa postal."],
+      ["📅", "Agenda sozinho", "Marca, confirma e lembra — a agenda enche sem você."],
+      ["💬", "Faz follow-up", "Responde no WhatsApp em segundos e recupera o cliente que ia embora."],
+      ["📈", "Vira dado pro marketing", "Cada conversa alimenta os anúncios — você cresce com o que já tem."],
+    ],
+    stat: "Em pilotos: 0 ligações perdidas · agenda mais cheia · clientes recuperados no automático.",
+    cta: "Ver o Gui ao vivo →",
+    cta2: "Quero pro meu negócio →",
+    foot: "Responda este email — em 10 minutos te mostro funcionando no seu caso.",
+  } : {
+    subject: `${name}, see what Gui does for businesses like yours`,
+    pre: `Answers, books and closes 24/7 — while you handle the rest.`,
+    eyebrow: "Proof · real results",
+    h1: `What Gui already does, ${name}`,
+    intro: `You don't have to imagine it — here's what Gui does every day for businesses like <span style="color:${B.ink};font-weight:600;">${business}</span>:`,
+    points: [
+      ["📞", "Answers every call", "Even at 9 PM, weekends, holidays — no call goes to voicemail."],
+      ["📅", "Books on its own", "Schedules, confirms and reminds — the calendar fills without you."],
+      ["💬", "Follows up", "Replies on WhatsApp in seconds and wins back the client who was leaving."],
+      ["📈", "Feeds your marketing", "Every conversation fuels the ads — you grow with what you already have."],
+    ],
+    stat: "In pilots: 0 missed calls · fuller calendar · customers won back on autopilot.",
+    cta: "See Gui live →",
+    cta2: "I want this for my business →",
+    foot: "Reply to this email — in 10 minutes I'll show it working for your case.",
+  };
+  const pt_ = ([ic, ti, de]) => `<tr><td style="padding:7px 0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td width="44" valign="top"><div style="width:34px;height:34px;border-radius:10px;background:${B.panel2};border:1px solid ${B.line};box-shadow:inset 0 1px 0 ${B.edge};font-size:17px;text-align:center;line-height:34px;">${ic}</div></td>
+    <td valign="top" style="font-family:'Segoe UI',Arial,sans-serif;padding-left:6px;"><div style="font-size:14px;font-weight:700;color:${B.ink};">${ti}</div><div style="font-size:12.5px;color:${B.muted};line-height:1.55;margin-top:2px;">${de}</div></td></tr></table></td></tr>`;
+  const body = `
+  <div class="g-h1" style="font-size:25px;font-weight:800;color:${B.ink};line-height:1.22;letter-spacing:-.3px;">${t.h1}&nbsp;<span style="color:${B.green};">🌱</span></div>
+  <div class="g-intro" style="font-size:15px;color:${B.ink2};line-height:1.7;margin-top:12px;">${t.intro}</div>
+  <div style="height:16px;line-height:16px;font-size:0;">&nbsp;</div>
+  ${panel(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${t.points.map(pt_).join("")}</table>`)}
+  <div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div>
+  <div style="font-size:13px;color:${B.gold};text-align:center;font-family:'Segoe UI',Arial,sans-serif;font-weight:600;">${t.stat}</div>
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(t.cta, B.site + "/#try")}</div>
+  <div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta2(t.cta2, B.site + "/marketing")}</div>
+  <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body }) };
+}
+
+// 5) RE-ENGAGE EMAIL (drip day ~7) — bring a cold lead back to the quiz.
+export function reengageEmail({ name = "there", business = "your business", lang = "en" } = {}) {
+  name = esc(name); business = esc(business);
+  const t = lang === "pt" ? {
+    subject: `${name}, seu AI Growth Score está te esperando`,
+    pre: `60 segundos pra ver quanto ${business} está deixando na mesa.`,
+    eyebrow: "Última chamada · grátis",
+    h1: `Ainda dá tempo, ${name}`,
+    intro: `Em <span style="color:${B.ink};font-weight:600;">60 segundos</span> você descobre exatamente quanto ${business} está perdendo por mês com ligações e leads que escapam — e o plano pra resolver. De graça, sem compromisso.`,
+    cta: "Fazer meu Growth Score →",
+    cta2: "Falar com um humano →",
+    foot: "Se não for a hora, sem problema — respondo qualquer dúvida por aqui.",
+  } : {
+    subject: `${name}, your AI Growth Score is waiting`,
+    pre: `60 seconds to see what ${business} is leaving on the table.`,
+    eyebrow: "Last call · free",
+    h1: `There's still time, ${name}`,
+    intro: `In <span style="color:${B.ink};font-weight:600;">60 seconds</span> you'll see exactly how much ${business} loses each month to missed calls and slipping leads — and the plan to fix it. Free, no strings.`,
+    cta: "Get my Growth Score →",
+    cta2: "Talk to a human →",
+    foot: "If now's not the time, no worries — reply here with any question.",
+  };
+  const body = `
+  <div class="g-h1" style="font-size:26px;font-weight:800;color:${B.ink};line-height:1.22;letter-spacing:-.3px;">${t.h1}&nbsp;<span style="color:${B.green};">🌱</span></div>
+  <div class="g-intro" style="font-size:15px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
+  <div style="height:24px;line-height:24px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(t.cta, B.site + "/quiz")}</div>
+  <div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta2(t.cta2, B.site + "/#try")}</div>
+  <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body }) };
+}
+
+// 6) LINKS HUB — branded "all your links" email for Luis / partners (the V1 screen feel).
+export function linksEmail({ name = "Luis", lang = "pt" } = {}) {
+  const pt = lang === "pt";
+  const row = (href, icon, label, sub) => `
+    <tr><td style="padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+      <a href="${href}" style="text-decoration:none;display:block;">
+        <span style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;color:${B.ink};">${icon}&nbsp; ${esc(label)}</span>
+        <span style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:11.5px;color:${B.muted};">&nbsp;·&nbsp;${esc(sub)}</span>
+      </a>
+    </td></tr>`;
+  const group = (title, rows) => panel(`
+    <div style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:${B.gold};padding-bottom:6px;">${title}</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>`);
+  const body = `
+    <h1 class="g-h1" style="margin:0 0 8px 0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:27px;line-height:1.2;font-weight:800;color:${B.ink};">${pt ? `Seus acessos, ${esc(name)}` : `Your links, ${esc(name)}`} <span style="color:${B.gold};">🌱</span></h1>
+    <p class="g-intro" style="margin:0 0 18px 0;font-family:'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:${B.ink2};">${pt ? "Tudo no ar em <b style='color:" + B.ink + "'>guileoai.com</b> — salve este e-mail." : "Everything live on <b style='color:" + B.ink + "'>guileoai.com</b> — keep this email handy."}</p>
+    ${group(pt ? "🌐 Vender" : "🌐 Sell", [
+      row(`${B.site}/pitch`, "🎤", pt ? "Pitch do cliente" : "Client pitch", pt ? "apresentação ≤20min" : "≤20-min deck"),
+      row(`${B.site}/proposta?to=Cliente&price=1497&recover=3900`, "📄", pt ? "Proposta" : "Proposal", pt ? "personalizada por link" : "URL-personalized"),
+      row(`${B.site}/parceiro`, "🤝", "Growth Partner", pt ? "deck de recrutamento" : "recruiting deck"),
+    ].join(""))}
+    <div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div>
+    ${group(pt ? "🧲 Captar" : "🧲 Capture", [
+      row(`${B.site}/quiz`, "🎯", "AI Growth Score", pt ? "quiz que vira lead" : "lead-gen quiz"),
+      row(`${B.site}/calculator`, "🧮", pt ? "Calculadora" : "Calculator", pt ? "receita perdida/mês" : "missed revenue/mo"),
+      row(`${B.site}/partners`, "📈", pt ? "Parceiros" : "Partners", pt ? "ganhos do revendedor" : "reseller earnings"),
+    ].join(""))}
+    <div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div>
+    ${group(pt ? "🔒 Operar (você)" : "🔒 Operate (you)", [
+      row(`${B.site}/admin`, "🛠️", "Admin", pt ? "comando central · leads" : "command center · leads"),
+      row(`${B.portal}`, "📊", "Growth Cockpit", pt ? "o produto do cliente" : "the client product"),
+      row(`${B.site}/admin/contratos`, "📜", pt ? "Contratos" : "Contracts", pt ? "10 modelos + cláusulas" : "10 models + clauses"),
+      row(`${B.site}/live`, "🟢", pt ? "Ao vivo" : "Live", pt ? "atividade da Gui" : "Gui activity"),
+    ].join(""))}
+    <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+    ${cta(pt ? "Abrir o site →" : "Open the site →", B.site)}
+    <div style="height:10px;line-height:10px;font-size:0;">&nbsp;</div>
+    ${cta2(pt ? "📊 Growth Cockpit" : "📊 Growth Cockpit", B.portal)}`;
+  return {
+    subject: pt ? `🌱 Guileo — seus acessos (site, pitch, proposta, admin)` : `🌱 Guileo — your links`,
+    html: shell({ preheader: pt ? "Todos os seus links Guileo, num lugar só." : "All your Guileo links in one place.", body }),
+  };
 }

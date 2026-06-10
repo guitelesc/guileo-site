@@ -5,6 +5,7 @@
 //   POST /api/daily-digest  { to, lang, token }
 // If DIGEST_TOKEN is set in env, the request must include a matching token (so randoms can't trigger it).
 import { dailyLeadsEmail } from "../lib/emailTemplates.js";
+import { isOwnerEmail } from "../lib/guard.js";
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -18,6 +19,9 @@ export async function onRequest(context) {
     if (env.DIGEST_TOKEN && q("token") !== env.DIGEST_TOKEN) return json({ ok: false, error: "unauthorized" }, 401);
 
     const to = (q("to") || env.OWNER_EMAIL || "smart@guileoai.com").toString().trim();
+    // SECURITY: the digest leaks the last 24h of lead data — only deliver to the owner's inbox,
+    // so a caller can't exfiltrate leads to an arbitrary address.
+    if (!isOwnerEmail(to, env)) return json({ ok: false, error: "recipient not allowed" }, 403);
     const lang = q("lang") === "pt" ? "pt" : "en";
     const name = (q("name") || "there").toString().slice(0, 80);
 

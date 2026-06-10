@@ -134,9 +134,9 @@ export default function LiveCall() {
           </div>
 
           <motion.button whileTap={{ scale: 0.98 }} disabled={state === "calling"} className="btn-bright text-base disabled:opacity-70">
-            {state === "calling" ? "Connecting…" : "📞 Call me with AI →"}
+            {state === "calling" ? L.connecting : L.call}
           </motion.button>
-          <p className="text-[11px] text-g-muted text-center">No spam. One call to prove it works. Opt out anytime.</p>
+          <p className="text-[11px] text-g-muted text-center">{L.privacy}</p>
         </form>
       )}
     </div>

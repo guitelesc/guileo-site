@@ -2,9 +2,13 @@
 // Leads ALWAYS land in the gui_actions store (the same feed /admin and /live read), so Luis
 // sees every lead and can close it. Optionally also forwards to LEAD_WEBHOOK (Zapier/Sheet/CRM)
 // and a Supabase `leads` table.
+import { sameOrigin } from "../lib/guard.js";
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
+    // SECURITY: only our own site forms may post leads (blocks header-less curl spam of junk rows).
+    if (!sameOrigin(request)) return json({ error: "forbidden" }, 403);
     const body = await request.json();
     const s = (v, n = 200) => (v == null ? "" : v.toString().slice(0, n));
     const lead = {
