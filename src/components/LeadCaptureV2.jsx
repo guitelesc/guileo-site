@@ -22,6 +22,7 @@ export default function LeadCaptureV2() {
   const [val, setVal] = useState("");
   const [biz, setBiz] = useState("");
   const [status, setStatus] = useState("idle"); // idle | sending | done
+  const [website, setWebsite] = useState(""); // honeypot — hidden from humans
 
   async function submit(e) {
     e.preventDefault();
@@ -32,7 +33,7 @@ export default function LeadCaptureV2() {
       await fetch("/api/lead", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, channel: c.k, contact: val, phone: /phone|whatsapp/i.test(c.k) ? val : "", email: c.k === "Email" ? val : "", business: biz, source: "v2-lead" }),
+        body: JSON.stringify({ name, channel: c.k, contact: val, phone: /phone|whatsapp/i.test(c.k) ? val : "", email: c.k === "Email" ? val : "", business: biz, website, source: "v2-lead" }),
       });
     } catch { /* never block the user */ }
     setStatus("done");
@@ -63,6 +64,10 @@ export default function LeadCaptureV2() {
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-4">
+            {/* honeypot: invisible to humans, bots auto-fill it → server silently drops */}
+            <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true"
+              value={website} onChange={(e) => setWebsite(e.target.value)}
+              style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }} />
             <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Your name" className="w-full rounded-xl border border-g-line bg-white/[0.05] px-4 py-3 text-[15px] text-g-word placeholder:text-g-muted focus:border-g-green/50 focus:outline-none" />
 
             <div>

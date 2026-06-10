@@ -28,6 +28,7 @@ export default function LeadForm({ source = "website" }) {
   const [contact, setContact] = useState("");
   const [biz, setBiz] = useState("");
   const [state, setState] = useState("idle"); // idle | sending | done
+  const [website, setWebsite] = useState(""); // honeypot — real users never see/fill this
 
   const toWhatsApp = () => {
     const msg = `${L.wamsg}\n\n👤 ${name}\n📨 ${ch}: ${contact}\n🏢 ${biz}`;
@@ -37,7 +38,7 @@ export default function LeadForm({ source = "website" }) {
   const submit = async (e) => {
     e.preventDefault();
     setState("sending");
-    const payload = { name, business: biz, source, lang, channel: ch, message: `Preferred channel: ${ch} → ${contact}` };
+    const payload = { name, business: biz, source, lang, channel: ch, website, message: `Preferred channel: ${ch} → ${contact}` };
     if (ch === "email") payload.email = contact; else payload.phone = contact;
     try {
       const r = await fetch("/api/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -60,6 +61,10 @@ export default function LeadForm({ source = "website" }) {
 
   return (
     <form onSubmit={submit} className="grid gap-3">
+      {/* honeypot: hidden from humans, bots auto-fill it → server silently drops the submission */}
+      <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true"
+        value={website} onChange={(e) => setWebsite(e.target.value)}
+        style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }} />
       <input required value={name} onChange={(e) => setName(e.target.value)} aria-label={L.name}
         placeholder={L.name}
         className="rounded-full border border-white/20 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70 transition" />

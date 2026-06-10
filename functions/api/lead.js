@@ -10,6 +10,9 @@ export async function onRequestPost(context) {
     // SECURITY: only our own site forms may post leads (blocks header-less curl spam of junk rows).
     if (!sameOrigin(request)) return json({ error: "forbidden" }, 403);
     const body = await request.json();
+    // Honeypot: a hidden "website" field that real users never see/fill. If a bot fills it, pretend
+    // success but DON'T store — keeps junk out of the lead store without tipping off the bot.
+    if ((body.website || "").toString().trim()) return json({ ok: true, stored: false });
     const s = (v, n = 200) => (v == null ? "" : v.toString().slice(0, n));
     const lead = {
       name: s(body.name, 120),

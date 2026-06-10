@@ -1,13 +1,18 @@
-// BuildAllV2 — TEST (/v2): "Everything we build" — 60+ done-for-you services & products
-// as two opposite-scrolling marquees so people grasp the full breadth at a glance.
+// BuildAllV2 — "Everything we build" — 60+ done-for-you services & products,
+// ORGANIZED into 4 labeled category clusters (AI Agents · Websites & Apps ·
+// Software & Automations · Growth & Marketing) so the breadth reads instantly.
 // One team, one bill, zero handoffs. Guileo design system + smooth CSS motion.
 import { useLang } from "../i18n.jsx";
 
 const BV_COPY = {
-  en: { eyebrow:"★ Everything we build", h1a:"From your first website ", h1b:"to your final sale.", subA:"60+ done-for-you", subB:" services & products — one team, one bill, ", subC:"zero handoffs", cta:"Browse all services" },
-  pt: { eyebrow:"★ Tudo o que construímos", h1a:"Do seu primeiro site ", h1b:"até a sua venda final.", subA:"60+ feitos pra você", subB:" — serviços & produtos · um time, uma conta, ", subC:"zero burocracia", cta:"Ver todos os serviços" },
-  es: { eyebrow:"★ Todo lo que construimos", h1a:"De tu primera web ", h1b:"a tu venta final.", subA:"60+ hechos para ti", subB:" — servicios & productos · un equipo, una factura, ", subC:"cero traspasos", cta:"Ver todos los servicios" },
-  hi: { eyebrow:"★ हम जो कुछ बनाते हैं", h1a:"आपकी पहली वेबसाइट से ", h1b:"आपकी आख़िरी बिक्री तक।", subA:"60+ रेडी", subB:" सेवाएँ & प्रोडक्ट — एक टीम, एक बिल, ", subC:"ज़ीरो झंझट", cta:"सभी सेवाएँ देखें" },
+  en: { eyebrow:"★ Everything we build", h1a:"From your first website ", h1b:"to your final sale.", subA:"60+ done-for-you", subB:" services & products — one team, one bill, ", subC:"zero handoffs", cta:"Browse all services",
+    cats:["AI Agents","Websites & Apps","Software & Automations","Growth & Marketing"] },
+  pt: { eyebrow:"★ Tudo o que construímos", h1a:"Do seu primeiro site ", h1b:"até a sua venda final.", subA:"60+ feitos pra você", subB:" — serviços & produtos · um time, uma conta, ", subC:"zero burocracia", cta:"Ver todos os serviços",
+    cats:["Agentes de IA","Sites & Apps","Software & Automações","Crescimento & Marketing"] },
+  es: { eyebrow:"★ Todo lo que construimos", h1a:"De tu primera web ", h1b:"a tu venta final.", subA:"60+ hechos para ti", subB:" — servicios & productos · un equipo, una factura, ", subC:"cero traspasos", cta:"Ver todos los servicios",
+    cats:["Agentes de IA","Webs & Apps","Software & Automatizaciones","Crecimiento & Marketing"] },
+  hi: { eyebrow:"★ हम जो कुछ बनाते हैं", h1a:"आपकी पहली वेबसाइट से ", h1b:"आपकी आख़िरी बिक्री तक।", subA:"60+ रेडी", subB:" सेवाएँ & प्रोडक्ट — एक टीम, एक बिल, ", subC:"ज़ीरो झंझट", cta:"सभी सेवाएँ देखें",
+    cats:["AI एजेंट","वेबसाइट & ऐप्स","सॉफ़्टवेयर & ऑटोमेशन","ग्रोथ & मार्केटिंग"] },
 };
 
 const ITEMS = [
@@ -25,23 +30,14 @@ const ITEMS = [
   { i: "📈", t: "Growth & analytics" },
 ];
 
-function Chip({ it }) {
-  return (
-    <div className="group flex shrink-0 items-center gap-2.5 rounded-xl border border-g-line bg-white/[0.035] px-4 py-2.5 transition-colors duration-300 hover:border-g-green/40 hover:bg-white/[0.06]">
-      <span className="text-xl transition-transform duration-300 group-hover:scale-110">{it.i}</span>
-      <span className="whitespace-nowrap text-[13.5px] font-semibold text-g-ink">{it.t}</span>
-    </div>
-  );
-}
-
-function Row({ dir = "l", speed = 38, items = ITEMS }) {
-  const list = [...items, ...items];
-  return (
-    <div className="flex w-max gap-3" style={{ animation: `${dir === "l" ? "bscrollL" : "bscrollR"} ${speed}s linear infinite` }}>
-      {list.map((it, i) => <Chip key={i} it={it} />)}
-    </div>
-  );
-}
+// Category clusters — indices into the (i18n) items list. Every item stays; we only group.
+// AI Agents → Brain · Websites & Apps + Software & Automations → Build · Growth & Marketing → AD.
+const CATS = [
+  { emoji: "🤖", leg: "Guileo Brain", rgb: "62,148,104",  text: "text-g-green",      chip: "border-g-green/30 bg-g-green/[0.08] hover:border-g-green/55 hover:bg-g-green/[0.14]",          idx: [0, 1] },
+  { emoji: "🌐", leg: "Guileo Build", rgb: "78,157,176",  text: "text-[#4E9DB0]",    chip: "border-[#4E9DB0]/30 bg-[#4E9DB0]/[0.08] hover:border-[#4E9DB0]/55 hover:bg-[#4E9DB0]/[0.14]", idx: [2, 3, 7] },
+  { emoji: "⚙️", leg: "Guileo Build", rgb: "214,194,154", text: "text-g-gold",       chip: "border-g-gold/30 bg-g-gold/[0.08] hover:border-g-gold/55 hover:bg-g-gold/[0.14]",              idx: [4, 8, 6, 9] },
+  { emoji: "📈", leg: "Guileo.AD",    rgb: "194,168,120", text: "text-g-copper",     chip: "border-g-copper/35 bg-g-copper/[0.08] hover:border-g-copper/60 hover:bg-g-copper/[0.14]",      idx: [5, 10, 11] },
+];
 
 export default function BuildAllV2() {
   const { t, lang } = useLang();
@@ -53,8 +49,7 @@ export default function BuildAllV2() {
       <style>{`
         @keyframes breveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
         @keyframes bshine{to{background-position:220% center}}
-        @keyframes bscrollL{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-        @keyframes bscrollR{from{transform:translateX(-50%)}to{transform:translateX(0)}}
+        @keyframes bfloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-8px) rotate(3deg)}}
         @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}
       `}</style>
 
@@ -69,13 +64,41 @@ export default function BuildAllV2() {
         </p>
       </div>
 
-      {/* two opposite marquees */}
-      <div className="relative mt-10 space-y-3 [mask-image:linear-gradient(to_right,transparent,#000_8%,#000_92%,transparent)]" style={{ animation: "breveal .8s ease .4s both" }}>
-        <Row dir="l" speed={40} items={items} />
-        <Row dir="r" speed={48} items={items} />
+      {/* 4 labeled category clusters — what we build, organized */}
+      <div className="mx-auto mt-10 grid max-w-5xl gap-4 sm:grid-cols-2">
+        {CATS.map((c, ci) => (
+          <div key={c.emoji}
+            className="group relative flex flex-col overflow-hidden rounded-2xl border border-g-line bg-white/[0.03] p-6 transition-all duration-300 hover:-translate-y-1 hover:bg-white/[0.05] shadow-[0_18px_46px_-30px_rgba(0,0,0,0.85)]"
+            style={{ animation: `breveal .7s cubic-bezier(.2,.7,.2,1) ${0.35 + ci * 0.12}s both`, "--cat": c.rgb }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = `rgba(${c.rgb},0.45)`; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = ""; }}>
+            {/* soft accent halo */}
+            <span className="pointer-events-none absolute -right-12 -top-14 h-36 w-36 rounded-full blur-3xl" style={{ background: `rgba(${c.rgb},0.10)` }} />
+            <div className="relative flex items-start gap-4">
+              {/* free-floating emoji — no box tile, colored drop-shadow glow */}
+              <span className="shrink-0 select-none text-[42px] leading-none transition-transform duration-300 group-hover:scale-110"
+                style={{ animation: `bfloat ${3.2 + ci * 0.6}s ease-in-out ${ci * 0.45}s infinite`, filter: `drop-shadow(0 6px 14px rgba(${c.rgb},0.45))` }}>{c.emoji}</span>
+              <div className="min-w-0">
+                {/* small colored tag eyebrow ABOVE the big free title */}
+                <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${c.text}`}>
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: `rgb(${c.rgb})` }} />{c.leg}
+                </span>
+                <h3 className="mt-1.5 font-black leading-[1.08] tracking-tight text-g-word" style={{ fontSize: "clamp(1.15rem,2vw,1.45rem)" }}>{B.cats[ci]}</h3>
+              </div>
+            </div>
+            {/* consistent chips — the items in this category */}
+            <div className="relative mt-4 flex flex-wrap gap-2">
+              {c.idx.map((k) => items[k] && (
+                <span key={k} className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold text-g-word transition-all duration-300 hover:-translate-y-0.5 ${c.chip}`}>
+                  <span className="text-base">{items[k].i}</span>{items[k].t}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
 
-      <div className="mt-10 text-center" style={{ animation: "breveal .8s ease .6s both" }}>
+      <div className="mt-10 text-center" style={{ animation: "breveal .8s ease .8s both" }}>
         <a href="/servicos" className="inline-flex items-center gap-2 rounded-full border border-g-line bg-white/[0.04] px-6 py-3 text-[14px] font-bold text-g-word transition hover:border-g-green/40 hover:bg-white/[0.07]">
           {B.cta} <span className="text-g-green">→</span>
         </a>

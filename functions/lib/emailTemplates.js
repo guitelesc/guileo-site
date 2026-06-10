@@ -123,6 +123,16 @@ function panel(inner, pad = "18px 20px") {
     <tr><td style="padding:${pad};">${inner}</td></tr></table>`;
 }
 
+
+// H1-AS-IMAGE — pixel-perfect site lettering (real Inter 900 + green→champagne gradient) in EVERY
+// client incl. Gmail (which strips webfonts). PNGs live in public/email/h1-*.png (@2x, transparent).
+// alt = the full headline text (accessibility + images-off fallback). `sub` = the personalized bit.
+const H1W = { "welcome-pt":522,"welcome-en":502,"digest-pt":496,"digest-en":370,"proposal-pt":475,"proposal-en":357,"proof-pt":450,"proof-en":520,"reengage-pt":420,"reengage-en":443,"links-pt":371,"links-en":266 };
+function h1img(key, lang, alt, sub = "") {
+  const k = `${key}-${lang === "pt" ? "pt" : "en"}`;
+  return `<img src="${B.site}/email/h1-${k}.png" width="${Math.min(H1W[k] || 460, 520)}" alt="${esc(alt)}" style="display:block;max-width:100%;height:auto;border:0;" />`
+    + (sub ? `<div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;font-weight:800;letter-spacing:.2px;color:${B.gold};margin-top:10px;">${sub}</div>` : "");
+}
 // 1) WELCOME EMAIL — new business owner just signed up.
 export function welcomeEmail({ name = "there", business = "your business", lang = "en" } = {}) {
   name = esc(name); business = esc(business);
@@ -167,7 +177,7 @@ export function welcomeEmail({ name = "there", business = "your business", lang 
         <div style="font-size:13px;color:${B.muted};line-height:1.65;margin-top:3px;">${desc}</div>
       </td></tr></table></td></tr>`;
   const body = `
-  <div class="g-h1" style="font-size:27px;font-weight:900;color:${B.ink};line-height:1.14;letter-spacing:-.6px;">${t.h1}&nbsp;<span style="color:${B.green};">🌱</span></div>
+  ${h1img("welcome", lang, t.h1, esc(name) + " 🌱")}
   <div class="g-intro" style="font-size:15px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
   <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
   ${panel(`
@@ -224,7 +234,7 @@ export function dailyLeadsEmail({ name = "there", dateLabel = "Today", leads = [
       </table></td></tr>`;
   };
   const body = `
-  <div class="g-h1 g-h1-sm" style="font-size:25px;font-weight:900;color:${B.ink};line-height:1.14;letter-spacing:-.6px;">${t.h1} — ${dateLabel}</div>
+  ${h1img("digest", lang, `${t.h1} — ${dateLabel}`, esc(dateLabel))}
   <div class="g-intro" style="font-size:14px;color:${B.ink2};line-height:1.65;margin-top:9px;">${t.intro1} <span style="color:${B.ink};">${t.intro2}</span></div>
   <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${B.panel};background-image:linear-gradient(180deg,#1f1d18 0%,${B.panel} 60%);border:1px solid ${B.line};border-radius:16px;box-shadow:inset 0 1px 0 ${B.edge},0 18px 40px -30px rgba(0,0,0,0.8);"><tr>
@@ -314,7 +324,7 @@ export function proposalEmail({ name = "there", business = "your business", lang
   const idea = (x) => `<tr><td style="padding:5px 0;font-family:'Segoe UI',Arial,sans-serif;font-size:13.5px;color:${B.ink2};line-height:1.55;">
     <span style="color:${B.gold};font-weight:800;">→</span> ${x}</td></tr>`;
   const body = `
-  <div class="g-h1" style="font-size:26px;font-weight:900;color:${B.ink};line-height:1.14;letter-spacing:-.6px;">${t.h1}&nbsp;<span style="color:${B.green};">🌱</span></div>
+  ${h1img("proposal", lang, t.h1, esc(business))}
   <div class="g-intro" style="font-size:15px;color:${B.ink2};line-height:1.72;margin-top:12px;">${t.intro}</div>
   <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
   ${panel(`
@@ -372,7 +382,7 @@ export function proofEmail({ name = "there", business = "your business", lang = 
     <td width="44" valign="top"><div style="width:34px;height:34px;border-radius:10px;background:${B.panel2};border:1px solid ${B.line};box-shadow:inset 0 1px 0 ${B.edge};font-size:17px;text-align:center;line-height:34px;">${ic}</div></td>
     <td valign="top" style="font-family:'Segoe UI',Arial,sans-serif;padding-left:6px;"><div style="font-size:14px;font-weight:700;color:${B.ink};">${ti}</div><div style="font-size:12.5px;color:${B.muted};line-height:1.55;margin-top:2px;">${de}</div></td></tr></table></td></tr>`;
   const body = `
-  <div class="g-h1" style="font-size:25px;font-weight:900;color:${B.ink};line-height:1.14;letter-spacing:-.6px;">${t.h1}&nbsp;<span style="color:${B.green};">🌱</span></div>
+  ${h1img("proof", lang, t.h1, esc(name) + " 🌱")}
   <div class="g-intro" style="font-size:15px;color:${B.ink2};line-height:1.7;margin-top:12px;">${t.intro}</div>
   <div style="height:16px;line-height:16px;font-size:0;">&nbsp;</div>
   ${panel(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${t.points.map(pt_).join("")}</table>`)}
@@ -409,7 +419,7 @@ export function reengageEmail({ name = "there", business = "your business", lang
     foot: "If now's not the time, no worries — reply here with any question.",
   };
   const body = `
-  <div class="g-h1" style="font-size:26px;font-weight:900;color:${B.ink};line-height:1.14;letter-spacing:-.6px;">${t.h1}&nbsp;<span style="color:${B.green};">🌱</span></div>
+  ${h1img("reengage", lang, t.h1, esc(name))}
   <div class="g-intro" style="font-size:15px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
   <div style="height:24px;line-height:24px;font-size:0;">&nbsp;</div>
   <div align="center">${cta(t.cta, B.site + "/quiz")}</div>
@@ -433,7 +443,7 @@ export function linksEmail({ name = "Luis", lang = "pt" } = {}) {
     <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:${B.gold};padding-bottom:6px;">${title}</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>`);
   const body = `
-    <h1 class="g-h1" style="margin:0 0 8px 0;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:27px;line-height:1.2;font-weight:900;color:${B.ink};">${pt ? `Seus acessos, ${esc(name)}` : `Your links, ${esc(name)}`} <span style="color:${B.gold};">🌱</span></h1>
+    ${h1img("links", lang, pt ? `Seus acessos, ${name}` : `Your links, ${name}`, esc(name) + " 🌱")}
     <p class="g-intro" style="margin:0 0 18px 0;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:${B.ink2};">${pt ? "Tudo no ar em <b style='color:" + B.ink + "'>guileoai.com</b> — salve este e-mail." : "Everything live on <b style='color:" + B.ink + "'>guileoai.com</b> — keep this email handy."}</p>
     ${group(pt ? "🌐 Vender" : "🌐 Sell", [
       row(`${B.site}/pitch`, "🎤", pt ? "Pitch do cliente" : "Client pitch", pt ? "apresentação ≤20min" : "≤20-min deck"),

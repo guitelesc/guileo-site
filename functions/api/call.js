@@ -40,7 +40,7 @@ export async function onRequestPost(context) {
           conversation_initiation_client_data: { dynamic_variables: vars },
         }),
       });
-      if (!res.ok) return json({ error: "call provider error", detail: (await res.text()).slice(0, 200) }, 502);
+      if (!res.ok) { try { console.log("call provider error", (await res.text()).slice(0, 300)); } catch { /* */ } return json({ error: "call provider error" }, 502); }
       return json({ ok: true, provider: "elevenlabs" });
     }
 

@@ -16,8 +16,8 @@ const LV_COPY = {
 
 const LEGS = [
   { tag: "Guileo Brain", icon: "🧠", accent: "green", title: "AI agents that never sleep", desc: "Answer calls, book appointments, qualify leads & close — 24/7, any language.", chips: ["🎙️ Voice", "💬 WhatsApp", "📅 Bookings", "🎧 Support"] },
-  { tag: "Guileo Build", icon: "🛠️", accent: "ocean", title: "Websites · Apps · Software", desc: "AI-crafted sites, intelligent apps & custom software — built to convert & scale.", chips: ["🌐 Websites", "📱 Apps", "🛒 Shopify", "⚙️ Automation"] },
-  { tag: "Guileo.AD", icon: "📈", accent: "gold", title: "Your whole operation, run", desc: "Not just tasks — content, paid ads, social & funnels across every channel.", chips: ["📝 Content", "📣 Ads −40% waste", "🎯 Leads", "🔄 Funnels"] },
+  { tag: "Guileo Build", icon: "🛠️", accent: "ocean", title: "Websites, apps & software", desc: "AI-crafted sites, intelligent apps & custom software — built to convert & scale.", chips: ["🌐 Websites", "📱 Apps", "🛒 Shopify", "⚙️ Automation"] },
+  { tag: "Guileo.AD", icon: "📈", accent: "gold", title: "Marketing that grows you", desc: "Content, paid ads, social & funnels — run for you across every channel.", chips: ["📝 Content", "📣 Ads −40% waste", "🎯 Leads", "🔄 Funnels"] },
 ];
 
 const C = {
@@ -52,6 +52,7 @@ export default function LegsV2() {
         @keyframes lbreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
         @keyframes lsheen{0%{transform:translateX(-120%)}55%,100%{transform:translateX(120%)}}
         @keyframes lsonar{0%{transform:scale(.55);opacity:.55}100%{transform:scale(1.7);opacity:0}}
+        @keyframes lfloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-9px) rotate(3deg)}}
         @keyframes lflowin{0%{left:-2%;opacity:0}14%{opacity:1}86%{opacity:1}100%{left:100%;opacity:0}}
         @keyframes lroot{to{stroke-dashoffset:-12}}
         @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}
@@ -91,21 +92,23 @@ export default function LegsV2() {
             const on = i === sel;
             return (
               <button key={leg.tag} onClick={() => { setSel(i); setAuto(false); }}
-                className={`group relative flex w-full items-start gap-4 overflow-hidden rounded-2xl border py-4 pl-6 pr-4 text-left transition-all duration-300 ${on ? `${c.on} translate-x-1` : "border-g-line bg-white/[0.025] hover:bg-white/[0.05]"}`}
+                className={`group relative flex w-full items-start gap-4 overflow-hidden rounded-2xl border py-5 pl-6 pr-4 text-left transition-all duration-300 ${on ? `${c.on} translate-x-1` : "border-g-line bg-white/[0.025] hover:bg-white/[0.05]"}`}
                 style={{ animation: `lreveal .6s cubic-bezier(.2,.7,.2,1) ${0.15 + i * 0.1}s both` }}>
                 {/* accent bar */}
                 <span className={`absolute left-0 top-0 h-full bg-gradient-to-b ${c.bar} transition-all duration-300 ${on ? "w-1.5 opacity-100" : "w-1 opacity-45 group-hover:opacity-80"}`} />
                 {/* sheen sweep on the active card */}
                 {on && <span className="pointer-events-none absolute inset-0" style={{ animation: "lsheen 2.6s ease-in-out infinite", background: "linear-gradient(105deg,transparent,rgba(255,255,255,0.07),transparent)" }} />}
-                <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${c.tile} text-2xl ring-1 ${c.tring} drop-shadow-[0_2px_6px_rgba(0,0,0,0.45)] transition-all duration-300 ${on ? "scale-110 ring-2" : "group-hover:scale-105"}`}>{leg.icon}</div>
+                {/* free-floating emoji — no box, just a soft accent glow so it keeps presence */}
+                <span className={`shrink-0 select-none text-[44px] leading-none transition-transform duration-300 ${on ? "scale-110" : "group-hover:scale-105"}`}
+                  style={{ animation: `lfloat ${3 + i * 0.6}s ease-in-out ${i * 0.5}s infinite`, filter: `drop-shadow(0 6px 14px rgba(${ACCENT_RGB[leg.accent]},${on ? 0.55 : 0.32}))` }}>{leg.icon}</span>
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-baseline gap-x-2">
-                    <span className="text-[14px] font-black uppercase tracking-wide text-g-word">{leg.title}</span>
-                    <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider ${c.text}`}>
-                      <span className={`h-1 w-1 rounded-full ${c.dot}`} />{leg.tag}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[12.5px] leading-snug text-g-ink">{leg.desc}</p>
+                  {/* small colored tag eyebrow ABOVE — frees the title to be big & tall */}
+                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${c.text}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />{leg.tag}
+                  </span>
+                  {/* BIG free title on its own line */}
+                  <h3 className="mt-1.5 font-black leading-[1.08] tracking-tight text-g-word" style={{ fontSize: "clamp(1.15rem,2vw,1.45rem)" }}>{leg.title}</h3>
+                  <p className="mt-2 text-[13px] leading-snug text-g-ink">{leg.desc}</p>
                   <div className="mt-2.5 flex flex-wrap gap-1.5">
                     {leg.chips.map((ch) => (
                       <span key={ch} className={`rounded-full border px-2.5 py-0.5 text-[10.5px] font-semibold ${c.chip}`}>{ch}</span>
