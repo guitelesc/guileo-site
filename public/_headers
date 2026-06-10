@@ -3,9 +3,10 @@
 # headers in functions/lib/guard.js and each function's local json() helper.
 # NOTE: keep comments OUTSIDE the indented rule block — an indented "# foo: bar" line can be
 # parsed as a header by the Cloudflare _headers parser.
-# CSP rationale: clickjacking + object/base locked down; scripts/styles kept permissive so the
-# Vite bundle, ElevenLabs voice widget, Supabase and Resend keep working. Tighten script-src
-# once sources are pinned.
+# CSP rationale: STRICT allowlist — scripts only from self + unpkg (ElevenLabs convai widget
+# loader) with wasm allowed for the widget's audio engine; connections only to Supabase +
+# ElevenLabs; styles inline (React) + Google Fonts; no eval, no inline scripts, no wildcards.
+# JSON-LD <script type="application/ld+json"> is data (never executed) so CSP doesn't block it.
 /*
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
@@ -13,4 +14,4 @@
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
   Permissions-Policy: geolocation=(), camera=(), payment=()
   Cross-Origin-Opener-Policy: same-origin
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: https:; font-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; connect-src 'self' https: wss:; frame-src 'self' https:; media-src 'self' https: blob:; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'wasm-unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.elevenlabs.io wss://*.elevenlabs.io https://unpkg.com; frame-src 'self' https://*.elevenlabs.io; media-src 'self' blob: https://*.elevenlabs.io; worker-src 'self' blob:; upgrade-insecure-requests

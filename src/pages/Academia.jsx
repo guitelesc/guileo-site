@@ -363,9 +363,46 @@ const T = {
   },
 };
 
-// ── Roleplay engine: Gui plays "Marcos", skeptical restaurant owner. 5 rounds.
+// ── Roleplay engine: Gui plays a skeptical OWNER (pick your persona). 5 rounds each.
 // Each partner reply is scored 0–2 by intent keywords (demo-offer, value-first,
 // honesty, booking ask). No API: deterministic, instant, free — voice comes later.
+const PERSONAS = {
+  marcos: { ic: "🍕", who: { pt: "Marcos · dono de restaurante", en: "Marcos · restaurant owner" } },
+  carla: { ic: "🦷", who: { pt: "Dra. Carla · dentista", en: "Dr. Carla · dentist" } },
+  ricardo: { ic: "🏠", who: { pt: "Ricardo · corretor de imóveis", en: "Ricardo · realtor" } },
+};
+const ROUNDS_CARLA = {
+  pt: [
+    { gui: "Dra. Carla: Olha, minha secretária já cuida da agenda há anos. E paciente é coisa séria — não vou deixar robô falar com paciente meu.", hint: "Objeção: já tem + medo da IA", good: [/não substitui|cobre|complementa|junto/i, /noite|almoço|fim de semana|3 liga|ao mesmo tempo|depois do horário/i, /humano|supervis|demo|ouvir/i], ideal: "\"A Gui não substitui sua secretária — ela cobre o que ninguém alcança: a ligação na hora do almoço, às 21h, no sábado. E tem humano supervisionando. Ouve a demo de 2 minutos?\"" },
+    { gui: "Dra. Carla: E quanto custa? Clínica tem margem apertada, viu.", hint: "Objeção: preço cedo", good: [/antes do preço|primeiro.*mostrar|demo|quanto vale/i, /no-?show|cadeira vazia|falta|paciente perdido/i], ideal: "\"Antes do preço, me diz: quanto custa uma cadeira vazia por no-show? A Gui corta isso com lembrete e reagendamento. Deixa eu mostrar — aí você compara com o que vaza hoje.\"" },
+    { gui: "Dra. Carla: Tenho medo de marcar errado e virar bagunça na minha agenda.", hint: "Objeção: confiança na agenda", good: [/integra|sincroniza|sua agenda|confirma/i, /humano corrige|supervis|teste|7 dias|demo/i], ideal: "\"Ela se integra à SUA agenda e confirma cada horário — não inventa nada. E nos primeiros dias o time acompanha tudo. Em 7 dias rodando você vê que é mais organizado que o telefone tocando.\"" },
+    { gui: "Dra. Carla: Paciente liga falando de dor, sintoma… IA não pode sair dando conselho médico!", hint: "Objeção: compliance/saúde", good: [/não dá conselho|nunca.*diagnóstic|triagem|transfere|encaminha/i, /HIPAA|LGPD|padrão|protocolo|agenda a consulta/i], ideal: "\"Exato — e ela NUNCA dá conselho médico. Ela faz triagem: acolhe, agenda a consulta e transfere urgência pra humano. Tudo dentro de padrões de saúde (HIPAA/LGPD).\"" },
+    { gui: "Dra. Carla: Me manda um material por e-mail que eu olho com a minha sócia.", hint: "Fechamento", good: [/demo|liga(r|ção)|15 ?min|essa semana|com a sua sócia|as duas/i, /garantia|30 dias|risco/i], ideal: "\"Mando sim — e melhor: faz a demo COM a sua sócia, 15 min, a Gui liga pra vocês duas. Quinta de manhã? E lembra: 30 dias de garantia, o risco é nosso.\"" },
+  ],
+  en: [
+    { gui: "Dr. Carla: Look, my front-desk has run the schedule for years. And patients are serious — I'm not letting a robot talk to my patients.", hint: "Objection: covered + AI fear", good: [/doesn'?t replace|covers|complement|alongside/i, /night|lunch|weekend|3 calls|after hours/i, /human|supervis|demo|hear/i], ideal: "\"Gui doesn't replace your front-desk — she covers what nobody can: the lunch-hour call, 9 PM, Saturday. And a human supervises. Hear the 2-minute demo?\"" },
+    { gui: "Dr. Carla: And how much? Clinics run on tight margins.", hint: "Objection: price early", good: [/before price|show.*first|demo|what.*worth/i, /no-?show|empty chair|missed patient/i], ideal: "\"Before price — what does an empty chair from a no-show cost you? Gui cuts that with reminders and rebooking. Let me show you, then compare it to what leaks today.\"" },
+    { gui: "Dr. Carla: I'm afraid of wrong bookings turning my schedule into chaos.", hint: "Objection: schedule trust", good: [/integrat|syncs?|your calendar|confirms/i, /human corrects|supervis|test|7 days|demo/i], ideal: "\"She integrates with YOUR calendar and confirms every slot — nothing invented. The team watches the first days closely. After 7 days live you'll see it's tidier than a ringing phone.\"" },
+    { gui: "Dr. Carla: Patients call about pain, symptoms… an AI can't give medical advice!", hint: "Objection: compliance", good: [/never.*advice|no diagnos|triage|transfers|escalates/i, /HIPAA|standard|protocol|books the (visit|consult)/i], ideal: "\"Exactly — and she NEVER gives medical advice. She triages: comforts, books the visit, and transfers urgency to a human. All within healthcare standards (HIPAA).\"" },
+    { gui: "Dr. Carla: Email me some material and I'll review it with my partner.", hint: "Close", good: [/demo|call|15 ?min|this week|with your partner|both of you/i, /guarantee|30 days|risk/i], ideal: "\"Will do — better yet: do the demo WITH your partner, 15 min, Gui calls you both. Thursday morning? And remember: 30-day guarantee, the risk is ours.\"" },
+  ],
+};
+const ROUNDS_RICARDO = {
+  pt: [
+    { gui: "Ricardo: Cara, eu já pago portal, CRM, tudo. Recebo uns 50 leads por semana — ferramenta não me falta.", hint: "Objeção: já tem ferramentas", good: [/quantos.*atende|responde|em quanto tempo|segundos|minutos/i, /ferramenta não liga|a Gui liga|atende por você/i], ideal: "\"Ferramenta você tem — o que falta é quem LIGUE. Dos 50 leads, quantos recebem retorno em 5 minutos? A Gui liga em SEGUNDOS, qualifica e agenda visita. Ferramenta avisa; a Gui trabalha.\"" },
+    { gui: "Ricardo: Lead de portal é frio demais, metade nem atende o telefone.", hint: "Objeção: lead frio", good: [/segundos|na hora|primeiro a responder|speed|velocidade/i, /follow|insiste|whatsapp|mensagem|reativa/i], ideal: "\"Por isso velocidade ganha: quem responde primeiro fica com o cliente. A Gui liga em segundos E faz o follow-up no WhatsApp de quem não atendeu — frio esquenta com insistência educada.\"" },
+    { gui: "Ricardo: Quanto me custa isso?", hint: "Objeção: preço", good: [/antes do preço|demo|mostrar|quanto vale/i, /uma venda paga|comissão de um imóvel|1 imóvel/i], ideal: "\"Te respondo com uma conta: quanto é sua comissão num imóvel? UMA venda a mais por mês paga a Gui o ano inteiro. Deixa ela te ligar agora e você decide o que vale.\"" },
+    { gui: "Ricardo: Meu negócio é relacionamento. IA não fecha imóvel, amigo.", hint: "Objeção: relacionamento", good: [/você fecha|quem fecha é você|não fecha por você/i, /qualifica|filtra|agenda|separa curioso/i], ideal: "\"Concordo — quem fecha é VOCÊ. A Gui só garante que você gaste seu talento com quem importa: ela filtra curioso, qualifica e agenda a visita. Você entra na conversa que vale.\"" },
+    { gui: "Ricardo: Me procura mês que vem, tô no meio de um lançamento.", hint: "Fechamento: urgência", good: [/exatamente|lançamento.*leads|agora que|enquanto isso/i, /15 ?min|demo|essa semana|liga agora|garantia|30 dias/i], ideal: "\"Lançamento é exatamente QUANDO você mais perde lead sem resposta. 15 min essa semana, a Gui te liga, e ela já trabalha o lançamento atual. 30 dias de garantia — se não somar, devolvo.\"" },
+  ],
+  en: [
+    { gui: "Ricardo: Man, I already pay for portals, a CRM, everything. I get ~50 leads a week — tools I don't lack.", hint: "Objection: has tools", good: [/how many.*(call|answer)|within (minutes|seconds)|response time/i, /tools don'?t call|Gui calls|works for you/i], ideal: "\"Tools you have — what's missing is someone who CALLS. Of those 50, how many get a call back within 5 minutes? Gui calls in SECONDS, qualifies and books the showing. Tools notify; Gui works.\"" },
+    { gui: "Ricardo: Portal leads are ice cold, half don't even pick up.", hint: "Objection: cold leads", good: [/seconds|first to respond|speed/i, /follow|whatsapp|text|persist|win-?back/i], ideal: "\"That's why speed wins: first to respond gets the client. Gui calls in seconds AND follows up on WhatsApp with the ones who didn't pick up — cold warms up with polite persistence.\"" },
+    { gui: "Ricardo: What's it going to cost me?", hint: "Objection: price", good: [/before price|demo|show|worth/i, /one (sale|deal|commission) pays|a single listing/i], ideal: "\"Let me answer with math: what's your commission on one property? ONE extra closing a month pays for Gui all year. Let her call you now and you decide what it's worth.\"" },
+    { gui: "Ricardo: My business is relationships. AI doesn't close houses, friend.", hint: "Objection: relationships", good: [/you close|closing is yours/i, /qualif|filters|books|screens (out )?tire-?kickers/i], ideal: "\"Agreed — YOU close. Gui just makes sure your talent goes to people who matter: she filters tire-kickers, qualifies and books the showing. You join the conversation that's worth it.\"" },
+    { gui: "Ricardo: Hit me up next month, I'm mid-launch right now.", hint: "Close: urgency", good: [/exactly|launch.*leads|right now|meanwhile/i, /15 ?min|demo|this week|guarantee|30 days/i], ideal: "\"A launch is exactly WHEN you lose the most unanswered leads. 15 min this week, Gui calls you, and she works your current launch. 30-day guarantee — if it doesn't add up, money back.\"" },
+  ],
+};
 const ROUNDS = {
   pt: [
     { gui: "Marcos: Oi… olha, vou ser sincero, tô no meio do almoço aqui, o restaurante tá lotado. Não tenho tempo pra papo de tecnologia, não.", hint: "Objeção: tempo", good: [/15 ?min|rápid|demo|liga(r|ção)| ouvir|terça|quarta|agend/i, /tempo de volta|devolve.*tempo|exatamente por isso/i], ideal: "\"Exatamente por isso te procurei — a Gui atende o telefone enquanto seu salão tá lotado. São 15 minutos e a demo é a IA te ligando. Terça ou quarta?\"" },
@@ -389,7 +426,9 @@ function scoreReply(text, round) {
 }
 
 function Roleplay({ lang, t }) {
-  const rounds = ROUNDS[lang] || ROUNDS.pt;
+  const [persona, setPersona] = useState("marcos");
+  const ROUND_SETS = { marcos: ROUNDS, carla: ROUNDS_CARLA, ricardo: ROUNDS_RICARDO };
+  const rounds = (ROUND_SETS[persona] || ROUNDS)[lang] || ROUNDS.pt;
   const [step, setStep] = useState(-1); // -1 = not started
   const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState("");
@@ -431,7 +470,7 @@ function Roleplay({ lang, t }) {
       <div className="flex items-center gap-3 border-b border-white/10 bg-white/[0.03] px-5 py-3.5">
         <div className="relative grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-g-green/30 to-g-gold/15 text-lg ring-1 ring-white/15">🌱<span className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full bg-g-deep text-[9px] ring-1 ring-g-green/60">🎭</span></div>
         <div>
-          <div className="text-[13.5px] font-black text-g-word">Gui {lang === "pt" ? "como" : "as"} “Marcos” <span className="font-semibold text-g-muted">· {lang === "pt" ? "dono de restaurante" : "restaurant owner"}</span></div>
+          <div className="text-[13.5px] font-black text-g-word">Gui {lang === "pt" ? "como" : "as"} <span className="text-g-gold">{PERSONAS[persona].who[lang === "pt" ? "pt" : "en"]}</span></div>
           <div className="text-[11px] font-bold text-g-green">● {lang === "pt" ? "simulação de venda" : "sales simulation"} · {done ? "✓" : `${Math.max(step, 0)}/${rounds.length}`}</div>
         </div>
         {step >= 0 && <div key={score} className="ml-auto rounded-full border border-g-gold/30 bg-g-gold/[0.08] px-3 py-1 text-[12px] font-black text-g-gold" style={{ animation: "apop .5s cubic-bezier(.34,1.56,.64,1) both" }}>{score} pts</div>}
@@ -441,7 +480,15 @@ function Roleplay({ lang, t }) {
       <div className="max-h-[380px] space-y-3 overflow-y-auto px-5 py-4">
         {step === -1 && (
           <div className="py-8 text-center">
-            <p className="mx-auto mb-5 max-w-sm text-[13.5px] text-g-muted">{t.s4sub}</p>
+            <p className="mx-auto mb-4 max-w-sm text-[13.5px] text-g-muted">{t.s4sub}</p>
+            <div className="mb-5 flex flex-wrap items-center justify-center gap-2">
+              {Object.entries(PERSONAS).map(([key, p]) => (
+                <button key={key} onClick={() => setPersona(key)}
+                  className={`rounded-full border px-4 py-2 text-[12.5px] font-bold transition ${persona === key ? "border-g-gold/50 bg-g-gold/15 text-g-word" : "border-g-line bg-white/[0.03] text-g-muted hover:text-g-word"}`}>
+                  {p.ic} {p.who[lang === "pt" ? "pt" : "en"]}
+                </button>
+              ))}
+            </div>
             <button onClick={begin} className="btn-gold text-sm">{t.start}</button>
           </div>
         )}
@@ -523,6 +570,183 @@ const money = (v) => "$" + Math.round(Number(v) || 0).toLocaleString("en-US");
 
 // Shareable certificate — appears on passing (≥7). Name → branded card + WhatsApp
 // share + print/PDF. Pride becomes viral recruiting.
+// ── CALL REPLAY: a real Gui call, replayed as a synced transcript with a live
+// waveform. File-ready: when Luis records gui-demo.mp3 into /public, the <audio>
+// plays alongside; until then the transcript replay alone already demonstrates.
+const CALL = {
+  pt: [
+    ["c", "Tony's Pizza, boa noite!… alô?", 2200],
+    ["g", "Boa noite! Aqui é a Gui, atendendo pela Tony's Pizza. O que vai ser hoje? 😊", 3200],
+    ["c", "Quero duas grandes de calabresa… vocês entregam no centro?", 3000],
+    ["g", "Entregamos sim — chega em ~40 min. Duas grandes de calabresa… quer adicionar a borda recheada por $4? É a favorita da casa.", 4200],
+    ["c", "Ah, pode ser! E uma coca de 2 litros.", 2600],
+    ["g", "Perfeito: 2 grandes de calabresa com borda + coca 2L = $52,90. Confirma o endereço: Rua das Flores, 120?", 3800],
+    ["c", "Isso. Pode pagar na entrega?", 2200],
+    ["g", "Pode — ou te mando um link de pagamento agora no WhatsApp, como preferir. Pedido confirmado pras 21h15! 🍕", 3600],
+    ["c", "Fechou, obrigado!", 1600],
+    ["g", "Nós que agradecemos! Qualquer coisa é só ligar — atendo 24 horas. 🌱", 3000],
+  ],
+  en: [
+    ["c", "Tony's Pizza, good evening!… hello?", 2200],
+    ["g", "Good evening! This is Gui, answering for Tony's Pizza. What will it be today? 😊", 3200],
+    ["c", "Two large pepperonis… do you deliver downtown?", 3000],
+    ["g", "We do — about 40 min. Two large pepperonis… add the stuffed crust for $4? House favorite.", 4200],
+    ["c", "Sure! And a 2-liter coke.", 2600],
+    ["g", "Perfect: 2 large pepperoni w/ stuffed crust + 2L coke = $52.90. Confirming the address: 120 Flores St.?", 3800],
+    ["c", "Yes. Can I pay on delivery?", 2200],
+    ["g", "You can — or I'll text you a payment link right now, your call. Order confirmed for 9:15 PM! 🍕", 3600],
+    ["c", "Deal, thanks!", 1600],
+    ["g", "Thank YOU! Anything else, just call — I answer 24 hours. 🌱", 3000],
+  ],
+};
+function CallReplay({ lang }) {
+  const pt = lang === "pt";
+  const lines = CALL[lang] || CALL.pt;
+  const [idx, setIdx] = useState(-1); // -1 idle · 0..n playing · n done
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const playing = idx >= 0 && idx < lines.length;
+  const advance = (i) => {
+    setIdx(i);
+    if (i < lines.length) timer.current = setTimeout(() => advance(i + 1), lines[i][2]);
+  };
+  const start = () => { clearTimeout(timer.current); advance(0); };
+  const stop = () => { clearTimeout(timer.current); setIdx(-1); };
+  return (
+    <div className="overflow-hidden rounded-xl3 border border-g-line bg-white/[0.03] shadow-lift">
+      <div className="flex items-center gap-3 border-b border-white/10 bg-white/[0.03] px-5 py-3.5">
+        <div className="relative grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-g-green/30 to-g-gold/15 text-lg ring-1 ring-white/15">🌱
+          {playing && <span className="absolute inset-0 rounded-full ring-2 ring-g-green/40 animate-pulsering" />}
+          <span className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full bg-g-deep text-[9px] ring-1 ring-g-green/60">🎙️</span>
+        </div>
+        <div>
+          <div className="text-[13.5px] font-black text-g-word">{pt ? "Uma chamada real da Gui" : "A real Gui call"} <span className="font-semibold text-g-muted">· Tony's Pizza</span></div>
+          <div className={`text-[11px] font-bold ${playing ? "text-g-green" : "text-g-muted"}`}>{playing ? `● ${pt ? "EM CHAMADA" : "ON CALL"} · ${String(Math.floor(idx * 3 / 60)).padStart(2, "0")}:${String((idx * 3) % 60).padStart(2, "0")}` : pt ? "replay de transcrição" : "transcript replay"}</div>
+        </div>
+        {/* waveform — alive only while playing */}
+        <div className="ml-auto flex h-6 items-end gap-[3px]">
+          {[5, 9, 14, 8, 12, 6, 11, 7].map((h, i) => (
+            <span key={i} className="w-[3px] rounded-full bg-g-green/70" style={playing ? { height: h, animation: `adot 0.${5 + (i % 4)}s ease-in-out ${i * 0.07}s infinite` } : { height: 3, opacity: 0.3 }} />
+          ))}
+        </div>
+      </div>
+      <div className="max-h-[300px] space-y-2.5 overflow-y-auto px-5 py-4">
+        {idx === -1 ? (
+          <div className="py-6 text-center">
+            <p className="mx-auto mb-4 max-w-sm text-[13px] text-g-muted">{pt ? "Antes de treinar, OUÇA o que você vai vender: a Gui anotando um pedido de verdade — com upsell." : "Before training, SEE what you'll sell: Gui taking a real order — upsell included."}</p>
+            <button onClick={start} className="btn-bright !px-6 !py-2.5 text-[13px]">▶ {pt ? "Tocar a chamada" : "Play the call"}</button>
+          </div>
+        ) : (
+          <>
+            {lines.slice(0, Math.min(idx + 1, lines.length)).map(([who, text], i) => (
+              <div key={i} className={`flex ${who === "g" ? "justify-end" : "justify-start"}`} style={{ animation: "amsg .4s cubic-bezier(.2,.7,.2,1) both" }}>
+                <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-[13px] leading-relaxed ${who === "g" ? "rounded-br-md bg-g-green/15 text-g-word ring-1 ring-g-green/20" : "rounded-bl-md border border-white/10 bg-white/[0.05] text-g-ink"}`}>
+                  <span className={`mr-1.5 text-[10px] font-black uppercase ${who === "g" ? "text-g-green" : "text-g-muted"}`}>{who === "g" ? "Gui" : pt ? "Cliente" : "Caller"}</span>{text}
+                </div>
+              </div>
+            ))}
+            {idx >= lines.length && (
+              <div className="rounded-xl border border-g-gold/30 bg-g-gold/[0.06] px-4 py-3 text-center text-[12.5px] font-bold text-g-word" style={{ animation: "amsg .5s ease both" }}>
+                💰 {pt ? "Pedido de $52,90 anotado, com upsell — às 21h, sem ninguém no balcão." : "$52.90 order taken, upsell included — at 9 PM, nobody at the counter."}
+                <button onClick={stop} className="ml-3 text-[11.5px] font-black text-g-gold underline">↻ replay</button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── CERTIFICATION QUIZ: 10 questions, pass ≥8. The formal gate for Level 1.
+const QUIZ = {
+  pt: [
+    ["O que a Guileo vende, no fim das contas?", ["Tecnologia de ponta", "Resultado (vendas, tempo, crescimento)", "Um software de IA"], 1],
+    ["O cliente pergunta o preço logo no início. Você:", ["Diz o preço na hora", "Muda de assunto", "Mostra a demo antes — \"aí você me diz quanto vale\""], 2],
+    ["O Trilho B (sob medida) é pra quem?", ["Qualquer um que pedir", "Negócio estabelecido perdendo dinheiro real (fatura >$20k/mês)", "Só restaurantes"], 1],
+    ["O que você NUNCA promete?", ["Garantia de 30 dias", "Que a IA nunca erra", "Atendimento 24/7"], 1],
+    ["Sua comissão como Closer:", ["20% do contrato (setup + 3 meses)", "10% pra sempre", "Salário fixo"], 0],
+    ["O momento mais forte da reunião:", ["Mostrar os slides", "Falar dos preços", "A Gui ligando pro celular dele (e você em silêncio)"], 2],
+    ["Como o sistema sabe que um lead é seu?", ["Pelo seu link ?ref=seunome", "Você avisa depois", "Não tem como saber"], 0],
+    ["\"Vou pensar\" — sua melhor resposta:", ["\"Ok, me avisa\"", "\"O que precisaria ser verdade pra fazer sentido?\"", "\"É sua última chance\""], 1],
+    ["A garantia da Guileo:", ["Não tem garantia", "7 dias", "30 dias — o risco é nosso"], 2],
+    ["Te perguntam algo que você não sabe:", ["Inventa uma resposta segura", "\"Ótima pergunta — confirmo com o time e te trago hoje\"", "Ignora e muda de assunto"], 1],
+  ],
+  en: [
+    ["What does Guileo ultimately sell?", ["Cutting-edge tech", "Results (sales, time, growth)", "An AI software"], 1],
+    ["The client asks price right away. You:", ["Say the price immediately", "Change the subject", "Show the demo first — \"then you tell me what it's worth\""], 2],
+    ["Track B (tailored) is for whom?", ["Anyone who asks", "Established businesses leaking real money (>$20k/mo)", "Restaurants only"], 1],
+    ["What do you NEVER promise?", ["30-day guarantee", "That the AI never errs", "24/7 answering"], 1],
+    ["Your commission as a Closer:", ["20% of the contract (setup + 3 months)", "10% forever", "Fixed salary"], 0],
+    ["The strongest moment of the meeting:", ["Showing slides", "Talking pricing", "Gui calling their phone (while you stay silent)"], 2],
+    ["How does the system know a lead is yours?", ["Your ?ref=yourname link", "You report it later", "It can't know"], 0],
+    ["\"I'll think about it\" — your best reply:", ["\"Ok, let me know\"", "\"What would need to be true for this to make sense?\"", "\"Last chance\""], 1],
+    ["Guileo's guarantee:", ["No guarantee", "7 days", "30 days — the risk is ours"], 2],
+    ["They ask something you don't know:", ["Invent a safe answer", "\"Great question — I'll confirm with the team today\"", "Ignore and move on"], 1],
+  ],
+};
+function CertQuiz({ lang }) {
+  const pt = lang === "pt";
+  const qs = QUIZ[lang] || QUIZ.pt;
+  const [i, setI] = useState(-1);
+  const [right, setRight] = useState(0);
+  const [picked, setPicked] = useState(null); // option index just answered (shows feedback briefly)
+  const done = i >= qs.length;
+  const pick = (oi) => {
+    if (picked !== null) return;
+    setPicked(oi);
+    const correct = oi === qs[i][2];
+    if (correct) setRight((r) => r + 1);
+    setTimeout(() => { setPicked(null); setI((x) => x + 1); }, 900);
+  };
+  const restart = () => { setI(0); setRight(0); setPicked(null); };
+  return (
+    <div className="rounded-xl3 border border-g-gold/30 bg-white/[0.03] p-6 shadow-lift">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[13px] font-black text-g-word">📝 {pt ? "Prova de certificação" : "Certification exam"} <span className="font-semibold text-g-muted">· {pt ? "10 questões · aprova com 8" : "10 questions · pass with 8"}</span></div>
+        {i >= 0 && !done && <div className="text-[11.5px] font-black text-g-gold">{i + 1}/10 · ✓{right}</div>}
+      </div>
+      {i === -1 && (
+        <div className="mt-5 text-center">
+          <p className="mx-auto mb-4 max-w-md text-[13px] text-g-muted">{pt ? "Leu tudo e treinou com a Gui? Prova que tá pronto — 10 questões rápidas sobre o que você acabou de aprender." : "Read everything and trained with Gui? Prove you're ready — 10 quick questions on what you just learned."}</p>
+          <button onClick={restart} className="btn-gold text-sm">▶ {pt ? "Começar a prova" : "Start the exam"}</button>
+        </div>
+      )}
+      {i >= 0 && !done && (
+        <div key={i} className="mt-5" style={{ animation: "amsg .4s ease both" }}>
+          <div className="text-[14.5px] font-bold text-g-word">{qs[i][0]}</div>
+          <div className="mt-3 space-y-2">
+            {qs[i][1].map((opt, oi) => {
+              const isCorrect = oi === qs[i][2];
+              const state = picked === null ? "idle" : isCorrect ? "right" : picked === oi ? "wrong" : "dim";
+              return (
+                <button key={oi} onClick={() => pick(oi)} disabled={picked !== null}
+                  className={`block w-full rounded-xl border px-4 py-2.5 text-left text-[13px] font-semibold transition ${
+                    state === "right" ? "border-g-green/60 bg-g-green/15 text-g-word" :
+                    state === "wrong" ? "border-[#d8916e]/60 bg-[#d8916e]/10 text-g-word" :
+                    state === "dim" ? "border-g-line text-g-muted opacity-50" :
+                    "border-g-line bg-white/[0.03] text-g-ink hover:border-g-gold/40"}`}>
+                  {state === "right" ? "✓ " : state === "wrong" ? "✗ " : ""}{opt}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {done && (
+        <div className={`mt-5 rounded-2xl border p-5 text-center ${right >= 8 ? "border-g-green/40 bg-g-green/[0.07] animate-breathe" : "border-g-gold/30 bg-g-gold/[0.05]"}`} style={{ animation: "amsg .5s ease both" }}>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-g-gold">{pt ? "Resultado" : "Result"}</div>
+          <div className="my-1 text-[38px] font-black text-g-word">{right}<span className="text-lg text-g-muted">/10</span></div>
+          <p className="mx-auto max-w-sm text-[13px] text-g-ink">{right >= 8
+            ? (pt ? "🎓 CERTIFICADO! Agora passa no treino com a Gui (7+) e manda os dois prints pro Luis — você entra como Agendador." : "🎓 CERTIFIED! Now pass the Gui training (7+) and send both screenshots to Luis — you start as a Setter.")
+            : (pt ? "Quase — releia as seções acima e tenta de novo. Aprovação é 8." : "Almost — re-read the sections above and retry. Passing is 8.")}</p>
+          <button onClick={restart} className="btn mt-4 text-sm">↻ {pt ? "Refazer" : "Retry"}</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Personal referral-link maker: type your first name → copy-ready ?ref= links.
 // Every lead from those links arrives in /admin tagged 👤ref:name → your commission.
 function RefLinks({ lang }) {
@@ -896,7 +1120,9 @@ export default function Academia() {
           {/* 4 — PRACTICE (roleplay) */}
           <section id="pratique" className="scroll-mt-24">
             <Reveal><Tag>{t.s4tag}</Tag><H2>{t.s4h}</H2></Reveal>
+            <Reveal className="mt-7"><CallReplay lang={lang} /></Reveal>
             <Reveal><Roleplay lang={lang} t={t} /></Reveal>
+            <Reveal className="mt-8"><CertQuiz lang={lang} /></Reveal>
           </section>
 
           {/* 5 — LEVELS */}
