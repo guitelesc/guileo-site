@@ -26,6 +26,7 @@ export async function onRequestPost(context) {
       score: s(body.score, 12),
       leak: s(body.leak, 16),
       source: s(body.source || "website", 60),
+      ref: s(body.ref, 40), // Growth Partner attribution (?ref= link) — drives Track-A commissions
       lang: s(body.lang, 5),
       at: new Date().toISOString(),
     };
@@ -38,6 +39,7 @@ export async function onRequestPost(context) {
     if (lead.score) bits.push(`score ${lead.score}/100`);
     if (lead.leak) bits.push(`leak ${lead.leak}/mo`);
     if (lead.message) bits.push(lead.message);
+    if (lead.ref) bits.push(`👤ref:${lead.ref}`);
     const details = bits.join(" · ");
 
     let stored = false;
@@ -70,7 +72,7 @@ export async function onRequestPost(context) {
       const FROM = env.EMAIL_FROM || "Guileo <noreply@guileoai.com>";
       const kind = lead.source === "configurator" ? "quote request" : lead.source === "portal-onboard" ? "new client signup" : "lead";
       const rows = [
-        ["Name", lead.name], ["Contact", lead.contact || lead.email || lead.phone], ["Business", lead.business], ["Industry", lead.industry], ["Source", lead.source], ["Details", details || lead.message],
+        ["Name", lead.name], ["Contact", lead.contact || lead.email || lead.phone], ["Business", lead.business], ["Industry", lead.industry], ["Source", lead.source], ["Partner (ref)", lead.ref], ["Details", details || lead.message],
       ].filter(([, v]) => v).map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#888">${k}</td><td style="padding:4px 0;font-weight:600">${String(v).replace(/</g, "&lt;")}</td></tr>`).join("");
       try {
         await fetch("https://api.resend.com/emails", {

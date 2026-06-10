@@ -186,7 +186,7 @@ const T = {
       ["Dia 5-7", "Faça as demos com o Luis · primeira comissão a caminho"],
     ],
     kitH: "Seu arsenal",
-    kit: [["🎤 Pitch do cliente", "/pitch"], ["📄 Gerador de proposta", "/proposta?to=Cliente&price=1497&recover=3900"], ["🤝 Deck do parceiro", "/parceiro"], ["🎯 Quiz (lead frio)", "/quiz"], ["🧮 Calculadora", "/calculator"]],
+    kit: [["📱 Cola de bolso", "/cola"], ["🎤 Pitch do cliente", "/pitch"], ["📄 Gerador de proposta", "/proposta?to=Cliente&price=1497&recover=3900"], ["🤝 Deck do parceiro", "/parceiro"], ["🎯 Quiz (lead frio)", "/quiz"], ["🧮 Calculadora", "/calculator"]],
     cta: "🤝 Quero entrar — falar com o Luis",
     ctaMsg: "Oi Luis! Completei o Partner Academy e quero começar como Agendador.",
   },
@@ -357,7 +357,7 @@ const T = {
       ["Day 5-7", "Run the demos with Luis · first commission on its way"],
     ],
     kitH: "Your arsenal",
-    kit: [["🎤 Client pitch", "/pitch"], ["📄 Proposal builder", "/proposta?to=Client&price=1497&recover=3900"], ["🤝 Partner deck", "/parceiro"], ["🎯 Quiz (cold leads)", "/quiz"], ["🧮 Calculator", "/calculator"]],
+    kit: [["📱 Pocket card", "/cola"], ["🎤 Client pitch", "/pitch"], ["📄 Proposal builder", "/proposta?to=Client&price=1497&recover=3900"], ["🤝 Partner deck", "/parceiro"], ["🎯 Quiz (cold leads)", "/quiz"], ["🧮 Calculator", "/calculator"]],
     cta: "🤝 I'm in — talk to Luis",
     ctaMsg: "Hi Luis! I completed the Partner Academy and want to start as a Setter.",
   },
@@ -467,6 +467,7 @@ function Roleplay({ lang, t }) {
             <div className="my-1 text-[40px] font-black text-g-word">{score}<span className="text-lg text-g-muted">/10</span></div>
             <p className="mx-auto max-w-sm text-[13px] text-g-ink">{score >= 7 ? t.pass : t.fail}</p>
             <button onClick={begin} className="btn mt-4 text-sm">{t.restart}</button>
+            {score >= 7 && <Certificate lang={lang} score={score} />}
           </div>
         )}
         <div ref={endRef} />
@@ -519,6 +520,55 @@ function EarnSim({ t }) {
   );
 }
 const money = (v) => "$" + Math.round(Number(v) || 0).toLocaleString("en-US");
+
+// Shareable certificate — appears on passing (≥7). Name → branded card + WhatsApp
+// share + print/PDF. Pride becomes viral recruiting.
+function Certificate({ lang, score }) {
+  const pt = lang === "pt";
+  const [name, setName] = useState("");
+  const [show, setShow] = useState(false);
+  const today = new Date().toLocaleDateString(pt ? "pt-BR" : "en-US", { day: "numeric", month: "long", year: "numeric" });
+  const shareTxt = pt
+    ? `🎓 Acabei de me certificar no Guileo Partner Academy com nota ${score}/10! Aprendendo a vender IA que trabalha 24/7. 🌱 guileoai.com/academia`
+    : `🎓 Just got certified at the Guileo Partner Academy — scored ${score}/10! Learning to sell AI that works 24/7. 🌱 guileoai.com/academia`;
+  if (!show) {
+    return (
+      <div className="mx-auto mt-5 flex max-w-sm gap-2">
+        <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && name.trim() && setShow(true)}
+          placeholder={pt ? "Seu nome completo" : "Your full name"}
+          className="min-w-0 flex-1 rounded-full border border-g-gold/30 bg-white/[0.05] px-4 py-2.5 text-center text-[13.5px] font-bold text-g-word outline-none placeholder:font-normal placeholder:text-g-muted/60 focus:border-g-gold/60" />
+        <button onClick={() => name.trim() && setShow(true)} className="btn-gold shrink-0 !px-5 !py-2.5 text-[13px]">🏆 {pt ? "Gerar certificado" : "Get certificate"}</button>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-6">
+      <style>{`@media print{body *{visibility:hidden}.g-cert,.g-cert *{visibility:visible}.g-cert{position:fixed;inset:0;margin:auto}}`}</style>
+      <div className="g-cert relative mx-auto max-w-md overflow-hidden rounded-xl3 border border-g-gold/45 bg-gradient-to-b from-[#1d1a14] to-[#14120e] p-8 text-center shadow-lift" style={{ animation: "amsg .6s cubic-bezier(.2,.7,.2,1) both" }}>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-g-gold to-transparent" />
+        <div className="pointer-events-none absolute -right-12 -top-14 h-40 w-40 rounded-full bg-g-gold/10 blur-3xl" />
+        <img src={logo} alt="" className="mx-auto h-12 w-12 object-contain drop-shadow-[0_0_22px_rgba(214,194,154,0.45)]" />
+        <div className="mt-3 text-[10px] font-bold uppercase tracking-[0.3em] text-g-gold">Guileo Partner Academy</div>
+        <div className="mt-4 text-[11px] uppercase tracking-wider text-g-muted">{pt ? "Certificamos que" : "This certifies that"}</div>
+        <div className="mt-1 font-black leading-tight text-g-word" style={{ fontSize: "clamp(1.4rem,5vw,1.9rem)" }}>{name}</div>
+        <div className="mx-auto my-4 h-px w-24 bg-gradient-to-r from-transparent via-g-gold/60 to-transparent" />
+        <p className="mx-auto max-w-xs text-[12.5px] leading-relaxed text-g-ink">
+          {pt ? "concluiu o treinamento de vendas Guileo e foi aprovado(a) na simulação ao vivo com a Gui" : "completed the Guileo sales training and passed the live simulation against Gui"}
+          <span className="font-black text-g-gold"> · {score}/10</span>
+        </p>
+        <div className="mt-5 flex items-center justify-between text-[10.5px] text-g-muted">
+          <span>{today}</span>
+          <span className="font-bold text-g-green">🌱 {pt ? "Pronto pra vender" : "Ready to sell"}</span>
+        </div>
+      </div>
+      <div className="no-print mt-4 flex flex-wrap items-center justify-center gap-2">
+        <a href={`https://wa.me/?text=${encodeURIComponent(shareTxt)}`} target="_blank" rel="noopener" className="btn-bright !px-5 !py-2.5 text-[13px]">💬 {pt ? "Compartilhar" : "Share"}</a>
+        <button onClick={() => window.print()} className="btn-ghost !px-5 !py-2.5 text-[13px]">🖨️ {pt ? "Salvar PDF" : "Save PDF"}</button>
+        <a href={waLink(pt ? `Oi Luis! Passei no Academy com ${score}/10 — sou ${name}. Bora começar!` : `Hi Luis! Passed the Academy with ${score}/10 — I'm ${name}. Let's start!`)} target="_blank" rel="noopener" className="btn !px-5 !py-2.5 text-[13px]">🤝 {pt ? "Avisar o Luis" : "Tell Luis"}</a>
+      </div>
+    </div>
+  );
+}
 
 const Tag = ({ children }) => <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-g-gold/25 bg-g-gold/[0.08] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-g-gold">{children}</div>;
 const H2 = ({ children }) => <h2 className="max-w-2xl font-black leading-[1.05] tracking-tight text-g-word" style={{ fontSize: "clamp(1.6rem,3.4vw,2.5rem)" }}>{children}</h2>;
