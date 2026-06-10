@@ -201,20 +201,31 @@ function Roleplay({ lang, t }) {
   const done = step >= rounds.length;
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, [msgs]);
 
-  const begin = () => { setStep(0); setScore(0); setMsgs([{ who: "gui", text: rounds[0].gui }]); setInput(""); };
+  // Marcos "types" before speaking — the sim feels like a real WhatsApp thread.
+  const timers = useRef([]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  const speakGui = (text, after = 0) => {
+    timers.current.push(setTimeout(() => {
+      setMsgs((m) => [...m, { who: "typing" }]);
+      timers.current.push(setTimeout(() => setMsgs((m) => [...m.filter((x) => x.who !== "typing"), { who: "gui", text }]), 850 + Math.min(900, text.length * 6)));
+    }, after));
+  };
+  const begin = () => { timers.current.forEach(clearTimeout); setStep(0); setScore(0); setMsgs([]); setInput(""); speakGui(rounds[0].gui, 150); };
   const reply = () => {
     const text = input.trim();
     if (!text || done) return;
     const r = rounds[step];
     const pts = scoreReply(text, r);
     const next = step + 1;
-    const fb = { who: "fb", pts, ideal: r.ideal };
-    const additions = [{ who: "me", text }, fb];
-    if (next < rounds.length) additions.push({ who: "gui", text: rounds[next].gui });
-    setMsgs((m) => [...m, ...additions]);
-    setScore((s) => s + pts);
-    setStep(next);
+    setMsgs((m) => [...m, { who: "me", text }]);
     setInput("");
+    // feedback lands after a beat, then Marcos types his next line
+    timers.current.push(setTimeout(() => {
+      setMsgs((m) => [...m, { who: "fb", pts, ideal: r.ideal }]);
+      setScore((s) => s + pts);
+      setStep(next);
+      if (next < rounds.length) speakGui(rounds[next].gui, 500);
+    }, 450));
   };
 
   return (
@@ -226,7 +237,7 @@ function Roleplay({ lang, t }) {
           <div className="text-[13.5px] font-black text-g-word">Gui {lang === "pt" ? "como" : "as"} “Marcos” <span className="font-semibold text-g-muted">· {lang === "pt" ? "dono de restaurante" : "restaurant owner"}</span></div>
           <div className="text-[11px] font-bold text-g-green">● {lang === "pt" ? "simulação de venda" : "sales simulation"} · {done ? "✓" : `${Math.max(step, 0)}/${rounds.length}`}</div>
         </div>
-        {step >= 0 && <div className="ml-auto rounded-full border border-g-gold/30 bg-g-gold/[0.08] px-3 py-1 text-[12px] font-black text-g-gold">{score} pts</div>}
+        {step >= 0 && <div key={score} className="ml-auto rounded-full border border-g-gold/30 bg-g-gold/[0.08] px-3 py-1 text-[12px] font-black text-g-gold" style={{ animation: "apop .5s cubic-bezier(.34,1.56,.64,1) both" }}>{score} pts</div>}
       </div>
 
       {/* chat */}
@@ -237,18 +248,24 @@ function Roleplay({ lang, t }) {
             <button onClick={begin} className="btn-gold text-sm">{t.start}</button>
           </div>
         )}
-        {msgs.map((m, i) => m.who === "fb" ? (
-          <div key={i} className={`rounded-xl border px-3.5 py-2.5 text-[12px] leading-relaxed ${m.pts === 2 ? "border-g-green/30 bg-g-green/[0.07]" : m.pts === 1 ? "border-g-gold/30 bg-g-gold/[0.06]" : "border-[#d8916e]/30 bg-[#d8916e]/[0.06]"}`}>
-            <span className="font-black">{m.pts === 2 ? "🟢 +2" : m.pts === 1 ? "🟡 +1" : "🔴 +0"}</span>
+        {msgs.map((m, i) => m.who === "typing" ? (
+          <div key={"ty" + i} className="flex justify-start" style={{ animation: "amsg .3s ease both" }}>
+            <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-white/10 bg-white/[0.05] px-4 py-3">
+              {[0, 1, 2].map((d) => <span key={d} className="h-1.5 w-1.5 rounded-full bg-g-muted" style={{ animation: `adot 1.1s ease-in-out ${d * 0.18}s infinite` }} />)}
+            </div>
+          </div>
+        ) : m.who === "fb" ? (
+          <div key={i} className={`rounded-xl border px-3.5 py-2.5 text-[12px] leading-relaxed ${m.pts === 2 ? "border-g-green/30 bg-g-green/[0.07]" : m.pts === 1 ? "border-g-gold/30 bg-g-gold/[0.06]" : "border-[#d8916e]/30 bg-[#d8916e]/[0.06]"}`} style={{ animation: "amsg .45s cubic-bezier(.2,.7,.2,1) both" }}>
+            <span className="inline-block font-black" style={{ animation: "apop .5s cubic-bezier(.34,1.56,.64,1) both" }}>{m.pts === 2 ? "🟢 +2" : m.pts === 1 ? "🟡 +1" : "🔴 +0"}</span>
             <span className="ml-2 text-g-ink">{t.ideal} <span className="italic text-g-word">{m.ideal}</span></span>
           </div>
         ) : (
-          <div key={i} className={`flex ${m.who === "me" ? "justify-end" : "justify-start"}`}>
+          <div key={i} className={`flex ${m.who === "me" ? "justify-end" : "justify-start"}`} style={{ animation: "amsg .4s cubic-bezier(.2,.7,.2,1) both" }}>
             <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-[13.5px] leading-relaxed ${m.who === "me" ? "rounded-br-md bg-g-green/20 text-g-word" : "rounded-bl-md border border-white/10 bg-white/[0.05] text-g-ink"}`}>{m.text}</div>
           </div>
         ))}
         {done && (
-          <div className="rounded-2xl border border-g-gold/35 bg-g-gold/[0.07] p-5 text-center">
+          <div className={`rounded-2xl border border-g-gold/35 bg-g-gold/[0.07] p-5 text-center ${score >= 7 ? "animate-breathe" : ""}`} style={{ animation: score >= 7 ? undefined : "amsg .5s ease both" }}>
             <div className="text-[11px] font-bold uppercase tracking-wider text-g-gold">{t.scoreH}</div>
             <div className="my-1 text-[40px] font-black text-g-word">{score}<span className="text-lg text-g-muted">/10</span></div>
             <p className="mx-auto max-w-sm text-[13px] text-g-ink">{score >= 7 ? t.pass : t.fail}</p>
@@ -274,15 +291,42 @@ const Tag = ({ children }) => <div className="mb-4 inline-flex items-center gap-
 const H2 = ({ children }) => <h2 className="max-w-2xl font-black leading-[1.05] tracking-tight text-g-word" style={{ fontSize: "clamp(1.6rem,3.4vw,2.5rem)" }}>{children}</h2>;
 
 // Scroll-reveal (site language): children fade-rise when the block enters view.
-function Reveal({ children, className = "" }) {
+// `delay` (ms) staggers siblings; `stagger` mode reveals direct children in cascade.
+function Reveal({ children, className = "", delay = 0, stagger = false }) {
   const ref = useRef(null);
   const [on, setOn] = useState(false);
   useEffect(() => {
-    const obs = new IntersectionObserver(([e]) => e.isIntersecting && setOn(true), { threshold: 0.18 });
+    const obs = new IntersectionObserver(([e]) => e.isIntersecting && setOn(true), { threshold: 0.16 });
     if (ref.current) obs.observe(ref.current);
     return () => obs.disconnect();
   }, []);
-  return <div ref={ref} className={className} style={{ opacity: on ? 1 : 0, transform: on ? "none" : "translateY(22px)", transition: "opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1)" }}>{children}</div>;
+  if (stagger) {
+    return (
+      <div ref={ref} className={className}>
+        {(Array.isArray(children) ? children : [children]).map((c, i) => (
+          <div key={i} style={{ opacity: on ? 1 : 0, transform: on ? "none" : "translateY(20px)", transition: `opacity .65s ease ${i * 0.12}s, transform .65s cubic-bezier(.2,.7,.2,1) ${i * 0.12}s` }}>{c}</div>
+        ))}
+      </div>
+    );
+  }
+  return <div ref={ref} className={className} style={{ opacity: on ? 1 : 0, transform: on ? "none" : "translateY(22px)", transition: `opacity .7s ease ${delay}ms, transform .7s cubic-bezier(.2,.7,.2,1) ${delay}ms` }}>{children}</div>;
+}
+
+// Top scroll progress (green→champagne hairline) + scrollspy: which section is in view.
+function useScrollChrome(ids) {
+  const [pct, setPct] = useState(0);
+  const [active, setActive] = useState("");
+  useEffect(() => {
+    const onScroll = () => {
+      const d = document.documentElement;
+      setPct(Math.min(100, (d.scrollTop / Math.max(1, d.scrollHeight - d.clientHeight)) * 100));
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    const obs = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) setActive(e.target.id); }), { rootMargin: "-35% 0px -55% 0px" });
+    ids.forEach((id) => { const n = document.getElementById(id); if (n) obs.observe(n); });
+    return () => { window.removeEventListener("scroll", onScroll); obs.disconnect(); };
+  }, []);
+  return { pct, active };
 }
 
 export default function Academia() {
@@ -290,16 +334,25 @@ export default function Academia() {
   const t = T[lang];
   useEffect(() => { document.title = "Guileo Partner Academy"; window.scrollTo(0, 0); }, []);
   const ids = ["entenda", "oferta", "aprenda", "pratique", "niveis", "comece"];
+  const { pct, active } = useScrollChrome(ids);
 
   return (
     <div className="surface-real min-h-screen text-g-ink">
+      <style>{`
+        @keyframes ashine{to{background-position:220% center}}
+        @keyframes amsg{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes apop{0%{transform:scale(.4)}70%{transform:scale(1.18)}100%{transform:scale(1)}}
+        @keyframes adot{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+        @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important}}
+      `}</style>
       <div className="relative z-10">
-        {/* top bar */}
+        {/* top bar — with reading progress + scrollspy */}
         <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#161512]/85 backdrop-blur-xl">
+          <div className="absolute inset-x-0 top-0 h-0.5 bg-white/5"><div className="h-full bg-gradient-to-r from-g-green to-g-gold transition-[width] duration-200" style={{ width: `${pct}%` }} /></div>
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-3">
             <a href="/" className="flex items-center gap-2"><img src={logo} alt="Guileo" className="h-7 w-7 object-contain" /><span className="text-sm font-extrabold text-g-word">Guileo <span className="text-g-gold">Academy</span></span></a>
             <nav className="hidden items-center gap-4 md:flex">
-              {t.nav.map((n, i) => <a key={n} href={`#${ids[i]}`} className="text-[12.5px] font-semibold text-g-muted transition hover:text-g-word">{n}</a>)}
+              {t.nav.map((n, i) => <a key={n} href={`#${ids[i]}`} className={`text-[12.5px] font-semibold transition ${active === ids[i] ? "text-g-gold" : "text-g-muted hover:text-g-word"}`}>{n}</a>)}
             </nav>
             <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] p-1">
               {[["pt", "🇧🇷"], ["en", "🇺🇸"]].map(([c, f]) => (
@@ -316,7 +369,7 @@ export default function Academia() {
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-g-gold/25 bg-g-gold/[0.08] px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.24em] text-g-gold">🎓 {t.eyebrow}</div>
             <h1 className="mx-auto max-w-3xl font-black leading-[1.02] tracking-tight" style={{ fontSize: "clamp(2rem,5vw,3.6rem)" }}>
               <span className="text-g-word">{t.h1a} </span>
-              <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent">{t.h1b}</span>
+              <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "ashine 7s linear infinite" }}>{t.h1b}</span>
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-[15px] leading-relaxed text-g-ink">{t.sub}</p>
             <div className="mt-7 flex flex-wrap items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-wider text-g-muted">
@@ -335,11 +388,11 @@ export default function Academia() {
             </Reveal>
             <Reveal className="mt-8">
               <div className="mb-3 text-[12px] font-bold uppercase tracking-wider text-g-muted">{t.s1what}</div>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <Reveal stagger className="grid gap-3 sm:grid-cols-3">
                 {t.legs.map(([ic, n, d]) => (
-                  <div key={n} className="card !p-5"><div className="text-2xl">{ic}</div><div className="mt-2 text-[14px] font-black text-g-word">{n}</div><p className="mt-1.5 text-[12.5px] leading-relaxed text-g-muted">{d}</p></div>
+                  <div key={n} className="card h-full !p-5"><div className="text-2xl">{ic}</div><div className="mt-2 text-[14px] font-black text-g-word">{n}</div><p className="mt-1.5 text-[12.5px] leading-relaxed text-g-muted">{d}</p></div>
                 ))}
-              </div>
+              </Reveal>
               <p className="mt-4 rounded-2xl border border-g-line bg-white/[0.03] p-4 text-[13.5px] leading-relaxed text-g-ink">📊 {t.s1portal}</p>
             </Reveal>
             <Reveal className="mt-8">
@@ -360,7 +413,7 @@ export default function Academia() {
           <section id="oferta" className="scroll-mt-24">
             <Reveal><Tag>{t.s2tag}</Tag><H2>{t.s2h}</H2></Reveal>
             <Reveal className="mt-7">
-              <div className="grid gap-4 md:grid-cols-2">
+              <Reveal stagger className="grid gap-4 md:grid-cols-2">
                 {[t.trackA, t.trackB].map((tr, i) => (
                   <div key={tr.name} className={`rounded-xl3 border p-6 ${i === 1 ? "border-g-gold/40 bg-g-gold/[0.05] shadow-gold" : "border-g-line bg-white/[0.03]"}`}>
                     <div className={`text-[15px] font-black ${i === 1 ? "text-g-gold" : "text-g-word"}`}>{tr.name}</div>
@@ -372,7 +425,7 @@ export default function Academia() {
                     <div className="mt-4 rounded-xl bg-white/[0.04] px-3.5 py-2 text-[12.5px] font-bold text-g-word">💰 {tr.ex}</div>
                   </div>
                 ))}
-              </div>
+              </Reveal>
               <p className="mt-4 rounded-2xl border border-g-green/25 bg-g-green/[0.05] p-4 text-[13.5px] font-semibold leading-relaxed text-g-word">🎯 {t.trackRule}</p>
             </Reveal>
           </section>
@@ -423,7 +476,7 @@ export default function Academia() {
           <section id="niveis" className="scroll-mt-24">
             <Reveal><Tag>{t.s5tag}</Tag><H2>{t.s5h}</H2></Reveal>
             <Reveal className="mt-7">
-              <div className="grid gap-4 md:grid-cols-2">
+              <Reveal stagger className="grid gap-4 md:grid-cols-2">
                 {[t.lvl1, t.lvl2].map((l, i) => (
                   <div key={l.name} className={`relative rounded-xl3 border p-6 ${i === 1 ? "border-g-gold/40 bg-g-gold/[0.05] shadow-gold" : "border-g-green/25 bg-white/[0.03]"}`}>
                     <div className={`text-[15px] font-black ${i === 1 ? "text-g-gold" : "text-g-green"}`}>{l.name}</div>
@@ -432,7 +485,7 @@ export default function Academia() {
                     <div className="mt-3 text-[11.5px] font-bold uppercase tracking-wide text-g-muted">🔓 {l.req}</div>
                   </div>
                 ))}
-              </div>
+              </Reveal>
             </Reveal>
           </section>
 
@@ -440,15 +493,15 @@ export default function Academia() {
           <section id="comece" className="scroll-mt-24">
             <Reveal><Tag>{t.s6tag}</Tag><H2>{t.s6h}</H2></Reveal>
             <Reveal className="mt-7">
-              <div className="space-y-2">
+              <Reveal stagger className="space-y-2">
                 {t.week.map(([d, w], i) => (
-                  <div key={i} className="flex items-center gap-4 rounded-2xl border border-g-line bg-white/[0.03] px-5 py-3.5">
+                  <div key={i} className="flex items-center gap-4 rounded-2xl border border-g-line bg-white/[0.03] px-5 py-3.5 transition hover:border-g-green/30">
                     <span className="w-16 shrink-0 text-[11px] font-black uppercase tracking-wide text-g-gold">{d}</span>
                     <span className="text-[13.5px] font-semibold text-g-word">{w}</span>
                     <span className="ml-auto text-g-green">✓</span>
                   </div>
                 ))}
-              </div>
+              </Reveal>
             </Reveal>
             <Reveal className="mt-8">
               <div className="mb-3 text-[12px] font-bold uppercase tracking-wider text-g-muted">{t.kitH}</div>
