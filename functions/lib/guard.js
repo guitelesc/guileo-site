@@ -27,6 +27,13 @@ export function isOwnerEmail(to, env) {
   return ownerEmails(env).has((to || "").trim().toLowerCase());
 }
 
+// SECURITY: Cloudflare Pages `_headers` does NOT apply to Function responses, so API responses
+// must carry their own hardening headers. nosniff stops MIME confusion; no-store keeps PII-bearing
+// JSON out of shared caches.
+export const apiSecurityHeaders = {
+  "X-Content-Type-Options": "nosniff",
+  "Cache-Control": "no-store",
+};
 export const json = (obj, status = 200) =>
-  new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
-export const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type" };
+  new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", ...apiSecurityHeaders } });
+export const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type", ...apiSecurityHeaders };

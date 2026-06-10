@@ -230,8 +230,9 @@ export default function Parceiro() {
           </h2>
           <p className="mt-5 max-w-xl text-center text-[15px] text-g-ink" style={{ animation: "cfade .8s ease .25s both" }}>Treinamento, materiais e a demo ao vivo da Gui — tudo pronto pra você começar a fechar.</p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3" style={{ animation: "cfade .8s ease .4s both" }}>
-            <a href={waLink("Oi Guileo! Quero ser um Growth Partner.")} target="_blank" rel="noopener" className="btn-gold text-base">🤝 Quero entrar</a>
-            <a href="/pitch" className="btn text-base">▶️ Ver o pitch do cliente</a>
+            <a href="/academia" className="btn-gold text-base">🎓 Fazer o Academy e entrar</a>
+            <a href={waLink("Oi Guileo! Quero ser um Growth Partner.")} target="_blank" rel="noopener" className="btn text-base">💬 Falar com o Luis</a>
+            <a href="/pitch" className="btn-ghost text-base">▶️ Ver o pitch do cliente</a>
           </div>
         </Slide>
 

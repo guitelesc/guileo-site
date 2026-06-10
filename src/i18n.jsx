@@ -426,11 +426,18 @@ const STEPS_SYNC = {
 
 const LangContext = createContext(null);
 export function LangProvider({ children }) {
-  const [lang, setLang] = useState("en");
-  useEffect(() => {
-    const saved = typeof localStorage !== "undefined" && localStorage.getItem("guileo_lang");
-    if (saved && T[saved]) setLang(saved);
-  }, []);
+  // Initial language: ?lang= URL param (the hreflang alternate links in index.html use it)
+  // wins over the saved preference; defaults to EN. Computed in the initializer so the very
+  // first paint is already in the right language (no EN flash, no setState-in-effect).
+  const [lang, setLang] = useState(() => {
+    try {
+      const q = new URLSearchParams(window.location.search).get("lang");
+      if (q && T[q]) return q;
+      const saved = localStorage.getItem("guileo_lang");
+      if (saved && T[saved]) return saved;
+    } catch { /* SSR / private mode */ }
+    return "en";
+  });
   useEffect(() => {
     if (typeof document !== "undefined") document.documentElement.lang = lang;
     if (typeof localStorage !== "undefined") localStorage.setItem("guileo_lang", lang);

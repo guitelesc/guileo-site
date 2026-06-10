@@ -37,6 +37,8 @@ export async function onRequest(context) {
       const r = await fetch(`${SB_URL}/rest/v1/rpc/admin_actions`, {
         method: "POST",
         headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
+        // SECURITY FLAG (pre-launch review): hardcoded fallback token. Set ADMIN_TOKEN in Cloudflare
+        // Pages env AND rotate the admin_actions() RPC token in Supabase so "guileo2026" stops working.
         body: JSON.stringify({ p_token: env.ADMIN_TOKEN || "guileo2026" }),
       });
       if (r.ok) {
@@ -86,5 +88,5 @@ export async function onRequest(context) {
     return json({ ok: false, error: String(e).slice(0, 200) }, 500);
   }
 }
-const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type" };
-const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json", ...cors } });
+const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store" };
+const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json", ...cors, "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store" } });

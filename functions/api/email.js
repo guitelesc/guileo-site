@@ -2,11 +2,15 @@
 // Powers welcome emails, new-lead alerts to the owner, and the daily lead digest.
 // Set RESEND_API_KEY (and optionally EMAIL_FROM) in Cloudflare Pages env to go live.
 // Without a key it no-ops gracefully (returns {ok:false, reason:"no key"}) so nothing breaks.
-import { isOwnerEmail } from "../lib/guard.js";
+import { isOwnerEmail, sameOrigin } from "../lib/guard.js";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
+    // SECURITY: only our own site may use this sender. Without this, anyone could push
+    // attacker-controlled HTML into the owner's inbox "from noreply@guileoai.com" (a perfect
+    // phishing vector against the owner) and burn the Resend quota. Recipient lock below still applies.
+    if (!sameOrigin(request)) return json({ ok: false, reason: "forbidden" }, 403);
     const body = await request.json();
     const to = (body.to || "").toString().trim();
     const subject = (body.subject || "Guileo").toString().slice(0, 200);
@@ -37,9 +41,9 @@ export async function onRequestPost(context) {
 }
 
 function json(obj, status = 200) {
-  return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+  return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store" } });
 }
 
 export async function onRequestOptions() {
-  return new Response(null, { headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type" } });
+  return new Response(null, { headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store" } });
 }

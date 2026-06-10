@@ -278,15 +278,15 @@ function LeadsDigest({ V, onNav, lang }) {
   const totalVal = open.reduce((s, l) => s + l.value, 0);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 stagger">
       <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.02] p-5">
-        <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-g-gold"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{pt ? "Resumo de hoje · Gui qualificou enquanto você dormia" : "Today's digest · Gui qualified these while you slept"}</div>
+        <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-g-gold"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{pt ? "Resumo de hoje · Gui qualificou enquanto você dormia" : "Today's digest · Gui qualified these while you slept"}</div>
         <div className="mt-1 text-xl font-black text-g-word">{open.length} {pt ? "leads novos pra você decidir" : "new leads to decide on"}</div>
         <div className="mt-3 flex flex-wrap gap-2">
           {groups.map((g) => counts[g] ? (
             <span key={g} className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold" style={{ borderColor: TEMP[g].dot + "55", color: TEMP[g].dot }}>{TEMP[g].emoji} {counts[g]} {pt ? TEMP[g].pt : TEMP[g].en}</span>
           ) : null)}
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-g-green/30 bg-g-green/[0.06] px-3 py-1 text-xs font-bold text-g-light">💰 ${totalVal.toLocaleString()} {pt ? "em jogo" : "in play"}</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-g-green/30 bg-g-green/[0.06] px-3 py-1 text-xs font-bold text-g-green money-glow num">💰 ${totalVal.toLocaleString()} {pt ? "em jogo" : "in play"}</span>
         </div>
         <p className="mt-3 text-[11px] text-g-muted leading-relaxed">{pt ? "Responda você (grátis) ou peça pro Gui ligar/mandar — aí ele executa e desconta créditos. Leads 🔥 quentes parados o Gui assume sozinho em 2h (avisa antes; você pode segurar)." : "Respond yourself (free) or let Gui call/message — Gui executes and uses credits. Idle 🔥 hot leads auto-escalate to Gui in 2h (you're warned first; you can grab them)."}</p>
       </div>
@@ -307,7 +307,7 @@ function LeadsDigest({ V, onNav, lang }) {
                       <div className="mt-0.5 text-[12px] text-g-muted">{pt ? lead.note.pt : lead.note.en}</div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-g-light">{lead.service}</span>
-                        <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-g-light">💰 ${lead.value.toLocaleString()}</span>
+                        <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-g-green num">💰 ${lead.value.toLocaleString()}</span>
                         <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-g-light">⏱ {pt ? urgPt(lead.urgency) : lead.urgency}</span>
                       </div>
                     </div>
@@ -1238,6 +1238,65 @@ const PT_UI = {
   "Don't see your system? If it has an API (or Zapier/Make),": "Não vê seu sistema? Se tiver uma API (ou Zapier/Make),",
   "your team wires it": "sua equipe conecta",
   "— Guileo becomes the brain on top of everything you already run.": "— a Guileo vira o cérebro acima de tudo que você já usa.",
+  // QA pass — previously hardcoded EN labels
+  "Dashboard Overview": "Visão geral do painel",
+  "Your AI briefing": "Resumo da sua IA",
+  "Your week, by Gui": "Sua semana, pelo Gui",
+  "Won / booked": "Ganhos / agendados",
+  "Ad spend": "Investimento em anúncios",
+  "Leads generated": "Leads gerados",
+  "Avg. ROAS": "ROAS médio",
+  "Connect Meta & Google Ads to see live campaign data here.": "Conecte Meta e Google Ads para ver os dados das campanhas ao vivo aqui.",
+  "Turn this call into action": "Transforme esta chamada em ação",
+  "The AI places the call, talks to the customer, and logs the outcome for you.": "A IA faz a chamada, fala com o cliente e registra o resultado pra você.",
+  "Your Guileo team": "Sua equipe Guileo",
+  "A real human manages your system. Reach out anytime — usually replies within hours.": "Uma pessoa de verdade cuida do seu sistema. Fale quando quiser — normalmente respondemos em poucas horas.",
+  "Want to tweak your AI, add a channel, or launch a campaign? Tell us.": "Quer ajustar sua IA, adicionar um canal ou lançar uma campanha? Conta pra gente.",
+  "Got it — your team will follow up shortly.": "Recebido — sua equipe vai responder em breve.",
+  "AI active": "IA ativa",
+  "Teach a better answer": "Ensinar uma resposta melhor",
+  "When customers ask about…": "Quando os clientes perguntarem sobre…",
+  "AI replied": "IA respondeu",
+  "What your AI sees in your numbers — and the exact moves to grow faster. Apply any of them in one click.": "O que sua IA vê nos seus números — e os movimentos exatos pra crescer mais rápido. Aplique qualquer um em um clique.",
+  "Over capacity": "Acima da capacidade",
+  "Normal": "Normal",
+  "You": "Você",
+  "VIP": "VIP",
+  "TOP": "TOP",
+  "Your return": "Seu retorno",
+  "Secure": "Garantir",
+  "You're outperforming your sector on every metric your AI touches.": "Você está acima do seu setor em todas as métricas que sua IA toca.",
+  "No matches": "Nenhum resultado",
+  "One AI, every branch — calls, bookings and orders routed to the right location automatically.": "Uma IA, todas as unidades — chamadas, reservas e pedidos vão para o local certo automaticamente.",
+  "Team & staff": "Equipe & colaboradores",
+  "Your AI routes bookings, calls and chats to the right person — and tracks who's performing.": "Sua IA direciona reservas, chamadas e conversas para a pessoa certa — e acompanha quem está performando.",
+  "Payments & invoicing": "Pagamentos & cobranças",
+  "Your AI sends invoices + payment links and chases unpaid ones automatically — you just watch the money land.": "Sua IA envia faturas + links de pagamento e cobra as pendentes automaticamente — você só vê o dinheiro entrar.",
+  "Sell a gift card — the AI delivers it instantly on WhatsApp or at checkout.": "Venda um vale-presente — a IA entrega na hora no WhatsApp ou no checkout.",
+  "The AI requested this review automatically after a great experience.": "A IA pediu esta avaliação automaticamente depois de uma ótima experiência.",
+  "Recurring revenue is the most valuable revenue — your AI renews, reminds and rescues it automatically.": "Receita recorrente é a receita mais valiosa — sua IA renova, lembra e resgata automaticamente.",
+  "One unified inbox": "Uma caixa de entrada unificada",
+  "Every call, WhatsApp, SMS and social DM lands in one place — and from any of them you fire an order or booking that drops into the right tab.": "Toda chamada, WhatsApp, SMS e DM de rede social cai em um só lugar — e de qualquer um deles você dispara um pedido ou reserva que entra na aba certa.",
+  "Train your AI — live": "Treine sua IA — ao vivo",
+  "Teach your AI in plain words and test it instantly. What you add, it uses on the very next customer.": "Ensine sua IA com palavras simples e teste na hora. O que você adicionar, ela usa já no próximo cliente.",
+  "Every order, booking, delivery and win-back feeds a live growth ledger — the exact number Guileo earns its % on. Fully transparent.": "Cada pedido, reserva, entrega e resgate alimenta um livro de crescimento ao vivo — exatamente o número sobre o qual a Guileo ganha seu %. Totalmente transparente.",
+  "Run anything with ⌘K": "Execute qualquer coisa com ⌘K",
+  "Press ⌘K (or Ctrl-K) anywhere to search or run a command — create an order, send an invoice, request reviews.": "Aperte ⌘K (ou Ctrl-K) em qualquer lugar para buscar ou executar um comando — criar um pedido, enviar uma fatura, pedir avaliações.",
+  "Skip tour": "Pular tour",
+  "Got it — let's go →": "Entendi — vamos lá →",
+  "Next →": "Próximo →",
+  "Welcome to Guileo 👋": "Bem-vindo à Guileo 👋",
+  "What kind of business are we growing?": "Que tipo de negócio vamos crescer?",
+  "So Gui represents your business — and we can reach you.": "Para o Gui representar seu negócio — e a gente conseguir falar com você.",
+  "Which channels should your AI cover?": "Quais canais sua IA deve cobrir?",
+  "Your AI answers 24/7 on every one you turn on.": "Sua IA responde 24/7 em todos os que você ativar.",
+  "You're all set": "Tudo pronto",
+  "there": "você",
+  "Your AI is live and your Growth Cockpit is ready.": "Sua IA está no ar e seu Growth Cockpit está pronto.",
+  "Skip setup": "Pular configuração",
+  "We sent a confirmation to": "Enviamos uma confirmação para",
+  "Demo data — each client sees their own industry.": "Dados de demonstração — cada cliente vê o próprio setor.",
+  "Owner": "Proprietário",
 };
 // Global UI language — set once by Portal on each render, read by tr() anywhere with
 // no prop/context threading. Makes wrapping any string a 1-token change: {tr("Label")}.
@@ -1245,9 +1304,39 @@ let UI_LANG = "en";
 const setUiLang = (l) => { UI_LANG = l; };
 const tr = (s, lang) => { const L = lang || UI_LANG; return (L === "pt" && PT_UI[s]) ? PT_UI[s] : s; };
 
-function Card({ children, className = "" }) {
-  return <div className={`rounded-xl2 border border-white/10 bg-white/[0.04] backdrop-blur-md p-5 ${className}`}>{children}</div>;
+// Per-tone accent moment for panels: a soft top tick + faint wash so each major
+// panel reads in its semantic color (green = money, gold = premium) without neon.
+const CARD_TONE = {
+  green: { tick: "linear-gradient(90deg,transparent,rgba(79,176,124,0.55),transparent)", glow: "0 0 14px rgba(62,148,104,0.45)", wash: "radial-gradient(120% 55% at 50% 0%, rgba(62,148,104,0.07), transparent 62%)" },
+  gold:  { tick: "linear-gradient(90deg,transparent,rgba(214,194,154,0.5),transparent)",  glow: "0 0 14px rgba(214,194,154,0.38)", wash: "radial-gradient(120% 55% at 50% 0%, rgba(214,194,154,0.06), transparent 62%)" },
+  red:   { tick: "linear-gradient(90deg,transparent,rgba(248,113,113,0.45),transparent)", glow: "0 0 12px rgba(248,113,113,0.35)", wash: "radial-gradient(120% 55% at 50% 0%, rgba(248,113,113,0.05), transparent 62%)" },
+};
+function Card({ children, className = "", tone }) {
+  const t = tone ? CARD_TONE[tone] : null;
+  return (
+    <div className={`relative rounded-xl2 border border-white/10 bg-white/[0.04] backdrop-blur-md p-5 ${className}`}>
+      {t && <span aria-hidden className="pointer-events-none absolute inset-x-4 top-0 h-px rounded-full" style={{ background: t.tick, boxShadow: t.glow }} />}
+      {t && <span aria-hidden className="pointer-events-none absolute inset-0 rounded-xl2" style={{ background: t.wash }} />}
+      {children}
+    </div>
+  );
 }
+// Portal-only motion/glow utilities (CSS keyframes; reduced-motion guarded).
+const PORTAL_FX = `
+.money-glow{ text-shadow:0 0 16px rgba(79,176,124,.45), 0 0 40px rgba(62,148,104,.22); }
+.gold-glow{ text-shadow:0 0 14px rgba(214,194,154,.40), 0 0 34px rgba(214,194,154,.16); }
+.num{ font-variant-numeric:tabular-nums; }
+.live-dot{ box-shadow:0 0 8px rgba(79,176,124,.85); }
+@keyframes fx-rowin{ from{ opacity:0; transform:translateX(-8px); } to{ opacity:1; transform:none; } }
+.row-in{ animation:fx-rowin .35s cubic-bezier(.22,.61,.36,1) both; }
+.clicky{ transition:border-color .18s ease, background-color .18s ease, transform .18s ease, box-shadow .18s ease; }
+.clicky:hover{ border-color:rgba(255,255,255,.22); background-color:rgba(255,255,255,.055); transform:translateY(-1px); }
+.clicky:active{ transform:translateY(0); }
+@media (prefers-reduced-motion: reduce){
+  .row-in{ animation:none !important; }
+  .clicky:hover{ transform:none; }
+}
+`;
 // Consistent empty state for any list that can run dry.
 function Empty({ icon = "✅", text }) {
   return <div className="px-5 py-10 text-center text-xs text-g-muted">{icon} {tr(text)}</div>;
@@ -1315,7 +1404,7 @@ function MiniStats({ items }) {
       {items.map(([label, value, tone], i) => (
         <Card key={i} className="py-3.5">
           <div className="text-[10px] uppercase tracking-wide text-g-muted">{tr(label)}</div>
-          <div className={`text-lg font-extrabold mt-0.5 ${tone === "good" ? "text-g-green" : tone === "bad" ? "text-red-400" : "text-g-word"}`}>{value}</div>
+          <div className={`text-lg font-extrabold num mt-0.5 ${tone === "good" ? "text-g-green money-glow" : tone === "bad" ? "text-red-400" : "text-g-word"}`}>{value}</div>
         </Card>
       ))}
     </div>
@@ -1479,7 +1568,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
   return (
     <div className="space-y-5 stagger">
       <div>
-        <h2 className="text-lg font-extrabold text-g-word">Dashboard Overview</h2>
+        <h2 className="text-lg font-extrabold text-g-word">{tr("Dashboard Overview")}</h2>
         <p className="text-xs text-g-muted">Welcome back 👋 Here's where your money is today — and the fastest way to grow it.</p>
       </div>
 
@@ -1488,9 +1577,32 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0">
             <span className="grid place-items-center h-9 w-9 rounded-full bg-g-green/15 text-g-green shrink-0"><FaBrain size={15} /></span>
-            <div className="min-w-0"><div className="text-sm font-extrabold text-g-word flex items-center gap-2">Your AI briefing <span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" /></div><div className="text-xs text-g-muted mt-0.5">{dailyBriefing(V)}.</div></div>
+            <div className="min-w-0"><div className="text-sm font-extrabold text-g-word flex items-center gap-2">{tr("Your AI briefing")} <span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" /></div><div className="text-xs text-g-muted mt-0.5">{dailyBriefing(V)}.</div></div>
           </div>
           {ops[0] && <button onClick={() => onNav(ops[0].view)} className="btn-bright text-sm shrink-0">{tr("Start here →")}</button>}
+        </div>
+      </Card>
+
+      {/* PROFIT IMPACT — money first (the only thing the owner must see) */}
+      <Card className="relative overflow-hidden bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] border-g-green/30">
+        <div className="absolute -top-16 -right-12 h-40 w-40 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Guileo profit impact · {periodLabel}</div>
+            <div className="flex items-end gap-2.5 flex-wrap mt-1">
+              <div className="text-4xl sm:text-5xl font-black text-g-green money-glow num tracking-tight"><Count key={period} to={Math.round(V.impact.total * periodFactor)} prefix="$" /></div>
+              {(() => { const last = Math.round(V.impact.total / 1.18); const up = Math.round(((V.impact.total - last) / last) * 100); return <span className="inline-flex items-center gap-1 mb-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full bg-g-green/15 text-g-green"><FaArrowTrendUp size={10} /> +{up}% vs last month</span>; })()}
+            </div>
+            {period === "30 days" && <div className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-bold text-g-green"><FaArrowTrendUp size={10} /> On pace for ${Math.round(V.impact.total * 1.6).toLocaleString()} by month-end</div>}
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {V.impact.parts.map(([label, val]) => (
+                <span key={label} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold">
+                  <span className="text-g-green num">{scaleMoney(val, periodFactor)}</span><span className="text-g-muted">{label}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+          <a href={waLink("I'd like to review my Guileo results")} target="_blank" rel="noopener" className="btn-bright text-sm">{tr("Talk to my team →")}</a>
         </div>
       </Card>
 
@@ -1534,31 +1646,8 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
         )
       )}
 
-      {/* PROFIT IMPACT — money first (the only thing the owner must see) */}
-      <Card className="relative overflow-hidden bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] border-g-green/30">
-        <div className="absolute -top-16 -right-12 h-40 w-40 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
-        <div className="relative flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wide text-g-gold">Guileo profit impact · {periodLabel}</div>
-            <div className="flex items-end gap-2.5 flex-wrap mt-1">
-              <div className="text-4xl sm:text-5xl font-black text-g-word tracking-tight"><Count key={period} to={Math.round(V.impact.total * periodFactor)} prefix="$" /></div>
-              {(() => { const last = Math.round(V.impact.total / 1.18); const up = Math.round(((V.impact.total - last) / last) * 100); return <span className="inline-flex items-center gap-1 mb-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full bg-g-green/15 text-g-green"><FaArrowTrendUp size={10} /> +{up}% vs last month</span>; })()}
-            </div>
-            {period === "30 days" && <div className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-bold text-g-green"><FaArrowTrendUp size={10} /> On pace for ${Math.round(V.impact.total * 1.6).toLocaleString()} by month-end</div>}
-            <div className="mt-2.5 flex flex-wrap gap-2">
-              {V.impact.parts.map(([label, val]) => (
-                <span key={label} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold">
-                  <span className="text-g-green">{scaleMoney(val, periodFactor)}</span><span className="text-g-muted">{label}</span>
-                </span>
-              ))}
-            </div>
-          </div>
-          <a href={waLink("I'd like to review my Guileo results")} target="_blank" rel="noopener" className="btn-bright text-sm">{tr("Talk to my team →")}</a>
-        </div>
-      </Card>
-
       {/* MONTHLY GOAL — editable target + progress + projection vs goal */}
-      <Card>
+      <Card tone="gold">
         <div className="flex items-center justify-between gap-3 mb-2">
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("🎯 Monthly goal")}</div>
           {editGoal ? (
@@ -1580,7 +1669,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
 
       {/* GROWTH MOVES — "what to do today to grow", the revenue-share thesis on the home screen */}
       {ops.length > 0 && (
-        <Card className="p-0 overflow-hidden">
+        <Card tone="green" className="p-0 overflow-hidden">
           <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("⚡ This week's growth moves")}</span>
             <span className="text-[10px] text-g-muted">· spotted by your AI</span>
@@ -1590,7 +1679,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
               <button key={o.view} onClick={() => onNav(o.view)} className="group w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.03] transition">
                 <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-base shrink-0">{o.ic}</span>
                 <div className="flex-1 min-w-0 text-sm text-g-word"><span className="font-extrabold">{o.n}</span> {o.text}</div>
-                <span className="text-xs font-extrabold text-g-green whitespace-nowrap">{o.value}</span>
+                <span className="text-xs font-extrabold text-g-green money-glow num whitespace-nowrap">{o.value}</span>
                 <span className="text-g-muted group-hover:text-g-word transition shrink-0">→</span>
               </button>
             ))}
@@ -1601,10 +1690,10 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
       {/* RECENT ACTIVITY — the latest things you + Gui did, across every tab */}
       {(() => { const acts = recentActivity(V).filter((a) => validViews.has(a.view)); return acts.length > 0 ? (
         <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recent activity")}</span><span className="text-[10px] text-g-muted inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />live</span></div>
+          <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recent activity")}</span><span className="text-[10px] text-g-muted inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />live</span></div>
           <div className="divide-y divide-white/[0.05]">
             {acts.map((a, i) => (
-              <button key={i} onClick={() => onNav(a.view)} className="group w-full text-left flex items-center gap-3 px-5 py-2.5 hover:bg-white/[0.03] transition">
+              <button key={i} onClick={() => onNav(a.view)} style={{ animationDelay: `${i * 60}ms` }} className="row-in group w-full text-left flex items-center gap-3 px-5 py-2.5 hover:bg-white/[0.03] transition">
                 <span className="text-base shrink-0">{a.ic}</span>
                 <div className="flex-1 min-w-0 text-xs text-g-word truncate">{a.text}</div>
                 <span className="text-[10px] text-g-muted shrink-0">{tr("just now")}</span>
@@ -1620,7 +1709,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
         <div className="flex items-start gap-3">
           <span className="grid place-items-center h-10 w-10 rounded-xl bg-g-gold/15 text-g-gold shrink-0"><FaWandMagicSparkles /></span>
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-extrabold text-g-word">Your week, by Gui</div>
+            <div className="text-sm font-extrabold text-g-word">{tr("Your week, by Gui")}</div>
             <div className="text-xs text-g-muted mt-1 leading-relaxed">This week your AI handled <span className="text-g-word font-bold">{wk.handled}</span> conversations, created <span className="text-g-word font-bold">{wk.created || vnum(V.label, "wkc", 6, 24)}</span> bookings & orders{wk.driven ? <> and drove <span className="text-g-green font-bold">${wk.driven.toLocaleString()}</span> in tracked revenue</> : ""} — saving you about <span className="text-g-word font-bold">{wk.hours}h</span>. {wk.open ? <>Next: <span className="text-g-word font-semibold">{wk.open} invoice{wk.open !== 1 ? "s" : ""}</span> still to collect, and <span className="text-g-word font-semibold">{wk.peak}</span> looks busiest.</> : <>Next week <span className="text-g-word font-semibold">{wk.peak}</span> looks busiest — want a promo to fill the quiet days?</>}</div>
             <div className="mt-2.5 flex flex-wrap gap-2">
               <button onClick={() => onNav("impact")} className="btn-ghost text-xs px-3 py-1.5">{tr("See the impact →")}</button>
@@ -1658,7 +1747,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
                   {k.good ? <FaArrowTrendDown size={10} /> : <FaArrowTrendUp size={10} />} {k.note || (k.delta != null ? `+${k.delta}%` : "live")}
                 </span>
               </div>
-              <div className="mt-3 text-2xl font-extrabold text-g-word tracking-tight"><Count to={k.num} prefix={k.pre || ""} suffix={k.suf || ""} /></div>
+              <div className={`mt-3 text-2xl font-extrabold num tracking-tight ${k.pre === "$" ? "text-g-green money-glow" : "text-g-word"}`}><Count to={k.num} prefix={k.pre || ""} suffix={k.suf || ""} /></div>
               <div className="text-[11px] text-g-muted">{k.label}</div>
               <div className="mt-2"><Spark data={V.revenue} color={k.color} h={32} /></div>
             </Card>
@@ -1697,13 +1786,13 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
 
       {/* Revenue + channel breakdown (or live activity) */}
       <div className="grid lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2">
+        <Card tone="green" className="lg:col-span-2">
           <div className="flex items-start justify-between mb-4">
             <div>
               <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Revenue & order volume")}</div>
               <div className="mt-1 flex items-center gap-3 text-[10px] text-g-muted"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-gold" />{tr("Revenue")}</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-green" />{tr("Orders")}</span></div>
             </div>
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-g-green"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{tr("Live sync")}</span>
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-g-green"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("Live sync")}</span>
           </div>
           <Bars data={V.revenue} />
         </Card>
@@ -1745,7 +1834,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
                 const max = Math.max(...V.topItems.items.map((x) => x.sold));
                 return (
                   <div key={i}>
-                    <div className="flex justify-between items-baseline text-xs mb-1"><span className="font-bold text-g-word uppercase truncate pr-2">{it.name}</span><span className="text-g-muted whitespace-nowrap">{it.sold} sold · <span className="text-g-green font-bold">${it.rev.toFixed(2)}</span></span></div>
+                    <div className="flex justify-between items-baseline text-xs mb-1"><span className="font-bold text-g-word uppercase truncate pr-2">{it.name}</span><span className="text-g-muted whitespace-nowrap">{it.sold} sold · <span className="text-g-green font-bold num">${it.rev.toFixed(2)}</span></span></div>
                     <div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${(it.sold / max) * 100}%` }} /></div>
                   </div>
                 );
@@ -1791,7 +1880,7 @@ function Overview({ V, onNav, sections = [], period = "30 days" }) {
                     <div className="text-[11px] text-g-muted truncate">{r.b}</div>
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-wide whitespace-nowrap px-2 py-0.5 rounded-full" style={{ color: r.color, background: `${r.color}1a` }}>{r.pill}</span>
-                  <span className="text-xs font-bold text-g-green whitespace-nowrap w-20 text-right">{r.val}</span>
+                  <span className="text-xs font-bold text-g-green num whitespace-nowrap w-20 text-right">{r.val}</span>
                 </div>
               ))}
             </div>
@@ -2221,16 +2310,16 @@ function Operations({ V }) {
 
 function Channels() {
   return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
       {CHANNELS.map((c) => (
-        <Card key={c.name}>
+        <Card key={c.name} tone="green">
           <div className="flex items-center gap-3">
             <span className="grid place-items-center h-11 w-11 rounded-xl bg-white/[0.07]" style={{ color: c.color }}><c.Icon size={20} /></span>
             <div><div className="text-sm font-extrabold text-g-word">{c.name}</div><div className="text-[11px] text-g-muted">{c.note}</div></div>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <div><div className="text-xl font-extrabold text-g-word"><Count to={c.convos} /></div><div className="text-[10px] uppercase tracking-wide text-g-muted">Conversations</div></div>
-            <div><div className="text-xl font-extrabold text-g-green"><Count to={c.won} /></div><div className="text-[10px] uppercase tracking-wide text-g-muted">Won / booked</div></div>
+            <div><div className="text-xl font-extrabold text-g-word num"><Count to={c.convos} /></div><div className="text-[10px] uppercase tracking-wide text-g-muted">{tr("Conversations")}</div></div>
+            <div><div className="text-xl font-extrabold text-g-green money-glow num"><Count to={c.won} /></div><div className="text-[10px] uppercase tracking-wide text-g-muted">{tr("Won / booked")}</div></div>
           </div>
         </Card>
       ))}
@@ -2244,9 +2333,9 @@ function Ads() {
   return (
     <div className="space-y-4 stagger">
       <div className="grid sm:grid-cols-3 gap-4">
-        <Card><div className="text-[11px] uppercase tracking-wide text-g-muted">Ad spend</div><div className="text-2xl font-extrabold text-g-word mt-1"><Count to={totalSpend} prefix="$" /></div></Card>
-        <Card><div className="text-[11px] uppercase tracking-wide text-g-muted">Leads generated</div><div className="text-2xl font-extrabold text-g-light mt-1"><Count to={totalLeads} /></div></Card>
-        <Card><div className="text-[11px] uppercase tracking-wide text-g-muted">Avg. ROAS</div><div className="text-2xl font-extrabold text-g-green mt-1">4.1×</div></Card>
+        <Card><div className="text-[11px] uppercase tracking-wide text-g-muted">{tr("Ad spend")}</div><div className="text-2xl font-extrabold text-g-word num mt-1"><Count to={totalSpend} prefix="$" /></div></Card>
+        <Card><div className="text-[11px] uppercase tracking-wide text-g-muted">{tr("Leads generated")}</div><div className="text-2xl font-extrabold text-g-light num mt-1"><Count to={totalLeads} /></div></Card>
+        <Card tone="green"><div className="text-[11px] uppercase tracking-wide text-g-muted">{tr("Avg. ROAS")}</div><div className="text-2xl font-extrabold text-g-green money-glow num mt-1">4.1×</div></Card>
       </div>
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Campaigns")}</div>
@@ -2255,12 +2344,12 @@ function Ads() {
             <div key={c.name} className="flex items-center gap-4 px-5 py-3.5">
               <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name}</div><div className="text-[11px] text-g-muted">${c.spend} spend · {c.leads} leads</div></div>
               <div className="text-right"><div className="text-xs text-g-muted">CPL</div><div className="text-sm font-bold text-g-word">${c.cpl}</div></div>
-              <div className="text-right w-16"><div className="text-xs text-g-muted">ROAS</div><div className={`text-sm font-extrabold inline-flex items-center gap-1 ${c.up ? "text-g-green" : "text-red-400"}`}>{c.up ? <FaArrowTrendUp size={11} /> : <FaArrowTrendDown size={11} />}{c.roas}×</div></div>
+              <div className="text-right w-16"><div className="text-xs text-g-muted">ROAS</div><div className={`text-sm font-extrabold num inline-flex items-center gap-1 ${c.up ? "text-g-green money-glow" : "text-red-400"}`}>{c.up ? <FaArrowTrendUp size={11} /> : <FaArrowTrendDown size={11} />}{c.roas}×</div></div>
             </div>
           ))}
         </div>
       </Card>
-      <p className="text-xs text-g-muted text-center">Connect Meta & Google Ads to see live campaign data here. <a href={waLink("I want to connect my ad accounts to Guileo")} target="_blank" rel="noopener" className="text-g-gold font-semibold hover:underline">{tr("Connect accounts →")}</a></p>
+      <p className="text-xs text-g-muted text-center">{tr("Connect Meta & Google Ads to see live campaign data here.")} <a href={waLink("I want to connect my ad accounts to Guileo")} target="_blank" rel="noopener" className="text-g-gold font-semibold hover:underline">{tr("Connect accounts →")}</a></p>
     </div>
   );
 }
@@ -2291,23 +2380,23 @@ function Support() {
   return (
     <div className="grid lg:grid-cols-2 gap-4">
       <Card>
-        <div className="text-sm font-extrabold text-g-word">👋 Your Guileo team</div>
-        <p className="text-xs text-g-muted mt-1">A real human manages your system. Reach out anytime — usually replies within hours.</p>
+        <div className="text-sm font-extrabold text-g-word">👋 {tr("Your Guileo team")}</div>
+        <p className="text-xs text-g-muted mt-1">{tr("A real human manages your system. Reach out anytime — usually replies within hours.")}</p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <a href={waLink("Hi Guileo team! I need help with my account")} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Message my team</a>
+          <a href={waLink("Hi Guileo team! I need help with my account")} target="_blank" rel="noopener" className="btn-bright text-sm">💬 {tr("Message my team")}</a>
           <a href="/#contact" className="btn-ghost text-sm">{tr("Book a call")}</a>
         </div>
       </Card>
       <Card>
         <div className="text-sm font-extrabold text-g-word">{tr("Request a change")}</div>
-        <p className="text-xs text-g-muted mt-1">Want to tweak your AI, add a channel, or launch a campaign? Tell us.</p>
+        <p className="text-xs text-g-muted mt-1">{tr("Want to tweak your AI, add a channel, or launch a campaign? Tell us.")}</p>
         {!sent ? (
           <form onSubmit={(e) => { e.preventDefault(); setSent(true); }} className="mt-3 space-y-2">
             <textarea required rows={3} aria-label="Describe your change request" placeholder="e.g. Add a Telegram agent and a weekend promo campaign…" className="w-full rounded-xl2 border border-white/15 bg-black/20 px-4 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
             <button className="btn-bright text-sm w-full">{tr("Send request →")}</button>
           </form>
         ) : (
-          <div className="mt-3 rounded-xl2 border border-g-green/40 bg-g-green/[0.1] p-4 text-sm font-bold text-g-light text-center">✅ Got it — your team will follow up shortly.</div>
+          <div className="mt-3 rounded-xl2 border border-g-green/40 bg-g-green/[0.1] p-4 text-sm font-bold text-g-light text-center">✅ {tr("Got it — your team will follow up shortly.")}</div>
         )}
       </Card>
     </div>
@@ -2339,7 +2428,7 @@ function LiveOrders({ V }) {
   return (
     <>
     <Card className="p-0 overflow-hidden">
-      <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Live orders")}</span><span className="text-[11px] text-g-muted inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{rows.length} active</span></div>
+      <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Live orders")}</span><span className="text-[11px] text-g-muted inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{rows.length} active</span></div>
       <div className="divide-y divide-white/[0.06]">
         {rows.map((o, i) => (
           <button key={i} onClick={() => setSel(o)} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
@@ -2613,7 +2702,7 @@ function CallLogs({ V, onNav }) {
           actions={<><a href={`tel:${sel.phone.replace(/[^0-9+]/g, "")}`} className="btn-bright text-sm">📞 Call back</a><a href={waLink(`Hi ${sel.name}! `)} target="_blank" rel="noopener" className="btn-ghost text-sm">{tr("💬 Message")}</a></>}
           onClose={() => setSel(null)}
         >
-          <div><div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">Turn this call into action</div><ConvoActions V={V} who={sel.name} channel="call" onNav={onNav} onDone={() => setSel(null)} /></div>
+          <div><div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">{tr("Turn this call into action")}</div><ConvoActions V={V} who={sel.name} channel="call" onNav={onNav} onDone={() => setSel(null)} /></div>
         </Drawer>
       )}
     </div>
@@ -2646,7 +2735,7 @@ function Dialer() {
           <button onClick={() => setNum((n) => n.slice(0, -1))} disabled={!num} className="rounded-xl2 border border-white/15 px-4 text-g-muted hover:text-g-word disabled:opacity-30 transition" aria-label={tr("Delete")}>⌫</button>
           <button onClick={start} disabled={calling} className="btn-bright flex-1 text-sm disabled:opacity-70">{calling ? "Calling…" : "📞 Start AI call"}</button>
         </div>
-        <p className="mt-2.5 text-[10px] text-g-muted">The AI places the call, talks to the customer, and logs the outcome for you.</p>
+        <p className="mt-2.5 text-[10px] text-g-muted">{tr("The AI places the call, talks to the customer, and logs the outcome for you.")}</p>
       </Card>
     </div>
   );
@@ -2760,7 +2849,7 @@ function Inbox({ V, onNav }) {
               <span className="grid place-items-center h-8 w-8 rounded-full bg-white/[0.06]" style={{ color }}><Icon size={14} /></span>
               <div className="min-w-0"><div className="text-sm font-bold text-g-word truncate">{cur.name}</div><div className="text-[10px] text-g-muted">{cur.channel} · {cur.sentiment}</div></div>
               <button onClick={() => onNav?.("customers")} className="ml-auto text-[11px] font-bold text-g-gold hover:underline shrink-0">{tr("Customer →")}</button>
-              <span className="text-[10px] font-bold uppercase text-g-green inline-flex items-center gap-1 shrink-0"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />AI active</span>
+              <span className="text-[10px] font-bold uppercase text-g-green inline-flex items-center gap-1 shrink-0"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("AI active")}</span>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2.5 min-h-[14rem]">
               {(threads[cur.id] || []).map((m, i) => (
@@ -2813,7 +2902,7 @@ function Convos({ V, title }) {
         </div>
       </Card>
       <Card className="p-0 overflow-hidden lg:col-span-2 flex flex-col">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2 shrink-0"><span className="grid place-items-center h-8 w-8 rounded-full bg-white/[0.06] text-xs font-bold text-g-word">{(c.name || "?")[0]}</span><div className="text-sm font-bold text-g-word">{c.name}</div><span className="ml-auto text-[10px] font-bold uppercase text-g-green inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />AI active</span></div>
+        <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2 shrink-0"><span className="grid place-items-center h-8 w-8 rounded-full bg-white/[0.06] text-xs font-bold text-g-word">{(c.name || "?")[0]}</span><div className="text-sm font-bold text-g-word">{c.name}</div><span className="ml-auto text-[10px] font-bold uppercase text-g-green inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("AI active")}</span></div>
         <div className="flex-1 overflow-y-auto p-4 space-y-2.5 min-h-[15rem]">
           {(threads[active] || []).map((m, i) => (
             <div key={i} className={`flex ${m.from === "them" ? "justify-start" : "justify-end"}`}>
@@ -2835,8 +2924,8 @@ function Convos({ V, title }) {
 }
 function Toggle({ on, onClick }) {
   return (
-    <button onClick={onClick} className={`relative h-5 w-9 rounded-full transition-colors ${on ? "bg-g-green" : "bg-white/15"}`} role="switch" aria-checked={on}>
-      <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${on ? "left-[18px]" : "left-0.5"}`} />
+    <button onClick={onClick} className={`relative h-5 w-9 rounded-full transition-all cursor-pointer ${on ? "bg-g-green shadow-[0_0_10px_rgba(62,148,104,0.5)]" : "bg-white/15 hover:bg-white/25"}`} role="switch" aria-checked={on}>
+      <span className={`absolute top-0.5 h-4 w-4 rounded-full transition-all ${on ? "left-[18px] bg-white" : "left-0.5 bg-white/70"}`} />
     </button>
   );
 }
@@ -2936,7 +3025,7 @@ function SettingsView({ V }) {
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Integrations & webhooks")}</div>
         <div className="divide-y divide-white/[0.06]">
           {[["📅 Calendar (Google/Apple)", "Connected"], ["💳 Stripe payments", "Connected"], ["🍔 POS / orders", "Connected"], ["📣 Meta & Google Ads", "Connected"], ["🛵 Delivery platforms", "Connected"]].map(([name, st]) => (
-            <div key={name} className="flex items-center justify-between px-5 py-3"><span className="text-sm text-g-word font-semibold">{name}</span><span className="text-[10px] font-black uppercase text-g-green inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{st}</span></div>
+            <div key={name} className="flex items-center justify-between px-5 py-3"><span className="text-sm text-g-word font-semibold">{name}</span><span className="text-[10px] font-black uppercase text-g-green inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{st}</span></div>
           ))}
         </div>
         <div className="px-5 py-3 border-t border-white/10">
@@ -2965,7 +3054,7 @@ function Grow() {
     <div className="space-y-4 stagger">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word">Grow with Guileo</div><div className="text-xs text-g-muted mt-0.5">{tr("Want more? Add a channel or service — we set it up, you keep one login and one bill. Growth on tap.")}</div></div>
+          <div><div className="text-sm font-extrabold text-g-word">{tr("Grow with Guileo")}</div><div className="text-xs text-g-muted mt-0.5">{tr("Want more? Add a channel or service — we set it up, you keep one login and one bill. Growth on tap.")}</div></div>
           <a href={waLink("Hi Guileo! I'd like to add a new service to my plan")} target="_blank" rel="noopener" className="btn-bright text-sm">{tr("Talk to my team →")}</a>
         </div>
       </Card>
@@ -3100,7 +3189,7 @@ function AIBrain({ V }) {
 
       {/* THE DIFFERENTIATOR — test your AI live */}
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{tr("Test your AI · see exactly how it answers your customers")}</div>
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("Test your AI · see exactly how it answers your customers")}</div>
         <div className="p-4 space-y-2.5 min-h-[8rem] max-h-72 overflow-y-auto">
           {chat.length === 0 && <div className="text-center text-xs text-g-muted py-6">{tr("Ask your AI anything a customer might ask 👇")}</div>}
           {chat.map((m, i) => (
@@ -3108,7 +3197,7 @@ function AIBrain({ V }) {
               <div className="flex justify-end"><div className="max-w-[78%] rounded-2xl px-3.5 py-2 text-xs bg-g-gold/15 text-g-word border border-g-gold/30">{m.q}</div></div>
               <div className="flex justify-start"><div className="max-w-[80%] space-y-1">
                 <div className="rounded-2xl px-3.5 py-2 text-xs bg-g-green/15 text-g-light border border-g-green/30"><div className="text-[9px] font-black uppercase text-g-green mb-0.5 flex items-center gap-1">Your AI {m.trained && <span className="text-g-gold normal-case">{tr("· from your training")}</span>}</div>{m.a}</div>
-                {!m.trained && <button onClick={() => setEditing({ topic: "", triggers: m.q, answer: "" })} className="ml-1 text-[11px] font-bold text-g-gold hover:text-g-word transition inline-flex items-center gap-1"><FaPen size={9} /> Teach a better answer</button>}
+                {!m.trained && <button onClick={() => setEditing({ topic: "", triggers: m.q, answer: "" })} className="ml-1 text-[11px] font-bold text-g-gold hover:text-g-word transition inline-flex items-center gap-1"><FaPen size={9} /> {tr("Teach a better answer")}</button>}
               </div></div>
             </div>
           ))}
@@ -3167,7 +3256,7 @@ function KBForm({ entry, onSave, onCancel }) {
     <div className="space-y-3">
       <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr("Topic")}</span>
         <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. Parking & access" className={`mt-1 ${field}`} /></label>
-      <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">When customers ask about… <span className="normal-case font-normal text-g-muted/70">{tr("(keywords, optional)")}</span></span>
+      <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr("When customers ask about…")} <span className="normal-case font-normal text-g-muted/70">{tr("(keywords, optional)")}</span></span>
         <input value={triggers} onChange={(e) => setTriggers(e.target.value)} placeholder="parking park garage valet" className={`mt-1 ${field}`} /></label>
       <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr("Your AI should reply")}</span>
         <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} rows={4} placeholder="Free parking is available right behind the building…" className={`mt-1 ${field} resize-none`} /></label>
@@ -3202,9 +3291,9 @@ function Billing({ V }) {
   return (
     <div className="space-y-4 stagger">
       <div className="grid lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2">
+        <Card tone="gold" className="lg:col-span-2">
           <div className="flex items-center justify-between gap-3">
-            <div><div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Current plan")}</div><div className="text-xl font-extrabold text-g-word mt-1">{plan.label}</div></div>
+            <div><div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Current plan")}</div><div className="text-xl font-extrabold text-g-gold gold-glow mt-1">{plan.label}</div></div>
             <a href={waLink("I'd like to upgrade my Guileo plan")} target="_blank" rel="noopener" className="btn-bright text-sm">{tr("Upgrade →")}</a>
           </div>
           <div className="mt-4"><div className="flex justify-between text-xs mb-1"><span className="text-g-muted">{plan.unit}</span><span className="text-g-word font-bold">{plan.used} / {plan.total.toLocaleString()}</span></div><div className="h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${Math.max(2, pct)}%` }} /></div></div>
@@ -3216,13 +3305,13 @@ function Billing({ V }) {
       </div>
 
       {/* Gui AI credits — the assistant's pay-as-you-go meter, managed here */}
-      <Card className="border-g-green/25 bg-gradient-to-br from-g-green/[0.08] to-transparent">
+      <Card tone="gold" className="border-g-gold/25 bg-gradient-to-br from-g-gold/[0.07] to-transparent">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="grid place-items-center h-10 w-10 rounded-xl bg-g-green/15 text-g-green"><FaWandMagicSparkles /></span>
+            <span className="grid place-items-center h-10 w-10 rounded-xl bg-g-gold/15 text-g-gold"><FaWandMagicSparkles /></span>
             <div><div className="text-sm font-extrabold text-g-word">{tr("Gui — AI assistant credits")}</div><div className="text-xs text-g-muted mt-0.5">{tr("Powers every task Gui runs for you · ~5 credits per action")}</div></div>
           </div>
-          <div className="text-right"><div className={`text-2xl font-extrabold ${low ? "text-red-400" : "text-g-word"}`}>{credits}</div><div className="text-[10px] uppercase tracking-wide text-g-muted">{tr("credits left")}</div></div>
+          <div className="text-right"><div className={`text-2xl font-extrabold num ${low ? "text-red-400" : "text-g-gold gold-glow"}`}>{credits}</div><div className="text-[10px] uppercase tracking-wide text-g-muted">{tr("credits left")}</div></div>
         </div>
         <div className="mt-3 h-2 rounded-full bg-white/10 overflow-hidden"><div className={`h-full rounded-full ${low ? "bg-red-500" : "bg-gradient-to-r from-g-green to-g-gold"}`} style={{ width: `${cpct}%` }} /></div>
         <div className="mt-3 grid sm:grid-cols-3 gap-2">
@@ -3280,7 +3369,7 @@ function Billing({ V }) {
             <Card key={p.key} className={`relative ${p.current ? "border-g-gold/50 bg-g-gold/[0.06]" : ""}`}>
               {p.current && <span className="absolute -top-2 left-4 text-[9px] font-black uppercase tracking-wide bg-g-gold text-black rounded-full px-2 py-0.5">{tr("Current")}</span>}
               <div className="text-sm font-extrabold text-g-word">{p.name}</div>
-              <div className="mt-1 flex items-baseline gap-1"><span className="text-2xl font-extrabold text-g-word">${p.price}</span><span className="text-[11px] text-g-muted">/{tr("mo")}</span></div>
+              <div className="mt-1 flex items-baseline gap-1"><span className={`text-2xl font-extrabold num ${p.current ? "text-g-gold gold-glow" : "text-g-word"}`}>${p.price}</span><span className="text-[11px] text-g-muted">/{tr("mo")}</span></div>
               <ul className="mt-3 space-y-1.5 text-[11px] text-g-word">{(UI_LANG === "pt" ? p.featuresPt : p.features).map((f, i) => <li key={i} className="flex gap-1.5"><span className="text-g-green">✓</span>{f}</li>)}</ul>
               {p.current
                 ? <div className="mt-3 text-center text-[11px] font-bold text-g-muted">{tr("Your plan")}</div>
@@ -3475,7 +3564,7 @@ function SocialInbox({ V }) {
         <Drawer
           title={sel.name}
           subtitle={`${sel.net} · direct message`}
-          badge={<span className="text-[10px] font-black uppercase text-g-green inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />AI replied</span>}
+          badge={<span className="text-[10px] font-black uppercase text-g-green inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("AI replied")}</span>}
           fields={[["Channel", sel.net], ["When", sel.t], ["Status", "Auto-replied by AI"]]}
           note={<>"{sel.last}"<div className="mt-2 text-g-muted">Your AI already replied on {sel.net} and offered to book — it only pings you if a human is needed.</div></>}
           actions={<><button onClick={() => { toast(`Reply sent on ${sel.net} ✓`); setSel(null); }} className="btn-bright text-sm">💬 Reply</button><button onClick={() => { toast("Marked as handled ✓"); setSel(null); }} className="btn-ghost text-sm">✓ Mark handled</button></>}
@@ -3543,7 +3632,7 @@ function AIInsights({ V, onNav, sections = [] }) {
     <div className="space-y-4 stagger">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaBrain className="text-g-green" /> AI Insights</div>
-        <div className="text-xs text-g-muted mt-0.5">What your AI sees in your numbers — and the exact moves to grow faster. Apply any of them in one click.</div>
+        <div className="text-xs text-g-muted mt-0.5">{tr("What your AI sees in your numbers — and the exact moves to grow faster. Apply any of them in one click.")}</div>
       </Card>
 
       <Card className="border-g-gold/30 bg-g-gold/[0.05] p-0 overflow-hidden">
@@ -3572,7 +3661,7 @@ function AIInsights({ V, onNav, sections = [] }) {
               </div>
             ))}
           </div>
-          <div className="mt-2 flex items-center gap-3 text-[9px] text-g-muted"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-g-green" />Normal</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: "#D6C29A" }} />Busy</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-red-500" />Over capacity</span></div>
+          <div className="mt-2 flex items-center gap-3 text-[9px] text-g-muted"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-g-green" />{tr("Normal")}</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: "#D6C29A" }} />{tr("Busy")}</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-red-500" />{tr("Over capacity")}</span></div>
         </Card>
         <Card className="p-0 overflow-hidden">
           <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("⚠ No-show risk · AI flagged")}</div>
@@ -3581,7 +3670,7 @@ function AIInsights({ V, onNav, sections = [] }) {
               <div key={i} className="flex items-center gap-3 px-5 py-3">
                 <span className="h-1.5 w-1.5 rounded-full bg-red-400 shrink-0" />
                 <div className="flex-1 min-w-0 text-sm font-bold text-g-word truncate">{name}</div>
-                <button onClick={() => toast(`Deposit + reminder sent to ${name} ✓`)} className="text-[11px] font-bold rounded-full border border-white/12 px-2.5 py-1 text-g-word hover:border-g-gold/40 transition">Secure</button>
+                <button onClick={() => toast(`Deposit + reminder sent to ${name} ✓`)} className="text-[11px] font-bold rounded-full border border-white/12 px-2.5 py-1 text-g-word hover:border-g-gold/40 transition">{tr("Secure")}</button>
               </div>
             )) : <Empty icon="✅" text="No high-risk bookings — your AI's reminders are keeping no-shows low." />}
           </div>
@@ -3598,7 +3687,7 @@ function AIInsights({ V, onNav, sections = [] }) {
             </div>
           ))}
         </div>
-        <div className="px-5 py-2.5 border-t border-white/[0.06] text-[11px] text-g-muted">You're outperforming your sector on every metric your AI touches.</div>
+        <div className="px-5 py-2.5 border-t border-white/[0.06] text-[11px] text-g-muted">{tr("You're outperforming your sector on every metric your AI touches.")}</div>
       </Card>
     </div>
   );
@@ -3673,7 +3762,7 @@ function Palette({ V, sections, onNav, onClose }) {
               <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{it.label}</div><div className="text-[11px] text-g-muted truncate">{it.sub}</div></div>
               {it.run && <span className="text-[9px] font-black uppercase text-g-gold bg-g-gold/15 rounded px-1.5 py-0.5">{tr("Run")}</span>}
             </button>
-          )) : <div className="px-3 py-6 text-center text-xs text-g-muted">No matches</div>}
+          )) : <div className="px-3 py-6 text-center text-xs text-g-muted">{tr("No matches")}</div>}
         </div>
       </div>
     </>
@@ -3690,7 +3779,7 @@ function Locations({ V }) {
     <div className="space-y-4 stagger">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaLocationDot className="text-g-green" /> Locations</div><div className="text-xs text-g-muted mt-0.5">One AI, every branch — calls, bookings and orders routed to the right location automatically.</div></div>
+          <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaLocationDot className="text-g-green" /> {tr("Locations")}</div><div className="text-xs text-g-muted mt-0.5">{tr("One AI, every branch — calls, bookings and orders routed to the right location automatically.")}</div></div>
           <button onClick={addLocation} className="btn-bright text-sm inline-flex items-center gap-2"><FaPlus size={11} /> Add location</button>
         </div>
       </Card>
@@ -3735,7 +3824,7 @@ function Team({ V }) {
     <div className="space-y-4 stagger">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaUsers className="text-g-green" /> Team & staff</div><div className="text-xs text-g-muted mt-0.5">Your AI routes bookings, calls and chats to the right person — and tracks who's performing.</div></div>
+          <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaUsers className="text-g-green" /> {tr("Team & staff")}</div><div className="text-xs text-g-muted mt-0.5">{tr("Your AI routes bookings, calls and chats to the right person — and tracks who's performing.")}</div></div>
           <button onClick={invite} className="btn-bright text-sm inline-flex items-center gap-2"><FaUserPlus size={11} /> Invite member</button>
         </div>
       </Card>
@@ -3783,7 +3872,7 @@ function Payments({ V }) {
     <div className="space-y-4 stagger">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaCreditCard className="text-g-green" /> Payments & invoicing</div><div className="text-xs text-g-muted mt-0.5">Your AI sends invoices + payment links and chases unpaid ones automatically — you just watch the money land.</div></div>
+          <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaCreditCard className="text-g-green" /> {tr("Payments & invoicing")}</div><div className="text-xs text-g-muted mt-0.5">{tr("Your AI sends invoices + payment links and chases unpaid ones automatically — you just watch the money land.")}</div></div>
           <button onClick={newInvoice} className="btn-bright text-sm inline-flex items-center gap-2"><FaPlus size={11} /> New invoice</button>
         </div>
       </Card>
@@ -3795,7 +3884,7 @@ function Payments({ V }) {
             <button key={i} onClick={() => setSel(r)} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
               <span className="text-xs font-bold text-g-light w-20 shrink-0">{r.id}</span>
               <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{r.customer}{r.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">{tr("new")}</span>}</div><div className="text-[11px] text-g-muted">{r.method} · {r.due}</div></div>
-              <span className="text-sm font-extrabold text-g-word">${r.amount.toLocaleString()}</span>
+              <span className={`text-sm font-extrabold num ${statusOf(r) === "Paid" ? "text-g-green money-glow" : statusOf(r) === "Overdue" ? "text-red-400" : "text-g-word"}`}>${r.amount.toLocaleString()}</span>
               <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: colorOf(r) + "22", color: colorOf(r) }}>{statusOf(r)}</span>
             </button>
           ))}
@@ -3901,7 +3990,7 @@ function Loyalty({ V }) {
             ))}
           </div>
           <div className="flex-1 min-w-[180px]">
-            <div className="text-[11px] text-g-muted mb-1.5">Sell a gift card — the AI delivers it instantly on WhatsApp or at checkout.</div>
+            <div className="text-[11px] text-g-muted mb-1.5">{tr("Sell a gift card — the AI delivers it instantly on WhatsApp or at checkout.")}</div>
             <div className="flex flex-wrap gap-2">{[25, 50, 100].map((amt) => (<button key={amt} onClick={() => sellGift(amt)} className="text-sm font-bold rounded-full border border-g-gold/35 bg-g-gold/[0.08] px-4 py-1.5 text-g-gold hover:bg-g-gold/[0.16] transition">Sell ${amt}</button>))}</div>
           </div>
         </div>
@@ -3939,21 +4028,21 @@ function GuileoImpact({ V }) {
         <div className="absolute -top-16 -right-12 h-44 w-44 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
         <div className="relative">
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Growth Guileo drove · this month")}</div>
-          <div className="text-4xl sm:text-5xl font-black text-g-word tracking-tight mt-1"><Count key={total} to={total} prefix="$" /></div>
-          <div className="mt-2.5 flex flex-wrap gap-2">{d.parts.map(([label, val]) => (<span key={label} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold"><span className="text-g-green">{val}</span><span className="text-g-muted">{label}</span></span>))}</div>
+          <div className="text-4xl sm:text-5xl font-black text-g-green money-glow num tracking-tight mt-1"><Count key={total} to={total} prefix="$" /></div>
+          <div className="mt-2.5 flex flex-wrap gap-2">{d.parts.map(([label, val]) => (<span key={label} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold"><span className="text-g-green num">{val}</span><span className="text-g-muted">{label}</span></span>))}</div>
         </div>
       </Card>
       <div className="grid lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2 p-0 overflow-hidden">
+        <Card tone="green" className="lg:col-span-2 p-0 overflow-hidden">
           <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Growth ledger · every $ the AI generated")}</div>
-          <div className="divide-y divide-white/[0.06]">{events.map(([t, what, amt], i) => (<div key={i} className="flex items-center gap-3 px-5 py-3"><span className="grid place-items-center h-8 w-8 rounded-full bg-g-green/15 text-g-green text-sm font-black">＋</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{what}</div><div className="text-[11px] text-g-muted">{t === "now" ? "just now" : `${t} ago`}</div></div><span className="text-sm font-extrabold text-g-green">+${amt}</span></div>))}</div>
+          <div className="divide-y divide-white/[0.06]">{events.map(([t, what, amt], i) => (<div key={i} style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }} className="row-in flex items-center gap-3 px-5 py-3"><span className="grid place-items-center h-8 w-8 rounded-full bg-g-green/15 text-g-green text-sm font-black">＋</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{what}</div><div className="text-[11px] text-g-muted">{t === "now" ? "just now" : `${t} ago`}</div></div><span className="text-sm font-extrabold text-g-green money-glow num">+${amt}</span></div>))}</div>
         </Card>
         <Card>
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">{tr("Your return")}</div>
           <div className="text-sm text-g-muted">Gui drove <b className="text-g-word">${total.toLocaleString()}</b> in growth for you this month{creditsUsed ? <> · powered by <b className="text-g-word">{creditsUsed.toLocaleString()} credits</b></> : ""}.</div>
           <div className="mt-3 rounded-xl2 border border-g-gold/30 bg-g-gold/[0.06] p-3">
             <div className="text-[10px] uppercase tracking-wide text-g-gold font-bold">{tr("Return on credits")}</div>
-            <div className="text-2xl font-extrabold text-g-word mt-1">{roi > 0 ? `${roi.toFixed(1)}×` : "—"}</div>
+            <div className={`text-2xl font-extrabold num mt-1 ${roi > 0 ? "text-g-green money-glow" : "text-g-word"}`}>{roi > 0 ? `${roi.toFixed(1)}×` : "—"}</div>
             <div className="text-[11px] text-g-muted mt-0.5">{roi > 0 ? <>Every $1 of credits returned <b className="text-g-word">${roi.toFixed(1)}</b> in growth.</> : "Run Gui this month to see your return."} Pay-as-you-go — you only pay for what Gui does. <b className="text-g-word">Guileo never takes a cut of your revenue.</b></div>
             <button onClick={() => {
               const lines = [["Date", "Growth event", "Amount"], ...events.map(([t, what, amt]) => [t === "now" ? "just now" : `${t} ago`, what, `$${amt}`]), ["", "Total growth Gui drove", `$${total}`], ["", "Credits used", `${creditsUsed}`], ["", "Return on credits", roi > 0 ? `${roi.toFixed(1)}x` : "-"]];
@@ -4095,7 +4184,7 @@ function Reputation({ V, onNav }) {
           subtitle={`${sel.ch} review`}
           badge={<span className="text-xs text-g-gold">{"★".repeat(sel.stars)}</span>}
           fields={[["Rating", `${sel.stars} / 5`], ["Channel", sel.ch], ["Status", "Published"]]}
-          note={<>"{sel.text}"<div className="mt-2 text-g-muted">The AI requested this review automatically after a great experience.</div></>}
+          note={<>"{sel.text}"<div className="mt-2 text-g-muted">{tr("The AI requested this review automatically after a great experience.")}</div></>}
           actions={<><button onClick={() => { toast("Thanks reply posted ✓"); setSel(null); }} className="btn-bright text-sm">💬 Reply / thank</button>{sel.stars >= 4 && <button onClick={() => boost(sel)} className="btn-ghost text-sm">🚀 Boost as ad</button>}<button onClick={() => { toast("Shared to social ✓"); setSel(null); }} className="btn-ghost text-sm">📣 Share</button></>}
           onClose={() => setSel(null)}
         />
@@ -4115,7 +4204,7 @@ function Recurring({ V }) {
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recurring revenue · the AI keeps it renewing")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for plan</span></div>
         <div className="divide-y divide-white/[0.06]">{rows.map((r, i) => (<button key={i} onClick={() => setSel(r)} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition"><span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{r.name[0]}</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted">{r.plan} · ${r.value}/mo</div></div><span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span></button>))}{rows.length === 0 && <Empty icon="🔁" text="No recurring plans yet — offer one to start predictable monthly revenue." />}</div>
       </Card>
-      <p className="text-center text-[11px] text-g-muted">Recurring revenue is the most valuable revenue — your AI renews, reminds and rescues it automatically.</p>
+      <p className="text-center text-[11px] text-g-muted">{tr("Recurring revenue is the most valuable revenue — your AI renews, reminds and rescues it automatically.")}</p>
       {sel && (
         <Drawer
           title={sel.name}
@@ -4149,11 +4238,11 @@ function Tour({ onDone }) {
       <motion.div initial={{ opacity: 0, y: 18, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="w-full max-w-md rounded-xl3 border border-white/12 bg-g-cream/95 backdrop-blur-xl p-7 shadow-lift text-center">
         <div className="flex gap-1.5 mb-5 justify-center">{steps.map((_, k) => <div key={k} className={`h-1.5 rounded-full transition-all ${k === i ? "w-6 bg-g-green" : "w-1.5 bg-white/15"}`} />)}</div>
         <div className="text-5xl mb-3">{s.ic}</div>
-        <div className="text-lg font-extrabold text-g-word">{s.title}</div>
-        <p className="text-sm text-g-muted mt-2 leading-relaxed">{s.text}</p>
+        <div className="text-lg font-extrabold text-g-word">{tr(s.title)}</div>
+        <p className="text-sm text-g-muted mt-2 leading-relaxed">{tr(s.text)}</p>
         <div className="mt-6 flex items-center justify-between gap-3">
-          <button onClick={onDone} className="text-[11px] font-bold text-g-muted hover:text-g-word">Skip tour</button>
-          <button onClick={advance} className="btn-bright text-sm px-6">{last ? "Got it — let's go →" : "Next →"}</button>
+          <button onClick={onDone} className="text-[11px] font-bold text-g-muted hover:text-g-word">{tr("Skip tour")}</button>
+          <button onClick={advance} className="btn-bright text-sm px-6">{tr(last ? "Got it — let's go →" : "Next →")}</button>
         </div>
       </motion.div>
     </div>
@@ -4237,8 +4326,8 @@ function OnboardingWizard({ onDone }) {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md rounded-xl3 border border-white/12 bg-white/[0.04] backdrop-blur-xl p-7 shadow-lift">
         <div className="flex gap-1.5 mb-5">{[0, 1, 2, 3].map((i) => <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= step ? "bg-g-green" : "bg-white/15"}`} />)}</div>
         {step === 0 && (<>
-          <div className="text-lg font-extrabold text-g-word">Welcome to Guileo 👋</div>
-          <p className="text-xs text-g-muted mt-1">What kind of business are we growing?</p>
+          <div className="text-lg font-extrabold text-g-word">{tr("Welcome to Guileo 👋")}</div>
+          <p className="text-xs text-g-muted mt-1">{tr("What kind of business are we growing?")}</p>
           <div className="mt-4 grid grid-cols-3 gap-2 max-h-72 overflow-y-auto">
             {VERTICAL_KEYS.map((k) => (
               <button key={k} onClick={() => { setVid(k); setName(VERTICALS[k].business.name); next(); }} className="flex flex-col items-center gap-1 rounded-xl2 border border-white/10 bg-white/[0.03] p-3 hover:border-g-gold/50 hover:-translate-y-0.5 transition-all">
@@ -4249,27 +4338,27 @@ function OnboardingWizard({ onDone }) {
         </>)}
         {step === 1 && (<>
           <div className="text-lg font-extrabold text-g-word">{tr("Tell us about you")}</div>
-          <p className="text-xs text-g-muted mt-1">So Gui represents your business — and we can reach you.</p>
+          <p className="text-xs text-g-muted mt-1">{tr("So Gui represents your business — and we can reach you.")}</p>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Business name (e.g. Bella Pizza)" className="mt-4 w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
           <input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="Your name" className="mt-3 w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
           <input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="Your WhatsApp / phone / email" className="mt-3 w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
           <button onClick={next} className="btn-bright text-sm w-full mt-4">{tr("Continue →")}</button>
         </>)}
         {step === 2 && (<>
-          <div className="text-lg font-extrabold text-g-word">Which channels should your AI cover?</div>
-          <p className="text-xs text-g-muted mt-1">Your AI answers 24/7 on every one you turn on.</p>
+          <div className="text-lg font-extrabold text-g-word">{tr("Which channels should your AI cover?")}</div>
+          <p className="text-xs text-g-muted mt-1">{tr("Your AI answers 24/7 on every one you turn on.")}</p>
           <div className="mt-4 space-y-2">{Object.keys(chs).map((c) => (<div key={c} className="flex items-center justify-between rounded-xl2 border border-white/10 bg-white/[0.03] px-4 py-3"><span className="text-sm font-semibold text-g-word">{c}</span><Toggle on={chs[c]} onClick={() => setChs((x) => ({ ...x, [c]: !x[c] }))} /></div>))}</div>
           <button onClick={next} className="btn-bright text-sm w-full mt-4">{tr("Continue →")}</button>
         </>)}
         {step === 3 && (
           <div className="text-center py-3">
             <div className="text-4xl mb-2">🎉</div>
-            <div className="text-lg font-extrabold text-g-word">You're all set, {name || "there"}!</div>
-            <p className="text-xs text-g-muted mt-1">Your AI is live and your Growth Cockpit is ready.</p>
+            <div className="text-lg font-extrabold text-g-word">{tr("You're all set")}, {name || tr("there")}!</div>
+            <p className="text-xs text-g-muted mt-1">{tr("Your AI is live and your Growth Cockpit is ready.")}</p>
             <button onClick={() => { captureLead(); sendWelcome(); onDone(vid, { name: name.trim(), owner: owner.trim(), contact: contact.trim() }); }} className="btn-bright text-sm w-full mt-5">{tr("Enter my cockpit →")}</button>
           </div>
         )}
-        {step < 3 && <button onClick={() => onDone(vid)} className="block mx-auto mt-4 text-[11px] font-bold text-g-muted hover:text-g-word">Skip setup</button>}
+        {step < 3 && <button onClick={() => onDone(vid)} className="block mx-auto mt-4 text-[11px] font-bold text-g-muted hover:text-g-word">{tr("Skip setup")}</button>}
       </motion.div>
     </div>
   );
@@ -4304,7 +4393,7 @@ function Login({ onEnter }) {
           <div className="mt-6">
             <div className="text-3xl mb-2">📬</div>
             <div className="text-sm font-extrabold text-g-word">{tr("Confirm your email")}</div>
-            <p className="text-xs text-g-muted mt-1">We sent a confirmation to <span className="text-g-light font-semibold">{email}</span>{tr(". Click the link, then come back and sign in.")}</p>
+            <p className="text-xs text-g-muted mt-1">{tr("We sent a confirmation to")} <span className="text-g-light font-semibold">{email}</span>{tr(". Click the link, then come back and sign in.")}</p>
             <button onClick={() => { setConfirm(false); setMode("signin"); }} className="mt-4 btn-bright text-sm w-full">{tr("I confirmed — sign in →")}</button>
           </div>
         ) : (
@@ -4555,7 +4644,7 @@ function Gui({ V, onNav }) {
             ))}
           </div>
           {msgs.length <= 2 && (
-            <div className="px-3 pb-1 flex flex-wrap gap-1.5 shrink-0">{["Create an order", "Send an invoice", "Request reviews", "Launch a promo"].map((s) => <button key={s} onClick={() => run(s)} className="rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold text-g-muted hover:text-g-word transition">{s}</button>)}</div>
+            <div className="px-3 pb-1 flex flex-wrap gap-1.5 shrink-0">{["Create an order", "Send an invoice", "Request reviews", "Launch a promo"].map((s) => <button key={s} onClick={() => run(s)} className="rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold text-g-muted hover:text-g-word transition">{tr(s)}</button>)}</div>
           )}
           {showHist && history.length > 0 && (
             <div className="px-3 pb-1 shrink-0">
@@ -4599,6 +4688,7 @@ export default function Portal() {
   const [bellOpen, setBellOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [me, setMe] = useState(null);            // current session (real or demo) — drives the sidebar identity
   const [onboarded, setOnboarded] = useState(() => { try { return !!localStorage.getItem("guileo_onboarded"); } catch { return true; } });
   const [tourDone, setTourDone] = useState(() => { try { return !!localStorage.getItem("guileo_tour_done"); } catch { return true; } });
   const [fvDone, setFvDone] = useState(true);   // first-value guided path — only fires right after a fresh wizard
@@ -4608,11 +4698,11 @@ export default function Portal() {
     let unsub = () => {};
     (async () => {
       const s = await portalApi.session();
-      if (s) { if (!s.demo) await portalApi.hydrate(); setAuthed(true); }
+      if (s) { if (!s.demo) await portalApi.hydrate(); setMe(s); setAuthed(true); }
       setBooting(false);
     })();
     // React to magic-link sign-in (the email link lands back on /portal).
-    if (CONNECTED) unsub = portalApi.onAuthChange((sess) => { if (sess) setAuthed(true); else setAuthed(false); });
+    if (CONNECTED) unsub = portalApi.onAuthChange((sess) => { if (sess) { setMe((m) => m || sess); setAuthed(true); } else { setMe(null); setAuthed(false); } });
     return () => unsub();
   }, []);
   useEffect(() => {
@@ -4725,9 +4815,9 @@ export default function Portal() {
   const content = (views[view] || views.overview)();
 
   if (booting) return <div className="min-h-screen grid place-items-center text-g-muted text-sm">{tr("Loading your cockpit…")}</div>;
-  if (!authed) return <div className="min-h-screen text-g-ink"><Login onEnter={() => setAuthed(true)} /></div>;
+  if (!authed) return <div className="min-h-screen text-g-ink"><Login onEnter={() => { portalApi.session().then((s) => s && setMe(s)); setAuthed(true); }} /></div>;
   if (!onboarded) return <div className="min-h-screen text-g-ink"><OnboardingWizard onDone={(vid, extra) => {
-    setVertical(vid); setView("overview"); setOnboarded(true);
+    setVertical(vid); portalApi.saveState("vertical", vid); setNotifsRead(portalApi.loadState(`${vid}:notifsRead`, false)); setView("overview"); setOnboarded(true);
     try { localStorage.setItem("guileo_onboarded", "1"); } catch { /* private */ }
     setFvDone(false);   // trigger the guided first-value path right after the wizard
     // Carry the business name from onboarding straight into the profile + AI.
@@ -4739,6 +4829,7 @@ export default function Portal() {
 
   return (
     <div className="min-h-screen text-g-ink flex flex-col lg:flex-row">
+      <style>{PORTAL_FX}</style>
       {!tourDone && fvDone && <Tour onDone={finishTour} />}
       {onboarded && !fvDone && <FirstValue V={V} onNav={setView} onDone={finishFV} />}
       {/* Mobile backdrop */}
@@ -4758,7 +4849,7 @@ export default function Portal() {
               const notif = nf(key);
               return (
                 <button key={key} onClick={() => { setView(key); setNavOpen(false); }}
-                  className={`relative flex items-center gap-3 rounded-xl2 px-3.5 py-2.5 text-sm font-bold whitespace-nowrap transition-colors ${on ? "text-g-word" : "text-g-muted hover:text-g-word"}`}>
+                  className={`relative flex items-center gap-3 rounded-xl2 px-3.5 py-2.5 text-sm font-bold whitespace-nowrap transition-colors ${on ? "text-g-word" : "text-g-muted hover:text-g-word hover:bg-white/[0.04]"}`}>
                   {on && <motion.span layoutId="navpill" className="absolute inset-0 rounded-xl2 bg-white/[0.07] border border-g-gold/30" transition={{ type: "spring", stiffness: 380, damping: 30 }} />}
                   <Icon size={15} className="relative" /><span className="relative">{tr(label, lang)}</span>
                   {flag === "soon"
@@ -4792,8 +4883,8 @@ export default function Portal() {
             </div>
           )}
           <div className="flex items-center gap-2">
-            <span className="grid place-items-center h-8 w-8 rounded-full bg-g-green/15 text-xs font-bold text-g-light">JS</span>
-            <div className="leading-tight min-w-0 flex-1"><div className="text-xs font-bold text-g-word truncate">Jane Staff</div><div className="text-[10px] text-g-muted truncate">{CONNECTED ? "Staff · admin" : "Demo mode"}</div></div>
+            <span className="grid place-items-center h-8 w-8 rounded-full bg-g-green/15 text-xs font-bold text-g-light">{((me?.name || me?.email || "G").trim()[0] || "G").toUpperCase()}</span>
+            <div className="leading-tight min-w-0 flex-1"><div className="text-xs font-bold text-g-word truncate">{me?.name || me?.email || "Jane Staff"}</div><div className="text-[10px] text-g-muted truncate">{me && !me.demo ? tr(me.role || "Owner") : tr("Demo mode")}</div></div>
             <button onClick={logout} title={tr("Sign out")} className="text-g-muted hover:text-red-400 transition text-[11px] font-bold">{tr("Sign out")}</button>
           </div>
         </div>
@@ -4806,7 +4897,7 @@ export default function Portal() {
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={() => setNavOpen(true)} className="lg:hidden grid place-items-center h-9 w-9 rounded-xl border border-white/12 bg-white/[0.04] text-g-word shrink-0" aria-label={tr("Open menu")}>☰</button>
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-extrabold text-g-word truncate flex items-center gap-2">{tr(title, lang)}{(() => { let demo = false; try { demo = JSON.parse(localStorage.getItem("guileo_portal_session") || "null")?.demo === true; } catch { /* */ } return demo ? <span className="text-[9px] font-black uppercase tracking-wide bg-g-gold/20 text-g-gold border border-g-gold/30 rounded-full px-2 py-0.5 shrink-0">{tr("Demo · sample data")}</span> : null; })()}</h1>
+              <h1 className="text-lg sm:text-xl font-extrabold text-g-word truncate flex items-center gap-2">{tr(title, lang)}{me?.demo ? <span className="text-[9px] font-black uppercase tracking-wide bg-g-gold/20 text-g-gold border border-g-gold/30 rounded-full px-2 py-0.5 shrink-0">{tr("Demo · sample data")}</span> : null}</h1>
               <p className="text-[11px] text-g-muted truncate">{V.business.name} · {V.business.place} · {V.business.since}</p>
             </div>
           </div>
@@ -4833,17 +4924,18 @@ export default function Portal() {
             </div>
             <div className="hidden lg:flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.04] p-1">
               {["7 days", "30 days", "90 days"].map((p) => (
-                <button key={p} onClick={() => setPeriod(p)} className={`rounded-full px-3 py-1 text-xs font-bold transition ${period === p ? "bg-g-gold/15 text-g-gold" : "text-g-muted hover:text-g-word"}`}>{p}</button>
+                <button key={p} onClick={() => setPeriod(p)} className={`rounded-full px-3 py-1 text-xs font-bold transition ${period === p ? "bg-g-gold/20 text-g-gold ring-1 ring-g-gold/40 shadow-[0_0_12px_rgba(214,194,154,0.18)]" : "text-g-muted hover:text-g-word hover:bg-white/[0.05]"}`}>{tr(p)}</button>
               ))}
             </div>
             <span className="grid place-items-center h-9 w-9 rounded-full bg-g-green/15 text-sm font-extrabold text-g-light">{V.business.name[0]}</span>
           </div>
         </header>
 
-        {/* demo banner + INDUSTRY SWITCHER (demo only — real clients get their own fixed industry) */}
+        {/* demo banner + INDUSTRY SWITCHER (demo only — real clients get their own fixed industry; no flash before the session loads) */}
+        {me?.demo && (
         <div className="px-5 sm:px-8 pt-4 flex flex-wrap items-center gap-3">
           <div className="rounded-full border border-g-gold/30 bg-g-gold/[0.08] px-4 py-2 text-[11px] font-bold text-g-gold inline-flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" /> Demo data — each client sees their own industry.
+            <span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" /> {tr("Demo data — each client sees their own industry.")}
           </div>
           <div className="ml-auto relative">
             <span className="text-[11px] font-bold uppercase tracking-wide text-g-muted hidden md:inline mr-2">{tr("Preview industry")}</span>
@@ -4870,6 +4962,7 @@ export default function Portal() {
             )}
           </div>
         </div>
+        )}
 
         {/* content — keyed by view+vertical = clean remount/fade per switch */}
         <div className="p-5 sm:p-8">

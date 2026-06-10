@@ -1,4 +1,11 @@
-# Security headers for all routes (Cloudflare Pages).
+# Security headers for all static routes (Cloudflare Pages).
+# NOTE: this file does NOT apply to Pages Function responses (/api/*) — those set their own
+# headers in functions/lib/guard.js and each function's local json() helper.
+# NOTE: keep comments OUTSIDE the indented rule block — an indented "# foo: bar" line can be
+# parsed as a header by the Cloudflare _headers parser.
+# CSP rationale: clickjacking + object/base locked down; scripts/styles kept permissive so the
+# Vite bundle, ElevenLabs voice widget, Supabase and Resend keep working. Tighten script-src
+# once sources are pinned.
 /*
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
@@ -6,6 +13,4 @@
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
   Permissions-Policy: geolocation=(), camera=(), payment=()
   Cross-Origin-Opener-Policy: same-origin
-  # CSP: clickjacking + object/base locked down; scripts/styles kept permissive so the Vite bundle,
-  # ElevenLabs voice widget, Supabase and Resend keep working. Tighten script-src once sources are pinned.
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: https:; font-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; connect-src 'self' https: wss:; frame-src 'self' https:; media-src 'self' https: blob:
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: https:; font-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; connect-src 'self' https: wss:; frame-src 'self' https:; media-src 'self' https: blob:; upgrade-insecure-requests

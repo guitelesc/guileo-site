@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { useLang } from "../i18n.jsx";
 
 const GV_COPY = {
-  en: { h1a:"A growth cycle ", h1b:"that runs itself.", result:"The result", sub:"Performance is the base, sales are the fuel — growth is where you land.", moon:"🚀 Growth · the moon", fuel:"💰 Sales · the fuel", base:"⚡ Performance · the base", pills:["Performance","Sales","Growth"], stats:[["+286%","performance"],["3×","faster sales cycles"],["24/7","on autopilot"]], cta:"Start your growth cycle" },
-  pt: { h1a:"Um ciclo de crescimento ", h1b:"que roda sozinho.", result:"O resultado", sub:"Performance é a base, vendas são o combustível — crescimento é onde você chega.", moon:"🚀 Crescimento · a lua", fuel:"💰 Vendas · o combustível", base:"⚡ Performance · a base", pills:["Performance","Vendas","Crescimento"], stats:[["+286%","performance"],["3×","ciclos de venda mais rápidos"],["24/7","no automático"]], cta:"Comece seu ciclo de crescimento" },
-  es: { h1a:"Un ciclo de crecimiento ", h1b:"que se mueve solo.", result:"El resultado", sub:"El rendimiento es la base, las ventas el combustible — el crecimiento es a donde llegas.", moon:"🚀 Crecimiento · la luna", fuel:"💰 Ventas · el combustible", base:"⚡ Rendimiento · la base", pills:["Rendimiento","Ventas","Crecimiento"], stats:[["+286%","rendimiento"],["3×","ciclos de venta más rápidos"],["24/7","en automático"]], cta:"Empieza tu ciclo de crecimiento" },
-  hi: { h1a:"एक ग्रोथ साइकल ", h1b:"जो खुद चलता है।", result:"नतीजा", sub:"परफ़ॉर्मेंस आधार है, बिक्री ईंधन — ग्रोथ वह जगह है जहाँ आप पहुँचते हैं।", moon:"🚀 ग्रोथ · चाँद", fuel:"💰 बिक्री · ईंधन", base:"⚡ परफ़ॉर्मेंस · आधार", pills:["Performance","Sales","Growth"], stats:[["+286%","परफ़ॉर्मेंस"],["3×","तेज़ बिक्री चक्र"],["24/7","ऑटोपायलट पर"]], cta:"अपना ग्रोथ साइकल शुरू करें" },
+  en: { h1a:"A growth cycle ", h1b:"that runs itself.", result:"The result", sub:"Performance is the base, sales are the fuel — growth is where you land.", moon:"🚀 Growth · the moon", fuel:"💰 Sales · the fuel", base:"⚡ Performance · the base", pills:["Performance","Sales","Growth"], profit:"What lands in YOUR pocket", stats:[["💵","+$15K","/mo extra revenue"],["📈","3.2×","ROI in 90 days"],["♻️","−40%","ad waste recovered"]], cta:"Start your growth cycle" },
+  pt: { h1a:"Um ciclo de crescimento ", h1b:"que roda sozinho.", result:"O resultado", sub:"Performance é a base, vendas são o combustível — crescimento é onde você chega.", moon:"🚀 Crescimento · a lua", fuel:"💰 Vendas · o combustível", base:"⚡ Performance · a base", pills:["Performance","Vendas","Crescimento"], profit:"O que cai no SEU bolso", stats:[["💵","+$15K","/mês a mais de receita"],["📈","3.2×","de ROI em 90 dias"],["♻️","−40%","de desperdício em ads"]], cta:"Comece seu ciclo de crescimento" },
+  es: { h1a:"Un ciclo de crecimiento ", h1b:"que se mueve solo.", result:"El resultado", sub:"El rendimiento es la base, las ventas el combustible — el crecimiento es a donde llegas.", moon:"🚀 Crecimiento · la luna", fuel:"💰 Ventas · el combustible", base:"⚡ Rendimiento · la base", pills:["Rendimiento","Ventas","Crecimiento"], profit:"Lo que cae en TU bolsillo", stats:[["💵","+$15K","/mes de ingresos extra"],["📈","3.2×","ROI en 90 días"],["♻️","−40%","desperdicio recuperado"]], cta:"Empieza tu ciclo de crecimiento" },
+  hi: { h1a:"एक ग्रोथ साइकल ", h1b:"जो खुद चलता है।", result:"नतीजा", sub:"परफ़ॉर्मेंस आधार है, बिक्री ईंधन — ग्रोथ वह जगह है जहाँ आप पहुँचते हैं।", moon:"🚀 ग्रोथ · चाँद", fuel:"💰 बिक्री · ईंधन", base:"⚡ परफ़ॉर्मेंस · आधार", pills:["Performance","Sales","Growth"], profit:"जो आपकी जेब में आता है", stats:[["💵","+$15K","/माह अतिरिक्त कमाई"],["📈","3.2×","ROI 90 दिनों में"],["♻️","−40%","विज्ञापन बर्बादी वापस"]], cta:"अपना ग्रोथ साइकल शुरू करें" },
 };
 
 // GrowthV2 — TEST (/v2) finale: matched to the guileoai.com aesthetic — the real
@@ -24,7 +24,7 @@ export default function GrowthV2() {
 
   return (
     <section className="relative overflow-hidden px-5 py-20">
-      <style>{`@keyframes grreveal{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}@keyframes grshine{to{background-position:220% center}}@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}`}</style>
+      <style>{`@keyframes grreveal{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}@keyframes grshine{to{background-position:220% center}}@keyframes grfloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-6px) rotate(3deg)}}@keyframes grdot{0%,100%{opacity:.55}50%{opacity:1}}@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}`}</style>
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(700px_360px_at_50%_0%,rgba(62,148,104,0.16),transparent),radial-gradient(700px_360px_at_80%_100%,rgba(214,194,154,0.12),transparent)]" />
 
       <div className="mx-auto max-w-3xl text-center">
@@ -93,14 +93,28 @@ export default function GrowthV2() {
           </div>
         </div>
 
-        {/* stats + CTA */}
-        <div className="mx-auto mt-10 grid max-w-2xl grid-cols-3 gap-4" style={{ animation: "grreveal .8s ease .5s both" }}>
-          {STATS.map(([n, l]) => (
-            <div key={l} className="rounded-2xl border border-g-line bg-white/[0.03] p-4 transition-all duration-300 hover:-translate-y-1 hover:border-g-gold/35 hover:bg-white/[0.05] hover:shadow-[0_22px_50px_-28px_rgba(0,0,0,0.85)]">
-              <div className="bg-gradient-to-r from-g-green to-g-gold bg-clip-text text-[28px] font-black text-transparent sm:text-[36px]">{n}</div>
-              <div className="mt-0.5 text-[12px] font-semibold uppercase tracking-wide text-g-ink">{l}</div>
-            </div>
-          ))}
+        {/* PROFIT strip — the essence: what lands in the client's pocket */}
+        <div className="mx-auto mt-8 max-w-2xl" style={{ animation: "grreveal .8s ease .45s both" }}>
+          <div className="mb-3 inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-g-gold">
+            <span className="h-1.5 w-1.5 rounded-full bg-g-gold shadow-[0_0_8px_rgba(214,194,154,0.9)]" style={{ animation: "grdot 2.2s ease-in-out infinite" }} />
+            💰 {G.profit}
+          </div>
+          <div className="grid grid-cols-3 gap-3 sm:gap-4">
+            {STATS.map(([ic, n, l], i) => {
+              const rgb = ["62,148,104", "214,194,154", "194,168,120"][i];
+              return (
+                <div key={l} className="group relative overflow-hidden rounded-2xl border bg-white/[0.03] p-4 pt-5 transition-all duration-300 hover:-translate-y-1 hover:bg-white/[0.05]"
+                  style={{ borderColor: `rgba(${rgb},0.25)`, boxShadow: `0 18px 44px -30px rgba(0,0,0,0.85)`, animation: `grreveal .7s cubic-bezier(.2,.7,.2,1) ${0.55 + i * 0.15}s both` }}>
+                  {/* colored top tick — frames each profit fact */}
+                  <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: `linear-gradient(90deg,transparent,rgba(${rgb},0.85),transparent)` }} />
+                  <span className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full blur-2xl" style={{ background: `rgba(${rgb},0.12)` }} />
+                  <span className="absolute right-3 top-3 select-none text-[18px]" style={{ animation: `grfloat ${2.8 + i * 0.6}s ease-in-out ${i * 0.4}s infinite`, filter: `drop-shadow(0 3px 8px rgba(${rgb},0.5))` }}>{ic}</span>
+                  <div className="text-[26px] font-black tabular-nums sm:text-[34px]" style={{ color: `rgb(${rgb})`, textShadow: `0 0 26px rgba(${rgb},0.45)` }}>{n}</div>
+                  <div className="mt-1 text-[11.5px] font-bold leading-snug text-g-word/85">{l}</div>
+                </div>
+              );
+            })}
+          </div>
         </div>
         <a href="#try" className="group relative mt-9 inline-flex items-center gap-2 overflow-hidden rounded-full px-7 py-3 text-[14px] font-extrabold tracking-tight text-[#1a1a1a] ring-1 ring-white/40 shadow-[0_16px_42px_-12px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.85)] transition-transform duration-300 hover:scale-[1.03]"
           style={{ background: "linear-gradient(180deg,#f5f6f8 0%,#dde1e7 42%,#bcc2cc 100%)", animation: "grreveal .8s ease .6s both" }}>

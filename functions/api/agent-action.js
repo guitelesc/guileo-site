@@ -79,4 +79,4 @@ export async function onRequestPost(context) {
     return json({ ok: false, message: "Sorry, I couldn't save that just now — could you repeat it?" }, 400);
   }
 }
-const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } });
+const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store" } });

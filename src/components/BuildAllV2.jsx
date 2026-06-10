@@ -50,6 +50,10 @@ export default function BuildAllV2() {
         @keyframes breveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
         @keyframes bshine{to{background-position:220% center}}
         @keyframes bfloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-8px) rotate(3deg)}}
+        @keyframes bsonar{0%{transform:scale(.5);opacity:.45}100%{transform:scale(1.9);opacity:0}}
+        @keyframes bsheen{0%{transform:translateX(-130%) skewX(-12deg)}60%,100%{transform:translateX(130%) skewX(-12deg)}}
+        @keyframes bchip{from{opacity:0;transform:translateY(8px) scale(.92)}to{opacity:1;transform:translateY(0) scale(1)}}
+        @keyframes bdot{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.4)}}
         @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}
       `}</style>
 
@@ -74,23 +78,29 @@ export default function BuildAllV2() {
             onMouseLeave={(e) => { e.currentTarget.style.borderColor = ""; }}>
             {/* soft accent halo */}
             <span className="pointer-events-none absolute -right-12 -top-14 h-36 w-36 rounded-full blur-3xl" style={{ background: `rgba(${c.rgb},0.10)` }} />
+            {/* sheen sweeping across the card on a slow loop */}
+            <span className="pointer-events-none absolute inset-y-0 left-0 w-1/3" style={{ background: "linear-gradient(105deg,transparent,rgba(255,255,255,0.05),transparent)", animation: `bsheen ${7 + ci * 1.3}s ease-in-out ${ci * 1.1}s infinite` }} />
             <div className="relative flex items-start gap-4">
-              {/* free-floating emoji — no box tile, colored drop-shadow glow */}
-              <span className="shrink-0 select-none text-[42px] leading-none transition-transform duration-300 group-hover:scale-110"
-                style={{ animation: `bfloat ${3.2 + ci * 0.6}s ease-in-out ${ci * 0.45}s infinite`, filter: `drop-shadow(0 6px 14px rgba(${c.rgb},0.45))` }}>{c.emoji}</span>
+              {/* free-floating emoji — sonar ring radiating in the category color */}
+              <span className="relative shrink-0">
+                <span className="pointer-events-none absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full border" style={{ borderColor: `rgba(${c.rgb},0.4)`, animation: `bsonar 3s ease-out ${ci * 0.5}s infinite` }} />
+                <span className="relative inline-block select-none text-[42px] leading-none transition-transform duration-300 group-hover:scale-110"
+                  style={{ animation: `bfloat ${3.2 + ci * 0.6}s ease-in-out ${ci * 0.45}s infinite`, filter: `drop-shadow(0 6px 14px rgba(${c.rgb},0.45))` }}>{c.emoji}</span>
+              </span>
               <div className="min-w-0">
                 {/* small colored tag eyebrow ABOVE the big free title */}
                 <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${c.text}`}>
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: `rgb(${c.rgb})` }} />{c.leg}
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: `rgb(${c.rgb})`, boxShadow: `0 0 8px rgba(${c.rgb},0.8)`, animation: `bdot 2.4s ease-in-out ${ci * 0.3}s infinite` }} />{c.leg}
                 </span>
                 <h3 className="mt-1.5 font-black leading-[1.08] tracking-tight text-g-word" style={{ fontSize: "clamp(1.15rem,2vw,1.45rem)" }}>{B.cats[ci]}</h3>
               </div>
             </div>
-            {/* consistent chips — the items in this category */}
+            {/* consistent chips — cascade in, then drift gently out of sync */}
             <div className="relative mt-4 flex flex-wrap gap-2">
-              {c.idx.map((k) => items[k] && (
-                <span key={k} className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold text-g-word transition-all duration-300 hover:-translate-y-0.5 ${c.chip}`}>
-                  <span className="text-base">{items[k].i}</span>{items[k].t}
+              {c.idx.map((k, j) => items[k] && (
+                <span key={k} className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold text-g-word transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.04] ${c.chip}`}
+                  style={{ animation: `bchip .5s cubic-bezier(.2,.7,.2,1) ${0.55 + ci * 0.12 + j * 0.09}s both` }}>
+                  <span className="text-base" style={{ animation: `bfloat ${2.6 + (j % 3) * 0.7}s ease-in-out ${j * 0.35}s infinite` }}>{items[k].i}</span>{items[k].t}
                 </span>
               ))}
             </div>

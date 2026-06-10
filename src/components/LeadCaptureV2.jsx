@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { waLink, bookLink } from "../data/contact";
+import { useLang } from "../i18n.jsx";
 
 // LeadCaptureV2 — TEST (/v2) close: "Stop losing customers. Start tonight."
 // Multi-channel contact capture (the form Luis loves). Posts to /api/lead; a real human
@@ -17,6 +18,7 @@ const CH = [
 ];
 
 export default function LeadCaptureV2() {
+  const { lang } = useLang();
   const [name, setName] = useState("");
   const [ch, setCh] = useState(0);
   const [val, setVal] = useState("");
@@ -33,7 +35,7 @@ export default function LeadCaptureV2() {
       await fetch("/api/lead", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, channel: c.k, contact: val, phone: /phone|whatsapp/i.test(c.k) ? val : "", email: c.k === "Email" ? val : "", business: biz, website, source: "v2-lead" }),
+        body: JSON.stringify({ name, channel: c.k, contact: val, phone: /phone|whatsapp/i.test(c.k) ? val : "", email: c.k === "Email" ? val : "", business: biz, website, source: "v2-lead", lang }),
       });
     } catch { /* never block the user */ }
     setStatus("done");

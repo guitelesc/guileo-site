@@ -48,7 +48,8 @@ export default function EngineV2() {
         @keyframes eflow{0%{left:-8%;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:104%;opacity:0}}
         @keyframes epulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
         @keyframes efloat{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-7px) rotate(2deg)}}
-        @keyframes eloop{to{stroke-dashoffset:-14}}
+        @keyframes ecycle{to{stroke-dashoffset:-276}}
+        @keyframes espinr{to{transform:translate(-50%,-50%) rotate(-360deg)}}
         @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}.espin{animation:none !important}}
       `}</style>
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(900px_420px_at_50%_-10%,rgba(214,194,154,0.08),transparent)]" />
@@ -115,12 +116,25 @@ export default function EngineV2() {
           })}
         </div>
 
-        {/* the flywheel CLOSES — revenue arcs back to feed the next conversation */}
-        <svg className="pointer-events-none mx-auto mt-2 hidden h-9 w-full max-w-5xl lg:block" viewBox="0 0 100 14" preserveAspectRatio="none" aria-hidden="true">
-          <defs><marker id="earrow" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#D6C29A" /></marker></defs>
-          <path d="M97,1 C97,12 3,12 3,3.5" fill="none" stroke="rgba(214,194,154,0.28)" strokeWidth="0.5" markerEnd="url(#earrow)" />
-          <path d="M97,1 C97,12 3,12 3,3.5" fill="none" stroke="rgba(214,194,154,0.9)" strokeWidth="0.6" strokeDasharray="2 5" style={{ animation: "eloop 1.3s linear infinite" }} />
-        </svg>
+        {/* the flywheel CLOSES — a real CYCLE: the 4 steps orbit a spinning gold ring */}
+        <div className="pointer-events-none relative mx-auto mt-7 h-28 w-28" aria-hidden="true">
+          {/* soft hub glow */}
+          <span className="absolute inset-0 rounded-full" style={{ background: "radial-gradient(closest-side,rgba(214,194,154,0.14),transparent)" }} />
+          {/* ring + 4 chasing gold arcs (the energy moving around the cycle) */}
+          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(214,194,154,0.18)" strokeWidth="1.5" />
+            <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(214,194,154,0.9)" strokeWidth="2" strokeLinecap="round" strokeDasharray="12 57" style={{ animation: "ecycle 3.4s linear infinite" }} />
+          </svg>
+          {/* the 4 step emojis orbiting (counter-spun so they stay upright) */}
+          <div className="absolute inset-0" style={{ animation: "espin 16s linear infinite" }}>
+            {STEPS.map((s, k) => (
+              <span key={s.n} className="absolute text-[15px]"
+                style={{ left: `calc(50% + ${[0, 49, 0, -49][k]}px)`, top: `calc(50% + ${[-49, 0, 49, 0][k]}px)`, filter: "drop-shadow(0 2px 6px rgba(214,194,154,0.5))", animation: "espinr 16s linear infinite" }}>{s.icon}</span>
+            ))}
+          </div>
+          {/* the cycle heart */}
+          <span className="absolute left-1/2 top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center text-[22px]" style={{ animation: "espin 6s linear infinite" }}>♻️</span>
+        </div>
 
         <div className="relative mx-auto mt-2 flex max-w-3xl items-center justify-center gap-2 rounded-full border border-g-green/30 bg-gradient-to-r from-g-green/[0.06] via-g-gold/[0.08] to-g-green/[0.06] bg-[length:200%_auto] px-5 py-2.5 text-center text-[13.5px] text-g-ink" style={{ animation: "eshine 6s linear infinite" }}>
           <span className="espin inline-block" style={{ animation: "espin 5s linear infinite" }}>♻️</span>

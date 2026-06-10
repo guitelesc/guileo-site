@@ -17,6 +17,7 @@ const Marketing = lazy(() => import("./pages/Marketing")); // Guileo AD — dedi
 const Pitch = lazy(() => import("./pages/Pitch")); // ≤20-min client presentation deck (Growth Partner tool)
 const Proposta = lazy(() => import("./pages/Proposta")); // tailored proposal → payment (close-to-cash)
 const Parceiro = lazy(() => import("./pages/Parceiro")); // Growth Partner recruiting deck
+const Academia = lazy(() => import("./pages/Academia")); // Partner Academy — the collaborator operating manual (training + roleplay)
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
 const WebsiteGrader = lazy(() => import("./pages/WebsiteGrader")); // lead magnet: website audit → lead
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="/pitch" element={<Pitch />} />
             <Route path="/proposta" element={<Proposta />} />
             <Route path="/parceiro" element={<Parceiro />} />
+            <Route path="/academia" element={<Academia />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/admin/contratos" element={<Contratos />} />

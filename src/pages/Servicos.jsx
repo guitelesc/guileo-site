@@ -124,7 +124,7 @@ export default function Servicos() {
           ))}
         </div>
 
-        {/* global CTA + LEAD CAPTURE */}
+        {/* site-wide CTA + lead capture */}
         <div id="contact" className="mt-12 scroll-mt-24 rounded-xl3 bg-white/[0.03] backdrop-blur-xl border border-white/10 p-8 sm:p-12 shadow-lift relative overflow-hidden">
           <div className="absolute -top-24 -right-16 h-72 w-72 rounded-full bg-g-green/15 blur-3xl animate-aurora pointer-events-none" />
           <div className="absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-g-gold/15 blur-3xl animate-aurora pointer-events-none" style={{ animationDelay: "-6s" }} />

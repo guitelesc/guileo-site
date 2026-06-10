@@ -1,16 +1,12 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Navbar from "../components/Navbar";
-const GuileoLogo3D = lazy(() => import("../components/GuileoLogo3D.jsx"));
 import Footer from "../components/Footer";
 import VoiceAgent from "../components/VoiceAgent";
-import Channels from "../components/Channels.jsx";
 import LiveCall from "../components/LiveCall.jsx";
 import Intro from "../components/Intro.jsx";
 import LeadForm from "../components/LeadForm.jsx";
-import LiveCallBar from "../components/LiveCallBar.jsx";
-import LiveDemo from "../components/LiveDemo.jsx";
-import { Reveal, Count, Aurora, Ticker, Circuit, Stagger, Item, Magnetic, Parallax, Spotlight, Accordion, ProductsMarquee, HumanShield, LiveFeed } from "../lib/ui.jsx";
+import { Reveal, Count, Stagger, Item, Magnetic, Accordion } from "../lib/ui.jsx";
 import HeroV2 from "../components/HeroV2";
 import ResultsV2 from "../components/ResultsV2";
 import LegsV2 from "../components/LegsV2";
@@ -21,11 +17,8 @@ import MethodV2 from "../components/MethodV2";
 import GrowthV2 from "../components/GrowthV2";
 import ProofV2 from "../components/ProofV2";
 import PricingConfigurator from "../components/PricingConfigurator";
-import { AnimatePresence } from "framer-motion";
-import logo from "../assets/guileo-mark.png";
 import mark from "../assets/guileo-mark.png";
-import { TECH, COMPLIANCE, TICKER, CHANNELS, CORE_OFFER, INTEGRATIONS, COMPARISON } from "../data/site";
-import { CONTACT, waLink, bookLink } from "../data/contact.js";
+import { waLink, bookLink } from "../data/contact.js";
 import { useLang } from "../i18n.jsx";
 
 /* Shared section header — the LegsV2/MethodV2 pattern: mono uppercase champagne eyebrow
@@ -340,23 +333,9 @@ function HeroCallForm({ t }) {
 
 export default function Home() {
   const { t, lang } = useLang();
-  // If the brand intro already played this session (or reduced-motion), paint the hero
-  // INSTANTLY — no dark first-frame on reloads/navigations. First-ever visit still gets it.
-  const [introDone, setIntroDone] = useState(() => {
-    try {
-      if (sessionStorage.getItem("guileo_intro_seen")) return true;
-      if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return true;
-    } catch { /* private mode */ }
-    return false;
-  });
-  const [engineActive, setEngineActive] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setEngineActive((a) => (a + 1) % 4), 1400);
-    return () => clearInterval(id);
-  }, []);
   return (
     <div className="min-h-screen text-g-ink">
-      <Intro onDone={() => setIntroDone(true)} />
+      <Intro />
       <Navbar />
 
       {/* ── Approved V2 story sections (promoted into the original landing) ── */}

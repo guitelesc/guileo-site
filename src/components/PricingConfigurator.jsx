@@ -33,6 +33,7 @@ export default function PricingConfigurator() {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [state, setState] = useState("idle"); // idle | sending | done
+  const [website, setWebsite] = useState(""); // honeypot — hidden from humans, bots fill it
   const toggle = (k) => setSel((s) => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n; });
 
   const chosen = OUTCOMES.filter((o) => sel.has(o.ic));
@@ -55,7 +56,7 @@ export default function PricingConfigurator() {
       business: biz.trim().slice(0, 160),
       // message carries everything Luis needs to quote — it lands in the /admin feed details
       message: `Wants: ${wants} → ${tier.name} (~${credits} cr/mo · est $${value}/mo).${biz.trim() ? ` Notes: ${biz.trim()}` : ""}`,
-      channel: "Pricing configurator", source: "configurator",
+      channel: "Pricing configurator", source: "configurator", lang, website,
     };
     try { await fetch("/api/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(lead) }); } catch { /* graceful */ }
     setState("done");
@@ -68,28 +69,41 @@ export default function PricingConfigurator() {
       <style>{`
         @keyframes cfgpop{0%{transform:scale(.9)}60%{transform:scale(1.06)}100%{transform:scale(1)}}
         @keyframes cfgglow{0%,100%{opacity:.55}50%{opacity:1}}
+        @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}
       `}</style>
 
       <form onSubmit={submit} className="mx-auto grid max-w-5xl gap-5 lg:grid-cols-[1.05fr_0.95fr]">
+        {/* honeypot: invisible to humans, bots auto-fill it → server silently drops */}
+        <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true"
+          value={website} onChange={(e) => setWebsite(e.target.value)}
+          style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }} />
         {/* LEFT — pick outcomes + describe + contact */}
         <div className="rounded-xl3 border border-white/10 bg-white/[0.03] p-6 shadow-lift backdrop-blur-xl sm:p-7">
-          <div className="text-[12px] font-black uppercase tracking-wider text-g-green">{pt ? "1. O que você quer crescer?" : "1. What do you want to grow?"}</div>
-          <p className="mt-1 text-[13px] text-g-muted">{pt ? "Toque em tudo que faz sentido." : "Tap everything that fits."}</p>
+          {/* STEP 1 — numbered badge anchors the 1→2→3 flow */}
+          <div className="flex items-center gap-2.5">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-g-green/50 bg-g-green/15 text-[13px] font-black text-g-green shadow-[0_0_16px_rgba(62,148,104,0.35)]">1</span>
+            <span className="text-[12px] font-black uppercase tracking-wider text-g-green">{pt ? "O que você quer crescer?" : "What do you want to grow?"}</span>
+          </div>
+          <p className="mt-1.5 pl-[38px] text-[13px] text-g-ink">{pt ? "Toque em tudo que faz sentido." : "Tap everything that fits."}</p>
           <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             {OUTCOMES.map((o) => {
               const on = sel.has(o.ic);
               return (
-                <button type="button" key={o.ic} onClick={() => toggle(o.ic)} className={`group flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-left text-[13px] font-semibold transition-all duration-200 active:scale-[0.97] ${on ? "border-g-green/50 bg-g-green/[0.10] text-g-word shadow-[0_10px_30px_-16px_rgba(62,148,104,0.8)]" : "border-white/10 bg-white/[0.03] text-g-muted hover:border-white/25 hover:text-g-word"}`}>
-                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-base ring-1 transition ${on ? "bg-g-green/20 ring-g-green/40" : "bg-white/[0.05] ring-white/10"}`} style={on ? { animation: "cfgpop .3s ease" } : undefined}>{o.ic}</span>
+                <button type="button" key={o.ic} onClick={() => toggle(o.ic)} className={`group flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-left text-[13px] font-semibold transition-all duration-200 active:scale-[0.97] ${on ? "border-g-green/55 bg-g-green/[0.12] text-g-word shadow-[0_10px_30px_-16px_rgba(62,148,104,0.85)]" : "border-white/10 bg-white/[0.03] text-g-ink hover:-translate-y-0.5 hover:border-g-green/35 hover:bg-g-green/[0.04] hover:text-g-word"}`}>
+                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-base ring-1 transition ${on ? "bg-g-green/20 ring-g-green/40" : "bg-white/[0.05] ring-white/10 group-hover:ring-g-green/30"}`} style={on ? { animation: "cfgpop .3s ease" } : undefined}>{o.ic}</span>
                   <span className="flex-1 leading-tight">{pt ? o.pt : o.en}</span>
-                  <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-black transition ${on ? "bg-g-green text-black" : "bg-white/[0.06] text-g-muted group-hover:bg-white/15"}`}>{on ? "✓" : "+"}</span>
+                  <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-black transition ${on ? "bg-g-green text-black shadow-[0_0_10px_rgba(62,148,104,0.7)]" : "bg-white/[0.06] text-g-muted group-hover:bg-g-green/30 group-hover:text-g-word"}`}>{on ? "✓" : "+"}</span>
                 </button>
               );
             })}
           </div>
 
           {/* describe your business / needs in your own words */}
-          <div className="mt-5 text-[12px] font-black uppercase tracking-wider text-g-green">{pt ? "2. Conte do seu negócio" : "2. Tell us about your business"}</div>
+          {/* STEP 2 */}
+          <div className="mt-6 flex items-center gap-2.5">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-g-gold/50 bg-g-gold/15 text-[13px] font-black text-g-gold shadow-[0_0_16px_rgba(214,194,154,0.3)]">2</span>
+            <span className="text-[12px] font-black uppercase tracking-wider text-g-gold">{pt ? "Conte do seu negócio" : "Tell us about your business"}</span>
+          </div>
           <textarea value={biz} onChange={(e) => setBiz(e.target.value)} rows={3} placeholder={pt ? "Ex: tenho uma clínica, perco ligações fora do horário e quero lotar a agenda + recuperar pacientes antigos…" : "E.g. I run a clinic, I miss after-hours calls and want to fill the calendar + win back old patients…"} className={`${field} mt-2 resize-none`} />
         </div>
 
@@ -109,9 +123,10 @@ export default function PricingConfigurator() {
           ) : (
             <>
               <div className="relative flex items-center justify-between">
-                <div className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-wider" style={{ color: `rgb(${rgb})` }}>
+                <div className="inline-flex items-center gap-2.5 text-[11px] font-black uppercase tracking-wider" style={{ color: `rgb(${rgb})` }}>
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border text-[13px] font-black" style={{ borderColor: `rgba(${rgb},0.5)`, background: `rgba(${rgb},0.15)`, color: `rgb(${rgb})`, boxShadow: `0 0 16px rgba(${rgb},0.35)` }}>3</span>
+                  {pt ? "Seu pacote Guileo" : "Your Guileo package"}
                   <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full" style={{ background: `rgba(${rgb},0.5)` }} /><span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: `rgb(${rgb})` }} /></span>
-                  {pt ? "3. Seu pacote Guileo" : "3. Your Guileo package"}
                 </div>
                 <span className="rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider" style={{ borderColor: `rgba(${rgb},0.4)`, color: `rgb(${rgb})` }}>{pt ? "recomendado" : "recommended"}</span>
               </div>
@@ -129,9 +144,10 @@ export default function PricingConfigurator() {
                   <div className="text-[10px] font-bold uppercase tracking-wider text-g-muted">{pt ? "Créditos/mês ~" : "Credits/mo ~"}</div>
                   <div className="text-[24px] font-black tabular-nums text-g-word">{credits.toLocaleString("en-US")}</div>
                 </div>
-                <div className="rounded-2xl border p-3.5" style={{ borderColor: `rgba(${rgb},0.3)`, background: `rgba(${rgb},0.06)` }}>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-g-muted">{pt ? "Costuma recuperar" : "Typically recovers"}</div>
-                  <div className="text-[24px] font-black tabular-nums" style={{ color: `rgb(${rgb})` }}>${value.toLocaleString("en-US")}<span className="text-[11px] font-bold text-g-muted">{pt ? "/mês" : "/mo"}</span></div>
+                {/* recovered money is ALWAYS green — money back = green, period */}
+                <div className="rounded-2xl border border-g-green/40 p-3.5" style={{ background: "rgba(62,148,104,0.08)" }}>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-g-green/90">{pt ? "Costuma recuperar" : "Typically recovers"}</div>
+                  <div className="text-[24px] font-black tabular-nums text-g-green" style={{ textShadow: "0 0 22px rgba(62,148,104,0.5)" }}><span className="text-[14px]">▲</span> ${value.toLocaleString("en-US")}<span className="text-[11px] font-bold text-g-ink">{pt ? "/mês" : "/mo"}</span></div>
                 </div>
               </div>
 
