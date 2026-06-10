@@ -18,7 +18,7 @@ export default function ProofV2() {
   const P = PV_COPY[lang] || PV_COPY.en;
   return (
     <section className="relative overflow-hidden px-5 py-20">
-      <style>{`@keyframes pvreveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}@keyframes pvpulse{0%,100%{opacity:.5}50%{opacity:1}}@keyframes pvfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}`}</style>
+      <style>{`@keyframes pvreveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}@keyframes pvfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}`}</style>
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(640px_300px_at_50%_20%,rgba(62,148,104,0.09),transparent)]" />
 
       <div className="mx-auto max-w-5xl text-center">
@@ -31,7 +31,7 @@ export default function ProofV2() {
               style={{ animation: `pvreveal .7s cubic-bezier(.2,.7,.2,1) ${0.1 + i * 0.09}s both` }}>
               <span className="text-base" style={{ animation: `pvfloat ${2.8 + (i % 3) * 0.5}s ease-in-out ${i * 0.35}s infinite`, filter: "drop-shadow(0 3px 8px rgba(62,148,104,0.5))" }}>🛡️</span>
               <span className="text-[13px] font-bold text-g-word">{b}</span>
-              <span className="text-g-green" style={{ animation: "pvpulse 2.4s ease-in-out infinite", animationDelay: `${i * 0.3}s` }}>✓</span>
+              <span className="font-bold text-g-green">✓</span>
             </div>
           ))}
         </div>

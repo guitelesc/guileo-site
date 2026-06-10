@@ -59,7 +59,7 @@ export default function EngineV2() {
         </div>
         <h2 className="mt-4 font-black leading-[0.96] tracking-tight" style={{ fontSize: "clamp(2rem,4.4vw,3.2rem)" }}>
           <span className="text-g-word" style={{ animation: "ereveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>{E.h1a}</span>
-          <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "ereveal .8s cubic-bezier(.2,.7,.2,1) .2s both, eshine 7s linear infinite" }}>{E.h1b}</span>
+          <span className="bg-gradient-to-r from-g-green via-g-gold to-g-copper bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "ereveal .8s cubic-bezier(.2,.7,.2,1) .2s both, eshine 7s linear infinite" }}>{E.h1b}</span>
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-g-ink" style={{ animation: "ereveal .8s ease .3s both" }}>
           {E.sub[0]}<span className="font-semibold text-g-word">{E.sub[1]}</span>{E.sub[2]}<span className="font-semibold text-g-gold">{E.sub[3]}</span>{E.sub[4]}<span className="font-semibold text-g-green">{E.sub[5]}</span>{E.sub[6]}

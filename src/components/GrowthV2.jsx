@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { useLang } from "../i18n.jsx";
 
 const GV_COPY = {
-  en: { h1a:"A growth cycle ", h1b:"that runs itself.", result:"The result", moon:"🚀 Growth · the moon", fuel:"💰 Sales · the fuel", base:"⚡ Performance · the base", pills:["Performance","Sales","Growth"], stats:[["+286%","performance"],["3×","faster sales cycles"],["24/7","on autopilot"]], cta:"Start your growth cycle" },
-  pt: { h1a:"Um ciclo de crescimento ", h1b:"que roda sozinho.", result:"O resultado", moon:"🚀 Crescimento · a lua", fuel:"💰 Vendas · o combustível", base:"⚡ Performance · a base", pills:["Performance","Vendas","Crescimento"], stats:[["+286%","performance"],["3×","ciclos de venda mais rápidos"],["24/7","no automático"]], cta:"Comece seu ciclo de crescimento" },
-  es: { h1a:"Un ciclo de crecimiento ", h1b:"que se mueve solo.", result:"El resultado", moon:"🚀 Crecimiento · la luna", fuel:"💰 Ventas · el combustible", base:"⚡ Rendimiento · la base", pills:["Rendimiento","Ventas","Crecimiento"], stats:[["+286%","rendimiento"],["3×","ciclos de venta más rápidos"],["24/7","en automático"]], cta:"Empieza tu ciclo de crecimiento" },
-  hi: { h1a:"एक ग्रोथ साइकल ", h1b:"जो खुद चलता है।", result:"नतीजा", moon:"🚀 ग्रोथ · चाँद", fuel:"💰 बिक्री · ईंधन", base:"⚡ परफ़ॉर्मेंस · आधार", pills:["Performance","Sales","Growth"], stats:[["+286%","परफ़ॉर्मेंस"],["3×","तेज़ बिक्री चक्र"],["24/7","ऑटोपायलट पर"]], cta:"अपना ग्रोथ साइकल शुरू करें" },
+  en: { h1a:"A growth cycle ", h1b:"that runs itself.", result:"The result", sub:"Performance is the base, sales are the fuel — growth is where you land.", moon:"🚀 Growth · the moon", fuel:"💰 Sales · the fuel", base:"⚡ Performance · the base", pills:["Performance","Sales","Growth"], stats:[["+286%","performance"],["3×","faster sales cycles"],["24/7","on autopilot"]], cta:"Start your growth cycle" },
+  pt: { h1a:"Um ciclo de crescimento ", h1b:"que roda sozinho.", result:"O resultado", sub:"Performance é a base, vendas são o combustível — crescimento é onde você chega.", moon:"🚀 Crescimento · a lua", fuel:"💰 Vendas · o combustível", base:"⚡ Performance · a base", pills:["Performance","Vendas","Crescimento"], stats:[["+286%","performance"],["3×","ciclos de venda mais rápidos"],["24/7","no automático"]], cta:"Comece seu ciclo de crescimento" },
+  es: { h1a:"Un ciclo de crecimiento ", h1b:"que se mueve solo.", result:"El resultado", sub:"El rendimiento es la base, las ventas el combustible — el crecimiento es a donde llegas.", moon:"🚀 Crecimiento · la luna", fuel:"💰 Ventas · el combustible", base:"⚡ Rendimiento · la base", pills:["Rendimiento","Ventas","Crecimiento"], stats:[["+286%","rendimiento"],["3×","ciclos de venta más rápidos"],["24/7","en automático"]], cta:"Empieza tu ciclo de crecimiento" },
+  hi: { h1a:"एक ग्रोथ साइकल ", h1b:"जो खुद चलता है।", result:"नतीजा", sub:"परफ़ॉर्मेंस आधार है, बिक्री ईंधन — ग्रोथ वह जगह है जहाँ आप पहुँचते हैं।", moon:"🚀 ग्रोथ · चाँद", fuel:"💰 बिक्री · ईंधन", base:"⚡ परफ़ॉर्मेंस · आधार", pills:["Performance","Sales","Growth"], stats:[["+286%","परफ़ॉर्मेंस"],["3×","तेज़ बिक्री चक्र"],["24/7","ऑटोपायलट पर"]], cta:"अपना ग्रोथ साइकल शुरू करें" },
 };
 
 // GrowthV2 — TEST (/v2) finale: matched to the guileoai.com aesthetic — the real
@@ -23,20 +23,21 @@ export default function GrowthV2() {
   }, []);
 
   return (
-    <section className="relative overflow-hidden px-5 py-24">
+    <section className="relative overflow-hidden px-5 py-20">
       <style>{`@keyframes grreveal{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}@keyframes grshine{to{background-position:220% center}}@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}`}</style>
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(700px_360px_at_50%_0%,rgba(62,148,104,0.16),transparent),radial-gradient(700px_360px_at_80%_100%,rgba(214,194,154,0.12),transparent)]" />
 
       <div className="mx-auto max-w-3xl text-center">
-        <h2 className="mx-auto max-w-2xl font-black leading-[0.96] tracking-tight" style={{ fontSize: "clamp(2.2rem,5vw,3.7rem)" }}>
+        <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold" style={{ animation: "grreveal .7s ease both" }}>🚀 {G.result}</div>
+        <h2 className="mx-auto mt-4 max-w-2xl font-black leading-[0.96] tracking-tight" style={{ fontSize: "clamp(2.2rem,5vw,3.7rem)" }}>
           <span className="text-g-word" style={{ animation: "grreveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>{G.h1a}</span>
           <span className="bg-gradient-to-r from-g-green via-g-gold to-g-copper bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "grreveal .8s cubic-bezier(.2,.7,.2,1) .2s both, grshine 6s linear infinite" }}>{G.h1b}</span>
         </h2>
+        <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-g-ink" style={{ animation: "grreveal .8s ease .3s both" }}>{G.sub}</p>
 
         {/* premium gold glass card (guileoai.com aesthetic) */}
         <div className="relative mx-auto mt-10 max-w-2xl overflow-hidden rounded-xl3 border border-g-gold/35 bg-white/[0.04] p-8 text-center shadow-lift backdrop-blur-xl sm:p-12" style={{ animation: "grreveal .8s ease .3s both" }}>
           <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-g-gold/10 blur-3xl animate-aurora" />
-          <div className="relative mb-6 text-base font-extrabold uppercase tracking-[0.2em] text-g-gold sm:text-lg">{G.result}</div>
 
           {/* ROCKET LAUNCH scene */}
           <div className="relative mx-auto h-72 w-64 select-none sm:h-80 sm:w-72">
@@ -101,8 +102,11 @@ export default function GrowthV2() {
             </div>
           ))}
         </div>
-        <a href="#try" className="group mt-9 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-g-green to-g-dark px-7 py-3.5 text-[15px] font-bold text-white shadow-[0_18px_50px_-14px_rgba(62,148,104,0.7)] transition hover:scale-[1.03] hover:brightness-110" style={{ animation: "grreveal .8s ease .6s both" }}>
-          🚀 {G.cta} <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+        <a href="#try" className="group relative mt-9 inline-flex items-center gap-2 overflow-hidden rounded-full px-7 py-3 text-[14px] font-extrabold tracking-tight text-[#1a1a1a] ring-1 ring-white/40 shadow-[0_16px_42px_-12px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.85)] transition-transform duration-300 hover:scale-[1.03]"
+          style={{ background: "linear-gradient(180deg,#f5f6f8 0%,#dde1e7 42%,#bcc2cc 100%)", animation: "grreveal .8s ease .6s both" }}>
+          <span aria-hidden className="pointer-events-none absolute inset-0 -translate-x-[120%] bg-gradient-to-r from-transparent via-white/80 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-[120%]" />
+          <span className="relative">🚀 {G.cta}</span>
+          <span className="relative text-g-green transition-transform duration-300 group-hover:translate-x-0.5">→</span>
         </a>
       </div>
     </section>

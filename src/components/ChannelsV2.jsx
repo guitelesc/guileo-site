@@ -79,7 +79,7 @@ export default function ChannelsV2() {
           <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold" style={{ animation: "chreveal .7s ease both" }}>{V.eyebrow}</div>
           <h2 className="mt-4 font-black leading-[0.98] tracking-tight" style={{ fontSize: "clamp(2rem,4.4vw,3.2rem)" }}>
             <span className="text-g-word" style={{ animation: "chreveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>{V.h1a}</span>
-            <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "chreveal .8s cubic-bezier(.2,.7,.2,1) .2s both, chshine 7s linear infinite" }}>{V.h1b}</span>
+            <span className="bg-gradient-to-r from-g-green via-g-gold to-g-copper bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "chreveal .8s cubic-bezier(.2,.7,.2,1) .2s both, chshine 7s linear infinite" }}>{V.h1b}</span>
           </h2>
           <p className="mt-5 max-w-md text-[15px] leading-relaxed text-g-ink" style={{ animation: "chreveal .8s ease .3s both" }}>
             {V.subA}<span className="font-semibold text-g-word">{V.subB}</span>{V.subM}<span className="font-semibold text-g-green">{V.subC}</span>{V.subD}

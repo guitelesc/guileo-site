@@ -18,12 +18,26 @@ const SLIDES = [
   { id: "cover", label: "Abertura" },
   { id: "problem", label: "O problema" },
   { id: "gui", label: "Conheça a Gui" },
+  { id: "pratica", label: "Na prática" },
   { id: "deliver", label: "O que entregamos" },
   { id: "proof", label: "Resultados" },
   { id: "method", label: "Como funciona" },
   { id: "pricing", label: "Investimento" },
   { id: "trust", label: "Confiança" },
+  { id: "teste", label: "Teste sem risco" },
   { id: "close", label: "Começar" },
+];
+
+// "Na prática" — a real working day. Concrete, varied jobs (the site's live-feed DNA):
+// inbound & outbound, every type — order, booking, quote, review, win-back, follow-up.
+const DAY = [
+  { h: "07:40", icon: "🔔", what: "Manda os lembretes do dia", result: "3 no-shows evitados" },
+  { h: "09:12", icon: "🛒", what: "Atende e anota pedido por telefone", result: "+ $85 · upsell de bebida" },
+  { h: "12:30", icon: "📅", what: "Agenda cliente novo pelo WhatsApp", result: "consulta marcada em 40s" },
+  { h: "15:05", icon: "🧾", what: "Envia orçamento e cobra resposta", result: "proposta de $4.200 na mesa" },
+  { h: "18:50", icon: "⭐", what: "Pede avaliação pós-atendimento", result: "mais um 5 estrelas" },
+  { h: "21:38", icon: "📞", what: "Atende ligação fora do horário", result: "venda que ia pro concorrente" },
+  { h: "02:10", icon: "🔁", what: "Reativa clientes sumidos", result: "2 voltaram a comprar" },
 ];
 
 const LEGS = [
@@ -42,11 +56,19 @@ const METHOD = [
   { ic: "🌳", when: "Semana 2 →", title: "Colhemos", desc: "O lucro sobe — e a gente continua otimizando pra você." },
 ];
 
-// A single full-viewport slide. `eyebrow` = monospace uppercase tag; children = body.
+// A single full-viewport slide. Like the site's scroll-reveal: entrance animations replay
+// every time the slide becomes active (remount via key), instead of all firing at page load.
 function Slide({ id, children, className = "" }) {
+  const [on, setOn] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => setOn(e.isIntersecting), { threshold: 0.55 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
   return (
-    <section id={id} className={`relative flex h-screen w-full shrink-0 snap-start flex-col items-center justify-center overflow-hidden px-6 py-20 sm:px-12 ${className}`}>
-      {children}
+    <section ref={ref} id={id} className={`relative flex h-screen w-full shrink-0 snap-start flex-col items-center justify-center overflow-hidden px-6 py-20 sm:px-12 ${className}`}>
+      <div key={on ? 1 : 0} className="contents">{children}</div>
     </section>
   );
 }
@@ -191,6 +213,27 @@ export default function Pitch() {
           </div>
         </Slide>
 
+        {/* 3.5 — NA PRÁTICA: a real day of work (concrete, not abstract) */}
+        <Slide id="pratica">
+          <Eyebrow>Um dia com a Gui · de verdade</Eyebrow>
+          <h2 className="max-w-3xl text-center font-black leading-tight text-g-word" style={{ fontSize: "clamp(1.6rem,3.4vw,2.6rem)" }}>
+            Enquanto você vive seu dia, <span className="bg-gradient-to-r from-g-green to-g-gold bg-clip-text text-transparent">ela trabalha o dia inteiro.</span>
+          </h2>
+          <div className="mt-8 w-full max-w-2xl">
+            {DAY.map((d, i) => (
+              <div key={d.h} className="flex items-center gap-3 border-b border-white/[0.06] py-2.5" style={{ animation: `pfade .55s ease ${0.12 + i * 0.14}s both` }}>
+                <span className="w-12 shrink-0 text-right font-mono text-[12px] font-bold text-g-muted">{d.h}</span>
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/[0.05] text-base ring-1 ring-white/10">{d.icon}</span>
+                <span className="min-w-0 flex-1 text-[13.5px] font-semibold text-g-word">{d.what}</span>
+                <span className="hidden shrink-0 rounded-full border border-g-green/25 bg-g-green/[0.07] px-2.5 py-0.5 text-[11.5px] font-bold text-g-green sm:block">✓ {d.result}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-6 text-center text-[13.5px] text-g-muted" style={{ animation: "pfade .7s ease 1.2s both" }}>
+            Madrugada, domingo, feriado — <span className="font-bold text-g-word">nenhuma hora é perdida.</span>
+          </p>
+        </Slide>
+
         {/* 4 — WHAT WE DELIVER */}
         <Slide id="deliver">
           <Eyebrow>O que entregamos</Eyebrow>
@@ -308,6 +351,31 @@ export default function Pitch() {
               <div className="text-2xl">🔒</div>
               <p className="mt-2 text-[14px] text-g-ink">Seus dados são <span className="font-bold text-g-word">seus</span> — governados do início ao fim.</p>
             </div>
+          </div>
+        </Slide>
+
+        {/* 8.5 — TESTE SEM RISCO: how the client tests us, step by step */}
+        <Slide id="teste">
+          <Eyebrow>Como você testa · sem risco</Eyebrow>
+          <h2 className="max-w-3xl text-center font-black leading-tight text-g-word" style={{ fontSize: "clamp(1.7rem,3.6vw,2.8rem)" }}>
+            Você não precisa acreditar. <span className="bg-gradient-to-r from-g-green to-g-gold bg-clip-text text-transparent">Precisa testar.</span>
+          </h2>
+          <div className="mt-10 grid w-full max-w-4xl gap-4 sm:grid-cols-3">
+            {[
+              ["1", "📞", "Agora, nesta reunião", "A Gui te liga na frente de todo mundo. Você ouve ela atender, qualificar e vender — ao vivo.", "g-green"],
+              ["2", "🛠️", "Próximos 7 dias", "A gente constrói o SEU sistema — com seu cardápio, seus serviços, sua voz. Você acompanha tudo.", "g-gold"],
+              ["3", "🛡️", "Primeiros 30 dias", "O sistema prova o resultado em números. Não provou? Devolvemos. Simples assim.", "g-copper"],
+            ].map(([n, ic, t, d], i) => (
+              <div key={n} className="relative rounded-2xl border border-g-line bg-white/[0.03] p-6" style={{ animation: `pfade .7s ease ${0.12 + i * 0.16}s both` }}>
+                <span className="absolute right-4 top-3 text-[30px] font-black text-white/[0.07]">{n}</span>
+                <div className="text-3xl">{ic}</div>
+                <div className="mt-3 text-[15px] font-black text-g-word">{t}</div>
+                <p className="mt-2 text-[13px] leading-relaxed text-g-muted">{d}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-8 rounded-2xl border border-g-green/30 bg-g-green/[0.06] px-6 py-4 text-center" style={{ animation: "pfade .8s ease .6s both" }}>
+            <p className="text-[15px] font-semibold text-g-word">O risco é todo nosso. O resultado é todo seu.</p>
           </div>
         </Slide>
 

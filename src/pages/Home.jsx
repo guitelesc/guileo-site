@@ -28,6 +28,32 @@ import { TECH, COMPLIANCE, TICKER, CHANNELS, CORE_OFFER, INTEGRATIONS, COMPARISO
 import { CONTACT, waLink, bookLink } from "../data/contact.js";
 import { useLang } from "../i18n.jsx";
 
+/* Shared section header — the LegsV2/MethodV2 pattern: mono uppercase champagne eyebrow
+   → big font-black headline (one shimmer phrase) → short greige sub. One language everywhere. */
+function SectionHead({ eyebrow, h2, sub, className = "mb-10", subMax = "max-w-xl" }) {
+  return (
+    <Reveal className={`mx-auto max-w-2xl text-center ${className}`}>
+      <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold">{eyebrow}</div>
+      <h2 className="mt-4 font-black leading-[0.98] tracking-tight" style={{ fontSize: "clamp(2rem,4.4vw,3.2rem)" }}>
+        <span className="bg-gradient-to-r from-g-word via-g-gold to-g-word bg-[length:220%_auto] bg-clip-text text-transparent animate-shimmer">{h2}</span>
+      </h2>
+      {sub && <p className={`mx-auto mt-4 ${subMax} text-[15px] leading-relaxed text-g-ink`}>{sub}</p>}
+    </Reveal>
+  );
+}
+
+/* Primary CTA — the silver/platinum pill from LegsV2 (the approved primary-CTA language). */
+function SilverCta({ href = "#contact", children }) {
+  return (
+    <a href={href} className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full px-7 py-3 text-[14px] font-extrabold tracking-tight text-[#1a1a1a] ring-1 ring-white/40 shadow-[0_16px_42px_-12px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.85)] transition-transform duration-300 hover:scale-[1.03]"
+      style={{ background: "linear-gradient(180deg,#f5f6f8 0%,#dde1e7 42%,#bcc2cc 100%)" }}>
+      <span aria-hidden className="pointer-events-none absolute inset-0 -translate-x-[120%] bg-gradient-to-r from-transparent via-white/80 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-[120%]" />
+      <span className="relative">{children}</span>
+      <span className="relative text-g-green transition-transform duration-300 group-hover:translate-x-0.5">→</span>
+    </a>
+  );
+}
+
 /* The leak — MULTICHANNEL interactive calculator (WHY) */
 function Calculator({ t }) {
   const W = t.why;
@@ -345,25 +371,16 @@ export default function Home() {
       <ProofV2 />
 
       {/* LIVE LEAD CAPTURE — "Let Gui call you": the product working live + a sales-ready lead */}
-      <section id="try" className="relative px-5 py-16">
+      <section id="try" className="relative px-5 py-20">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(700px_360px_at_50%_0%,rgba(62,148,104,0.10),transparent)]" />
-        <div className="mx-auto mb-8 max-w-2xl text-center">
-          <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-green">{t.numbers.calleyebrow}</div>
-          <h2 className="mt-3 font-black leading-[0.98] tracking-tight" style={{ fontSize: "clamp(1.9rem,4vw,2.9rem)" }}>
-            <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent">{t.numbers.callh2}</span>
-          </h2>
-        </div>
+        <SectionHead eyebrow={t.numbers.calleyebrow} h2={t.numbers.callh2} className="mb-8" />
         <LiveCall />
       </section>
 
       {/* ── Original sales tail kept (pricing → manifesto); prune later ── */}
       {/* PRICING */}
-      <section id="pricing" className="wrap py-14">
-        <Reveal className="text-center max-w-2xl mx-auto mb-8">
-          <span className="eyebrow mb-3">{t.pricing.eyebrow}</span>
-          <h2 className="h2">{t.pricing.h2}</h2>
-          <p className="mt-3 text-g-muted">{t.pricing.sub}</p>
-        </Reveal>
+      <section id="pricing" className="wrap py-20">
+        <SectionHead eyebrow={t.pricing.eyebrow} h2={t.pricing.h2} sub={t.pricing.sub} className="mb-8" subMax="max-w-2xl" />
 
         {/* FULL MENU — what Guileo actually sells (not just AI calls). Makes the scope crystal-clear at the close. */}
         <Reveal className="mx-auto mb-10 max-w-4xl">
@@ -391,12 +408,8 @@ export default function Home() {
       </section>
 
       {/* COMPARISON — moved below pricing (decide on price, then see why Guileo wins) */}
-      <section className="wrap py-14">
-        <Reveal className="text-center max-w-2xl mx-auto mb-3">
-          <span className="eyebrow mb-3">{t.more.comp.eyebrow}</span>
-          <h2 className="h2">{t.more.comp.h2}</h2>
-          <p className="mt-3 text-g-muted">{t.more.comp.sub}</p>
-        </Reveal>
+      <section className="wrap py-20">
+        <SectionHead eyebrow={t.more.comp.eyebrow} h2={t.more.comp.h2} sub={t.more.comp.sub} className="mb-3" subMax="max-w-2xl" />
         <p className="text-center text-[11px] text-g-muted mb-7">{lang === "pt" ? "✅ = faz bem · ⚠️ = em parte · ❌ = não faz — " : lang === "es" ? "✅ = lo hace bien · ⚠️ = en parte · ❌ = no lo hace — " : lang === "hi" ? "✅ = अच्छे से करता है · ⚠️ = आंशिक · ❌ = बिल्कुल नहीं — " : "✅ = does it well · ⚠️ = partly · ❌ = not at all — "}<span className="text-g-light">{lang === "pt" ? "olhe a coluna verde, é a Guileo" : lang === "es" ? "mira la columna verde, es Guileo" : lang === "hi" ? "हरे कॉलम को देखें, वही Guileo है" : "scan the green column, that's Guileo"}</span></p>
         <Reveal>
           <div className="overflow-x-auto rounded-xl3 border border-white/15 bg-gradient-to-br from-white/[0.10] to-white/[0.05] backdrop-blur-xl shadow-lift">
@@ -420,31 +433,35 @@ export default function Home() {
             </table>
           </div>
         </Reveal>
-        <div className="text-center mt-8"><Magnetic><a href="#contact" className="btn">{t.more.comp.cta}</a></Magnetic></div>
+        <div className="text-center mt-8"><Magnetic><SilverCta>{t.more.comp.cta}</SilverCta></Magnetic></div>
       </section>
 
       {/* ACADEMY */}
-      <section id="academy" className="wrap pb-12">
-        <div className="rounded-xl3 bg-gradient-to-tr from-g-gold/10 via-transparent to-g-green/10 bg-[length:200%_200%] animate-shimmer border border-g-line p-8 sm:p-10 flex flex-col md:flex-row items-center gap-6 justify-between">
-          <div>
-            <div className="eyebrow mb-2">{t.academy.eyebrow}</div>
-            <h3 className="text-2xl font-extrabold text-g-word">{t.academy.h2}</h3>
-            <p className="mt-2 text-g-muted text-sm max-w-xl">{t.academy.sub}</p>
+      <section id="academy" className="wrap pb-20">
+        <Reveal>
+          <div className="rounded-xl3 bg-gradient-to-tr from-g-gold/10 via-transparent to-g-green/10 bg-[length:200%_200%] animate-shimmer border border-g-line p-8 sm:p-10 flex flex-col md:flex-row items-center gap-6 justify-between">
+            <div>
+              <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold">{t.academy.eyebrow}</div>
+              <h3 className="mt-2 font-black leading-[1.05] tracking-tight text-g-word" style={{ fontSize: "clamp(1.45rem,2.6vw,1.9rem)" }}>{t.academy.h2}</h3>
+              <p className="mt-2 text-g-ink text-sm leading-relaxed max-w-xl">{t.academy.sub}</p>
+            </div>
+            <a href="#contact" className="btn-gold shrink-0">{t.academy.cta}</a>
           </div>
-          <a href="#contact" className="btn-gold shrink-0">{t.academy.cta}</a>
-        </div>
+        </Reveal>
       </section>
 
       {/* CTA + LEAD CAPTURE (moved above FAQ — capture the lead while intent is hot) */}
-      <section id="contact" className="wrap py-12 scroll-mt-24">
+      <section id="contact" className="wrap py-20 scroll-mt-24">
         <div className="rounded-xl3 bg-white/[0.03] backdrop-blur-xl border border-white/10 p-8 sm:p-12 shadow-lift relative overflow-hidden">
           <div className="absolute -top-24 -right-16 h-72 w-72 rounded-full bg-g-green/15 blur-3xl animate-aurora pointer-events-none" />
           <div className="absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-g-gold/15 blur-3xl animate-aurora pointer-events-none" style={{ animationDelay: "-6s" }} />
           <div className="relative max-w-2xl mx-auto">
             <div className="text-center">
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-g-word">{t.final.h2}</h2>
-              <p className="mt-2 text-g-gold font-bold">{t.more.lead.title}</p>
-              <p className="mt-2 text-sm text-g-muted max-w-xl mx-auto">{t.more.lead.sub}</p>
+              <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold">{t.more.lead.title}</div>
+              <h2 className="mt-4 font-black leading-[0.98] tracking-tight" style={{ fontSize: "clamp(2rem,4.4vw,3.2rem)" }}>
+                <span className="bg-gradient-to-r from-g-word via-g-gold to-g-word bg-[length:220%_auto] bg-clip-text text-transparent animate-shimmer">{t.final.h2}</span>
+              </h2>
+              <p className="mt-4 text-[15px] leading-relaxed text-g-ink max-w-xl mx-auto">{t.more.lead.sub}</p>
             </div>
             <div className="mt-7"><LeadForm source="final-cta" /></div>
             <div className="mt-6 flex items-center gap-3 text-xs text-g-muted">
@@ -459,8 +476,8 @@ export default function Home() {
       </section>
 
       {/* FAQ — last, right before the closing manifesto */}
-      <section id="faq" className="wrap pb-14">
-        <Reveal className="text-center mb-8"><span className="eyebrow mb-3">{t.faq.eyebrow}</span><h2 className="h2">{t.faq.h2}</h2></Reveal>
+      <section id="faq" className="wrap pb-20">
+        <SectionHead eyebrow={t.faq.eyebrow} h2={t.faq.h2} className="mb-8" />
         <Accordion items={t.faq.items} />
         <div className="mt-8 text-center">
           <button onClick={()=>{ const el=document.querySelector("elevenlabs-convai"); const b=el?.shadowRoot?.querySelector("button"); if(b)b.click(); }}

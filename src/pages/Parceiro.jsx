@@ -23,12 +23,40 @@ const SLIDES = [
 
 const money = (v) => "$" + Math.round(Number(v) || 0).toLocaleString("en-US");
 
+// Entrance animations replay each time the slide becomes active (site-style scroll-reveal).
 function Slide({ id, children }) {
+  const [on, setOn] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => setOn(e.isIntersecting), { threshold: 0.55 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
   return (
-    <section id={id} className="relative flex h-screen w-full shrink-0 snap-start flex-col items-center justify-center overflow-hidden px-6 py-20 sm:px-12">
-      {children}
+    <section ref={ref} id={id} className="relative flex h-screen w-full shrink-0 snap-start flex-col items-center justify-center overflow-hidden px-6 py-20 sm:px-12">
+      <div key={on ? 1 : 0} className="contents">{children}</div>
     </section>
   );
+}
+
+// Site-style count-up: the number climbs to its value when it appears (like the landing's stats).
+function CountMoney({ value, suffix = "" }) {
+  const [n, setN] = useState(0);
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let t;
+    const obs = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) { clearInterval(t); setN(0); return; }
+      const steps = 36; let s = 0;
+      clearInterval(t);
+      t = setInterval(() => { s += 1; setN(Math.min(value, Math.round((value / steps) * s))); if (s >= steps) clearInterval(t); }, 28);
+    }, { threshold: 0.6 });
+    obs.observe(el);
+    return () => { obs.disconnect(); clearInterval(t); };
+  }, [value]);
+  return <span ref={ref}>{money(n)}{suffix}</span>;
 }
 const Eyebrow = ({ children }) => (
   <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-g-gold/25 bg-g-gold/[0.08] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-g-gold">{children}</div>
@@ -174,7 +202,7 @@ export default function Parceiro() {
             </div>
             <div className="mt-5 rounded-2xl bg-g-green/10 p-5 text-center">
               <div className="text-[11px] font-bold uppercase tracking-wider text-g-green">Fechando {deals} por mês</div>
-              <div className="text-[40px] font-black leading-none text-g-word">{money(monthly)}<span className="text-base font-bold text-g-muted">/mês</span></div>
+              <div className="text-[40px] font-black leading-none text-g-word"><CountMoney value={monthly} /><span className="text-base font-bold text-g-muted">/mês</span></div>
             </div>
           </div>
           <p className="mt-4 text-[11.5px] text-g-muted">Exemplo ilustrativo · o % final é definido no seu contrato de parceria.</p>
