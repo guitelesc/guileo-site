@@ -31,7 +31,7 @@ export default function LegalDoc({ title, updated, intro, sections, note }) {
           </div>
 
           <div className="mt-12 border-t border-white/10 pt-6 text-[13px] text-g-muted">
-            Dúvidas sobre este documento? Fale com <a href="mailto:hello@guileoai.com" className="text-g-green hover:underline">hello@guileoai.com</a>.<br />
+            Dúvidas sobre este documento? Fale com <a href="mailto:smart@guileoai.com" className="text-g-green hover:underline">smart@guileoai.com</a>.<br />
             Guileo · Tribeca Global Inc. · New York 🗽 · Cuiabá, MT 🇧🇷
           </div>
         </div>

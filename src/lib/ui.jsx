@@ -161,7 +161,7 @@ export function Count({ to, prefix = "", suffix = "", dur = 1400, decimals = 0 }
 export function Aurora() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden -z-10">
-      <div className="absolute -top-32 -left-20 h-96 w-96 rounded-full bg-g-gold/12 blur-3xl animate-aurora" />
+      <div className="absolute -top-32 -left-20 h-96 w-96 rounded-full bg-g-gold/15 blur-3xl animate-aurora" />
       <div className="absolute top-20 right-0 h-[28rem] w-[28rem] rounded-full bg-g-green/10 blur-3xl animate-aurora" style={{ animationDelay: "-6s" }} />
       <div className="absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-g-copper/10 blur-3xl animate-aurora" style={{ animationDelay: "-12s" }} />
     </div>
@@ -312,13 +312,14 @@ export function Accordion({ items }) {
       {items.map(([q, a], i) => (
         <div key={q}>
           <button onClick={() => setOpen(open === i ? -1 : i)}
+            aria-expanded={open === i} aria-controls={`acc-panel-${i}`}
             className="w-full flex justify-between items-center gap-4 py-4 text-left font-bold text-g-word transition-colors hover:text-g-gold">
             <span>{q}</span>
-            <span className={`text-g-green text-xl shrink-0 transition-transform duration-300 ${open === i ? "rotate-45" : ""}`}>＋</span>
+            <span aria-hidden className={`text-g-green text-xl shrink-0 transition-transform duration-300 ${open === i ? "rotate-45" : ""}`}>＋</span>
           </button>
           <AnimatePresence initial={false}>
             {open === i && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+              <motion.div id={`acc-panel-${i}`} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.32, ease: "easeInOut" }} className="overflow-hidden">
                 <p className="pb-4 text-sm text-g-ink leading-relaxed">{a}</p>
               </motion.div>

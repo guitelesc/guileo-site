@@ -43,7 +43,7 @@ const T = {
       ["📅", "Sistemas de agendamento", "Agenda online ligada à Gui — ela marca, confirma e remarca"],
     ],
     credH: "🪙 Como o cliente paga o uso: CRÉDITOS",
-    cred: "Cada tarefa que a Gui executa consome créditos (~5 por tarefa: uma ligação atendida, um follow-up, uma mensagem). Os planos incluem créditos mensais — Starter 500 · Growth 2.000 · Scale 6.000 — e dá pra comprar mais. É como o cliente VÊ o que está pagando: cada crédito é trabalho feito.",
+    cred: "Cada tarefa que a Gui executa consome créditos (~5 por tarefa: uma ligação atendida, um follow-up, uma mensagem). Os planos incluem créditos mensais — Essential 500 · Personalized 2.000 · Full Operation 6.000 — e dá pra comprar mais. É como o cliente VÊ o que está pagando: cada crédito é trabalho feito.",
     guiJobsH: "🤖 O que a Gui faz, tarefa por tarefa (decore ESTAS)",
     guiJobs: ["🛒 Anota pedidos", "📅 Agenda & confirma", "🎯 Qualifica leads", "💰 Fecha vendas", "🧾 Envia orçamentos", "🎧 Dá suporte", "🔁 Reativa sumidos", "📦 Rastreia pedidos", "📋 Faz fichas/intake", "🔔 Manda lembretes", "↩️ Faz follow-up", "⭐ Pede avaliações"],
     cockH: "📟 O Growth Cockpit — o painel que o cliente recebe",
@@ -68,7 +68,7 @@ const T = {
     // 2 THE OFFER
     s2tag: "Passo 3 · A oferta",
     s2h: "Dois trilhos. Saiba qual oferecer.",
-    trackA: { name: "Trilho A · Self-service", who: "Negócio pequeno, dono ocupado, quer começar simples", what: "Ele assina sozinho no site: Starter $49 · Growth $149 · Scale $399/mês (créditos da Gui inclusos)", you: "Você indica com seu link e ganha 20% das 3 primeiras mensalidades", ex: "Ex: Growth $149 → ~$89 pra você" },
+    trackA: { name: "Trilho A · Self-service", who: "Negócio pequeno, dono ocupado, quer começar simples", what: "Ele assina sozinho no site: Essential $149 · Personalized $449 · Full Operation $999/mês (créditos da Gui inclusos)", you: "Você indica com seu link e ganha 20% das 3 primeiras mensalidades", ex: "Ex: Personalized $449 → ~$269 pra você" },
     trackB: { name: "Trilho B · Sob medida ⭐", who: "Negócio estabelecido (clínica, restaurante movimentado, imobiliária) que perde dinheiro real todo mês", what: "Pacote desenhado pro negócio: a partir de $990 setup + $1.497+/mês — IA + marketing + o que ele precisar", you: "Você conduz a venda e ganha 20% do contrato (setup + 3 meses)", ex: "Ex: pacote típico → ~$1.096 pra você POR VENDA" },
     trackRule: "Regra de bolso: dono que reclama de \"perder ligação/cliente\" e fatura > $20k/mês → Trilho B. Resto → Trilho A. Na dúvida, agenda a demo — a conversa revela.",
     // 3 LEARN
@@ -81,7 +81,7 @@ const T = {
     objH: "As 6 objeções que você VAI ouvir (e as respostas)",
     obj: [
       ["\"Não tenho tempo\"", "\"Exatamente por isso — a Gui devolve seu tempo. São 15 minutos e a demo é a IA te ligando. Que dia fica melhor, terça ou quarta?\""],
-      ["\"Quanto custa?\"", "\"Depende do que seu negócio precisa — tem desde $49/mês. Mas antes do preço, deixa eu te mostrar o que ela faz — aí você me diz quanto vale. Posso fazer ela te ligar agora?\""],
+      ["\"Quanto custa?\"", "\"Depende do que seu negócio precisa — tem desde $149/mês. Mas antes do preço, deixa eu te mostrar o que ela faz — aí você me diz quanto vale. Posso fazer ela te ligar agora?\""],
       ["\"IA vai irritar meus clientes\"", "\"Ouve a demo primeiro — todo mundo se surpreende. E tem humano supervisionando: o que a Gui não resolve, ela transfere. Seus clientes preferem a Gui às 21h do que ninguém.\""],
       ["\"Já tenho recepcionista\"", "\"Perfeito — a Gui não substitui, ela cobre o que a recepcionista não alcança: madrugada, fim de semana, 3 ligações ao mesmo tempo, follow-up de quem sumiu.\""],
       ["\"Me manda uma proposta\"", "\"Mando sim — personalizada. Mas proposta sem demo é papel. Fecha 15 min comigo essa semana, a Gui te liga, e você recebe a proposta já sabendo o que tá comprando.\""],
@@ -186,7 +186,7 @@ const T = {
       ["Dia 5-7", "Faça as demos com o Luis · primeira comissão a caminho"],
     ],
     kitH: "Seu arsenal",
-    kit: [["📱 Cola de bolso", "/cola"], ["🎤 Pitch do cliente", "/pitch"], ["📄 Gerador de proposta", "/proposta?to=Cliente&price=1497&recover=3900"], ["🤝 Deck do parceiro", "/parceiro"], ["🎯 Quiz (lead frio)", "/quiz"], ["🧮 Calculadora", "/calculator"]],
+    kit: [["📊 Deck de vendas", "/deck"], ["📱 Cola de bolso", "/cola"], ["🎤 Pitch do cliente", "/pitch"], ["📄 Gerador de proposta", "/proposta?to=Cliente&price=1497&recover=3900"], ["🤝 Deck do parceiro", "/parceiro"], ["🎯 Quiz (lead frio)", "/quiz"], ["🧮 Calculadora", "/calculator"]],
     cta: "🤝 Quero entrar — falar com o Luis",
     ctaMsg: "Oi Luis! Completei o Partner Academy e quero começar como Agendador.",
   },
@@ -220,7 +220,7 @@ const T = {
       ["📅", "Booking systems", "Online schedule wired to Gui — she books, confirms, reschedules"],
     ],
     credH: "🪙 How clients pay for usage: CREDITS",
-    cred: "Every task Gui executes spends credits (~5 per task: an answered call, a follow-up, a message). Plans include monthly credits — Starter 500 · Growth 2,000 · Scale 6,000 — and more can be bought. It's how the client SEES what they pay for: every credit is work done.",
+    cred: "Every task Gui executes spends credits (~5 per task: an answered call, a follow-up, a message). Plans include monthly credits — Essential 500 · Personalized 2,000 · Full Operation 6,000 — and more can be bought. It's how the client SEES what they pay for: every credit is work done.",
     guiJobsH: "🤖 What Gui does, task by task (memorize THESE)",
     guiJobs: ["🛒 Takes orders", "📅 Books & confirms", "🎯 Qualifies leads", "💰 Closes sales", "🧾 Sends quotes", "🎧 Gives support", "🔁 Wins back ghosts", "📦 Tracks orders", "📋 Does intake", "🔔 Sends reminders", "↩️ Follows up", "⭐ Asks for reviews"],
     cockH: "📟 The Growth Cockpit — the panel the client gets",
@@ -243,7 +243,7 @@ const T = {
     honestWhy: "With a 30-day guarantee, overselling = refund + burned reputation. Honest selling = clients who stay and refer.",
     s2tag: "Step 3 · The offer",
     s2h: "Two tracks. Know which to offer.",
-    trackA: { name: "Track A · Self-service", who: "Small business, busy owner, wants to start simple", what: "They sign up on the site: Starter $49 · Growth $149 · Scale $399/mo (Gui credits included)", you: "You refer with your link and earn 20% of the first 3 months", ex: "E.g.: Growth $149 → ~$89 to you" },
+    trackA: { name: "Track A · Self-service", who: "Small business, busy owner, wants to start simple", what: "They sign up on the site: Essential $149 · Personalized $449 · Full Operation $999/mo (Gui credits included)", you: "You refer with your link and earn 20% of the first 3 months", ex: "E.g.: Personalized $449 → ~$269 to you" },
     trackB: { name: "Track B · Tailored ⭐", who: "Established business (clinic, busy restaurant, realty) leaking real money monthly", what: "A package designed for them: from $990 setup + $1,497+/mo — AI + marketing + whatever they need", you: "You run the sale and earn 20% of the contract (setup + 3 months)", ex: "E.g.: typical package → ~$1,096 to you PER SALE" },
     trackRule: "Rule of thumb: an owner who complains about \"missing calls/clients\" and bills > $20k/mo → Track B. Everyone else → Track A. In doubt, book the demo — the conversation reveals it.",
     s3tag: "Step 4 · Learn",
@@ -255,7 +255,7 @@ const T = {
     objH: "The 6 objections you WILL hear (and the answers)",
     obj: [
       ["\"I don't have time\"", "\"That's exactly why — Gui gives you your time back. It's 15 minutes and the demo is the AI calling you. Tuesday or Wednesday?\""],
-      ["\"How much is it?\"", "\"Depends on what your business needs — starts at $49/mo. But before price, let me show you what she does — then you tell me what it's worth. Can I have her call you right now?\""],
+      ["\"How much is it?\"", "\"Depends on what your business needs — starts at $149/mo. But before price, let me show you what she does — then you tell me what it's worth. Can I have her call you right now?\""],
       ["\"AI will annoy my customers\"", "\"Hear the demo first — everyone's surprised. And a human supervises: what Gui can't solve, she transfers. Your customers prefer Gui at 9 PM over nobody.\""],
       ["\"I already have a receptionist\"", "\"Perfect — Gui doesn't replace her, she covers what a receptionist can't: overnight, weekends, 3 calls at once, follow-up on ghosts.\""],
       ["\"Send me a proposal\"", "\"Will do — personalized. But a proposal without the demo is paper. Give me 15 min this week, Gui calls you, and you'll read the proposal knowing what you're buying.\""],
@@ -357,7 +357,7 @@ const T = {
       ["Day 5-7", "Run the demos with Luis · first commission on its way"],
     ],
     kitH: "Your arsenal",
-    kit: [["📱 Pocket card", "/cola"], ["🎤 Client pitch", "/pitch"], ["📄 Proposal builder", "/proposta?to=Client&price=1497&recover=3900"], ["🤝 Partner deck", "/parceiro"], ["🎯 Quiz (cold leads)", "/quiz"], ["🧮 Calculator", "/calculator"]],
+    kit: [["📊 Sales deck", "/deck"], ["📱 Pocket card", "/cola"], ["🎤 Client pitch", "/pitch"], ["📄 Proposal builder", "/proposta?to=Client&price=1497&recover=3900"], ["🤝 Partner deck", "/parceiro"], ["🎯 Quiz (cold leads)", "/quiz"], ["🧮 Calculator", "/calculator"]],
     cta: "🤝 I'm in — talk to Luis",
     ctaMsg: "Hi Luis! I completed the Partner Academy and want to start as a Setter.",
   },
@@ -406,14 +406,14 @@ const ROUNDS_RICARDO = {
 const ROUNDS = {
   pt: [
     { gui: "Marcos: Oi… olha, vou ser sincero, tô no meio do almoço aqui, o restaurante tá lotado. Não tenho tempo pra papo de tecnologia, não.", hint: "Objeção: tempo", good: [/15 ?min|rápid|demo|liga(r|ção)| ouvir|terça|quarta|agend/i, /tempo de volta|devolve.*tempo|exatamente por isso/i], ideal: "\"Exatamente por isso te procurei — a Gui atende o telefone enquanto seu salão tá lotado. São 15 minutos e a demo é a IA te ligando. Terça ou quarta?\"" },
-    { gui: "Marcos: Hmm… e quanto custa isso aí? Porque se for caro nem perde teu tempo.", hint: "Objeção: preço cedo demais", good: [/antes do preço|antes de falar de preço|primeiro.*mostrar|o que ela faz|vale|demo/i, /\$ ?49|depende do que/i], ideal: "\"Depende do que o seu restaurante precisa — tem desde $49/mês. Mas antes do preço, deixa eu fazer a Gui te ligar — aí você me diz quanto vale nunca mais perder um pedido às 21h.\"" },
+    { gui: "Marcos: Hmm… e quanto custa isso aí? Porque se for caro nem perde teu tempo.", hint: "Objeção: preço cedo demais", good: [/antes do preço|antes de falar de preço|primeiro.*mostrar|o que ela faz|vale|demo/i, /\$ ?149|depende do que/i], ideal: "\"Depende do que o seu restaurante precisa — tem desde $149/mês. Mas antes do preço, deixa eu fazer a Gui te ligar — aí você me diz quanto vale nunca mais perder um pedido às 21h.\"" },
     { gui: "Marcos: Robô atendendo meu cliente? Meu público é exigente, isso vai irritar todo mundo e eu vou perder freguês.", hint: "Objeção: medo da IA", good: [/ouv|demo|surpre|liga(r|ção)/i, /humano|supervis|transfere/i, /21h|madrugada|ninguém atende|do que ninguém/i], ideal: "\"Ouve a demo primeiro — todo mundo se surpreende. E tem humano supervisionando: o que a Gui não resolve, ela transfere. Seu freguês prefere a Gui às 21h do que telefone tocando sem ninguém.\"" },
     { gui: "Marcos: Mas eu já tenho a Cida no balcão há 12 anos. Ela atende telefone. Pra que eu preciso disso?", hint: "Objeção: já tem alguém", good: [/não substitui|cobre|complementa|junto com/i, /madrugada|fim de semana|domingo|3 liga|ao mesmo tempo|follow|depois do expediente/i], ideal: "\"A Gui não substitui a Cida — ela cobre o que a Cida não alcança: domingo, 22h, três ligações ao mesmo tempo no rush, e o follow-up de quem pediu uma vez e sumiu.\"" },
     { gui: "Marcos: Tá… me manda uma proposta no WhatsApp então que eu dou uma olhada quando sobrar tempo.", hint: "Fechamento: não deixe esfriar", good: [/demo|liga(r|ção)|15 ?min|essa semana|terça|quarta|quinta|agend|marca/i, /garantia|30 dias|risco/i], ideal: "\"Mando sim — personalizada. Mas proposta sem demo é só papel. Me dá 15 min quinta, a Gui te liga na hora, e você lê a proposta sabendo o que tá comprando. E são 30 dias de garantia — o risco é nosso.\"" },
   ],
   en: [
     { gui: "Marcos: Hey… look, I'll be honest, I'm mid-lunch-rush here, the place is packed. I've got no time for tech talk.", hint: "Objection: time", good: [/15 ?min|quick|demo|call|hear|tuesday|wednesday|book/i, /time back|exactly why/i], ideal: "\"That's exactly why I reached out — Gui answers the phone while your floor is packed. It's 15 minutes and the demo is the AI calling you. Tuesday or Wednesday?\"" },
-    { gui: "Marcos: Hmm… how much does it cost? If it's expensive don't waste your time.", hint: "Objection: price too early", good: [/before price|show you first|what she does|worth|demo/i, /\$ ?49|depends on/i], ideal: "\"Depends on what your restaurant needs — starts at $49/mo. But before price, let me have Gui call you — then you tell me what never missing a 9 PM order is worth.\"" },
+    { gui: "Marcos: Hmm… how much does it cost? If it's expensive don't waste your time.", hint: "Objection: price too early", good: [/before price|show you first|what she does|worth|demo/i, /\$ ?49|depends on/i], ideal: "\"Depends on what your restaurant needs — starts at $149/mo. But before price, let me have Gui call you — then you tell me what never missing a 9 PM order is worth.\"" },
     { gui: "Marcos: A robot answering my customers? My crowd is picky — this will annoy everyone and I'll lose regulars.", hint: "Objection: AI fear", good: [/hear|demo|surprise|call/i, /human|supervis|transfer/i, /9 ?pm|overnight|nobody answers|over nobody/i], ideal: "\"Hear the demo first — everyone's surprised. And a human supervises: what Gui can't solve, she transfers. Your regulars prefer Gui at 9 PM over a phone ringing with nobody there.\"" },
     { gui: "Marcos: But I've had Cida at the counter for 12 years. She answers the phone. Why would I need this?", hint: "Objection: already covered", good: [/doesn'?t replace|covers|complement|alongside/i, /overnight|weekend|sunday|3 calls|at once|follow|after hours/i], ideal: "\"Gui doesn't replace Cida — she covers what Cida can't: Sunday, 10 PM, three calls at once during the rush, and following up with the customer who ordered once and vanished.\"" },
     { gui: "Marcos: Fine… send me a proposal on WhatsApp and I'll look when I get a minute.", hint: "Close: don't let it cool", good: [/demo|call|15 ?min|this week|tuesday|wednesday|thursday|book/i, /guarantee|30 days|risk/i], ideal: "\"Will do — personalized. But a proposal without the demo is just paper. Give me 15 min Thursday, Gui calls you live, and you'll read it knowing what you're buying. Plus 30-day guarantee — the risk is ours.\"" },
@@ -524,7 +524,7 @@ function Roleplay({ lang, t }) {
       {step >= 0 && !done && (
         <div className="flex gap-2 border-t border-white/10 bg-white/[0.02] p-3">
           <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && reply()} placeholder={t.placeholder}
-            className="min-w-0 flex-1 rounded-full border border-white/12 bg-white/[0.05] px-4 py-2.5 text-[13.5px] text-g-word outline-none placeholder:text-g-muted/60 focus:border-g-green/40" />
+            className="min-w-0 flex-1 rounded-full border border-white/15 bg-white/[0.05] px-4 py-2.5 text-[13.5px] text-g-word outline-none placeholder:text-g-muted/60 focus:border-g-green/40" />
           <button onClick={reply} className="btn-bright shrink-0 !px-5 !py-2.5 text-[13px]">{t.send}</button>
         </div>
       )}
@@ -876,6 +876,7 @@ function useScrollChrome(ids) {
 
 export default function Academia() {
   const [lang, setLang] = useState("pt");
+  const [copiedCode, setCopiedCode] = useState(false);
   const t = T[lang];
   useEffect(() => { document.title = "Guileo Partner Academy"; window.scrollTo(0, 0); }, []);
   const ids = ["entenda", "catalogo", "oferta", "aprenda", "pratique", "niveis", "comece"];
@@ -900,7 +901,8 @@ export default function Academia() {
               {t.nav.map((n, i) => <a key={n} href={`#${ids[i]}`} className={`text-[12.5px] font-semibold transition ${active === ids[i] ? "text-g-gold" : "text-g-muted hover:text-g-word"}`}>{n}</a>)}
             </nav>
             <div className="flex items-center gap-2">
-              <a href="/cola" className="inline-flex items-center gap-1.5 rounded-full border border-g-gold/35 bg-g-gold/[0.08] px-3 py-1.5 text-[11.5px] font-extrabold text-g-gold transition hover:bg-g-gold/[0.16]">📱 {lang === "pt" ? "Cola" : "Card"}</a>
+              <a href="/vendedor" className="inline-flex items-center gap-1.5 rounded-full border border-g-green/40 bg-g-green/[0.10] px-3 py-1.5 text-[11.5px] font-extrabold text-g-green transition hover:bg-g-green/[0.18]">🧰 {lang === "pt" ? "Hub do Vendedor" : "Seller Hub"}</a>
+              <a href="/cola" className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-g-gold/35 bg-g-gold/[0.08] px-3 py-1.5 text-[11.5px] font-extrabold text-g-gold transition hover:bg-g-gold/[0.16]">📱 {lang === "pt" ? "Cola" : "Card"}</a>
               <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] p-1">
                 {[["pt", "🇧🇷"], ["en", "🇺🇸"]].map(([c, f]) => (
                   <button key={c} onClick={() => setLang(c)} aria-pressed={lang === c} className={`h-7 w-7 rounded-full text-sm transition ${lang === c ? "scale-110 bg-g-green/15 ring-1 ring-g-green/30" : "opacity-50 hover:opacity-100"}`}>{f}</button>
@@ -922,6 +924,31 @@ export default function Academia() {
             <p className="mx-auto mt-5 max-w-xl text-[15px] leading-relaxed text-g-ink">{t.sub}</p>
             <div className="mt-7 flex flex-wrap items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-wider text-g-muted">
               {t.nav.map((n, i) => <a key={n} href={`#${ids[i]}`} className="rounded-full border border-g-line bg-white/[0.04] px-3 py-1.5 transition hover:border-g-green/40 hover:text-g-word">{i + 1}. {n}</a>)}
+            </div>
+          </Reveal>
+        </section>
+
+        {/* HUB + TEAM CODE — front and center: every collaborator must instantly see where to work + the code */}
+        <section className="px-5 -mt-8 pb-12">
+          <Reveal>
+            <div className="mx-auto max-w-3xl rounded-3xl border border-g-green/35 bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] p-6 text-center shadow-2xl sm:p-8">
+              <div className="text-[11px] font-black uppercase tracking-[0.24em] text-g-green">🧰 {lang === "pt" ? "Sua central de trabalho" : "Your work hub"}</div>
+              <h2 className="mt-2 text-2xl font-black text-g-word sm:text-[2rem]">{lang === "pt" ? "Hub do Vendedor" : "Seller Hub"}</h2>
+              <p className="mx-auto mt-2.5 max-w-lg text-[13.5px] leading-relaxed text-g-ink">
+                {lang === "pt"
+                  ? "Pitch cards por nicho, personalização com IA, gerador de orçamento e suporte — tudo num lugar. Entre com seu nome + email + o código do time:"
+                  : "Niche pitch cards, AI personalization, a quote generator and support — all in one place. Sign in with your name + email + the team code:"}
+              </p>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  onClick={() => { navigator.clipboard?.writeText("GUILEO-TIME-2026"); setCopiedCode(true); setTimeout(() => setCopiedCode(false), 1500); }}
+                  className="inline-flex items-center gap-2 rounded-xl border border-g-gold/45 bg-g-gold/[0.12] px-4 py-3 font-mono text-[16px] font-black tracking-wider text-g-gold transition hover:bg-g-gold/[0.2]"
+                  title={lang === "pt" ? "Copiar código" : "Copy code"}
+                >
+                  GUILEO-TIME-2026 <span className="text-[12px]">{copiedCode ? "✓" : "📋"}</span>
+                </button>
+                <a href="/vendedor" className="btn-bright text-[14px]">{lang === "pt" ? "Abrir o Hub →" : "Open the Hub →"}</a>
+              </div>
             </div>
           </Reveal>
         </section>

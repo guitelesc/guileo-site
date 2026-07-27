@@ -85,7 +85,7 @@ export default function Channels({ t }) {
                 </div>
                 {/* stacked notifications (iOS lock-screen style) */}
                 <div className="relative px-3 mt-4 space-y-2">
-                  <div className="px-1.5 text-[10px] font-semibold uppercase tracking-wide text-white/40">Notifications</div>
+                  <div className="px-1.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">Notifications</div>
                   <AnimatePresence mode="popLayout" initial={false}>
                     {ordered.map((d, i) => {
                       const [Icon, name, color, msg, time] = d;
@@ -101,7 +101,7 @@ export default function Channels({ t }) {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-[10px] font-bold uppercase tracking-wide text-white/65 truncate">{name} · Guileo AI</span>
-                              <span className="text-[10px] text-white/45 whitespace-nowrap">{time}</span>
+                              <span className="text-[10px] text-white/70 whitespace-nowrap">{time}</span>
                             </div>
                             <div className="text-[12px] font-semibold text-white leading-snug mt-0.5">{msg}</div>
                           </div>

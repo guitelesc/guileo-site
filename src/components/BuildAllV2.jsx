@@ -36,7 +36,7 @@ const CATS = [
   { emoji: "🤖", leg: "Guileo Brain", rgb: "62,148,104",  text: "text-g-green",      chip: "border-g-green/30 bg-g-green/[0.08] hover:border-g-green/55 hover:bg-g-green/[0.14]",          idx: [0, 1] },
   { emoji: "🌐", leg: "Guileo Build", rgb: "78,157,176",  text: "text-[#4E9DB0]",    chip: "border-[#4E9DB0]/30 bg-[#4E9DB0]/[0.08] hover:border-[#4E9DB0]/55 hover:bg-[#4E9DB0]/[0.14]", idx: [2, 3, 7] },
   { emoji: "⚙️", leg: "Guileo Build", rgb: "214,194,154", text: "text-g-gold",       chip: "border-g-gold/30 bg-g-gold/[0.08] hover:border-g-gold/55 hover:bg-g-gold/[0.14]",              idx: [4, 8, 6, 9] },
-  { emoji: "📈", leg: "Guileo.AD",    rgb: "194,168,120", text: "text-g-copper",     chip: "border-g-copper/35 bg-g-copper/[0.08] hover:border-g-copper/60 hover:bg-g-copper/[0.14]",      idx: [5, 10, 11] },
+  { emoji: "📈", leg: "Guileo.AD",    rgb: "194,168,120", text: "text-g-copper",     chip: "border-g-copper/35 bg-g-copper/[0.08] hover:border-g-copper/60 hover:bg-g-copper/[0.14]",      idx: [5, 10, 11, 12] },
 ];
 
 export default function BuildAllV2() {

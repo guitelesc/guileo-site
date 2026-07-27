@@ -1,19 +1,23 @@
 import { useEffect, useState } from "react";
 import logo from "../assets/guileo-mark.png";
 import { waLink } from "../data/contact.js";
+import { MASTER_SENTENCE, OBJECTION_KILLERS } from "../data/salesKit.js";
 
 // /cola — the partner's POCKET CARD. One mobile screen to open 2 minutes before a
-// meeting: the sentence, the 5 golden questions, objections in one line each, the
-// 15-min plan, and the tool links. No fluff — this is field equipment.
+// meeting: THE sentence + objections come from src/data/salesKit.js (same words in
+// /deck, /pitch, /roteiro — no drift), the 5 golden questions, the 15-min plan,
+// and the tool links. No fluff — this is field equipment.
+
+const objsFor = (lang) => OBJECTION_KILLERS.map((o) => [o.tag[lang], `→ ${o.short[lang]}`]);
 
 const D = {
   pt: {
     title: "Cola de bolso", sub: "Abra 2 min antes da reunião. Respira. Você tá pronto.",
-    sentence: "A Guileo instala um time de IA + marketing que atende, vende e faz crescer o seu negócio sozinho, 24/7 — você escolhe o resultado, a gente entrega.",
+    sentence: MASTER_SENTENCE.pt,
     qH: "🔍 As 5 perguntas (deixa ELE falar)",
     qs: ["Quantas ligações perde por dia?", "Quem responde o WhatsApp à noite?", "E quem pede orçamento e some?", "Quantos clientes ninguém chamou de volta?", "A $50–100 cada… quanto vaza/mês?"],
-    oH: "🛡️ Objeções (1 linha cada)",
-    objs: [["Sem tempo", "→ \"15 min e a demo é a IA te ligando. Terça ou quarta?\""], ["Quanto custa?", "→ \"Antes do preço, deixa eu mostrar — ela te liga agora?\""], ["IA irrita cliente", "→ \"Ouve a demo. E tem humano supervisionando.\""], ["Já tenho recepcionista", "→ \"Ela cobre o que a recepcionista não alcança: noite, domingo, 3 ligações juntas.\""], ["Manda proposta", "→ \"Mando hoje — depois de 15 min de demo. Quinta?\""], ["Vou pensar", "→ \"O que precisaria ser verdade? Te mostro isso na demo. 30 dias de garantia.\""]],
+    oH: "🛡️ As 8 objeções (1 linha cada)",
+    objs: objsFor("pt"),
     mH: "📋 Os 15 minutos",
     meet: ["0-3 · perguntas (ele fala)", "3-5 · a frase", "5-9 · ⚡ GUI LIGA (silêncio!)", "9-12 · Cockpit + a dor dele", "12-15 · proposta + garantia"],
     never: "🚫 Nunca: prometer que a IA não erra · resultado exato em $ · menos de 7 dias",
@@ -21,11 +25,11 @@ const D = {
   },
   en: {
     title: "Pocket card", sub: "Open 2 min before the meeting. Breathe. You're ready.",
-    sentence: "Guileo installs an AI + marketing team that answers, sells and grows your business on its own, 24/7 — you pick the result, we deliver it.",
+    sentence: MASTER_SENTENCE.en,
     qH: "🔍 The 5 questions (let THEM talk)",
     qs: ["How many calls do you miss per day?", "Who answers WhatsApp at night?", "What about quote-and-ghost people?", "How many customers never got a call back?", "At $50–100 each… how much leaks/mo?"],
-    oH: "🛡️ Objections (one line each)",
-    objs: [["No time", "→ \"15 min and the demo is the AI calling you. Tue or Wed?\""], ["How much?", "→ \"Before price, let me show you — can she call you now?\""], ["AI annoys customers", "→ \"Hear the demo. And a human supervises.\""], ["Have a receptionist", "→ \"She covers what they can't: nights, Sunday, 3 calls at once.\""], ["Send a proposal", "→ \"Today — after a 15-min demo. Thursday?\""], ["I'll think", "→ \"What would need to be true? I'll show you that in the demo. 30-day guarantee.\""]],
+    oH: "🛡️ The 8 objections (one line each)",
+    objs: objsFor("en"),
     mH: "📋 The 15 minutes",
     meet: ["0-3 · questions (they talk)", "3-5 · the sentence", "5-9 · ⚡ GUI CALLS (silence!)", "9-12 · Cockpit + their pain", "12-15 · proposal + guarantee"],
     never: "🚫 Never: promise the AI never errs · exact $ results · under 7 days",
@@ -35,6 +39,7 @@ const D = {
 
 export default function Cola() {
   const [lang, setLang] = useState("pt");
+  const [copied, setCopied] = useState(false);
   const t = D[lang];
   useEffect(() => { document.title = "Guileo · Cola de bolso"; }, []);
   return (
@@ -47,6 +52,17 @@ export default function Cola() {
         <p className="text-[11.5px] italic text-g-muted">{t.sub}</p>
 
         <blockquote className="rounded-2xl border border-g-green/30 bg-g-green/[0.06] p-4 text-[13px] font-bold leading-relaxed text-g-word">“{t.sentence}”</blockquote>
+
+        {/* Seller Hub + team code — front and center */}
+        <div className="rounded-2xl border border-g-gold/35 bg-gradient-to-br from-g-green/[0.10] to-g-gold/[0.06] p-4 text-center">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-g-green">🧰 {lang === "pt" ? "Hub do Vendedor" : "Seller Hub"}</div>
+          <p className="mt-1 text-[11px] text-g-ink">{lang === "pt" ? "Nome + email + o código do time:" : "Name + email + the team code:"}</p>
+          <button onClick={() => { navigator.clipboard?.writeText("GUILEO-TIME-2026"); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+            className="mt-2 inline-flex items-center gap-2 rounded-lg border border-g-gold/45 bg-g-gold/[0.12] px-3 py-2 font-mono text-[13px] font-black tracking-wider text-g-gold">
+            GUILEO-TIME-2026 <span className="text-[11px]">{copied ? "✓" : "📋"}</span>
+          </button>
+          <a href="/vendedor" className="mt-2 block text-[11.5px] font-black text-g-green underline">{lang === "pt" ? "Abrir o Hub →" : "Open the Hub →"}</a>
+        </div>
 
         <div className="rounded-2xl border border-g-line bg-white/[0.03] p-4">
           <div className="text-[11px] font-black uppercase tracking-wider text-g-green">{t.qH}</div>
@@ -68,9 +84,12 @@ export default function Cola() {
         <div>
           <div className="mb-2 text-[11px] font-black uppercase tracking-wider text-g-muted">{t.tools}</div>
           <div className="grid grid-cols-2 gap-2">
+            <a href="/roteiro" className="rounded-xl border border-g-gold/30 bg-g-gold/[0.08] px-3 py-2.5 text-center text-[12px] font-black text-g-gold">🎬 Roteiro</a>
+            <a href="/prospects" className="rounded-xl border border-g-green/30 bg-g-green/[0.08] px-3 py-2.5 text-center text-[12px] font-black text-g-green">🎯 Prospects</a>
             <a href="/pitch" className="rounded-xl border border-g-line bg-white/[0.04] px-3 py-2.5 text-center text-[12px] font-bold text-g-word">🎤 Pitch</a>
             <a href="/proposta?to=Cliente&price=1497&recover=3900" className="rounded-xl border border-g-line bg-white/[0.04] px-3 py-2.5 text-center text-[12px] font-bold text-g-word">📄 Proposta</a>
             <a href="/academia" className="rounded-xl border border-g-line bg-white/[0.04] px-3 py-2.5 text-center text-[12px] font-bold text-g-word">🎓 Academy</a>
+            <a href="/vendedor" className="rounded-xl border border-g-green/30 bg-g-green/[0.08] px-3 py-2.5 text-center text-[12px] font-black text-g-green">🧰 {lang === "pt" ? "Hub" : "Hub"}</a>
             <a href={waLink("Luis, socorro rápido numa reunião:")} target="_blank" rel="noopener" className="rounded-xl border border-g-green/30 bg-g-green/[0.08] px-3 py-2.5 text-center text-[12px] font-black text-g-green">🆘 Luis</a>
           </div>
         </div>

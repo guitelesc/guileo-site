@@ -1,0 +1,56 @@
+# 💼 Sales — Guileo Company-OS
+
+> The revenue-conversion department of the company-OS: it turns every CRM contact into pipeline → quote → relentless follow-up → a closed deal with a collected deposit and a booked appointment. Every artifact is bound to one CRM contact_id (no sales silo), every action is born from a gui_actions row and written back as a client_events row, and Gui works the whole pipeline 24/7 so no lead goes cold and every quote is chased to a documented yes or no — feeding the shared revenue ledger that Finance and Growth read.
+
+## 🗄️ Data model (entities this dept owns)
+- **sales_deals** — `id, tenant_id, contact_id (FK→CRM contacts, NOT NULL), stage (new|qualified|quoted|negotiating|won|lost), value_cents, currency, probability, expected_close, source_action_id (→gui_actions, the lead/c`  
+  ↳ The pipeline opportunity — one row per chance to sell, contact_id NOT NULL so revenue always traces to a person/company. source_action_id gives end-to-end attribution from inbound to dollar; last_event_id keeps the CRM timeline as source of truth.
+- **sales_quotes** — `id, tenant_id, deal_id, contact_id (FK→CRM contacts), line_items jsonb (name/qty/unit_cents/service_ref→biz_services), subtotal_cents, discount_cents, total_cents, deposit_cents, currency, valid_until`  
+  ↳ Versioned quote tied to a deal AND its contact; line_items reference biz_services so quote→book→charge is one priced chain. pay_link_url/pay_link_id reuse the existing pay-link.js + Stripe/PIX so the deposit collection is the same code Finance trusts.
+- **sales_followups** — `id, tenant_id, deal_id, contact_id (FK→CRM contacts), channel (voice|sms|whatsapp|email), due_at, attempt_no, cadence_step, status (pending|done|skipped|dnc|consent_block), gui_action_id (→gui_actions`  
+  ↳ The chase queue — every touch Gui owes a deal, scheduled, capped and DNC/consent-gated by the call funnel (call.js gate). priority_score is the predictive EV used to order the cron run; each fired touch writes a gui_actions row so attribution and the timeline stay unified.
+- **sales_objections** — `id, tenant_id, deal_id, contact_id (FK→CRM contacts), raised_text, category (price|timing|trust|authority|need|competitor), rebuttal_used, resolved (bool), detected_by (gui|human), source_call_log_id `  
+  ↳ Captured objections + which rebuttal moved the deal, linked to the contact and to the transcript (call_logs mirror) it was detected in. Feeds Gui's per-tenant closing playbook and powers win/loss-by-objection learning on the contact's 360 view.
+- **sales_pipeline_config** — `tenant_id (PK, one row per tenant), stages jsonb, cadence jsonb (per-stage touch timing/channel/caps), discount_authority_pct, deposit_policy jsonb, playbook jsonb (objection→rebuttal map), quote_temp`  
+  ↳ Per-tenant rules of the sales floor so Gui closes the way each business wants — JSONB-configurable exactly like biz_services. One row per tenant; loaded by every RPC and by the Gui sales tool so behavior is tenant-shaped, not hardcoded.
+
+## 🟢 Core features (what the owner does)
+- Kanban pipeline board in the Cockpit (/portal/sales, Sales.jsx): drag deals across stages; each card shows value, age, weighted probability, the linked CRM contact (click → 360 timeline), and the next scheduled Gui touch with its channel
+- Build + send a quote in seconds from any CRM contact: pick services priced live from biz_services, set the deposit per deposit_policy, generate a branded Stripe/PIX pay-link via pay-link.js, and have Gui deliver it on the contact's preferred channel — all stamped onto the contact timeline
+- Set the close cadence + guardrails: define how many touches and on which channels Gui chases before a deal is marked lost, the discount authority Gui may grant unattended, and the deposit policy — stored in sales_pipeline_config, honored by every Gui action
+- Escalation review inbox: approve/deny the deals Gui escalates (discount above authority, high-value, or 'human requested') from one screen with full context — contact LTV, transcript snippet, objection history — and Gui resumes the moment you decide
+- Objection playbook editor with live learning: add the rebuttal for each objection a tenant hears and watch win-rate-by-objection-category update as Gui uses them on real calls (data from sales_objections joined to outcomes)
+- Live revenue + forecast dashboard: weighted pipeline value, deposits collected this period (read from the shared revenue ledger), deals won/lost, speed-to-first-touch, and Gui-attributed vs human-attributed close rate — the same numbers Finance/Growth see
+
+## 🟣 Gui automations (how Gui runs it — superhuman)
+- Zero-latency deal birth: a gui_actions/client_events trigger opens a sales_deal the instant a qualified lead, inbound call, or booking lands, assigns stage + probability from the playbook, and queues the first touch — measured speed-to-first-touch is seconds, not the human industry-standard hours
+- Always-on parallel chase: every 15-min cron tick, sales-followup works the entire due queue, dialing/messaging hundreds of stale quotes simultaneously across voice/SMS/WhatsApp/email through the hardened call.js gate (DNC + caps + consent enforced) — never forgets, never sleeps, scales past any human sales floor
+- Live objection counter from the transcript: Gui detects an objection in the call/chat stream in real time, pulls the exact matching rebuttal from the tenant playbook, counters mid-sentence, and logs the objection + outcome to sales_objections so the playbook compounds with every call
+- Predictive EV triage at scale: before each run Gui scores every open deal by close-probability (age, engagement, sentiment from call_logs, value, prior objections read off the CRM spine) and works highest-expected-value deals first — superhuman prioritization no human queue can match
+- Quote-view radar + perfect-timing nudge: Gui watches the pay-link 'viewed' signal, and the moment a deal stalls it re-quotes with an authorized discount or a deposit incentive at the statistically best hour for that contact — automatically, within discount_authority_pct, escalating only when it would exceed it
+- One-motion close: on a verbal yes Gui generates the pay-link (pay-link.js), collects the deposit, books the appointment via the agent-schedule bridge into biz_appointments, posts the deal to the revenue ledger, and moves the deal to won — one continuous machine action with no human handoff
+- Smart reactivation blitz: lost/expired deals are auto-revived on a timing-aware delay (e.g. when a 'timing' objection ages out) and re-entered into pipeline, personalized from the contact's history — resurrecting revenue humans would have abandoned
+- Self-defending pipeline hygiene: Gui auto-detects paid-but-unbooked, double-touch, or consent-blocked states each tick and self-corrects (rebooks, suppresses, or escalates) so the pipeline never silently leaks — the idempotency/zero-failure discipline from the hardening pass, applied continuously
+
+## 🔗 CRM-spine links (how it stays unified — zero silos)
+- Every sales_deals, sales_quotes, sales_followups, and sales_objections row carries contact_id (NOT NULL) pointing at the unified CRM contact, so the contact's 360 timeline shows its full sales journey inline with calls/orders/bookings/payments — there is no separate sales database
+- Every sale-stage transition, quote-sent/viewed/accepted, objection-raised, and deposit-collected is written as a client_events row on the contact (deal.last_event_id back-references it), keeping the CRM timeline the single source of truth rather than a siloed sales log
+- Every Gui touch is born from and writes a gui_actions row (followup.gui_action_id, deal.source_action_id), so attribution is end-to-end auditable: which inbound → which deal → which dollar, all readable from the contact spine
+- Before every touch Gui reads the CRM spine for context — past orders, lifetime_value, prior objections (sales_objections), last interaction and sentiment (call_logs) — so each chase is personalized, not a cold re-pitch
+- On won, sales_close_won posts deal value + deposit to the shared revenue ledger keyed by contact_id and bumps the contact's lifetime_value, so Finance and Growth read the exact same numbers the Sales dashboard shows — one ledger, one spine
+
+## 📈 KPIs it moves
+- Pipeline value, weighted and unweighted, plus per-stage conversion rates
+- Close rate (won/total) overall and split Gui-attributed vs human-attributed
+- Speed-to-first-touch and speed-to-quote (minutes from lead landing to first Gui contact / to quote sent)
+- Deposit collection rate and total deposits collected per period (reconciled against the shared revenue ledger)
+- Quote acceptance rate and average deal cycle time (created → won)
+- Objection-resolution rate and win-rate-after-objection by category, plus reactivated-deal recovery rate
+
+## 🔨 Build in Guileo (reusing what exists)
+- SQL → db/sales_dept.sql (Luis pastes into ynihodbknhjirkdogxby, the MCP-writable owned project): create sales_deals, sales_quotes, sales_followups, sales_objections, sales_pipeline_config with tenant-scoped RLS and contact_id FK to CRM contacts; anon = no access, service-role only — mirroring the biz_* + gui_actions RLS pattern from the call funnel and scheduling engine
+- SECURITY-DEFINER RPCs (secret-gated like biz_* and claim_credit_event, each defensive/fallback per the feature blueprint and each emitting a client_events row + bumping last_event_id): sales_open_deal, sales_move_stage, sales_make_quote (prices from biz_services), sales_send_quote (returns pay-link), sales_log_objection, sales_close_won (posts revenue ledger + calls the biz_book/agent-schedule path), sales_due_followups (priority-ordered), sales_reactivate_lost, sales_forecast
+- Pages Functions (Cloudflare, gated like existing /api/*): functions/api/sales-quote.js (build+send quote, reuses pay-link.js for the Stripe/PIX deposit link and emailTemplates.js for delivery — never ad-hoc HTML), functions/api/sales-followup.js (runs the chase queue, dials only through the hardened /api/call gate honoring DNC+caps+consent, respects lead.js noCall), functions/api/sales-deal.js (open/move/close from both the portal and the Gui webhook, idempotency-keyed)
+- Add a 'sales' tool to Gui's ElevenLabs toolset via provision.js/clientToolset (alongside the schedule tool) so Gui can open deals, quote, counter objections from the playbook, and close on a live call; reuse the existing /api/agent-schedule bridge for the book+deposit step so won deals land in biz_appointments
+- Automations cron entries reusing the existing cron harness (the blitz/health pattern): every 15 min run the sales-followup EV-ordered queue; daily run lost-deal reactivation + sales_forecast refresh + an escalation/forecast digest email to the owner rendered via emailTemplates.js
+- Portal views in src/pages following the locked design system (signal palette, Aman-portal persona): Sales.jsx = Kanban pipeline + quote builder + escalation inbox + objection-playbook editor + forecast dashboard, with deal cards deep-linking into the existing CRM 360 contact timeline; register route /portal/sales in App.jsx, and add an all-tenant pipeline roll-up to /admin (gated by _admin_ok). Verify the deploy with a screenshot per the visual-verify rule.

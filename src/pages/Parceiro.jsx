@@ -1,29 +1,181 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import logo from "../assets/guileo-mark.png";
 import { waLink } from "../data/contact.js";
+import { useLang } from "../i18n.jsx";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// /parceiro — the COLLABORATOR / GROWTH PARTNER recruiting deck. Same standalone
-// scroll-snap engine as /pitch, but the audience is a person we want to recruit.
-// Core decision (locked): the collaborator is 3-in-1 (sells + implements + owns the
-// account) and earns a % PER CLOSED SALE. The comp slide is illustrative and
-// adjustable via ?pct=20&ticket=1497&setup=990&months=3&deals=8 — Luis locks the % later.
+// /parceiro — the Growth Partner RECRUITING deck. Scroll-snap engine (same as
+// /pitch). Method: dor → solução → ganho. THE differentiator: a PERMANENT
+// PORTFOLIO — every client you sign is yours, recurring commission every month
+// for as long as they pay. HONESTY: we never state a fixed % here — the rate is
+// agreed at entry. CTA = enter the seller hub /vendedor with the public code
+// GUILEO-TIME-2026 + Luis on WhatsApp. PT/EN/ES, HI → EN fallback.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SLIDES = [
-  { id: "cover", label: "Abertura" },
-  { id: "what", label: "O que é a Guileo" },
-  { id: "deliver", label: "O que entregamos" },
-  { id: "role", label: "Seu papel" },
-  { id: "flow", label: "Como funciona" },
-  { id: "earn", label: "Quanto você ganha" },
-  { id: "why", label: "Por que agora" },
-  { id: "join", label: "Entrar" },
-];
+const CODE = "GUILEO-TIME-2026";
+const LANGS = [["en", "🇺🇸"], ["pt", "🇧🇷"], ["es", "🇪🇸"], ["hi", "🇮🇳"]];
+const LANG_NAMES = { en: "English", pt: "Português", es: "Español", hi: "हिन्दी" };
 
-const money = (v) => "$" + Math.round(Number(v) || 0).toLocaleString("en-US");
+const C = {
+  pt: {
+    docTitle: "Guileo · Seja um Growth Partner — carteira permanente",
+    labels: ["Abertura", "A dor", "O que você vende", "Carteira permanente", "Suas ferramentas", "Por que agora", "Entrar"],
+    next: "Próximo",
+    coverKicker: "Programa Growth Partner",
+    coverH1a: "A venda acaba. ", coverH1b: "A carteira fica.",
+    coverSubA: "Venda uma IA que atende, agenda e vende 24/7 em 20+ idiomas para negócios locais. Cada cliente que você assina vira ",
+    coverSubB: "sua carteira permanente — comissão todo mês enquanto ele pagar.",
+    painEyebrow: "A dor de quem vende",
+    painH2: "Você já sentiu isso.",
+    pains: [
+      ["💸", "A comissão morre na assinatura", "Você fecha, recebe uma vez e recomeça do zero. O cliente segue pagando — pra outra pessoa."],
+      ["🧰", "Você vende o que não entrega", "Prometeu, fechou, e virou suporte técnico. O produto trava, o cliente reclama com você."],
+      ["📉", "Sem carteira, sem renda que repete", "Todo mês na estaca zero. Nunca sobra uma base sua — só a próxima corrida atrás de lead."],
+    ],
+    solEyebrow: "O que você vende",
+    solH2a: "Um produto que o mercado inteiro precisa. ", solH2b: "A gente entrega por você.",
+    solP: "Todo negócio local perde ligação, lead e venda por não responder a tempo. Você oferece a Guileo — e nosso time entrega em 7 dias. ",
+    solPb: "Você traz o cliente, a gente faz acontecer.",
+    solChips: ["🎙️ Atende ligações", "💬 WhatsApp & SMS", "📅 Agenda & confirma", "💰 Fecha vendas", "🌐 20+ idiomas", "🛠️ No ar em 7 dias", "🔄 Automações", "📊 CRM"],
+    demoNote: "E a demo vende sozinha: a própria Gui liga pro celular do dono e atende como se fosse o negócio dele.",
+    gainEyebrow: "O diferencial",
+    gainH2: "Carteira permanente.",
+    gainP: "Cliente que você assina é SEU — pra sempre. Enquanto ele pagar a Guileo, você ganha comissão recorrente todo mês. A carteira não zera: ela empilha.",
+    stackTitle: "Sua carteira empilha, mês a mês",
+    stackMonths: ["Mês 1", "Mês 2", "Mês 3", "Mês 6"],
+    honestClaim: "Comissão recorrente sobre TODA a sua carteira, todo mês, enquanto o cliente pagar. Comissão de 10% a 20% — seu nível sobe com seus resultados, do Agendador ao Closer.",
+    honestNet: "Extrato transparente no hub: líquido de reembolso (refund-net) e cada repasse visível, item por item.",
+    toolsEyebrow: "Suas ferramentas",
+    toolsH2: "Você não entra sozinho.",
+    tools: [
+      ["🤖", "Pitch com IA", "Argumento pronto pra cada negócio"],
+      ["🎭", "Treino de roleplay", "Pratique contra a própria Gui"],
+      ["🧾", "Gerador de orçamento", "Proposta em segundos, com seu link"],
+      ["📄", "Contrato EN/ES/PT", "Documento pronto nos 3 idiomas"],
+      ["📊", "CRM pessoal", "Sua carteira, leads e repasses num painel"],
+      ["🏆", "Ranking", "Acompanhe sua posição e suba de nível"],
+    ],
+    whyEyebrow: "Por que agora",
+    whyH2: "A onda da IA está começando. Você entra na frente.",
+    whyCards: [
+      ["🌊", "Mercado quente", "Todo negócio quer IA, poucos sabem entregar."],
+      ["🛠️", "Produto pronto", "Você vende algo que já funciona e entrega em 7 dias."],
+      ["📈", "Renda que fica", "Cada venda vira carteira — receita que se repete todo mês."],
+    ],
+    joinH2a: "Pronto pra ", joinH2b: "construir sua carteira?",
+    joinP: "Entre no hub do vendedor com o código, faça o Academy e comece a fechar. Sem taxa pra entrar.",
+    codeLabel: "Código de entrada",
+    copy: "📋", copied: "✓",
+    joinCta1: "🚀 Entrar no hub do vendedor", joinCta2: "💬 Falar com o Luis", joinCta3: "🎓 Fazer o Academy",
+    joinWa: "Oi Luis! Quero entrar no Programa Growth Partner e construir minha carteira.",
+  },
+  en: {
+    docTitle: "Guileo · Become a Growth Partner — permanent portfolio",
+    labels: ["Opening", "The pain", "What you sell", "Permanent portfolio", "Your tools", "Why now", "Join"],
+    next: "Next",
+    coverKicker: "Growth Partner Program",
+    coverH1a: "The sale ends. ", coverH1b: "The portfolio stays.",
+    coverSubA: "Sell an AI that answers, books and sells 24/7 in 20+ languages for local businesses. Every client you sign becomes ",
+    coverSubB: "your permanent portfolio — commission every month for as long as they pay.",
+    painEyebrow: "The seller's pain",
+    painH2: "You've felt this.",
+    pains: [
+      ["💸", "The commission dies at signup", "You close, get paid once, and restart from zero. The client keeps paying — someone else."],
+      ["🧰", "You sell what you can't deliver", "You promised, you closed, and became tech support. The product breaks, the client complains to you."],
+      ["📉", "No portfolio, no repeat income", "Every month back to zero. You never build a base of your own — just the next chase for a lead."],
+    ],
+    solEyebrow: "What you sell",
+    solH2a: "A product the whole market needs. ", solH2b: "We deliver it for you.",
+    solP: "Every local business loses calls, leads and sales by failing to respond in time. You offer Guileo — and our team delivers in 7 days. ",
+    solPb: "You bring the client, we make it happen.",
+    solChips: ["🎙️ Answers calls", "💬 WhatsApp & SMS", "📅 Books & confirms", "💰 Closes sales", "🌐 20+ languages", "🛠️ Live in 7 days", "🔄 Automations", "📊 CRM"],
+    demoNote: "And the demo sells itself: Gui herself calls the owner's phone and answers as if she were their business.",
+    gainEyebrow: "The differentiator",
+    gainH2: "A permanent portfolio.",
+    gainP: "A client you sign is YOURS — forever. For as long as they pay Guileo, you earn recurring commission every month. The portfolio never resets: it stacks.",
+    stackTitle: "Your portfolio stacks, month after month",
+    stackMonths: ["Month 1", "Month 2", "Month 3", "Month 6"],
+    honestClaim: "Recurring commission on your ENTIRE portfolio, every month, for as long as the client keeps paying. 10% to 20% commission — your tier climbs with your results, from Setter to Closer.",
+    honestNet: "Transparent statement in the hub: refund-net amounts and every payout visible, line by line.",
+    toolsEyebrow: "Your tools",
+    toolsH2: "You're not going in alone.",
+    tools: [
+      ["🤖", "AI pitch", "Ready arguments for every business"],
+      ["🎭", "Roleplay training", "Practice against Gui herself"],
+      ["🧾", "Quote generator", "Proposal in seconds, with your link"],
+      ["📄", "Contract EN/ES/PT", "Ready document in all 3 languages"],
+      ["📊", "Personal CRM", "Your portfolio, leads and payouts in one panel"],
+      ["🏆", "Leaderboard", "Track your rank and level up"],
+    ],
+    whyEyebrow: "Why now",
+    whyH2: "The AI wave is just starting. You get in early.",
+    whyCards: [
+      ["🌊", "Hot market", "Every business wants AI, few know how to deliver."],
+      ["🛠️", "Ready product", "You sell something that already works and ships in 7 days."],
+      ["📈", "Income that stays", "Every sale becomes portfolio — revenue that repeats every month."],
+    ],
+    joinH2a: "Ready to ", joinH2b: "build your portfolio?",
+    joinP: "Enter the seller hub with the code, take the Academy and start closing. No fee to join.",
+    codeLabel: "Entry code",
+    copy: "📋", copied: "✓",
+    joinCta1: "🚀 Enter the seller hub", joinCta2: "💬 Talk to Luis", joinCta3: "🎓 Take the Academy",
+    joinWa: "Hi Luis! I want to join the Growth Partner Program and build my portfolio.",
+  },
+  es: {
+    docTitle: "Guileo · Sé un Growth Partner — cartera permanente",
+    labels: ["Apertura", "El dolor", "Qué vendes", "Cartera permanente", "Tus herramientas", "Por qué ahora", "Entrar"],
+    next: "Siguiente",
+    coverKicker: "Programa Growth Partner",
+    coverH1a: "La venta termina. ", coverH1b: "La cartera queda.",
+    coverSubA: "Vende una IA que atiende, agenda y vende 24/7 en 20+ idiomas para negocios locales. Cada cliente que firmas se convierte en ",
+    coverSubB: "tu cartera permanente — comisión cada mes mientras pague.",
+    painEyebrow: "El dolor de quien vende",
+    painH2: "Ya lo sentiste.",
+    pains: [
+      ["💸", "La comisión muere al firmar", "Cierras, cobras una vez y reinicias de cero. El cliente sigue pagando — a otra persona."],
+      ["🧰", "Vendes lo que no entregas", "Prometiste, cerraste, y te volviste soporte técnico. El producto falla, el cliente se queja contigo."],
+      ["📉", "Sin cartera, sin ingreso que repite", "Cada mes a cero. Nunca construyes una base tuya — solo la próxima corrida por un lead."],
+    ],
+    solEyebrow: "Qué vendes",
+    solH2a: "Un producto que todo el mercado necesita. ", solH2b: "Lo entregamos por ti.",
+    solP: "Todo negocio local pierde llamadas, leads y ventas por no responder a tiempo. Tú ofreces Guileo — y nuestro equipo entrega en 7 días. ",
+    solPb: "Tú traes al cliente, nosotros lo hacemos realidad.",
+    solChips: ["🎙️ Atiende llamadas", "💬 WhatsApp & SMS", "📅 Agenda & confirma", "💰 Cierra ventas", "🌐 20+ idiomas", "🛠️ En vivo en 7 días", "🔄 Automatizaciones", "📊 CRM"],
+    demoNote: "Y la demo se vende sola: la propia Gui llama al celular del dueño y atiende como si fuera su negocio.",
+    gainEyebrow: "El diferencial",
+    gainH2: "Cartera permanente.",
+    gainP: "Un cliente que firmas es TUYO — para siempre. Mientras pague a Guileo, ganas comisión recurrente cada mes. La cartera no se reinicia: se acumula.",
+    stackTitle: "Tu cartera se acumula, mes a mes",
+    stackMonths: ["Mes 1", "Mes 2", "Mes 3", "Mes 6"],
+    honestClaim: "Comisión recurrente sobre TODA tu cartera, cada mes, mientras el cliente pague. Comisión del 10% al 20% — tu nivel sube con tus resultados, de Agendador a Closer.",
+    honestNet: "Extracto transparente en el hub: neto de reembolso (refund-net) y cada pago visible, línea por línea.",
+    toolsEyebrow: "Tus herramientas",
+    toolsH2: "No entras solo.",
+    tools: [
+      ["🤖", "Pitch con IA", "Argumentos listos para cada negocio"],
+      ["🎭", "Entrenamiento de roleplay", "Practica contra la propia Gui"],
+      ["🧾", "Generador de presupuesto", "Propuesta en segundos, con tu link"],
+      ["📄", "Contrato EN/ES/PT", "Documento listo en los 3 idiomas"],
+      ["📊", "CRM personal", "Tu cartera, leads y pagos en un panel"],
+      ["🏆", "Ranking", "Sigue tu posición y sube de nivel"],
+    ],
+    whyEyebrow: "Por qué ahora",
+    whyH2: "La ola de la IA está empezando. Tú entras primero.",
+    whyCards: [
+      ["🌊", "Mercado caliente", "Todo negocio quiere IA, pocos saben entregarla."],
+      ["🛠️", "Producto listo", "Vendes algo que ya funciona y se entrega en 7 días."],
+      ["📈", "Ingreso que queda", "Cada venta se vuelve cartera — ingreso que se repite cada mes."],
+    ],
+    joinH2a: "¿Listo para ", joinH2b: "construir tu cartera?",
+    joinP: "Entra al hub del vendedor con el código, haz el Academy y empieza a cerrar. Sin cuota de entrada.",
+    codeLabel: "Código de entrada",
+    copy: "📋", copied: "✓",
+    joinCta1: "🚀 Entrar al hub del vendedor", joinCta2: "💬 Hablar con Luis", joinCta3: "🎓 Hacer el Academy",
+    joinWa: "¡Hola Luis! Quiero entrar al Programa Growth Partner y construir mi cartera.",
+  },
+};
 
-// Entrance animations replay each time the slide becomes active (site-style scroll-reveal).
+// Entrance animations replay each time the slide becomes active.
 function Slide({ id, children }) {
   const [on, setOn] = useState(false);
   const ref = useRef(null);
@@ -33,52 +185,48 @@ function Slide({ id, children }) {
     return () => obs.disconnect();
   }, []);
   return (
-    <section ref={ref} id={id} className="relative flex h-screen w-full shrink-0 snap-start flex-col items-center justify-center overflow-hidden px-6 py-20 sm:px-12">
+    <section ref={ref} id={id} className="relative flex h-[100dvh] w-full shrink-0 snap-start flex-col items-center justify-center overflow-hidden px-6 py-20 sm:px-12">
       <div key={on ? 1 : 0} className="contents">{children}</div>
     </section>
   );
 }
 
-// Site-style count-up: the number climbs to its value when it appears (like the landing's stats).
-function CountMoney({ value, suffix = "" }) {
-  const [n, setN] = useState(0);
-  const ref = useRef(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    let t;
-    const obs = new IntersectionObserver(([e]) => {
-      if (!e.isIntersecting) { clearInterval(t); setN(0); return; }
-      const steps = 36; let s = 0;
-      clearInterval(t);
-      t = setInterval(() => { s += 1; setN(Math.min(value, Math.round((value / steps) * s))); if (s >= steps) clearInterval(t); }, 28);
-    }, { threshold: 0.6 });
-    obs.observe(el);
-    return () => { obs.disconnect(); clearInterval(t); };
-  }, [value]);
-  return <span ref={ref}>{money(n)}{suffix}</span>;
-}
 const Eyebrow = ({ children }) => (
   <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-g-gold/25 bg-g-gold/[0.08] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-g-gold">{children}</div>
 );
 
-export default function Parceiro() {
-  const [active, setActive] = useState(0);
-  const scroller = useRef(null);
-  const p = useMemo(() => new URLSearchParams(typeof window !== "undefined" ? window.location.search : ""), []);
+// Concept-only stacking bars — every block is one active paying client. No $ figures.
+function PortfolioStack({ months }) {
+  return (
+    <div className="mt-8 w-full max-w-lg rounded-xl3 border border-g-line bg-white/[0.03] p-6 shadow-lift">
+      <div className="grid grid-cols-4 items-end gap-3" style={{ height: 150 }}>
+        {[2, 4, 6, 11].map((blocks, col) => (
+          <div key={col} className="flex h-full flex-col items-center justify-end">
+            <div className="flex w-full flex-col-reverse gap-1.5" style={{ animation: `cfade .6s ease ${0.12 * col}s both` }}>
+              {Array.from({ length: blocks }).map((_, b) => (
+                <div key={b} className="w-full rounded-[4px] bg-gradient-to-r from-g-green/70 to-g-gold/60" style={{ height: 9 }} />
+              ))}
+            </div>
+            <div className="mt-2 text-[10px] font-bold uppercase tracking-wide text-g-muted">{months[col]}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-  // comp inputs (illustrative — Luis locks the real %)
-  const pct = Number(p.get("pct") || 20);
-  const ticket = Number(p.get("ticket") || 1497);   // monthly fee
-  const setup = Number(p.get("setup") || 990);       // one-time setup
-  const months = Number(p.get("months") || 3);       // contract value counted = setup + N months
-  const deals = Number(p.get("deals") || 8);         // deals/month in the example
-  const contractValue = setup + ticket * months;
-  const perSale = contractValue * (pct / 100);
-  const monthly = perSale * deals;
+const SLIDE_IDS = ["cover", "pain", "sell", "gain", "tools", "why", "join"];
+
+export default function Parceiro() {
+  const { lang, setLang } = useLang();
+  const c = C[lang] || C.en;
+  const [active, setActive] = useState(0);
+  const [copied, setCopied] = useState(false);
+  const scroller = useRef(null);
+  useMemo(() => new URLSearchParams(typeof window !== "undefined" ? window.location.search : ""), []);
 
   useEffect(() => {
-    const go = (dir) => { const n = Math.max(0, Math.min(SLIDES.length - 1, active + dir)); document.getElementById(SLIDES[n].id)?.scrollIntoView({ behavior: "smooth" }); };
+    const go = (dir) => { const n = Math.max(0, Math.min(SLIDE_IDS.length - 1, active + dir)); document.getElementById(SLIDE_IDS[n])?.scrollIntoView({ behavior: "smooth" }); };
     const onKey = (e) => {
       if (["ArrowDown", "ArrowRight", " ", "PageDown"].includes(e.key)) { e.preventDefault(); go(1); }
       else if (["ArrowUp", "ArrowLeft", "PageUp"].includes(e.key)) { e.preventDefault(); go(-1); }
@@ -88,16 +236,20 @@ export default function Parceiro() {
   }, [active]);
 
   useEffect(() => {
-    const obs = new IntersectionObserver((es) => es.forEach((en) => { if (en.isIntersecting) setActive(SLIDES.findIndex((s) => s.id === en.target.id)); }), { threshold: 0.6 });
-    SLIDES.forEach((s) => { const n = document.getElementById(s.id); if (n) obs.observe(n); });
+    const obs = new IntersectionObserver((es) => es.forEach((en) => { if (en.isIntersecting) setActive(SLIDE_IDS.indexOf(en.target.id)); }), { threshold: 0.6 });
+    SLIDE_IDS.forEach((id) => { const n = document.getElementById(id); if (n) obs.observe(n); });
     return () => obs.disconnect();
   }, []);
-  useEffect(() => { document.title = "Guileo · Seja um Growth Partner"; }, []);
+  useEffect(() => { document.title = c.docTitle; }, [c]);
 
-  const goTo = (i) => document.getElementById(SLIDES[i].id)?.scrollIntoView({ behavior: "smooth" });
+  const goTo = (i) => document.getElementById(SLIDE_IDS[i])?.scrollIntoView({ behavior: "smooth" });
+  const copyCode = () => {
+    try { navigator.clipboard?.writeText(CODE); } catch { /* clipboard optional */ }
+    setCopied(true); setTimeout(() => setCopied(false), 1500);
+  };
 
   return (
-    <div className="surface-real relative h-screen overflow-hidden text-g-ink">
+    <div className="surface-real relative h-[100dvh] overflow-hidden text-g-ink">
       <style>{`
         @keyframes cfade{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
         @keyframes cshine{to{background-position:220% center}}
@@ -107,113 +259,98 @@ export default function Parceiro() {
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center justify-between px-5 py-4 sm:px-8">
         <a href="/" className="pointer-events-auto flex items-center gap-2 opacity-80 transition hover:opacity-100"><img src={logo} alt="Guileo" className="h-7 w-7 object-contain" /><span className="text-sm font-extrabold text-g-word">Guileo</span></a>
-        <div className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-g-muted backdrop-blur-md">{String(active + 1).padStart(2, "0")} · {SLIDES[active].label}</div>
+        <div className="flex items-center gap-2">
+          <div className="pointer-events-auto flex items-center gap-0.5 rounded-full border border-white/10 bg-white/[0.05] px-1 py-0.5 backdrop-blur-md">
+            {LANGS.map(([code, flag]) => (
+              <button key={code} onClick={() => setLang(code)} title={LANG_NAMES[code]} aria-label={LANG_NAMES[code]} aria-pressed={lang === code}
+                className={`grid h-7 w-7 place-items-center rounded-full text-[13px] transition ${lang === code ? "scale-110 bg-g-green/15 ring-1 ring-g-green/30" : "opacity-60 hover:opacity-100"}`}>{flag}</button>
+            ))}
+          </div>
+          <div className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-g-muted backdrop-blur-md">{String(active + 1).padStart(2, "0")} · {c.labels[active]}</div>
+        </div>
       </header>
       <nav className="absolute right-3 top-1/2 z-30 hidden -translate-y-1/2 flex-col gap-2.5 sm:flex">
-        {SLIDES.map((s, i) => <button key={s.id} onClick={() => goTo(i)} aria-label={s.label} className={`h-2.5 w-2.5 rounded-full transition-all ${i === active ? "scale-125 bg-g-gold" : "bg-white/20 hover:bg-white/40"}`} />)}
+        {SLIDE_IDS.map((id, i) => <button key={id} onClick={() => goTo(i)} aria-label={c.labels[i]} className={`h-2.5 w-2.5 rounded-full transition-all ${i === active ? "scale-125 bg-g-gold" : "bg-white/20 hover:bg-white/40"}`} />)}
       </nav>
-      <div className="absolute inset-x-0 top-0 z-30 h-0.5 bg-white/5"><div className="h-full bg-gradient-to-r from-g-green to-g-gold transition-all duration-500" style={{ width: `${((active + 1) / SLIDES.length) * 100}%` }} /></div>
+      <div className="absolute inset-x-0 top-0 z-30 h-0.5 bg-white/5"><div className="h-full bg-gradient-to-r from-g-green to-g-gold transition-all duration-500" style={{ width: `${((active + 1) / SLIDE_IDS.length) * 100}%` }} /></div>
 
-      <div ref={scroller} className="cdeck relative z-10 h-screen snap-y snap-mandatory overflow-y-scroll scroll-smooth" style={{ scrollbarWidth: "none" }}>
+      <div ref={scroller} className="cdeck relative z-10 h-[100dvh] snap-y snap-mandatory overflow-y-scroll scroll-smooth" style={{ scrollbarWidth: "none" }}>
 
         {/* 1 — COVER */}
         <Slide id="cover">
           <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(900px_500px_at_50%_30%,rgba(214,194,154,0.12),transparent)]" />
           <img src={logo} alt="" className="mb-7 h-16 w-16 object-contain drop-shadow-[0_0_40px_rgba(214,194,154,0.4)]" style={{ animation: "cfade .8s ease both" }} />
-          <div className="mb-3 text-[12px] font-bold uppercase tracking-[0.24em] text-g-gold" style={{ animation: "cfade .8s ease .1s both" }}>Programa Growth Partner</div>
+          <div className="mb-3 text-[12px] font-bold uppercase tracking-[0.24em] text-g-gold" style={{ animation: "cfade .8s ease .1s both" }}>{c.coverKicker}</div>
           <h1 className="mx-auto max-w-4xl text-center font-black leading-[1.05] tracking-tight text-g-word" style={{ fontSize: "clamp(1.9rem,4.4vw,3.4rem)", animation: "cfade .9s ease .2s both" }}>
-            Venda o que <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "cshine 7s linear infinite" }}>vende sozinho.</span>
+            {c.coverH1a}<span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "cshine 7s linear infinite" }}>{c.coverH1b}</span>
           </h1>
           <p className="mt-6 max-w-2xl text-center text-lg text-g-ink" style={{ animation: "cfade .9s ease .35s both" }}>
-            A Guileo instala um time de IA + marketing que atende, vende e faz crescer o negócio do cliente 24/7. Você traz o cliente — <span className="font-bold text-g-word">a gente entrega, e você ganha.</span>
+            {c.coverSubA}<span className="font-bold text-g-word">{c.coverSubB}</span>
           </p>
-          <button onClick={() => goTo(1)} className="absolute bottom-10 animate-bounce text-g-muted" aria-label="Próximo">↓</button>
+          <button onClick={() => goTo(1)} className="absolute bottom-10 animate-bounce text-g-muted" aria-label={c.next}>↓</button>
         </Slide>
 
-        {/* 2 — WHAT IS GUILEO */}
-        <Slide id="what">
-          <Eyebrow>O que é a Guileo</Eyebrow>
-          <h2 className="max-w-3xl text-center font-black leading-tight text-g-word" style={{ fontSize: "clamp(1.7rem,3.6vw,2.8rem)" }}>Um produto que o mercado inteiro precisa.</h2>
-          <p className="mt-4 max-w-2xl text-center text-[15px] leading-relaxed text-g-ink">
-            Todo negócio perde ligação, lead e venda por não conseguir responder a tempo. A Guileo resolve isso com IA que atende e vende 24/7 — e ainda cuida do marketing. <span className="font-semibold text-g-word">Resultado, não tecnologia.</span>
-          </p>
-          <div className="mt-9 grid w-full max-w-3xl grid-cols-2 gap-4 sm:grid-cols-4">
-            {[["∞", "mercado: todo negócio"], ["7 dias", "do zero ao ar"], ["24/7", "trabalhando"], ["30 dias", "garantia"]].map(([n, l]) => (
-              <div key={l} className="text-center"><div className="bg-gradient-to-r from-g-green to-g-gold bg-clip-text text-3xl font-black text-transparent sm:text-4xl">{n}</div><div className="mt-1 text-[12px] font-semibold uppercase tracking-wide text-g-muted">{l}</div></div>
+        {/* 2 — THE PAIN */}
+        <Slide id="pain">
+          <Eyebrow>{c.painEyebrow}</Eyebrow>
+          <h2 className="max-w-3xl text-center font-black leading-tight text-g-word" style={{ fontSize: "clamp(1.7rem,3.6vw,2.8rem)" }}>{c.painH2}</h2>
+          <div className="mt-9 grid w-full max-w-4xl gap-4 sm:grid-cols-3">
+            {c.pains.map(([ic, t, d], i) => (
+              <div key={t} className="rounded-2xl border border-g-line bg-white/[0.03] p-6 text-left" style={{ animation: `cfade .7s ease ${0.1 + i * 0.12}s both` }}>
+                <div className="text-3xl">{ic}</div><div className="mt-3 text-base font-black text-g-word">{t}</div><p className="mt-2 text-[13px] leading-relaxed text-g-muted">{d}</p>
+              </div>
             ))}
           </div>
         </Slide>
 
-        {/* 3 — WHAT WE DELIVER (so the partner never delivers alone) */}
-        <Slide id="deliver">
-          <Eyebrow>O que entregamos</Eyebrow>
-          <h2 className="max-w-3xl text-center font-black leading-tight text-g-word" style={{ fontSize: "clamp(1.7rem,3.6vw,2.8rem)" }}>Você vende. <span className="text-g-green">A gente faz acontecer.</span></h2>
-          <p className="mt-4 max-w-2xl text-center text-[15px] text-g-ink">Um time de verdade entrega tudo — você nunca fica sozinho com o cliente.</p>
-          <div className="mt-8 flex max-w-3xl flex-wrap justify-center gap-1.5">
-            {["🎙️ Voice AI", "💬 WhatsApp & SMS", "🌐 Sites", "📱 Apps", "⚙️ Software", "📣 Anúncios", "🎬 Vídeo", "📅 Agenda", "🛒 E-commerce", "🔄 Automações", "📊 CRM", "⭐ Reviews"].map((d) => (
+        {/* 3 — WHAT YOU SELL */}
+        <Slide id="sell">
+          <Eyebrow>{c.solEyebrow}</Eyebrow>
+          <h2 className="max-w-3xl text-center font-black leading-tight text-g-word" style={{ fontSize: "clamp(1.7rem,3.6vw,2.8rem)" }}>{c.solH2a}<span className="text-g-green">{c.solH2b}</span></h2>
+          <p className="mt-4 max-w-2xl text-center text-[15px] leading-relaxed text-g-ink">{c.solP}<span className="font-semibold text-g-word">{c.solPb}</span></p>
+          <div className="mt-7 flex max-w-3xl flex-wrap justify-center gap-1.5">
+            {c.solChips.map((d) => (
               <span key={d} className="rounded-full border border-g-line bg-white/[0.04] px-2.5 py-1 text-[11.5px] font-semibold text-g-ink">{d}</span>
             ))}
           </div>
+          <p className="mt-6 max-w-xl text-center text-[13px] italic text-g-muted">{c.demoNote}</p>
         </Slide>
 
-        {/* 4 — YOUR ROLE: 3-in-1 Growth Partner */}
-        <Slide id="role">
-          <Eyebrow>Seu papel</Eyebrow>
-          <h2 className="max-w-3xl text-center font-black leading-tight text-g-word" style={{ fontSize: "clamp(1.7rem,3.6vw,2.8rem)" }}>Você não é "vendedor". É dono do resultado.</h2>
-          <p className="mt-3 max-w-2xl text-center text-[15px] text-g-ink">Um Growth Partner é 3 em 1 — uma mini-franquia pessoal:</p>
-          <div className="mt-8 grid w-full max-w-4xl gap-4 sm:grid-cols-3">
-            {[
-              ["🎯", "Você vende", "Prospecta, mostra a demo ao vivo e fecha. A Gui faz metade do trabalho de convencimento sozinha."],
-              ["🤝", "Você dona a conta", "Acompanha a implantação e a relação — com nosso time fazendo o trabalho pesado por trás."],
-              ["💰", "Você ganha", "Comissão por cada venda fechada. Quanto mais resultado pro cliente, mais você ganha."],
-            ].map(([ic, t, d], i) => (
-              <div key={t} className="rounded-2xl border border-g-line bg-white/[0.03] p-6 text-center" style={{ animation: `cfade .7s ease ${0.1 + i * 0.12}s both` }}>
-                <div className="text-3xl">{ic}</div><div className="mt-3 text-base font-black text-g-word">{t}</div><p className="mt-2 text-[13px] leading-relaxed text-g-muted">{d}</p>
-              </div>
-            ))}
-          </div>
-        </Slide>
-
-        {/* 5 — FLOW */}
-        <Slide id="flow">
-          <Eyebrow>Como funciona</Eyebrow>
-          <h2 className="max-w-3xl text-center font-black leading-tight text-g-word" style={{ fontSize: "clamp(1.7rem,3.6vw,2.8rem)" }}>5 passos do contato ao cheque.</h2>
-          <div className="mt-9 grid w-full max-w-4xl gap-3 sm:grid-cols-5">
-            {[["1", "🔎", "Prospecta", "Acha o negócio"], ["2", "📞", "Demo ao vivo", "Gui liga e impressiona"], ["3", "📄", "Proposta", "Link personalizado"], ["4", "🛠️", "A gente entrega", "No ar em 7 dias"], ["5", "💸", "Você ganha", "Comissão na conta"]].map(([n, ic, t, d], i) => (
-              <div key={n} className="relative rounded-2xl border border-g-line bg-white/[0.03] p-4 text-center" style={{ animation: `cfade .6s ease ${0.08 * i}s both` }}>
-                <div className="text-2xl">{ic}</div><div className="mt-1 text-[11px] font-black text-g-gold">PASSO {n}</div><div className="text-[13.5px] font-black text-g-word">{t}</div><p className="mt-0.5 text-[11px] text-g-muted">{d}</p>
-              </div>
-            ))}
-          </div>
-        </Slide>
-
-        {/* 6 — HOW MUCH YOU EARN (illustrative) */}
-        <Slide id="earn">
+        {/* 4 — PERMANENT PORTFOLIO (the differentiator) */}
+        <Slide id="gain">
           <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(800px_460px_at_50%_40%,rgba(62,148,104,0.12),transparent)]" />
-          <Eyebrow>Quanto você ganha</Eyebrow>
-          <h2 className="max-w-3xl text-center font-black leading-tight text-g-word" style={{ fontSize: "clamp(1.7rem,3.6vw,2.8rem)" }}>
-            <span className="bg-gradient-to-r from-g-green to-g-gold bg-clip-text text-transparent">{pct}%</span> por venda fechada.
+          <Eyebrow>{c.gainEyebrow}</Eyebrow>
+          <h2 className="max-w-3xl text-center font-black leading-tight" style={{ fontSize: "clamp(1.8rem,4vw,3rem)" }}>
+            <span className="bg-gradient-to-r from-g-green to-g-gold bg-clip-text text-transparent">{c.gainH2}</span>
           </h2>
-          <div className="mt-8 w-full max-w-2xl rounded-xl3 border border-g-green/30 bg-white/[0.04] p-6 shadow-lift" style={{ animation: "cfade .8s ease .2s both" }}>
-            <div className="space-y-2 text-[14px]">
-              <div className="flex justify-between border-b border-white/10 pb-2"><span className="text-g-muted">Pacote típico</span><span className="font-bold text-g-word">{money(ticket)}/mês + {money(setup)} setup</span></div>
-              <div className="flex justify-between border-b border-white/10 py-2"><span className="text-g-muted">Valor da venda (setup + {months} meses)</span><span className="font-bold text-g-word">{money(contractValue)}</span></div>
-              <div className="flex justify-between border-b border-white/10 py-2"><span className="text-g-muted">Sua comissão ({pct}%)</span><span className="font-black text-g-green">{money(perSale)} / venda</span></div>
-            </div>
-            <div className="mt-5 rounded-2xl bg-g-green/10 p-5 text-center">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-g-green">Fechando {deals} por mês</div>
-              <div className="text-[40px] font-black leading-none text-g-word"><CountMoney value={monthly} /><span className="text-base font-bold text-g-muted">/mês</span></div>
-            </div>
+          <p className="mt-4 max-w-2xl text-center text-[15px] leading-relaxed text-g-ink">{c.gainP}</p>
+          <div className="mt-3 text-center text-[11px] font-bold uppercase tracking-wider text-g-muted">{c.stackTitle}</div>
+          <PortfolioStack months={c.stackMonths} />
+          <div className="mt-6 w-full max-w-2xl rounded-2xl border border-g-gold/30 bg-g-gold/[0.07] p-5" style={{ animation: "cfade .8s ease .2s both" }}>
+            <p className="text-[13.5px] font-semibold leading-relaxed text-g-word">{c.honestClaim}</p>
+            <p className="mt-2 text-[12px] leading-relaxed text-g-muted">{c.honestNet}</p>
           </div>
-          <p className="mt-4 text-[11.5px] text-g-muted">Exemplo ilustrativo · o % final é definido no seu contrato de parceria.</p>
         </Slide>
 
-        {/* 7 — WHY NOW */}
+        {/* 5 — YOUR TOOLS */}
+        <Slide id="tools">
+          <Eyebrow>{c.toolsEyebrow}</Eyebrow>
+          <h2 className="max-w-3xl text-center font-black leading-tight text-g-word" style={{ fontSize: "clamp(1.7rem,3.6vw,2.8rem)" }}>{c.toolsH2}</h2>
+          <div className="mt-8 grid w-full max-w-4xl gap-3 sm:grid-cols-3">
+            {c.tools.map(([ic, t, d], i) => (
+              <div key={t} className="rounded-2xl border border-g-line bg-white/[0.03] p-5 text-left" style={{ animation: `cfade .6s ease ${0.07 * i}s both` }}>
+                <div className="text-2xl">{ic}</div><div className="mt-2 text-[14px] font-black text-g-word">{t}</div><p className="mt-1 text-[12px] text-g-muted">{d}</p>
+              </div>
+            ))}
+          </div>
+        </Slide>
+
+        {/* 6 — WHY NOW */}
         <Slide id="why">
-          <Eyebrow>Por que agora</Eyebrow>
-          <h2 className="max-w-3xl text-center font-black leading-tight text-g-word" style={{ fontSize: "clamp(1.7rem,3.6vw,2.8rem)" }}>A onda da IA está começando. Você entra na frente.</h2>
+          <Eyebrow>{c.whyEyebrow}</Eyebrow>
+          <h2 className="max-w-3xl text-center font-black leading-tight text-g-word" style={{ fontSize: "clamp(1.7rem,3.6vw,2.8rem)" }}>{c.whyH2}</h2>
           <div className="mt-8 grid w-full max-w-3xl gap-4 sm:grid-cols-3">
-            {[["🌊", "Mercado quente", "Todo negócio quer IA, poucos sabem entregar."], ["🛠️", "Produto pronto", "Você vende algo que já funciona e entrega em 7 dias."], ["📈", "Renda escalável", "Sem teto: quanto mais fecha, mais ganha."]].map(([ic, t, d], i) => (
+            {c.whyCards.map(([ic, t, d], i) => (
               <div key={t} className="rounded-2xl border border-g-line bg-white/[0.03] p-6 text-center" style={{ animation: `cfade .7s ease ${0.1 + i * 0.12}s both` }}>
                 <div className="text-3xl">{ic}</div><div className="mt-3 text-base font-black text-g-word">{t}</div><p className="mt-2 text-[13px] leading-relaxed text-g-muted">{d}</p>
               </div>
@@ -221,19 +358,26 @@ export default function Parceiro() {
           </div>
         </Slide>
 
-        {/* 8 — JOIN */}
+        {/* 7 — JOIN */}
         <Slide id="join">
           <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(800px_460px_at_50%_50%,rgba(214,194,154,0.12),transparent)]" />
           <img src={logo} alt="" className="mb-6 h-16 w-16 object-contain" style={{ animation: "cfade .8s ease both" }} />
           <h2 className="max-w-3xl text-center font-black leading-tight text-g-word" style={{ fontSize: "clamp(2rem,4.4vw,3.2rem)", animation: "cfade .8s ease .1s both" }}>
-            Pronto pra <span className="bg-gradient-to-r from-g-green to-g-gold bg-clip-text text-transparent">crescer com a gente?</span>
+            {c.joinH2a}<span className="bg-gradient-to-r from-g-green to-g-gold bg-clip-text text-transparent">{c.joinH2b}</span>
           </h2>
-          <p className="mt-5 max-w-xl text-center text-[15px] text-g-ink" style={{ animation: "cfade .8s ease .25s both" }}>Treinamento, materiais e a demo ao vivo da Gui — tudo pronto pra você começar a fechar.</p>
-          <div className="mt-9 flex flex-wrap items-center justify-center gap-3" style={{ animation: "cfade .8s ease .4s both" }}>
-            <a href="/academia" className="btn-gold text-base">🎓 Fazer o Academy e entrar</a>
-            <a href={waLink("Oi Guileo! Quero ser um Growth Partner.")} target="_blank" rel="noopener" className="btn text-base">💬 Falar com o Luis</a>
-            <a href="/pitch" className="btn-ghost text-base">▶️ Ver o pitch do cliente</a>
-            <a href="/cola" className="btn-ghost text-base">📱 Cola de bolso</a>
+          <p className="mt-5 max-w-xl text-center text-[15px] text-g-ink" style={{ animation: "cfade .8s ease .25s both" }}>{c.joinP}</p>
+
+          <div className="mt-7 w-full max-w-xs rounded-2xl border border-g-line bg-white/[0.04] p-4 text-center" style={{ animation: "cfade .8s ease .32s both" }}>
+            <div className="text-[10.5px] font-bold uppercase tracking-wider text-g-muted">{c.codeLabel}</div>
+            <button onClick={copyCode} className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-g-gold/30 bg-g-gold/[0.08] px-4 py-2.5 text-[15px] font-black tracking-wide text-g-gold transition hover:bg-g-gold/[0.14]">
+              {CODE} <span className="text-[12px]">{copied ? c.copied : c.copy}</span>
+            </button>
+          </div>
+
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3" style={{ animation: "cfade .8s ease .4s both" }}>
+            <a href="/vendedor" className="btn-gold text-base">{c.joinCta1}</a>
+            <a href={waLink(c.joinWa)} target="_blank" rel="noopener" className="btn text-base">{c.joinCta2}</a>
+            <a href="/academia" className="btn-ghost text-base">{c.joinCta3}</a>
           </div>
         </Slide>
 

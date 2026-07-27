@@ -1,9 +1,24 @@
 import { useState } from "react";
 import { CATS, CLAUSES } from "../data/contratos";
+import ContractGenerator from "../components/ContractGenerator.jsx";
 
 export default function Contratos() {
   const [view, setView] = useState("index");
   const current = CATS.find((c) => c.code === view);
+
+  if (view === "generator") {
+    return (
+      <div className="min-h-screen bg-g-deep px-4 py-8 text-g-ink">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex items-center justify-between mb-5">
+            <div><div className="text-xl font-extrabold text-g-word">✨ Gerador inteligente de contratos</div><div className="text-xs text-g-muted">Trilíngue · gera link de assinatura eletrônica</div></div>
+            <button onClick={() => setView("index")} className="btn-ghost text-sm">← Modelos clássicos</button>
+          </div>
+          <ContractGenerator tenantEmail="" />
+        </div>
+      </div>
+    );
+  }
 
   if (view === "index") {
     return (
@@ -16,10 +31,11 @@ export default function Contratos() {
               Selecione a categoria. Cada contrato é autocontido (escopo + 12 cláusulas legais + assinatura). Para assinar: imprima (Ctrl+P) ou exporte como PDF.
             </div>
             <a href="/" style={{ fontSize: 12, color: "#7FB800", textDecoration: "none", marginTop: 8, display: "inline-block" }}>← Voltar ao site</a>
+            <button onClick={() => setView("generator")} style={{ marginLeft: 14, fontSize: 12, fontWeight: 700, color: "#13211B", background: "#7FB800", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>✨ Gerador inteligente (gera + assina online) →</button>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(250px,1fr))", gap: 12 }}>
             {CATS.map((cat) => (
-              <div key={cat.code} onClick={() => setView(cat.code)} style={{ background: "#fff", borderRadius: 12, overflow: "hidden", cursor: "pointer", boxShadow: "0 2px 8px rgba(20,60,40,.08)", borderTop: `4px solid ${cat.color}` }}>
+              <div key={cat.code} onClick={() => setView(cat.code)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setView(cat.code); } }} style={{ background: "#fff", borderRadius: 12, overflow: "hidden", cursor: "pointer", boxShadow: "0 2px 8px rgba(20,60,40,.08)", borderTop: `4px solid ${cat.color}` }}>
                 <div style={{ padding: "16px 16px 12px" }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: cat.color, marginBottom: 4 }}>{cat.code}</div>
                   <div style={{ fontSize: 15, fontWeight: 800, color: "#13211B" }}>{cat.icon} {cat.cat}</div>
@@ -60,7 +76,7 @@ export default function Contratos() {
           <div style={{ padding: "20px 28px" }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
               {[{ label: "CONTRATANTE (CLIENTE)", fields: [["Nome / Razão Social",""],["CNPJ / CPF",""],["E-mail",""],["WhatsApp",""],["Endereço",""]], accent: "#1A3A5C" },
-                { label: "CONTRATADA — GUILEO", fields: [["Razão Social","Guileo Digital LTDA"],["Responsável","Luis Guilherme Teles da Costa"],["E-mail","contato@guileoai.com"],["Site","guileoai.com"],["Endereço","Cuiabá, MT — Brasil"]], accent: col }].map((p, pi) => (
+                { label: "CONTRATADA — GUILEO", fields: [["Razão Social","Guileo Digital LTDA"],["Responsável","Luis Guilherme Teles da Costa"],["E-mail","smart@guileoai.com"],["Site","guileoai.com"],["Endereço","Cuiabá, MT — Brasil"]], accent: col }].map((p, pi) => (
                 <div key={pi} style={{ border: "1px solid #E8E8E8", borderRadius: 6, overflow: "hidden" }}>
                   <div style={{ background: p.accent, padding: "6px 10px", fontSize: 9, fontWeight: 700, color: "#fff" }}>{p.label}</div>
                   {p.fields.map(([l, v], fi) => (

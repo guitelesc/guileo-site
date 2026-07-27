@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { useSeo } from "../lib/seo.js";
 
 // Dedicated client for the Gui-actions store (public anon key, RLS-protected, read-only here).
 const supabase = createClient(
-  "https://fccwbafkbhkyrvauzshl.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjY3diYWZrYmhreXJ2YXV6c2hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTU3NzQsImV4cCI6MjA5NDI5MTc3NH0.knDpHzK_cfpqmUzpLI4rTndAumn1yepCiRwCSAqwSNs",
+  "https://ynihodbknhjirkdogxby.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E",
   { auth: { persistSession: false } }
 );
 
@@ -14,6 +15,7 @@ const ICON = { book: "📅", reschedule: "🔁", cancel: "✖️", lead: "🎯",
 const LABEL = { book: "Booked", reschedule: "Rescheduled", cancel: "Cancelled", lead: "Lead captured", callback: "Callback set", review: "Review requested", sale: "Sale logged", quote: "Quote requested" };
 
 export default function LiveActivity() {
+  useSeo({ title: "Live Demo — Gui calls you in seconds | Guileo", description: "Watch everything Guileo's AI does across calls in real time — bookings, leads, reviews and sales.", path: "/live" });
   const [rows, setRows] = useState([]);
   const [state, setState] = useState("loading"); // loading | ok | needsetup | nodb
 

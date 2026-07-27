@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import logo from "../assets/guileo-mark.png";
+import { useLang } from "../i18n.jsx";
 
 // Seed → sprout opening. Plays once on mount, ~1.5s, skippable.
 // Calls onDone when it hands off to the hero (overlay then fades out).
 export default function Intro({ onDone }) {
   const reduce = useReducedMotion();
+  const { lang } = useLang();
   // play once per browser session (don't replay on every reload/navigation)
   const seen = (() => { try { return !!sessionStorage.getItem("guileo_intro_seen"); } catch { return false; } })();
   const [show, setShow] = useState(!reduce && !seen);
@@ -59,7 +61,7 @@ export default function Intro({ onDone }) {
               transition={{ duration: 0.8, delay: 0.6, ease: "easeOut" }} />
           </div>
 
-          <button onClick={skip} className="absolute bottom-6 right-6 text-xs font-semibold text-g-muted hover:text-g-word transition">skip →</button>
+          <button onClick={skip} className="absolute bottom-6 right-6 text-xs font-semibold text-g-muted hover:text-g-word transition">{lang === "pt" ? "pular →" : lang === "es" ? "saltar →" : lang === "hi" ? "छोड़ें →" : "skip →"}</button>
         </motion.div>
       )}
     </AnimatePresence>

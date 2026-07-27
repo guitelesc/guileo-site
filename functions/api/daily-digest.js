@@ -5,7 +5,7 @@
 //   POST /api/daily-digest  { to, lang, token }
 // If DIGEST_TOKEN is set in env, the request must include a matching token (so randoms can't trigger it).
 import { dailyLeadsEmail } from "../lib/emailTemplates.js";
-import { isOwnerEmail } from "../lib/guard.js";
+import { isOwnerEmail, safeEq } from "../lib/guard.js";
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -16,7 +16,7 @@ export async function onRequest(context) {
     if (request.method === "POST") { p = await request.json().catch(() => ({})); }
     const q = (k) => p[k] ?? url.searchParams.get(k);
 
-    if (env.DIGEST_TOKEN && q("token") !== env.DIGEST_TOKEN) return json({ ok: false, error: "unauthorized" }, 401);
+    if (env.DIGEST_TOKEN && !safeEq((q("token") || "").toString(), env.DIGEST_TOKEN)) return json({ ok: false, error: "unauthorized" }, 401);
 
     const to = (q("to") || env.OWNER_EMAIL || "smart@guileoai.com").toString().trim();
     // SECURITY: the digest leaks the last 24h of lead data — only deliver to the owner's inbox,
@@ -26,8 +26,8 @@ export async function onRequest(context) {
     const name = (q("name") || "there").toString().slice(0, 80);
 
     // Pull recent leads from the gui_actions store (last 24h).
-    const SB_URL = env.GUI_ACTIONS_SUPABASE_URL || "https://fccwbafkbhkyrvauzshl.supabase.co";
-    const SB_ANON = env.GUI_ACTIONS_SUPABASE_ANON || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjY3diYWZrYmhreXJ2YXV6c2hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTU3NzQsImV4cCI6MjA5NDI5MTc3NH0.knDpHzK_cfpqmUzpLI4rTndAumn1yepCiRwCSAqwSNs";
+    const SB_URL = env.GUI_ACTIONS_SUPABASE_URL || "https://ynihodbknhjirkdogxby.supabase.co";
+    const SB_ANON = env.GUI_ACTIONS_SUPABASE_ANON || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
     const sinceISO = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
 
     // Read leads via the token-gated SECURITY-DEFINER RPC (the base table is RLS-locked against
@@ -37,9 +37,7 @@ export async function onRequest(context) {
       const r = await fetch(`${SB_URL}/rest/v1/rpc/admin_actions`, {
         method: "POST",
         headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
-        // SECURITY FLAG (pre-launch review): hardcoded fallback token. Set ADMIN_TOKEN in Cloudflare
-        // Pages env AND rotate the admin_actions() RPC token in Supabase so "guileo2026" stops working.
-        body: JSON.stringify({ p_token: env.ADMIN_TOKEN || "guileo2026" }),
+        body: JSON.stringify({ p_token: env.ADMIN_TOKEN || "" }),
       });
       if (r.ok) {
         const all = await r.json();

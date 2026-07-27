@@ -69,24 +69,18 @@ export const STEPS = [
 export const BIGSTATS = [
   ["$15,000", "+", "Monthly revenue", "avg. client increase"],
   ["87", "%", "Time saved", "on manual tasks"],
-  ["3.2", "x", "ROI in 90 days", "guaranteed results"],
+  ["3.2", "x", "ROI in 90 days", "typical client outcome"],
 ];
 
 export const TECH = ["Vapi", "ElevenLabs", "OpenAI", "Twilio", "Supabase", "Stripe"];
 export const COMPLIANCE = ["HIPAA", "GDPR", "LGPD", "CCPA", "PCI DSS"];
 
-export const TESTIMONIALS = [
-  ["Bookings increased 40% in the first month. The AI never misses a call — we wake up to a full calendar.", "Dental Clinic · New York"],
-  ["We recovered thousands in missed orders. It pays for itself many times over.", "Restaurant · multilingual · NY"],
-  ["Our ad waste dropped 40% and leads doubled. Guileo runs growth so we run the business.", "Med Spa · Florida"],
-];
-
 export const FAQ = [
   ["What exactly does Guileo do?", "We replace your front desk with an AI agent that answers calls, books appointments, qualifies leads and follows up — and turns every interaction into customer intelligence that drives repeat business. We also build your websites, apps and run your ads."],
   ["How fast can we go live?", "Most clients are live in under 7 days. We map your workflow, train the agent in your brand voice, connect your calendar/CRM, and launch."],
-  ["What if the AI makes a mistake?", "The agent is trained on your business and escalates to a human whenever needed. Every call is recorded and reviewed. Voice quality is non-negotiable — if it ever sounds off, we fix it."],
-  ["Is my data safe and compliant?", "Yes. Multi-tenant isolation, encryption at rest and in transit, and a 3-tier consent model. We comply with HIPAA, GDPR, LGPD, CCPA and PCI. Your customers stay yours."],
-  ["How much does it cost?", "Pay-as-you-go credits power every action Gui takes — roughly 5 credits per task — on plans sized to your volume, plus a one-time setup. You only pay for work done, never a percentage of your revenue. 30-day money-back guarantee. Book a demo for a plan tailored to your volume."],
+  ["What if the AI makes a mistake?", "The agent is trained on your business and escalates to a human whenever needed. Calls are recorded; a human reviews flagged ones and steps in when needed. Voice quality is non-negotiable — if it ever sounds off, we fix it."],
+  ["Is my data safe and compliant?", "Yes. Multi-tenant isolation, encryption at rest and in transit, and a 3-tier consent model. We follow practices aligned with HIPAA, GDPR, LGPD, CCPA and PCI DSS; a BAA is available on request. Your customers stay yours."],
+  ["How much does it cost?", "Self-serve plans start at $149/mo with no setup fee — pay-as-you-go credits power every action Gui takes (roughly 5 credits per task). Tailored, done-for-you setups include a one-time setup fee. Either way you only pay for work done, never a percentage of your revenue. 30-day money-back guarantee."],
   ["Do you only serve one industry?", "No. Restaurants, clinics, salons, law firms, contractors, e-commerce and more — each gets a tailored agent on the same powerful platform."],
 ];
 

@@ -1,143 +1,258 @@
-import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
+import { useSeo } from "../lib/seo.js";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import VoiceAgent from "../components/VoiceAgent";
 import { Reveal } from "../lib/ui.jsx";
-import { CATS } from "../data/services";
 import { waLink } from "../data/contact.js";
 import LeadForm from "../components/LeadForm.jsx";
+import PillarsProducts from "../components/PillarsProducts.jsx";
 import { useLang } from "../i18n.jsx";
+import { CATALOG, CATALOG_TOTAL } from "../data/serviceCatalog.js";
+import { SEO_VERTICALS } from "../data/seoVerticals.js";
 
-const isOngoing = (t) => t === "mensal" || t === "projeto+mensal";
-const typeLabel = { projeto: "One-time", mensal: "Ongoing", "projeto+mensal": "Project + Ongoing" };
+// Per-group accent — from the official neon-realista signal palette
+// (Gui = orange, info = blue, attention = amber, done = green) + champagne brand tones.
+const GROUP_COLOR = ["#FF8A33", "#D6C29A", "#3E9468", "#F0B429", "#5CA8E8", "#C2A878"];
+const GUI_ORANGE = "#FF8A33";
+
+// Main verticals for the per-sector CTA row (each links to its /for/:slug SEO page).
+const CTA_VERTICAL_SLUGS = ["restaurants", "dental-clinics", "medical-clinics", "law-firms", "real-estate", "salons-spas", "gyms-fitness", "plumbing-hvac"];
+
+// UI chrome strings, quadrilingual (EN·PT·ES·HI) — content itself lives in serviceCatalog.js.
+const UI = {
+  eyebrow: { en: "The complete catalog", pt: "O catálogo completo", es: "El catálogo completo", hi: "पूरा कैटलॉग" },
+  h1: { en: "Everything Gui does for your business", pt: "Tudo que a Gui faz pelo seu negócio", es: "Todo lo que Gui hace por tu negocio", hi: "गुई आपके बिज़नेस के लिए जो कुछ करती है" },
+  sub: {
+    en: "services across 6 areas — what each one does, what you gain, and the result you can expect. No fine print.",
+    pt: "serviços em 6 áreas — o que cada um faz, o que você ganha e o resultado que pode esperar. Sem letra miúda.",
+    es: "servicios en 6 áreas — qué hace cada uno, qué ganas y el resultado que puedes esperar. Sin letra pequeña.",
+    hi: "6 क्षेत्रों में सेवाएँ — हर एक क्या करती है, आपको क्या मिलता है और कैसा नतीजा उम्मीद कर सकते हैं।",
+  },
+  search: { en: "🔍  Search a service — “reminders”, “upsell”, “CRM”…", pt: "🔍  Busque um serviço — “lembretes”, “upsell”, “CRM”…", es: "🔍  Busca un servicio — “recordatorios”, “upsell”, “CRM”…", hi: "🔍  सेवा खोजें — “रिमाइंडर”, “CRM”…" },
+  noMatch: { en: "No match — try another word.", pt: "Nada encontrado — tente outra palavra.", es: "Sin resultados — prueba otra palabra.", hi: "कुछ नहीं मिला — दूसरा शब्द आज़माएँ।" },
+  servicesWord: { en: "services", pt: "serviços", es: "servicios", hi: "सेवाएँ" },
+  does: { en: "What it does", pt: "O que faz", es: "Qué hace", hi: "क्या करती है" },
+  gain: { en: "You gain", pt: "Você ganha", es: "Tú ganas", hi: "आपको मिलता है" },
+  result: { en: "Result", pt: "Resultado", es: "Resultado", hi: "नतीजा" },
+  estimate: { en: "sector market estimate", pt: "estimativa de mercado por setor", es: "estimación de mercado por sector", hi: "सेक्टर बाज़ार अनुमान" },
+  honesty: {
+    en: "Honesty note: figures marked “estimate” are market estimates by sector — not a promise. Your weekly report shows the real value Gui generates for you.",
+    pt: "Nota de honestidade: números marcados como “estimativa” são estimativas de mercado por setor — não uma promessa. Seu relatório semanal mostra o valor real que a Gui gera pra você.",
+    es: "Nota de honestidad: las cifras marcadas como “estimación” son estimaciones de mercado por sector — no una promesa. Tu reporte semanal muestra el valor real que Gui genera para ti.",
+    hi: "ईमानदारी की बात: “अनुमान” चिह्नित आँकड़े सेक्टर के बाज़ार अनुमान हैं — कोई वादा नहीं। साप्ताहिक रिपोर्ट में गुई की असली वैल्यू दिखती है।",
+  },
+  sectorTitle: { en: "See Gui at work in your sector", pt: "Veja a Gui trabalhando no seu setor", es: "Mira a Gui trabajando en tu sector", hi: "अपने सेक्टर में गुई को काम करते देखें" },
+  sectorSub: { en: "Every service above, tuned to your business type.", pt: "Cada serviço acima, afinado pro seu tipo de negócio.", es: "Cada servicio de arriba, afinado a tu tipo de negocio.", hi: "ऊपर की हर सेवा, आपके बिज़नेस के हिसाब से।" },
+  priceTitle: { en: "All of this, from $149/mo", pt: "Tudo isso, a partir de US$ 149/mês", es: "Todo esto, desde $149/mes", hi: "यह सब, $149/माह से" },
+  priceSub: {
+    en: "Self-service plans, live in minutes. Cancel anytime, 30-day money-back.",
+    pt: "Planos de auto-serviço, no ar em minutos. Cancele quando quiser, 30 dias de garantia.",
+    es: "Planes de autoservicio, en marcha en minutos. Cancela cuando quieras, 30 días de garantía.",
+    hi: "सेल्फ़-सर्विस प्लान, मिनटों में लाइव। कभी भी रद्द करें, 30 दिन की गारंटी।",
+  },
+  priceCta: { en: "See plans →", pt: "Ver planos →", es: "Ver planes →", hi: "प्लान देखें →" },
+  demoTitle: { en: "Easier to hear it than read it?", pt: "Mais fácil ouvir do que ler?", es: "¿Más fácil escucharlo que leerlo?", hi: "पढ़ने से आसान सुनना?" },
+  demoCta: { en: "Let Gui call you — free live demo →", pt: "Deixe a Gui te ligar — demo grátis ao vivo →", es: "Deja que Gui te llame — demo gratis en vivo →", hi: "गुई को कॉल करने दें — मुफ़्त लाइव डेमो →" },
+  notSure: { en: "Not sure where to start?", pt: "Não sabe por onde começar?", es: "¿No sabes por dónde empezar?", hi: "समझ नहीं आ रहा कहाँ से शुरू करें?" },
+  notSureSub: {
+    en: "Tell us your goal — a real human designs the right mix and quotes it. No generic packages.",
+    pt: "Conte seu objetivo — uma pessoa de verdade monta o mix certo e orça. Nada de pacote genérico.",
+    es: "Cuéntanos tu meta — una persona real arma la mezcla correcta y la cotiza. Nada de paquetes genéricos.",
+    hi: "अपना लक्ष्य बताएँ — एक असली इंसान सही मिश्रण बनाकर कोटेशन देगा। कोई जेनेरिक पैकेज नहीं।",
+  },
+  waTalk: { en: "💬 Talk on WhatsApp", pt: "💬 Falar no WhatsApp", es: "💬 Hablar por WhatsApp", hi: "💬 WhatsApp पर बात करें" },
+};
 
 export default function Servicos() {
-  const { t } = useLang();
+  const { lang } = useLang();
+  const L = (o) => (o && (o[lang] || o.en)) || "";
+  const u = (k) => L(UI[k]);
+  useSeo({
+    title:
+      lang === "pt" ? "Serviços Guileo — tudo que a IA Gui faz: atende, agenda, vende, cobra e cresce seu negócio"
+      : lang === "es" ? "Servicios Guileo — todo lo que la IA Gui hace: atiende, agenda, vende, cobra y crece tu negocio"
+      : "Guileo Services — everything Gui the AI does: answers, books, sells, collects & grows your business",
+    description:
+      lang === "pt" ? "O catálogo completo: atendimento 24/7, agendamento com lembretes, fechamento com cobrança no próprio Stripe, win-back, cockpit com relatório de valor real — e o guarda-chuva Guileo de sites, apps e marketing. A partir de US$ 149/mês."
+      : lang === "es" ? "El catálogo completo: atención 24/7, agenda con recordatorios, cierre con cobro a tu propio Stripe, win-back, cockpit con reporte de valor real — y el paraguas Guileo de sitios, apps y marketing. Desde $149/mes."
+      : "The complete catalog: 24/7 answering, booking with reminders, close & collect into your own Stripe, win-back, a cockpit with real-value reporting — plus the Guileo umbrella of websites, apps and marketing. From $149/mo.",
+    path: "/servicos",
+  });
+
+  // Service structured data — same safe pattern as Planos.jsx: <script> + textContent (no innerHTML).
+  useEffect(() => {
+    const graph = [
+      {
+        "@context": "https://schema.org",
+        "@type": "Service",
+        name: "Guileo AI Receptionist & Business Growth Platform",
+        description: "AI that answers calls 24/7, books appointments, sells, collects payment and grows local businesses.",
+        provider: { "@type": "Organization", name: "Guileo", url: "https://guileoai.com" },
+        areaServed: "US",
+        url: "https://guileoai.com/servicos",
+        hasOfferCatalog: {
+          "@type": "OfferCatalog",
+          name: "Guileo Services Catalog",
+          itemListElement: CATALOG.map((g) => ({
+            "@type": "OfferCatalog",
+            name: g.group.en,
+            itemListElement: g.services.map((s) => ({
+              "@type": "Offer",
+              itemOffered: { "@type": "Service", name: s.name.en, description: s.does.en },
+            })),
+          })),
+        },
+      },
+    ];
+    const s = document.createElement("script");
+    s.type = "application/ld+json";
+    s.id = "servicos-jsonld";
+    s.textContent = JSON.stringify(graph);
+    document.head.appendChild(s);
+    return () => { document.getElementById("servicos-jsonld")?.remove(); };
+  }, []);
+
   const [q, setQ] = useState("");
-  const [type, setType] = useState("all");
-  const [open, setOpen] = useState(null);
 
-  const cats = useMemo(() => {
+  const groups = useMemo(() => {
     const ql = q.trim().toLowerCase();
-    return CATS.map((c) => ({
-      ...c,
-      items: c.items.filter((it) => {
-        const mt =
-          type === "all" ||
-          (type === "once" && it.type === "projeto") ||
-          (type === "ongoing" && isOngoing(it.type));
-        const ms = !ql || (it.name + it.desc + c.cat).toLowerCase().includes(ql);
-        return mt && ms;
-      }),
-    })).filter((c) => c.items.length > 0);
-  }, [q, type]);
+    if (!ql) return CATALOG;
+    return CATALOG.map((g) => ({
+      ...g,
+      services: g.services.filter((s) =>
+        (L(s.name) + " " + L(s.does) + " " + L(s.gain) + " " + L(s.result) + " " + L(g.group)).toLowerCase().includes(ql)
+      ),
+    })).filter((g) => g.services.length > 0);
+  }, [q, lang]);
 
-  const totalShown = cats.reduce((n, c) => n + c.items.length, 0);
-  const totalAll = CATS.reduce((n, c) => n + c.items.length, 0);
-  const wa = (cat) => waLink(`Hi Guileo! I'd like a quote for: ${cat}`);
+  const wa = waLink(lang === "pt" ? "Oi Guileo! Quero montar o mix certo pro meu negócio." : lang === "es" ? "¡Hola Guileo! Quiero armar la mezcla correcta para mi negocio." : "Hi Guileo! I'd like to design the right mix for my business.");
+  const verticals = CTA_VERTICAL_SLUGS.map((slug) => SEO_VERTICALS.find((v) => v.slug === slug)).filter(Boolean);
 
   return (
     <div className="min-h-screen text-g-ink">
       <Navbar />
 
-      {/* Header */}
-      <header className="pt-28 pb-8 bg-white/[0.05] backdrop-blur-md border-b border-g-line">
-        <div className="wrap">
-          <span className="eyebrow mb-3">What we build for you</span>
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-g-word">Everything your business needs, in one place</h1>
-          <p className="mt-3 text-g-muted max-w-2xl">
-            {totalAll} services, grouped by area — find what you need in seconds. No price tags: a real human quotes exactly what fits your business.
-          </p>
-          {/* Search */}
-          <div className="mt-6 flex flex-col sm:flex-row gap-3">
-            <input
-              value={q} onChange={(e) => setQ(e.target.value)}
-              placeholder="🔍  Search any service — “Shopify”, “voice”, “ads”…"
-              className="flex-1 rounded-full border border-g-line bg-white/[0.035] px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green"
-            />
-            <div className="flex gap-2">
-              {[["all", "All"], ["once", "One-time"], ["ongoing", "Ongoing"]].map(([k, l]) => (
-                <button key={k} onClick={() => setType(k)}
-                  className={`rounded-full px-4 py-2 text-sm font-semibold border transition ${type === k ? "bg-g-green text-white border-g-green" : "bg-white/[0.05] backdrop-blur-md text-g-muted border-g-line hover:border-g-green"}`}>
-                  {l}
-                </button>
-              ))}
-            </div>
+      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+      <header className="pt-28 pb-10 bg-white/[0.05] backdrop-blur-md border-b border-g-line relative overflow-hidden">
+        <div className="absolute -top-24 right-0 h-72 w-72 rounded-full blur-3xl pointer-events-none" style={{ background: GUI_ORANGE + "14" }} />
+        <div className="wrap relative">
+          <span className="eyebrow mb-3">{u("eyebrow")}</span>
+          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-g-word max-w-3xl">{u("h1")}</h1>
+          <p className="mt-3 text-g-muted max-w-2xl">{CATALOG_TOTAL} {u("sub")}</p>
+          <div className="mt-6 max-w-xl">
+            <input type="search" value={q} onChange={(e) => setQ(e.target.value)} aria-label={u("search")} placeholder={u("search")}
+              className="w-full rounded-full border border-g-line bg-white/[0.035] px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-gold" />
           </div>
-          <div className="mt-3 text-sm text-g-muted">{totalShown} services across {cats.length} areas</div>
+          {/* Group index — anchors down the page */}
+          <div className="mt-5 flex flex-wrap gap-2">
+            {CATALOG.map((g, i) => (
+              <a key={i} href={`#grupo-${i}`} className="inline-flex items-center gap-1.5 rounded-full border border-g-line bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-ink hover:text-g-word transition" style={{ borderColor: GROUP_COLOR[i] + "40" }}>
+                <span>{g.icon}</span> {L(g.group)}
+              </a>
+            ))}
+          </div>
         </div>
       </header>
 
-      {/* Category grid */}
-      <div className="wrap py-10">
-        {cats.length === 0 && <div className="text-center py-20 text-g-muted">No match — try another word.</div>}
-        <div className="grid md:grid-cols-2 gap-6">
-          {cats.map((c) => (
-            <Reveal key={c.cat}>
-              <div className="rounded-xl3 bg-white/[0.05] backdrop-blur-md border border-g-line shadow-soft overflow-hidden h-full flex flex-col" style={{ borderTop: `4px solid ${c.color}` }}>
-                <div className="p-6 pb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl">{c.icon}</span>
-                    <div>
-                      <h2 className="text-lg font-extrabold text-g-word">{c.cat}</h2>
-                      <div className="text-xs text-g-muted">{c.items.length} services</div>
-                    </div>
-                  </div>
-                </div>
-                {/* services list */}
-                <div className="px-6 flex-1">
-                  <div className="divide-y divide-g-line">
-                    {c.items.map((it) => {
-                      const id = c.cat + it.name;
-                      const isOpen = open === id;
-                      return (
-                        <div key={id} className="py-2.5">
-                          <button onClick={() => setOpen(isOpen ? null : id)} className="w-full text-left flex items-start justify-between gap-3 group">
-                            <div>
-                              <div className="font-semibold text-g-word text-sm group-hover:text-g-green transition">{it.name}</div>
-                              <div className="text-xs text-g-muted leading-relaxed">{it.desc}</div>
-                            </div>
-                            <span className="shrink-0 mt-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: c.color + "1A", color: c.color }}>{typeLabel[it.type]}</span>
-                          </button>
-                          <AnimatePresence>
-                            {isOpen && (
-                              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                                <div className="mt-2 rounded-lg bg-white/[0.035] p-3 text-xs text-g-muted" style={{ borderLeft: `3px solid ${c.color}` }}>
-                                  <span className="font-bold text-g-word">📦 What we'll need from you:</span> {it.deliver}
-                                  <a href={wa(it.name)} className="mt-2 inline-flex items-center gap-1 font-bold text-g-green hover:underline">Request this →</a>
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                {/* category CTA */}
-                <div className="p-6 pt-4">
-                  <a href={wa(c.cat)} className="btn w-full text-sm" style={{ background: c.color }}>Get a quote for {c.cat} →</a>
-                </div>
-              </div>
-            </Reveal>
-          ))}
-        </div>
+      {/* Lead the services page with the SAME 3-pillar story as the landing (ecosystem coherence) */}
+      <PillarsProducts />
 
-        {/* site-wide CTA + lead capture */}
+      <div className="wrap py-10">
+        {groups.length === 0 && <div role="status" className="text-center py-20 text-g-muted">{u("noMatch")}</div>}
+
+        {/* ── Group sections ─────────────────────────────────────────────── */}
+        {groups.map((g) => {
+          const gi = CATALOG.indexOf(CATALOG.find((c) => c.group.en === g.group.en));
+          const color = GROUP_COLOR[gi] || GUI_ORANGE;
+          return (
+            <section key={g.group.en} id={`grupo-${gi}`} className="mb-14 scroll-mt-24">
+              <Reveal>
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="text-3xl">{g.icon}</span>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-g-word">{L(g.group)}</h2>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full mt-1" style={{ background: color + "1A", color }}>{g.services.length} {u("servicesWord")}</span>
+                </div>
+                <p className="text-sm text-g-muted mb-6 ml-12" style={{ color: color + "CC" }}>{L(g.tagline)}</p>
+              </Reveal>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {g.services.map((s, si) => (
+                  <Reveal key={si}>
+                    <article className="h-full rounded-xl3 bg-white/[0.05] backdrop-blur-md border border-g-line shadow-soft p-5 flex flex-col" style={{ borderTop: `3px solid ${color}` }}>
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-2xl shrink-0">{s.icon}</span>
+                        <h3 className="font-extrabold text-g-word text-[15px] leading-snug">{L(s.name)}</h3>
+                      </div>
+                      <p className="mt-3 text-[13px] leading-relaxed text-g-ink">{L(s.does)}</p>
+                      <div className="mt-3 rounded-lg px-3 py-2 text-[13px] font-bold text-g-light bg-g-green/[0.10] border border-g-green/25">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-g-light/70 block">{u("gain")}</span>
+                        {L(s.gain)}
+                      </div>
+                      <div className="mt-auto pt-3">
+                        <div className="text-[10px] font-black uppercase tracking-wider text-g-muted">{u("result")}</div>
+                        <p className="text-[13px] leading-relaxed text-g-word/90 font-semibold">{L(s.result)}</p>
+                        {s.resultIsEstimate && (
+                          <p className="mt-1 text-[11px] italic text-g-muted">※ {u("estimate")}</p>
+                        )}
+                      </div>
+                    </article>
+                  </Reveal>
+                ))}
+              </div>
+            </section>
+          );
+        })}
+
+        {/* Honesty note — Guileo's signature transparency style */}
+        <Reveal>
+          <p className="text-[12px] text-g-muted italic border-l-2 border-g-gold/40 pl-4 max-w-2xl">{u("honesty")}</p>
+        </Reveal>
+
+        {/* ── Per-sector CTA row ─────────────────────────────────────────── */}
+        <Reveal>
+          <section className="mt-14 rounded-xl3 bg-white/[0.03] backdrop-blur-md border border-g-line p-7 sm:p-9">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-g-word">{u("sectorTitle")}</h2>
+            <p className="mt-1 text-sm text-g-muted">{u("sectorSub")}</p>
+            <div className="mt-5 flex flex-wrap gap-2.5">
+              {verticals.map((v) => (
+                <a key={v.slug} href={`/for/${v.slug}`}
+                  className="inline-flex items-center gap-2 rounded-full border border-g-line bg-white/[0.05] px-4 py-2 text-sm font-bold text-g-ink hover:text-g-word hover:border-g-gold/50 transition">
+                  <span>{v.icon}</span> {L(v.name)} <span className="text-g-muted font-normal">→</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        </Reveal>
+
+        {/* ── Pricing bridge + live demo ─────────────────────────────────── */}
+        <Reveal>
+          <section className="mt-8 grid md:grid-cols-2 gap-5">
+            <div className="rounded-xl3 border border-g-gold/30 bg-gradient-to-b from-g-gold/[0.10] to-white/[0.03] p-7 flex flex-col">
+              <h2 className="text-xl font-extrabold text-g-word">{u("priceTitle")}</h2>
+              <p className="mt-2 text-sm text-g-muted flex-1">{u("priceSub")}</p>
+              <a href="/planos" className="btn mt-5 self-start text-sm" style={{ background: "#D6C29A", color: "#161512" }}>{u("priceCta")}</a>
+            </div>
+            <div className="rounded-xl3 border p-7 flex flex-col" style={{ borderColor: GUI_ORANGE + "45", background: GUI_ORANGE + "0D" }}>
+              <h2 className="text-xl font-extrabold text-g-word">{u("demoTitle")}</h2>
+              <p className="mt-2 text-sm text-g-muted flex-1">{L({ en: "Enter your number and Gui calls you in seconds — a live demo of everything on this page.", pt: "Digite seu número e a Gui te liga em segundos — uma demo ao vivo de tudo desta página.", es: "Escribe tu número y Gui te llama en segundos — una demo en vivo de todo lo de esta página.", hi: "अपना नंबर डालें और गुई सेकंडों में कॉल करेगी — इस पेज की हर चीज़ का लाइव डेमो।" })}</p>
+              <a href="/#try" className="btn mt-5 self-start text-sm" style={{ background: GUI_ORANGE, color: "#161512" }}>{u("demoCta")}</a>
+            </div>
+          </section>
+        </Reveal>
+
+        {/* ── "Not sure" lead capture — preserved from the original page ──── */}
         <div id="contact" className="mt-12 scroll-mt-24 rounded-xl3 bg-white/[0.03] backdrop-blur-xl border border-white/10 p-8 sm:p-12 shadow-lift relative overflow-hidden">
           <div className="absolute -top-24 -right-16 h-72 w-72 rounded-full bg-g-green/15 blur-3xl animate-aurora pointer-events-none" />
           <div className="absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-g-gold/15 blur-3xl animate-aurora pointer-events-none" style={{ animationDelay: "-6s" }} />
           <div className="relative max-w-2xl mx-auto">
             <div className="text-center">
-              <h3 className="text-2xl sm:text-3xl font-extrabold text-g-word">Not sure what you need?</h3>
-              <p className="mt-2 text-g-gold font-bold">{t.more.lead.title}</p>
-              <p className="mt-2 text-sm text-g-muted">Tell us your goal — a real human designs the right mix and quotes it. No generic packages.</p>
+              <h3 className="text-2xl sm:text-3xl font-extrabold text-g-word">{u("notSure")}</h3>
+              <p className="mt-2 text-sm text-g-muted">{u("notSureSub")}</p>
             </div>
             <div className="mt-7"><LeadForm source="services-page" /></div>
             <div className="mt-5 flex flex-wrap justify-center gap-3">
-              <a href={wa("a custom plan for my business")} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Talk on WhatsApp</a>
-              <a href="/#pricing" className="btn-ghost text-sm">See how it works →</a>
+              <a href={wa} target="_blank" rel="noopener" className="btn-ghost text-sm">{u("waTalk")}</a>
+              <a href="/planos" className="btn-ghost text-sm">{u("priceCta")}</a>
             </div>
           </div>
         </div>

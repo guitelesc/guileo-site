@@ -1,0 +1,56 @@
+# ⚙️ Operations — Guileo Company-OS
+
+> Operations is GUILEO's "run-the-day" engine: it converts demand (bookings, orders, quotes, repairs) into fulfilled, on-time, capacity-aware execution — scheduling, orders, dispatch/routing, inventory, delivery, and capacity — all run autonomously by Gui against the single CRM contact spine, so every order, slot, route stop, and exception is a known customer event, not an anonymous ticket, and demand-to-cash reconciles in one chain.
+
+## 🗄️ Data model (entities this dept owns)
+- **ops_orders** — `id, tenant_id, contact_id (FK crm contact, NOT NULL), appointment_id (FK biz_appointments), source (call|web|whatsapp|pos), type (dine_in|pickup|delivery|service|repair), status (placed|accepted|prep|`  
+  ↳ Central work unit. contact_id is mandatory (Gui resolves/creates the CRM contact at intake before an order can exist), so no order is a silo; appointment_id ties every scheduled order back to biz_appointments, and an insert/status-change trigger emits a client_events timeline row.
+- **ops_resources** — `id, tenant_id, kind (staff|table|bay|vehicle|room|equipment), name, skills (text[]), capacity_units, shift_calendar (jsonb), status (available|busy|off|maintenance), home_geo, portal_user_id, contact_`  
+  ↳ The supply side. Staff resources map to portal users via portal_user_id; when a resource is a person who is also in the CRM (contractor/driver-customer), contact_id links them so their activity lands on one spine. Capacity/dispatch solve against these.
+- **ops_capacity_slots** — `id, tenant_id, resource_id, appointment_id (nullable, set when a biz_appointments booking consumes the slot), service_type, slot_start, slot_end, max_units, booked_units, hold_units, surge_factor`  
+  ↳ Materialized bookable/fulfillable capacity derived from resources+shifts; the single source the scheduler and Gui quote against to prevent overbooking. Sharing slot_start/end and appointment_id with biz_appointments makes the scheduling engine and Operations one calendar, not two.
+- **ops_inventory_items** — `id, tenant_id, sku, name, category, unit, on_hand, reserved, reorder_point, reorder_qty, supplier_id, supplier_contact_id (FK crm contact for the supplier), cost_cents, lead_time_days, is_recipe (bool`  
+  ↳ Stock + bill-of-materials. supplier_contact_id puts vendors on the same CRM spine as customers, so reorder POs, vendor calls, and payments share one contact timeline. Orders decrement on-hand (or BOM components for recipes); drives 86'd items and auto-reorder.
+- **ops_routes** — `id, tenant_id, vehicle_resource_id, driver_resource_id, route_date, status (planned|active|done), stops (jsonb ordered), planned_distance_m, planned_duration_s, started_at, completed_at, gui_action_id`  
+  ↳ Dispatch container; a route is an ordered set of stops with live ETA tracking. driver_resource_id ties to ops_resources (and through it to a portal user / CRM contact), so a route is attributable to a known person and logged as a gui_action.
+- **ops_route_stops** — `id, route_id, order_id, contact_id (FK crm contact, NOT NULL), seq, geo, window_start, window_end, eta, arrived_at, completed_at, proof (jsonb: photo|signature|otp), status, client_event_id`  
+  ↳ Per-delivery unit linking a route to an order and the CRM contact; carries proof-of-delivery. contact_id mandatory and a client_events row emitted on arrival/completion so the delivery (and any failure) lands on the customer's 360 timeline.
+- **ops_exceptions** — `id, tenant_id, contact_id (FK crm contact, the affected customer/supplier), ref_type (order|slot|route|inventory), ref_id, kind (late|no_show|out_of_stock|capacity_breach|delivery_failed), severity, o`  
+  ↳ Every operational anomaly Gui detects/handles, carrying contact_id so the exception sits on the affected party's CRM timeline, audit-linked to the gui_actions that resolved it, and emitting a client_events row (e.g. a no_show that other departments honor for reliability scoring).
+
+## 🟢 Core features (what the owner does)
+- Live Ops Board (Cockpit /portal view): one screen showing today's orders, bookings, routes, capacity load, and 86'd items with the signal palette (Gui=orange #FF8A33, info=blue, attention=amber, late/live=pink, done=green); each card deep-links to the customer's CRM 360 timeline.
+- Set capacity rules once: shifts, station/table/bay/vehicle counts, prep times, service durations, delivery zones — Gui materializes bookable ops_capacity_slots from them nightly and keeps them in sync with biz_appointments.
+- Manage the menu/catalog and inventory: items, prices, BOM/recipes, reorder points, suppliers (as CRM contacts); one tap to 86 an item or pause a service across voice/web/WhatsApp at once.
+- Dispatch and route view (Dispatch Map): drivers/vehicles on a map with live ETAs; drag-reassign a stop and Gui re-optimizes the rest, logging each move as a gui_action.
+- Approve/override Gui's proposals: reorder POs, overtime/extra-shift calls, surge holds, reschedule cascades — accept, edit, or decline in one click, with the customer impact shown inline from CRM.
+- Exception Inbox: every late order, no-show, stockout, or failed delivery as a card with Gui's recommended fix, the affected contact's history, and a one-click CRM link — most already auto-resolved by Gui and shown for audit.
+
+## 🟣 Gui automations (how Gui runs it — superhuman)
+- Atomic real-time slotting: Gui quotes/books only against live ops_capacity_slots inside a single rpc_reserve_slot transaction that holds both capacity AND inventory the instant an order is accepted — so it never double-books a table, bay, or driver and never promises an 86'd item, even with hundreds of simultaneous voice/web/WhatsApp orders racing for the last slot.
+- Predictive capacity and staffing: Gui forecasts demand by hour/day from client_events history + order patterns + weather/local-event signals, then drafts shift changes or surge holds BEFORE the rush and stages pre-prep — proactive, never reactive, every day across every tenant at once.
+- Continuous auto-dispatch: Gui clusters delivery orders into optimal routes via rpc_optimize_route, assigns the nearest qualified driver from ops_resources, and re-sequences live as new orders land or traffic shifts — re-solving the whole board every few seconds, 24/7, at a scale no human dispatcher can touch.
+- Inventory autopilot: Gui decrements stock BOM-aware per order, auto-86's an item at zero across all channels simultaneously, and fires lead-time-aware reorder POs to the supplier CRM contact at the reorder point — drafting and (on approval) sending the PO so the shelf is restocked before it runs dry.
+- Cascade healing on the CRM spine: on a no-show, late prep, or driver delay Gui reshuffles the schedule/route, looks up the affected contact's history, proactively messages them a new ETA via the messaging channel, offers context-aware compensation, and writes a reliability flag back to the contact — closing the loop without the owner lifting a finger.
+- Promise-time intelligence: Gui computes a realistic promised_at from live kitchen/queue/route load (rpc_quote_promise_time), not a fixed guess, so quoted times stay honest under surge — and the moment any in-flight promise is at risk it opens an ops_exception and pre-emptively re-times or re-routes before the customer ever notices.
+
+## 🔗 CRM-spine links (how it stays unified — zero silos)
+- Every ops_orders, ops_capacity_slots (via appointment), ops_route_stops, and ops_exceptions row carries contact_id and emits a client_events row on insert/status-change, so each order, booking, delivery, and no-show lands on that contact's 360 timeline beside their calls, payments, and messages — Operations writes to the same spine the Brain/Sales/Growth depts read.
+- Gui reads the CRM spine on intake: it resolves or creates the contact before an order can exist, then pulls history (usual order, allergies, preferred slot/driver/table, gate code, lifetime value, delivery address) to pre-fill and personalize, and writes new preferences back to the contact record after fulfillment.
+- Fulfillment events feed CRM signals: completed orders bump frequency/recency and revenue rollups on the contact (powering churn/loyalty for Growth), while repeated no-shows or failed deliveries set a reliability flag other departments honor (e.g. prepay-required) — and suppliers live on the same spine via ops_inventory_items.supplier_contact_id, unifying vendor and customer relationships.
+
+## 📈 KPIs it moves
+- On-time fulfillment rate (orders/deliveries met by promised_at)
+- Capacity utilization % (booked_units / max_units) and overbook/turn-away rate
+- Average prep-to-ready and door-to-door delivery time
+- Stockout / 86'd-item incidents and inventory carrying cost
+- Orders per labor hour and revenue per resource (table/bay/vehicle)
+- Exception rate and Gui auto-resolution % (resolved without owner touch)
+
+## 🔨 Build in Guileo (reusing what exists)
+- Tables in Supabase ynihodbknhjirkdogxby with per-tenant RLS: ops_orders, ops_resources, ops_capacity_slots, ops_inventory_items, ops_routes, ops_route_stops, ops_exceptions — every row carries tenant_id + contact_id (NOT NULL where a customer/supplier exists) and a trigger writes a client_events timeline row on insert/status-change; FKs to biz_appointments (appointment_id) and the revenue ledger (revenue_txn_id) so scheduling, ops, and cash are one graph (paste via SQL per the scheduling-engine workflow).
+- RPCs (SQL functions): rpc_reserve_slot(contact_id, service_type, window) [atomic capacity+inventory hold in one transaction], rpc_quote_promise_time(order) [load-aware ETA], rpc_optimize_route(route_date, vehicle) [cluster+sequence stops], rpc_decrement_inventory(order_id) [BOM-aware], rpc_reorder_check(tenant_id) [reorder-point scan to PO draft] — each logs a gui_action and, where it touches a customer, a client_events row.
+- Endpoints under /api/*: extend /api/agent-schedule (the existing scheduling bridge) to also place orders and holds against ops_capacity_slots; add /api/ops-dispatch (assign/re-optimize routes + live ETA webhook), /api/ops-inventory (stock adjust, 86/un-86), /api/ops-track (driver location + proof-of-delivery capture) — all honoring the call.js DNC/cap gate and lead.js noCall flag for any customer outreach.
+- Reuse gui_actions (anon insert-only RLS preserved): log every Gui ops decision (slot, dispatch, reorder, cascade-heal) as a gui_action so the Exception Inbox, audit trail, and Cockpit portal activity feed are one unified stream alongside call/scheduling actions.
+- Reuse the revenue ledger: on fulfillment write the revenue_txn and set revenue_txn_id on ops_orders so demand-to-cash reconciles in one place, mirrored to call_logs where relevant for the per-call/per-order portal rollups.
+- Reuse the automations cron: nightly job to materialize ops_capacity_slots from resources+shifts (kept in sync with biz_appointments), plus scheduled rpc_reorder_check, demand-forecast recompute, and an at-risk-promise sweep that opens ops_exceptions; surface all of it through new Cockpit /portal views Ops Board, Dispatch Map, Inventory, and Exception Inbox using the signal palette, and verify each visually (screenshot) per the deploy-verification rule.

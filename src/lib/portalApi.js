@@ -39,6 +39,402 @@ async function _flush() {
   try { await supabase.auth.updateUser({ data: { kv: _cloud } }); _warnedSync = false; }
   catch { if (!_warnedSync) { _warnedSync = true; toast("Saved locally — couldn't sync to the cloud just now. I'll retry."); } }
 }
+// Best-effort durability: if the tab closes within the 900ms debounce window, fire the
+// pending cloud sync immediately so a just-made change isn't lost (localStorage is already
+// written synchronously by saveState — this only rescues the cloud mirror).
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => { if (_flushTimer) { clearTimeout(_flushTimer); _flushTimer = null; _flush(); } });
+}
+
+// ── REAL CLIENT DATA — the gui_actions Supabase project (separate from the auth
+// project above). URL + anon key are PUBLIC by design (already shipped in /admin
+// and /live); the access key in the RPC is what gates each client's data. ──
+const DATA_SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
+const DATA_SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
+const DATA_KEY_LS = "guileo_data_key";
+
+/** Fetch the logged-in client's REAL data (credits, plan, events) from the backend.
+ *  Returns { credits, plan, events:[{id,created_at,type,channel,summary,amount}] }
+ *  or null on ANY failure (wrong key, network, malformed) — never throws to the UI. */
+export async function fetchRealData(email, key) {
+  if (!email || !key) return null;
+  try {
+    const r = await fetch(`${DATA_SB_URL}/rest/v1/rpc/get_client_data`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: DATA_SB_ANON, Authorization: `Bearer ${DATA_SB_ANON}` },
+      body: JSON.stringify({ p_email: email, p_key: key }),
+    });
+    if (!r.ok) return null; // includes 'unauthorized' (400/28000) when the key doesn't match
+    const data = await r.json();
+    if (!data || typeof data !== "object" || !Array.isArray(data.events)) return null;
+    return data;
+  } catch { return null; }
+}
+
+// ── REAL INBOX (client_messages) — four RPCs on the same gui_actions data project,
+// gated by the same email+key validator as fetchRealData. All are best-effort: they
+// return [] / null on ANY failure (bad key 403/28000, network, malformed) and NEVER
+// throw to the UI, so the Inbox can always fall back to the honest empty state. ──
+async function _dataRpc(name, body) {
+  try {
+    const r = await fetch(`${DATA_SB_URL}/rest/v1/rpc/${name}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: DATA_SB_ANON, Authorization: `Bearer ${DATA_SB_ANON}` },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) return null; // includes 403 / code 28000 when the key doesn't match
+    return await r.json();
+  } catch { return null; }
+}
+
+// ── Read cache: TTL + in-flight dedupe + stale-while-revalidate ──────────────
+// Read-only fetchers below route through _cached(). Same (fn,email,key[,extra])
+// within 45s serves the memoized value; concurrent callers share one in-flight
+// request (dedupe); a stale entry is returned immediately while it refreshes in
+// the background (SWR). Mutations NEVER cache and call _invalidate(domain) to
+// drop the memo for their domain so the next read re-fetches fresh.
+const _CACHE_TTL = 45000;
+const _cache = new Map();     // key -> { at, value }
+const _inflight = new Map();  // key -> Promise
+// Which domain each cached fetcher belongs to (for targeted invalidation).
+const _DOMAIN = {
+  fetchConversations: "inbox", fetchThread: "inbox", fetchCallLogs: "inbox",
+  fetchCRM: "crm", fetchLeadsToday: "crm", fetchCrmInvoices: "crm", fetchCrmCampaigns: "crm",
+  fetchCrmDeals: "crm", fetchCrmTimeline: "crm", fetchMarketingDates: "crm", fetchContracts: "crm",
+  fetchNoshowRadar: "noshow", fetchAppointments: "noshow",
+};
+const _ck = (fn, email, key, extra) => `${fn}|${email || ""}|${key || ""}${extra != null ? "|" + extra : ""}`;
+
+function _cached(fn, email, key, loader, extra) {
+  const k = _ck(fn, email, key, extra);
+  const hit = _cache.get(k);
+  if (hit && Date.now() - hit.at < _CACHE_TTL) return Promise.resolve(hit.value); // fresh
+  const infl = _inflight.get(k);
+  if (infl) return infl;                                                          // dedupe
+  const p = Promise.resolve()
+    .then(loader)
+    .then((v) => { _cache.set(k, { at: Date.now(), value: v }); _inflight.delete(k); return v; })
+    .catch((e) => { _inflight.delete(k); if (hit) return hit.value; throw e; });  // SWR on failure
+  _inflight.set(k, p);
+  if (hit) return Promise.resolve(hit.value);  // SWR: serve stale now, refresh in background
+  return p;
+}
+
+function _invalidate(domain) {
+  for (const k of [..._cache.keys()]) if (_DOMAIN[k.split("|")[0]] === domain) _cache.delete(k);
+  for (const k of [..._inflight.keys()]) if (_DOMAIN[k.split("|")[0]] === domain) _inflight.delete(k);
+}
+
+/** All conversation threads for this client → [{channel, contact, last, last_at, unread}] (or []). */
+export async function fetchConversations(email, key) {
+  if (!email || !key) return [];
+  return _cached("fetchConversations", email, key, async () => {
+    const data = await _dataRpc("client_conversations", { p_email: email, p_key: key });
+    return Array.isArray(data) ? data : [];
+  });
+}
+
+/** One thread's messages oldest→newest → [{direction, body, created_at}] (or []). */
+export async function fetchThread(email, key, channel, contact) {
+  if (!email || !key) return [];
+  return _cached("fetchThread", email, key, async () => {
+    const data = await _dataRpc("client_thread", { p_email: email, p_key: key, p_channel: channel, p_contact: contact });
+    return Array.isArray(data) ? data : [];
+  }, `${channel}|${contact}`);
+}
+
+/** Insert an outbound message → {ok:true} (or null on failure). */
+export async function sendRealMessage(email, key, channel, contact, body) {
+  if (!email || !key) return null;
+  const r = await _dataRpc("client_send_message", { p_email: email, p_key: key, p_channel: channel, p_contact: contact, p_body: body });
+  _invalidate("inbox"); // a sent message changes threads/unread → drop stale reads
+  return r;
+}
+
+/** Mark a thread's inbound messages read → {ok:true} (or null). Best-effort. */
+export async function markThreadRead(email, key, channel, contact) {
+  if (!email || !key) return null;
+  const r = await _dataRpc("client_mark_read", { p_email: email, p_key: key, p_channel: channel, p_contact: contact });
+  _invalidate("inbox"); // unread counts changed
+  return r;
+}
+
+/** Real calls WITH per-call analysis + full transcript → [{id,created_at,summary,sentiment,
+ *  intent,note,duration_secs,success,end_reason,amount,transcript}] (or []). Best-effort:
+ *  goes through our own /api/call-logs (validates the key, reads the owned project). */
+export async function fetchCallLogs(email, key) {
+  if (!email || !key) return [];
+  return _cached("fetchCallLogs", email, key, async () => {
+    try {
+      const r = await fetch("/api/call-logs", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, key }),
+      });
+      if (!r.ok) return [];
+      const d = await r.json();
+      return Array.isArray(d?.calls) ? d.calls : [];
+    } catch { return []; }
+  });
+}
+
+/** The business's REAL upcoming appointments (booked by Gui) → [{id,when,ends,customer,contact,
+ *  service,pro,location,status,ref}] (or []). Best-effort via /api/appointments. */
+export async function fetchAppointments(email, key) {
+  if (!email || !key) return [];
+  return _cached("fetchAppointments", email, key, async () => {
+    try {
+      const r = await fetch("/api/appointments", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, key }),
+      });
+      if (!r.ok) return [];
+      const d = await r.json();
+      return Array.isArray(d?.appointments) ? d.appointments : [];
+    } catch { return []; }
+  });
+}
+
+/** Unified CRM contact spine (the 360° book). POST {token,email} -> {ready,count,contacts}.
+ *  Gracefully returns ready:false until db/crm_spine.sql is pasted in Supabase. */
+export async function fetchCRM(key, email) {
+  if (!key) return { ready: false, count: 0, contacts: [], note: "" };
+  return _cached("fetchCRM", email, key, async () => {
+    try {
+      const r = await fetch("/api/crm", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: key, email: email || "" }),
+      });
+      if (!r.ok) return { ready: false, count: 0, contacts: [], note: "" };
+      const d = await r.json();
+      return {
+        ready: !!d?.ready,
+        count: Number(d?.count) || 0,
+        contacts: Array.isArray(d?.contacts) ? d.contacts : [],
+        note: d?.note || "",
+      };
+    } catch { return { ready: false, count: 0, contacts: [], note: "" }; }
+  });
+}
+
+/** Today's NEW leads (crm_leads_today) grouped-ready → {ready,count,leads:[{id,name,phone,
+ *  channel,source,created_at,status}]}. Gracefully returns ready:false until the RPC is pasted. */
+export async function fetchLeadsToday(key, email) {
+  if (!key) return { ready: false, count: 0, leads: [], note: "" };
+  return _cached("fetchLeadsToday", email, key, async () => {
+    try {
+      const r = await fetch("/api/crm", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "leads_today", token: key, email: email || "" }),
+      });
+      if (!r.ok) return { ready: false, count: 0, leads: [], note: "" };
+      const d = await r.json();
+      return {
+        ready: !!d?.ready,
+        count: Number(d?.count) || 0,
+        leads: Array.isArray(d?.leads) ? d.leads : [],
+        note: d?.note || "",
+      };
+    } catch { return { ready: false, count: 0, leads: [], note: "" }; }
+  });
+}
+
+/** 📞 Ask Gui to call a lead back (crm_lead_callback → logs a client_event 'callback', the same
+ *  callback path the funnel uses). Returns {ok} — best-effort, never throws to the UI. */
+export async function requestGuiCallback(key, email, lead = {}) {
+  if (!key) return { ok: false };
+  try {
+    const r = await fetch("/api/crm", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "lead_callback", token: key, email: email || "", lead_id: lead.id || "", phone: lead.phone || "", name: lead.name || "" }),
+    });
+    if (!r.ok) return { ok: false };
+    const d = await r.json();
+    _invalidate("crm"); // callback logs a client_event → lead lists may change
+    return { ok: !!d?.ok };
+  } catch { return { ok: false }; }
+}
+
+/** Marketing dates & birthday config (marketing_dates_list) → {ready,dates:[{id,kind,label,
+ *  month,day,message,offer,active}],note}. Birthday config is the row with kind:'birthday'.
+ *  Gracefully returns ready:false until db marketing_dates SQL is pasted. */
+export async function fetchMarketingDates(key, email) {
+  if (!key) return { ready: false, dates: [], note: "" };
+  return _cached("fetchMarketingDates", email, key, async () => {
+    try {
+      const r = await fetch("/api/crm", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "marketing_dates", token: key, email: email || "" }),
+      });
+      if (!r.ok) return { ready: false, dates: [], note: "" };
+      const d = await r.json();
+      return { ready: !!d?.ready, dates: Array.isArray(d?.dates) ? d.dates : [], note: d?.note || "" };
+    } catch { return { ready: false, dates: [], note: "" }; }
+  });
+}
+
+/** Add / edit a marketing date or birthday config (marketing_dates_set). Pass {id?,kind,label,
+ *  month,day,message,offer,active}. Returns {ok,ready,date,note} — best-effort. */
+export async function saveMarketingDate(key, email, date = {}) {
+  if (!key) return { ok: false, ready: false };
+  try {
+    const r = await fetch("/api/crm", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "marketing_date_set", token: key, email: email || "", date }),
+    });
+    if (!r.ok) return { ok: false, ready: false };
+    const d = await r.json();
+    _invalidate("crm"); // marketing dates changed
+    return { ok: !!d?.ok, ready: d?.ready !== false, date: d?.date || null, note: d?.note || "" };
+  } catch { return { ok: false, ready: false }; }
+}
+
+/** Remove a commemorative date (marketing_dates_delete). Returns {ok} — best-effort. */
+export async function deleteMarketingDate(key, email, id) {
+  if (!key || !id) return { ok: false };
+  try {
+    const r = await fetch("/api/crm", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "marketing_date_delete", token: key, email: email || "", id }),
+    });
+    if (!r.ok) return { ok: false };
+    const d = await r.json();
+    _invalidate("crm"); // a marketing date was removed
+    return { ok: !!d?.ok };
+  } catch { return { ok: false }; }
+}
+
+/** Contracts & quotes for the tenant (contract_list). Returns [] gracefully. */
+export async function fetchContracts(key, email) {
+  if (!key) return [];
+  return _cached("fetchContracts", email, key, async () => {
+    try {
+      const r = await fetch("/api/contract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "list", token: key, email: email || "" }) });
+      if (!r.ok) return [];
+      const d = await r.json();
+      return Array.isArray(d?.docs) ? d.docs : [];
+    } catch { return []; }
+  });
+}
+
+/** Finance A/R — invoices (crm_invoices_list). Returns [] gracefully. */
+export async function fetchCrmInvoices(key, email) {
+  if (!key) return [];
+  return _cached("fetchCrmInvoices", email, key, async () => {
+    try {
+      const r = await fetch("/api/crm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "invoices", token: key, email: email || "" }) });
+      if (!r.ok) return [];
+      const d = await r.json();
+      return Array.isArray(d?.invoices) ? d.invoices : [];
+    } catch { return []; }
+  });
+}
+
+/** Marketing — campaigns (crm_campaigns_list). Returns [] gracefully. */
+export async function fetchCrmCampaigns(key, email) {
+  if (!key) return [];
+  return _cached("fetchCrmCampaigns", email, key, async () => {
+    try {
+      const r = await fetch("/api/crm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "campaigns", token: key, email: email || "" }) });
+      if (!r.ok) return [];
+      const d = await r.json();
+      return Array.isArray(d?.campaigns) ? d.campaigns : [];
+    } catch { return []; }
+  });
+}
+
+/** Upcoming appointments ranked by no-show risk (noshow_risk RPC). Returns {ready,highRisk,appointments}. */
+export async function fetchNoshowRadar(key, email, days = 7) {
+  if (!key) return { ready: false, highRisk: 0, appointments: [] };
+  return _cached("fetchNoshowRadar", email, key, async () => {
+    try {
+      const r = await fetch("/api/noshow-radar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: key, email: email || "", days }),
+      });
+      if (!r.ok) return { ready: false, highRisk: 0, appointments: [] };
+      const d = await r.json();
+      return { ready: !!d?.ready, highRisk: Number(d?.highRisk) || 0, appointments: Array.isArray(d?.appointments) ? d.appointments : [] };
+    } catch { return { ready: false, highRisk: 0, appointments: [] }; }
+  }, days);
+}
+
+/** 👻 Mark an appointment as a no-show (feeds the risk model). Returns {ok,marked} — never throws. */
+export async function markNoshow(key, email, appointmentId) {
+  if (!key || !appointmentId) return { ok: false, marked: false };
+  try {
+    const r = await fetch("/api/noshow-radar", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: key, email: email || "", action: "mark_noshow", appointment_id: appointmentId }),
+    });
+    if (!r.ok) return { ok: false, marked: false };
+    const d = await r.json();
+    _invalidate("noshow"); // radar/appointments changed
+    return { ok: !!d?.ok, marked: !!d?.marked };
+  } catch { return { ok: false, marked: false }; }
+}
+
+/** ✅ Log an extra-confirmation nudge (client_event 'confirm-nudge' → shows in the feed). Best-effort. */
+export async function confirmNudge(key, email, appointmentId, name) {
+  if (!key) return { ok: false };
+  try {
+    const r = await fetch("/api/noshow-radar", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: key, email: email || "", action: "confirm", appointment_id: appointmentId || "", name: name || "" }),
+    });
+    if (!r.ok) return { ok: false };
+    const d = await r.json();
+    _invalidate("noshow"); // a confirm-nudge event was logged
+    return { ok: !!d?.ok };
+  } catch { return { ok: false }; }
+}
+
+/** The tenant's sales pipeline (crm_deals via crm_deals_list). Returns [] gracefully. */
+export async function fetchCrmDeals(key, email) {
+  if (!key) return [];
+  return _cached("fetchCrmDeals", email, key, async () => {
+    try {
+      const r = await fetch("/api/crm", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "deals", token: key, email: email || "" }),
+      });
+      if (!r.ok) return [];
+      const d = await r.json();
+      return Array.isArray(d?.deals) ? d.deals : [];
+    } catch { return []; }
+  });
+}
+
+/** A single contact's 360° timeline (crm_timeline_events). Returns [] gracefully. */
+export async function fetchCrmTimeline(key, email, contactId) {
+  if (!key || !contactId) return [];
+  return _cached("fetchCrmTimeline", email, key, async () => {
+    try {
+      const r = await fetch("/api/crm", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "timeline", token: key, email: email || "", contact_id: contactId }),
+      });
+      if (!r.ok) return [];
+      const d = await r.json();
+      return Array.isArray(d?.events) ? d.events : [];
+    } catch { return []; }
+  }, contactId);
+}
+
+/** The client's "connection code" (access key Luis hands out at onboarding). */
+export function loadDataKey() {
+  try {
+    const raw = localStorage.getItem(DATA_KEY_LS);
+    if (!raw) return "";
+    return raw.startsWith('"') ? JSON.parse(raw) : raw; // tolerate the JSON form the cloud hydrate writes
+  } catch { return ""; }
+}
+
+export function saveDataKey(key) {
+  const v = (key || "").trim();
+  try { v ? localStorage.setItem(DATA_KEY_LS, v) : localStorage.removeItem(DATA_KEY_LS); } catch { /* private mode */ }
+  _queueUpsert(DATA_KEY_LS, v); // mirror into the same cloud-kv blob Settings fields use
+  return { ok: true };
+}
 
 // ── Tiny toast bus (action feedback across every screen) ──
 let _toastListeners = [];
@@ -121,7 +517,9 @@ export const portalApi = {
       if (md.business) partial.business = md.business;
       if (md.sector) partial.sector = md.sector;
       if (md.contact) partial.contact = md.contact;
-      await this.saveClient(partial);
+      // Fire-and-forget: don't block sign-in hydrate on the clients upsert (runs in the
+      // browser, not the Worker; a failure is already swallowed). Frees the UI sooner.
+      this.saveClient(partial).catch(() => { /* never throw from hydrate */ });
     } catch { /* never throw from hydrate */ }
     return Object.keys(kv).length;
   },
@@ -155,27 +553,35 @@ export const portalApi = {
   // Each screen passes the demo data it already has; when CONNECTED we ignore
   // the fallback and query Supabase instead. Keeping the same shape = zero UI churn.
 
+  // HONESTY NOTE — there is NO real messages/conversations/alerts table or RPC in the
+  // client-data backend (it only exposes the read-only `get_client_data` events ledger via
+  // fetchRealData). So for a CONNECTED (real) client we must NOT fabricate records: list()
+  // returns empty and the write methods return a soft success without inventing rows. The
+  // live screens already source their content from the real `events` ledger and render an
+  // honest empty state. In DEMO mode (not connected) we keep returning the mock so the demo
+  // still looks alive. The day a real inbox table/RPC lands, wire the CONNECTED branch here.
+
   async list(table, fallback = []) {
-    // CONNECT: const { data } = await supabase.from(table).select("*"); return data;
-    await wait(200);
+    if (CONNECTED) return []; // honest: no real inbox/conversations backend yet — don't fake it
+    await wait(200);          // demo-only: simulated latency keeps the mock feeling alive
     return fallback;
   },
 
   async sendMessage(channel, conversationId, text) {
-    // CONNECT: await supabase.from("messages").insert({ channel, conversation_id: conversationId, body: text, from: "human" });
-    await wait(150);
+    if (CONNECTED) return { ok: true, persisted: false }; // soft success — nothing fabricated/stored
+    await wait(150);          // demo-only
     return { ok: true, id: Date.now(), text, at: Date.now() };
   },
 
   async updateStatus(table, id, status) {
-    // CONNECT: await supabase.from(table).update({ status }).eq("id", id);
-    await wait(120);
+    if (CONNECTED) return { ok: true, persisted: false }; // soft success — no real status store yet
+    await wait(120);          // demo-only
     return { ok: true, id, status };
   },
 
   async resolveAlert(id) {
-    // CONNECT: await supabase.from("alerts").update({ resolved_at: new Date() }).eq("id", id);
-    await wait(120);
+    if (CONNECTED) return { ok: true, persisted: false }; // soft success — no real alerts store yet
+    await wait(120);          // demo-only
     return { ok: true, id };
   },
 

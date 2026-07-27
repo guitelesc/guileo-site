@@ -14,7 +14,7 @@ const LV_COPY = {
     sub: "Each part of Guileo owns one part of your company — together, they grow it.",
     strip: ["Performance", "Sales", "Growth"],
     steps: [
-      { badge: "Guileo Brain", owns: "Owns your performance", title: "Does the work of employees", desc: "Answers every call & message, books, quotes and supports — 24/7, any language. Output goes up, payroll doesn't.", tag: "performance, elevated" },
+      { badge: "Guileo Brain", owns: "Owns your performance", title: "Does the work of employees", desc: "Answers every call & message, books, quotes, closes & collects — 24/7, in 20+ languages. Output goes up, payroll doesn't.", tag: "performance, elevated" },
       { badge: "Guileo.AD", owns: "Owns your sales", title: "Sells while you work", desc: "Your ads, content & funnels run every day — you reach more people, close more deals, waste less ad money.", tag: "you sell more" },
       { badge: "Guileo Grow", owns: "The result — your growth", title: "Growth that compounds", desc: "Every lead followed up every single day — monitored 24/7, nothing slips. Your business grows on autopilot.", tag: "monitored 24/7" },
     ],
@@ -27,7 +27,7 @@ const LV_COPY = {
     sub: "Cada parte do Guileo cuida de uma parte da sua empresa — juntas, elas fazem você crescer.",
     strip: ["Performance", "Vendas", "Crescimento"],
     steps: [
-      { badge: "Guileo Brain", owns: "Dono da sua performance", title: "Faz o trabalho de funcionários", desc: "Atende toda ligação e mensagem, agenda, orça e dá suporte — 24/7, em qualquer idioma. O rendimento sobe, a folha não.", tag: "performance elevada" },
+      { badge: "Guileo Brain", owns: "Dono da sua performance", title: "Faz o trabalho de funcionários", desc: "Atende toda ligação e mensagem, agenda, orça, fecha e cobra — 24/7, em 20+ idiomas. O rendimento sobe, a folha não.", tag: "performance elevada" },
       { badge: "Guileo.AD", owns: "Dono das suas vendas", title: "Vende enquanto você trabalha", desc: "Seus anúncios, conteúdo e funis rodando todo dia — você alcança mais gente, fecha mais e desperdiça menos.", tag: "você vende mais" },
       { badge: "Guileo Grow", owns: "O resultado — seu crescimento", title: "Crescimento que compõe", desc: "Cada lead acompanhado todos os dias — monitorado 24h, nada escapa. Seu negócio cresce no automático.", tag: "monitorado 24/7" },
     ],
@@ -40,7 +40,7 @@ const LV_COPY = {
     sub: "Cada parte de Guileo es dueña de una parte de tu empresa — juntas, la hacen crecer.",
     strip: ["Performance", "Ventas", "Crecimiento"],
     steps: [
-      { badge: "Guileo Brain", owns: "Dueño de tu performance", title: "Hace el trabajo de empleados", desc: "Atiende cada llamada y mensaje, agenda, cotiza y da soporte — 24/7, en cualquier idioma. El rendimiento sube, la nómina no.", tag: "performance elevada" },
+      { badge: "Guileo Brain", owns: "Dueño de tu performance", title: "Hace el trabajo de empleados", desc: "Atiende cada llamada y mensaje, agenda, cotiza, cierra y cobra — 24/7, en 20+ idiomas. El rendimiento sube, la nómina no.", tag: "performance elevada" },
       { badge: "Guileo.AD", owns: "Dueño de tus ventas", title: "Vende mientras trabajas", desc: "Tus anuncios, contenido y embudos corren cada día — llegas a más gente, cierras más y desperdicias menos.", tag: "vendes más" },
       { badge: "Guileo Grow", owns: "El resultado — tu crecimiento", title: "Crecimiento que se acumula", desc: "Cada lead con seguimiento todos los días — monitoreado 24/7, nada se escapa. Tu negocio crece en automático.", tag: "monitoreado 24/7" },
     ],
@@ -53,7 +53,7 @@ const LV_COPY = {
     sub: "Guileo का हर हिस्सा आपकी कंपनी के एक हिस्से का मालिक है — मिलकर, वे उसे बढ़ाते हैं।",
     strip: ["परफ़ॉर्मेंस", "बिक्री", "ग्रोथ"],
     steps: [
-      { badge: "Guileo Brain", owns: "आपकी परफ़ॉर्मेंस का मालिक", title: "कर्मचारियों का काम करता है", desc: "हर कॉल और मैसेज का जवाब, बुकिंग, कोटेशन और सपोर्ट — 24/7, किसी भी भाषा में। आउटपुट बढ़ता है, पेरोल नहीं।", tag: "परफ़ॉर्मेंस ऊँची" },
+      { badge: "Guileo Brain", owns: "आपकी परफ़ॉर्मेंस का मालिक", title: "कर्मचारियों का काम करता है", desc: "हर कॉल और मैसेज का जवाब, बुकिंग, कोटेशन, डील बंद और वसूली — 24/7, 20+ भाषाओं में। आउटपुट बढ़ता है, पेरोल नहीं।", tag: "परफ़ॉर्मेंस ऊँची" },
       { badge: "Guileo.AD", owns: "आपकी बिक्री का मालिक", title: "आप काम करें, यह बेचता है", desc: "आपके विज्ञापन, कंटेंट और फ़नल हर दिन चलते हैं — ज़्यादा लोग, ज़्यादा डील, कम बर्बादी।", tag: "आप ज़्यादा बेचते हैं" },
       { badge: "Guileo Grow", owns: "नतीजा — आपकी ग्रोथ", title: "ग्रोथ जो बढ़ती जाती है", desc: "हर लीड का हर दिन फ़ॉलो-अप — 24/7 निगरानी, कुछ नहीं छूटता। आपका व्यवसाय ऑटोपायलट पर बढ़ता है।", tag: "24/7 निगरानी" },
     ],

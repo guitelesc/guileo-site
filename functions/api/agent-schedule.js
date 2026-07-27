@@ -1,0 +1,628 @@
+// Cloudflare Pages Function — POST /api/agent-schedule
+// The scheduling "tools" the Gui voice agent calls on a call. Accepts human NAMES (the agent speaks
+// in names, not UUIDs) and resolves them against the live business profile, then hits the motor:
+//   op = "lookup"       → the business menu (services, locations, professionals)
+//   op = "availability" → real free slots for a service (optionally a location/professional)
+//   op = "book"         → book a slot (DB EXCLUDE constraint blocks double-booking)
+// Gated by the agent secret (x-guileo-secret / ?secret). Talks to the scheduling DB with SCHED_SECRET.
+import { safeEq } from "../lib/guard.js";
+import { appointmentEmail, ownerAlertEmail, waitlistOfferEmail } from "../lib/emailTemplates.js";
+import { sendText } from "../lib/twilio.js";
+// THE UNIFIED SCHEDULING BRAIN — routes availability/book to a connected external calendar
+// (MindBody/Square/…) when the tenant has one ready, else to the internal biz_* engine. See
+// functions/lib/scheduleAdapter.js. Falls back to internal on ANY external error → zero regression.
+import { resolveScheduler, getAvailability as adapterAvailability, book as adapterBook } from "../lib/scheduleAdapter.js";
+
+// Send a branded confirmation to the CUSTOMER (email now; SMS lights up when A2P clears). Best-effort.
+const isEmail = (s) => /.+@.+\..+/.test((s || "").toString());
+async function sendApptEmail(env, kind, p) {
+  if (!env.RESEND_API_KEY || !isEmail(p.contact)) return false;
+  try {
+    const { subject, html } = appointmentEmail({ kind, name: p.name, business: p.business, service: p.service, whenLabel: p.whenLabel, pro: p.pro, location: p.location, ref: p.ref, lang: p.lang || "en" });
+    await fetch("https://api.resend.com/emails", {
+      method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: p.contact, subject, html }),
+    });
+    return true;
+  } catch { return false; }
+}
+
+const SB = "https://ynihodbknhjirkdogxby.supabase.co";
+const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
+
+// GOOGLE CALENDAR PUSH — when the tenant connected their Google (gcal-connect stored a refresh_token
+// in client_integrations, read via gcal_token_lookup, INGEST-gated), drop the booking straight into
+// their Google Calendar so the spa SEES it in the tool they already use — no MindBody needed.
+// Best-effort: no keys / not connected / bad token → silent no-op. NEVER blocks the booking.
+async function gcalPush(env, email, ev) {
+  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.INGEST_SECRET) return;
+  try {
+    const lr = await fetch(`${SB}/rest/v1/rpc/gcal_token_lookup`, {
+      method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_secret: env.INGEST_SECRET, p_email: email }),
+    });
+    const refresh = lr.ok ? ((await lr.json()) || "").toString() : "";
+    if (!refresh || refresh.length < 10) return; // not connected
+    const tr = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ client_id: env.GOOGLE_CLIENT_ID, client_secret: env.GOOGLE_CLIENT_SECRET, refresh_token: refresh, grant_type: "refresh_token" }),
+    });
+    if (!tr.ok) return;
+    const at = ((await tr.json()) || {}).access_token;
+    if (!at) return;
+    const startMs = Date.parse(ev.startIso);
+    if (!isFinite(startMs)) return;
+    const endIso = new Date(startMs + (ev.durationMin || 60) * 60000).toISOString();
+    await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+      method: "POST", headers: { Authorization: `Bearer ${at}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        summary: ev.summary, description: ev.description || "", location: ev.location || "",
+        start: { dateTime: ev.startIso, timeZone: ev.tz || "America/New_York" },
+        end: { dateTime: endIso, timeZone: ev.tz || "America/New_York" },
+      }),
+    });
+  } catch { /* best-effort — never block the booking */ }
+}
+
+// Format a service's price (dollars from cents) so the Gui can quote it out loud. "" when there's no
+// set price (null/0) → the agent says "on request" and captures it as a quote, never invents a number.
+const money = (cents) => {
+  const c = Number(cents);
+  if (!Number.isFinite(c) || c <= 0) return "";
+  const d = c / 100;
+  return "$" + (Number.isInteger(d) ? d : d.toFixed(2));
+};
+const norm = (s) => (s || "").toString().trim().toLowerCase();
+const pick = (arr, name) => {
+  if (!name) return null;
+  const n = norm(name);
+  return arr.find((x) => norm(x.name) === n) || arr.find((x) => norm(x.name).includes(n) || n.includes(norm(x.name))) || null;
+};
+
+async function rpc(env, fn, body) {
+  const r = await fetch(`${SB}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, p_secret: env.SCHED_SECRET || "" }),
+  });
+  return r.json();
+}
+
+export async function onRequestPost(context) {
+  const { request, env } = context;
+  try {
+    const b = await request.json().catch(() => null);
+    if (!b) return json({ error: "bad request" }, 400);
+
+    // ── COCKPIT ACTIONS (special dates) — per-tenant gate (email + connection key via
+    // get_client_data, same pattern as noshow-radar.js). Handled BEFORE the agent-secret
+    // gate; every agent op below still requires AGENT_ACTION_SECRET exactly as before.
+    const cockpitAction = (b.action || "").toString();
+    if (cockpitAction === "special_list" || cockpitAction === "special_set") return specialDates(env, b, cockpitAction);
+    if (cockpitAction === "loc_list" || cockpitAction === "loc_set") return locActions(env, b, cockpitAction);
+
+    const provided = request.headers.get("x-guileo-secret") || new URL(request.url).searchParams.get("secret") || "";
+    if (!env.AGENT_ACTION_SECRET || !safeEq(provided, env.AGENT_ACTION_SECRET)) return json({ error: "unauthorized" }, 401);
+    const testMode = (request.headers.get("x-guileo-test") || "") === "1"; // dry-run: send NO real email
+    if (!env.SCHED_SECRET) return json({ message: "Scheduling isn't set up yet." }, 200);
+    const op = (b.op || "lookup").toString();
+    // MULTI-TENANT: the business is pinned by the agent's STATIC header (x-guileo-client), set at
+    // provision time — NEVER trust a caller-supplied client_email. No demo/owner fallback: if we can't
+    // resolve the tenant, reject so a misconfigured agent never writes into the wrong business.
+    const email = ((request.headers.get("x-guileo-client") || b.client_email || b.email || "").toString()).trim().toLowerCase();
+    if (!email || !email.includes("@")) return json({ error: "client_email could not be resolved for this agent" }, 400);
+
+    const menu = await rpc(env, "biz_lookup", { p_email: email });
+    if (menu?.error) return json({ message: "I couldn't reach the schedule just now." }, 200);
+    const services = menu.services || [], locations = menu.locations || [], pros = menu.professionals || [];
+    // 2.12 — speak times in the BUSINESS's timezone (not hardcoded NY) so a Lisbon/São Paulo client
+    // hears correct hours. Passed explicitly to fmt() to stay concurrency-safe under volume.
+    const bizTz = (locations[0] && locations[0].tz) || "America/New_York";
+    // UNIFIED ADAPTER — lazily resolve which scheduler owns this tenant (external ready > internal).
+    // Only availability/book consult it; every other op is untouched. Resolution is memoized so a
+    // single request does at most one lookup. origin lets the adapter call the connectors same-origin.
+    const origin = new URL(request.url).origin;
+    let _sched = null;
+    const scheduler = async () => (_sched ||= await resolveScheduler(env, email));
+
+    if (op === "lookup") {
+      // include the PRICE with each service so the Gui quotes real numbers and can close on the call.
+      const priced = services.map((s) => ({ name: s.name, price: money(s.price_cents), price_cents: s.price_cents ?? null }));
+      const spoken = priced.map((s) => (s.price ? `${s.name} — ${s.price}` : s.name)).join(", ");
+      return json({
+        services: services.map((s) => s.name), // back-compat: plain names
+        priced,                                 // name + formatted price + raw cents
+        locations: locations.map((l) => l.name),
+        professionals: pros.map((p) => p.name),
+        message: `We offer ${spoken || "our services"}${locations.length > 1 ? `, across ${locations.length} locations (${locations.map((l) => l.name).join(", ")})` : ""}.`,
+      });
+    }
+
+    // PRICE — the Gui consults this BEFORE quoting a price on a call (so she never guesses). With a
+    // `service` name → that one service's price; without → the whole tenant price list. Same SCHED-gated
+    // biz_lookup already fetched above; no new gate.
+    if (op === "price") {
+      const only = pick(services, b.service);
+      const rows = (only ? [only] : services).map((s) => ({ name: s.name, price: money(s.price_cents), price_cents: s.price_cents ?? null }));
+      if (!rows.length) return json({ prices: [], message: "I don't have prices listed yet — I'll confirm that and get right back to you." });
+      const spoken = rows.map((s) => (s.price ? `${s.name} is ${s.price}` : `${s.name} is priced on request`)).join("; ");
+      return json({ prices: rows, message: `${spoken}.` });
+    }
+
+    // ADMIN: bulk-onboard a whole business from a JSON payload (operator/onboarding, not the agent)
+    if (op === "import") {
+      const r = await rpc(env, "biz_admin_import", { p_email: email, p_payload: b.payload || {} });
+      return json(r);
+    }
+
+    // find a caller's upcoming appointment by their phone/email (for reschedule/cancel by voice)
+    const findApptId = async () => {
+      if (b.appointment_id) return b.appointment_id;
+      if (!b.contact) return null;
+      const f = await rpc(env, "biz_find_appointments", { p_email: email, p_contact: (b.contact || "").toString() });
+      return (f.appointments || [])[0]?.id || null;
+    };
+
+    if (op === "points") {
+      const r = await rpc(env, "biz_customer_points", { p_email: email, p_contact: (b.contact || "").toString() });
+      return json({ points: r.points || 0, visits: r.visits || 0, message: `You have ${r.points || 0} loyalty points${r.visits ? ` from ${r.visits} visit${r.visits === 1 ? "" : "s"}` : ""}.` });
+    }
+    if (op === "find") {
+      const f = await rpc(env, "biz_find_appointments", { p_email: email, p_contact: (b.contact || "").toString() });
+      const appts = f.appointments || [];
+      if (!appts.length) return json({ appointments: [], message: "I don't see any upcoming appointments under that number." });
+      return json({ appointments: appts, message: `I found: ${appts.slice(0, 3).map((a) => `${a.service} on ${fmt(a.start, bizTz)}${a.pro ? ` with ${a.pro}` : ""}`).join("; ")}.` });
+    }
+
+    // ops on an existing appointment (by id from this call, or looked up by the caller's contact)
+    if (op === "confirm") {
+      const r = await rpc(env, "biz_confirm", { p_email: email, p_appointment_id: b.appointment_id });
+      return json({ ok: !!r.ok, message: r.ok ? "Confirmed — you're all set! Anything else?" : "I couldn't find that hold to confirm." });
+    }
+    if (op === "cancel") {
+      const id = await findApptId();
+      if (!id) return json({ message: "What's the phone number the appointment is under?" });
+      const r = await rpc(env, "biz_cancel", { p_email: email, p_appointment_id: id });
+      // Give reserved stock/capacity back to the shelf (no-op unless this booking consumed inventory).
+      if (r.ok) { try { await rpc(env, "rpc_reserve_release_by_appt", { p_email: email, p_appointment_id: id }); } catch { /* best-effort */ } }
+      if (r.ok) if (!testMode) await sendApptEmail(env, "cancel", { contact: (b.contact || "").toString(), name: (b.name || "").toString(), lang: b.lang });
+      // WAITLIST AUTO-FILL — the freed slot goes to the next person waiting for that service/location.
+      // biz_waitlist_fill_on_cancel pops + marks them notified (dedup); we reach out by email now / WA
+      // when approved. Best-effort: NEVER blocks the cancel; graceful no-op until the waitlist is pasted.
+      if (r.ok && !testMode) {
+        try {
+          const w = await rpc(env, "biz_waitlist_fill_on_cancel", { p_email: email, p_appointment_id: id });
+          if (w?.ok && w.filled && w.contact) {
+            const wc = (w.contact || "").toString();
+            if (isEmail(wc) && env.RESEND_API_KEY) {
+              const { subject, html } = waitlistOfferEmail({ name: (w.name || "").toString(), business: "", service: (w.service || "").toString(), lang: b.lang, bizEmail: email });
+              await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: wc, subject, html }) });
+            } else if (/^[0-9+][0-9\s()\-]{6,}$/.test(wc)) {
+              const ph = wc.replace(/[^0-9+]/g, "");
+              const msg = `🌱 Guileo: uma vaga${w.service ? ` pra ${w.service}` : ""} acabou de abrir! Você estava na lista de espera — quer que eu reserve? É só responder.`.slice(0, 300);
+              await sendText(env, ph, msg, { channel: "whatsapp" });
+            }
+          }
+        } catch { /* waitlist fill is a bonus — the cancel already succeeded */ }
+      }
+      return json({ ok: !!r.ok, message: r.ok ? "Done — that's cancelled. Anything else?" : "I couldn't find that appointment to cancel." });
+    }
+    if (op === "reschedule") {
+      const when = (b.when || b.start || "").toString();
+      const id = await findApptId();
+      if (!id || !when) return json({ message: "What's the phone number it's under, and the new day and time?" });
+      const r = await rpc(env, "biz_reschedule", { p_email: email, p_appointment_id: id, p_new_start: when });
+      if (r.ok) if (!testMode) await sendApptEmail(env, "reschedule", { contact: (b.contact || "").toString(), name: (b.name || "").toString(), whenLabel: fmt(when, bizTz), lang: b.lang });
+      if (!r.ok && r.reason === "closed_date") return json({ ok: false, reason: "closed_date", message: closedMsg(b.lang, fmtDay(when, bizTz, b.lang), r.note, "") });
+      return json({ ok: !!r.ok, message: r.ok ? `Moved to ${fmt(when, bizTz)}. You'll get a new confirmation.` : (r.reason === "slot_taken" ? "That new time's taken — want another?" : "I couldn't move that one.") });
+    }
+
+    // resolve names → records
+    const svc = pick(services, b.service);
+    const loc = pick(locations, b.location);
+    const pro = pick(pros, b.professional || b.pro);
+    if (!svc) return json({ message: `I didn't catch which service — we have ${services.map((s) => s.name).join(", ")}. Which one?` });
+
+    if (op === "availability") {
+      // EXTERNAL FIRST (golden rule): if the tenant has a connected+ready external calendar, its
+      // free slots are the real truth. handled:false (no external / external down / unmappable) →
+      // fall straight through to the internal engine below, IDENTICAL to before.
+      const sc = await scheduler();
+      if (sc.provider !== "internal") {
+        const ext = await adapterAvailability(env, email, sc, { origin, service: svc.name, location_id: loc?.id || null, professional_id: pro?.id || null });
+        if (ext.handled) {
+          const slots = ext.slots || [];
+          if (!slots.length) return json({ message: `I don't see openings for ${svc.name}${loc ? ` at ${loc.name}` : ""} in the next two weeks — want me to check another location or have someone call you?`, slots: [], source: sc.provider });
+          const human = slots.slice(0, 4).map((s) => `${fmt(s.start, bizTz)}${s.pro ? ` with ${s.pro}` : ""}`).join("; ");
+          return json({ slots, source: sc.provider, message: `For ${svc.name}${loc ? ` at ${loc.name}` : ""}, I have: ${human}. Which works?` });
+        }
+      }
+      const av = await rpc(env, "biz_availability", {
+        p_email: email, p_service_id: svc.id, p_location_id: loc?.id || null, p_pro_id: pro?.id || null, p_limit: 6,
+      });
+      const slots = (av.slots || []).map((s) => ({ start: s.start, pro: s.pro, location: s.location }));
+      if (!slots.length) return json({ message: `I don't see openings for ${svc.name}${loc ? ` at ${loc.name}` : ""} in the next two weeks — want me to check another location or have someone call you?`, slots: [] });
+      const human = slots.slice(0, 4).map((s) => `${fmt(s.start, bizTz)} with ${s.pro}${loc ? "" : ` at ${s.location}`}`).join("; ");
+      return json({ slots, message: `For ${svc.name}${loc ? ` at ${loc.name}` : ""}, I have: ${human}. Which works?` });
+    }
+
+    if (op === "book") {
+      // EXTERNAL FIRST (golden rule): if a connected+ready external calendar owns this tenant, WRITE
+      // the booking there (the salon's real system) — the adapter mirrors it into biz_appointments for
+      // the cockpit. handled:false → external down/unmappable → fall through to the internal engine,
+      // byte-for-byte as before. handled+!ok → external REJECTED (slot taken); we do NOT then book
+      // internally (that would double-book against the source of truth).
+      const scB = await scheduler();
+      if (scB.provider !== "internal") {
+        const startX = (b.when || b.start || "").toString();
+        if (!startX) return json({ message: "What day and time would you like?" });
+        const ext = await adapterBook(env, email, scB, {
+          origin, service: svc.name, start: startX,
+          name: (b.name || "").toString(), contact: (b.contact || "").toString(),
+          professional_id: b.staff_id || b.provider_staff_id || null,
+          location_id: b.location_id || b.provider_location_id || null,
+          duration_min: svc.duration_min || 60,
+          mirror: { pro: pro?.name || "", location: loc?.name || "" },
+        });
+        if (ext.handled && ext.ok) {
+          const refTxt = ext.external_ref ? ` Your confirmation number is ${ext.external_ref}.` : "";
+          if (!testMode) {
+            // Same customer-facing confirmation + owner alert + CRM as the internal path. No gcalPush:
+            // the external calendar IS the tenant's system of record, so there's nothing to mirror to Google.
+            await sendApptEmail(env, "book", { contact: (b.contact || "").toString(), name: (b.name || "").toString(), service: svc.name, whenLabel: fmt(startX, bizTz), pro: pro?.name || "", location: loc?.name || "", ref: ext.external_ref, lang: b.lang });
+            if (env.RESEND_API_KEY && email.includes("@")) {
+              try {
+                const { subject, html } = ownerAlertEmail({ kind: "booking", customer: (b.name || "").toString(), details: `${svc.name}${pro?.name ? ` · ${pro.name}` : ""}${loc?.name ? ` · ${loc.name}` : ""} · via ${scB.provider}`, when: fmt(startX, bizTz), lang: b.lang });
+                await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: email, subject, html }) });
+              } catch { /* best-effort */ }
+            }
+            await rpc(env, "biz_customer_touch", { p_email: email, p_contact: (b.contact || "").toString(), p_name: (b.name || "").toString(), p_points: 10, p_visit: true });
+            try {
+              const c = (b.contact || "").toString(); const isEm = /.+@.+\..+/.test(c);
+              const ur = await rpc(env, "crm_upsert_contact", { p_email: email, p_phone: isEm ? "" : c, p_contact_email: isEm ? c : "", p_name: (b.name || "").toString(), p_source: `gui:book:${scB.provider}`, p_amount_cents: 0 });
+              const cid = (typeof ur === "string") ? ur : null;
+              if (cid) {
+                await rpc(env, "crm_log_event", { p_email: email, p_contact_id: cid, p_type: "booking", p_channel: "Phone", p_summary: `Booked ${svc.name} for ${fmt(startX, bizTz)} (via ${scB.provider})`.slice(0, 400), p_amount_cents: Math.max(0, svc.price_cents || 0), p_dedupe: `book:${scB.provider}:${ext.external_ref || startX}`, p_payload: { ref: ext.external_ref || "", source: scB.provider } });
+                await rpc(env, "crm_deal_upsert", { p_email: email, p_contact_id: cid, p_title: `${svc.name}`.slice(0, 80), p_value_cents: Math.max(0, svc.price_cents || 0), p_stage: "booked", p_source: `gui-${scB.provider}` });
+              }
+            } catch { /* CRM best-effort */ }
+          }
+          return json({ ok: true, source: scB.provider, ref: ext.external_ref, external_ref: ext.external_ref, message: `Done — ${svc.name} booked for ${fmt(startX, bizTz)}.${refTxt} You'll get a confirmation. Anything else?` });
+        }
+        if (ext.handled && ext.ok === false) {
+          // External is the truth — we do NOT internal-book on top of it. Two honest cases:
+          //  • needsFrontdesk: we couldn't map/reach the external → capture + front desk confirms
+          //    (NEVER book blind — that's the double-book the audit caught).
+          //  • otherwise: the external rejected the slot (taken) → offer the next opening.
+          if (ext.needsFrontdesk) {
+            return json({ ok: false, source: scB.provider, captured: true, message: `Got it — I've noted your request for ${svc.name} at ${fmt(startX, bizTz)} and our front desk will confirm the exact spot with you shortly. Anything else I can help with?` });
+          }
+          return json({ ok: false, source: scB.provider, message: `That time was just taken — want me to check the next opening?` });
+        }
+        // ext.handled === false → external unreachable/unmappable → internal engine takes over below.
+      }
+      // resolve the pro: explicit, else the one free at that time from a fresh availability check
+      let proId = pro?.id || null, locId = loc?.id || null, startIso = (b.when || b.start || "").toString();
+      if (!startIso) return json({ message: "What day and time would you like?" });
+      if (!proId) {
+        const av = await rpc(env, "biz_availability", { p_email: email, p_service_id: svc.id, p_location_id: locId, p_limit: 30 });
+        // Match on the instant (epoch ±60s), not string identity — the DB and the agent can format
+        // the same moment differently (offset vs Z, ms, seconds) and a string mismatch loses the slot.
+        const match = (av.slots || []).find((s) => Math.abs(Date.parse(s.start) - Date.parse(startIso)) < 60000);
+        if (!match) {
+          const alts = (av.slots || []).slice(0, 3).map((s) => `${fmt(s.start, bizTz)} with ${s.pro}`).join("; ");
+          // SPECIAL DATES: if the requested day is closed (vacation/holiday), say WHY — not just "taken".
+          const sp = await specialFor(env, email, startIso, bizTz);
+          if (sp) return json({ ok: false, reason: "closed_date", slots: av.slots || [], message: closedMsg(b.lang, fmtDay(startIso, bizTz, b.lang), sp.note, alts) });
+          return json({ ok: false, slots: av.slots || [], message: alts ? `That time isn't open anymore — I have ${alts}. Want one of those?` : `That time isn't available — want me to check another day?` });
+        }
+        proId = match.pro_id; locId = match.location_id; startIso = match.start;
+      }
+      // capture per-vertical attributes the agent collected (party size, address, intake notes, etc.)
+      const attrs = {};
+      if (b.party_size) attrs.party_size = b.party_size;
+      if (b.address) attrs.address = (b.address || "").toString();
+      if (b.notes || b.intake) attrs.notes = (b.notes || b.intake || "").toString();
+      if (b.attributes && typeof b.attributes === "object") Object.assign(attrs, b.attributes);
+      // ── DRY-RUN (eval harness) — the availability check above already resolved a real free slot (or
+      // returned "not available" for a taken one). Report the WOULD-book decision with NO commit: no
+      // reserve, no biz_book, no email. Same resolution code the live path runs → the golden set proves
+      // Gui won't double-book a taken slot or book an 86'd service before it can hurt a real tenant.
+      if (b.dry_run === true || b.dryRun === true) {
+        return json({ ok: true, dry_run: true, decision: {
+          would_book: true, service: svc.name, service_id: svc.id,
+          price_cents: (svc.price_cents ?? svc.price ?? null), slot: startIso,
+          pro_id: proId, location_id: locId, reason_code: "slot_available",
+        } });
+      }
+
+      // ── ATOMIC RESERVE (Action Integrity) ────────────────────────────────────────────────────────
+      // If this service consumes physical inventory (item_skus) or a finite resource (resource_kind),
+      // reserve stock+capacity ATOMICALLY before we commit the booking — so two callers can't both grab
+      // the last unit under concurrency. Idempotent by (tenant, ref). Gated on those fields being
+      // present, so ordinary appointment traffic (which sends neither) is completely unaffected.
+      // Idempotency ref for BOTH the atomic reserve and bookIdem. It must distinguish two different
+      // parties booking the same service+slot, or the 2nd caller gets the 1st's cached ok:true with no
+      // stock decrement (overbook). Contact is the natural party key; when absent, fall back to the name
+      // then an agent-supplied request id so contactless bookings that DO have a name no longer collide.
+      // Never null (a null-ref reserve leaves no row to release on book failure) — the all-empty case
+      // keeps the prior deterministic key, which is retry-safe and release-safe; the residual collision
+      // needs anonymous + stock-consuming + same slot + two parties, and biz_book's EXCLUDE still blocks
+      // the actual slot double-book. Real fix for the common contactless path; edge stays bounded.
+      const _party = (b.contact || "").toString().trim()
+        || (b.name || "").toString().trim()
+        || (b.request_id || b.idempotency_key || "").toString().trim();
+      const reserveRef = `${email}:${_party}:${svc.id}:${startIso}`;
+      const skus = Array.isArray(b.item_skus) ? b.item_skus.map((s) => (s || "").toString()).filter(Boolean) : [];
+      const needsReserve = skus.length > 0 || !!b.resource_kind;
+      if (needsReserve) {
+        const rv = await rpc(env, "rpc_reserve_atomic", {
+          p_email: email, p_contact_id: null, p_service_id: svc.id,
+          p_slot_start: startIso, p_slot_end: (b.slot_end || b.end || null),
+          p_units: Number(b.party_size) > 0 ? Number(b.party_size) : 1,
+          p_item_skus: skus, p_ref: reserveRef,
+        });
+        const rvj = rv && rv.ok !== false ? rv : null;
+        if (!rvj || rvj.ok === false) {
+          const reason = rvj?.reason || rv?.reason;
+          if (reason === "out_of_stock") return json({ ok: false, reason, message: b.lang === "pt" ? "Esse item esgotou pra esse horário — quer que eu veja uma alternativa?" : b.lang === "es" ? "Ese artículo se agotó para ese horario — ¿busco una alternativa?" : "That item just sold out for this slot — want me to find an alternative?" });
+          if (reason === "no_capacity") return json({ ok: false, reason, message: b.lang === "pt" ? "Esse horário lotou — tenho outros bem pertinho, quer ver?" : b.lang === "es" ? "Ese horario se llenó — tengo otros cerquita, ¿los ves?" : "That slot just filled up — I have others close by, want to see them?" });
+          // RPC unreachable (SQL not pasted) → don't block the booking; proceed as before (honest degrade).
+        }
+      }
+      let res;
+      try {
+        res = await bookIdem(env, {
+          p_email: email, p_pro_id: proId, p_location_id: locId, p_service_id: svc.id,
+          p_name: (b.name || "").toString(), p_contact: (b.contact || "").toString(), p_start: startIso,
+          p_attributes: attrs, p_hold_min: b.hold ? 5 : null,
+        }, reserveRef);
+      } catch (bookErr) {
+        // bookIdem THREW (e.g. Supabase unreachable) → the reserved stock would be orphaned with no
+        // appointment. Give it back before propagating, so a slot never reads out-of-stock forever.
+        if (needsReserve) { try { await rpc(env, "rpc_reserve_release", { p_email: email, p_ref: reserveRef }); } catch { /* best-effort */ } }
+        throw bookErr;
+      }
+      // If we reserved stock but the booking itself failed, release the reservation so it isn't orphaned.
+      if (needsReserve && !res?.ok) {
+        try { await rpc(env, "rpc_reserve_release", { p_email: email, p_ref: reserveRef }); } catch { /* best-effort */ }
+      }
+      // Booking committed AND consumed stock → tie the reservation to the appointment so a later
+      // cancel/no-show can give the stock back (rpc_reserve_release_by_appt). Best-effort, never blocks.
+      if (needsReserve && res?.ok && res.appointment_id) {
+        try { await rpc(env, "ops_reservation_link", { p_email: email, p_ref: reserveRef, p_appointment_id: res.appointment_id }); } catch { /* best-effort */ }
+      }
+      if (res?.ok) {
+        const held = res.status === "hold" ? ` (held for 5 min while we confirm)` : "";
+        const refTxt = res.ref ? ` Your confirmation number is ${res.ref}.` : "";
+        // send the branded confirmation (email now if they gave an email; SMS lights up once A2P clears)
+        if (res.status !== "hold") {
+          if (!testMode) await sendApptEmail(env, "book", { contact: (b.contact || "").toString(), name: (b.name || "").toString(), service: svc.name, whenLabel: fmt(startIso, bizTz), pro: pro?.name || "", location: loc?.name || "", ref: res.ref, lang: b.lang });
+          // OWNER ALERT — ping the business owner (tenant) the instant a booking comes in, so they
+          // don't have to watch the cockpit. Best-effort; tenant is pinned server-side.
+          if (!testMode && env.RESEND_API_KEY && email.includes("@")) {
+            try {
+              const { subject, html } = ownerAlertEmail({ kind: "booking", customer: (b.name || "").toString(), details: `${svc.name}${pro?.name ? ` · ${pro.name}` : ""}${loc?.name ? ` · ${loc.name}` : ""}`, when: fmt(startIso, bizTz), lang: b.lang });
+              await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: email, subject, html }) });
+            } catch { /* best-effort — never block the booking */ }
+          }
+          // OWNER TEXT — instant if they set an alert phone (db/notify_phone.sql). Prefers WhatsApp
+          // when TWILIO_WHATSAPP_FROM is approved (no A2P needed); sendText falls back to SMS. Graceful.
+          if (!testMode && env.INGEST_SECRET) {
+            try {
+              // client_notify_phone_lookup is INGEST-gated. Call PostgREST DIRECTLY with INGEST_SECRET —
+              // the rpc() helper force-injects SCHED_SECRET, which this RPC rejects (unauthorized swallowed
+              // → the owner never got the booking alert). Same direct pattern as agent-action.js.
+              const pr = await fetch(`${SB}/rest/v1/rpc/client_notify_phone_lookup`, {
+                method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ p_secret: env.INGEST_SECRET, p_email: email }),
+              });
+              const ph = pr.ok ? ((await pr.json()) || "").toString() : "";
+              if (/^[0-9+]{8,}$/.test(ph)) await sendText(env, ph, `🔔 Guileo: nova reserva — ${(b.name || "cliente").toString()} · ${svc.name} · ${fmt(startIso, bizTz)}. guileoai.com/portal`.slice(0, 300), { channel: "whatsapp" });
+            } catch { /* text best-effort */ }
+          }
+          // GOOGLE CALENDAR — drop the booking into the owner's Google Calendar if they connected it
+          // (gcal-connect). This is the MindBody-free path: the spa sees the appointment in Google.
+          if (!testMode) await gcalPush(env, email, {
+            summary: `${svc.name} — ${(b.name || "cliente").toString()}`,
+            description: `Booked by Gui${pro?.name ? ` · ${pro.name}` : ""}${res.ref ? ` · ref ${res.ref}` : ""}. Contact: ${(b.contact || "").toString()}`,
+            location: (loc?.address || loc?.name || "").toString(), startIso, durationMin: svc.duration_min || 60, tz: bizTz,
+          });
+          // #5 — record the customer + award loyalty points (best-effort)
+          await rpc(env, "biz_customer_touch", { p_email: email, p_contact: (b.contact || "").toString(), p_name: (b.name || "").toString(), p_points: 10, p_visit: true });
+          // CRM SPINE (Company OS) — every booking builds the contact + a 360° timeline event + a "booked" deal.
+          // Best-effort + graceful: no-op until crm_spine.sql / crm_phase2.sql are pasted; never blocks the booking.
+          try {
+            const c = (b.contact || "").toString();
+            const isEm = /.+@.+\..+/.test(c);
+            const ur = await rpc(env, "crm_upsert_contact", { p_email: email, p_phone: isEm ? "" : c, p_contact_email: isEm ? c : "", p_name: (b.name || "").toString(), p_source: "gui:book", p_amount_cents: 0 });
+            const cid = (typeof ur === "string") ? ur : null;
+            if (cid) {
+              await rpc(env, "crm_log_event", { p_email: email, p_contact_id: cid, p_type: "booking", p_channel: "Phone", p_summary: `Booked ${svc.name} for ${fmt(startIso, bizTz)}`.slice(0, 400), p_amount_cents: Math.max(0, svc.price_cents || 0), p_dedupe: `book:${res.appointment_id}`, p_payload: { ref: res.ref || "" } });
+              await rpc(env, "crm_deal_upsert", { p_email: email, p_contact_id: cid, p_title: `${svc.name}`.slice(0, 80), p_value_cents: Math.max(0, svc.price_cents || 0), p_stage: "booked", p_source: "gui-schedule" });
+            }
+          } catch { /* CRM not live yet → never block the booking */ }
+        }
+        return json({ ok: true, appointment_id: res.appointment_id, ref: res.ref, status: res.status, message: `Done — ${svc.name} ${res.status === "hold" ? "held" : "booked"} for ${fmt(startIso, bizTz)}${held}.${refTxt} You'll get a confirmation. Anything else?` });
+      }
+      if (res?.reason === "slot_taken") return json({ ok: false, message: `That time was just taken — want the next opening instead?` });
+      // SPECIAL DATES: the DB guard (db/special_dates.sql) rejected a closed/reduced day —
+      // tell the caller warmly WHY + the nearest open slot (one cheap availability call).
+      if (res?.reason === "closed_date") {
+        let alts = "";
+        try {
+          const av2 = await rpc(env, "biz_availability", { p_email: email, p_service_id: svc.id, p_location_id: locId, p_limit: 3 });
+          alts = (av2.slots || []).slice(0, 3).map((s) => `${fmt(s.start, bizTz)} with ${s.pro}`).join("; ");
+        } catch { /* alts are a bonus — the closed message stands alone */ }
+        return json({ ok: false, reason: "closed_date", message: closedMsg(b.lang, fmtDay(startIso, bizTz, b.lang), res.note, alts) });
+      }
+      return json({ ok: false, message: `I couldn't lock that in — let me grab you another time.` });
+    }
+
+    // #10 — add to the waitlist (auto-offered when a slot frees up)
+    if (op === "waitlist") {
+      const r = await rpc(env, "biz_waitlist_add", { p_email: email, p_service_id: svc.id, p_location_id: loc?.id || null, p_contact: (b.contact || "").toString(), p_name: (b.name || "").toString() });
+      return json({ ok: !!r.ok, message: r.ok ? `You're on the waitlist for ${svc.name}${loc ? ` at ${loc.name}` : ""} — I'll reach out the moment a spot opens. Anything else?` : `I couldn't add you to the waitlist just now.` });
+    }
+
+    // #4 — recurring booking: book the same weekly slot for N weeks
+    if (op === "recurring") {
+      const weeks = Math.min(Math.max(parseInt(b.weeks || "4", 10) || 4, 1), 12);
+      let startIso = (b.when || b.start || "").toString();
+      if (!startIso) return json({ message: "What day and time should the recurring appointment start?" });
+      // resolve a pro for the first slot
+      let proId = pro?.id || null, locId = loc?.id || null;
+      if (!proId) {
+        const av = await rpc(env, "biz_availability", { p_email: email, p_service_id: svc.id, p_location_id: locId, p_limit: 30 });
+        // Match on the instant (epoch ±60s), not string identity (see availability/book above).
+        const m = (av.slots || []).find((s) => Math.abs(Date.parse(s.start) - Date.parse(startIso)) < 60000) || (av.slots || [])[0];
+        if (m) { proId = m.pro_id; locId = m.location_id; startIso = m.start; }
+      }
+      const base = new Date(startIso); const booked = [];
+      for (let i = 0; i < weeks; i++) {
+        const when = new Date(base.getTime() + i * 7 * 86400000).toISOString();
+        const r = await bookIdem(env, { p_email: email, p_pro_id: proId, p_location_id: locId, p_service_id: svc.id, p_name: (b.name || "").toString(), p_contact: (b.contact || "").toString(), p_start: when }, `${email}:${(b.contact || "").toString()}:${svc.id}:${when}`);
+        if (r.ok) booked.push(fmt(when, bizTz));
+      }
+      if (booked.length) await rpc(env, "biz_customer_touch", { p_email: email, p_contact: (b.contact || "").toString(), p_name: (b.name || "").toString(), p_points: 10 * booked.length, p_visit: true });
+      return json({ ok: booked.length > 0, booked: booked.length, message: booked.length ? `Set up ${booked.length} weekly ${svc.name} appointments, starting ${booked[0]}. You'll get a confirmation. Anything else?` : `I couldn't set up the recurring appointment — let me try another time.` });
+    }
+
+    return json({ message: "Unknown scheduling request." });
+  } catch {
+    return json({ message: "Sorry, the schedule hiccuped — could you say that again?" }, 200);
+  }
+}
+
+// ── SPECIAL DATES (cockpit) — the owner manages vacation/holiday/reduced-hours days.
+// PER-TENANT GATE: bind the cockpit email to its connection key via get_client_data (rejects a
+// mismatch) — copied from noshow-radar.js. SCHED_SECRET stays server-side. Graceful ready:false
+// until db/special_dates.sql is pasted in Supabase.
+async function specialDates(env, b, action) {
+  const email = (b.email || "").toString().trim().toLowerCase();
+  const key = (b.token || b.key || "").toString().trim();
+  if (!email.includes("@") || !key) return json({ error: "unauthorized" }, 401);
+  const gd = await fetch(`${SB}/rest/v1/rpc/get_client_data`, {
+    method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_email: email, p_key: key }),
+  });
+  if (!gd.ok) return json({ error: "unauthorized" }, 401);
+  const gdj = await gd.json().catch(() => null);
+  if (!(gdj && typeof gdj === "object" && Array.isArray(gdj.events))) return json({ error: "unauthorized" }, 401);
+  const notReady = { ok: true, ready: false, note: "Paste db/special_dates.sql in Supabase to activate special dates.", dates: [] };
+
+  if (action === "special_set") {
+    const date = (b.date || "").toString().trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "bad date" }, 400);
+    const closed = b.closed !== false; // default: closed all day
+    const mins = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) && n >= 0 && n <= 1440 ? n : null; };
+    const r = await fetch(`${SB}/rest/v1/rpc/biz_set_special_date`, {
+      method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        p_secret: env.SCHED_SECRET || "", p_email: email, p_date: date,
+        p_closed: closed, p_open_min: closed ? null : mins(b.open_min), p_close_min: closed ? null : mins(b.close_min),
+        p_note: (b.note || "").toString().slice(0, 160), p_remove: b.remove === true,
+      }),
+    });
+    if (!r.ok) return json(notReady); // RPC not pasted yet → honest note, never a 500
+    const rj = await r.json().catch(() => ({}));
+    return json({ ok: rj?.ok === true, ready: true, reason: rj?.reason || null });
+  }
+  // special_list
+  const r = await fetch(`${SB}/rest/v1/rpc/biz_list_special_dates`, {
+    method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_secret: env.SCHED_SECRET || "", p_email: email, p_days: 365 }),
+  });
+  if (!r.ok) return json(notReady);
+  const rj = await r.json().catch(() => ({}));
+  return json({ ok: true, ready: true, dates: Array.isArray(rj?.dates) ? rj.dates : [] });
+}
+
+// ── LOCATIONS (cockpit) — the owner adds/edits/deactivates business units (multi-location).
+// PER-TENANT GATE: identical to specialDates above (email + connection key via get_client_data;
+// SCHED_SECRET stays server-side). Graceful ready:false until db/multi_location.sql is pasted.
+async function locActions(env, b, action) {
+  const email = (b.email || "").toString().trim().toLowerCase();
+  const key = (b.token || b.key || "").toString().trim();
+  if (!email.includes("@") || !key) return json({ error: "unauthorized" }, 401);
+  const gd = await fetch(`${SB}/rest/v1/rpc/get_client_data`, {
+    method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_email: email, p_key: key }),
+  });
+  if (!gd.ok) return json({ error: "unauthorized" }, 401);
+  const gdj = await gd.json().catch(() => null);
+  if (!(gdj && typeof gdj === "object" && Array.isArray(gdj.events))) return json({ error: "unauthorized" }, 401);
+  const notReady = { ok: true, ready: false, note: "Paste db/multi_location.sql in Supabase to activate location management.", locations: [] };
+
+  if (action === "loc_set") {
+    const name = (b.name || "").toString().trim().slice(0, 80);
+    const id = (b.id || "").toString().trim();
+    if (!id && !name) return json({ error: "name required" }, 400);
+    const r = await fetch(`${SB}/rest/v1/rpc/biz_location_set`, {
+      method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        p_secret: env.SCHED_SECRET || "", p_email: email, p_id: id || null,
+        p_name: name || null, p_address: (b.address || "").toString().slice(0, 160) || null,
+        p_city: (b.city || "").toString().slice(0, 80) || null, p_phone: (b.phone || "").toString().slice(0, 40) || null,
+        p_tz: (b.tz || "").toString().slice(0, 64) || null,
+        p_active: typeof b.active === "boolean" ? b.active : null,
+      }),
+    });
+    if (!r.ok) return json(notReady); // RPC not pasted yet → honest note, never a 500
+    const rj = await r.json().catch(() => ({}));
+    return json({ ok: rj?.ok === true, ready: true, id: rj?.id || null, reason: rj?.reason || null });
+  }
+  // loc_list
+  const r = await fetch(`${SB}/rest/v1/rpc/biz_locations_admin_list`, {
+    method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_secret: env.SCHED_SECRET || "", p_email: email }),
+  });
+  if (!r.ok) return json(notReady);
+  const rj = await r.json().catch(() => ({}));
+  return json({ ok: true, ready: true, locations: Array.isArray(rj?.locations) ? rj.locations : [] });
+}
+
+// Is the requested start on a closed special date? (agent path; cheap + graceful: null until SQL pasted)
+async function specialFor(env, email, iso, tz) {
+  try {
+    const day = new Date(iso).toLocaleDateString("en-CA", { timeZone: tz || "America/New_York" }); // YYYY-MM-DD
+    const r = await rpc(env, "biz_list_special_dates", { p_email: email, p_days: 365 });
+    return (r?.dates || []).find((d) => d.date === day && d.closed) || null;
+  } catch { return null; }
+}
+
+// The agent-speakable "we're closed that day" line — in the caller's language (en/pt/es/hi).
+function closedMsg(lang, dateLabel, note, alts) {
+  const n = note ? ` — ${note}` : "";
+  const L = (lang || "en").toString().slice(0, 2);
+  if (L === "pt") return `Estamos fechados em ${dateLabel}${n}.${alts ? ` O horário livre mais próximo é ${alts}. Algum desses funciona?` : " Qual outro dia funciona pra você?"}`;
+  if (L === "es") return `Estamos cerrados el ${dateLabel}${n}.${alts ? ` El horario libre más cercano es ${alts}. ¿Le sirve alguno?` : " ¿Qué otro día le viene bien?"}`;
+  if (L === "hi") return `${dateLabel} को हम बंद हैं${n}।${alts ? ` सबसे नज़दीकी खुला समय है ${alts}। क्या इनमें से कोई ठीक रहेगा?` : " कौन सा दूसरा दिन आपके लिए ठीक रहेगा?"}`;
+  return `We're closed on ${dateLabel}${n}.${alts ? ` The nearest open slot is ${alts}. Would one of those work?` : " What other day works for you?"}`;
+}
+
+// date-only label ("Thu, Nov 26") in the business's timezone, localized so the agent can SAY it
+function fmtDay(iso, tz = "America/New_York", lang = "en") {
+  const loc = { pt: "pt-BR", es: "es", hi: "hi-IN" }[(lang || "en").toString().slice(0, 2)] || "en-US";
+  try { return new Date(iso).toLocaleDateString(loc, { weekday: "short", month: "short", day: "numeric", timeZone: tz || "America/New_York" }); }
+  catch { return (iso || "").toString().slice(0, 10); }
+}
+
+// Book with idempotency: pass a stable request_id so a retried/double-fired tool call returns the SAME
+// booking. RESILIENT: if the DB still has the old biz_book (no p_request_id param yet, before the
+// idempotency migration is pasted), it transparently retries without it — never breaks booking.
+async function bookIdem(env, params, reqId) {
+  let r = await rpc(env, "biz_book", { ...params, p_request_id: (reqId || "").toString().slice(0, 160) });
+  if (r && (r.code === "PGRST202" || (typeof r.message === "string" && /p_request_id|could not find|function .*biz_book/i.test(r.message)))) {
+    r = await rpc(env, "biz_book", params); // legacy function without the idempotency param
+  }
+  return r;
+}
+
+function fmt(iso, tz = "America/New_York") {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: tz || "America/New_York" });
+  } catch { return iso; }
+}
+const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store" } });

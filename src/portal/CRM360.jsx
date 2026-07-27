@@ -1,0 +1,246 @@
+/* Split out of Portal.jsx (performance): CRM360 tab view — code moved verbatim. */
+import { useState, useEffect } from "react";
+import { fetchCrmDeals, fetchCrmTimeline, fetchCRM } from "../lib/portalApi.js";
+import { waTo } from "../data/contact.js";
+import { Card, genCustomers, tr, MiniStats, Empty, Drawer, SectionSkeleton } from "../pages/Portal.jsx";
+
+// Pipeline board — crm_deals grouped by stage (the sales motor: inquiry → quoted → booked → won).
+// Kanban columns scroll horizontally on mobile; each open card carries a "→" that advances it one
+// stage (buttons beat drag-drop for reliability). Demo mode shows the board but disables the moves.
+const PIPE_ORDER = ["inquiry", "quoted", "booked", "won"];
+function PipelineBoard({ deals = [], fmtMoney, tr, demo, onAdvance, movingId }) {
+  const STAGES = [
+    ["inquiry", tr("Inquiry"), "#9AA0A6"],
+    ["quoted", tr("Quoted"), "#D6C29A"],
+    ["booked", tr("Booked"), "#3E9468"],
+    ["won", tr("Won"), "#C08A3E"],
+    ["lost", tr("Lost"), "#B66"],
+  ];
+  const ageDays = (d) => { const t = new Date(d.updated_at || d.created_at || Date.now()).getTime(); return Math.max(0, Math.floor((Date.now() - t) / 86400000)); };
+  if (!deals.length) {
+    return <Card className="p-8 text-center"><div className="text-3xl mb-2">📊</div><div className="text-sm text-g-muted">{demo ? tr("When Gui quotes and closes on a call, the deal lands here and moves across the pipeline automatically.") : tr("No deals yet — Gui opens one the moment it quotes a job, and advances it as the customer books and pays.")}</div></Card>;
+  }
+  return (
+    <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+      {STAGES.map(([key, label, color]) => {
+        const col = deals.filter((d) => (d.stage || "inquiry") === key);
+        const sum = col.reduce((s, d) => s + (d.value_cents || 0), 0);
+        return (
+          <div key={key} className="rounded-xl2 border border-white/10 bg-white/[0.03] p-3 min-w-[200px] w-[200px] sm:w-auto sm:min-w-[180px] sm:flex-1 shrink-0">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-black uppercase tracking-wide" style={{ color }}>{label}</span>
+              <span className="text-[10px] text-g-muted">{col.length} · {fmtMoney(sum)}</span>
+            </div>
+            <div className="space-y-2">
+              {col.map((d, i) => {
+                const next = PIPE_ORDER[PIPE_ORDER.indexOf(key) + 1];
+                const canMove = !!next && key !== "won" && key !== "lost" && (d.status || "open") === "open";
+                const age = ageDays(d);
+                return (
+                  <div key={d.id || i} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[12.5px] font-bold text-g-word truncate">{d.contact_name || d.title || tr("Unknown")}</div>
+                        <div className="flex items-center justify-between mt-0.5 gap-2">
+                          <span className="text-[10.5px] text-g-muted truncate">{d.title || ""}</span>
+                          <span className="text-[10px] text-g-muted/70 shrink-0">{age}d</span>
+                        </div>
+                        <div className="text-[12px] font-extrabold text-g-green mt-0.5">{fmtMoney(d.value_cents)}</div>
+                      </div>
+                      {canMove && (
+                        <button
+                          onClick={() => !demo && onAdvance && onAdvance(d, next)}
+                          disabled={demo || movingId === d.id}
+                          title={demo ? tr("Demo") + " — " + (STAGES.find((s) => s[0] === next)?.[1] || next) : `${label} → ${STAGES.find((s) => s[0] === next)?.[1] || next}`}
+                          className={`grid place-items-center h-7 w-7 rounded-full border shrink-0 text-[13px] font-black transition ${demo || movingId === d.id ? "border-white/10 text-g-muted/50 cursor-not-allowed" : "border-g-green/40 bg-g-green/10 text-g-green hover:bg-g-green/20"}`}
+                        >{movingId === d.id ? "…" : "→"}</button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {col.length === 0 && <div className="text-[11px] text-g-muted/60 py-2 text-center">—</div>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// CRM 360 — the unified contact spine (crm_contacts) every department reads. Reads /api/crm, which
+// gracefully reports ready:false until db/crm_spine.sql is pasted. In demo mode we render a
+// representative book (from the sector's sample customers) so the tour stays alive.
+function CRM360({ V, onNav, real = null, email = "", dataKey = "" }) {
+  const demo = !dataKey;
+  const [data, setData] = useState({ ready: demo, count: 0, contacts: [] });
+  const [loading, setLoading] = useState(!demo);
+  const [q, setQ] = useState("");
+  const [sel, setSel] = useState(null);
+  const [timeline, setTimeline] = useState([]);
+  const [tlLoading, setTlLoading] = useState(false);
+  const [tab, setTab] = useState("contacts"); // contacts | pipeline
+  const [deals, setDeals] = useState([]);
+  const [dealsLoading, setDealsLoading] = useState(false);
+  const [movingId, setMovingId] = useState(null);
+
+  // Pipeline board — fetch deals when the tab opens (demo synthesizes a board from the sample contacts).
+  useEffect(() => {
+    let alive = true;
+    if (tab !== "pipeline") return;
+    if (demo) {
+      const stages = ["inquiry", "quoted", "booked", "won"];
+      const day = 86400000;
+      setDeals((data.contacts || []).map((c, i) => ({ id: `d${i}`, contact_name: c.full_name, title: `${c.full_name} · ${V.label || "service"}`, value_cents: c.ltv_cents || 0, stage: stages[i % 4], status: i % 4 === 3 ? "won" : "open", updated_at: new Date(Date.now() - ((i % 5) + 1) * day).toISOString() })));
+      return () => { alive = false; };
+    }
+    if (dataKey) { setDealsLoading(true); fetchCrmDeals(dataKey, email).then((d) => { if (alive) { setDeals(d); setDealsLoading(false); } }); }
+    return () => { alive = false; };
+  }, [tab, demo, dataKey, email]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "→" on a card — advance a deal one stage through /api/crm (crm_deal_move, tenant-scoped in SQL).
+  const advanceDeal = async (deal, next) => {
+    if (demo || !dataKey || !deal?.id) return;
+    setMovingId(deal.id);
+    try {
+      const r = await fetch("/api/crm", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "deal_move", token: dataKey, email: email || "", deal_id: deal.id, stage: next }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d?.ok && d?.deal) setDeals((cur) => cur.map((x) => (x.id === deal.id ? { ...x, stage: d.deal.stage, status: d.deal.status, updated_at: new Date().toISOString() } : x)));
+    } catch { /* board stays as-is; next fetch reconciles */ }
+    setMovingId(null);
+  };
+
+  // When a contact is opened, pull its 360° timeline (real contacts only; demo rows have no live history).
+  useEffect(() => {
+    let alive = true;
+    setTimeline([]);
+    const realId = sel && /^[0-9a-f-]{36}$/i.test(sel.id || "");
+    if (sel && !demo && realId && dataKey) {
+      setTlLoading(true);
+      fetchCrmTimeline(dataKey, email, sel.id).then((ev) => { if (alive) { setTimeline(ev); setTlLoading(false); } });
+    }
+    return () => { alive = false; };
+  }, [sel, demo, dataKey, email]);
+
+  useEffect(() => {
+    let alive = true;
+    if (demo) {
+      const rows = (V.customers || genCustomers(V)).map((c, i) => ({
+        id: `demo-${i}`, full_name: c.name, phone: c.phone || "", email: c.email || "",
+        lifecycle: i === 0 ? "vip" : (c.orders || 1) > 1 ? "customer" : "lead",
+        ltv_cents: Math.round((c.spent || 0) * 100), visit_count: c.orders || 1,
+        last: c.last, churn_risk: i % 4 === 3 ? 64 : 11, tags: [],
+      }));
+      setData({ ready: true, count: rows.length, contacts: rows });
+      return () => { alive = false; };
+    }
+    setLoading(true);
+    fetchCRM(dataKey, email).then((d) => { if (alive) { setData(d); setLoading(false); } });
+    return () => { alive = false; };
+  }, [demo, dataKey, email]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fmtMoney = (cents) => `$${Math.round((cents || 0) / 100).toLocaleString()}`;
+  const lifeColor = (l) => l === "vip" ? "#C08A3E" : l === "customer" ? "#3E9468" : l === "lost" ? "#9A9A9A" : "#D6C29A";
+  const all = data.contacts || [];
+  const rows = all.filter((c) => { const s = q.trim().toLowerCase(); return !s || (c.full_name || "").toLowerCase().includes(s) || (c.phone || "").includes(s) || (c.email || "").toLowerCase().includes(s); });
+  const leads = all.filter((c) => (c.lifecycle || "lead") === "lead").length;
+  const ltv = all.reduce((s, c) => s + (c.ltv_cents || 0), 0);
+  const risk = all.filter((c) => (c.churn_risk || 0) >= 50).length;
+
+  // Real fetch still in flight → cement shimmer instead of a flash of zero-stats.
+  if (!demo && loading) return <SectionSkeleton />;
+
+  // Connected, but the spine isn't live yet → guide to activate (no fake data).
+  if (!demo && !loading && !data.ready) {
+    return (
+      <div className="space-y-4 stagger">
+        <Card className="p-8 text-center border-g-gold/25 bg-g-gold/[0.05]">
+          <div className="text-4xl mb-3">🗂️</div>
+          <div className="text-lg font-extrabold text-g-word">{tr("Activate the CRM")}</div>
+          <div className="text-sm text-g-muted mt-1.5 max-w-md mx-auto leading-relaxed">{tr("Your contact spine isn't live yet. Paste db/crm_spine.sql in Supabase to switch it on.")}</div>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 stagger">
+      <MiniStats items={[
+        [tr("Total contacts"), `${data.count || all.length}`],
+        [tr("Active leads"), `${leads}`, "good"],
+        [tr("Lifetime value"), fmtMoney(ltv), "good"],
+        [tr("At churn risk"), `${risk}`, risk ? "bad" : undefined],
+      ]} />
+      <div className="flex gap-2">
+        {[["contacts", tr("Contacts")], ["pipeline", tr("Pipeline")]].map(([k, label]) => (
+          <button key={k} onClick={() => setTab(k)} className={`rounded-full px-4 py-1.5 text-[12.5px] font-bold transition ${tab === k ? "bg-g-green/15 text-g-light border border-g-green/40" : "border border-white/10 bg-white/[0.04] text-g-muted hover:text-g-word"}`}>{label}</button>
+        ))}
+      </div>
+      {tab === "pipeline" ? (
+        dealsLoading ? <SectionSkeleton /> : <PipelineBoard deals={deals} fmtMoney={fmtMoney} tr={tr} demo={demo} onAdvance={advanceDeal} movingId={movingId} />
+      ) : (
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between gap-3">
+          <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("CRM 360")}</span>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("Search contacts…")} className="bg-white/[0.04] border border-white/10 rounded-full px-3 py-1 text-[12px] text-g-word placeholder:text-g-muted/70 focus:outline-none focus:border-g-green/40 w-36 sm:w-56" />
+        </div>
+        <div className="divide-y divide-white/[0.06]">
+          {rows.map((c, i) => (
+            <button key={c.id || i} onClick={() => setSel(c)} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
+              <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word shrink-0">{(c.full_name || "?").trim()[0]?.toUpperCase() || "?"}</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{c.full_name || "—"}
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0" style={{ background: lifeColor(c.lifecycle) + "22", color: lifeColor(c.lifecycle) }}>{(c.lifecycle || "lead").toUpperCase()}</span>
+                  {(c.churn_risk || 0) >= 50 && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-300 shrink-0">⚠</span>}
+                </div>
+                <div className="text-[11px] text-g-muted truncate">{c.phone || c.email || "—"} · {c.visit_count || 0} {tr("visits")}</div>
+              </div>
+              <span className="text-sm font-extrabold text-g-green shrink-0">{fmtMoney(c.ltv_cents)}</span>
+            </button>
+          ))}
+          {rows.length === 0 && <Empty icon="👥" text={tr("No contacts yet — Gui fills this book automatically from every call, message and booking.")} />}
+        </div>
+      </Card>
+      )}
+      {sel && (
+        <Drawer
+          title={sel.full_name || "—"}
+          subtitle={sel.phone || sel.email || ""}
+          badge={<span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: lifeColor(sel.lifecycle) + "22", color: lifeColor(sel.lifecycle) }}>{(sel.lifecycle || "lead").toUpperCase()}</span>}
+          fields={[[tr("Lifetime value"), fmtMoney(sel.ltv_cents)], [tr("visits"), sel.visit_count || 0], [tr("Phone"), sel.phone || "—"], [tr("Email"), sel.email || "—"], [tr("At churn risk"), `${sel.churn_risk || 0}%`], [tr("Last seen"), sel.last || (sel.last_seen_at ? new Date(sel.last_seen_at).toLocaleDateString() : "—")]]}
+          actions={(sel.phone || sel.email) ? <a href={waTo(sel.phone, `Hi ${sel.full_name || ""}! `)} target="_blank" rel="noopener" className="btn-bright text-sm">{tr("💬 Message")}</a> : null}
+          onClose={() => setSel(null)}
+        >
+          <div className="mt-1">
+            <div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">{tr("360° timeline")}</div>
+            {tlLoading ? (
+              <div className="text-xs text-g-muted">{tr("Loading…")}</div>
+            ) : timeline.length ? (
+              <div className="space-y-2.5">
+                {timeline.map((e, k) => {
+                  const ic = { call: "📞", sms: "💬", email: "✉️", booking: "📅", payment: "💳", quote: "🧾", note: "📝", automation: "⚡", stage_change: "🔁" }[e.event_type] || "•";
+                  return (
+                    <div key={k} className="flex items-start gap-2.5 text-xs">
+                      <span className="text-sm leading-none mt-0.5">{ic}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-g-word font-semibold truncate">{e.summary || e.event_type}{e.amount_cents ? <span className="text-g-green"> · {fmtMoney(e.amount_cents)}</span> : null}</div>
+                        <div className="text-[10px] text-g-muted">{e.channel ? e.channel + " · " : ""}{e.occurred_at ? new Date(e.occurred_at).toLocaleString() : ""}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-xs text-g-muted">{demo ? tr("Connect your line and Gui logs every call, message, booking and payment here automatically.") : tr("No activity logged yet — Gui adds every call, message, booking and payment here as it happens.")}</div>
+            )}
+          </div>
+        </Drawer>
+      )}
+    </div>
+  );
+}
+
+export default CRM360;

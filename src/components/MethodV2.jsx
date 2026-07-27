@@ -10,10 +10,10 @@ const STEPS = [
 ];
 
 const MV_COPY = {
-  en: { h1a:"Led by real humans — ", h1b:"not just bots.", subA:"We get to know your business — ", subB:"we'll even visit you", subM:" — then design and build the system that grows your profit. ", subC:"Live in under 7 days.", phases:["Plant","Nurture","Harvest"] },
-  pt: { h1a:"Conduzido por humanos — ", h1b:"não só bots.", subA:"A gente conhece seu negócio — ", subB:"até visita você", subM:" — e então desenha e constrói o sistema que faz seu lucro crescer. ", subC:"No ar em menos de 7 dias.", phases:["Plantar","Nutrir","Colher"] },
-  es: { h1a:"Liderado por humanos — ", h1b:"no solo bots.", subA:"Conocemos tu negocio — ", subB:"incluso te visitamos", subM:" — y luego diseñamos y construimos el sistema que hace crecer tu ganancia. ", subC:"En vivo en menos de 7 días.", phases:["Plantar","Nutrir","Cosechar"] },
-  hi: { h1a:"असली इंसानों द्वारा संचालित — ", h1b:"सिर्फ़ बॉट नहीं।", subA:"हम आपका व्यवसाय जानते हैं — ", subB:"आपसे मिलने भी आते हैं", subM:" — फिर वह सिस्टम डिज़ाइन और बनाते हैं जो आपका मुनाफ़ा बढ़ाए। ", subC:"7 दिनों से कम में लाइव।", phases:["बोएँ","पोषें","काटें"] },
+  en: { h1a:"Led by real humans — ", h1b:"not just bots.", subA:"We get to know your business — ", subB:"we'll even visit you", subM:" — then design and build the system that grows your profit. ", subC:"Live in under 7 days.", phases:["Plant","Nurture","Harvest"], when:["Day 01","Days 2–7","Week 2 →"], tags:["we study & design it","built & live for you","profit compounds"], disc:"Illustrative averages — results depend on your business." },
+  pt: { h1a:"Conduzido por humanos — ", h1b:"não só bots.", subA:"A gente conhece seu negócio — ", subB:"até visita você", subM:" — e então desenha e constrói o sistema que faz seu lucro crescer. ", subC:"No ar em menos de 7 dias.", phases:["Plantar","Nutrir","Colher"], when:["Dia 01","Dias 2–7","Semana 2 →"], tags:["a gente estuda e desenha","construído e no ar pra você","o lucro compõe"], disc:"Médias ilustrativas — resultados variam conforme seu negócio." },
+  es: { h1a:"Liderado por humanos — ", h1b:"no solo bots.", subA:"Conocemos tu negocio — ", subB:"incluso te visitamos", subM:" — y luego diseñamos y construimos el sistema que hace crecer tu ganancia. ", subC:"En vivo en menos de 7 días.", phases:["Plantar","Nutrir","Cosechar"], when:["Día 01","Días 2–7","Semana 2 →"], tags:["lo estudiamos y diseñamos","construido y en vivo para ti","la ganancia se acumula"], disc:"Promedios ilustrativos — los resultados dependen de tu negocio." },
+  hi: { h1a:"असली इंसानों द्वारा संचालित — ", h1b:"सिर्फ़ बॉट नहीं।", subA:"हम आपका व्यवसाय जानते हैं — ", subB:"आपसे मिलने भी आते हैं", subM:" — फिर वह सिस्टम डिज़ाइन और बनाते हैं जो आपका मुनाफ़ा बढ़ाए। ", subC:"7 दिनों से कम में लाइव।", phases:["बोएँ","पोषें","काटें"], when:["दिन 01","दिन 2–7","हफ़्ता 2 →"], tags:["हम पढ़ते और डिज़ाइन करते हैं","आपके लिए बना और लाइव","मुनाफ़ा बढ़ता जाता है"], disc:"उदाहरणात्मक औसत — परिणाम आपके व्यवसाय पर निर्भर करते हैं।" },
 };
 
 export default function MethodV2() {
@@ -75,16 +75,18 @@ export default function MethodV2() {
                 {/* the message below the soil */}
                 <div className="mt-6 px-0.5" style={{ animation: `mvreveal .7s ease ${0.6 + i * 0.2}s both` }}>
                   <div className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider" style={{ borderColor: `rgba(${s.rgb},0.4)`, color: `rgb(${s.rgb})` }}>{harvest ? "🌾" : "🛠️"} {harvest ? M.phases[2] : M.phases[i === 0 ? 0 : 1]}</div>
-                  <div className="mt-2 text-[11px] font-bold uppercase tracking-wider text-g-ink">{s.when}</div>
+                  <div className="mt-2 text-[11px] font-bold uppercase tracking-wider text-g-ink">{M.when[i] || s.when}</div>
                   <h3 className="mt-1 font-black leading-[1.08] tracking-tight text-g-word" style={{ fontSize: "clamp(1.15rem,2vw,1.45rem)" }}>{dictSteps[i]?.[1] || s.title}</h3>
                   <p className="mx-auto mt-2 max-w-[15rem] text-[12.5px] leading-relaxed text-g-ink sm:text-[13px]">{dictSteps[i]?.[2] || s.desc}</p>
-                  <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-g-line bg-white/[0.04] px-3 py-1 text-[11.5px] font-semibold" style={{ color: `rgb(${s.rgb})` }}>✓ {s.tag}</div>
+                  <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-g-line bg-white/[0.04] px-3 py-1 text-[11.5px] font-semibold" style={{ color: `rgb(${s.rgb})` }}>✓ {M.tags[i] || s.tag}</div>
                 </div>
               </div>
             );
           })}
         </div>
       </div>
+
+      <p className="mx-auto mt-8 max-w-2xl text-center text-[11.5px] italic text-g-muted">{M.disc}</p>
     </section>
   );
 }

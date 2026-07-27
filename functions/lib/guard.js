@@ -3,6 +3,15 @@
 // (2) ownerOnly() restricts email recipients to the account owner so endpoints can't be
 // abused as an open relay to attacker-chosen victims.
 
+// Constant-time string compare for secrets/tokens/signatures — avoids leaking length-prefix
+// info via early-exit timing. Returns true only when both are non-empty and equal.
+export function safeEq(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  let r = 0;
+  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return r === 0;
+}
+
 const ALLOWED_ORIGINS = ["https://guileoai.com", "https://www.guileoai.com"];
 const okOrigin = (u) => ALLOWED_ORIGINS.includes(u) || /^https:\/\/[a-z0-9-]+\.guileoai\.pages\.dev$/.test(u);
 
@@ -32,12 +41,14 @@ export function isOwnerEmail(to, env) {
 }
 
 // Per-IP fixed-window rate limiter on Cloudflare KV (binding RATE_LIMIT in wrangler.toml).
-// FAIL-OPEN by design: if KV isn't bound or errors, the request proceeds — abuse braking
+// FAIL-OPEN by default: if KV isn't bound or errors, the request proceeds — abuse braking
 // must never break a real customer. Window buckets self-expire via TTL.
-export async function rateLimited(request, env, route, limit, windowSec = 60) {
+// failClosed=true flips that for costly endpoints (e.g. paid outbound calls): a missing or
+// erroring KV then DENIES (returns true) so the limiter can't be bypassed by knocking out KV.
+export async function rateLimited(request, env, route, limit, windowSec = 60, failClosed = false) {
   try {
     const kv = env && env.RATE_LIMIT;
-    if (!kv) return false;
+    if (!kv) return failClosed;
     const ip = request.headers.get("CF-Connecting-IP") || "noip";
     const bucket = Math.floor(Date.now() / (windowSec * 1000));
     const key = `rl:${route}:${ip}:${bucket}`;
@@ -45,7 +56,7 @@ export async function rateLimited(request, env, route, limit, windowSec = 60) {
     if (n > limit) return true;
     await kv.put(key, String(n), { expirationTtl: windowSec * 2 });
     return false;
-  } catch { return false; }
+  } catch { return failClosed; }
 }
 
 // SECURITY: Cloudflare Pages `_headers` does NOT apply to Function responses, so API responses

@@ -1,10 +1,20 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Inter is loaded via a non-render-blocking <link> in index.html (not @import). */
+
 html { scroll-behavior: smooth; }
+/* mobile horizontal-overflow safety net — kills sideways scroll from decorative
+   absolutely-positioned blobs. `clip` (not `hidden`) so it never breaks position:sticky. */
+html, body { overflow-x: clip; }
+
+/* keyboard focus — visible ring on the dark surface using the brand green token */
+:focus-visible { outline: 2px solid #3E9468; outline-offset: 2px; border-radius: 2px; }
 body {
+  /* THE STANDARD (one cement for everything — landing + dashboard). The clean 3D-plant recipe: base #161512
+     with SUBTLE warm washes only (champagne 0.08, green 0.055, taupe 0.06). No heavy champagne/copper/vignette
+     — those browned it. Same color across the whole app so nothing ever mismatches again. */
   background:#161512; color:#C5BEB0; -webkit-font-smoothing:antialiased;
   background-image:
     radial-gradient(1100px 620px at 80% -10%, rgba(214,194,154,0.08), transparent 60%),
@@ -34,7 +44,7 @@ body::after {
   position: relative;
   background-color: #161512;
   background-image:
-    radial-gradient(1100px 620px at 80% -10%, rgba(214,194,154,0.09), transparent 60%),
+    radial-gradient(1100px 620px at 80% -10%, rgba(214,194,154,0.05), transparent 60%),
     radial-gradient(950px 560px at 6% 8%, rgba(62,148,104,0.06), transparent 58%),
     radial-gradient(1200px 900px at 50% 112%, rgba(120,116,104,0.06), transparent 62%);
 }
@@ -42,6 +52,24 @@ body::after {
   content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
   opacity: .5; mix-blend-mode: soft-light;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)'/%3E%3C/svg%3E");
+}
+
+/* ── 4K SCREEN REALISM ─────────────────────────────────────────────────────
+   Every glass panel gets real studio lighting: a soft top reflection sweeping
+   down (light hitting the glass), an edge highlight on the top rim, and a dark
+   inner shade at the bottom rim (glass with thickness). nvidia-render feel.
+   :where() keeps specificity at zero so component classes always win conflicts;
+   buttons keep their own shine system. */
+:where([class*="backdrop-blur"]):not(.btn):not(.btn-gold):not(.btn-bright)::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none; z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.015) 16%, transparent 38%),
+    radial-gradient(120% 70% at 82% -12%, rgba(255,255,255,0.06), transparent 55%);
+  mix-blend-mode: screen;
+}
+:where([class*="backdrop-blur"]):not(.btn):not(.btn-gold):not(.btn-bright) {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.09), inset 0 -1px 0 rgba(0,0,0,0.30), 0 30px 70px -34px rgba(0,0,0,0.85);
 }
 
 @layer components {
@@ -98,6 +126,8 @@ body::after {
 
 /* Integrations hub — data flowing from connected tools into the Guileo brain */
 @keyframes dataflow { 0% { left:0%; opacity:0; } 8% { opacity:1; } 88% { opacity:1; } 100% { left:100%; opacity:0; } }
+/* Gui plant bloom — the orb gently breathes + green-glows when the month's goal is beaten. */
+@keyframes guibloom { 0%,100% { transform:scale(1); filter:saturate(1); } 50% { transform:scale(1.06); filter:saturate(1.25) brightness(1.06); } }
 .flowtrack { position:relative; height:2px; border-radius:2px; background:linear-gradient(90deg, rgba(62,148,104,0.25), rgba(214,194,154,0.25)); overflow:hidden; }
 .flowdot { position:absolute; top:50%; height:6px; width:6px; margin-top:-3px; border-radius:9999px; background:#3E9468; box-shadow:0 0 8px #3E9468; animation:dataflow 2.6s linear infinite; }
 
@@ -105,8 +135,23 @@ body::after {
 @media (prefers-reduced-motion: reduce) {
   .card::after, .btn::before, .btn-gold::before { display:none; }
   .card:hover { transform:none; }
-  .animate-aurora, .animate-floatslow, .animate-floaty, .animate-breathe, .animate-shimmer, .animate-marquee, .animate-glowpulse, .animate-spin, .animate-pulse { animation: none !important; }
+  .animate-aurora, .animate-floatslow, .animate-floaty, .animate-breathe, .animate-shimmer, .animate-marquee, .animate-glowpulse, .animate-spin, .animate-pulse, .animate-ping { animation: none !important; }
   .stagger > * { animation: none !important; }
   .flowdot { animation: none !important; opacity:.6; left:50% !important; }
   html { scroll-behavior: auto; }
 }
+
+/* Seller quote print — when printing, show ONLY the rendered quote (hide the hub chrome). */
+@media print {
+  body.printing-quote * { visibility: hidden !important; }
+  body.printing-quote .quote-print-area, body.printing-quote .quote-print-area * { visibility: visible !important; }
+  body.printing-quote .quote-print-area {
+    position: absolute !important; left: 0; top: 0; width: 100%;
+    max-height: none !important; overflow: visible !important; background: #fff;
+  }
+}
+
+/* Accessibility: visible keyboard-focus ring — shows ONLY on keyboard nav (:focus-visible),
+   never on mouse click, so it adds zero visual change for pointer users while making the whole
+   site keyboard-navigable for screen-reader / a11y users. */
+:focus-visible { outline: 2px solid rgba(62,148,104,.75); outline-offset: 2px; border-radius: 6px; }

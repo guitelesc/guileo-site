@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Guileo · Gui Concierge — conceito</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --graphite:#13120E; --graphite2:#1B1A15; --surface:rgba(255,255,255,.035);
+    --line:rgba(214,194,154,.14); --ivory:#ECE7DB; --muted:#9A9489;
+    --champ:#D6C29A;
+    /* sinais neon-realistas — vivos, com glow de verdade */
+    --brass:#FF8A33; --brass-soft:#FFB06B;     /* Gui */
+    --info:#3FB4FF;                             /* informação */
+    --pink:#FF3D8B;                             /* ao vivo */
+    --amber:#FFC23D;                            /* atenção */
+    --green:#2FE39A;                            /* feito */
+    --serif:'Cormorant Garamond',Georgia,serif; --sans:'Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--graphite);color:var(--ivory);font-family:var(--sans);font-weight:300;-webkit-font-smoothing:antialiased}
+  body{min-height:100vh;position:relative;overflow-x:hidden}
+  /* Aman calm — a single slow warm glow, nothing busy */
+  .aura{position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(900px 600px at 78% 8%, rgba(216,119,47,.10), transparent 60%),
+      radial-gradient(1000px 700px at 12% 92%, rgba(214,194,154,.06), transparent 60%);}
+  .grain{position:fixed;inset:0;z-index:0;opacity:.025;pointer-events:none;
+    background-image:radial-gradient(rgba(255,255,255,.6) 0.5px, transparent 0.6px);background-size:3px 3px}
+  .wrap{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:64px 40px 90px}
+  .eyebrow{font-size:11px;letter-spacing:.42em;text-transform:uppercase;color:var(--champ);font-weight:500;opacity:.85}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:74px}
+  .clock{font-size:12px;color:var(--muted);letter-spacing:.04em;text-align:right;line-height:1.7}
+  /* The concierge moment — Aman serenity */
+  .hero{margin:0 auto 78px;max-width:760px;text-align:center}
+  .orb{width:78px;height:78px;border-radius:50%;margin:0 auto 30px;position:relative;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 38% 34%, var(--brass-soft), var(--brass) 54%, #8a431a 100%);
+    box-shadow:0 0 0 1px rgba(255,138,51,.4),0 0 60px rgba(255,138,51,.40);animation:breathe 5.5s ease-in-out infinite}
+  .orb::after{content:"";position:absolute;inset:-14px;border-radius:50%;border:1px solid rgba(255,138,51,.22);animation:halo 5.5s ease-in-out infinite}
+  .orb svg{width:40px;height:40px;position:relative;z-index:1;filter:drop-shadow(0 1px 2px rgba(74,30,8,.5))}
+  @keyframes breathe{0%,100%{transform:scale(1);box-shadow:0 0 0 1px rgba(216,119,47,.35),0 0 50px rgba(216,119,47,.24)}50%{transform:scale(1.06);box-shadow:0 0 0 1px rgba(216,119,47,.45),0 0 80px rgba(216,119,47,.40)}}
+  @keyframes halo{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:.9;transform:scale(1.08)}}
+  .greet{font-family:var(--serif);font-weight:300;font-size:clamp(34px,5.2vw,58px);line-height:1.08;letter-spacing:.01em;margin-bottom:20px}
+  .greet em{font-style:italic;color:var(--champ)}
+  .sub{font-size:17px;font-weight:300;color:var(--muted);line-height:1.75;max-width:520px;margin:0 auto;letter-spacing:.01em}
+  .whisper{margin-top:26px;font-size:13px;color:var(--brass-soft);letter-spacing:.18em;text-transform:uppercase;font-weight:500}
+  /* The Faena statement — one dramatic number */
+  .statement{text-align:center;margin:0 auto 78px;padding:46px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);max-width:760px}
+  .statement .lab{font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+  .statement .big{font-family:var(--serif);font-weight:400;font-size:clamp(56px,9vw,104px);line-height:.9;
+    background:linear-gradient(180deg,#F4E6C9,var(--champ) 55%,#a98f5b);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .statement .note{margin-top:16px;font-size:14px;color:var(--muted)}
+  .statement .note b{color:var(--green);font-weight:500}
+  /* The signal system — three concierge cards */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:26px 26px 28px;position:relative;overflow:hidden;backdrop-filter:blur(6px);transition:transform .5s cubic-bezier(.2,.7,.2,1),border-color .5s}
+  .card:hover{transform:translateY(-4px);border-color:rgba(214,194,154,.3)}
+  .card .tag{display:inline-flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:500;margin-bottom:18px}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .card h3{font-family:var(--serif);font-weight:500;font-size:24px;line-height:1.15;margin-bottom:10px;letter-spacing:.01em}
+  .card p{font-size:14.5px;font-weight:300;color:var(--muted);line-height:1.65}
+  .card .edge{position:absolute;left:0;top:0;bottom:0;width:2px}
+  .dot{box-shadow:0 0 10px 1px currentColor, 0 0 22px 2px currentColor}
+  .c-gui .tag{color:var(--brass-soft)} .c-gui .edge{background:var(--brass);box-shadow:0 0 16px 1px var(--brass)} .c-gui .dot{background:var(--brass);color:var(--brass)}
+  .c-gui:hover{border-color:rgba(255,138,51,.45);box-shadow:0 0 40px -10px rgba(255,138,51,.4)}
+  .c-live .tag{color:var(--pink)} .c-live .edge{background:var(--pink);box-shadow:0 0 16px 1px var(--pink)} .c-live .dot{background:var(--pink);color:var(--pink);animation:pulse 1.6s infinite}
+  .c-live:hover{border-color:rgba(255,61,139,.45);box-shadow:0 0 40px -10px rgba(255,61,139,.4)}
+  .c-done .tag{color:var(--green)} .c-done .edge{background:var(--green);box-shadow:0 0 16px 1px var(--green)} .c-done .dot{background:var(--green);color:var(--green)}
+  .c-done:hover{border-color:rgba(47,227,154,.4);box-shadow:0 0 40px -10px rgba(47,227,154,.35)}
+  @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 10px 1px currentColor,0 0 24px 3px currentColor}50%{opacity:.5;box-shadow:0 0 6px 0 currentColor}}
+  .foot{margin-top:74px;text-align:center;font-size:12px;color:var(--muted);letter-spacing:.04em;line-height:1.8}
+  .foot .legend{display:inline-flex;flex-wrap:wrap;gap:18px;justify-content:center;margin-bottom:18px}
+  .foot .li{display:inline-flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+  @media(max-width:600px){.wrap{padding:44px 22px 70px}.top{margin-bottom:54px}}
+</style>
+</head>
+<body>
+<div class="aura"></div><div class="grain"></div>
+<div class="wrap">
+
+  <div class="top">
+    <div class="eyebrow">Guileo</div>
+    <div class="clock">Clínica Sorriso · Lisboa<br/>23:41 — tudo tranquilo</div>
+  </div>
+
+  <section class="hero">
+    <div class="orb" aria-label="Gui">
+      <svg viewBox="0 0 32 32" fill="none" stroke="#3a1a06" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 27 V14"/>
+        <path d="M16 16 C16 11 12.5 8 8.5 8 C8.5 13 11.5 16 16 16 Z" fill="#3a1a06" stroke="none"/>
+        <path d="M16 14 C16 9 19.5 6 23.5 6 C23.5 11 20.5 14 16 14 Z" fill="#3a1a06" stroke="none"/>
+        <path d="M16 27 C13 27 11 25 10.5 22"/>
+        <path d="M16 27 C19 27 21 25 21.5 22"/>
+      </svg>
+    </div>
+    <h1 class="greet">Boa noite, Luis.<br/><em>Pode descansar.</em></h1>
+    <p class="sub">Enquanto o senhor esteve fora, eu cuidei de tudo. Não há nada pendente que precise da sua atenção esta noite.</p>
+    <div class="whisper">— Gui, seu concierge</div>
+  </section>
+
+  <section class="statement">
+    <div class="lab">Recebido este mês · no piloto automático</div>
+    <div class="big">€21.300</div>
+    <div class="note">No ritmo para <b>€34.080</b> até o fim do mês.</div>
+  </section>
+
+  <section class="cards">
+    <article class="card c-gui">
+      <div class="edge"></div>
+      <div class="tag"><span class="dot"></span>O Gui resolveu</div>
+      <h3>9 ligações atendidas</h3>
+      <p>Confirmei três agendamentos e registrei dois orçamentos — todos com a confirmação já enviada. O senhor não precisou tocar em nada.</p>
+    </article>
+    <article class="card c-live">
+      <div class="edge"></div>
+      <div class="tag"><span class="dot"></span>Ao vivo agora</div>
+      <h3>Sra. Helena, na linha</h3>
+      <p>Atendendo neste momento sobre um retorno de limpeza. Se precisar de uma decisão sua, eu aviso — discretamente.</p>
+    </article>
+    <article class="card c-done">
+      <div class="edge"></div>
+      <div class="tag"><span class="dot"></span>Feito</div>
+      <h3>Fatura da Dona Maria</h3>
+      <p>Cobrei com gentileza, ela pagou pelo link. Já agradeci em seu nome e arquivei o recibo.</p>
+    </article>
+  </section>
+
+  <div class="foot">
+    <div class="legend">
+      <span class="li" style="color:var(--brass)"><span class="dot" style="background:var(--brass)"></span>Gui</span>
+      <span class="li" style="color:var(--info)"><span class="dot" style="background:var(--info)"></span>Informação</span>
+      <span class="li" style="color:var(--pink)"><span class="dot" style="background:var(--pink)"></span>Ao vivo</span>
+      <span class="li" style="color:var(--amber)"><span class="dot" style="background:var(--amber)"></span>Atenção</span>
+      <span class="li" style="color:var(--green)"><span class="dot" style="background:var(--green)"></span>Feito</span>
+    </div>
+    Conceito · grafite &amp; champanhe, latão para o Gui · calma Aman, entrada Faena · voz de concierge Four Seasons
+  </div>
+
+</div>
+</body>
+</html>

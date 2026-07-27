@@ -3,6 +3,8 @@
 // sees every lead and can close it. Optionally also forwards to LEAD_WEBHOOK (Zapier/Sheet/CRM)
 // and a Supabase `leads` table.
 import { sameOrigin, rateLimited } from "../lib/guard.js";
+import { leadReceivedEmail, leadAlertEmail } from "../lib/emailTemplates.js";
+import { emitFailure } from "../lib/failure.js";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -42,13 +44,18 @@ export async function onRequestPost(context) {
     if (lead.leak) bits.push(`leak ${lead.leak}/mo`);
     if (lead.message) bits.push(lead.message);
     if (lead.ref) bits.push(`👤ref:${lead.ref}`);
+    // 🌐lang tag — gui_actions has no lang column, so the lead's language rides inside `details`
+    // (same encoding trick as 👤ref above). /api/lifecycle parses it back so the nurture drip
+    // emails the lead in THEIR language. EN is the default → not stored (keeps the feed clean).
+    const leadLang = (lead.lang || "").toLowerCase().slice(0, 2);
+    if (["pt", "es", "hi"].includes(leadLang)) bits.push(`🌐lang:${leadLang}`);
     const details = bits.join(" · ");
 
     let stored = false;
 
     // 1) ALWAYS persist to the gui_actions store → shows on /admin + /live (Luis closes from there)
-    const SB_URL = env.GUI_ACTIONS_SUPABASE_URL || "https://fccwbafkbhkyrvauzshl.supabase.co";
-    const SB_ANON = env.GUI_ACTIONS_SUPABASE_ANON || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjY3diYWZrYmhreXJ2YXV6c2hsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTU3NzQsImV4cCI6MjA5NDI5MTc3NH0.knDpHzK_cfpqmUzpLI4rTndAumn1yepCiRwCSAqwSNs";
+    const SB_URL = env.GUI_ACTIONS_SUPABASE_URL || "https://ynihodbknhjirkdogxby.supabase.co";
+    const SB_ANON = env.GUI_ACTIONS_SUPABASE_ANON || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
     try {
       const r = await fetch(`${SB_URL}/rest/v1/gui_actions`, {
         method: "POST",
@@ -57,6 +64,21 @@ export async function onRequestPost(context) {
       });
       stored = r.ok;
     } catch { /* never fail the capture */ }
+
+    // 1b) CRM SPINE — every website lead becomes a contact in Guileo's OWN CRM (dogfooding the Company OS).
+    //     Best-effort + graceful: no-op until db/crm_spine.sql is pasted.
+    if (env.SCHED_SECRET) {
+      try {
+        const cEmail = lead.email || (/.+@.+\..+/.test(lead.contact) ? lead.contact : "");
+        const cPhone = (lead.phone || (/^\+?[0-9][0-9\s()\-]{6,}$/.test(lead.contact) ? lead.contact : "")).replace(/[^0-9+]/g, "");
+        if (cEmail || cPhone) {
+          await fetch(`${SB_URL}/rest/v1/rpc/crm_upsert_contact`, {
+            method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ p_secret: env.SCHED_SECRET, p_email: (env.OWNER_EMAIL || "smart@guileoai.com"), p_phone: cPhone, p_contact_email: cEmail, p_name: lead.name || "", p_source: `web:${lead.source || "lead"}`, p_amount_cents: 0 }),
+          });
+        }
+      } catch { /* CRM not live yet → never block the capture */ }
+    }
 
     // 2) Optional: forward to a no-code webhook (email / Sheet / CRM)
     if (env.LEAD_WEBHOOK) {
@@ -73,18 +95,106 @@ export async function onRequestPost(context) {
       const OWNER = env.OWNER_EMAIL || "smart@guileoai.com";
       const FROM = env.EMAIL_FROM || "Guileo <noreply@guileoai.com>";
       const kind = lead.source === "configurator" ? "quote request" : lead.source === "portal-onboard" ? "new client signup" : "lead";
-      const rows = [
-        ["Name", lead.name], ["Contact", lead.contact || lead.email || lead.phone], ["Business", lead.business], ["Industry", lead.industry], ["Source", lead.source], ["Partner (ref)", lead.ref], ["Details", details || lead.message],
-      ].filter(([, v]) => v).map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#888">${k}</td><td style="padding:4px 0;font-weight:600">${String(v).replace(/</g, "&lt;")}</td></tr>`).join("");
+      // Branded owner alert (emailTemplates.js) — never ad-hoc HTML. Owner reads it → pt.
+      const tpl = leadAlertEmail({ kind, name: lead.name, contact: lead.contact || lead.email || lead.phone, business: lead.business, industry: lead.industry, source: lead.source, ref: lead.ref, details: details || lead.message, lang: "pt" });
       try {
+        const er = await fetch("https://api.resend.com/emails", {
+          method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ from: FROM, to: [OWNER], subject: tpl.subject, html: tpl.html }),
+        });
+        if (er.ok) stored = true; // a delivered owner email IS durable delivery — the lead reached Luis
+      } catch { /* never block the capture */ }
+    }
+
+    // 5) COMPLIANCE: log TCPA consent for this lead (proof against fines). The form sends
+    //    consent=true; we record the phone/email + the consent text + source.
+    const INGEST = env.INGEST_SECRET || "";
+    const leadPhone = (lead.phone || (/^\+?[0-9][0-9\s()\-]{6,}$/.test(lead.contact) ? lead.contact : "")).replace(/[^0-9+]/g, "");
+    if (INGEST && (leadPhone || lead.email)) {
+      try {
+        await fetch(`${SB_URL}/rest/v1/rpc/log_consent`, {
+          method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ p_secret: INGEST, p_phone: leadPhone, p_email: lead.email, p_source: lead.source, p_text: body.consent === false ? "NO_CONSENT" : "agreed to be contacted by Gui (call/text), STOP to opt out" }),
+        });
+      } catch { /* never block capture */ }
+    }
+
+    // 6) SPEED-TO-LEAD: be the first to respond. If this lead has a phone, consented, and is
+    //    NOT on the do-not-contact list, fire Gui to CALL them within seconds. 78% buy from
+    //    whoever answers first. Guarded so it never blocks or double-fails the capture.
+    // 4b) INSTANT REPLY to the PROSPECT — speed-to-lead first touch, via the brand email template.
+    //     callNow lets the configurator opt the lead into an immediate Gui call (consented checkbox).
+    const callConsented = body.consent !== false;
+    // ANTI-ABUSE per-PHONE cooldown: a number is auto-called at most once / 12h, no matter how many
+    // times this (Origin-spoofable) endpoint is hit — stops harassment + runaway cost of an attacker
+    // posting a victim's number with callNow. call.js's fail-closed per-IP daily cap backstops KV outages.
+    // READ-ONLY here: only check the cooldown to gate eligibility. We WRITE it later, but solely when
+    // we actually dial — so a non-call lead (noCall/no-consent/configurator) never burns a real lead's
+    // 12h window. (Earlier this wrote on every lead, silently blocking a later legit speed-to-lead call.)
+    let phoneCooled = false;
+    if (env.RATE_LIMIT && leadPhone) {
+      try { if (await env.RATE_LIMIT.get(`callph:${leadPhone}`)) phoneCooled = true; }
+      catch { /* KV down → call.js fail-closed caps still apply, never block capture */ }
+    }
+    // noCall:true → caller already triggers /api/call itself (LiveCall, LiveCallBar). Skip the
+    // server-side speed-to-lead trigger so the prospect is never dialed twice (one ring, one cost).
+    const callEligible = !!(env.ELEVENLABS_API_KEY && env.ELEVENLABS_PHONE_NUMBER_ID && leadPhone && callConsented && !phoneCooled && body.noCall !== true && (lead.source !== "configurator" || body.callNow === true));
+    if (env.RESEND_API_KEY && lead.email) {
+      try {
+        // CONTACT INSTRUMENT: this email exists to get a reply. So it comes from a HUMAN, replyable
+        // address (never noreply@ — that kills replies + hurts inbox placement), with Reply-To pointed
+        // at a monitored inbox. Every reply also trains Gmail to inbox our future mail.
+        const FROM = env.EMAIL_FROM_CONTACT || "Gui · Guileo <gui@guileoai.com>";
+        const REPLY_TO = env.EMAIL_REPLY_TO || "smart@guileoai.com";
+        // normalized 2-letter lang ("pt-BR" → "pt") — raw 5-char values missed the template map
+        // and silently fell back to EN. hi → en by design (no Hindi email templates).
+        const mail = leadReceivedEmail({ name: lead.name || "there", business: lead.business, lang: ["pt", "es"].includes(leadLang) ? leadLang : "en", callNow: callEligible, leak: lead.leak, industry: lead.industry });
         await fetch("https://api.resend.com/emails", {
           method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ from: FROM, to: [OWNER], subject: `🌱 New ${kind}: ${lead.name}`, html: `<div style="font-family:system-ui,sans-serif;max-width:520px"><h2 style="color:#3E9468;margin:0 0 4px">New ${kind}</h2><p style="color:#888;margin:0 0 14px">via guileoai.com</p><table style="font-size:14px">${rows}</table><p style="margin-top:18px"><a href="https://www.guileoai.com/admin" style="color:#3E9468;font-weight:700">Open /admin →</a></p></div>` }),
+          body: JSON.stringify({ from: FROM, reply_to: REPLY_TO, to: [lead.email], subject: mail.subject, html: mail.html }),
         });
       } catch { /* never block the capture */ }
     }
 
-    return json({ ok: true, stored });
+    let calling = false;
+    if (callEligible) {
+      try {
+        // BRAKE 2/3 — explicit GLOBAL daily cap on auto-calls (intentional cost/abuse ceiling, independent
+        // of the per-IP limiter which the internal fetch bypasses). 50/day is generous for real leads.
+        let capHit = false;
+        if (env.RATE_LIMIT) {
+          try {
+            const dk = `callday:${new Date().toISOString().slice(0, 10)}`;
+            const n = parseInt((await env.RATE_LIMIT.get(dk)) || "0", 10);
+            if (n >= 150) capHit = true;
+            else await env.RATE_LIMIT.put(dk, String(n + 1), { expirationTtl: 172800 });
+          } catch { /* KV down → call.js fail-closed caps backstop */ }
+        }
+        // respect TCPA opt-out (skipped if the global cap already blocked this call)
+        let blocked = capHit;
+        if (!blocked && INGEST) {
+          const dr = await fetch(`${SB_URL}/rest/v1/rpc/is_dnc`, { method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" }, body: JSON.stringify({ p_secret: INGEST, p_phone: leadPhone }) });
+          if (dr.ok) blocked = (await dr.json()) === true; // tighten: only a literal true blocks
+        }
+        if (!blocked) {
+          const origin = new URL(request.url).origin;
+          // commit the 12h per-phone cooldown ONLY now that we're truly dialing (not on every lead).
+          if (env.RATE_LIMIT) { try { await env.RATE_LIMIT.put(`callph:${leadPhone}`, "1", { expirationTtl: 43200 }); } catch { /* KV down → daily/IP caps backstop */ } }
+          // Internal server-to-server dial: carry the shared DIGEST_TOKEN so call.js SKIPS the per-IP
+          // cap (this fetch comes from our own edge, not the lead's browser) while keeping every
+          // per-phone / global / DNC guard. Check res.ok — a failed dial must be visible, not silent.
+          const cr = await fetch(`${origin}/api/call`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Origin: origin, "x-guileo-internal": env.DIGEST_TOKEN || "" },
+            body: JSON.stringify({ phone: leadPhone, name: lead.name, business: lead.business, industry: lead.industry, need: lead.message || details, lang: lead.lang || "auto" }),
+          });
+          if (cr.ok) { calling = true; }
+          else { calling = false; await emitFailure(env, "speed_to_lead_failed", leadPhone, `internal /api/call returned HTTP ${cr.status} — first-touch call NOT placed`, { phone: leadPhone, source: lead.source }); }
+        }
+      } catch { /* speed-to-lead is best-effort, never block */ }
+    }
+
+    return json({ ok: true, stored, calling });
   } catch {
     return json({ error: "bad request" }, 400);
   }

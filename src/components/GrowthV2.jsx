@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { useLang } from "../i18n.jsx";
 
 const GV_COPY = {
-  en: { h1a:"A growth cycle ", h1b:"that runs itself.", result:"The result", sub:"Performance is the base, sales are the fuel — growth is where you land.", moon:"🚀 Growth · the moon", fuel:"💰 Sales · the fuel", base:"⚡ Performance · the base", pills:["Performance","Sales","Growth"], profit:"What lands in YOUR pocket", stats:[["💵","+$15K","/mo extra revenue"],["📈","3.2×","ROI in 90 days"],["♻️","−40%","ad waste recovered"]], cta:"Start your growth cycle" },
-  pt: { h1a:"Um ciclo de crescimento ", h1b:"que roda sozinho.", result:"O resultado", sub:"Performance é a base, vendas são o combustível — crescimento é onde você chega.", moon:"🚀 Crescimento · a lua", fuel:"💰 Vendas · o combustível", base:"⚡ Performance · a base", pills:["Performance","Vendas","Crescimento"], profit:"O que cai no SEU bolso", stats:[["💵","+$15K","/mês a mais de receita"],["📈","3.2×","de ROI em 90 dias"],["♻️","−40%","de desperdício em ads"]], cta:"Comece seu ciclo de crescimento" },
-  es: { h1a:"Un ciclo de crecimiento ", h1b:"que se mueve solo.", result:"El resultado", sub:"El rendimiento es la base, las ventas el combustible — el crecimiento es a donde llegas.", moon:"🚀 Crecimiento · la luna", fuel:"💰 Ventas · el combustible", base:"⚡ Rendimiento · la base", pills:["Rendimiento","Ventas","Crecimiento"], profit:"Lo que cae en TU bolsillo", stats:[["💵","+$15K","/mes de ingresos extra"],["📈","3.2×","ROI en 90 días"],["♻️","−40%","desperdicio recuperado"]], cta:"Empieza tu ciclo de crecimiento" },
-  hi: { h1a:"एक ग्रोथ साइकल ", h1b:"जो खुद चलता है।", result:"नतीजा", sub:"परफ़ॉर्मेंस आधार है, बिक्री ईंधन — ग्रोथ वह जगह है जहाँ आप पहुँचते हैं।", moon:"🚀 ग्रोथ · चाँद", fuel:"💰 बिक्री · ईंधन", base:"⚡ परफ़ॉर्मेंस · आधार", pills:["Performance","Sales","Growth"], profit:"जो आपकी जेब में आता है", stats:[["💵","+$15K","/माह अतिरिक्त कमाई"],["📈","3.2×","ROI 90 दिनों में"],["♻️","−40%","विज्ञापन बर्बादी वापस"]], cta:"अपना ग्रोथ साइकल शुरू करें" },
+  en: { h1a:"A growth cycle ", h1b:"that runs itself.", result:"The result", sub:"Performance is the base, sales are the fuel — growth is where you land.", moon:"🚀 Growth · the moon", fuel:"💰 Sales · the fuel", base:"⚡ Performance · the base", pills:["Performance","Sales","Growth"], profit:"What lands in YOUR pocket", stats:[["💵","+$15K","/mo extra revenue"],["📈","3.2×","ROI in 90 days"],["♻️","−40%","ad waste recovered"]], disc:"Illustrative averages — your results depend on your business.", cta:"Start your growth cycle" },
+  pt: { h1a:"Um ciclo de crescimento ", h1b:"que roda sozinho.", result:"O resultado", sub:"Performance é a base, vendas são o combustível — crescimento é onde você chega.", moon:"🚀 Crescimento · a lua", fuel:"💰 Vendas · o combustível", base:"⚡ Performance · a base", pills:["Performance","Vendas","Crescimento"], profit:"O que cai no SEU bolso", stats:[["💵","+$15K","/mês a mais de receita"],["📈","3.2×","de ROI em 90 dias"],["♻️","−40%","de desperdício em ads"]], disc:"Médias ilustrativas — seus resultados dependem do seu negócio.", cta:"Comece seu ciclo de crescimento" },
+  es: { h1a:"Un ciclo de crecimiento ", h1b:"que se mueve solo.", result:"El resultado", sub:"El rendimiento es la base, las ventas el combustible — el crecimiento es a donde llegas.", moon:"🚀 Crecimiento · la luna", fuel:"💰 Ventas · el combustible", base:"⚡ Rendimiento · la base", pills:["Rendimiento","Ventas","Crecimiento"], profit:"Lo que cae en TU bolsillo", stats:[["💵","+$15K","/mes de ingresos extra"],["📈","3.2×","ROI en 90 días"],["♻️","−40%","desperdicio recuperado"]], disc:"Promedios ilustrativos — tus resultados dependen de tu negocio.", cta:"Empieza tu ciclo de crecimiento" },
+  hi: { h1a:"एक ग्रोथ साइकल ", h1b:"जो खुद चलता है।", result:"नतीजा", sub:"परफ़ॉर्मेंस आधार है, बिक्री ईंधन — ग्रोथ वह जगह है जहाँ आप पहुँचते हैं।", moon:"🚀 ग्रोथ · चाँद", fuel:"💰 बिक्री · ईंधन", base:"⚡ परफ़ॉर्मेंस · आधार", pills:["Performance","Sales","Growth"], profit:"जो आपकी जेब में आता है", stats:[["💵","+$15K","/माह अतिरिक्त कमाई"],["📈","3.2×","ROI 90 दिनों में"],["♻️","−40%","विज्ञापन बर्बादी वापस"]], disc:"उदाहरणात्मक औसत — आपके परिणाम आपके व्यवसाय पर निर्भर करते हैं।", cta:"अपना ग्रोथ साइकल शुरू करें" },
 };
 
 // GrowthV2 — TEST (/v2) finale: matched to the guileoai.com aesthetic — the real
@@ -83,7 +83,7 @@ export default function GrowthV2() {
               const on = act === i;
               return (
                 <div key={lb} className="flex items-center gap-2 sm:gap-3">
-                  <div className={`flex items-center gap-2 rounded-full border px-3.5 py-2.5 transition-all duration-500 sm:px-5 ${on ? "scale-110 border-g-gold/60 bg-g-gold/15 shadow-gold" : "border-white/12 bg-white/[0.04]"}`}>
+                  <div className={`flex items-center gap-2 rounded-full border px-3.5 py-2.5 transition-all duration-500 sm:px-5 ${on ? "scale-110 border-g-gold/60 bg-g-gold/15 shadow-gold" : "border-white/10 bg-white/[0.04]"}`}>
                     <span className={`text-lg transition-transform duration-500 ${on ? "scale-125" : ""}`}>{ic}</span><span className="whitespace-nowrap text-sm font-extrabold text-g-word">{lb}</span>
                   </div>
                   {i < 2 && <span className={`text-lg font-black transition-all duration-500 ${on ? "scale-125 text-g-gold" : "text-g-gold/40"}`}>→</span>}
@@ -115,6 +115,7 @@ export default function GrowthV2() {
               );
             })}
           </div>
+          <p className="mt-3 text-[11px] italic leading-snug text-g-ink/70">{G.disc}</p>
         </div>
         <a href="#try" className="group relative mt-9 inline-flex items-center gap-2 overflow-hidden rounded-full px-7 py-3 text-[14px] font-extrabold tracking-tight text-[#1a1a1a] ring-1 ring-white/40 shadow-[0_16px_42px_-12px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.85)] transition-transform duration-300 hover:scale-[1.03]"
           style={{ background: "linear-gradient(180deg,#f5f6f8 0%,#dde1e7 42%,#bcc2cc 100%)", animation: "grreveal .8s ease .6s both" }}>

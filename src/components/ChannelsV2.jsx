@@ -23,14 +23,14 @@ const CH = {
 };
 
 const NOTIFS = [
-  { app: "TikTok", t: "3m", line: "Posted a clip · 12.4k views overnight" },
-  { app: "LinkedIn", t: "6m", line: "Published an article · 18 new leads" },
-  { app: "Telegram", t: "9m", line: "Answered 30 group questions instantly" },
-  { app: "Facebook", t: "12m", line: "Replied to 24 comments & messages" },
-  { app: "Instagram", t: "15m", line: "Scheduled 5 reels for the week" },
-  { app: "WhatsApp", t: "20m", line: "Closed 3 sales right in the chat" },
-  { app: "Google", t: "26m", line: "Replied to 7 reviews · kept 4.9★" },
-  { app: "X", t: "31m", line: "Posted a thread · 2.1k impressions" },
+  { app: "TikTok", t: "3m", line: { en: "Posted a clip · 12.4k views overnight", pt: "Postou um clipe · 12,4k views da noite pro dia", es: "Publicó un clip · 12,4k vistas de la noche a la mañana", hi: "क्लिप पोस्ट की · रातभर में 12.4k व्यू" } },
+  { app: "LinkedIn", t: "6m", line: { en: "Published an article · 18 new leads", pt: "Publicou um artigo · 18 novos leads", es: "Publicó un artículo · 18 nuevos leads", hi: "आर्टिकल पब्लिश किया · 18 नए लीड" } },
+  { app: "Telegram", t: "9m", line: { en: "Answered 30 group questions instantly", pt: "Respondeu 30 perguntas no grupo na hora", es: "Respondió 30 preguntas del grupo al instante", hi: "ग्रुप के 30 सवालों के तुरंत जवाब दिए" } },
+  { app: "Facebook", t: "12m", line: { en: "Replied to 24 comments & messages", pt: "Respondeu 24 comentários & mensagens", es: "Respondió 24 comentarios y mensajes", hi: "24 कमेंट और मैसेज के जवाब दिए" } },
+  { app: "Instagram", t: "15m", line: { en: "Scheduled 5 reels for the week", pt: "Agendou 5 reels para a semana", es: "Programó 5 reels para la semana", hi: "हफ़्ते के लिए 5 रील शेड्यूल कीं" } },
+  { app: "WhatsApp", t: "20m", line: { en: "Closed 3 sales right in the chat", pt: "Fechou 3 vendas direto no chat", es: "Cerró 3 ventas directo en el chat", hi: "चैट में ही 3 बिक्री पूरी कीं" } },
+  { app: "Google", t: "26m", line: { en: "Replied to 7 reviews · kept 4.9★", pt: "Respondeu 7 avaliações · manteve 4,9★", es: "Respondió 7 reseñas · mantuvo 4,9★", hi: "7 समीक्षाओं के जवाब दिए · 4.9★ बनाए रखा" } },
+  { app: "X", t: "31m", line: { en: "Posted a thread · 2.1k impressions", pt: "Postou uma thread · 2,1k impressões", es: "Publicó un hilo · 2,1k impresiones", hi: "थ्रेड पोस्ट किया · 2.1k इंप्रेशन" } },
 ];
 
 function Logo({ app, size = 16 }) {
@@ -43,16 +43,16 @@ function Logo({ app, size = 16 }) {
   );
 }
 
-function Notif({ n }) {
+function Notif({ n, lang = "en" }) {
   return (
     <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.08] px-3.5 py-2.5 backdrop-blur-md">
       <Logo app={n.app} size={16} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between">
           <span className="text-[12px] font-bold text-white">{n.app} · <span className="text-g-green">Guileo AI</span></span>
-          <span className="text-[10px] text-white/40">{n.t}</span>
+          <span className="text-[10px] text-white/70">{n.t}</span>
         </div>
-        <div className="truncate text-[11.5px] text-white/70">{n.line}</div>
+        <div className="truncate text-[11.5px] text-white/70">{(n.line && (n.line[lang] || n.line.en)) || n.line}</div>
       </div>
     </div>
   );
@@ -111,7 +111,7 @@ export default function ChannelsV2() {
               </div>
               <div className="relative h-[300px] overflow-hidden px-3 pb-5" style={{ maskImage: "linear-gradient(to bottom,transparent,#000 10%,#000 88%,transparent)", WebkitMaskImage: "linear-gradient(to bottom,transparent,#000 10%,#000 88%,transparent)" }}>
                 <div className="space-y-2.5" style={{ animation: "chscroll 22s linear infinite" }}>
-                  {list.map((n, i) => <Notif key={i} n={n} />)}
+                  {list.map((n, i) => <Notif key={i} n={n} lang={lang} />)}
                 </div>
               </div>
             </div>

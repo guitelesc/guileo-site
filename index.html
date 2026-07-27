@@ -3,27 +3,74 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Guileo — AI Systems for Business · Work Smart. Grow Faster. Sleep Better.</title>
-    <meta name="description" content="AI voice agents, websites, apps and growth for restaurants, clinics and service businesses. Your AI answers calls, books appointments and closes deals 24/7. Live in under 7 days. 30-day money-back." />
+    <title>Guileo — Intelligent Solutions for Your Business · Work Smart. Grow Faster. Sleep Better.</title>
+    <meta name="description" content="Guileo is intelligent solutions for your business — we solve whatever you need. It starts with an AI that answers calls, books, sells and collects 24/7, plus websites, apps, marketing and automation. Live in under 7 days. 30-day money-back." />
     <meta name="author" content="Guileo · Tribeca Global Inc." />
+    <!-- favicon: browsers that support SVG load the tiny 9kb vector; PNG is the fallback -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- preconnect: shaves the TLS handshake off the critical external requests -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Inter: media="print" defers the third-party CSS off first paint; onload swaps it live.
+         display=swap means text renders immediately in the fallback font, no invisible-text flash. -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" /></noscript>
+    <link rel="preconnect" href="https://unpkg.com" />
+    <link rel="preconnect" href="https://fccwbafkbhkyrvauzshl.supabase.co" />
+    <!-- preconnect: ad pixels (only actually load when their IDs are set in src/lib/analytics.js) -->
+    <link rel="preconnect" href="https://connect.facebook.net" />
+    <link rel="preconnect" href="https://www.googletagmanager.com" />
+    <link rel="preconnect" href="https://analytics.tiktok.com" />
+    <!-- ───────────────────────────────────────────────────────────────────────
+      Content-Security-Policy (mirrors public/_headers, extended for ad pixels).
+      This meta tag enforces CSP in dev/preview where _headers does NOT apply.
+      Ad-pixel domains added: Meta (connect.facebook.net / www.facebook.com),
+      Google gtag/GA4 (www.googletagmanager.com / www.google-analytics.com /
+      *.google-analytics.com / *.analytics.google.com), TikTok (analytics.tiktok.com).
+      NOTE: public/_headers MUST be updated with the SAME additions (it is the
+      authoritative production header and is NOT owned/edited here).
+    ──────────────────────────────────────────────────────────────────────── -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'wasm-unsafe-eval' blob: https://unpkg.com https://*.elevenlabs.io https://connect.facebook.net https://www.googletagmanager.com https://analytics.tiktok.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.elevenlabs.io wss://*.elevenlabs.io https://*.livekit.cloud wss://*.livekit.cloud https://unpkg.com https://connect.facebook.net https://www.facebook.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.tiktok.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io; frame-src 'self' https://*.elevenlabs.io; media-src 'self' blob: https://*.elevenlabs.io; worker-src 'self' blob: https://unpkg.com https://*.elevenlabs.io" />
     <meta name="theme-color" content="#161512" />
     <meta property="og:title" content="Guileo — AI Systems for Business" />
     <meta property="og:description" content="Work Smart. Grow Faster. Sleep Better. AI that answers, books and closes 24/7." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://guileoai.com" />
-    <meta property="og:image" content="https://guileoai.com/og.png" />
+    <meta property="og:image" content="https://guileoai.com/og.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="https://guileoai.com/og.png" />
+    <meta name="twitter:image" content="https://guileoai.com/og.jpg" />
+    <meta name="twitter:title" content="Guileo — AI Systems for Business" />
+    <meta name="twitter:description" content="Work Smart. Grow Faster. Sleep Better. AI that answers, books and closes 24/7." />
+    <meta property="og:site_name" content="Guileo" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="pt_BR" />
+    <meta property="og:locale:alternate" content="es_ES" />
+    <meta property="og:image:alt" content="Guileo — AI that answers, books and closes 24/7" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <meta name="keywords" content="AI voice agent, AI receptionist, AI for restaurants, AI for clinics, AI for home services, missed call text back, bilingual AI, atendimento por IA, recepcionista virtual, IA para negócios" />
+    <link rel="canonical" href="https://guileoai.com/" />
+    <link rel="alternate" hreflang="x-default" href="https://guileoai.com/" />
     <link rel="alternate" hreflang="en" href="https://guileoai.com/" />
     <link rel="alternate" hreflang="pt" href="https://guileoai.com/?lang=pt" />
     <link rel="alternate" hreflang="es" href="https://guileoai.com/?lang=es" />
     <link rel="alternate" hreflang="hi" href="https://guileoai.com/?lang=hi" />
     <script type="application/ld+json">
-    {"@context":"https://schema.org","@type":"Organization","name":"Guileo","legalName":"Tribeca Global Inc.","url":"https://guileoai.com","email":"hello@guileo.ai","founder":"Luis Teles","description":"AI systems for business — voice agents, websites, apps and growth.","areaServed":["US","BR"],"sameAs":[]}
+    {"@context":"https://schema.org","@graph":[
+      {"@type":"Organization","@id":"https://guileoai.com/#org","name":"Guileo","legalName":"Tribeca Global Inc.","url":"https://guileoai.com","logo":"https://guileoai.com/favicon.png","image":"https://guileoai.com/og.jpg","email":"smart@guileoai.com","founder":{"@type":"Person","name":"Luis Teles"},"description":"AI systems for business — voice agents, websites, apps and growth.","areaServed":["US","BR"],"knowsLanguage":["en","pt","es"],"sameAs":[],"contactPoint":{"@type":"ContactPoint","contactType":"sales","email":"smart@guileoai.com","availableLanguage":["English","Portuguese","Spanish"]}},
+      {"@type":"WebSite","@id":"https://guileoai.com/#website","url":"https://guileoai.com","name":"Guileo","publisher":{"@id":"https://guileoai.com/#org"},"inLanguage":["en","pt","es"]},
+      {"@type":"Service","name":"AI voice agent & growth automation","provider":{"@id":"https://guileoai.com/#org"},"areaServed":["US","BR"],"serviceType":"AI receptionist, booking, lead capture and marketing automation","description":"An AI team that answers every call and message 24/7, books appointments, recovers leads and grows revenue — for restaurants, clinics, home services and more.","offers":{"@type":"Offer","priceCurrency":"USD","price":"149","description":"Self-service plans from $149/mo; done-for-you from $990 setup + $1,497/mo."}},
+      {"@type":"FAQPage","mainEntity":[
+        {"@type":"Question","name":"How fast can Guileo go live?","acceptedAnswer":{"@type":"Answer","text":"Most businesses are live in under 7 days — we build and wire everything for you."}},
+        {"@type":"Question","name":"Is there a guarantee?","acceptedAnswer":{"@type":"Answer","text":"Yes — a 30-day money-back guarantee. The risk is ours."}},
+        {"@type":"Question","name":"Does the AI replace my staff?","acceptedAnswer":{"@type":"Answer","text":"No. It covers what your team can't — nights, weekends, simultaneous calls and follow-ups — and a real human supervises and takes over when needed."}},
+        {"@type":"Question","name":"What does it cost?","acceptedAnswer":{"@type":"Answer","text":"Self-service plans start at $149/month. Tailored done-for-you packages start at $990 setup plus $1,497/month."}},
+        {"@type":"Question","name":"What languages does the AI speak?","acceptedAnswer":{"@type":"Answer","text":"It speaks your customers' language automatically — English, Portuguese and Spanish."}}
+      ]}
+    ]}
     </script>
   </head>
   <body>

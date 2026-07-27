@@ -11,12 +11,12 @@ export default {
           word:   "#EDE7DC",  // headings — warm ivory / champagne white
           gold:   "#D6C29A",  // champanhe (soft metallic, not yellow gold)
           copper: "#C2A878",  // champagne darker
-          cream:  "#161512",  // base bg — cimento queimado (warm cement charcoal)
+          cream:  "#161512",  // base bg — cimento queimado (warm cement charcoal) — the APP/dashboard identity
           creamd: "#1C1A16",  // alt section — lighter cement
-          deep:   "#100F0C",  // deepest concrete
-          line:   "#2B2720",  // warm concrete border
+          deep:   "#100F0C",  // deepest cement charcoal
+          line:   "#2B2720",  // cement border
           ink:    "#C5BEB0",  // body text — warm greige
-          muted:  "#948C7B",  // muted taupe
+          muted:  "#948C7B",  // muted warm taupe
         },
       },
       fontFamily: { sans: ['Inter','system-ui','sans-serif'] },

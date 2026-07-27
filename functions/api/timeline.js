@@ -1,0 +1,161 @@
+// Cloudflare Pages Function — POST /api/timeline  (Company-OS · "Do fornecedor ao cliente")
+// ═════════════════════════════════════════════════════════════════════════════
+// ONE horizontal money-flow the owner reads left→right:
+//   FORNECEDOR/CUSTO → OPERAÇÃO (Gui trabalha) → CLIENTE FECHA → LUCRO NA MÃO → RISCO DE RETORNO
+// It assembles the client's OWN real data by REUSING already-gated RPCs — it invents nothing:
+//   • custo    → cost_summary       (db/cost_ledger.sql)  — what it costs to run (voz/SMS/providers)
+//   • operação → ops_board.stats    (db/operations.sql)   — jobs the agent handled (biz_appointments)
+//   • fecha    → ops_board.done      "        "            — jobs closed/completed
+//   • lucro    → revenue_month       (db/revenue_month.sql) — authoritative ledger; profit = receita − custo
+//   • risco    → ops_board no_show+overdue — jobs that fell through; cents = estimated exposure (avg ticket × count)
+//
+// GATE: per-tenant, EXACTLY like /api/operations.js & /api/revenue.js — get_client_data(email,key) binds
+// the cockpit email to its connection key (rejects a mismatch → 401) BEFORE any read. Only then do we call
+// the INGEST-gated RPCs with the server-side INGEST_SECRET. Read-only (no mutations). Never 500 on missing
+// data — each stage degrades honestly, and ready:false with a note when NO underlying SQL is installed.
+//
+//   POST { email, dataKey, from?, to? }
+//     → { ok, ready, window:{from,to}, stages:[{key,label,kind,count,amount_cents,note}],
+//         money:{ cost_cents, revenue_cents, profit_cents, risk_cents } }
+import { json } from "../lib/guard.js";
+
+const SB = "https://ynihodbknhjirkdogxby.supabase.co";
+const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
+const ING = "glo_ing_7f3da9c2b4e8";
+
+async function rpc(name, body) {
+  try {
+    const r = await fetch(`${SB}/rest/v1/rpc/${name}`, {
+      method: "POST",
+      headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+const asObj = (d) => (Array.isArray(d) ? (d[0] || {}) : (d && typeof d === "object" ? d : {}));
+const intOf = (v) => (Number.isFinite(Number(v)) ? Math.max(0, Math.round(Number(v))) : 0);
+
+export async function onRequestPost(context) {
+  const { request, env } = context;
+  try {
+    const b = await request.json().catch(() => ({}));
+    const email = (b.email || "").toString().trim().toLowerCase();
+    const key = (b.dataKey || b.token || b.key || "").toString().trim();
+    if (!email.includes("@") || !key) return json({ error: "unauthorized" }, 401);
+
+    // PER-TENANT GATE — the same door operations.js / revenue.js use. Mismatch → 401 before any read.
+    const gd = await fetch(`${SB}/rest/v1/rpc/get_client_data`, {
+      method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_email: email, p_key: key }),
+    });
+    if (!gd.ok) return json({ error: "unauthorized" }, 401);
+    const gdj = await gd.json().catch(() => null);
+    if (!(gdj && typeof gdj === "object" && Array.isArray(gdj.events))) return json({ error: "unauthorized" }, 401);
+
+    const secret = env.INGEST_SECRET || ING;
+    const now = new Date();
+    // Money window = current calendar month (UTC), matching revenue.js so the timeline and the ROI headline agree.
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+    const winFrom = (typeof b.from === "string" && b.from) ? b.from : monthStart;
+    const winTo = (typeof b.to === "string" && b.to) ? b.to : now.toISOString();
+    // ops_board captures the operational volume over the whole window (+2d ahead for upcoming jobs).
+    const opsTo = new Date(now.getTime() + 2 * 864e5).toISOString();
+
+    // Three independent gated reads in parallel — each may be absent; we degrade per-stage, never 500.
+    const [costRes, opsRes, revRes, refRes] = await Promise.all([
+      rpc("cost_summary", { p_secret: secret, p_email: email, p_since: winFrom }),
+      rpc("ops_board", { p_secret: secret, p_email: email, p_from: winFrom, p_to: opsTo }),
+      rpc("revenue_month", { p_secret: secret, p_email: email, p_since: winFrom }),
+      rpc("returns_breakdown_window", { p_secret: secret, p_email: email, p_since: winFrom }),
+    ]);
+
+    // ── CUSTO (fornecedor) — cost_summary { ready, total_cents, event_count } ──
+    const cost = asObj(costRes);
+    const costReady = cost && cost.ready === true;
+    const cost_cents = costReady ? intOf(cost.total_cents) : 0;
+    const cost_count = costReady ? intOf(cost.event_count) : 0;
+
+    // ── OPERAÇÃO + FECHA + RISCO — ops_board { ready, stats:{total,done,no_show,overdue,...} } ──
+    const ops = asObj(opsRes);
+    const opsReady = ops && ops.ready === true;
+    const st = (opsReady && ops.stats && typeof ops.stats === "object") ? ops.stats : {};
+    const jobs_total = intOf(st.total);
+    const jobs_done = intOf(st.done);
+    const jobs_risk = intOf(st.no_show) + intOf(st.overdue); // fell through / overdue = return risk
+
+    // ── LUCRO — revenue_month { total_cents } (source of truth) ──
+    const revReady = revRes && typeof revRes === "object" && Number.isFinite(Number(revRes.total_cents));
+    const revenue_cents = revReady ? intOf(revRes.total_cents) : 0;
+    const profit_cents = (revReady) ? Math.max(0, revenue_cents - cost_cents) : 0;
+
+    // ── RISCO em R$ — prefer the REAL, amount-anchored refund total (refund_total_window). Only if the
+    //    tenant has no refund data do we fall back to the honest avg-ticket EXPOSURE estimate. ──
+    const ret = asObj(refRes);
+    const retReady = ret && ret.ready === true;
+    const refund_cents = retReady ? intOf(ret.refund_cents) : 0;
+    const refund_count = retReady ? intOf(ret.refund_count) : 0;
+    const dispute_cents = retReady ? intOf(ret.dispute_cents) : 0;
+    const dispute_count = retReady ? intOf(ret.dispute_count) : 0;
+    const returns_cents = refund_cents + dispute_cents;
+    const returns_count = refund_count + dispute_count;
+    const risk_real = retReady && returns_count > 0;
+    const avg_ticket = (revReady && jobs_done > 0) ? Math.round(revenue_cents / jobs_done) : 0;
+    const risk_cents = risk_real ? returns_cents : (avg_ticket > 0 ? avg_ticket * jobs_risk : 0);
+
+    const ready = costReady || opsReady || revReady;
+
+    const NOT_OPS = "Instale db/operations.sql (motor de agenda) para ver operação, fechamento e risco reais.";
+    const NOT_COST = "Instale db/cost_ledger.sql para medir o custo por fornecedor/canal.";
+    const NOT_REV = "Instale db/revenue_month.sql para ver receita e lucro reais.";
+
+    const stages = [
+      {
+        key: "supplier", label: "Fornecedor · Custo", kind: "supplier",
+        count: cost_count, amount_cents: cost_cents,
+        note: costReady ? "O que custa pra Gui operar (voz, SMS, provedores)." : NOT_COST,
+      },
+      {
+        key: "operation", label: "Operação · Gui trabalha", kind: "operation",
+        count: jobs_total, amount_cents: null,
+        note: opsReady ? "Serviços que a Gui conduziu na janela." : NOT_OPS,
+      },
+      {
+        key: "close", label: "Cliente fecha", kind: "close",
+        count: jobs_done, amount_cents: revReady ? revenue_cents : null,
+        note: opsReady ? "Serviços concluídos — o dinheiro entrou." : NOT_OPS,
+      },
+      {
+        key: "profit", label: "Lucro na mão", kind: "profit",
+        count: null, amount_cents: profit_cents,
+        note: revReady ? "Receita menos o custo de operar." : NOT_REV,
+      },
+      {
+        key: "risk", label: "Risco de retorno", kind: "risk",
+        count: risk_real ? returns_count : jobs_risk, amount_cents: risk_cents,
+        real: risk_real,
+        refund_cents, refund_count, dispute_cents, dispute_count,
+        note: risk_real
+          ? [
+              refund_count > 0 ? `${refund_count} reembolso(s)` : null,
+              dispute_count > 0 ? `${dispute_count} disputa(s)/chargeback` : null,
+            ].filter(Boolean).join(" · ") + " — dinheiro que voltou pro cliente."
+          : opsReady
+            ? (jobs_risk > 0
+                ? `${jobs_risk} serviço(s) em risco (faltas/atrasos)${avg_ticket > 0 ? " · exposição estimada pelo ticket médio" : ""}.`
+                : "Nenhum reembolso e nenhum serviço em risco na janela — saudável.")
+            : NOT_OPS,
+      },
+    ];
+
+    return json({
+      ok: true,
+      ready,
+      window: { from: winFrom, to: winTo },
+      stages,
+      money: { cost_cents, revenue_cents, profit_cents, risk_cents, refund_cents, dispute_cents },
+    });
+  } catch (e) { return json({ error: String(e).slice(0, 160) }, 400); }
+}

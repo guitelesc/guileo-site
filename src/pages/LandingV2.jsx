@@ -7,6 +7,7 @@ import EngineV2 from "../components/EngineV2";
 import ChannelsV2 from "../components/ChannelsV2";
 import MethodV2 from "../components/MethodV2";
 import GrowthV2 from "../components/GrowthV2";
+import PulseSection from "../components/PulseSection";
 import ProofV2 from "../components/ProofV2";
 import LeadCaptureV2 from "../components/LeadCaptureV2";
 import Footer from "../components/Footer";
@@ -26,6 +27,7 @@ export default function LandingV2() {
       <ChannelsV2 />
       <MethodV2 />
       <GrowthV2 />
+      <PulseSection />
       <ProofV2 />
       <LeadCaptureV2 />
       <Footer />

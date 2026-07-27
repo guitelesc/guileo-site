@@ -7,10 +7,10 @@ import { useLang } from "../i18n.jsx";
 const BADGES = ["HIPAA", "GDPR", "LGPD", "CCPA", "PCI DSS"];
 
 const PV_COPY = {
-  en: { eyebrow:"Built to be trusted", subA:"We build to these standards ", subB:"from day one", subM:" — your stack, your data, your customers, ", subC:"fully governed", subD:"." },
-  pt: { eyebrow:"Feito para ser confiável", subA:"Construímos nesses padrões ", subB:"desde o dia um", subM:" — seu sistema, seus dados, seus clientes, ", subC:"totalmente governados", subD:"." },
-  es: { eyebrow:"Hecho para confiar", subA:"Construimos con estos estándares ", subB:"desde el día uno", subM:" — tu stack, tus datos, tus clientes, ", subC:"totalmente gobernados", subD:"." },
-  hi: { eyebrow:"भरोसे के लिए बना", subA:"हम इन मानकों पर ", subB:"पहले दिन से", subM:" बनाते हैं — आपका सिस्टम, आपका डेटा, आपके ग्राहक, ", subC:"पूरी तरह नियंत्रित", subD:"।" },
+  en: { eyebrow:"Built to be trusted", header:"Built to standards like", subA:"We align our practices with these standards ", subB:"from day one", subM:" — your stack, your data, your customers, ", subC:"carefully governed", subD:". A BAA is available on request." },
+  pt: { eyebrow:"Feito para ser confiável", header:"Construído com padrões como", subA:"Alinhamos nossas práticas a esses padrões ", subB:"desde o dia um", subM:" — seu sistema, seus dados, seus clientes, ", subC:"cuidadosamente governados", subD:". Um BAA disponível mediante solicitação." },
+  es: { eyebrow:"Hecho para confiar", header:"Construido con estándares como", subA:"Alineamos nuestras prácticas con estos estándares ", subB:"desde el día uno", subM:" — tu stack, tus datos, tus clientes, ", subC:"cuidadosamente gobernados", subD:". Un BAA disponible a pedido." },
+  hi: { eyebrow:"भरोसे के लिए बना", header:"इन जैसे मानकों के अनुरूप बना", subA:"हम अपनी प्रथाओं को इन मानकों के अनुरूप ", subB:"पहले दिन से", subM:" रखते हैं — आपका सिस्टम, आपका डेटा, आपके ग्राहक, ", subC:"सावधानी से नियंत्रित", subD:"। अनुरोध पर BAA उपलब्ध।" },
 };
 
 export default function ProofV2() {
@@ -24,14 +24,14 @@ export default function ProofV2() {
       <div className="mx-auto max-w-5xl text-center">
         <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold" style={{ animation: "pvreveal .7s ease both" }}>{P.eyebrow}</div>
 
-        {/* compliance badges */}
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
+        {/* compliance badges — "aligned with", not certified */}
+        <div className="mt-5 text-[12px] font-semibold uppercase tracking-[0.18em] text-g-ink" style={{ animation: "pvreveal .7s ease .05s both" }}>{P.header}</div>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
           {BADGES.map((b, i) => (
             <div key={b} className="inline-flex items-center gap-2 rounded-full border border-g-line bg-white/[0.04] px-4 py-2 transition-all duration-300 hover:-translate-y-1 hover:border-g-green/45 hover:bg-g-green/[0.07] hover:shadow-[0_16px_36px_-20px_rgba(62,148,104,0.7)]"
               style={{ animation: `pvreveal .7s cubic-bezier(.2,.7,.2,1) ${0.1 + i * 0.09}s both` }}>
               <span className="text-base" style={{ animation: `pvfloat ${2.8 + (i % 3) * 0.5}s ease-in-out ${i * 0.35}s infinite`, filter: "drop-shadow(0 3px 8px rgba(62,148,104,0.5))" }}>🛡️</span>
               <span className="text-[13px] font-bold text-g-word">{b}</span>
-              <span className="font-bold text-g-green">✓</span>
             </div>
           ))}
         </div>

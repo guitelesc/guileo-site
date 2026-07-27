@@ -1,0 +1,101 @@
+// Cloudflare Pages Function — POST /api/booksy · BOOKSY connector
+// ─────────────────────────────────────────────────────────────────────────────
+// HONEST INERT SCAFFOLD (exact mindbody.js pattern). Booksy has NO public API today —
+// there is no developer program, no partner-accessible Bookings endpoint. So this
+// connector cannot book into Booksy yet, and it never pretends to: every data action
+// returns { ready:false, note } with the honest state. What it DOES do now:
+//   • "connect" stores whatever identifiers the salon has (business_id / booksy URL /
+//     api_key if they ever get one) in client_integrations provider='booksy' — so the
+//     day Booksy opens an API or a partnership, tenants light up with zero re-onboarding.
+//   • "status" returns ready:false + the honest note. Meanwhile the salon captures
+//     bookings via Gui (widget/phone) into the Guileo engine (biz_*), which stays default.
+//
+// Interface for scheduleAdapter.js (pure, importable — SAME contract as mindbody/vagaro so the
+// adapter treats every provider identically; Booksy's just always report ready:false today):
+//   bkStatus(env, email)                 → { ok, ready:false, stored, note }
+//   bkAvailability(env, email, args)     → { ok, ready:false, availabilities:[], note }
+//   bkBook(env, email, args)             → { ok, ready:false, booked:false, note }
+//
+// Cockpit/admin actions (per-tenant gated, same email+connection-key pattern as noshow-radar.js):
+//   { action:"connect", email, token, business_id, [booksy_url], [api_key] }  → store creds
+//   { action:"status",  email, token }                                        → ready:false + note
+//   { action:"availability" | "book", ... }                                   → ready:false + note
+// ─────────────────────────────────────────────────────────────────────────────
+import { json } from "../lib/guard.js";
+
+const SB = "https://ynihodbknhjirkdogxby.supabase.co";
+const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
+const rpc = (fn, body) => fetch(`${SB}/rest/v1/rpc/${fn}`, { method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+const HONEST_NOTE = "Booksy não tem API pública — capture via widget/telefone enquanto isso. As credenciais ficam guardadas e a integração acende no dia em que a Booksy abrir API/parceria.";
+
+// Per-tenant Booksy identifiers live in client_integrations (provider='booksy'), written by
+// "connect" (store_integration, already live in prod) and read by booksy_creds_lookup
+// (db/salon_connectors.sql).
+async function tenantCreds(env, email) {
+  try {
+    const r = await rpc("booksy_creds_lookup", { p_secret: env.INGEST_SECRET || "", p_email: email });
+    if (!r.ok) return null;
+    const t = await r.json(); // { business_id, booksy_url, api_key }
+    return t && (t.business_id || t.booksy_url || t.api_key) ? t : null;
+  } catch { return null; }
+}
+
+// ── PURE FUNCTIONS for scheduleAdapter.js ────────────────────────────────────────
+// Booksy has no public API today, so all three always return ready:false — this is the honest
+// signal the adapter uses to fall back to the internal Guileo engine. The interface matches
+// mindbody/vagaro exactly so the adapter needs zero special-casing; the day Booksy opens an API,
+// only the bodies below change (not the adapter, not the signatures).
+export async function bkStatus(env, email) {
+  const creds = await tenantCreds(env, email);
+  return { ok: true, ready: false, stored: !!creds, business_id: (creds && creds.business_id) || null, note: HONEST_NOTE };
+}
+export async function bkAvailability(env, email, _args = {}) {
+  const creds = await tenantCreds(env, email);
+  return { ok: true, ready: false, stored: !!creds, availabilities: [], note: HONEST_NOTE };
+}
+export async function bkBook(env, email, _args = {}) {
+  const creds = await tenantCreds(env, email);
+  return { ok: true, ready: false, stored: !!creds, booked: false, note: HONEST_NOTE };
+}
+
+export async function onRequestPost(context) {
+  const { request, env } = context;
+  try {
+    const b = await request.json().catch(() => ({}));
+    const email = (b.email || "").toString().trim().toLowerCase();
+    const key = (b.token || b.key || "").toString().trim();
+    const action = (b.action || "status").toString();
+    if (!email.includes("@") || !key) return json({ error: "unauthorized" }, 401);
+
+    // PER-TENANT GATE — email↔connection-key (get_client_data), identical to noshow-radar.js.
+    const gd = await rpc("get_client_data", { p_email: email, p_key: key });
+    if (!gd.ok) return json({ error: "unauthorized" }, 401);
+    const gdj = await gd.json().catch(() => null);
+    if (!(gdj && typeof gdj === "object" && Array.isArray(gdj.events))) return json({ error: "unauthorized" }, 401);
+
+    // ── CONNECT: store the salon's Booksy identifiers for the day the API opens ──
+    if (action === "connect") {
+      const business_id = (b.business_id || "").toString().trim();
+      const booksy_url = (b.booksy_url || "").toString().trim();
+      const api_key = (b.api_key || "").toString().trim();
+      if (!business_id && !booksy_url && !api_key) return json({ error: "missing business_id / booksy_url" }, 400);
+      try {
+        await rpc("store_integration", { p_secret: env.INGEST_SECRET || "", p_email: email, p_provider: "booksy", p_tokens: { business_id, booksy_url, api_key } });
+      } catch { /* store failed */ }
+      return json({ ok: true, connected: false, stored: true, ready: false, note: `Dados salvos ✓ — ${HONEST_NOTE}` });
+    }
+
+    if (action === "status") return json(await bkStatus(env, email));
+    if (action === "availability") return json(await bkAvailability(env, email, b));
+    if (action === "book") return json(await bkBook(env, email, b));
+
+    return json({ error: "unknown action" }, 400);
+  } catch (e) { return json({ error: String(e).slice(0, 140) }, 400); }
+}
+
+// ── WIRING (the day Booksy opens an API) ─────────────────────────────────────
+// Mirror square-appointments.js: implement availability/book against the real endpoints,
+// then in functions/api/agent-schedule.js route op='availability'/'book' here for tenants
+// with tenantCreds() present. Until then this file must stay inert — agent-schedule.js
+// should NOT check Booksy at all (there is nothing to route to).

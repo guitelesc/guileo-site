@@ -1,13 +1,15 @@
 // Cloudflare Pages Function — POST /api/welcome → sends the branded welcome email to a new client.
 // Body: { to, name, business, lang }. Called by the portal right after signup/onboarding.
 import { welcomeEmail } from "../lib/emailTemplates.js";
-import { sameOrigin } from "../lib/guard.js";
+import { sameOrigin, rateLimited } from "../lib/guard.js";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
     // SECURITY: only our own site may send branded welcome mail (blocks external spam/relay abuse).
     if (!sameOrigin(request)) return json({ ok: false, reason: "forbidden" }, 403);
+    // Cap volume so a spoofed-Origin caller can't turn this into a bulk relay.
+    if (await rateLimited(request, env, "welcome", 8)) return json({ ok: false, reason: "rate" }, 429);
     const b = await request.json();
     const to = (b.to || "").toString().trim();
     if (!to || !to.includes("@")) return json({ ok: false, reason: "need a valid email" }, 400);

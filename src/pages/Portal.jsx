@@ -1,19 +1,59 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { portalApi, CONNECTED, toast, onToast } from "../lib/portalApi.js";
+import { portalApi, CONNECTED, toast, onToast, fetchRealData, loadDataKey, saveDataKey } from "../lib/portalApi.js";
 import {
   FaGaugeHigh, FaComments, FaBullhorn, FaUsers, FaHeadset, FaFileLines, FaListCheck,
-  FaArrowLeft, FaArrowTrendUp, FaArrowTrendDown, FaWhatsapp, FaInstagram, FaPhone, FaFacebook, FaTiktok, FaGoogle,
+  FaArrowLeft, FaArrowTrendUp, FaWhatsapp, FaInstagram, FaPhone, FaFacebook, FaTiktok, FaGoogle,
   FaReceipt, FaUtensils, FaBookOpen, FaBullseye, FaPhoneVolume, FaCommentSms, FaGear, FaChartLine,
   FaDownload, FaBell, FaMagnifyingGlass, FaStore, FaBrain, FaCreditCard, FaChevronDown, FaShareNodes,
-  FaArrowsRotate, FaClock, FaStar, FaIdCard,
-  FaPen, FaTrash, FaPlus, FaCircleCheck, FaWandMagicSparkles,
-  FaTruck, FaLocationDot, FaGift, FaUserPlus,
+  FaArrowsRotate, FaClock, FaStar, FaIdCard, FaTriangleExclamation,
+  FaWandMagicSparkles, FaGraduationCap,
+  FaTruck, FaLocationDot, FaGift, FaTag, FaBuilding,
   FaPlug, FaStripe, FaShopify, FaSlack, FaEnvelope, FaCalendarDays, FaFileInvoiceDollar, FaMeta, FaGoogleDrive,
+  FaFaceSmile,
 } from "react-icons/fa6";
 
+/* GuiMark — the Gui presence: the Guileo sprout inside a glowing brass orb. The AI's signature
+   icon (orange = Gui). Used wherever Gui appears on the dashboard. Subtle neon-realista glow. */
+// The Guileo sprout-in-an-orb. When `progress` (0–1) is passed it GROWS: a champagne→green ring
+// fills around the orb with the month's goal, the glow intensifies, and at goal it blooms green +
+// gently breathes — the plant literally grows as the business grows. Default (no progress) = unchanged.
+export function GuiMark({ size = 36, progress = null, celebrate = false }) {
+  const hasProg = Number.isFinite(progress);
+  const p = hasProg ? Math.max(0, Math.min(1, progress)) : 0;
+  const inner = hasProg ? size - 5 : size;
+  const s = Math.round(inner * 0.5);
+  const glow = 12 + Math.round(p * 16); // 12→28px as the goal nears
+  const orb = (
+    <span className="grid place-items-center rounded-full shrink-0" style={{
+      width: inner, height: inner,
+      background: "radial-gradient(circle at 38% 34%, #FFB06B, #FF8A33 55%, #8a431a 100%)",
+      boxShadow: `0 0 0 1px rgba(255,138,51,.4), 0 0 ${hasProg ? glow : 16}px rgba(${celebrate ? "62,148,104" : "255,138,51"},.5)`,
+      animation: celebrate ? "guibloom 2.4s ease-in-out infinite" : undefined,
+    }}>
+      <svg viewBox="0 0 32 32" width={s} height={s} fill="none" stroke="#3a1a06" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ filter: "drop-shadow(0 1px 1px rgba(74,30,8,.4))" }}>
+        <path d="M16 27 V14" />
+        <path d="M16 16 C16 11 12.5 8 8.5 8 C8.5 13 11.5 16 16 16 Z" fill="#3a1a06" stroke="none" />
+        <path d="M16 14 C16 9 19.5 6 23.5 6 C23.5 11 20.5 14 16 14 Z" fill="#3a1a06" stroke="none" />
+        <path d="M16 27 C13 27 11 25 10.5 22" />
+        <path d="M16 27 C19 27 21 25 21.5 22" />
+      </svg>
+    </span>
+  );
+  if (!hasProg) return orb;
+  return (
+    <span className="relative grid place-items-center rounded-full shrink-0" title={`${Math.round(p * 100)}%`} style={{ width: size, height: size, background: `conic-gradient(${celebrate ? "#3E9468" : "#D6C29A"} ${Math.round(p * 360)}deg, rgba(255,255,255,0.10) ${Math.round(p * 360)}deg)` }}>
+      {orb}
+    </span>
+  );
+}
+
+/* Signal colors by meaning — money-owed = red, waitlist = attention amber, pipeline = info blue.
+   The color tells the owner what each play IS, at a glance. Neon-realista tones. */
+export const PLAY_COLOR = { payments: "#E2533F", waitlist: "#FFC23D", followups: "#3FB4FF" };
+
 /* Upsell channel — services a client can request from inside the portal (revenue engine) */
-const ADDONS = [
+export const ADDONS = [
   ["💬", "Add a Telegram / Messenger agent", "One more channel your AI answers 24/7."],
   ["📣", "Launch Meta & Google Ads", "We run and optimize your paid growth."],
   ["🌐", "New website or landing page", "Built to convert — live in days."],
@@ -44,33 +84,54 @@ const STAFF = {
   "Construction": ["Crew A", "Crew B", "Estimator João"],
 };
 const ROOM = { "Clinic": ["Room 1", "Room 2", "Room 3", "Room 4"], "Medical": ["Room 1", "Room 2", "Room 3", "Room 4", "Room 5", "Room 6"], "Salon & Spa": ["Station 1", "Station 2", "Station 3", "Spa room"] };
-const staffOf = (label, i) => { const a = STAFF[label] || []; return a.length ? a[i % a.length] : null; };
-const roomOf = (label, i) => { const a = ROOM[label] || []; return a.length ? a[i % a.length] : null; };
-const _dur = ["30 min", "45 min", "1 h", "1 h 30", "20 min"];
+export const staffOf = (label, i) => { const a = STAFF[label] || []; return a.length ? a[i % a.length] : null; };
+export const roomOf = (label, i) => { const a = ROOM[label] || []; return a.length ? a[i % a.length] : null; };
+export const _dur = ["30 min", "45 min", "1 h", "1 h 30", "20 min"];
 // Anti-no-show deposits (the capacity-protection money lever) — $ held per booking by sector
-const DEPOSIT = { "Restaurant": 20, "Clinic": 30, "Medical": 40, "Salon & Spa": 25, "Plumbing & HVAC": 50, "Gym & Fitness": 0, "Auto Dealership": 0, "Construction": 0, "Education": 0, "Law Firm": 0, "Real Estate": 0, "E-Commerce": 0 };
+export const DEPOSIT = { "Restaurant": 20, "Clinic": 30, "Medical": 40, "Salon & Spa": 25, "Plumbing & HVAC": 50, "Gym & Fitness": 0, "Auto Dealership": 0, "Construction": 0, "Education": 0, "Law Firm": 0, "Real Estate": 0, "E-Commerce": 0 };
 // Deterministic per-sector number: stable for a given (label,salt), distinct across
 // sectors — so "store-wide" stats vary realistically instead of showing the same
 // hardcoded "8 / 31 / 9" for every vertical.
 function vhash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
-function vnum(label, salt, min, max) { return min + (vhash(`${label}|${salt}`) % (max - min + 1)); }
+export function vnum(label, salt, min, max) { return min + (vhash(`${label}|${salt}`) % (max - min + 1)); }
+
+// ── Owner goal ("Meta do mês") — the monthly BOOKINGS target the owner sets on Overview.
+// Stored via portalApi.saveState("owner_goal", n): localStorage is the source of truth and
+// portalApi's cloud-kv mirror best-effort persists it across devices for signed-in clients.
+export function monthBookings(V, real = null) {
+  if (real && Array.isArray(real.events)) {
+    const now = new Date(); const m0 = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    return real.events.filter((e) => e.type === "booking" && new Date(e.created_at).getTime() >= m0).length;
+  }
+  // Demo: vnum gives the sector's stable FULL-month expectation; month-to-date scales by the
+  // day so the pace math ("on pace for") reads sane instead of extrapolating to absurd numbers.
+  const base = vnum(V.label, "mbookings", 24, 96);
+  const now = new Date(); const dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  return Math.max(1, Math.round((base * now.getDate()) / dim));
+}
+export function ownerGoalProgress(V, real = null) {
+  const goal = Math.max(0, parseInt(portalApi.loadState("owner_goal", 0), 10) || 0);
+  if (!goal) return null;
+  const done = monthBookings(V, real);
+  return { goal, done, pct: Math.max(0, Math.min(1, done / goal)) };
+}
 
 // Records created FROM a conversation (chat/call) persist so they genuinely appear
 // at the top of the target tab — closes the "action lands in its tab" loop.
-const createdKey = (label, view) => `${label}:created:${view}`;
-function pushCreated(label, view, rec) {
+export const createdKey = (label, view) => `${label}:created:${view}`;
+export function pushCreated(label, view, rec) {
   const cur = portalApi.loadState(createdKey(label, view), []);
   const id = Date.now();
   portalApi.saveState(createdKey(label, view), [{ ...rec, fromChat: true, _id: id }, ...cur].slice(0, 25));
   return id;
 }
-const loadCreated = (label, view) => portalApi.loadState(createdKey(label, view), []);
+export const loadCreated = (label, view) => portalApi.loadState(createdKey(label, view), []);
 // Undo a chat-created record: drop it from its tab's created list by _id.
 function removeCreated(label, view, id) {
   const cur = portalApi.loadState(createdKey(label, view), []);
   portalApi.saveState(createdKey(label, view), cur.filter((r) => r._id !== id));
 }
-function recordFor(view, who, channel, V) {
+export function recordFor(view, who, channel, V) {
   if (view === "liveorders") return { id: `#${1000 + (Date.now() % 9000)}`, customer: who, items: `New order · via ${channel}`, total: 0, channel, status: "New", color: "#3E9468" };
   if (view === "schedule") return { time: "ASAP", name: who, meta: `Booked via ${channel}`, status: "Pending", ch: channel, color: "#D6C29A" };
   if (view === "deliveries") { const cfg = deliveryCfg(V); return { customer: who, who: `${cfg.who} · assigning`, eta: "Assigning…", status: "Preparing", color: "#D6C29A", addr: `From ${channel}`, via: cfg.own[0] }; }
@@ -79,18 +140,18 @@ function recordFor(view, who, channel, V) {
 // Log a $ event to the Guileo Impact growth ledger (the revenue-share basis): when
 // an order is fulfilled / a deal won / a delivery completed, the money the AI drove
 // shows up in Impact and bumps the total — closing the loop to what Guileo gets paid on.
-const logImpact = (label, what, amt) => pushCreated(label, "impact", { t: "now", what, amt });
+export const logImpact = (label, what, amt) => pushCreated(label, "impact", { t: "now", what, amt });
 
 // Gui credit usage ledger — every metered task logs its cost + day, so the owner
 // sees exactly what their AI credits bought (transparency drives trust + top-ups).
-function logUsage(cost, label) {
+export function logUsage(cost, label) {
   if (!cost) return;
   const day = new Date().toISOString().slice(0, 10);
   const cur = portalApi.loadState("gui_usage", []);
   portalApi.saveState("gui_usage", [{ day, cost, label: (label || "").slice(0, 60), _id: Date.now() }, ...cur].slice(0, 200));
 }
 // Roll the usage ledger into the last N days (oldest→newest) for a mini bar chart.
-function usageByDay(days = 7) {
+export function usageByDay(days = 7) {
   const log = portalApi.loadState("gui_usage", []);
   const today = new Date();
   const out = [];
@@ -98,7 +159,7 @@ function usageByDay(days = 7) {
     const d = new Date(today); d.setDate(today.getDate() - i);
     const key = d.toISOString().slice(0, 10);
     const total = log.filter((u) => u.day === key).reduce((s, u) => s + (u.cost || 0), 0);
-    out.push({ day: key, label: d.toLocaleDateString("en-US", { weekday: "short" }), total });
+    out.push({ day: key, label: d.toLocaleDateString(UI_LANG === "pt" ? "pt-BR" : UI_LANG === "es" ? "es-ES" : "en-US", { weekday: "short" }), total });
   }
   return out;
 }
@@ -110,7 +171,7 @@ function usageByDay(days = 7) {
 // `own` = Guileo-run delivery that keeps 0% commission + the customer relationship.
 const DELIVERY = {
   "Restaurant": { title: "Delivery & couriers", noun: "deliveries", who: "Driver", partners: [["Uber Eats", "🛵", "#06C167"], ["DoorDash", "🚗", "#FF3008"], ["Grubhub", "🍴", "#F63440"]], own: ["Guileo Direct", "Your own drivers — 0% commission, you keep the customer"] },
-  "E-Commerce": { title: "Shipping & fulfilment", noun: "shipments", who: "Carrier", partners: [["UPS", "📦", "#8B6F47"], ["FedEx", "✈️", "#4D148C"], ["USPS", "📮", "#333366"], ["DHL", "🚚", "#D4A520"]], own: ["Local same-day", "Your courier for nearby orders"] },
+  "E-Commerce": { title: "Shipping & fulfilment", noun: "shipments", who: "Carrier", partners: [["UPS", "📦", "#8B6F47"], ["FedEx", "✈️", "#4D148C"], ["USPS", "📮", "#333366"], ["DHL", "🚚", "#C2A878"]], own: ["Local same-day", "Your courier for nearby orders"] },
   "Plumbing & HVAC": { title: "Field dispatch", noun: "jobs", who: "Tech", partners: [], own: ["Guileo Dispatch", "Auto-route technicians to the next job"] },
   "Construction": { title: "Crew & material dispatch", noun: "drops", who: "Crew", partners: [], own: ["Guileo Dispatch", "Route crews & material deliveries"] },
   "Auto Dealership": { title: "Pickup & delivery", noun: "vehicles", who: "Driver", partners: [], own: ["Valet & loaner", "Pick up and drop off customer vehicles"] },
@@ -122,7 +183,28 @@ const DELIVERY = {
   "Law Firm": { title: "Document courier", noun: "deliveries", who: "Courier", partners: [["Legal courier", "📄", "#8B6F47"]], own: ["Same-day courier", "Get documents signed & filed on time"] },
   "Real Estate": { title: "Showings & key handoff", noun: "handoffs", who: "Agent", partners: [], own: ["Agent / lockbox", "Coordinate key handoffs and showings"] },
 };
-const deliveryCfg = (V) => DELIVERY[V.label] || DELIVERY["Restaurant"];
+export const deliveryCfg = (V) => DELIVERY[V.label] || DELIVERY["Restaurant"];
+
+// ── Sector benchmark baselines — STATIC industry estimates (clearly labeled "estimated
+// sector average" in the UI; never presented as live data). Sources: broadly published
+// small-business call/booking studies, rounded. answerRate = share of inbound calls a
+// typical business answers; respMins = median minutes to answer a new lead/message;
+// noshowRate = share of bookings that no-show without confirmation flows. ──
+export const SECTOR_BASELINES = {
+  "Restaurant":      { answerRate: 0.62, respMins: 47,  noshowRate: 0.16 },
+  "Clinic":          { answerRate: 0.68, respMins: 62,  noshowRate: 0.18 },
+  "Medical":         { answerRate: 0.68, respMins: 62,  noshowRate: 0.19 },
+  "Salon & Spa":     { answerRate: 0.58, respMins: 55,  noshowRate: 0.20 },
+  "Law Firm":        { answerRate: 0.65, respMins: 180, noshowRate: 0.12 },
+  "Real Estate":     { answerRate: 0.55, respMins: 90,  noshowRate: 0.14 },
+  "Gym & Fitness":   { answerRate: 0.60, respMins: 70,  noshowRate: 0.22 },
+  "Auto Dealership": { answerRate: 0.70, respMins: 45,  noshowRate: 0.15 },
+  "Plumbing & HVAC": { answerRate: 0.52, respMins: 38,  noshowRate: 0.11 },
+  "Education":       { answerRate: 0.63, respMins: 120, noshowRate: 0.17 },
+  "Construction":    { answerRate: 0.50, respMins: 240, noshowRate: 0.10 },
+  "E-Commerce":      { answerRate: 0.74, respMins: 95,  noshowRate: 0.08 },
+};
+export const sectorBaseline = (V) => SECTOR_BASELINES[V.label] || SECTOR_BASELINES["Restaurant"];
 
 // ── Loyalty & referrals config per sector ──
 const LOYALTY = {
@@ -139,11 +221,11 @@ const LOYALTY = {
   "Real Estate": { unit: "points", reward: "a closing gift", earn: "points per deal" },
   "Construction": { unit: "credits", reward: "priority scheduling", earn: "1 credit per project" },
 };
-const loyaltyCfg = (V) => LOYALTY[V.label] || { unit: "points", reward: "a reward", earn: "points per visit" };
+export const loyaltyCfg = (V) => LOYALTY[V.label] || { unit: "points", reward: "a reward", earn: "points per visit" };
 
 // ── Team / staff per sector (reuses STAFF map for names) ──
-const TEAM_ROLE = { "Restaurant": "Server", "Clinic": "Dentist", "Medical": "Doctor", "Salon & Spa": "Stylist", "Gym & Fitness": "Coach", "Law Firm": "Attorney", "Real Estate": "Agent", "Plumbing & HVAC": "Technician", "Auto Dealership": "Advisor", "Education": "Teacher", "Construction": "Foreman", "E-Commerce": "Support rep" };
-function genLocations(V) {
+export const TEAM_ROLE = { "Restaurant": "Server", "Clinic": "Dentist", "Medical": "Doctor", "Salon & Spa": "Stylist", "Gym & Fitness": "Coach", "Law Firm": "Attorney", "Real Estate": "Agent", "Plumbing & HVAC": "Technician", "Auto Dealership": "Advisor", "Education": "Teacher", "Construction": "Foreman", "E-Commerce": "Support rep" };
+export function genLocations(V) {
   const n = V.business.name;
   return [
     { name: `${n} · Main`, addr: V.business.place || "Main St", status: "Open", revenue: vnum(V.label, "loc1", 1800, 9000), staff: (STAFF[V.label] || []).length || 3, today: vnum(V.label, "loc1o", 20, 120) },
@@ -151,15 +233,15 @@ function genLocations(V) {
     { name: `${n} · Uptown`, addr: "Uptown", status: "Busy", revenue: vnum(V.label, "loc3", 900, 5000), staff: 2, today: vnum(V.label, "loc3o", 8, 60) },
   ];
 }
-function genTeam(V) {
+export function genTeam(V) {
   const staff = (STAFF[V.label] || ["Team member"]).filter((s) => s && !/stand|desk|AI|Fulfillment|Packing|bay/i.test(s));
   const role = TEAM_ROLE[V.label] || "Team member";
   return staff.map((name, i) => ({ name, role: i === 0 ? `Lead ${role.toLowerCase()}` : role, status: "Active", handled: vnum(V.label, `${name}h`, 14, 92), revenue: vnum(V.label, `${name}r`, 900, 6400), rating: ((46 + vnum(V.label, `${name}rt`, 0, 3)) / 10) }));
 }
-function genLoyaltyMembers(V) {
+export function genLoyaltyMembers(V) {
   return (V.customers || genCustomers(V)).map((c, i) => ({ name: c.name, pts: vnum(V.label, `${c.name}pts`, 120, 940), tier: i === 0 ? "Gold" : i === 1 ? "Silver" : "Bronze", channel: c.channel }));
 }
-function genPayments(V) {
+export function genPayments(V) {
   const names = (V.customers || genCustomers(V)).map((c) => c.name);
   const ST = [["Paid", "#3E9468"], ["Pending", "#D6C29A"], ["Overdue", "#EF4444"], ["Paid", "#3E9468"], ["Pending", "#D6C29A"]];
   const M = ["Card", "Apple Pay", "Cash", "Transfer", "Card"];
@@ -168,7 +250,7 @@ function genPayments(V) {
     return { id: `INV-${2040 + i}`, customer: n, amount: vnum(V.label, `${n}inv`, 40, 480), status, color, method: M[i % M.length], due: status === "Paid" ? "Paid" : `in ${2 + i} days` };
   });
 }
-function genReferrals(V) {
+export function genReferrals(V) {
   const sch = (V.ops?.schedule || []).map((r) => r.name).filter(Boolean);
   const reward = 20;
   return [
@@ -180,7 +262,7 @@ function genReferrals(V) {
 }
 // Short sidebar label for the delivery/dispatch tab, per sector.
 const deliveryTab = (V) => ({ "E-Commerce": "Shipping", "Plumbing & HVAC": "Dispatch", "Construction": "Dispatch", "Auto Dealership": "Logistics", "Salon & Spa": "Mobile visits", "Gym & Fitness": "Mobile sessions", "Education": "Mobile sessions", "Law Firm": "Courier", "Real Estate": "Handoffs", "Clinic": "Deliveries", "Medical": "Deliveries" }[V.label] || "Delivery");
-function genDeliveries(V) {
+export function genDeliveries(V) {
   const cfg = deliveryCfg(V);
   const names = (V.ops?.schedule || []).map((r) => r.name).filter(Boolean);
   const ST = [["Preparing", "#D6C29A"], ["En route", "#38BDF8"], ["Arriving", "#3E9468"], ["Delivered", "#7C7C7C"]];
@@ -191,15 +273,15 @@ function genDeliveries(V) {
     return { customer: n, who: `${cfg.who} ${ppl[i % ppl.length]}`, eta: status === "Delivered" ? "Delivered" : `${8 + i * 6} min`, status, color, addr: `${100 + i * 37} Main St`, via };
   });
 }
-function genCalls(V) {
+export function genCalls(V) {
   const sch = (V.ops?.schedule || []).slice(0, 4);
   if (sch.length) return sch.map((p, i) => ({ name: p.name, phone: _PHONES[i % 4], outcome: p.meta ? `${p.meta} · booked by AI` : "Handled by AI", dur: `${1 + (i % 2)}m ${(12 + i * 9) % 60}s`, time: `${2 + i * 12} min ago`, color: ["#3E9468", "#38BDF8", "#3E9468", "#7C7C7C"][i % 4] }));
   return (V.activity || []).slice(0, 4).map((a, i) => ({ name: "Caller", phone: _PHONES[i % 4], outcome: a[2], dur: "1m 02s", time: a[3], color: "#3E9468" }));
 }
-function genConvos(V) {
+export function genConvos(V) {
   return (V.activity || []).slice(0, 4).map((a, i) => ({ name: (V.ops?.schedule?.[i]?.name) || a[1], last: a[2], t: a[3], unread: i === 1 ? 1 : 0 }));
 }
-function genCustomers(V) {
+export function genCustomers(V) {
   const noun = _NOUN[V.label] || "orders";
   return (V.ops?.schedule || []).slice(0, 4).map((p, i) => ({ name: p.name, orders: 24 - i * 5, spent: (600 - i * 120) + 0.5, last: `${2 + i * 15} min ago`, channel: p.ch && p.ch !== "—" ? p.ch : "WhatsApp", noun }));
 }
@@ -208,15 +290,15 @@ function genCustomers(V) {
 // one tap — respond myself (free) · Gui calls (−5 credits) · Gui messages (−2). Idle
 // 🔥 hot leads auto-escalate to Gui after a grace window (owner warned first). Every
 // action logs credit usage, so it stays connected to Billing/Overview across the app. ──
-const TEMP = {
-  hot:  { en: "Hot",  pt: "Quente", emoji: "🔥", dot: "#e0855f", ring: "border-[#e0855f]/45 bg-[#e0855f]/[0.06]" },
-  warm: { en: "Warm", pt: "Morno",  emoji: "🌤", dot: "#D6C29A", ring: "border-g-gold/35 bg-g-gold/[0.05]" },
-  cold: { en: "Cold", pt: "Frio",   emoji: "❄️", dot: "#8Fb0cf", ring: "border-white/12 bg-white/[0.025]" },
+export const TEMP = {
+  hot:  { en: "Hot",  pt: "Quente", es: "Caliente", emoji: "🔥", dot: "#e0855f", ring: "border-[#e0855f]/45 bg-[#e0855f]/[0.06]" },
+  warm: { en: "Warm", pt: "Morno",  es: "Tibio",    emoji: "🌤", dot: "#D6C29A", ring: "border-g-gold/35 bg-g-gold/[0.05]" },
+  cold: { en: "Cold", pt: "Frio",   es: "Frío",     emoji: "❄️", dot: "#8Fb0cf", ring: "border-white/15 bg-white/[0.025]" },
 };
 const TEMP_NOTE = {
-  hot:  { en: "Ready to book now — asked price & availability.", pt: "Pronto pra fechar — perguntou preço e disponibilidade." },
-  warm: { en: "Interested, comparing options — needs a nudge.", pt: "Interessado, comparando — precisa de um empurrão." },
-  cold: { en: "Just exploring — long-term nurture.", pt: "Só pesquisando — nutrir a longo prazo." },
+  hot:  { en: "Ready to book now — asked price & availability.", pt: "Pronto pra fechar — perguntou preço e disponibilidade.", es: "Listo para reservar — preguntó precio y disponibilidad." },
+  warm: { en: "Interested, comparing options — needs a nudge.", pt: "Interessado, comparando — precisa de um empurrão.", es: "Interesado, comparando opciones — necesita un empujón." },
+  cold: { en: "Just exploring — long-term nurture.", pt: "Só pesquisando — nutrir a longo prazo.", es: "Solo explorando — cultivar a largo plazo." },
 };
 const LEAD_SVC = {
   "Restaurant": ["Table for 8 · Sat", "Catering · 40 people", "Birthday booking", "Private event"],
@@ -232,7 +314,7 @@ const LEAD_SVC = {
   "Construction": ["Kitchen remodel · $40k", "Site visit", "Project quote", "Renovation"],
   "E-Commerce": ["Bulk order inquiry", "VIP early access", "Wholesale", "Return/exchange"],
 };
-function genLeads(V) {
+export function genLeads(V) {
   const names = (V.ops?.schedule || []).map((p) => p.name).filter(Boolean);
   const pool = names.length ? names : ["Maria S.", "João P.", "Ana L.", "Carlos M.", "Sofia R.", "Pedro A."];
   const svc = LEAD_SVC[V.label] || ["New inquiry", "Quote request", "Callback request", "Info request"];
@@ -247,105 +329,8 @@ function genLeads(V) {
     temp: temps[i], value: vals[i], urgency: urg[i], ago: ago[i], note: TEMP_NOTE[temps[i]],
   }));
 }
-const urgPt = (u) => (u === "Today" ? "Hoje" : u === "This week" ? "Esta semana" : u === "No rush" ? "Sem pressa" : u);
-const leadStatus = (kind, pt) =>
-  kind === "call" ? (pt ? "📞 Gui ligando… −5 créditos" : "📞 Gui calling… −5 credits")
-  : kind === "msg" ? (pt ? "💬 Gui mandou mensagem · −2 créditos" : "💬 Gui messaged · −2 credits")
-  : kind === "self" ? (pt ? "✋ Você vai responder" : "✋ You'll respond")
-  : (pt ? "✖️ Descartado" : "✖️ Dismissed");
 
-function LeadsDigest({ V, onNav, lang }) {
-  const pt = lang === "pt";
-  const key = `${V.label}:leadActions`;
-  const [acts, setActs] = useState(() => portalApi.loadState(key, {}));
-  const leads = genLeads(V);
-  const act = (lead, kind) => {
-    const cost = kind === "call" ? 5 : kind === "msg" ? 2 : 0;
-    if (cost) logUsage(cost, `Gui ${kind === "call" ? "called" : "messaged"} ${lead.name} · ${lead.service}`);
-    const next = { ...acts, [lead._id]: { kind, at: Date.now() } };
-    portalApi.saveState(key, next); setActs(next);
-    toast(
-      kind === "call" ? (pt ? `Gui vai ligar pro ${lead.name} agora · −5 créditos` : `Gui is calling ${lead.name} now · −5 credits`)
-      : kind === "msg" ? (pt ? `Gui mandou mensagem pro ${lead.name} · −2 créditos` : `Gui messaged ${lead.name} · −2 credits`)
-      : kind === "self" ? (pt ? `Combinado: você responde ${lead.name}` : `Got it: you'll respond to ${lead.name}`)
-      : (pt ? "Lead descartado" : "Lead dismissed")
-    );
-  };
-  const reset = (lead) => { const n = { ...acts }; delete n[lead._id]; portalApi.saveState(key, n); setActs(n); };
-  const groups = ["hot", "warm", "cold"];
-  const counts = groups.reduce((m, g) => { m[g] = leads.filter((l) => l.temp === g).length; return m; }, {});
-  const open = leads.filter((l) => !acts[l._id]);
-  const totalVal = open.reduce((s, l) => s + l.value, 0);
-
-  return (
-    <div className="space-y-5 stagger">
-      <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.02] p-5">
-        <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-g-gold"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{pt ? "Resumo de hoje · Gui qualificou enquanto você dormia" : "Today's digest · Gui qualified these while you slept"}</div>
-        <div className="mt-1 text-xl font-black text-g-word">{open.length} {pt ? "leads novos pra você decidir" : "new leads to decide on"}</div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {groups.map((g) => counts[g] ? (
-            <span key={g} className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold" style={{ borderColor: TEMP[g].dot + "55", color: TEMP[g].dot }}>{TEMP[g].emoji} {counts[g]} {pt ? TEMP[g].pt : TEMP[g].en}</span>
-          ) : null)}
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-g-green/30 bg-g-green/[0.06] px-3 py-1 text-xs font-bold text-g-green money-glow num">💰 ${totalVal.toLocaleString()} {pt ? "em jogo" : "in play"}</span>
-        </div>
-        <p className="mt-3 text-[11px] text-g-muted leading-relaxed">{pt ? "Responda você (grátis) ou peça pro Gui ligar/mandar — aí ele executa e desconta créditos. Leads 🔥 quentes parados o Gui assume sozinho em 2h (avisa antes; você pode segurar)." : "Respond yourself (free) or let Gui call/message — Gui executes and uses credits. Idle 🔥 hot leads auto-escalate to Gui in 2h (you're warned first; you can grab them)."}</p>
-      </div>
-
-      {groups.map((g) => {
-        const list = leads.filter((l) => l.temp === g);
-        if (!list.length) return null;
-        return (
-          <div key={g}>
-            <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-wide" style={{ color: TEMP[g].dot }}>{TEMP[g].emoji} {pt ? TEMP[g].pt : TEMP[g].en} <span className="text-g-muted font-bold">· {list.length}</span></div>
-            <div className="space-y-2.5">
-              {list.map((lead) => {
-                const a = acts[lead._id];
-                return (
-                  <div key={lead._id} className={`rounded-xl border p-4 ${TEMP[g].ring}`}>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 text-sm font-extrabold text-g-word">{lead.name}<span className="text-[10px] font-bold text-g-muted">· {lead.channel} · {lead.ago}{pt ? " atrás" : " ago"}</span></div>
-                      <div className="mt-0.5 text-[12px] text-g-muted">{pt ? lead.note.pt : lead.note.en}</div>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-g-light">{lead.service}</span>
-                        <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-g-green num">💰 ${lead.value.toLocaleString()}</span>
-                        <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-g-light">⏱ {pt ? urgPt(lead.urgency) : lead.urgency}</span>
-                      </div>
-                    </div>
-                    {!a ? (
-                      <>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <button onClick={() => act(lead, "self")} className="rounded-lg border border-white/15 bg-white/[0.05] px-3 py-1.5 text-[12px] font-bold text-g-word hover:bg-white/[0.09] transition">{pt ? "Respondo eu" : "Respond myself"}</button>
-                          <button onClick={() => act(lead, "call")} className="rounded-lg border border-g-green/40 bg-g-green/[0.10] px-3 py-1.5 text-[12px] font-bold text-g-light hover:bg-g-green/20 transition">📞 {pt ? "Gui liga" : "Gui calls"} <span className="text-g-muted font-semibold">−5</span></button>
-                          <button onClick={() => act(lead, "msg")} className="rounded-lg border border-g-gold/35 bg-g-gold/[0.08] px-3 py-1.5 text-[12px] font-bold text-g-gold hover:bg-g-gold/15 transition">💬 {pt ? "Gui manda" : "Gui messages"} <span className="text-g-muted font-semibold">−2</span></button>
-                          <button onClick={() => act(lead, "dismiss")} className="rounded-lg px-3 py-1.5 text-[12px] font-bold text-g-muted hover:text-g-word transition">{pt ? "Descartar" : "Dismiss"}</button>
-                        </div>
-                        {g === "hot" && (
-                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-[#e0855f]">⏱ {pt ? "Gui liga em 2h se você não cuidar" : "Gui auto-calls in 2h if you don't act"} <button onClick={() => act(lead, "self")} className="underline text-g-muted hover:text-g-word">{pt ? "deixa que eu cuido" : "I'll handle it"}</button></div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-black/20 px-3 py-2">
-                        <span className="text-[12px] font-bold text-g-light">{leadStatus(a.kind, pt)}</span>
-                        <button onClick={() => reset(lead)} className="text-[11px] font-bold text-g-muted hover:text-g-word underline">{pt ? "desfazer" : "undo"}</button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="text-[12px] text-g-muted">{pt ? "Quer esse resumo no WhatsApp / e-mail / SMS todo dia?" : "Want this digest on WhatsApp / email / SMS every day?"}</div>
-        <button onClick={() => onNav("integrations")} className="btn-bright text-[12px] shrink-0">{pt ? "Ligar canais →" : "Turn on channels →"}</button>
-      </div>
-    </div>
-  );
-}
-
-function genCampaigns(V) {
+export function genCampaigns(V) {
   const ch = (V.channelMix?.items?.[0]?.[0]) || "WhatsApp";
   // Vertical-aware promo so each sector's campaigns read like its real marketing.
   const PROMO = {
@@ -364,86 +349,86 @@ function genCampaigns(V) {
 // ── Per-sector intelligence: one source of truth that makes every vertical feel
 // "this AI understands MY business" — feeds Impact events, recommendations, the
 // radar, the daily briefing, audiences, next-best-action and missed-ops. ──
-const SECTOR_IQ = {
+export const SECTOR_IQ = {
   "Restaurant": { slot: 62, brief: "tables fill fast tonight",
-    radar: { n: (V) => genWaitlist(V).length || 3, en: (n) => `It's almost service and ${n} tables are still open tonight — fill them from your waitlist?`, pt: (n) => `Tá quase na hora e ${n} mesas seguem vazias hoje — encher pela lista de espera?`, chipEn: "🍽️ Fill tables", chipPt: "🍽️ Encher mesas", cmd: "request reviews" },
+    radar: { n: (V) => genWaitlist(V).length || 3, en: (n) => `It's almost service and ${n} tables are still open tonight — fill them from your waitlist?`, pt: (n) => `Tá quase na hora e ${n} mesas seguem vazias hoje — encher pela lista de espera?`, es: (n) => `Ya casi es hora de servicio y ${n} mesas siguen vacías esta noche — ¿las llenas desde tu lista de espera?`, chipEn: "🍽️ Fill tables", chipPt: "🍽️ Encher mesas", chipEs: "🍽️ Llenar mesas", cmd: "request reviews" },
     recs: ["Tonight runs ~30% below capacity — blast your waitlist + regulars a same-day offer to fill the room.", "A dozen happy diners haven't been asked for a review yet — reviews drive new tables.", "Several regulars haven't ordered in 30 days — a win-back nudge brings them back."],
     impact: ["Filled a dead-night table → re-sold the slot", "Killed a no-show and re-sold the table", "Won back a regular gone 30 days"],
     missed: ["callers asked for catering / large parties — a line you don't list yet", "after-hours 'are you open?' calls now answered automatically"],
     aud: ["Regulars · 3+ visits", "Lapsed diners · 30d", "Big-spender lookalike", "Local · delivery radius"],
     nb: { top: "orders weekly — invite to your VIP club with a treat next visit.", risk: "hasn't ordered in a while — a 'we miss you' offer brings them back.", base: "loved their last meal — ask for a review while it's fresh." } },
   "Clinic": { slot: 160, brief: "recalls due this week",
-    radar: { n: (V) => genFollowups(V).length || 38, en: (n) => `${n} patients are overdue for a recall — reactivate them this week (high-margin).`, pt: (n) => `${n} pacientes estão com retorno atrasado — reative esta semana (alta margem).`, chipEn: "🦷 Reactivate", chipPt: "🦷 Reativar", cmd: "start follow-ups" },
+    radar: { n: (V) => genFollowups(V).length || 38, en: (n) => `${n} patients are overdue for a recall — reactivate them this week (high-margin).`, pt: (n) => `${n} pacientes estão com retorno atrasado — reative esta semana (alta margem).`, es: (n) => `${n} pacientes tienen un recall pendiente — reactívalos esta semana (alto margen).`, chipEn: "🦷 Reactivate", chipPt: "🦷 Reativar", chipEs: "🦷 Reactivar", cmd: "start follow-ups" },
     recs: ["38 patients are overdue for a recall — a reactivation sequence books ~1 in 5.", "Happy patients haven't been asked to review — reviews win new patients.", "Several unconfirmed visits risk no-shows — confirm them now."],
     impact: ["Reactivated a 9-month overdue recall", "Recovered a no-show with an auto-reschedule", "Confirmed a wobbly appointment before it cancelled"],
     missed: ["patients asked about whitening/Invisalign you don't promote — high-margin demand", "after-hours 'do you take my insurance?' calls now answered"],
     aud: ["Recall-due patients", "New-patient lookalike", "Lapsed · 12mo+", "Treatment-plan follow-up"],
     nb: { top: "is due for a 6-month recall soon — pre-book the cleaning while they're warm.", risk: "lapsed on recalls — a reactivation note usually re-books them.", base: "had a great visit — ask for a review and pre-book the next." } },
   "Medical": { slot: 180, brief: "follow-ups awaiting",
-    radar: { n: (V) => genFollowups(V).length || 24, en: (n) => `${n} patients need a follow-up or recall — re-engage before they drift to another provider.`, pt: (n) => `${n} pacientes precisam de retorno — reengaje antes que migrem pra outro lugar.`, chipEn: "🩺 Re-engage", chipPt: "🩺 Reengajar", cmd: "start follow-ups" },
+    radar: { n: (V) => genFollowups(V).length || 24, en: (n) => `${n} patients need a follow-up or recall — re-engage before they drift to another provider.`, pt: (n) => `${n} pacientes precisam de retorno — reengaje antes que migrem pra outro lugar.`, es: (n) => `${n} pacientes necesitan seguimiento o recall — reconéctalos antes de que se vayan a otro proveedor.`, chipEn: "🩺 Re-engage", chipPt: "🩺 Reengajar", chipEs: "🩺 Reconectar", cmd: "start follow-ups" },
     recs: ["Open slots this week sit unfilled — pull from your new-patient demand.", "Reviews from happy patients drive new-patient search — request a batch.", "Unconfirmed visits risk no-shows — confirm them now."],
     impact: ["Filled an open slot from new-patient demand", "Recovered a no-show with an auto-reschedule", "Reactivated a patient overdue for a follow-up"],
     missed: ["patients asked about telehealth options you don't list yet", "after-hours intake calls now captured instead of lost"],
     aud: ["Recall-due patients", "New-patient lookalike", "Lapsed · 12mo+", "Telehealth-interested"],
     nb: { top: "is a high-value patient due for follow-up — book it while top of mind.", risk: "hasn't been seen in a while — a check-in note re-engages them.", base: "had a good visit — ask for a review and schedule the next." } },
   "Salon & Spa": { slot: 70, brief: "chairs to fill tomorrow",
-    radar: { n: (V) => genWaitlist(V).length || 5, en: (n) => `${n} chairs sit empty tomorrow — push expiring packages + regulars to fill them.`, pt: (n) => `${n} cadeiras vazias amanhã — empurre pacotes vencendo + clientes fiéis pra preencher.`, chipEn: "💈 Fill chairs", chipPt: "💈 Preencher", cmd: "launch a promo" },
+    radar: { n: (V) => genWaitlist(V).length || 5, en: (n) => `${n} chairs sit empty tomorrow — push expiring packages + regulars to fill them.`, pt: (n) => `${n} cadeiras vazias amanhã — empurre pacotes vencendo + clientes fiéis pra preencher.`, es: (n) => `${n} sillas quedan vacías mañana — impulsa paquetes por vencer + clientes frecuentes para llenarlas.`, chipEn: "💈 Fill chairs", chipPt: "💈 Preencher", chipEs: "💈 Llenar sillas", cmd: "launch a promo" },
     recs: ["Tomorrow has open chairs — offer same-week slots to regulars and waitlist.", "Clients haven't rebooked — a rebooking nudge keeps the chair full.", "Ask happy clients for reviews — they fill new chairs."],
     impact: ["Filled an empty chair with a same-day offer", "Rebooked a client before they drifted", "Sold an expiring package before it lapsed"],
     missed: ["clients asked for treatments you don't offer yet — upsell demand", "after-hours booking requests now captured"],
     aud: ["Rebook-due clients", "Lapsed · 60d", "Package holders", "High-value lookalike"],
     nb: { top: "is a VIP — offer a loyalty perk and pre-book the next visit.", risk: "hasn't rebooked — a 'we saved your spot' note works.", base: "loved the service — ask for a review and rebook." } },
   "Law Firm": { slot: 2500, brief: "intakes awaiting follow-up",
-    radar: { n: (V) => genFollowups(V).length || 11, en: (n) => `${n} intakes never got a follow-up call — each unsigned lead is worth thousands.`, pt: (n) => `${n} atendimentos não tiveram retorno — cada lead sem assinar vale milhares.`, chipEn: "⚖️ Follow up", chipPt: "⚖️ Dar retorno", cmd: "start follow-ups" },
+    radar: { n: (V) => genFollowups(V).length || 11, en: (n) => `${n} intakes never got a follow-up call — each unsigned lead is worth thousands.`, pt: (n) => `${n} atendimentos não tiveram retorno — cada lead sem assinar vale milhares.`, es: (n) => `${n} consultas nunca recibieron una llamada de seguimiento — cada lead sin firmar vale miles.`, chipEn: "⚖️ Follow up", chipPt: "⚖️ Dar retorno", chipEs: "⚖️ Dar seguimiento", cmd: "start follow-ups" },
     recs: ["Several consults never got a follow-up — each unsigned lead is ~$2.5k.", "Engagement letters are unsigned — chase the e-signatures.", "Past clients are a referral goldmine — ask for intros + reviews."],
     impact: ["Captured an after-hours injury intake → signed", "Chased an unsigned engagement letter to signature", "Turned a past client into a referral"],
     missed: ["callers asked about practice areas you don't list yet", "after-hours intakes now captured instead of going to voicemail"],
     aud: ["Unsigned consults", "Past clients (referral)", "PI lookalike", "Practice-area searchers"],
     nb: { top: "is a high-value matter — fast-track the engagement letter.", risk: "consult never signed — a follow-up call recovers many.", base: "had a good outcome — ask for a review + referral." } },
   "Real Estate": { slot: 9000, brief: "hot leads to follow",
-    radar: { n: (V) => genFollowups(V).length || 3, en: (n) => `${n} hot buyers viewed but never got matching listings — send them now before they go cold.`, pt: (n) => `${n} compradores quentes viram mas não receberam imóveis compatíveis — envie agora.`, chipEn: "🏠 Send listings", chipPt: "🏠 Enviar imóveis", cmd: "start follow-ups" },
+    radar: { n: (V) => genFollowups(V).length || 3, en: (n) => `${n} hot buyers viewed but never got matching listings — send them now before they go cold.`, pt: (n) => `${n} compradores quentes viram mas não receberam imóveis compatíveis — envie agora.`, es: (n) => `${n} compradores interesados vieron pero no recibieron propiedades que coincidan — envíaselas ahora antes de que se enfríen.`, chipEn: "🏠 Send listings", chipPt: "🏠 Enviar imóveis", chipEs: "🏠 Enviar propiedades", cmd: "start follow-ups" },
     recs: ["Hot buyers haven't gotten matching listings — send them today.", "Past clients drive referrals — ask for intros and reviews.", "New leads need instant replies — your AI answers in seconds."],
     impact: ["Replied to a Zillow lead in seconds → booked a showing", "Sent matching listings to a warm buyer", "Turned a past client into a referral"],
     missed: ["buyers asked about financing/mortgage — partner-referral revenue you're missing", "after-hours listing inquiries now answered instantly"],
     aud: ["Buyers by budget band", "Renters", "Past clients · referral", "Just-listed alerts"],
     nb: { top: "is an active buyer — send the newest matching listings now.", risk: "viewed but went quiet — a fresh listing re-engages them.", base: "closed happy — ask for a review and referrals." } },
   "Gym & Fitness": { slot: 90, brief: "at-risk members",
-    radar: { n: (V) => genFollowups(V).length || 22, en: (n) => `${n} members went quiet (>14 days) — they churn next month without a nudge.`, pt: (n) => `${n} alunos sumiram (>14 dias) — vão cancelar mês que vem sem um empurrão.`, chipEn: "💪 Re-engage", chipPt: "💪 Reengajar", cmd: "start follow-ups" },
+    radar: { n: (V) => genFollowups(V).length || 22, en: (n) => `${n} members went quiet (>14 days) — they churn next month without a nudge.`, pt: (n) => `${n} alunos sumiram (>14 dias) — vão cancelar mês que vem sem um empurrão.`, es: (n) => `${n} miembros se quedaron callados (>14 días) — cancelarán el próximo mes sin un empujón.`, chipEn: "💪 Re-engage", chipPt: "💪 Reengajar", chipEs: "💪 Reconectar", cmd: "start follow-ups" },
     recs: ["22 members went quiet — re-engage before they cancel.", "Trial users didn't convert — a follow-up turns them into members.", "Class spots sit empty — fill them from your waitlist."],
     impact: ["Re-engaged a member quiet 18 days", "Converted a trial that almost slipped away", "Filled an empty class spot from the waitlist"],
     missed: ["callers wanted personal training — an upsell you're not offering", "after-hours 'how much is membership?' calls now answered"],
     aud: ["At-risk members", "Trial no-shows", "Class waitlist", "Lapsed · 60d"],
     nb: { top: "is a loyal member — offer a referral perk or PT upsell.", risk: "hasn't checked in 18 days — a 'we miss you' + guest pass saves them.", base: "is engaged — ask for a review and a friend referral." } },
   "Auto Dealership": { slot: 400, brief: "leads + service-due",
-    radar: { n: (V) => genFollowups(V).length || 6, en: (n) => `${n} shoppers test-drove or inquired but never got a follow-up — re-engage before they buy elsewhere.`, pt: (n) => `${n} compradores fizeram test-drive mas não tiveram retorno — reengaje antes que comprem em outro lugar.`, chipEn: "🚗 Follow up", chipPt: "🚗 Dar retorno", cmd: "start follow-ups" },
+    radar: { n: (V) => genFollowups(V).length || 6, en: (n) => `${n} shoppers test-drove or inquired but never got a follow-up — re-engage before they buy elsewhere.`, pt: (n) => `${n} compradores fizeram test-drive mas não tiveram retorno — reengaje antes que comprem em outro lugar.`, es: (n) => `${n} compradores hicieron una prueba de manejo o consultaron pero no recibieron seguimiento — reconéctalos antes de que compren en otro lado.`, chipEn: "🚗 Follow up", chipPt: "🚗 Dar retorno", chipEs: "🚗 Dar seguimiento", cmd: "start follow-ups" },
     recs: ["Test-drivers haven't been followed up — each is a near-sale.", "Service-due owners are easy revenue — book them in.", "New leads need instant replies — your AI answers 24/7."],
     impact: ["Followed up a test-drive → booked a sit-down", "Booked a service-due owner", "Replied to an AutoTrader lead in seconds"],
     missed: ["callers asked about trade-in values after hours — now answered", "service-plan demand you're not promoting"],
     aud: ["Service-due owners", "Test-drove · no buy", "Lease-ending", "In-market lookalike"],
     nb: { top: "is a repeat buyer — invite to a VIP trade-in offer.", risk: "test-drove but didn't buy — a follow-up recovers many.", base: "is due for service — book the appointment now." } },
   "Plumbing & HVAC": { slot: 480, brief: "jobs + after-hours calls",
-    radar: { n: (V) => genFollowups(V).length || 4, en: (n) => `${n} quotes are sitting unbooked and ${"emergency"} calls come after hours — capture them before a competitor does.`, pt: (n) => `${n} orçamentos parados e chamados de emergência chegam fora do horário — capture antes do concorrente.`, chipEn: "🔧 Book jobs", chipPt: "🔧 Agendar", cmd: "start follow-ups" },
+    radar: { n: (V) => genFollowups(V).length || 4, en: (n) => `${n} quotes are sitting unbooked and ${"emergency"} calls come after hours — capture them before a competitor does.`, pt: (n) => `${n} orçamentos parados e chamados de emergência chegam fora do horário — capture antes do concorrente.`, es: (n) => `${n} presupuestos siguen sin agendar y las llamadas de emergencia llegan fuera de horario — captúralos antes que un competidor.`, chipEn: "🔧 Book jobs", chipPt: "🔧 Agendar", chipEs: "🔧 Agendar trabajos", cmd: "start follow-ups" },
     recs: ["Open quotes haven't been booked — a nudge converts them.", "Maintenance-plan customers are recurring revenue — offer it.", "After-hours emergencies are pure margin — your AI books them 24/7."],
     impact: ["Booked a 2 AM emergency leak → won the job", "Converted an open quote into a booked job", "Sold a maintenance plan for recurring revenue"],
     missed: ["callers needed services outside your area — partner-referral revenue", "after-hours emergency calls now booked instead of lost"],
     aud: ["Open-quote leads", "Maintenance-plan prospects", "Past customers · service-due", "Local emergency lookalike"],
     nb: { top: "is a repeat customer — offer an annual maintenance plan.", risk: "got a quote but didn't book — a follow-up wins many.", base: "had a great job — ask for a review and referral." } },
   "Education": { slot: 120, brief: "trials + at-risk students",
-    radar: { n: (V) => genFollowups(V).length || 9, en: (n) => `${n} trial students didn't enroll yet — a follow-up turns trials into tuition.`, pt: (n) => `${n} alunos de aula teste ainda não matricularam — um retorno vira matrícula.`, chipEn: "📚 Follow up", chipPt: "📚 Dar retorno", cmd: "start follow-ups" },
+    radar: { n: (V) => genFollowups(V).length || 9, en: (n) => `${n} trial students didn't enroll yet — a follow-up turns trials into tuition.`, pt: (n) => `${n} alunos de aula teste ainda não matricularam — um retorno vira matrícula.`, es: (n) => `${n} estudiantes de prueba aún no se inscribieron — un seguimiento convierte pruebas en matrículas.`, chipEn: "📚 Follow up", chipPt: "📚 Dar retorno", chipEs: "📚 Dar seguimiento", cmd: "start follow-ups" },
     recs: ["Trial students haven't enrolled — nudge them to convert.", "At-risk students may drop — re-engage before they go.", "Happy parents/students drive referrals — ask for reviews."],
     impact: ["Converted a trial student into an enrollment", "Re-engaged a student about to drop", "Turned a happy parent into a referral"],
     missed: ["callers asked about courses you don't offer yet", "after-hours enrollment questions now answered"],
     aud: ["Trial · not enrolled", "At-risk students", "Past students · referral", "Course-interest lookalike"],
     nb: { top: "is highly engaged — offer an advanced course or referral perk.", risk: "is at risk of dropping — a check-in keeps them on track.", base: "is doing well — ask for a review and referral." } },
   "Construction": { slot: 44000, brief: "estimates awaiting",
-    radar: { n: (V) => genFollowups(V).length || 5, en: (n) => `${n} estimates are awaiting a decision — a timely follow-up wins the bid.`, pt: (n) => `${n} orçamentos aguardam decisão — um retorno na hora ganha a obra.`, chipEn: "🏗️ Follow up", chipPt: "🏗️ Dar retorno", cmd: "start follow-ups" },
+    radar: { n: (V) => genFollowups(V).length || 5, en: (n) => `${n} estimates are awaiting a decision — a timely follow-up wins the bid.`, pt: (n) => `${n} orçamentos aguardam decisão — um retorno na hora ganha a obra.`, es: (n) => `${n} presupuestos esperan una decisión — un seguimiento a tiempo gana la obra.`, chipEn: "🏗️ Follow up", chipPt: "🏗️ Dar retorno", chipEs: "🏗️ Dar seguimiento", cmd: "start follow-ups" },
     recs: ["Open estimates need follow-up — each is a major project.", "Past clients drive referrals — ask for intros and reviews.", "New leads need fast replies — your AI answers instantly."],
     impact: ["Followed up an estimate → won the project", "Captured an after-hours project lead", "Turned a past client into a referral"],
     missed: ["leads asked about services outside your scope — partner-referral revenue", "after-hours project inquiries now captured"],
     aud: ["Open-estimate leads", "Past clients · referral", "Permit-pulled lookalike", "Project-type searchers"],
     nb: { top: "is a high-value client — fast-track the proposal.", risk: "got an estimate but didn't decide — a follow-up wins many.", base: "had a great project — ask for a review and referral." } },
   "E-Commerce": { slot: 124, brief: "carts recovering",
-    radar: { n: (V) => genFollowups(V).length || 41, en: (n) => `${n} carts worth a few thousand are abandoning right now — start the recovery flow?`, pt: (n) => `${n} carrinhos de alguns milhares estão sendo abandonados agora — disparar a recuperação?`, chipEn: "🛒 Recover carts", chipPt: "🛒 Recuperar", cmd: "start follow-ups" },
+    radar: { n: (V) => genFollowups(V).length || 41, en: (n) => `${n} carts worth a few thousand are abandoning right now — start the recovery flow?`, pt: (n) => `${n} carrinhos de alguns milhares estão sendo abandonados agora — disparar a recuperação?`, es: (n) => `${n} carritos de unos miles se están abandonando ahora mismo — ¿iniciamos el flujo de recuperación?`, chipEn: "🛒 Recover carts", chipPt: "🛒 Recuperar", chipEs: "🛒 Recuperar carritos", cmd: "start follow-ups" },
     recs: ["41 carts worth ~$2.4k are unrecovered right now — fire the recovery flow.", "Past buyers haven't been re-engaged — a win-back sells again.", "Happy buyers drive social proof — request reviews."],
     impact: ["Chased an abandoned cart ($124) → paid", "Won back a buyer lapsed 60 days", "Turned a 5★ review into an ad"],
     missed: ["size/fit questions bounced — a size guide + AI sizing would have closed them", "after-hours order questions now answered instantly"],
@@ -451,7 +436,7 @@ const SECTOR_IQ = {
     nb: { top: "is a repeat buyer — offer a replenish subscription or VIP perk.", risk: "lapsed 60 days — a win-back offer brings them back.", base: "bought happy — ask for a review and cross-sell." } },
 };
 const iqOf = (V) => SECTOR_IQ[V.label] || SECTOR_IQ["Restaurant"];
-function genAudiences(V) {
+export function genAudiences(V) {
   const iq = V && SECTOR_IQ[V.label];
   if (iq) return iq.aud.map((name, i) => ({ name, size: vnum(V.label, `aud${i}`, 90, 620), source: "CRM" }));
   return [
@@ -462,7 +447,7 @@ function genAudiences(V) {
   ];
 }
 // Growth attribution ledger — the basis of the revenue-share model
-function genImpact(V) {
+export function genImpact(V) {
   const iq = SECTOR_IQ[V.label];
   const times = ["now", "18m", "1h", "2h", "4h", "6h"];
   const amt = (i) => Math.min(1500, Math.max(40, Math.round((iq?.slot || 120) * (0.5 + vnum(V.label, `imp${i}`, 0, 80) / 100))));
@@ -474,7 +459,7 @@ function genImpact(V) {
   return { total: V.impact?.total || 0, parts: V.impact?.parts || [], events };
 }
 // Universal "money leak" engine — un-converted leads, stalled quotes, trials, recalls the AI chases
-function genFollowups(V) {
+export function genFollowups(V) {
   const sch = V.ops?.schedule || [];
   const TYPE = { "Law Firm": "Unsigned lead", "Construction": "Open estimate", "Real Estate": "Warm buyer", "Gym & Fitness": "Trial no-show", "Auto Dealership": "Test-drive lead", "Education": "Trial student", "Plumbing & HVAC": "Open quote", "Clinic": "Unconfirmed recall", "Medical": "Unconfirmed follow-up", "Salon & Spa": "No rebook yet", "E-Commerce": "Abandoned cart", "Restaurant": "Unconfirmed reservation" };
   const t = TYPE[V.label] || "Open lead";
@@ -482,7 +467,7 @@ function genFollowups(V) {
   return (base.length ? base : sch).slice(0, 5).map((r, i) => ({ name: r.name, type: t, stage: (i % 3) + 1, value: 120 + i * 90, next: ["Nudge today", "Call back", "Send offer", "Final follow-up"][i % 4], ch: r.ch && r.ch !== "—" ? r.ch : "WhatsApp" }));
 }
 // Waitlist — turn empty capacity into revenue
-function genWaitlist(V) {
+export function genWaitlist(V) {
   const WANT = { "Restaurant": "Table for 2 tonight", "Clinic": "Earlier cleaning slot", "Medical": "Earlier appointment", "Salon & Spa": "Saturday haircut", "Gym & Fitness": "HIIT 7am spot", "Auto Dealership": "Service this week", "Plumbing & HVAC": "Same-day visit", "Education": "Evening class seat", "Law Firm": "Consultation this week", "Real Estate": "Weekend viewing", "Construction": "On-site estimate", "E-Commerce": "Back-in-stock alert" };
   const w = WANT[V.label] || "Earlier slot";
   return (V.ops?.schedule || []).slice(0, 4).map((r, i) => ({ name: r.name, want: w, since: `${5 + i * 7} min ago`, ch: r.ch && r.ch !== "—" ? r.ch : "WhatsApp" }));
@@ -504,7 +489,7 @@ const SECTOR_REVIEWS = {
   "Education": ["My trial class hooked me, enrolled the very next week.", "They checked in when my son fell behind, real difference.", "Tutors are patient and his grades jumped in a month.", "Answered my enrollment questions late at night, so helpful.", "Advanced course was challenging and exactly what I needed.", "Happy parent here, already referred two families their way."],
   "Construction": ["Followed up on my estimate and delivered the remodel on time.", "On-site estimate was detailed and the bid was fair.", "Captured my project lead after hours, no call went unanswered.", "Crew was tidy and the kitchen build exceeded expectations.", "Clear proposal, no surprise costs, my deck looks amazing.", "Great project, happily referred them to my neighbor."],
 };
-function genReviews(V) {
+export function genReviews(V) {
   const names = (V.ops?.schedule || []).map((r) => r.name).filter(Boolean);
   const texts = SECTOR_REVIEWS[V.label] || ["Amazing — fast and so friendly!", "Best experience, highly recommend 🙌", "They handled everything for me, so easy.", "Quick reply and great service.", "Will 100% come back!"];
   const base = names.length ? names : ["Marcos A.", "Maria S.", "Pedro L.", "Ana R.", "Bruno T."];
@@ -514,7 +499,7 @@ function genReviews(V) {
 // Signature Overview ops board per sector (keyed by V.label) — the one widget that makes the
 // dashboard feel like THIS owner's business, mirroring restaurant's bespoke topItems block.
 // Each row is normalized to {a:primary, b:detail, pill:status, color, val:right-figure, ch:channel}.
-const SECTOR_OPS = {
+export const SECTOR_OPS = {
   "Clinic": { title: "Recall radar", sub: "overdue patients Gui is reactivating — high-margin recovery", chip: "🦷 Reactivate all", view: "followups", rows: [
     { a: "Carla M.", b: "Cleaning + check-up · 4 mo overdue", pill: "Reactivating", color: "#38BDF8", val: "$160", ch: "WhatsApp" },
     { a: "Hugo N.", b: "Implant follow-up · 7 mo overdue", pill: "Overdue", color: "#C2A878", val: "$320", ch: "Phone" },
@@ -535,19 +520,81 @@ const SECTOR_OPS = {
     { a: "M. Dias", b: "Buyer · House Morumbi · re-engage", pill: "Cooling", color: "#C2A878", val: "R$1.8–2.2M", ch: "Instagram" } ] },
 };
 // Recurring revenue — memberships / plans / subscriptions (the most valuable revenue)
-function genRecurring(V) {
+export function genRecurring(V) {
   const PLAN = { "Gym & Fitness": "Monthly membership", "Clinic": "Recall plan", "Medical": "Care plan", "Salon & Spa": "Glow package", "Plumbing & HVAC": "Maintenance plan", "Auto Dealership": "Service plan", "Education": "Course subscription", "Restaurant": "VIP club", "E-Commerce": "Replenish subscription", "Real Estate": "Property mgmt", "Law Firm": "Retainer", "Construction": "Service contract" };
   const p = PLAN[V.label] || "Membership";
   return (V.ops?.schedule || []).slice(0, 5).map((r, i) => ({ name: r.name, plan: p, value: 39 + i * 12, status: i === 3 ? "Renews soon" : i === 4 ? "At risk" : "Active", color: i === 3 ? "#D6C29A" : i === 4 ? "#EF4444" : "#3E9468" }));
 }
 import logo from "../assets/guileo-mark.png";
-import { Count } from "../lib/ui.jsx";
 import { waLink } from "../data/contact.js";
 import { VERTICALS, VERTICAL_KEYS } from "../data/verticals.js";
 
+/* Heavy tab views split into lazy chunks (performance) — code unchanged, just moved to src/portal/. */
+const Overview = lazy(() => import("../portal/Overview.jsx"));
+const Deliveries = lazy(() => import("../portal/Deliveries.jsx"));
+const Support = lazy(() => import("../portal/Support.jsx"));
+const CommandCenter = lazy(() => import("../portal/CommandCenter.jsx"));
+const CRM360 = lazy(() => import("../portal/CRM360.jsx"));
+const CallLogs = lazy(() => import("../portal/CallLogs.jsx"));
+const Inbox = lazy(() => import("../portal/Inbox.jsx"));
+const SettingsView = lazy(() => import("../portal/SettingsView.jsx"));
+const AIBrain = lazy(() => import("../portal/AIBrain.jsx"));
+const Billing = lazy(() => import("../portal/Billing.jsx"));
+const ScheduleScreen = lazy(() => import("../portal/ScheduleScreen.jsx"));
+const AIAnalytics = lazy(() => import("../portal/AIAnalytics.jsx"));
+const LeadsDigest = lazy(() => import("../portal/LeadsDigest.jsx"));
+const Integrations = lazy(() => import("../portal/Integrations.jsx"));
+const Operations = lazy(() => import("../portal/Operations.jsx"));
+const LiveOrders = lazy(() => import("../portal/LiveOrders.jsx"));
+const Kitchen = lazy(() => import("../portal/Kitchen.jsx"));
+const MenuView = lazy(() => import("../portal/MenuView.jsx"));
+const Customers = lazy(() => import("../portal/Customers.jsx"));
+const Campaigns = lazy(() => import("../portal/Campaigns.jsx"));
+const Audiences = lazy(() => import("../portal/Audiences.jsx"));
+const Convos = lazy(() => import("../portal/Convos.jsx"));
+const CatalogScreen = lazy(() => import("../portal/CatalogScreen.jsx"));
+const SocialInbox = lazy(() => import("../portal/SocialInbox.jsx"));
+const AIInsights = lazy(() => import("../portal/AIInsights.jsx"));
+const Locations = lazy(() => import("../portal/Locations.jsx"));
+const Team = lazy(() => import("../portal/Team.jsx"));
+const Payments = lazy(() => import("../portal/Payments.jsx"));
+const Loyalty = lazy(() => import("../portal/Loyalty.jsx"));
+const GuileoImpact = lazy(() => import("../portal/GuileoImpact.jsx"));
+const Followups = lazy(() => import("../portal/Followups.jsx"));
+const Waitlist = lazy(() => import("../portal/Waitlist.jsx"));
+const Reputation = lazy(() => import("../portal/Reputation.jsx"));
+const Recurring = lazy(() => import("../portal/Recurring.jsx"));
+const Channels = lazy(() => import("../portal/Channels.jsx"));
+const Ads = lazy(() => import("../portal/Ads.jsx"));
+const Leads = lazy(() => import("../portal/Leads.jsx"));
+const Docs = lazy(() => import("../portal/Docs.jsx"));
+const DocsArea = lazy(() => import("../portal/DocsArea.jsx"));
+const GrowthDept = lazy(() => import("../portal/GrowthDept.jsx"));
+const FinanceDept = lazy(() => import("../portal/FinanceDept.jsx"));
+const MarketingDept = lazy(() => import("../portal/MarketingDept.jsx"));
+const Dialer = lazy(() => import("../portal/Dialer.jsx"));
+const Grow = lazy(() => import("../portal/Grow.jsx"));
+const RiskRadar = lazy(() => import("../portal/RiskRadar.jsx"));
+const ScheduleSync = lazy(() => import("../portal/ScheduleSync.jsx"));
+const GoogleHub = lazy(() => import("../portal/GoogleHub.jsx"));
+const SocialHub = lazy(() => import("../portal/SocialHub.jsx"));
+const EmergencyLog = lazy(() => import("../portal/EmergencyLog.jsx"));
+const LeadsToday = lazy(() => import("../portal/LeadsToday.jsx"));
+const MarketingDates = lazy(() => import("../portal/MarketingDates.jsx"));
+const Coupons = lazy(() => import("../portal/Coupons.jsx"));
+const GrowthIntel = lazy(() => import("../portal/GrowthIntel.jsx"));
+const CaptureTools = lazy(() => import("../portal/CaptureTools.jsx"));
+const MarketplaceLeads = lazy(() => import("../portal/MarketplaceLeads.jsx"));
+const StormMode = lazy(() => import("../portal/StormMode.jsx"));
+const Trainer = lazy(() => import("../portal/Trainer.jsx"));
+const KnowledgeBase = lazy(() => import("../portal/KnowledgeBase.jsx"));
+const Experience = lazy(() => import("../portal/Experience.jsx")); // XM — customer-experience score (customer-of-the-customer)
+const Timeline = lazy(() => import("../portal/Timeline.jsx")); // Linha do tempo — do fornecedor ao cliente: custo→lucro→risco
+const MyCompanyOS = lazy(() => import("../portal/MyCompanyOS.jsx")); // Minha Empresa — the client's OWN 8 Company-OS departments, live
+
 /* ───────────────────────── Mock data (demo — swap for Supabase/integrations later) ───────────────────────── */
 
-const CHANNELS = [
+export const CHANNELS = [
   { Icon: FaWhatsapp, name: "WhatsApp", color: "#25D366", convos: 642, won: 128, note: "booked 96 orders" },
   { Icon: FaInstagram, name: "Instagram", color: "#E4405F", convos: 410, won: 73, note: "closed $5.2k in DMs" },
   { Icon: FaPhone, name: "Phone (AI)", color: "#38BDF8", convos: 1240, won: 311, note: "0 missed calls" },
@@ -556,14 +603,14 @@ const CHANNELS = [
   { Icon: FaGoogle, name: "Google", color: "#4285F4", convos: 140, won: 92, note: "92 reviews requested" },
 ];
 
-const CAMPAIGNS = [
+export const CAMPAIGNS = [
   { name: "Meta · Weekend Promo", spend: 480, leads: 96, cpl: 5.0, roas: 4.2, up: true },
   { name: "Google · 'pizza near me'", spend: 360, leads: 72, cpl: 5.0, roas: 3.8, up: true },
   { name: "TikTok · Brand Awareness", spend: 220, leads: 28, cpl: 7.9, roas: 2.1, up: false },
   { name: "Instagram · Retargeting", spend: 180, leads: 51, cpl: 3.5, roas: 5.6, up: true },
 ];
 
-const LEADS = [
+export const LEADS = [
   { name: "Marcos A.", ch: "WhatsApp", when: "2 min ago", status: "Booked", color: "#3E9468" },
   { name: "Julia R.", ch: "Instagram", when: "18 min ago", status: "Qualified", color: "#D6C29A" },
   { name: "Pedro S.", ch: "Phone", when: "41 min ago", status: "New", color: "#38BDF8" },
@@ -572,7 +619,7 @@ const LEADS = [
   { name: "Carla M.", ch: "Google", when: "3 h ago", status: "Review ⭐", color: "#3E9468" },
 ];
 
-const DOCS = [
+export const DOCS = [
   ["📄", "Service Agreement", "Signed · Apr 2, 2026", "Signed"],
   ["🧾", "Invoice #0012", "Paid · Jun 1, 2026", "Paid"],
   ["📦", "Onboarding checklist", "Completed", "Done"],
@@ -582,7 +629,7 @@ const DOCS = [
 const REVENUE = [8, 10, 9, 13, 12, 16, 15, 19, 18, 22, 24, 28]; // monthly trend (demo)
 
 /* ───────────────────────── Tiny charts ───────────────────────── */
-function Spark({ data = REVENUE, color = "#3E9468", h = 40 }) {
+export function Spark({ data = REVENUE, color = "#3E9468", h = 40 }) {
   const max = Math.max(...data), min = Math.min(...data);
   const id = "g" + color.replace("#", "");
   const pts = data.map((v, i) => `${(i / (data.length - 1)) * 126},${36 - ((v - min) / (max - min || 1)) * 32 - 2}`).join(" ");
@@ -594,7 +641,7 @@ function Spark({ data = REVENUE, color = "#3E9468", h = 40 }) {
     </svg>
   );
 }
-function Bars({ data = REVENUE, color = "#D6C29A" }) {
+export function Bars({ data = REVENUE, color = "#D6C29A" }) {
   const max = Math.max(...data);
   return (
     <div className="flex items-end gap-1.5 h-32">
@@ -623,24 +670,67 @@ const SECTOR_NAV = {
 };
 // Every sector gets the full Guileo experience — voice/calls, WhatsApp, SMS, Social, AI training — because that IS what Guileo is.
 function sectionsFor(vid, V) {
+  // Cross-cutting Company-OS sections belong to every sector — inject if missing.
+  const inject = (list, key, label, afterKey) => {
+    if (list.some((s) => s[0] === key)) return list;
+    const i = list.findIndex((s) => s[0] === afterKey);
+    const out = list.slice(); out.splice(i >= 0 ? i + 1 : out.length, 0, [key, label]); return out;
+  };
+  const ensureCRM = (list) => {
+    let l = inject(list, "mycompany", "Minha Empresa", "overview"); // flagship overview — the client's OWN 8 departments
+    l = inject(l, "command", "Command Center", "overview");
+    l = inject(l, "trainer", "Treinadora", "brain");  // the AI that teaches the owner to use Guileo
+    l = inject(l, "kb", "Cérebro do negócio", "brain"); // per-tenant Knowledge Base the agent reads
+    l = inject(l, "leadstoday", "Leads do dia", "leads"); // today's leads-by-source sits next to the daily digest
+    l = inject(l, "mktleads", "Leads Marketplace", "leadstoday"); // Yelp/Angi/Thumbtack speed-to-lead responder
+    l = inject(l, "crm", "CRM 360", "customers");
+    l = inject(l, "finance", "Finance", "crm");
+    l = inject(l, "marketing", "Marketing", "finance");
+    l = inject(l, "dates", "Datas & Aniversários", "marketing"); // birthday + commemorative-date config
+    l = inject(l, "coupons", "Cupons & Campanhas", "dates"); // per-client branded coupons + campaigns
+    l = inject(l, "growthintel", "Inteligência", "coupons"); // LTV + lead sources + forecast + abandoned bookings
+    l = inject(l, "capture", "Captura", "growthintel"); // intake forms + photo-quote + Google Business
+    l = inject(l, "experience", "Experience", "capture"); // XM — how THIS business's own customers feel (NPS/CSAT/sentiment/drivers/detractors)
+    l = inject(l, "timeline", "Linha do tempo", "experience"); // Do fornecedor ao cliente — custo→lucro→risco numa timeline só
+    l = inject(l, "retention", "Growth & Retention", "marketing");
+    l = inject(l, "documents", "Documents", "billing");
+    l = inject(l, "riskradar", "Risk Radar", "schedule"); // no-show radar rides with Operations everywhere
+    l = inject(l, "schedulesync", "Conectar agenda", "schedule"); // connect MindBody/Square/Google Cal
+    l = inject(l, "googlehub", "Google", "reputation"); // GBP reviews + SEO + ads
+    l = inject(l, "socialhub", "Redes sociais", "googlehub"); // Meta DMs + publishing A+B
+    l = inject(l, "storm", "Modo Tempestade", "riskradar"); // 1-click hurricane close+notify+reopen blast
+    l = inject(l, "emergency", "Emergências", "storm"); // owner-visible log of urgent escalations (Gui rang the phone)
+    return l;
+  };
   if (V.sections) { // restaurant has a bespoke nav from its reference tool — still inject Leads after Overview
-    if (V.sections.some((s) => s[0] === "leads")) return V.sections;
+    if (V.sections.some((s) => s[0] === "leads")) return ensureCRM(V.sections);
     const i = V.sections.findIndex((s) => s[0] === "overview");
-    const out = V.sections.slice(); out.splice(i >= 0 ? i + 1 : 0, 0, ["leads", "Leads · Daily"]); return out;
+    const out = V.sections.slice(); out.splice(i >= 0 ? i + 1 : 0, 0, ["leads", "Leads · Daily"]); return ensureCRM(out);
   }
   const sec = SECTOR_NAV[vid] || [["operations", "Operations"]];
-  return [
+  return ensureCRM([
     ["overview", "Overview"], ["leads", "Leads · Daily"], ["impact", "Guileo Impact"], ["brain", "Train your AI"], ["analytics", "AI Analytics"], ["insights", "AI Insights"], ["integrations", "Integrations"],
     ...sec,
     ["deliveries", deliveryTab(V)],
-    ["payments", "Payments"], ["followups", "Follow-ups"], ["waitlist", "Waitlist"], ["recurring", "Recurring"], ["reputation", "Reputation"], ["loyalty", "Loyalty"],
-    ["customers", "Customers"], ["campaigns", "Campaigns"], ["audiences", "Ad Audiences"],
+    // payments/followups/waitlist/recurring/reputation/loyalty/campaigns/audiences are FOLDED
+    // into the Finance/Marketing/Growth dept views (DeptTabs) — reachable there, off the sidebar.
+    ["customers", "Customers"], ["crm", "CRM 360"],
     ["inbox", "Inbox"], ["calllogs", "Call Logs"], ["dialer", "Call Dialer"], ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"],
     ["grow", "Grow with Guileo"], ["locations", "Locations"], ["team", "Team"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
-  ];
+  ]);
 }
 // Red notification counts per menu item — drives urgency badges in the sidebar
-function notifFor(key, V) {
+// Views that render REAL tenant data when connected — ONLY these earn the LIVE badge.
+// Everything else shows an honest "Sample preview" chip even when the account is linked.
+const REAL_VIEWS = new Set(["overview", "impact", "billing", "inbox", "calllogs", "convos", "whatsapp", "sms",
+  "mycompany", "crm", "command", "finance", "leadstoday", "dates", "coupons", "growthintel", "capture", "experience", "timeline", "mktleads", "storm",
+  "riskradar", "emergency", "locations", "recurring", "kb", "brain", "settings", "support", "trainer", "grow", "documents", "schedulesync", "googlehub", "socialhub", "operations"]);
+
+function notifFor(key, V, real = null) {
+  // For a connected client, these channels have no real backing data yet — don't show
+  // fabricated unread counts. Demo mode keeps them so the tour looks alive.
+  // real mode: every branch below is demo-derived — a red badge would be a lie. No badges.
+  if (real) return 0;
   switch (key) {
     case "overview": return V.alerts ? V.alerts.items.length : 0;
     case "leads": { const a = portalApi.loadState(`${V.label}:leadActions`, {}); return genLeads(V).filter((l) => l.temp === "hot" && !a[l._id]).length; }
@@ -666,678 +756,98 @@ const SECTION_ICON = {
   inbox: FaComments, calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, social: FaShareNodes, grow: FaStore, billing: FaCreditCard,
   impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock, recurring: FaIdCard, reputation: FaStar, loyalty: FaGift, payments: FaReceipt,
   channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, docs: FaFileLines, settings: FaGear, team: FaUsers, locations: FaLocationDot,
+  crm: FaIdCard, command: FaGaugeHigh, finance: FaCreditCard, marketing: FaBullhorn, retention: FaArrowsRotate, documents: FaFileLines,
+  riskradar: FaTriangleExclamation, emergency: FaBell, schedulesync: FaCalendarDays, googlehub: FaGoogle, socialhub: FaShareNodes, leadstoday: FaUsers, dates: FaGift, coupons: FaTag, growthintel: FaChartLine, capture: FaListCheck, experience: FaFaceSmile, timeline: FaChartLine, mktleads: FaBullseye, storm: FaBell,
+  trainer: FaGraduationCap, kb: FaBrain, mycompany: FaBuilding,
 };
 // Group the (long) nav into scannable categories
 // Order = everyday use first (operations/conversations/customers), then growth/strategy, then account.
 const NAV_GROUPS = [
-  ["", ["overview", "leads"]],
-  ["Your AI ✨", ["brain", "analytics", "insights", "grow"]],
-  ["Operations", ["liveorders", "kitchen", "menu", "schedule", "catalog", "deliveries", "operations"]],
+  ["", ["overview", "mycompany", "leads", "leadstoday", "mktleads"]],
+  ["Your AI ✨", ["command", "trainer", "brain", "kb", "analytics", "insights", "grow"]],
+  ["Operations", ["liveorders", "kitchen", "menu", "schedule", "riskradar", "storm", "catalog", "deliveries", "operations"]],
   ["Conversations", ["inbox", "calllogs", "dialer", "whatsapp", "sms", "social"]],
-  ["Customers", ["customers"]],
-  ["Grow revenue", ["impact", "payments", "followups", "waitlist", "recurring", "reputation", "loyalty", "campaigns", "audiences", "integrations"]],
-  ["Account", ["locations", "team", "billing", "support", "settings"]],
+  ["Customers", ["crm"]],
+  ["Grow revenue", ["impact", "finance", "marketing", "dates", "coupons", "growthintel", "capture", "experience", "timeline", "retention", "integrations"]],
+  ["Account", ["locations", "team", "billing", "documents", "support", "settings"]],
 ];
-// Portal UI translation (PT) — keyed by the English string. Covers the most-visible
-// chrome (nav groups, section titles, topbar). tr() returns PT when lang==='pt'.
-const PT_UI = {
-  "Leads · Daily": "Leads · Diário",
-  // Overview first-screen strings
-  "Welcome back 👋 Here's where your money is today — and the fastest way to grow it.": "Bem-vindo de volta 👋 Aqui está onde seu dinheiro está hoje — e o caminho mais rápido pra crescer.",
-  "Guileo profit impact": "Lucro gerado pela Guileo",
-  "this month": "este mês", "last 7 days": "últimos 7 dias", "last 90 days": "últimos 90 dias",
-  "vs last month": "vs mês passado",
-  "On pace for": "No ritmo de", "by month-end": "até o fim do mês",
-  "item needs your attention": "item precisa da sua atenção",
-  "All clear — your AI is on top of everything.": "Tudo em ordem — sua IA está cuidando de tudo.",
-  "of": "de", "on pace for": "no ritmo de",
-  "🎉 On track to beat it!": "🎉 No caminho pra bater a meta!",
-  "· spotted by your AI": "· detectado pela sua IA",
-  "live": "ao vivo", "active": "ativas",
-  "· last run": "· última execução", "· not run yet": "· ainda não rodou",
-  "▶ Run now": "▶ Rodar agora",
-  "· next up": "· a seguir",
-  "Marked as handled ✓": "Marcado como resolvido ✓",
-  "invoice to collect": "fatura a cobrar", "invoices to collect": "faturas a cobrar",
-  "person waiting for an open slot": "pessoa esperando uma vaga", "people waiting for an open slot": "pessoas esperando uma vaga",
-  "follow-up about to convert": "follow-up prestes a converter", "follow-ups about to convert": "follow-ups prestes a converter",
-  "at-risk plan to save this week": "plano em risco pra salvar esta semana", "at-risk plans to save this week": "planos em risco pra salvar esta semana",
-  "happy customers to ask for a review": "clientes felizes pra pedir avaliação",
-  "thing needs you": "coisa precisa de você", "things need you": "coisas precisam de você",
-  "you're all caught up": "você está em dia", "to collect": "a cobrar", "looks busiest": "deve ser o mais cheio",
-  "This week your AI handled": "Esta semana sua IA cuidou de",
-  "conversations, created": "conversas, criou",
-  "bookings & orders": "reservas e pedidos",
-  "and drove": "e gerou",
-  "in tracked revenue": "em receita rastreada",
-  "— saving you about": "— economizando cerca de",
-  "Next:": "Próximo:",
-  "invoice": "fatura", "invoices": "faturas",
-  "still to collect, and": "ainda a cobrar, e",
-  "Next week": "Semana que vem",
-  "looks busiest — want a promo to fill the quiet days?": "deve ser o mais cheio — quer uma promo pra encher os dias calmos?",
-  "See today's operations": "Ver as operações de hoje", "Ask for a campaign": "Pedir uma campanha",
-  // nav groups
-  "Your AI ✨": "Sua IA ✨", "Operations": "Operações", "Conversations": "Conversas", "Customers": "Clientes", "Grow revenue": "Crescer receita", "Account": "Conta", "More": "Mais",
-  // section labels
-  "Overview": "Visão geral", "Guileo Impact": "Impacto Guileo", "Train your AI": "Treinar sua IA", "AI Analytics": "Análises de IA", "AI Insights": "Insights de IA", "Integrations": "Integrações",
-  "Live Orders": "Pedidos ao vivo", "Kitchen View": "Cozinha", "Menu": "Cardápio", "Delivery": "Entregas", "Payments": "Pagamentos", "Follow-ups": "Follow-ups", "Waitlist": "Lista de espera",
-  "Recurring": "Recorrentes", "Reputation": "Reputação", "Loyalty": "Fidelidade", "Customers ": "Clientes", "Campaigns": "Campanhas", "Ad Audiences": "Públicos de anúncio",
-  "Inbox": "Caixa de entrada", "Call Logs": "Chamadas", "Call Dialer": "Discador", "Social": "Social", "Grow with Guileo": "Crescer com a Guileo", "Locations": "Locais", "Team": "Equipe",
-  "Billing & Plan": "Plano e cobrança", "Support": "Suporte", "Settings": "Ajustes", "Operations": "Operações",
-  // topbar
-  "Report": "Relatório", "Search…": "Buscar…",
-  "Plans": "Planos", "Current": "Atual", "mo": "mês", "Your plan": "Seu plano", "Upgrade →": "Fazer upgrade →", "Switch →": "Trocar →",
-  "Growth Cockpit": "Growth Cockpit",
-  "Sign in to your private dashboard": "Acesse seu painel privado",
-  "Create your account": "Crie sua conta",
-  "Welcome back": "Bem-vindo de volta",
-  "Create account →": "Criar conta →",
-  "Sign in →": "Entrar →",
-  "Enter Growth Cockpit →": "Entrar no Growth Cockpit →",
-  "Already have an account? Sign in": "Já tem uma conta? Entre",
-  "New here? Create an account": "Novo por aqui? Crie uma conta",
-  "Confirm your email": "Confirme seu e-mail",
-  "We sent a confirmation to": "Enviamos uma confirmação para",
-  ". Click the link, then come back and sign in.": ". Clique no link e volte para entrar.",
-  "I confirmed — sign in →": "Confirmei — entrar →",
-  "Password (min 6 chars)": "Senha (mín. 6 caracteres)",
-  "← Back to guileoai.com": "← Voltar para guileoai.com",
-  "Loading your cockpit…": "Carregando seu cockpit…",
-  "· AI assistant": "· assistente de IA",
-  "Executes tasks for you, 24/7": "Executa tarefas por você, 24/7",
-  "Credits": "Créditos",
-  "left": "restantes",
-  "Pay-as-you-go · ~5 credits per task": "Pré-pago · ~5 créditos por tarefa",
-  "Listening…": "Ouvindo…",
-  "Ask Gui to do something…": "Peça ao Gui para fazer algo…",
-  "Send": "Enviar",
-  "Need a human? Talk to your team →": "Precisa de um humano? Fale com sua equipe →",
-  "↩ Undo this": "↩ Desfazer isto",
-  "Recent commands · tap to run again": "Comandos recentes · toque para rodar de novo",
-  "Launch a promo": "Lançar uma promoção",
-  "Hi! I'm Gui — your AI assistant 👋 Tell me what to do and I'll handle it.": "Oi! Eu sou o Gui — seu assistente de IA 👋 Me diga o que fazer e eu cuido disso.",
-  "Nothing to undo yet — I'll only undo the last thing I created.": "Nada pra desfazer ainda — só desfaço a última coisa que criei.",
-  "Voice isn't supported in this browser": "A voz não é suportada neste navegador",
-  "Open Gui assistant": "Abrir o assistente Gui",
-  "Email address": "Endereço de e-mail",
-  "Monthly revenue goal": "Meta de receita mensal",
-  "Search or run a command": "Buscar ou executar um comando",
-  "Ask Gui to do something": "Peça ao Gui para fazer algo",
-  "Search… ⌘K": "Buscar… ⌘K",
-  "Language": "Idioma",
-  "Notifications": "Notificações",
-  "view →": "ver →",
-  "✅ All caught up": "✅ Tudo em dia",
-  "All caught up ✓": "Tudo em dia ✓",
-  "7 days": "7 dias",
-  "30 days": "30 dias",
-  "90 days": "90 dias",
-  "Demo data — each client sees their own industry.": "Dados de demonstração — cada cliente vê o próprio segmento.",
-  "Preview industry": "Pré-visualizar segmento",
-  "Industry · demo": "Segmento · demo",
-  "operations": "operações",
-  "Demo mode": "Modo demonstração", "Demo · sample data": "Demo · dados de exemplo",
-  "Approve before Gui sends money or customer messages": "Aprovar antes do Gui enviar dinheiro ou mensagens a clientes",
-  "Invoices, charges, deliveries, social posts and campaigns wait for your one-tap OK. Answers and navigation stay instant.": "Faturas, cobranças, entregas, posts e campanhas esperam seu OK de um toque. Respostas e navegação seguem instantâneas.",
-  "✓ Confirm": "✓ Confirmar",
-  "Watch Gui work": "Veja o Gui agir",
-  "First win": "Primeira vitória",
-  "Let's get one tool live": "Vamos ligar uma ferramenta",
-  "and Gui starts acting through it for you.": "e o Gui começa a agir através dela por você.",
-  "Connecting…": "Conectando…",
-  "Connect →": "Conectar →",
-  "Skip": "Pular",
-  "Now watch Gui do real work": "Agora veja o Gui fazer de verdade",
-  "Gui will": "O Gui vai",
-  "— a real record in your cockpit. This is what it does 24/7.": "— um registro real no seu cockpit. É o que ele faz 24/7.",
-  "Gui is working…": "O Gui está trabalhando…",
-  "First win — Gui just did that for you": "Primeira vitória — o Gui acabou de fazer isso por você",
-  "It's in your cockpit now. Gui handles this around the clock.": "Já está no seu cockpit. O Gui cuida disso o tempo todo.",
-  "See it →": "Ver →",
-  "Go to my cockpit": "Ir pro meu cockpit",
-  "Staff · admin": "Equipe · admin",
-  "Monthly report opened — print → Save as PDF ✓": "Relatório mensal aberto — imprima → Salvar como PDF ✓",
-  "Close menu": "Fechar menu",
-  "Upgrade →": "Fazer upgrade →",
-  "AI voice agent · 24/7": "Agente de voz com IA · 24/7",
-  "WhatsApp, SMS & social replies": "Respostas no WhatsApp, SMS e redes sociais",
-  "Bookings & reviews automation": "Automação de agendamentos e avaliações",
-  "A real human managing it for you": "Um humano de verdade cuidando disso por você",
-  "Gui — AI assistant credits": "Gui — créditos do assistente de IA",
-  "Powers every task Gui runs for you · ~5 credits per action": "Movem cada tarefa que o Gui executa por você · ~5 créditos por ação",
-  "credits left": "créditos restantes",
-  "credits": "créditos",
-  "Auto top-up (pay-as-you-go)": "Recarga automática (pré-pago)",
-  "credits used this month": "créditos usados este mês",
-  "Top-ups are billed securely to your account on file — we never ask for card details in chat.": "As recargas são cobradas com segurança na conta registrada — nunca pedimos dados do cartão no chat.",
-  "credits this week": "créditos esta semana",
-  "No Gui activity yet — ask Gui to do something and it'll show up here.": "Nenhuma atividade do Gui ainda — peça algo ao Gui e aparecerá aqui.",
-  "AI task": "Tarefa de IA",
-  "Your plan": "Seu plano",
-  "Switch →": "Trocar →",
-  "Give 250, get 250 credits": "Dê 250, ganhe 250 créditos",
-  "Invite another business — you both get": "Convide outro negócio — vocês dois ganham",
-  "when they join.": "quando ele entrar.",
-  "joined so far.": "entraram até agora.",
-  "Simulate a referral →": "Simular uma indicação →",
-  "Invite link copied ✓": "Link de convite copiado ✓",
-  "Front ready": "Frente pronta",
-  "Product, AI & dashboard": "Produto, IA e painel",
-  "Built & validated": "Construído e validado",
-  "Accounts that persist (Supabase)": "Contas que persistem (Supabase)",
-  "Needs your project keys": "Precisa das suas chaves de projeto",
-  "Charge for credits & plans (Stripe)": "Cobrar créditos e planos (Stripe)",
-  "Needs your Stripe keys": "Precisa das suas chaves do Stripe",
-  "Real integrations (OAuth)": "Integrações reais (OAuth)",
-  "Needs your app approvals": "Precisa das aprovações dos seus apps",
-  "Public domain & publish": "Domínio público e publicação",
-  "Needs your DNS + your OK": "Precisa do seu DNS + seu OK",
-  "I'll wire each one with you when you have the keys.": "Vou conectar cada uma com você quando tiver as chaves.",
-  "I have the keys →": "Eu tenho as chaves →",
-  "Payment is handled securely with your team — we never ask for card details in chat.": "O pagamento é feito com segurança junto à sua equipe — nunca pedimos dados do cartão no chat.",
-  "feeds your AI's answers": "alimenta as respostas da sua IA",
-  "Your AI uses these facts when customers ask.": "Sua IA usa esses dados quando os clientes perguntam.",
-  "Save & update AI": "Salvar e atualizar a IA",
-  "Business profile saved — your AI is updated ✓": "Perfil do negócio salvo — sua IA está atualizada ✓",
-  "Address / location": "Endereço / localização",
-  "Tone": "Tom",
-  "Friendly": "Amigável",
-  "Professional": "Profissional",
-  "Warm & casual": "Acolhedor e descontraído",
-  "Concise": "Conciso",
-  "Enthusiastic": "Entusiasmado",
-  "Custom greeting": "Saudação personalizada",
-  "Hand off to a human on request": "Encaminhar para um humano quando pedido",
-  "When a customer asks for a person, the AI alerts your team.": "Quando um cliente pede uma pessoa, a IA avisa sua equipe.",
-  "Saved automatically · your AI uses this on every channel ✓": "Salvo automaticamente · sua IA usa isto em todos os canais ✓",
-  "New booking or order": "Nova reserva ou pedido",
-  "Missed call or lead": "Chamada perdida ou lead",
-  "New review": "Nova avaliação",
-  "Daily summary from Gui": "Resumo diário do Gui",
-  "Auto top-up Gui credits": "Recarregar créditos do Gui automaticamente",
-  "Never let the AI pause mid-task — refill when low (pay-as-you-go).": "Nunca deixe a IA parar no meio de uma tarefa — recarrega quando estiver baixo (pré-pago).",
-  "Quiet hours": "Horário de silêncio",
-  "From": "De",
-  "To": "Até",
-  "Languages": "Idiomas",
-  "Live webhook events": "Eventos de webhook ao vivo",
-  "Demo data": "Dados de demonstração",
-  "Reset resolved alerts, won deals, filled slots & read flags back to the sample state.": "Redefina alertas resolvidos, negócios fechados, vagas preenchidas e marcações de leitura para o estado de exemplo.",
-  "↻ Reset demo data": "↻ Redefinir dados de demonstração",
-  "Demo data reset — reloading…": "Dados de demonstração redefinidos — recarregando…",
-  "Changes apply instantly. Need something custom? Your team's a tap away. 💬": "As mudanças valem na hora. Precisa de algo sob medida? Sua equipe está a um toque. 💬",
-  "On": "Ligado",
-  "🧠 Your AI's brain": "🧠 O cérebro da sua IA",
-  "Test it live below.": "Teste ao vivo abaixo.",
-  "Teach it something": "Ensine algo a ela",
-  "things learned": "coisas aprendidas",
-  "Last trained": "Último treino",
-  "just now": "agora mesmo",
-  "2 days ago": "2 dias atrás",
-  "Test your AI · see exactly how it answers your customers": "Teste sua IA · veja exatamente como ela responde seus clientes",
-  "Ask your AI anything a customer might ask 👇": "Pergunte à sua IA qualquer coisa que um cliente perguntaria 👇",
-  "Your AI": "Sua IA",
-  "Teach a better answer": "Ensine uma resposta melhor",
-  "Ask your AI a question…": "Faça uma pergunta à sua IA…",
-  "Ask": "Perguntar",
-  "Knowledge base · what your AI knows": "Base de conhecimento · o que sua IA sabe",
-  "Add": "Adicionar",
-  "Nothing trained yet — add your first answer above.": "Nada treinado ainda — adicione sua primeira resposta acima.",
-  "Your AI uses this the moment you save it": "Sua IA usa isto no instante em que você salva",
-  "Topic": "Tópico",
-  "When customers ask about…": "Quando os clientes perguntam sobre…",
-  "(keywords, optional)": "(palavras-chave, opcional)",
-  "Your AI should reply": "Sua IA deve responder",
-  "Save & retrain": "Salvar e retreinar",
-  "Cancel": "Cancelar",
-  "AI retrained ✓ — it'll use this on the next conversation": "IA retreinada ✓ — ela usará isto na próxima conversa",
-  "What are your hours?": "Qual é o horário de vocês?",
-  "Can I book for tomorrow?": "Posso agendar para amanhã?",
-  "How much does it cost?": "Quanto custa?",
-  "Where are you located?": "Onde vocês ficam?",
-  "Location & address": "Localização e endereço",
-  "Pricing & quotes": "Preços e orçamentos",
-  "Services offered": "Serviços oferecidos",
-  "Want more? Add a channel or service — we set it up, you keep one login and one bill. Growth on tap.": "Quer mais? Adicione um canal ou serviço — nós configuramos, você mantém um login e uma conta só. Crescimento na hora.",
-  "Talk to my team →": "Falar com minha equipe →",
-  "Don't see what you need?": "Não encontrou o que precisa?",
-  "Tell us what you wish we offered — we're always adding services, and your idea shapes what we build next.": "Conte o que você gostaria que oferecêssemos — estamos sempre adicionando serviços, e sua ideia define o que construímos a seguir.",
-  "Send request →": "Enviar pedido →",
-  "✅ Got it — thanks! Our team will look into it.": "✅ Recebido — obrigado! Nossa equipe vai analisar.",
-  "On request": "Sob solicitação",
-  "Auto top-up on ✓": "Recarga automática ligada ✓",
-  "Auto top-up off": "Recarga automática desligada",
-  "Need something custom?": "Precisa de algo sob medida?",
-  "Mark restocked": "Marcar reabastecido",
-  "Out of stock": "Sem estoque",
-  "Mark handled": "Marcar como tratado",
-  "Mark delivered": "Marcar como entregue",
-  "Mark ready": "Marcar como pronto",
-  "Mark won": "Marcar como ganho",
-  "Reassign": "Reatribuir",
-  "Share tracking": "Compartilhar rastreamento",
-  "Use in campaign": "Usar em campanha",
-  "Won": "Ganho",
-  "Nudge": "Cutucar",
-  "Offer slot": "Oferecer vaga",
-  "En route": "A caminho",
-  "Arriving": "Chegando",
-  "Save to customer": "Salvar no cliente",
-  "Create order": "Criar pedido",
-  "Book appointment": "Agendar consulta",
-  "Follow-up": "Follow-up",
-  "To delivery": "Para entrega",
-  "Next best action": "Próxima melhor ação",
-  "Re-order": "Repetir pedido",
-  "Request review": "Solicitar avaliação",
-  "Boost as ad": "Impulsionar como anúncio",
-  "Talk to your team": "Fale com sua equipe",
-  "Reset demo data": "Redefinir dados de demonstração",
-  "Last trained {trainedAt}": "Último treino {trainedAt}",
-  "Loading…": "Carregando…",
-  "Waitlist is empty": "A lista de espera está vazia",
-  "Save changes": "Salvar alterações",
-  "Save": "Salvar",
-  "Invite teammate": "Convidar colega de equipe",
-  "Resolve": "Resolver",
-  "items need your attention": "itens precisam da sua atenção",
-  "Mark all as read": "Marcar tudo como lido",
-  "No results": "Nenhum resultado",
-  "Nothing here yet": "Nada por aqui ainda",
-  "Ask Gui…": "Perguntar ao Gui…",
-  "AI assistant — runs tasks for you": "Assistente de IA — executa tarefas por você",
-  "Go to": "Ir para",
-  "Type a command or search…": "Digite um comando ou busque…",
-  "Recent": "Recente",
-  "Suggestions": "Sugestões",
-  "Apply": "Aplicar",
-  "Dismiss": "Dispensar",
-  "Connect": "Conectar",
-  "Disconnect": "Desconectar",
-  "Manage": "Gerenciar",
-  "Confirm": "Confirmar",
-  "Send invoice": "Enviar fatura",
-  "Download": "Baixar",
-  "Download invoice": "Baixar fatura",
-  "Try again": "Tentar novamente",
-  "Loading your data…": "Carregando seus dados…",
-  "Something went wrong": "Algo deu errado",
-  "+ Recharge": "+ Recarregar",
-  "+ Recharge credits": "+ Recarregar créditos",
-  "250 free credits": "250 créditos grátis",
-  "AI Call Dialer": "Discador da IA",
-  "AI voice & greeting": "Voz e saudação da IA",
-  "Business profile": "Perfil do negócio",
-  "Connect accounts →": "Conectar contas →",
-  "Connect your delivery platforms": "Conecte suas plataformas de entrega",
-  "Copy link": "Copiar link",
-  "Current plan": "Plano atual",
-  "Customer →": "Cliente →",
-  "Documents & billing": "Documentos e cobrança",
-  "Growth Guileo drove · this month": "Crescimento que a Guileo gerou · este mês",
-  "Growth ledger · every $ the AI generated": "Razão de crescimento · cada $ que a IA gerou",
-  "Gui usage · last 7 days": "Uso do Gui · últimos 7 dias",
-  "Integrations & webhooks": "Integrações e webhooks",
-  "Invoices": "Faturas",
-  "Invoices & payments": "Faturas e pagamentos",
-  "Label": "Etiqueta",
-  "Live activity": "Atividade ao vivo",
-  "Live orders": "Pedidos ao vivo",
-  "Mark all read": "Marcar tudo como lido",
-  "New campaign →": "Nova campanha →",
-  "Notifications & billing": "Notificações e cobrança",
-  "Partnership": "Parceria",
-  "Quick actions": "Ações rápidas",
-  "Rating breakdown": "Distribuição de avaliações",
-  "Recent activity": "Atividade recente",
-  "Recent calls · answered by AI": "Chamadas recentes · atendidas pela IA",
-  "Recent leads": "Leads recentes",
-  "Recent reviews · collected by AI": "Avaliações recentes · coletadas pela IA",
-  "Recurring revenue · the AI keeps it renewing": "Receita recorrente · a IA mantém renovando",
-  "Request this →": "Pedir isto →",
-  "Revenue & order volume": "Receita e volume de pedidos",
-  "Run": "Rodar",
-  "See all →": "Ver tudo →",
-  "Sentiment": "Sentimento",
-  "Social inbox · AI replies on Instagram, Facebook & TikTok": "Caixa social · IA responde no Instagram, Facebook e TikTok",
-  "Sync to ads": "Sincronizar com anúncios",
-  "Top members": "Principais membros",
-  "Waitlist · turn empty slots into revenue": "Lista de espera · transforme vagas em receita",
-  "What your AI handles": "O que sua IA cuida",
-  "What's included": "O que está incluído",
-  "Why people contact you": "Por que as pessoas te procuram",
-  "Your team": "Sua equipe",
-  "from chat": "do chat",
-  "invited": "convidado",
-  "new": "novo",
-  "routes to human": "encaminha p/ humano",
-  "soon": "em breve",
-  "· from your training": "· do seu treinamento",
-  "▶ Enter demo (sample data)": "▶ Entrar no demo (dados de exemplo)",
-  "⚙️ Automations on autopilot": "⚙️ Automações no piloto automático",
-  "⚠ No-show risk · AI flagged": "⚠ Risco de falta · sinalizado pela IA",
-  "⚡ Next best action": "⚡ Próxima melhor ação",
-  "⚡ Recommended by your AI · apply in one click": "⚡ Recomendado pela sua IA · aplique em 1 clique",
-  "⚡ This week's growth moves": "⚡ Jogadas de crescimento da semana",
-  "⭐ Review requests in flight": "⭐ Pedidos de avaliação em andamento",
-  "🎁 Reward": "🎁 Recompensa",
-  "🎯 Monthly goal": "🎯 Meta do mês",
-  "🔮 Predicted demand · next 7 days": "🔮 Demanda prevista · próximos 7 dias",
-  "🚀 Go-live readiness": "🚀 Prontidão para o lançamento",
-  "Recent reviews": "Avaliações recentes",
-  "The AI is chasing these — so you never lose them": "A IA está atrás destes — pra você nunca perder",
-  "Active": "Ativo",
-  "Paid": "Pago",
-  "Pending": "Pendente",
-  "Status": "Status",
-  "Channel": "Canal",
-  "Positive": "Positivo",
-  "Negative": "Negativo",
-  "Neutral": "Neutro",
-  "Delivered": "Entregue",
-  "Open": "Aberto",
-  "Connected": "Conectado",
-  "Not connected": "Não conectado",
-  "Busy": "Ocupado",
-  "Phone": "Telefone",
-  "Email": "E-mail",
-  "Overdue": "Em atraso",
-  "New": "Novo",
-  "At risk": "Em risco",
-  "All": "Todos",
-  "All channels": "Todos os canais",
-  "Team member": "Membro da equipe",
-  "Request reviews": "Solicitar avaliações",
-  "Quick action": "Ação rápida",
-  "Preparing": "Preparando",
-  "Payment link": "Link de pagamento",
-  "Onboarding": "Integração",
-  "New customer": "Novo cliente",
-  "Joined": "Entrou em",
-  "Booked": "Agendado",
-  "Book next visit": "Agendar próxima visita",
-  "Appointment booking": "Agendamento de consultas",
-  "Appointment booked": "Consulta agendada",
-  "When": "Quando",
-  "View": "Ver",
-  "Plan": "Plano",
-  "Revenue": "Receita",
-  "Reply": "Responder",
-  "Renews soon": "Renova em breve",
-  "Rebook": "Reagendar",
-  "Rating": "Avaliação",
-  "Pipeline value": "Valor do funil",
-  "Out": "Saída",
-  "Mobile sessions": "Sessões no celular",
-  "Off": "Desligado",
-  "Order created": "Pedido criado",
-  "Opening hours": "Horário de funcionamento",
-  "Low": "Baixo",
-  "Invited": "Convidado",
-  "In stock": "Em estoque",
-  "Handled by AI": "Resolvido pela IA",
-  "Duration": "Duração",
-  "Driver": "Motorista",
-  "Dispatch": "Despacho",
-  "Deliveries": "Entregas",
-  "Delete": "Excluir",
-  "Close": "Fechar",
-  "Card": "Cartão",
-  "Bookings handled": "Reservas atendidas",
-  "Avg rating": "Avaliação média",
-  "Appointments": "Consultas",
-  "Procedures": "Procedimentos",
-  "Amount": "Valor",
-  "Agent": "Agente",
-  "Waiting": "Aguardando",
-  "Waiting now": "Aguardando agora",
-  "Volume today": "Volume hoje",
-  "Viewings": "Visitas",
-  "View schedule": "Ver agenda",
-  "View reviews": "Ver avaliações",
-  "View orders": "Ver pedidos",
-  "View menu": "Ver cardápio",
-  "View kitchen": "Ver cozinha",
-  "View follow-ups": "Ver acompanhamentos",
-  "View deliveries": "Ver entregas",
-  "View calls": "Ver chamadas",
-  "Value": "Valor",
-  "Unsaved changes": "Alterações não salvas",
-  "Type": "Tipo",
-  "Transfer": "Transferir",
-  "Total": "Total",
-  "Total growth": "Crescimento total",
-  "Total customers": "Total de clientes",
-  "Top spender": "Maior gasto",
-  "Today's volume": "Volume de hoje",
-  "Today": "Hoje",
-  "Timezone": "Fuso horário",
-  "Time": "Horário",
-  "Team size": "Tamanho da equipe",
-  "Teach your AI": "Ensine sua IA",
-  "Sign out": "Sair",
-  "Signed": "Assinado",
-  "Sent": "Enviado",
-  "Send offer": "Enviar oferta",
-  "Send an invoice": "Enviar uma fatura",
-  "Section": "Seção",
-  "Scheduled": "Agendado",
-  "Schedule": "Agendar",
-  "Schedule a call": "Agendar uma ligação",
-  "Resolved": "Resolvido",
-  "Resolved by AI": "Resolvido pela IA",
-  "Requests sent": "Solicitações enviadas",
-  "Remove": "Remover",
-  "Referral revenue": "Receita de indicações",
-  "Redemptions": "Resgates",
-  "Ready": "Pronto",
-  "Qualified": "Qualificado",
-  "Published": "Publicado",
-  "Public phone": "Telefone público",
-  "Pricing": "Preços",
-  "Price": "Preço",
-  "Preferred channel": "Canal preferido",
-  "Phone calls": "Chamadas telefônicas",
-  "Payments & Accounting": "Pagamentos e Contabilidade",
-  "Password": "Senha",
-  "Quick read on today:": "Resumo de hoje:", "Want me to get started?": "Quer que eu comece?",
-  "Paid invoices": "Faturas pagas",
-  "Outstanding": "Em aberto",
-  "Outcome": "Resultado",
-  "Orders": "Pedidos",
-  "Open rate": "Taxa de abertura",
-  "Open now": "Aberto agora",
-  "Open menu": "Abrir menu",
-  "Open inbox": "Abrir caixa de entrada",
-  "Onboarding checklist": "Checklist de integração",
-  "On-time": "No prazo",
-  "Offered": "Oferecido",
-  "Nudge today": "Lembrar hoje",
-  "Not required": "Não obrigatório",
-  "No-shows saved": "Faltas recuperadas",
-  "No-show risk": "Risco de falta",
-  "No-show rate": "Taxa de faltas",
-  "No rebook yet": "Sem reagendamento ainda",
-  "Next touch": "Próximo contato",
-  "New this week": "Novos esta semana",
-  "New lead": "Novo lead",
-  "New invoice": "Nova fatura",
-  "New address": "Novo endereço",
-  "New teammate": "Novo colega de equipe",
-  "New DM": "Nova DM",
-  "Method": "Método",
-  "Messaging & Social": "Mensagens e Redes Sociais",
-  "Messages sent": "Mensagens enviadas",
-  "Message my team": "Falar com minha equipe",
-  "Membership": "Assinatura",
-  "Members": "Membros",
-  "Member since": "Membro desde",
-  "Matter types": "Tipos de processo",
-  "Maintenance plan": "Plano de manutenção",
-  "Missed calls": "Chamadas perdidas",
-  "Looking for": "Procurando por",
-  "Loyalty & win-back program": "Programa de fidelidade e reconquista",
-  "Live dashboard & monthly reports": "Painel ao vivo e relatórios mensais",
-  "Hours & location": "Horários e localização",
-  "Hours saved / wk": "Horas economizadas / sem",
-  "Growth event": "Evento de crescimento",
-  "Get started": "Começar",
-  "Filter": "Filtrar",
-  "Filled today": "Preenchidos hoje",
-  "Edit knowledge": "Editar conhecimento",
-  "Edit": "Editar",
-  "Details": "Detalhes",
-  "Done": "Concluído",
-  "Delivery & couriers": "Entrega e entregadores",
-  "Create an order": "Criar um pedido",
-  "Completed": "Concluído",
-  "Commission saved": "Comissão economizada",
-  "Cancellations & refunds": "Cancelamentos e reembolsos",
-  "Calls answered": "Chamadas atendidas",
-  "Call back": "Retornar ligação",
-  "Caller": "Quem ligou",
-  "Business name": "Nome da empresa",
-  "Address / location": "Endereço / localização",
-  "Monthly report opened — print → Save as PDF ✓": "Relatório mensal aberto — imprimir → Salvar como PDF ✓",
-  "Report downloaded — open it, then print → Save as PDF ✓": "Relatório baixado — abra, depois imprimir → Salvar como PDF ✓",
-  "Teach it in plain words — it answers your": "Ensine em palavras simples — ela responde seu",
-  "very next customer": "próximo cliente",
-  "with it. Test it live below.": "com isso. Teste ao vivo abaixo.",
-  "Our team wires each connection with you — no code or config needed from you.": "Nossa equipe conecta cada integração com você — sem código nem configuração da sua parte.",
-  "✅ All caught up — every lead followed up.": "✅ Tudo em dia — todos os leads receberam follow-up.",
-  "Tone": "Tom", "Friendly": "Amigável", "Professional": "Profissional", "Warm & casual": "Caloroso e casual", "Concise": "Direto", "Enthusiastic": "Entusiasmado",
-  "Search or run a command…": "Buscar ou executar um comando…",
-  "feeds your AI's answers": "alimenta as respostas da sua IA",
-  "Your AI uses these facts when customers ask.": "Sua IA usa esses dados quando os clientes perguntam.",
-  "Bookings & appointments": "Reservas e agendamentos",
-  "Booking request": "Solicitação de reserva",
-  "Active sequences": "Sequências ativas",
-  "Active plans": "Planos ativos",
-  "Active balance": "Saldo ativo",
-  "Actions this month": "Ações este mês",
-  "Add another location": "Adicionar outra unidade",
-  "Ads & Growth": "Anúncios e Crescimento",
-  "Repeat rate": "Taxa de recompra",
-  "Repeat customers": "Clientes recorrentes",
-  "Renewals due": "Renovações pendentes",
-  "Reviews this month": "Avaliações este mês",
-  "Revenue recovered": "Receita recuperada",
-  "Role": "Função",
-  "Staff": "Equipe",
-  "Setup": "Configuração",
-  "Stock": "Estoque",
-  "Send re-order link": "Enviar link de recompra",
-  "Customer": "Cliente",
-  "Toggle language": "Alternar idioma",
-  // view-body CTAs
-  "Manage rules": "Gerenciar regras",
-  "Send nudge now": "Enviar lembrete agora",
-  "Offer next open slot": "Oferecer próximo horário",
-  "Request reviews now": "Pedir avaliações agora",
-  "Continue →": "Continuar →",
-  "Start here →": "Comece por aqui →",
-  "See the impact →": "Ver o impacto →",
-  "Collect now →": "Cobrar agora →",
-  "Connect a tool →": "Conectar uma ferramenta →",
-  "Train your AI on it →": "Treinar sua IA com isso →",
-  "Book a call": "Agendar uma conversa",
-  "Mark out of stock": "Marcar como esgotado",
-  "Fill from waitlist →": "Preencher da lista de espera →",
-  "Set up with my team →": "Configurar com minha equipe →",
-  "Close the gap →": "Fechar a diferença →",
-  "Enter my cockpit →": "Entrar no meu cockpit →",
-  "Reply": "Responder",
-  "Reply on": "Responder no",
-  "Jump in and reply…": "Entre e responda…",
-  "Ask your AI": "Pergunte à sua IA",
-  "No conversations yet — they'll show up here as customers message you.": "Nenhuma conversa ainda — elas aparecem aqui conforme os clientes te enviam mensagens.",
-  "🎉 Mark won": "🎉 Marcar como ganho",
-  "💬 Message": "💬 Mensagem",
-  "Live sync": "Sincronização ao vivo",
-  "Gui recommends connecting": "Gui recomenda conectar",
-  "Request a change": "Solicitar uma mudança",
-  "Topic": "Tópico",
-  "Mark joined": "Marcar como compareceu",
-  "Return on credits": "Retorno sobre créditos",
-  "Won": "Ganho",
-  "Tell us about you": "Conte sobre você",
-  // Integrations hub
-  "Guileo plugs into your whole stack": "A Guileo se conecta a todo o seu stack",
-  "connected": "conectados",
-  "Connected": "Conectados",
-  "Acting 24/7": "Agindo 24/7",
-  "Always-on": "Sempre ligado",
-  "Hours saved / wk": "Horas economizadas / sem",
-  "Done-for-you": "Feito por nós",
-  "Don't see your system? If it has an API (or Zapier/Make),": "Não vê seu sistema? Se tiver uma API (ou Zapier/Make),",
-  "your team wires it": "sua equipe conecta",
-  "— Guileo becomes the brain on top of everything you already run.": "— a Guileo vira o cérebro acima de tudo que você já usa.",
-  // QA pass — previously hardcoded EN labels
-  "Dashboard Overview": "Visão geral do painel",
-  "Your AI briefing": "Resumo da sua IA",
-  "Your week, by Gui": "Sua semana, pelo Gui",
-  "Won / booked": "Ganhos / agendados",
-  "Ad spend": "Investimento em anúncios",
-  "Leads generated": "Leads gerados",
-  "Avg. ROAS": "ROAS médio",
-  "Connect Meta & Google Ads to see live campaign data here.": "Conecte Meta e Google Ads para ver os dados das campanhas ao vivo aqui.",
-  "Turn this call into action": "Transforme esta chamada em ação",
-  "The AI places the call, talks to the customer, and logs the outcome for you.": "A IA faz a chamada, fala com o cliente e registra o resultado pra você.",
-  "Your Guileo team": "Sua equipe Guileo",
-  "A real human manages your system. Reach out anytime — usually replies within hours.": "Uma pessoa de verdade cuida do seu sistema. Fale quando quiser — normalmente respondemos em poucas horas.",
-  "Want to tweak your AI, add a channel, or launch a campaign? Tell us.": "Quer ajustar sua IA, adicionar um canal ou lançar uma campanha? Conta pra gente.",
-  "Got it — your team will follow up shortly.": "Recebido — sua equipe vai responder em breve.",
-  "AI active": "IA ativa",
-  "Teach a better answer": "Ensinar uma resposta melhor",
-  "When customers ask about…": "Quando os clientes perguntarem sobre…",
-  "AI replied": "IA respondeu",
-  "What your AI sees in your numbers — and the exact moves to grow faster. Apply any of them in one click.": "O que sua IA vê nos seus números — e os movimentos exatos pra crescer mais rápido. Aplique qualquer um em um clique.",
-  "Over capacity": "Acima da capacidade",
-  "Normal": "Normal",
-  "You": "Você",
-  "VIP": "VIP",
-  "TOP": "TOP",
-  "Your return": "Seu retorno",
-  "Secure": "Garantir",
-  "You're outperforming your sector on every metric your AI touches.": "Você está acima do seu setor em todas as métricas que sua IA toca.",
-  "No matches": "Nenhum resultado",
-  "One AI, every branch — calls, bookings and orders routed to the right location automatically.": "Uma IA, todas as unidades — chamadas, reservas e pedidos vão para o local certo automaticamente.",
-  "Team & staff": "Equipe & colaboradores",
-  "Your AI routes bookings, calls and chats to the right person — and tracks who's performing.": "Sua IA direciona reservas, chamadas e conversas para a pessoa certa — e acompanha quem está performando.",
-  "Payments & invoicing": "Pagamentos & cobranças",
-  "Your AI sends invoices + payment links and chases unpaid ones automatically — you just watch the money land.": "Sua IA envia faturas + links de pagamento e cobra as pendentes automaticamente — você só vê o dinheiro entrar.",
-  "Sell a gift card — the AI delivers it instantly on WhatsApp or at checkout.": "Venda um vale-presente — a IA entrega na hora no WhatsApp ou no checkout.",
-  "The AI requested this review automatically after a great experience.": "A IA pediu esta avaliação automaticamente depois de uma ótima experiência.",
-  "Recurring revenue is the most valuable revenue — your AI renews, reminds and rescues it automatically.": "Receita recorrente é a receita mais valiosa — sua IA renova, lembra e resgata automaticamente.",
-  "One unified inbox": "Uma caixa de entrada unificada",
-  "Every call, WhatsApp, SMS and social DM lands in one place — and from any of them you fire an order or booking that drops into the right tab.": "Toda chamada, WhatsApp, SMS e DM de rede social cai em um só lugar — e de qualquer um deles você dispara um pedido ou reserva que entra na aba certa.",
-  "Train your AI — live": "Treine sua IA — ao vivo",
-  "Teach your AI in plain words and test it instantly. What you add, it uses on the very next customer.": "Ensine sua IA com palavras simples e teste na hora. O que você adicionar, ela usa já no próximo cliente.",
-  "Every order, booking, delivery and win-back feeds a live growth ledger — the exact number Guileo earns its % on. Fully transparent.": "Cada pedido, reserva, entrega e resgate alimenta um livro de crescimento ao vivo — exatamente o número sobre o qual a Guileo ganha seu %. Totalmente transparente.",
-  "Run anything with ⌘K": "Execute qualquer coisa com ⌘K",
-  "Press ⌘K (or Ctrl-K) anywhere to search or run a command — create an order, send an invoice, request reviews.": "Aperte ⌘K (ou Ctrl-K) em qualquer lugar para buscar ou executar um comando — criar um pedido, enviar uma fatura, pedir avaliações.",
-  "Skip tour": "Pular tour",
-  "Got it — let's go →": "Entendi — vamos lá →",
-  "Next →": "Próximo →",
-  "Welcome to Guileo 👋": "Bem-vindo à Guileo 👋",
-  "What kind of business are we growing?": "Que tipo de negócio vamos crescer?",
-  "So Gui represents your business — and we can reach you.": "Para o Gui representar seu negócio — e a gente conseguir falar com você.",
-  "Which channels should your AI cover?": "Quais canais sua IA deve cobrir?",
-  "Your AI answers 24/7 on every one you turn on.": "Sua IA responde 24/7 em todos os que você ativar.",
-  "You're all set": "Tudo pronto",
-  "there": "você",
-  "Your AI is live and your Growth Cockpit is ready.": "Sua IA está no ar e seu Growth Cockpit está pronto.",
-  "Skip setup": "Pular configuração",
-  "We sent a confirmation to": "Enviamos uma confirmação para",
-  "Demo data — each client sees their own industry.": "Dados de demonstração — cada cliente vê o próprio setor.",
-  "Owner": "Proprietário",
+// Portal UI translations (PT/ES/HI) — each dictionary now lives in its own lazy
+// chunk (src/portal/dict-*.js, ~60KB each) so the main Portal bundle doesn't carry
+// ~180KB of strings. loadDict(lang) fills the module-level cache below; tr() reads
+// it synchronously, so every call site (here and in all tab chunks) is unchanged.
+// English needs no dict — tr() returns the key itself. If a dict chunk fails to
+// load (offline), we silently stay on English rather than crash.
+const UI_DICTS = {}; // lang → dict — module cache shared by the shell and all tabs
+const DICT_LOADERS = {
+  pt: () => import("../portal/dict-pt.js"),
+  es: () => import("../portal/dict-es.js"),
+  hi: () => import("../portal/dict-hi.js"),
 };
-// Global UI language — set once by Portal on each render, read by tr() anywhere with
-// no prop/context threading. Makes wrapping any string a 1-token change: {tr("Label")}.
-let UI_LANG = "en";
+export async function loadDict(lang) {
+  if (!DICT_LOADERS[lang] || UI_DICTS[lang]) return; // en (no dict needed) or already cached
+  try { UI_DICTS[lang] = (await DICT_LOADERS[lang]()).default; } catch { /* offline → EN fallback: tr() returns the key */ }
+}
+// Warm the persisted language's dict the moment this module loads, so the boot
+// gate's `await loadDict(...)` usually resolves instantly — zero added boot time.
+loadDict(portalApi.loadState("portal_lang", "en"));
+export let UI_LANG = "en";
 const setUiLang = (l) => { UI_LANG = l; };
-const tr = (s, lang) => { const L = lang || UI_LANG; return (L === "pt" && PT_UI[s]) ? PT_UI[s] : s; };
+export const tr = (s, lang) => { const L = lang || UI_LANG; const T = UI_DICTS[L]; return (T && T[s]) ? T[s] : s; };
+
+// ── Voice of Gui — browser speechSynthesis, feature-detected (graceful no-op where
+// unsupported, no deps). NEVER autoplays: every call sits behind a user gesture.
+// One shared speaker: a new line cancels whatever was still being said.
+const speechLang = () => (UI_LANG === "pt" ? "pt-BR" : UI_LANG === "es" ? "es-ES" : UI_LANG === "hi" ? "hi-IN" : "en-US");
+export function speakLine(text, onEnd) {
+  try {
+    const synth = window.speechSynthesis;
+    if (!synth || !window.SpeechSynthesisUtterance) return false;
+    synth.cancel();
+    const u = new window.SpeechSynthesisUtterance(text);
+    u.lang = speechLang();
+    if (onEnd) { u.onend = onEnd; u.onerror = onEnd; }
+    synth.speak(u);
+    return true;
+  } catch { return false; }
+}
+export function stopSpeaking() { try { window.speechSynthesis?.cancel(); } catch { /* unsupported */ } }
+
+// ── REAL MODE helpers — when the client's connection code unlocks live backend data,
+// these turn the raw event ledger into the numbers/feeds the cockpit shows. ──
+export const EVENT_ICON = { call: "📞", booking: "📅", sale: "💳", payment: "💳", lead: "🎯", review: "⭐", message: "💬", provision: "🤖" };
+const periodDays = (period) => ({ "7 days": 7, "30 days": 30, "90 days": 90 }[period] || 30);
+export function eventsInPeriod(events, period) {
+  const cut = Date.now() - periodDays(period) * 864e5;
+  return (events || []).filter((e) => { const t = new Date(e.created_at).getTime(); return Number.isFinite(t) && t >= cut; });
+}
+export const sumAmounts = (events) => Math.round((events || []).reduce((s, e) => s + (Number(e.amount) || 0), 0));
+/** Bucket event amounts into a per-day series (oldest→today) for the existing charts. */
+export function realDaily(events, period) {
+  const days = Math.min(periodDays(period), 30);
+  const out = new Array(days).fill(0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  (events || []).forEach((e) => {
+    const d = new Date(e.created_at); if (Number.isNaN(d.getTime())) return;
+    d.setHours(0, 0, 0, 0);
+    const idx = days - 1 - Math.round((today - d) / 864e5);
+    if (idx >= 0 && idx < days) out[idx] += Number(e.amount) || 0;
+  });
+  return out.map((n) => Math.round(n));
+}
+/** "agora mesmo" / "12m" / "3h" / "5d" / "Jun 2" — compact relative time for the feed. */
+export function relTime(iso) {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "";
+  const m = Math.floor((Date.now() - t) / 60000);
+  if (m < 1) return tr("just now");
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.floor(h / 24);
+  return d < 30 ? `${d}d` : new Date(t).toLocaleDateString(UI_LANG === "pt" ? "pt-BR" : "en-US", { month: "short", day: "numeric" });
+}
+/** Subtle honesty chip for sections that still show sample data while real mode is on. */
+export const EstChip = () => <span className="text-[9px] font-bold uppercase tracking-wide text-g-muted/70 border border-white/10 rounded-full px-1.5 py-px">{tr("estimate")}</span>;
 
 // Per-tone accent moment for panels: a soft top tick + faint wash so each major
 // panel reads in its semantic color (green = money, gold = premium) without neon.
@@ -1346,7 +856,7 @@ const CARD_TONE = {
   gold:  { tick: "linear-gradient(90deg,transparent,rgba(214,194,154,0.5),transparent)",  glow: "0 0 14px rgba(214,194,154,0.38)", wash: "radial-gradient(120% 55% at 50% 0%, rgba(214,194,154,0.06), transparent 62%)" },
   red:   { tick: "linear-gradient(90deg,transparent,rgba(248,113,113,0.45),transparent)", glow: "0 0 12px rgba(248,113,113,0.35)", wash: "radial-gradient(120% 55% at 50% 0%, rgba(248,113,113,0.05), transparent 62%)" },
 };
-function Card({ children, className = "", tone }) {
+export function Card({ children, className = "", tone }) {
   const t = tone ? CARD_TONE[tone] : null;
   return (
     <div className={`relative rounded-xl2 border border-white/10 bg-white/[0.04] backdrop-blur-md p-5 ${className}`}>
@@ -1364,16 +874,25 @@ const PORTAL_FX = `
 .live-dot{ box-shadow:0 0 8px rgba(79,176,124,.85); }
 @keyframes fx-rowin{ from{ opacity:0; transform:translateX(-8px); } to{ opacity:1; transform:none; } }
 .row-in{ animation:fx-rowin .35s cubic-bezier(.22,.61,.36,1) both; }
+@keyframes fx-plant{ from{ opacity:0; transform:scale(.65); } to{ opacity:1; transform:scale(1); } }
+.plant-stage{ animation:fx-plant .6s cubic-bezier(.22,.61,.36,1) both; transition:transform .3s ease; }
+@keyframes fx-guibreathe{
+  0%,100%{ box-shadow:0 0 14px rgba(255,138,51,.45), 0 0 0 1px rgba(255,138,51,.3), 0 6px 18px rgba(0,0,0,.45); }
+  50%{ box-shadow:0 0 28px rgba(255,138,51,.75), 0 0 0 1px rgba(255,138,51,.5), 0 6px 18px rgba(0,0,0,.45); }
+}
+.gui-breathe{ animation:fx-guibreathe 3.4s ease-in-out infinite; }
 .clicky{ transition:border-color .18s ease, background-color .18s ease, transform .18s ease, box-shadow .18s ease; }
 .clicky:hover{ border-color:rgba(255,255,255,.22); background-color:rgba(255,255,255,.055); transform:translateY(-1px); }
 .clicky:active{ transform:translateY(0); }
 @media (prefers-reduced-motion: reduce){
   .row-in{ animation:none !important; }
+  .plant-stage{ animation:none !important; }
+  .gui-breathe{ animation:none !important; }
   .clicky:hover{ transform:none; }
 }
 `;
 // Consistent empty state for any list that can run dry.
-function Empty({ icon = "✅", text }) {
+export function Empty({ icon = "✅", text }) {
   return <div className="px-5 py-10 text-center text-xs text-g-muted">{icon} {tr(text)}</div>;
 }
 // Transient action feedback, bottom-center
@@ -1398,7 +917,7 @@ function Toaster() {
 // Slide-over detail panel — click any row to see everything + act on it.
 // Shared by every module, so a11y/keyboard lives here once: Esc closes, focus
 // moves into the panel on open, body scroll locks, role=dialog for screen readers.
-function Drawer({ open = true, title, subtitle, badge, fields = [], note, actions, onClose, children }) {
+export function Drawer({ open = true, title, subtitle, badge, fields = [], note, actions, onClose, children }) {
   const panelRef = useRef(null);
   useEffect(() => {
     if (!open) return;
@@ -1415,7 +934,7 @@ function Drawer({ open = true, title, subtitle, badge, fields = [], note, action
       <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <motion.div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={typeof title === "string" ? title : "Details"}
         initial={{ x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 320, damping: 32 }}
-        className="fixed top-0 right-0 z-50 h-full w-full sm:max-w-sm bg-g-cream/95 backdrop-blur-xl border-l border-white/12 shadow-2xl overflow-y-auto flex flex-col outline-none">
+        className="fixed top-0 right-0 z-50 h-full w-full sm:max-w-sm bg-g-cream/95 backdrop-blur-xl border-l border-white/15 shadow-2xl overflow-y-auto flex flex-col outline-none">
         <div className="flex items-start justify-between p-5 border-b border-white/10">
           <div className="min-w-0"><div className="text-base font-extrabold text-g-word truncate">{title}</div>{subtitle && <div className="text-xs text-g-muted mt-0.5">{subtitle}</div>}</div>
           <div className="flex items-center gap-2 shrink-0">{badge}<button onClick={onClose} aria-label="Close" className="text-g-muted hover:text-g-word text-lg leading-none px-1">✕</button></div>
@@ -1433,7 +952,7 @@ function Drawer({ open = true, title, subtitle, badge, fields = [], note, action
   );
 }
 // Reusable summary strip — adds depth (stats header) to any list screen
-function MiniStats({ items }) {
+export function MiniStats({ items }) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {items.map(([label, value, tone], i) => (
@@ -1447,7 +966,7 @@ function MiniStats({ items }) {
 }
 
 // Infer which section an alert is about so "View →" jumps straight there.
-function alertTarget(text = "") {
+export function alertTarget(text = "") {
   const t = text.toLowerCase();
   if (/kitchen|prep/.test(t)) return { view: "kitchen", label: "View kitchen" };
   if (/deliver|courier|driver|dispatch|shipment|en route/.test(t)) return { view: "deliveries", label: "View deliveries" };
@@ -1464,11 +983,11 @@ function alertTarget(text = "") {
 /* ───────────────────────── Views ───────────────────────── */
 // Scale a pre-formatted money/number string ("$18,420", "120") by a factor,
 // preserving its $ prefix and thousands separators. Non-numeric → returned as-is.
-function scaleMoney(str, f) {
+export function scaleMoney(str, f) {
   const s = String(str);
   const m = s.match(/-?[\d,]+/);
   if (!m) return s;
-  const n = Math.round(parseInt(m[0].replace(/,/g, ""), 10) * f);
+  const n = Math.max(0, Math.round(parseInt(m[0].replace(/,/g, ""), 10) * f));
   return s.replace(m[0], n.toLocaleString());
 }
 
@@ -1476,7 +995,7 @@ function scaleMoney(str, f) {
 // home screen leads with the concrete money moves, each linking to its module.
 // Numbers are derived from the SAME data the modules show, so the home screen and
 // the detail screens never disagree.
-function growthOps(V) {
+export function growthOps(V) {
   const wait = genWaitlist(V);
   const fups = genFollowups(V);
   const recur = genRecurring(V);
@@ -1498,7 +1017,7 @@ function growthOps(V) {
 }
 
 // Unified recent-activity feed — the latest things you + Gui actually did, across tabs.
-function recentActivity(V) {
+export function recentActivity(V) {
   const L = V.label, items = [];
   loadCreated(L, "liveorders").forEach((o) => items.push({ ic: "🧾", text: `Order ${o.id} · ${o.customer}`, view: "liveorders", _id: o._id }));
   loadCreated(L, "schedule").forEach((o) => items.push({ ic: "📅", text: `Booking · ${o.name}`, view: "schedule", _id: o._id }));
@@ -1510,7 +1029,7 @@ function recentActivity(V) {
   return items.sort((a, b) => (b._id || 0) - (a._id || 0)).slice(0, 6);
 }
 // One-line AI briefing for the home screen — derived from real signals.
-function dailyBriefing(V) {
+export function dailyBriefing(V) {
   const alerts = V.alerts ? V.alerts.items.length : 0;
   const outstanding = genPayments(V).filter((p) => p.status !== "Paid").reduce((s, r) => s + (r.amount || 0), 0);
   const fc = genForecast(V);
@@ -1519,11 +1038,11 @@ function dailyBriefing(V) {
   if (outstanding) bits.push(`$${outstanding.toLocaleString()} ${tr("to collect")}`);
   const iq = SECTOR_IQ[V.label];
   if (iq) bits.push(tr(iq.brief));                 // the sector's signature daily signal
-  bits.push(`${fc.peak} ${tr("looks busiest")}`);
+  bits.push(`${tr(fc.peak)} ${tr("looks busiest")}`);
   return bits.join(" · ");
 }
 // R4 — auto weekly recap Gui writes itself, derived from the Impact ledger + created records.
-function weeklySummary(V) {
+export function weeklySummary(V) {
   const L = V.label;
   const impact = loadCreated(L, "impact");
   const driven = impact.reduce((s, r) => s + (r.amt || 0), 0);
@@ -1536,13 +1055,13 @@ function weeklySummary(V) {
 }
 // R3 — standing automations Gui sets up ("every Monday chase overdue"). Persisted; shown on Overview.
 const autoKey = (L) => `${L}:automations`;
-const loadAutomations = (L) => portalApi.loadState(autoKey(L), []);
+export const loadAutomations = (L) => portalApi.loadState(autoKey(L), []);
 function addAutomation(L, rec) { const cur = loadAutomations(L); portalApi.saveState(autoKey(L), [{ ...rec, _id: Date.now(), on: true }, ...cur].slice(0, 12)); }
-function toggleAutomation(L, id) { const cur = loadAutomations(L); portalApi.saveState(autoKey(L), cur.map((a) => (a._id === id ? { ...a, on: !a.on } : a))); }
-function removeAutomation(L, id) { portalApi.saveState(autoKey(L), loadAutomations(L).filter((a) => a._id !== id)); }
+export function toggleAutomation(L, id) { const cur = loadAutomations(L); portalApi.saveState(autoKey(L), cur.map((a) => (a._id === id ? { ...a, on: !a.on } : a))); }
+export function removeAutomation(L, id) { portalApi.saveState(autoKey(L), loadAutomations(L).filter((a) => a._id !== id)); }
 function setAutoLastRun(L, id) { const cur = loadAutomations(L); portalApi.saveState(autoKey(L), cur.map((a) => (a._id === id ? { ...a, lastRun: Date.now() } : a))); }
 // Execute one automation: map its "what" to the real stitch (records + Impact ledger).
-function runAutomation(V, a) {
+export function runAutomation(V, a) {
   const s = (a.what || "").toLowerCase(); const L = V.label;
   let msg;
   if (/overdue|chase|cobr|invoice|fatur/.test(s)) { const open = genPayments(V).filter((p) => p.status !== "Paid"); logImpact(L, `Auto · chased ${open.length} overdue invoice${open.length !== 1 ? "s" : ""}`, 0); msg = `chased ${open.length} overdue invoice${open.length !== 1 ? "s" : ""}`; }
@@ -1558,466 +1077,9 @@ function runAutomation(V, a) {
 // Cadence → minimum ms between runs. A "due" automation has never run or is past its window.
 const CADENCE_MS = { daily: 864e5, weekly: 6048e5, monthly: 2592e6 };
 function cadenceMs(when) { const w = (when || "").toLowerCase(); if (/dia|daily|day/.test(w)) return CADENCE_MS.daily; if (/m[êe]s|month/.test(w)) return CADENCE_MS.monthly; return CADENCE_MS.weekly; }
-function dueAutomations(V) { const now = Date.now(); return loadAutomations(V.label).filter((a) => a.on && (!a.lastRun || now - a.lastRun >= cadenceMs(a.when))); }
+export function dueAutomations(V) { const now = Date.now(); return loadAutomations(V.label).filter((a) => a.on && (!a.lastRun || now - a.lastRun >= cadenceMs(a.when))); }
 
-function Overview({ V, onNav, sections = [], period = "30 days" }) {
-  const [resolved, setResolved] = useState(() => portalApi.loadState(`${V.label}:alerts`, []));
-  const [alertsOpen, setAlertsOpen] = useState(false);
-  useEffect(() => { setResolved(portalApi.loadState(`${V.label}:alerts`, [])); }, [V.label]);
-  const resolveAlert = (i) => { portalApi.resolveAlert(i); setResolved((r) => { const n = [...r, i]; portalApi.saveState(`${V.label}:alerts`, n); return n; }); toast(tr("Marked as handled ✓")); };
-  const validViews = new Set(sections.map(([k]) => k));
-  const ops = growthOps(V).filter((o) => validViews.has(o.view)).slice(0, 3);
-  const [autoTick, setAutoTick] = useState(0);                 // force re-render on automation toggle/remove
-  const automations = loadAutomations(V.label); void autoTick;
-  // Scheduler — on load, run any automations that are due (the client-side cron).
-  const ranRef = useRef(false);
-  useEffect(() => {
-    if (ranRef.current) return; ranRef.current = true;
-    const due = dueAutomations(V).slice(0, 2);
-    if (due.length) {
-      const msgs = due.map((a) => runAutomation(V, a));
-      setTimeout(() => { setAutoTick((t) => t + 1); toast(`Automations ran ✓ — Gui ${msgs.join(" & ")}`); }, 900);
-    }
-  }, [V.label]); // eslint-disable-line
-  const runAutoNow = (a) => { const msg = runAutomation(V, a); setAutoTick((t) => t + 1); toast(`Done ✓ — Gui ${msg}`); };
-  const wk = weeklySummary(V);
-  // Monthly revenue goal — editable + persisted; tracks current + projection.
-  const defGoal = Math.max(500, Math.round((V.impact.total * 2.4) / 100) * 100);
-  const [goal, setGoal] = useState(() => portalApi.loadState(`${V.label}:goal`, defGoal));
-  const [editGoal, setEditGoal] = useState(false);
-  const [goalDraft, setGoalDraft] = useState(goal);
-  useEffect(() => { const g = portalApi.loadState(`${V.label}:goal`, defGoal); setGoal(g); setGoalDraft(g); }, [V.label]); // eslint-disable-line
-  const saveGoal = () => { const g = Math.max(100, parseInt(String(goalDraft).replace(/\D/g, ""), 10) || defGoal); setGoal(g); portalApi.saveState(`${V.label}:goal`, g); setEditGoal(false); toast(`Monthly goal set to $${g.toLocaleString()} ✓`); };
-  const projected = Math.round(V.impact.total * 1.6);
-  const pctNow = Math.min(100, Math.round((V.impact.total / goal) * 100));
-  const pctProj = Math.round((projected / goal) * 100);
-  // The seed data represents a 30-day window; 7d/90d scale the cumulative money.
-  const periodFactor = { "7 days": 7 / 30, "30 days": 1, "90 days": 3 }[period] || 1;
-  const periodLabel = period === "30 days" ? "this month" : `last ${period}`;
-  const openAlerts = V.alerts ? V.alerts.items.map((a, i) => ({ a, i })).filter(({ i }) => !resolved.includes(i)) : [];
-  const quick = (V.quick || [["📋", "See today's operations", "ops"], ["💬", "Message my team", "support"], ["📣", "Ask for a campaign", "wa"]]).map(([ic, label, kind]) =>
-    kind === "ops" ? { ic, label, on: () => onNav("operations") }
-      : kind === "support" ? { ic, label, on: () => onNav("support") }
-        : { ic, label, href: waLink(`Guileo — ${label}`) }
-  );
-  return (
-    <div className="space-y-5 stagger">
-      <div>
-        <h2 className="text-lg font-extrabold text-g-word">{tr("Dashboard Overview")}</h2>
-        <p className="text-xs text-g-muted">{tr("Welcome back 👋 Here's where your money is today — and the fastest way to grow it.")}</p>
-      </div>
 
-      {/* AI DAILY BRIEFING — a friendly, data-driven one-liner + where to start */}
-      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.05] border-g-green/25">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0">
-            <span className="grid place-items-center h-9 w-9 rounded-full bg-g-green/15 text-g-green shrink-0"><FaBrain size={15} /></span>
-            <div className="min-w-0"><div className="text-sm font-extrabold text-g-word flex items-center gap-2">{tr("Your AI briefing")} <span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" /></div><div className="text-xs text-g-muted mt-0.5">{dailyBriefing(V)}.</div></div>
-          </div>
-          {ops[0] && <button onClick={() => onNav(ops[0].view)} className="btn-bright text-sm shrink-0">{tr("Start here →")}</button>}
-        </div>
-      </Card>
-
-      {/* PROFIT IMPACT — money first (the only thing the owner must see) */}
-      <Card className="relative overflow-hidden bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] border-g-green/30">
-        <div className="absolute -top-16 -right-12 h-40 w-40 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
-        <div className="relative flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Guileo profit impact")} · {tr(periodLabel)}</div>
-            <div className="flex items-end gap-2.5 flex-wrap mt-1">
-              <div className="text-4xl sm:text-5xl font-black text-g-green money-glow num tracking-tight"><Count key={period} to={Math.round(V.impact.total * periodFactor)} prefix="$" /></div>
-              {(() => { const last = Math.round(V.impact.total / 1.18); const up = Math.round(((V.impact.total - last) / last) * 100); return <span className="inline-flex items-center gap-1 mb-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full bg-g-green/15 text-g-green"><FaArrowTrendUp size={10} /> +{up}% {tr("vs last month")}</span>; })()}
-            </div>
-            {period === "30 days" && <div className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-bold text-g-green"><FaArrowTrendUp size={10} /> {tr("On pace for")} ${Math.round(V.impact.total * 1.6).toLocaleString()} {tr("by month-end")}</div>}
-            <div className="mt-2.5 flex flex-wrap gap-2">
-              {V.impact.parts.map(([label, val]) => (
-                <span key={label} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold">
-                  <span className="text-g-green num">{scaleMoney(val, periodFactor)}</span><span className="text-g-muted">{label}</span>
-                </span>
-              ))}
-            </div>
-          </div>
-          <a href={waLink("I'd like to review my Guileo results")} target="_blank" rel="noopener" className="btn-bright text-sm">{tr("Talk to my team →")}</a>
-        </div>
-      </Card>
-
-      {/* NEEDS ATTENTION — one quiet line by default; expands only on click */}
-      {V.alerts && (
-        openAlerts.length ? (
-          <div className="rounded-xl2 border border-white/[0.08] bg-white/[0.02] overflow-hidden">
-            <button onClick={() => setAlertsOpen((o) => !o)} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left hover:bg-white/[0.02] transition">
-              <span className="h-1.5 w-1.5 rounded-full bg-g-gold shrink-0" />
-              <span className="text-xs font-bold text-g-word">{openAlerts.length} {openAlerts.length === 1 ? tr("item needs your attention") : tr("items need your attention")}</span>
-              <span className="flex-1" />
-              <FaChevronDown size={11} className={`text-g-muted transition-transform ${alertsOpen ? "rotate-180" : ""}`} />
-            </button>
-            <AnimatePresence initial={false}>
-              {alertsOpen && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} className="overflow-hidden">
-                  <div className="divide-y divide-white/[0.05] border-t border-white/[0.06]">
-                    {openAlerts.map(({ a, i }) => {
-                      const t0 = alertTarget(a.text);
-                      const target = t0 && validViews.has(t0.view) ? t0 : null;
-                      return (
-                        <div key={i} className="group flex items-center gap-3 px-3.5 py-2.5 hover:bg-white/[0.025] transition">
-                          <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${a.level === "danger" ? "bg-red-400" : a.level === "warn" ? "bg-g-gold" : "bg-sky-400"}`} />
-                          <span className="flex-1 min-w-0 text-xs text-g-light leading-snug">{a.text}</span>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {target && <button onClick={() => onNav(target.view)} className="text-[11px] font-bold text-g-muted hover:text-g-word transition px-2 py-1 rounded-lg hover:bg-white/[0.05] opacity-0 group-hover:opacity-100">{target.label} →</button>}
-                            <button onClick={() => resolveAlert(i)} className="text-[11px] font-bold text-g-green border border-g-green/25 hover:bg-g-green/10 transition px-2.5 py-1 rounded-lg">{tr("Resolve")}</button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2.5 rounded-xl2 border border-g-green/15 bg-g-green/[0.03] px-3.5 py-2 text-xs text-g-muted">
-            <span className="h-1.5 w-1.5 rounded-full bg-g-green shrink-0" /> {tr("All clear — your AI is on top of everything.")}
-          </div>
-        )
-      )}
-
-      {/* MONTHLY GOAL — editable target + progress + projection vs goal */}
-      <Card tone="gold">
-        <div className="flex items-center justify-between gap-3 mb-2">
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("🎯 Monthly goal")}</div>
-          {editGoal ? (
-            <div className="flex items-center gap-1.5"><span className="text-g-muted text-sm">$</span><input autoFocus value={goalDraft} onChange={(e) => setGoalDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveGoal()} aria-label={tr("Monthly revenue goal")} className="w-24 rounded-lg border border-white/15 bg-black/20 px-2 py-1 text-sm text-g-word outline-none focus:border-g-green/70" /><button onClick={saveGoal} className="text-[11px] font-bold text-g-green hover:underline">{tr("Save")}</button></div>
-          ) : (
-            <button onClick={() => { setGoalDraft(goal); setEditGoal(true); }} className="text-sm font-extrabold text-g-word inline-flex items-center gap-1.5">${goal.toLocaleString()} <FaPen size={9} className="text-g-muted" /></button>
-          )}
-        </div>
-        <div className="relative h-3 rounded-full bg-white/10 overflow-hidden">
-          <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-g-green to-g-gold transition-all" style={{ width: `${pctNow}%` }} />
-          {pctProj > pctNow && pctProj <= 100 && <div className="absolute inset-y-0 rounded-full bg-g-gold/30 transition-all" style={{ left: `${pctNow}%`, width: `${Math.min(100, pctProj) - pctNow}%` }} />}
-        </div>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-          <span className="text-g-muted"><b className="text-g-word">${V.impact.total.toLocaleString()}</b> {tr("of")} ${goal.toLocaleString()} · <b className={pctProj >= 100 ? "text-g-green" : "text-g-gold"}>{tr("on pace for")} {pctProj}%</b></span>
-          {pctProj < 100 && ops[0] && <button onClick={() => onNav(ops[0].view)} className="font-bold text-g-green hover:underline">{tr("Close the gap →")}</button>}
-          {pctProj >= 100 && <span className="font-bold text-g-green">{tr("🎉 On track to beat it!")}</span>}
-        </div>
-      </Card>
-
-      {/* GROWTH MOVES — "what to do today to grow", the revenue-share thesis on the home screen */}
-      {ops.length > 0 && (
-        <Card tone="green" className="p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("⚡ This week's growth moves")}</span>
-            <span className="text-[10px] text-g-muted">{tr("· spotted by your AI")}</span>
-          </div>
-          <div className="divide-y divide-white/[0.05]">
-            {ops.map((o) => (
-              <button key={o.view} onClick={() => onNav(o.view)} className="group w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.03] transition">
-                <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-base shrink-0">{o.ic}</span>
-                <div className="flex-1 min-w-0 text-sm text-g-word"><span className="font-extrabold">{o.n}</span> {o.text}</div>
-                <span className="text-xs font-extrabold text-g-green money-glow num whitespace-nowrap">{o.value}</span>
-                <span className="text-g-muted group-hover:text-g-word transition shrink-0">→</span>
-              </button>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* RECENT ACTIVITY — the latest things you + Gui did, across every tab */}
-      {(() => { const acts = recentActivity(V).filter((a) => validViews.has(a.view)); return acts.length > 0 ? (
-        <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recent activity")}</span><span className="text-[10px] text-g-muted inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("live")}</span></div>
-          <div className="divide-y divide-white/[0.05]">
-            {acts.map((a, i) => (
-              <button key={i} onClick={() => onNav(a.view)} style={{ animationDelay: `${i * 60}ms` }} className="row-in group w-full text-left flex items-center gap-3 px-5 py-2.5 hover:bg-white/[0.03] transition">
-                <span className="text-base shrink-0">{a.ic}</span>
-                <div className="flex-1 min-w-0 text-xs text-g-word truncate">{a.text}</div>
-                <span className="text-[10px] text-g-muted shrink-0">{tr("just now")}</span>
-                <span className="text-g-muted group-hover:text-g-word transition shrink-0">→</span>
-              </button>
-            ))}
-          </div>
-        </Card>
-      ) : null; })()}
-
-      {/* R4 — WEEKLY RECAP Gui writes itself */}
-      <Card className="bg-gradient-to-br from-g-gold/[0.08] to-transparent border-g-gold/25">
-        <div className="flex items-start gap-3">
-          <span className="grid place-items-center h-10 w-10 rounded-xl bg-g-gold/15 text-g-gold shrink-0"><FaWandMagicSparkles /></span>
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-extrabold text-g-word">{tr("Your week, by Gui")}</div>
-            <div className="text-xs text-g-muted mt-1 leading-relaxed">{tr("This week your AI handled")} <span className="text-g-word font-bold">{wk.handled}</span> {tr("conversations, created")} <span className="text-g-word font-bold">{wk.created || vnum(V.label, "wkc", 6, 24)}</span> {tr("bookings & orders")}{wk.driven ? <> {tr("and drove")} <span className="text-g-green font-bold">${wk.driven.toLocaleString()}</span> {tr("in tracked revenue")}</> : ""} {tr("— saving you about")} <span className="text-g-word font-bold">{wk.hours}h</span>. {wk.open ? <>{tr("Next:")} <span className="text-g-word font-semibold">{wk.open} {wk.open !== 1 ? tr("invoices") : tr("invoice")}</span> {tr("still to collect, and")} <span className="text-g-word font-semibold">{wk.peak}</span> {tr("looks busiest")}.</> : <>{tr("Next week")} <span className="text-g-word font-semibold">{wk.peak}</span> {tr("looks busiest — want a promo to fill the quiet days?")}</>}</div>
-            <div className="mt-2.5 flex flex-wrap gap-2">
-              <button onClick={() => onNav("impact")} className="btn-ghost text-xs px-3 py-1.5">{tr("See the impact →")}</button>
-              {wk.open > 0 && <button onClick={() => onNav("payments")} className="btn-ghost text-xs px-3 py-1.5">{tr("Collect now →")}</button>}
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* R3 — STANDING AUTOMATIONS Gui set up */}
-      {automations.length > 0 && (
-        <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("⚙️ Automations on autopilot")}</span><span className="text-[10px] text-g-muted">{automations.filter((a) => a.on).length} {tr("active")}</span></div>
-          <div className="divide-y divide-white/[0.05]">
-            {automations.map((a) => (
-              <div key={a._id} className="flex items-center gap-3 px-5 py-3">
-                <span className="text-base shrink-0">{a.ic || "⚡"}</span>
-                <div className="flex-1 min-w-0"><div className={`text-xs font-bold truncate ${a.on ? "text-g-word" : "text-g-muted line-through"}`}>{a.what}</div><div className="text-[10px] text-g-muted">{a.when}{a.lastRun ? ` ${tr("· last run")} ${new Date(a.lastRun).toLocaleDateString(UI_LANG === "pt" ? "pt-BR" : "en-US", { month: "short", day: "numeric" })}` : ` ${tr("· not run yet")}`}</div></div>
-                {a.on && <button onClick={() => runAutoNow(a)} className="text-[10px] font-bold text-g-green hover:text-g-light shrink-0 whitespace-nowrap">{tr("▶ Run now")}</button>}
-                <Toggle on={!!a.on} onClick={() => { toggleAutomation(V.label, a._id); setAutoTick((t) => t + 1); }} />
-                <button onClick={() => { removeAutomation(V.label, a._id); setAutoTick((t) => t + 1); toast("Automation removed"); }} aria-label={tr("Remove")} className="text-g-muted hover:text-red-400 transition shrink-0"><FaTrash size={11} /></button>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      <div className={`grid gap-4 grid-cols-2 ${V.kpis.length >= 6 ? "md:grid-cols-3 xl:grid-cols-6" : "sm:grid-cols-2 lg:grid-cols-4"}`}>
-        {V.kpis.map((k, i) => (
-          <motion.div key={k.label} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
-            <Card>
-              <div className="flex items-center justify-between">
-                <span className="grid place-items-center h-10 w-10 rounded-xl bg-white/[0.06] text-xl">{k.ic}</span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: (k.good ? "#3E9468" : k.color) + "22", color: k.good ? "#3E9468" : k.color }}>
-                  {k.good ? <FaArrowTrendDown size={10} /> : <FaArrowTrendUp size={10} />} {k.note || (k.delta != null ? `+${k.delta}%` : tr("live"))}
-                </span>
-              </div>
-              <div className={`mt-3 text-2xl font-extrabold num tracking-tight ${k.pre === "$" ? "text-g-green money-glow" : "text-g-word"}`}><Count to={k.num} prefix={k.pre || ""} suffix={k.suf || ""} /></div>
-              <div className="text-[11px] text-g-muted">{k.label}</div>
-              <div className="mt-2"><Spark data={V.revenue} color={k.color} h={32} /></div>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* TODAY + QUICK ACTIONS — surface ops on the home screen (fewer clicks) */}
-      <div className="grid lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2 p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr(V.ops.scheduleTitle)} {tr("· next up")}</span>
-            <button onClick={() => onNav("operations")} className="text-[11px] font-bold text-g-gold hover:underline">{tr("See all →")}</button>
-          </div>
-          <div className="divide-y divide-white/[0.06]">
-            {V.ops.schedule.slice(0, 3).map((r, i) => (
-              <div key={i} className="flex items-center gap-3 px-5 py-3">
-                <span className="text-xs font-bold text-g-light w-20 shrink-0 inline-block truncate align-middle" title={r.time}>{r.time}</span>
-                <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted truncate">{r.meta}{r.ch && r.ch !== "—" ? ` · ${r.ch}` : ""}</div></div>
-                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-        <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("Quick actions")}</div>
-          <div className="space-y-2">
-            {quick.map((q) => q.href ? (
-              <a key={q.label} href={q.href} target="_blank" rel="noopener" className="flex items-center gap-3 rounded-xl2 border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-g-word hover:border-g-gold/40 hover:-translate-y-0.5 transition-all"><span>{q.ic}</span>{tr(q.label)}<span className="ml-auto text-g-gold">→</span></a>
-            ) : (
-              <button key={q.label} onClick={q.on} className="w-full text-left flex items-center gap-3 rounded-xl2 border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-g-word hover:border-g-gold/40 hover:-translate-y-0.5 transition-all"><span>{q.ic}</span>{tr(q.label)}<span className="ml-auto text-g-gold">→</span></button>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* Revenue + channel breakdown (or live activity) */}
-      <div className="grid lg:grid-cols-3 gap-4">
-        <Card tone="green" className="lg:col-span-2">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Revenue & order volume")}</div>
-              <div className="mt-1 flex items-center gap-3 text-[10px] text-g-muted"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-gold" />{tr("Revenue")}</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-green" />{tr("Orders")}</span></div>
-            </div>
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-g-green"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("Live sync")}</span>
-          </div>
-          <Bars data={V.revenue} />
-        </Card>
-        {V.channelMix ? (
-          <Card>
-            <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{V.channelMix.title}</div>
-            <div className="text-[11px] text-g-muted mb-3">{V.channelMix.sub}</div>
-            {V.channelMix.items.map(([label, pct], i) => (
-              <div key={i} className="mb-2.5 last:mb-0">
-                <div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{label}</span><span className="text-g-muted">{pct}%</span></div>
-                <div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-g-green" style={{ width: `${pct}%` }} /></div>
-              </div>
-            ))}
-          </Card>
-        ) : (
-          <Card>
-            <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("Live activity")}</div>
-            <ul className="space-y-3">
-              {V.activity.map(([ic, ch, msg, t], i) => (
-                <li key={ch + t + i} className="flex items-start gap-3">
-                  <span className="text-lg shrink-0">{ic}</span>
-                  <div className="min-w-0"><div className="text-xs font-bold text-g-word">{ch} <span className="text-g-green">· AI</span></div><div className="text-[11px] text-g-muted leading-snug">{msg}</div></div>
-                  <span className="ml-auto text-[10px] text-g-light whitespace-nowrap">{t}</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        )}
-      </div>
-
-      {/* Rich row: top selling (restaurant) + recent activity */}
-      {(V.topItems || V.channelMix) && (
-        <div className="grid lg:grid-cols-2 gap-4">
-          {V.topItems && (
-          <Card>
-            <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{V.topItems.title}</div>
-            <div className="space-y-3">
-              {V.topItems.items.map((it, i) => {
-                const max = Math.max(...V.topItems.items.map((x) => x.sold));
-                return (
-                  <div key={i}>
-                    <div className="flex justify-between items-baseline text-xs mb-1"><span className="font-bold text-g-word uppercase truncate pr-2">{it.name}</span><span className="text-g-muted whitespace-nowrap">{it.sold} sold · <span className="text-g-green font-bold num">${it.rev.toFixed(2)}</span></span></div>
-                    <div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${(it.sold / max) * 100}%` }} /></div>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-          )}
-          {V.channelMix && (
-          <Card>
-            <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("Recent activity")}</div>
-            <ul className="space-y-3">
-              {V.activity.map(([ic, ch, msg, t], i) => (
-                <li key={ch + t + i} className="flex items-start gap-3">
-                  <span className="text-lg shrink-0">{ic}</span>
-                  <div className="min-w-0"><div className="text-xs font-bold text-g-word">{ch} <span className="text-g-green">· AI</span></div><div className="text-[11px] text-g-muted leading-snug">{msg}</div></div>
-                  <span className="ml-auto text-[10px] text-g-light whitespace-nowrap">{t}</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-          )}
-        </div>
-      )}
-
-      {/* Signature sector ops board (clinic recalls / e-com carts / realestate leads) */}
-      {SECTOR_OPS[V.label] && (() => {
-        const board = SECTOR_OPS[V.label];
-        return (
-          <Card>
-            <div className="flex items-center justify-between mb-3 gap-3">
-              <div className="min-w-0">
-                <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr(board.title)}</div>
-                <div className="text-[11px] text-g-muted truncate">{tr(board.sub)}</div>
-              </div>
-              <button onClick={() => onNav?.(board.view)} className="shrink-0 rounded-full border border-g-green/35 bg-g-green/10 px-3 py-1.5 text-[11px] font-bold text-g-word hover:bg-g-green/20 transition">{board.chip}</button>
-            </div>
-            <div className="divide-y divide-white/5">
-              {board.rows.map((r, i) => (
-                <div key={i} className="flex items-center gap-3 py-2">
-                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: r.color }} />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xs font-bold text-g-word truncate">{r.a} <span className="text-g-muted font-normal">· {r.ch}</span></div>
-                    <div className="text-[11px] text-g-muted truncate">{r.b}</div>
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wide whitespace-nowrap px-2 py-0.5 rounded-full" style={{ color: r.color, background: `${r.color}1a` }}>{r.pill}</span>
-                  <span className="text-xs font-bold text-g-green num whitespace-nowrap w-20 text-right">{r.val}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        );
-      })()}
-    </div>
-  );
-}
-
-// Delivery & dispatch — third-party platforms (Uber Eats/DoorDash/Grubhub, carriers)
-// + Guileo's own delivery, unified. Connections persist; every drop is trackable.
-function Deliveries({ V }) {
-  const cfg = deliveryCfg(V);
-  const rows = [...loadCreated(V.label, "deliveries"), ...genDeliveries(V)];
-  const active = rows.filter((r) => r.status !== "Delivered");
-  // Connection state persists (feels like a real integration toggle). Seed: first
-  // two partners connected, rest off — so both states are visible.
-  const [conn, setConn] = useState(() => portalApi.loadState(`${V.label}:integrations`, Object.fromEntries(cfg.partners.map(([n], i) => [n, i < 2]))));
-  useEffect(() => { setConn(portalApi.loadState(`${V.label}:integrations`, Object.fromEntries(cfg.partners.map(([n], i) => [n, i < 2])))); }, [V.label]);
-  const toggle = (name) => setConn((c) => { const n = { ...c, [name]: !c[name] }; portalApi.saveState(`${V.label}:integrations`, n); toast(`${name} ${n[name] ? "connected ✓" : "disconnected"}`); return n; });
-  const [ownOn, setOwnOn] = useState(() => portalApi.loadState(`${V.label}:owndelivery`, true));
-  const flipOwn = () => setOwnOn((o) => { const v = !o; portalApi.saveState(`${V.label}:owndelivery`, v); toast(`${cfg.own[0]} ${v ? "on ✓" : "off"}`); return v; });
-  const [sel, setSel] = useState(null);
-  const onTime = vnum(V.label, "ontime", 92, 99);
-
-  return (
-    <div className="space-y-4 stagger">
-      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaTruck className="text-g-green" /> {cfg.title}</div><div className="text-xs text-g-muted mt-0.5">{cfg.partners.length ? "Every order — third-party apps and your own delivery — in one place. " : "Dispatch and track every job in one place. "}Your AI texts customers live ETAs automatically.</div></div>
-          <a href={waLink(`Hi Guileo! Help me set up ${cfg.title.toLowerCase()}`)} target="_blank" rel="noopener" className="btn-bright text-sm">{tr("Set up with my team →")}</a>
-        </div>
-      </Card>
-
-      <MiniStats items={[["Active now", `${active.length}`], ["On-time", `${onTime}%`, "good"], ["Avg. time", `${vnum(V.label, "deltime", 18, 42)} min`], [cfg.partners.length ? "Commission saved" : "Auto-dispatched", cfg.partners.length ? `$${vnum(V.label, "commsave", 400, 1800).toLocaleString()}` : `${vnum(V.label, "autodisp", 20, 70)}`, "good"]]} />
-
-      {/* Integrations — connect the platforms */}
-      {cfg.partners.length > 0 && (
-        <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Connect your delivery platforms")}</div>
-          <div className="divide-y divide-white/[0.06]">
-            {cfg.partners.map(([name, ic, color]) => (
-              <div key={name} className="flex items-center gap-3 px-5 py-3.5">
-                <span className="grid place-items-center h-10 w-10 rounded-xl text-lg" style={{ background: color + "22" }}>{ic}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold text-g-word">{name}</div>
-                  <div className="text-[11px] text-g-muted">{conn[name] ? `Connected · ${vnum(V.label, name, 6, 28)} ${cfg.noun} today` : "Not connected"}</div>
-                </div>
-                {conn[name] && <span className="text-[10px] font-black uppercase text-g-green inline-flex items-center gap-1"><FaCircleCheck size={10} /> Live</span>}
-                <Toggle on={!!conn[name]} onClick={() => toggle(name)} />
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* Guileo's own delivery — the differentiator: 0% commission, owns the customer */}
-      <Card className="border-g-gold/30 bg-g-gold/[0.05]">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="grid place-items-center h-10 w-10 rounded-xl bg-g-gold/15 text-g-gold"><FaLocationDot /></span>
-            <div><div className="text-sm font-extrabold text-g-word">{cfg.own[0]} <span className="text-[10px] font-black uppercase text-g-gold ml-1">{cfg.partners.length ? "0% commission" : "in-house"}</span></div><div className="text-xs text-g-muted">{cfg.own[1]}</div></div>
-          </div>
-          <Toggle on={ownOn} onClick={flipOwn} />
-        </div>
-      </Card>
-
-      {/* Live deliveries / dispatch board */}
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">Live {cfg.noun} · tap to track</span><span className="text-[11px] text-g-muted">{active.length} in progress</span></div>
-        <div className="divide-y divide-white/[0.06]">
-          {rows.map((r, i) => (
-            <button key={i} onClick={() => setSel(r)} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition">
-              <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06]" style={{ color: r.color }}><FaTruck size={13} /></span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{r.customer}{r.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">{tr("from chat")}</span>} <span className="text-g-muted font-normal">· {r.via}</span></div><div className="text-[11px] text-g-muted truncate">{r.who} · {r.addr}</div></div>
-              <div className="text-right shrink-0"><div className="text-[11px] font-bold" style={{ color: r.color }}>{r.eta}</div><span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: r.color + "22", color: r.color }}>{r.status}</span></div>
-            </button>
-          ))}
-          {rows.length === 0 && <Empty icon="🛵" text={`No ${cfg.noun} in progress right now.`} />}
-        </div>
-      </Card>
-
-      {sel && (
-        <Drawer
-          title={sel.customer}
-          subtitle={`${sel.via} · ${sel.status}`}
-          badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: sel.color + "22", color: sel.color }}>{sel.eta}</span>}
-          fields={[[cfg.who, sel.who], ["Channel", sel.via], ["Destination", sel.addr], ["ETA", sel.eta], ["Status", sel.status]]}
-          note={`Your AI is texting ${sel.customer} live ${sel.status.toLowerCase()} updates — no “where's my order?” calls for you to answer.`}
-          actions={<>
-            <button onClick={() => { toast(`Live tracking link sent to ${sel.customer} ✓`); setSel(null); }} className="btn-bright text-sm">📍 Share tracking</button>
-            <button onClick={() => { toast(`${sel.via}: ${cfg.who.toLowerCase()} reassigned`); setSel(null); }} className="btn-ghost text-sm">↻ Reassign</button>
-            <button onClick={() => { logImpact(V.label, `Delivery to ${sel.customer} completed`, 16); toast(`${sel.customer} marked delivered ✓ — logged to Guileo Impact`); setSel(null); }} className="btn-ghost text-sm">✓ Mark delivered</button>
-            {sel.status !== "Delivered" && <button onClick={() => { logImpact(V.label, `Saved ${sel.customer} with an apology coupon (late ${cfg.noun.replace(/s$/, "")})`, 12); toast(`Apology coupon sent to ${sel.customer} ✓ — retention logged to Guileo Impact`); setSel(null); }} className="btn-ghost text-sm">🎟️ Apology coupon</button>}
-          </>}
-          onClose={() => setSel(null)}
-        />
-      )}
-    </div>
-  );
-}
 
 /* ───────────────────────── Integrations hub ─────────────────────────
    The differentiator: Guileo is not just another app — it plugs into the
@@ -2104,7 +1166,7 @@ const SECTOR_STACK = {
 };
 // Sector onboarding — the tools Guileo auto-connects on day one for each trade,
 // so a new account reaches first value in minutes (activation = trial→paid $).
-const SECTOR_ONBOARD = {
+export const SECTOR_ONBOARD = {
   "Restaurant": { auto: ["WhatsApp", "Toast POS", "Uber Eats", "OpenTable", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, Toast POS, Uber Eats, OpenTable, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Toast POS, Uber Eats, OpenTable, Google Calendar e Stripe." },
   "Clinic": { auto: ["WhatsApp", "Dentrix", "Weave", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, Dentrix, Weave, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Dentrix, Weave, Google Calendar e Stripe." },
   "Medical": { auto: ["WhatsApp", "Epic / EHR", "Zocdoc", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, Epic / EHR, Zocdoc, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Epic / EHR, Zocdoc, Google Calendar e Stripe." },
@@ -2118,7 +1180,7 @@ const SECTOR_ONBOARD = {
   "Construction": { auto: ["WhatsApp", "Procore", "Buildertrend", "Google Calendar", "QuickBooks"], en: "Done — Guileo is live across your WhatsApp, Procore, Buildertrend, Google Calendar, and QuickBooks.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Procore, Buildertrend, Google Calendar e QuickBooks." },
   "E-Commerce": { auto: ["WhatsApp", "Shopify", "WooCommerce", "Klaviyo", "Stripe", "Meta Ads"], en: "Done — Guileo is live across your WhatsApp, Shopify, WooCommerce, Klaviyo, Stripe, and Meta Ads.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Shopify, WooCommerce, Klaviyo, Stripe e Meta Ads." },
 };
-function genIntegrations(V) {
+export function genIntegrations(V) {
   const sector = SECTOR_STACK[V.label] || [];
   // [name, IconComponent|emoji, brandColor, what Guileo does through it (EN), (PT), default-connected]
   return [
@@ -2149,641 +1211,105 @@ function genIntegrations(V) {
     ]],
   ];
 }
-function Integrations({ V, onNav, lang = "en" }) {
-  const groups = useMemo(() => genIntegrations(V), [V]);
-  const flat = groups.flatMap(([, tools]) => tools);
-  const onb = SECTOR_ONBOARD[V.label];
-  // Day-one seed: catalog defaults OR this sector's auto-connect list (activation).
-  const seed = useMemo(() => Object.fromEntries(flat.map(([n, , , , , def]) => [n, !!def || (onb ? onb.auto.includes(n) : false)])), [V]); // eslint-disable-line
-  const [conn, setConn] = useState(() => portalApi.loadState(`${V.label}:stack`, seed));
-  useEffect(() => { setConn(portalApi.loadState(`${V.label}:stack`, seed)); }, [V.label]); // eslint-disable-line
-  const [onbSeen, setOnbSeen] = useState(() => portalApi.loadState(`${V.label}:onboard_seen`, false));
-  const dismissOnb = () => { setOnbSeen(true); portalApi.saveState(`${V.label}:onboard_seen`, true); };
-  const toggle = (name) => setConn((c) => { const n = { ...c, [name]: !c[name] }; portalApi.saveState(`${V.label}:stack`, n); toast(`${name} ${n[name] ? "connected ✓ — your AI is now acting through it" : "disconnected"}`); return n; });
-  const liveCount = flat.filter(([n]) => conn[n]).length;
-  return (
-    <div className="space-y-4 stagger">
-      {onb && !onbSeen && (
-        <Card className="border-g-green/40 bg-g-green/[0.08]">
-          <div className="flex items-start gap-3">
-            <span className="grid place-items-center h-9 w-9 rounded-full bg-g-green/20 text-g-green shrink-0"><FaCircleCheck /></span>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-extrabold text-g-word">{lang === "pt" ? "Já deixamos sua IA pronta pro seu setor" : "We set your AI up for your industry"}</div>
-              <div className="text-xs text-g-light mt-0.5">{lang === "pt" ? onb.pt : onb.en} <span className="text-g-muted">{lang === "pt" ? "Ajuste o que quiser abaixo." : "Tweak anything below."}</span></div>
-            </div>
-            <button onClick={dismissOnb} aria-label={tr("Dismiss")} className="text-g-muted hover:text-g-word text-sm shrink-0">✕</button>
-          </div>
-        </Card>
-      )}
-      <Card className="bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] border-g-green/30">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="grid place-items-center h-11 w-11 rounded-xl bg-g-green/15 text-g-green"><FaPlug /></span>
-            <div>
-              <div className="text-sm font-extrabold text-g-word">{tr("Guileo plugs into your whole stack")}</div>
-              <div className="text-xs text-g-muted mt-0.5">{lang === "pt" ? <>Não substituímos suas ferramentas — sua IA trabalha <span className="text-g-light font-semibold">dentro</span> delas, em todas. <span className="text-g-green font-bold">{liveCount} conectadas</span> e agindo agora.</> : <>We don't replace your tools — your AI works <span className="text-g-light font-semibold">inside</span> them, across all of them. <span className="text-g-green font-bold">{liveCount} connected</span> and acting right now.</>}</div>
-            </div>
-          </div>
-          <a href={waLink("Hi Guileo! Help me connect my tools/systems")} target="_blank" rel="noopener" className="btn-bright text-sm">{tr("Connect a tool →")}</a>
-        </div>
-        {/* live data flow: connected tools → Guileo brain */}
-        <div className="mt-4 flex items-center gap-2">
-          <div className="flex items-center -space-x-1.5 shrink-0">
-            {flat.filter(([n]) => conn[n]).slice(0, 5).map(([name, Icon, color]) => (
-              <span key={name} title={name} className="grid place-items-center h-7 w-7 rounded-lg ring-2 ring-g-cream" style={{ background: color + "22", color }}>{typeof Icon === "string" ? <span className="text-[11px]">{Icon}</span> : <Icon size={11} />}</span>
-            ))}
-          </div>
-          <div className="flowtrack flex-1">
-            {[0, 0.7, 1.4, 2.1].map((d, i) => <span key={i} className="flowdot" style={{ animationDelay: `${d}s` }} />)}
-          </div>
-          <span className="grid place-items-center h-8 w-8 rounded-full bg-gradient-to-br from-g-green to-g-dark text-white shrink-0" title="Guileo AI"><FaWandMagicSparkles size={13} /></span>
-        </div>
-      </Card>
 
-      <MiniStats items={[[tr("Connected"), `${liveCount}/${flat.length}`, "good"], [tr("Acting 24/7"), tr("Always-on")], [tr("Hours saved / wk"), `${vnum(V.label, "stackhrs", 8, 26)}h`, "good"], [tr("Setup"), tr("Done-for-you")]]} />
 
-      {/* Gui recommends connecting — surfaces the highest-value disconnected tools */}
-      {(() => {
-        const off = flat.filter(([n]) => !conn[n]).slice(0, 2);
-        return off.length ? (
-          <Card className="border-g-green/30 bg-g-green/[0.06]">
-            <div className="flex items-center gap-2 mb-2.5"><span className="grid place-items-center h-7 w-7 rounded-full bg-g-green/15 text-g-green"><FaWandMagicSparkles size={12} /></span><div className="text-xs font-extrabold text-g-word">{tr("Gui recommends connecting")}</div></div>
-            <div className="space-y-2">
-              {off.map(([name, Icon, color, doesEn, doesPt]) => (
-                <div key={name} className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-black/15 px-3 py-2.5">
-                  <span className="grid place-items-center h-8 w-8 rounded-lg text-base" style={{ background: color + "22", color }}>{typeof Icon === "string" ? <span>{Icon}</span> : <Icon size={14} />}</span>
-                  <div className="flex-1 min-w-0"><div className="text-xs font-bold text-g-word">{name}</div><div className="text-[10px] text-g-muted leading-snug">{lang === "pt" ? doesPt : doesEn}</div></div>
-                  <button onClick={() => toggle(name)} className="btn-bright text-[11px] px-3 py-1.5 shrink-0">{tr("Connect")}</button>
-                </div>
-              ))}
-            </div>
-          </Card>
-        ) : null;
-      })()}
 
-      {groups.map(([cat, tools]) => (
-        <Card key={cat} className="p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{cat}</div>
-          <div className="divide-y divide-white/[0.06]">
-            {tools.map(([name, Icon, color, doesEn, doesPt]) => (
-              <div key={name} className="flex items-center gap-3 px-5 py-3.5">
-                <span className="grid place-items-center h-10 w-10 rounded-xl text-lg" style={{ background: color + "22", color }}>{typeof Icon === "string" ? <span>{Icon}</span> : <Icon />}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold text-g-word flex items-center gap-2">{name}{conn[name] && <span className="text-[9px] font-black uppercase text-g-green inline-flex items-center gap-1"><FaCircleCheck size={9} /> Live</span>}</div>
-                  <div className="text-[11px] text-g-muted leading-snug">{lang === "pt" ? doesPt : doesEn}</div>
-                </div>
-                <Toggle on={!!conn[name]} onClick={() => toggle(name)} />
-              </div>
-            ))}
-          </div>
-        </Card>
-      ))}
 
-      <Card className="border-g-gold/25 bg-g-gold/[0.04]">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-xs text-g-muted">{tr("Don't see your system? If it has an API (or Zapier/Make),")} <span className="text-g-light font-semibold">{tr("your team wires it")}</span> {tr("— Guileo becomes the brain on top of everything you already run.")}</div>
-          <button onClick={() => onNav?.("brain")} className="btn-ghost text-sm shrink-0">{tr("Train your AI on it →")}</button>
-        </div>
-      </Card>
-    </div>
-  );
-}
 
-function Operations({ V }) {
-  const o = V.ops;
-  return (
-    <div className="space-y-4 stagger">
-      <div className="grid sm:grid-cols-3 gap-4">
-        {o.stats.map((s) => (
-          <Card key={s.label}>
-            <div className="text-[11px] uppercase tracking-wide text-g-muted">{s.label}</div>
-            <div className={`text-2xl font-extrabold mt-1 ${s.tone === "good" ? "text-g-green" : "text-g-word"}`}>{s.value}</div>
-          </Card>
-        ))}
-      </div>
-      <div className="grid lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2 p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{o.scheduleTitle}</div>
-          <div className="divide-y divide-white/[0.06]">
-            {o.schedule.map((r, i) => (
-              <div key={i} className="flex items-center gap-3 px-5 py-3">
-                <span className="text-xs font-bold text-g-light w-20 shrink-0 inline-block truncate align-middle" title={r.time}>{r.time}</span>
-                <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted truncate">{r.meta}{r.ch && r.ch !== "—" ? ` · ${r.ch}` : ""}</div></div>
-                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-        <div className="space-y-4 stagger">
-          {o.grid && (
-            <Card>
-              <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{o.gridTitle}</div>
-              <div className="grid grid-cols-4 gap-2">
-                {o.grid.map((g, i) => (
-                  <div key={i} className={`grid place-items-center h-10 rounded-lg text-xs font-bold border ${g.on ? "border-g-green/50 bg-g-green/15 text-g-light" : "border-white/10 bg-white/[0.03] text-g-muted"}`}>{g.label}</div>
-                ))}
-              </div>
-              <div className="mt-2 text-[10px] text-g-muted">● in use · ○ free</div>
-            </Card>
-          )}
-          {o.list && (
-            <Card>
-              <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{o.listTitle}</div>
-              {o.list.map((it, i) => {
-                const max = Math.max(...o.list.map((x) => x.val));
-                return (
-                  <div key={i} className="mb-2.5 last:mb-0">
-                    <div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{it.name}</span><span className="text-g-muted">{it.val}</span></div>
-                    <div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${(it.val / max) * 100}%` }} /></div>
-                  </div>
-                );
-              })}
-            </Card>
-          )}
-        </div>
-      </div>
 
-      {(o.mix || o.peak || o.channels) && (
-        <div className="grid lg:grid-cols-3 gap-4">
-          {o.mix && (
-            <Card>
-              <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{o.mix.title}</div>
-              {o.mix.items.map(([label, val], i) => {
-                const total = o.mix.items.reduce((s, x) => s + x[1], 0);
-                return (
-                  <div key={i} className="mb-2.5 last:mb-0">
-                    <div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{label}</span><span className="text-g-muted">{Math.round((val / total) * 100)}%</span></div>
-                    <div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${(val / total) * 100}%` }} /></div>
-                  </div>
-                );
-              })}
-            </Card>
-          )}
-          {o.peak && (
-            <Card>
-              <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{o.peak.title}</div>
-              <Bars data={o.peak.data} color="#D6C29A" />
-              {o.peak.labels && <div className="mt-1 flex justify-between text-[9px] text-g-muted">{o.peak.labels.map((l, i) => <span key={i}>{l}</span>)}</div>}
-            </Card>
-          )}
-          {o.channels && (
-            <Card>
-              <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{o.channels.title}</div>
-              {o.channels.items.map(([label, val], i) => (
-                <div key={i} className="mb-2.5 last:mb-0">
-                  <div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{label}</span><span className="text-g-muted">{val}%</span></div>
-                  <div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-g-green" style={{ width: `${val}%` }} /></div>
-                </div>
-              ))}
-            </Card>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Channels() {
-  return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
-      {CHANNELS.map((c) => (
-        <Card key={c.name} tone="green">
-          <div className="flex items-center gap-3">
-            <span className="grid place-items-center h-11 w-11 rounded-xl bg-white/[0.07]" style={{ color: c.color }}><c.Icon size={20} /></span>
-            <div><div className="text-sm font-extrabold text-g-word">{c.name}</div><div className="text-[11px] text-g-muted">{c.note}</div></div>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div><div className="text-xl font-extrabold text-g-word num"><Count to={c.convos} /></div><div className="text-[10px] uppercase tracking-wide text-g-muted">{tr("Conversations")}</div></div>
-            <div><div className="text-xl font-extrabold text-g-green money-glow num"><Count to={c.won} /></div><div className="text-[10px] uppercase tracking-wide text-g-muted">{tr("Won / booked")}</div></div>
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-function Ads() {
-  const totalSpend = CAMPAIGNS.reduce((s, c) => s + c.spend, 0);
-  const totalLeads = CAMPAIGNS.reduce((s, c) => s + c.leads, 0);
-  return (
-    <div className="space-y-4 stagger">
-      <div className="grid sm:grid-cols-3 gap-4">
-        <Card><div className="text-[11px] uppercase tracking-wide text-g-muted">{tr("Ad spend")}</div><div className="text-2xl font-extrabold text-g-word num mt-1"><Count to={totalSpend} prefix="$" /></div></Card>
-        <Card><div className="text-[11px] uppercase tracking-wide text-g-muted">{tr("Leads generated")}</div><div className="text-2xl font-extrabold text-g-light num mt-1"><Count to={totalLeads} /></div></Card>
-        <Card tone="green"><div className="text-[11px] uppercase tracking-wide text-g-muted">{tr("Avg. ROAS")}</div><div className="text-2xl font-extrabold text-g-green money-glow num mt-1">4.1×</div></Card>
-      </div>
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Campaigns")}</div>
-        <div className="divide-y divide-white/[0.06]">
-          {CAMPAIGNS.map((c) => (
-            <div key={c.name} className="flex items-center gap-4 px-5 py-3.5">
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name}</div><div className="text-[11px] text-g-muted">${c.spend} spend · {c.leads} leads</div></div>
-              <div className="text-right"><div className="text-xs text-g-muted">CPL</div><div className="text-sm font-bold text-g-word">${c.cpl}</div></div>
-              <div className="text-right w-16"><div className="text-xs text-g-muted">ROAS</div><div className={`text-sm font-extrabold num inline-flex items-center gap-1 ${c.up ? "text-g-green money-glow" : "text-red-400"}`}>{c.up ? <FaArrowTrendUp size={11} /> : <FaArrowTrendDown size={11} />}{c.roas}×</div></div>
-            </div>
-          ))}
-        </div>
-      </Card>
-      <p className="text-xs text-g-muted text-center">{tr("Connect Meta & Google Ads to see live campaign data here.")} <a href={waLink("I want to connect my ad accounts to Guileo")} target="_blank" rel="noopener" className="text-g-gold font-semibold hover:underline">{tr("Connect accounts →")}</a></p>
-    </div>
-  );
-}
-
-function Leads() {
-  return (
-    <Card className="p-0 overflow-hidden">
-      <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
-        <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recent leads")}</span>
-        <span className="text-[11px] text-g-muted">{LEADS.length} this hour</span>
-      </div>
-      <div className="divide-y divide-white/[0.06]">
-        {LEADS.map((l, i) => (
-          <motion.div key={l.name + i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-            className="flex items-center gap-3 px-5 py-3">
-            <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{l.name[0]}</span>
-            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word">{l.name}</div><div className="text-[11px] text-g-muted">{l.ch} · {l.when}</div></div>
-            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: l.color + "22", color: l.color }}>{l.status}</span>
-          </motion.div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-function Support() {
-  const [sent, setSent] = useState(false);
-  return (
-    <div className="grid lg:grid-cols-2 gap-4">
-      <Card>
-        <div className="text-sm font-extrabold text-g-word">👋 {tr("Your Guileo team")}</div>
-        <p className="text-xs text-g-muted mt-1">{tr("A real human manages your system. Reach out anytime — usually replies within hours.")}</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <a href={waLink("Hi Guileo team! I need help with my account")} target="_blank" rel="noopener" className="btn-bright text-sm">💬 {tr("Message my team")}</a>
-          <a href="/#contact" className="btn-ghost text-sm">{tr("Book a call")}</a>
-        </div>
-      </Card>
-      <Card>
-        <div className="text-sm font-extrabold text-g-word">{tr("Request a change")}</div>
-        <p className="text-xs text-g-muted mt-1">{tr("Want to tweak your AI, add a channel, or launch a campaign? Tell us.")}</p>
-        {!sent ? (
-          <form onSubmit={(e) => { e.preventDefault(); setSent(true); }} className="mt-3 space-y-2">
-            <textarea required rows={3} aria-label="Describe your change request" placeholder="e.g. Add a Telegram agent and a weekend promo campaign…" className="w-full rounded-xl2 border border-white/15 bg-black/20 px-4 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-            <button className="btn-bright text-sm w-full">{tr("Send request →")}</button>
-          </form>
-        ) : (
-          <div className="mt-3 rounded-xl2 border border-g-green/40 bg-g-green/[0.1] p-4 text-sm font-bold text-g-light text-center">✅ {tr("Got it — your team will follow up shortly.")}</div>
-        )}
-      </Card>
-    </div>
-  );
-}
-
-function Docs() {
-  return (
-    <Card className="p-0 overflow-hidden">
-      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Documents & billing")}</div>
-      <div className="divide-y divide-white/[0.06]">
-        {DOCS.map(([ic, name, meta, action]) => (
-          <div key={name} className="flex items-center gap-3 px-5 py-3.5">
-            <span className="text-xl">{ic}</span>
-            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word">{name}</div><div className="text-[11px] text-g-muted">{meta}</div></div>
-            <button onClick={() => toast(action === "View" ? `Opening ${name}…` : `${name} · ${action}`)} aria-label={`${action} — ${name}`} className="text-xs font-bold text-g-gold hover:underline">{action}</button>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
 
 
 /* ───────────────────────── Sector screens (restaurant + reusable) ───────────────────────── */
-function LiveOrders({ V }) {
-  const rows = [...loadCreated(V.label, "liveorders"), ...(V.liveOrders || [])];
-  const [sel, setSel] = useState(null);
+
+// ── Living plant — the Guileo mark, alive in the sidebar. Its growth stage follows THIS
+// month's results (plan usage), so the brand plant literally blooms as the client wins:
+// seed → sprout → leafy → blooming. Demo mode grows on the demo numbers.
+const PLANT_STAGES = ["🌰", "🌱", "🌿", "🌸"];
+function PlantBloom({ V, real = null }) {
+  if (!V.plan) return null;
+  // If the owner set a monthly booking goal, the plant blooms with GOAL progress (their own
+  // target beats plan usage as the "am I winning?" signal); otherwise the plan-usage stage.
+  const og = ownerGoalProgress(V, real);
+  const pct = og ? Math.round(og.pct * 100) : Math.min(100, Math.round((V.plan.used / (V.plan.total || 1)) * 100));
+  const stage = pct >= 75 ? 3 : pct >= 40 ? 2 : pct >= 12 ? 1 : 0;
+  const grew = weeklySummary(V).created || vnum(V.label, "wkc", 6, 24);
   return (
-    <>
-    <Card className="p-0 overflow-hidden">
-      <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Live orders")}</span><span className="text-[11px] text-g-muted inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{rows.length} active</span></div>
-      <div className="divide-y divide-white/[0.06]">
-        {rows.map((o, i) => (
-          <button key={i} onClick={() => setSel(o)} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
-            <span className="text-xs font-bold text-g-light w-16 shrink-0">{o.id}</span>
-            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{o.customer}{o.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">{tr("from chat")}</span>}</div><div className="text-[11px] text-g-muted truncate">{o.items} · {o.channel}</div></div>
-            <span className="text-sm font-extrabold text-g-word">${o.total.toFixed(2)}</span>
-            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: o.color + "22", color: o.color }}>{o.status}</span>
-          </button>
-        ))}
-      </div>
-    </Card>
-    {sel && (
-      <Drawer
-        title={`${sel.id} · ${sel.customer}`}
-        subtitle={sel.items}
-        badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: sel.color + "22", color: sel.color }}>{sel.status}</span>}
-        fields={[["Items", sel.items], ["Total", `$${sel.total.toFixed(2)}`], ["Channel", sel.channel], ["Status", sel.status]]}
-        note={`Taken by your AI via ${sel.channel}. Customer notified automatically with ETA + confirmation.`}
-        actions={<><button onClick={() => { logImpact(V.label, `${sel.id} fulfilled — taken by your AI`, Math.max(18, Math.round(sel.total) || 22)); toast(`${sel.id} marked ready ✓ — logged to Guileo Impact`); setSel(null); }} className="btn-bright text-sm">✓ Mark ready</button><a href={waLink(`Hi ${sel.customer}, about order ${sel.id}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">{tr("💬 Message")}</a></>}
-        onClose={() => setSel(null)}
-      />
-    )}
-    </>
-  );
-}
-function Kitchen({ V }) {
-  const init = V.kitchen || { new: [], preparing: [], ready: [] };
-  const [board, setBoard] = useState({ new: [...(init.new || [])], preparing: [...(init.preparing || [])], ready: [...(init.ready || [])] });
-  const flow = ["new", "preparing", "ready", "done"];
-  const advance = (col, i) => setBoard((b) => {
-    const item = b[col][i]; const next = flow[flow.indexOf(col) + 1];
-    portalApi.updateStatus("orders", item?.id, next);
-    if (next === "done") { const amt = vnum(V.label, "kitchenval", 18, 42); logImpact(V.label, `${item?.id} fulfilled in kitchen`, amt); toast(`${item?.id} completed ✓ — $${amt} logged to Guileo Impact`); }
-    else toast(`${item?.id} → ${next}`);
-    const nb = { ...b, [col]: b[col].filter((_, j) => j !== i) };
-    if (next !== "done") nb[next] = [...b[next], item];
-    return nb;
-  });
-  const cols = [["New", "new", "#3E9468"], ["Preparing", "preparing", "#38BDF8"], ["Ready", "ready", "#D6C29A"]];
-  return (
-    <div className="space-y-3">
-      <p className="text-xs text-g-muted">👆 Tap an order to move it forward · in <b className="text-g-light">Ready</b>, tap to complete.</p>
-      <div className="grid sm:grid-cols-3 gap-4">
-        {cols.map(([label, key, c]) => (
-          <Card key={key}>
-            <div className="flex items-center justify-between mb-3"><span className="text-xs font-bold uppercase tracking-wide" style={{ color: c }}>{label}</span><span className="text-[11px] text-g-muted">{board[key].length}</span></div>
-            <div className="space-y-2 min-h-[3rem]">
-              {board[key].map((o, i) => (
-                <button key={o.id + i} onClick={() => advance(key, i)} className="w-full text-left rounded-xl2 border border-white/10 bg-white/[0.04] p-3 hover:border-g-gold/40 hover:-translate-y-0.5 transition-all">
-                  <div className="flex justify-between text-xs"><span className="font-bold text-g-word">{o.id}</span><span className="text-g-muted">{o.t}</span></div>
-                  <div className="text-[11px] text-g-muted mt-0.5">{o.items}</div>
-                  <div className="text-[10px] font-bold mt-1.5" style={{ color: c }}>{key === "ready" ? "Tap to complete ✓" : "Tap to advance →"}</div>
-                </button>
-              ))}
-              {board[key].length === 0 && <div className="text-[11px] text-g-muted text-center py-4">— empty —</div>}
-            </div>
-          </Card>
-        ))}
+    <div className="rounded-xl2 border border-g-green/20 bg-g-green/[0.05] p-3 flex items-center gap-2.5">
+      {/* key={stage} remounts the emoji on a stage change so the grow-in transition plays */}
+      <span key={stage} className="plant-stage grid place-items-center h-9 w-9 rounded-full bg-g-green/10 text-xl shrink-0" aria-hidden>{PLANT_STAGES[stage]}</span>
+      <div className="min-w-0 leading-tight">
+        <div className="text-[11px] font-bold text-g-word">{tr("Your Gui is growing")}</div>
+        <div className="text-[10px] text-g-muted mt-0.5">{tr("Your Gui grew")} {grew} {tr("bookings this week")}</div>
       </div>
     </div>
   );
-}
-function MenuView({ V }) {
-  const sc = (s) => s === "Out" ? "#EF4444" : s === "Low" ? "#D6C29A" : "#3E9468";
-  const [ov, setOv] = useState({});           // local stock overrides (restock actions)
-  const [sel, setSel] = useState(null);
-  const stockOf = (i, m) => ov[i] || m.stock;
-  const setStock = (i, s, name) => { setOv((o) => ({ ...o, [i]: s })); setSel(null); toast(`${name} → ${s === "In stock" ? "restocked ✓" : s.toLowerCase()}`); };
-  return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {(V.menu || []).map((m, i) => {
-        const stock = stockOf(i, m);
-        return (
-          <button key={i} onClick={() => setSel({ m, i })} className="text-left">
-            <Card className="hover:border-g-gold/30 transition">
-              <div className="flex items-start justify-between gap-2">
-                <div><div className="text-sm font-bold text-g-word">{m.name}</div><div className="text-[11px] text-g-muted">{m.cat}</div></div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: sc(stock) + "22", color: sc(stock) }}>{stock}</span>
-              </div>
-              <div className="mt-3 text-xl font-extrabold text-g-word">${m.price.toFixed(2)}</div>
-            </Card>
-          </button>
-        );
-      })}
-      {sel && (
-        <Drawer
-          title={sel.m.name}
-          subtitle={sel.m.cat}
-          badge={<span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: sc(stockOf(sel.i, sel.m)) + "22", color: sc(stockOf(sel.i, sel.m)) }}>{stockOf(sel.i, sel.m)}</span>}
-          fields={[["Price", `$${sel.m.price.toFixed(2)}`], ["Category", sel.m.cat], ["Stock", stockOf(sel.i, sel.m)]]}
-          note="Your AI auto-pauses an item from suggestions when it's out of stock, and flags low stock here so you never sell what you can't deliver."
-          actions={<>
-            <button onClick={() => setStock(sel.i, "In stock", sel.m.name)} className="btn-bright text-sm">✓ Mark restocked</button>
-            <button onClick={() => setStock(sel.i, "Out", sel.m.name)} className="btn-ghost text-sm">{tr("Mark out of stock")}</button>
-          </>}
-          onClose={() => setSel(null)}
-        />
-      )}
-    </div>
-  );
-}
-// Vertical-aware "rebook" verb — Re-order for restaurants/retail, Book again for
-// appointment businesses, Schedule visit for field services.
-const REBOOK = { "Restaurant": "Re-order for them", "E-Commerce": "Send re-order link", "Clinic": "Book next visit", "Medical": "Book next visit", "Salon & Spa": "Book next visit", "Gym & Fitness": "Book a session", "Law Firm": "Schedule a call", "Real Estate": "Schedule a viewing", "Plumbing & HVAC": "Schedule service", "Auto Dealership": "Schedule service", "Education": "Book a class", "Construction": "Schedule a site visit" };
-// A synthetic recent-activity timeline so each profile reads like a real CRM record.
-function custTimeline(c, V) {
-  const noun = (c.noun || "order").replace(/s$/, "");
-  const L = V.label, name = c.name;
-  // REAL events first — anything the operator actually did for this customer (created:* records).
-  const real = [];
-  loadCreated(L, "liveorders").filter((o) => o.customer === name).forEach((o) => real.push({ t: "just now", ev: `Order ${o.id} created · ${o.channel}`, ic: "🧾", real: true }));
-  loadCreated(L, "schedule").filter((o) => o.name === name).forEach((o) => real.push({ t: "just now", ev: `Booked · ${o.meta || "appointment"}`, ic: "📅", real: true }));
-  loadCreated(L, "deliveries").filter((o) => o.customer === name).forEach((o) => real.push({ t: "just now", ev: `Delivery · ${o.status}`, ic: "🛵", real: true }));
-  loadCreated(L, "payments").filter((o) => o.customer === name).forEach((o) => real.push({ t: "just now", ev: `${o.id} · ${o.status} · $${o.amount}`, ic: "💳", real: true }));
-  loadCreated(L, "reviewreq").filter((o) => o.name === name).forEach(() => real.push({ t: "just now", ev: "Review requested by your AI", ic: "⭐", real: true }));
-  const base = [
-    { t: c.last, ev: `Last ${noun} · via ${c.channel}`, ic: "🟢" },
-    { t: "2 days ago", ev: `AI answered a question on ${c.channel}`, ic: "💬" },
-    { t: "1 week ago", ev: `Left a 5★ review (AI-requested)`, ic: "⭐" },
-    { t: "3 weeks ago", ev: `First ${noun} with ${V.business.name}`, ic: "✨" },
-  ];
-  return [...real, ...base];
-}
-// The revenue-share thesis, made concrete: tell the owner the single best move.
-function nextBestAction(c, i, V) {
-  const nb = V && SECTOR_IQ[V.label]?.nb;
-  if (nb) {
-    if (i === 0) return `Your top customer — ${nb.top} The AI can do it now.`;
-    if ((c.orders || 0) < 3) return `Going quiet — ${nb.risk} The AI can handle it.`;
-    return `${c.name?.split(" ")[0] || "They"} ${nb.base} The AI can send it.`;
-  }
-  if (i === 0) return "Your top spender. A personal thank-you + a small perk usually unlocks a referral. The AI can send it now.";
-  if ((c.orders || 0) >= 15) return "Loyal & frequent — a perfect fit for a membership/subscription. Offer it to lock in recurring revenue.";
-  return "Active but not yet loyal. One well-timed nudge with a returning-customer offer tends to convert them. The AI can handle it.";
 }
 
-function Customers({ V, onNav }) {
-  const rows = V.customers || genCustomers(V);
-  const totalSpent = rows.reduce((s, c) => s + (c.spent || 0), 0);
-  const [sel, setSel] = useState(null);
-  const rebook = (c) => { const act = convoAction(V); const rec = recordFor(act.view, c.name, c.channel, V); if (rec) pushCreated(V.label, act.view, rec); setSel(null); toast(`${REBOOK[V.label] || "Rebook"} created for ${c.name} ✓ — see it in the tab`); onNav?.(act.view); };
+// Reusable loading skeleton for the data-loading sections (cement shimmer, mirrors the
+// real layout: 3 stat cards + a list) — shown while real data is in flight so the section
+// never flashes empty/$0. aria-hidden (it's purely visual placeholder).
+export function SectionSkeleton({ rows = 5 }) {
   return (
-    <div className="space-y-4 stagger">
-      <MiniStats items={[["Total customers", `${rows.length * 104}`], ["New this week", `+${rows.length * 6}`, "good"], ["Avg. value", `$${rows.length ? Math.round(totalSpent / rows.length) : 0}`], ["Repeat rate", `${vnum(V.label, "repeat", 31, 47)}%`, "good"]]} />
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Customers")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for profile</span></div>
+    <div className="space-y-4 animate-pulse" aria-hidden>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="rounded-xl2 border border-white/10 bg-white/[0.04] p-5"><div className="h-3 w-20 rounded bg-white/10" /><div className="mt-3 h-7 w-24 rounded bg-white/10" /></div>
+        ))}
+      </div>
+      <div className="rounded-xl2 border border-white/10 bg-white/[0.03] overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10"><div className="h-3 w-28 rounded bg-white/10" /></div>
         <div className="divide-y divide-white/[0.06]">
-          {rows.map((c, i) => (
-            <button key={i} onClick={() => setSel({ c, i })} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
-              <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{c.name[0]}</span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{c.name}{i === 0 && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-g-gold/15 text-g-gold">{tr("TOP")}</span>}</div><div className="text-[11px] text-g-muted truncate">{c.orders} {c.noun || "orders"} · {c.channel} · {c.last}</div></div>
-              <span className="text-sm font-extrabold text-g-green">${c.spent.toFixed(2)}</span>
-            </button>
+          {Array.from({ length: rows }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 px-5 py-3.5"><div className="h-9 w-9 rounded-full bg-white/10" /><div className="flex-1"><div className="h-3 w-1/3 rounded bg-white/10" /><div className="mt-2 h-2.5 w-1/4 rounded bg-white/[0.07]" /></div><div className="h-5 w-14 rounded-full bg-white/10" /></div>
           ))}
-          {rows.length === 0 && <Empty icon="🧑" text="No customers yet — they'll appear here as your AI books and serves them." />}
         </div>
-      </Card>
-      {sel && (
-        <Drawer
-          title={sel.c.name}
-          subtitle={`${sel.c.orders} ${sel.c.noun || "orders"} · via ${sel.c.channel}`}
-          badge={sel.i === 0 ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-g-gold/15 text-g-gold">{tr("VIP")}</span> : null}
-          fields={[["Lifetime value", `$${sel.c.spent.toFixed(2)}`], [(sel.c.noun || "orders"), sel.c.orders], ["Preferred channel", sel.c.channel], ["Last seen", sel.c.last], ["Status", sel.i === 0 ? "Top spender" : "Active"]]}
-          note={<><div className="text-[10px] font-black uppercase text-g-gold mb-1">{tr("⚡ Next best action")}</div>{nextBestAction(sel.c, sel.i, V)}</>}
-          actions={<>
-            <a href={waLink(`Hi ${sel.c.name}! `)} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Message</a>
-            <button onClick={() => rebook(sel.c)} className="btn-ghost text-sm">🔁 {REBOOK[V.label] || "Rebook"}</button>
-            <button onClick={() => { pushCreated(V.label, "reviewreq", { name: sel.c.name, ch: sel.c.channel }); toast(`Review request sent to ${sel.c.name} ✓ — tracked in Reputation`); setSel(null); onNav?.("reputation"); }} className="btn-ghost text-sm">⭐ Request review</button>
-          </>}
-          onClose={() => setSel(null)}
-        >
-          <div className="mt-1">
-            <div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">{tr("Recent activity")}</div>
-            <div className="space-y-2.5">
-              {custTimeline(sel.c, V).map((e, k) => (
-                <div key={k} className="flex items-start gap-2.5 text-xs">
-                  <span className="text-sm leading-none mt-0.5">{e.ic}</span>
-                  <div className="flex-1 min-w-0"><div className="text-g-word font-semibold flex items-center gap-1.5">{e.ev}{e.real && <span className="text-[8px] font-black uppercase tracking-wide text-g-green bg-g-green/15 rounded px-1 py-0.5">live</span>}</div><div className="text-[10px] text-g-muted">{e.t}</div></div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Drawer>
-      )}
+      </div>
     </div>
   );
 }
-function Campaigns({ V, onNav }) {
-  const rows = [...loadCreated(V.label, "campaigns"), ...(V.campaigns || genCampaigns(V))];
-  const buildAudience = (c) => { pushCreated(V.label, "audiences", { name: `${c.name} · engagers`, size: vnum(V.label, c.name, 1200, 9000), source: "CRM" }); setSel(null); toast(`Audience built from "${c.name}" ✓ — see it in Ad Audiences`); onNav?.("audiences"); };
-  const sent = rows.reduce((s, c) => s + c.sent, 0);
-  const rev = rows.reduce((s, c) => s + c.revenue, 0);
-  const open = Math.round(rows.reduce((s, c) => s + c.opened, 0) / rows.length);
-  const [sel, setSel] = useState(null);
+// Honest failure state — a network/RPC error no longer looks like "no data"; Gui offers a retry.
+export function RetryState({ onRetry }) {
   return (
-    <div className="space-y-4 stagger">
-      <MiniStats items={[["Campaigns", `${rows.length}`], ["Messages sent", sent.toLocaleString()], ["Avg. open rate", `${open}%`, "good"], ["Revenue", `$${rev.toLocaleString()}`, "good"]]} />
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Campaigns")}</span><a href={waLink("I'd like to launch a campaign")} target="_blank" rel="noopener" className="text-[11px] font-bold text-g-gold hover:underline">{tr("New campaign →")}</a></div>
-        <div className="divide-y divide-white/[0.06]">
-          {rows.map((c, i) => (
-            <button key={i} onClick={() => setSel(c)} className="w-full text-left flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.04] transition">
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{c.name}{c.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">{tr("new")}</span>}</div><div className="text-[11px] text-g-muted">{c.channel} · {c.sent} sent · {c.opened}% opened</div></div>
-              <span className="text-sm font-extrabold text-g-green">${c.revenue.toLocaleString()}</span>
-              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: (c.status === "Active" ? "#3E9468" : "#D6C29A") + "22", color: c.status === "Active" ? "#3E9468" : "#D6C29A" }}>{c.status}</span>
-            </button>
-          ))}
-          {rows.length === 0 && <Empty icon="📣" text="No campaigns yet — ask your team to launch one and watch the revenue land here." />}
-        </div>
-      </Card>
-      {sel && (
-        <Drawer
-          title={sel.name}
-          subtitle={`${sel.channel} campaign`}
-          badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: (sel.status === "Active" ? "#3E9468" : "#D6C29A") + "22", color: sel.status === "Active" ? "#3E9468" : "#D6C29A" }}>{sel.status}</span>}
-          fields={[["Channel", sel.channel], ["Sent", sel.sent.toLocaleString()], ["Open rate", `${sel.opened}%`], ["Revenue", `$${sel.revenue.toLocaleString()}`], ["ROI", `${(sel.revenue / (sel.sent * 0.05) || 0).toFixed(1)}×`]]}
-          note={`Run automatically by Guileo. ${sel.status === "Active" ? "Live now — driving revenue while you focus on the business." : "Scheduled — will launch and optimize itself."}`}
-          actions={<><button onClick={() => { toast("Campaign duplicated ✓"); setSel(null); }} className="btn-bright text-sm">⧉ Duplicate</button><button onClick={() => buildAudience(sel)} className="btn-ghost text-sm">🎯 Build audience</button><button onClick={() => { toast(sel.status === "Active" ? "Campaign paused" : "Campaign resumed"); setSel(null); }} className="btn-ghost text-sm">{sel.status === "Active" ? "⏸ Pause" : "▶ Resume"}</button></>}
-          onClose={() => setSel(null)}
-        />
-      )}
-    </div>
+    <Card className="text-center py-10">
+      <div className="text-2xl">📡</div>
+      <div className="mt-2 text-sm font-bold text-g-word">{tr("I couldn't load this just now.")}</div>
+      <div className="text-xs text-g-muted mt-0.5">{tr("Check your connection — I'll try again.")}</div>
+      <button onClick={onRetry} className="btn-bright text-sm mt-4">{tr("↻ Try again")}</button>
+    </Card>
   );
 }
-function Audiences({ V, onNav }) {
-  const rows = [...loadCreated(V.label, "audiences"), ...(V.audiences || genAudiences(V))];
-  const launch = (a) => { pushCreated(V.label, "campaigns", { name: `Campaign · ${a.name}`, channel: a.source === "Meta" ? "Meta" : a.source === "Google" ? "Google" : "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); toast(`Campaign launched to "${a.name}" ✓ — see it in Campaigns`); onNav?.("campaigns"); };
+
+// Sub-tab strip shown at the top of the revenue dept views (Finance / Marketing / Growth).
+// Folds the old flat nav items (payments, campaigns, audiences, follow-ups, recurring,
+// loyalty, reputation, waitlist) under their parent dept — the sidebar stays lean, the
+// detail is one tap away. `cur` highlights the active parent; the rest navigate via onNav.
+export function DeptTabs({ cur, onNav, items }) {
   return (
-    <div className="grid sm:grid-cols-2 gap-4">
-      {rows.map((a, i) => (
-        <Card key={i} className="flex flex-col">
-          <div className="flex items-center justify-between"><div className="text-sm font-bold text-g-word flex items-center gap-1.5">{a.name}{a.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">{tr("new")}</span>}</div><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/[0.06] text-g-muted">{a.source}</span></div>
-          <div className="mt-2 text-2xl font-extrabold text-g-word"><Count to={a.size} /></div>
-          <div className="text-[11px] text-g-muted">people reachable</div>
-          <div className="mt-3 flex gap-2">
-            <button onClick={() => toast(`"${a.name}" synced to ${a.source === "Meta" ? "Meta Ads" : a.source === "Google" ? "Google Ads" : "your ad platforms"} ✓`)} className="text-[11px] font-bold rounded-full border border-g-gold/35 bg-g-gold/[0.08] px-3 py-1.5 text-g-gold hover:bg-g-gold/[0.16] transition">{tr("Sync to ads")}</button>
-            <button onClick={() => launch(a)} className="text-[11px] font-bold rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">Use in a campaign →</button>
-          </div>
-        </Card>
+    <div className="flex flex-wrap gap-1.5">
+      {items.map(([key, label]) => (
+        <button key={key} onClick={() => key !== cur && onNav?.(key)}
+          className={`rounded-full px-3.5 py-1.5 text-[12px] font-bold transition ${key === cur ? "bg-g-gold/15 border border-g-gold/40 text-g-gold" : "border border-white/15 text-g-muted hover:text-g-word hover:border-g-gold/30"}`}>
+          {tr(label)}
+        </button>
       ))}
-      {rows.length === 0 && <div className="sm:col-span-2"><Card><Empty icon="🎯" text="No audiences built yet — your AI segments customers automatically as data grows." /></Card></div>}
     </div>
   );
 }
-function CallLogs({ V, onNav }) {
-  const rows = V.callLogs || genCalls(V);
-  const [sel, setSel] = useState(null);
-  return (
-    <div className="space-y-4 stagger">
-      <MiniStats items={[["Calls answered", `${vnum(V.label, "callsans", 210, 540)}`], ["Missed calls", "0", "good"], ["Avg. duration", `1m ${vnum(V.label, "calldur", 2, 54)}s`], ["Handled by AI", "100%", "good"]]} />
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recent calls · answered by AI")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for transcript</span></div>
-        <div className="divide-y divide-white/[0.06]">
-          {rows.map((c, i) => (
-          <button key={i} onClick={() => setSel(c)} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
-            <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06]" style={{ color: c.color }}><FaPhone size={13} /></span>
-            <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name} <span className="text-g-muted font-normal">· {c.phone}</span></div><div className="text-[11px] text-g-muted truncate">{c.outcome}</div></div>
-            <div className="text-right shrink-0"><div className="text-[11px] text-g-light font-bold">{c.dur}</div><div className="text-[10px] text-g-muted">{c.time}</div></div>
-          </button>
-          ))}
-          {rows.length === 0 && <Empty icon="📞" text="No calls yet — your AI is standing by to answer 24/7." />}
-        </div>
-      </Card>
-      {sel && (
-        <Drawer
-          title={sel.name}
-          subtitle={sel.phone}
-          badge={<span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-g-green/15 text-g-green">{tr("Positive")}</span>}
-          fields={[["Outcome", sel.outcome], ["Duration", sel.dur], ["When", sel.time], ["Channel", "Phone · AI"], ["Resolved", "By AI ✓"]]}
-          note={<>Transcript summary:<div className="mt-1.5 space-y-1 text-g-word">{[["📞", `${sel.name}: ${sel.outcome.replace(/·.*/, "").trim() || "Hi, calling about my booking."}`], ["🤖", "Guileo AI: Happy to help — all sorted! Anything else?"], ["📞", `${sel.name}: That's perfect, thank you!`]].map(([ic, t], j) => <div key={j}>{ic} {t}</div>)}</div></>}
-          actions={<><a href={`tel:${sel.phone.replace(/[^0-9+]/g, "")}`} className="btn-bright text-sm">📞 Call back</a><a href={waLink(`Hi ${sel.name}! `)} target="_blank" rel="noopener" className="btn-ghost text-sm">{tr("💬 Message")}</a></>}
-          onClose={() => setSel(null)}
-        >
-          <div><div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">{tr("Turn this call into action")}</div><ConvoActions V={V} who={sel.name} channel="call" onNav={onNav} onDone={() => setSel(null)} /></div>
-        </Drawer>
-      )}
-    </div>
-  );
-}
-function Dialer() {
-  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
-  const [num, setNum] = useState("");
-  const [calling, setCalling] = useState(false);
-  // Format the raw digits as a friendly US-style number as the user taps.
-  const fmt = (s) => {
-    const d = s.replace(/\D/g, "").slice(0, 10);
-    if (!d) return "+1 (___) ___-____";
-    const a = d.slice(0, 3).padEnd(3, "_"), b = d.slice(3, 6).padEnd(3, "_"), c = d.slice(6, 10).padEnd(4, "_");
-    return `+1 (${a}) ${b}-${c}`;
-  };
-  const press = (k) => setNum((n) => (n.replace(/\D/g, "").length >= 10 ? n : n + k));
-  const start = () => {
-    if (num.replace(/\D/g, "").length < 10) { toast("Enter a 10-digit number first"); return; }
-    setCalling(true); toast(`AI is calling ${fmt(num)} 📞`);
-    setTimeout(() => { setCalling(false); setNum(""); toast("Call handled by AI ✓ — logged in Call Logs"); }, 2200);
-  };
-  return (
-    <div className="max-w-xs mx-auto">
-      <Card className="text-center">
-        <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("AI Call Dialer")}</div>
-        <div className="h-10 rounded-xl2 bg-black/20 border border-white/10 grid place-items-center text-g-word font-bold mb-3 tracking-wide">{fmt(num)}</div>
-        <div className="grid grid-cols-3 gap-2">{keys.map((k) => <button key={k} onClick={() => press(k)} className="h-12 rounded-xl2 border border-white/10 bg-white/[0.04] text-g-word font-bold hover:border-g-gold/40 active:scale-95 transition">{k}</button>)}</div>
-        <div className="flex gap-2 mt-3">
-          <button onClick={() => setNum((n) => n.slice(0, -1))} disabled={!num} className="rounded-xl2 border border-white/15 px-4 text-g-muted hover:text-g-word disabled:opacity-30 transition" aria-label={tr("Delete")}>⌫</button>
-          <button onClick={start} disabled={calling} className="btn-bright flex-1 text-sm disabled:opacity-70">{calling ? "Calling…" : "📞 Start AI call"}</button>
-        </div>
-        <p className="mt-2.5 text-[10px] text-g-muted">{tr("The AI places the call, talks to the customer, and logs the outcome for you.")}</p>
-      </Card>
-    </div>
-  );
-}
-// Channel metadata — one place to map a channel to its icon + brand color.
-const CHANNEL_META = {
-  Phone: [FaPhone, "#3E9468"], WhatsApp: [FaWhatsapp, "#25D366"], SMS: [FaCommentSms, "#38BDF8"],
-  Instagram: [FaInstagram, "#E4405F"], Facebook: [FaFacebook, "#1877F2"], TikTok: [FaTiktok, "#9ca3af"],
-};
+
+// Documents area (client portal profile) — every contract & quote the tenant has, signed or pending.
+
+// Growth & Retention department — turns churn-risk + lapsed contacts into 1-tap win-back. Demo synthesizes.
+
+// Finance department — invoices / A/R on the live spine (crm_invoices). Demo synthesizes.
+
+// Marketing department — segment-targeted campaigns on the live spine (crm_campaigns). Demo synthesizes.
+
+
+
 // Unified omnichannel inbox feed — every channel normalized to the same shape so
 // the operator thinks in "conversations", not "which app". Names/threads draw from
 // the sector's own data so it reads true everywhere.
-function genInbox(V) {
+export function genInbox(V) {
   const sch = (V.ops?.schedule || []).map((r) => r.name).filter(Boolean);
   const nm = (i, f) => sch[i] || f;
   const items = [
@@ -2798,7 +1324,7 @@ function genInbox(V) {
 }
 // From any conversation (call or text) the operator can FIRE an action that lands
 // in the right tab — the actual "integration". Per-sector verb + target view.
-function convoAction(V) {
+export function convoAction(V) {
   return {
     "Restaurant": { label: "🧾 Create order", view: "liveorders", done: "Order created" },
     "E-Commerce": { label: "🧾 Create order", view: "schedule", done: "Order created" },
@@ -2816,7 +1342,7 @@ function convoAction(V) {
 }
 // A compact, reusable action bar — drop it in the inbox thread AND the call drawer
 // so a call or a text can spawn an order / booking / follow-up that lands in its tab.
-function ConvoActions({ V, who, channel, onNav, onDone }) {
+export function ConvoActions({ V, who, channel, onNav, onDone }) {
   const act = convoAction(V);
   const cfg = deliveryCfg(V);
   const fire = (msg, view) => { toast(msg); onDone?.(); if (view) onNav?.(view); };
@@ -2825,299 +1351,21 @@ function ConvoActions({ V, who, channel, onNav, onDone }) {
   return (
     <div className="flex flex-wrap gap-2">
       <button onClick={firePrimary} className="text-[11px] font-bold rounded-full border border-g-green/40 bg-g-green/[0.1] px-3 py-1.5 text-g-green hover:bg-g-green/20 transition">{act.label}</button>
-      <button onClick={fireDelivery} className="text-[11px] font-bold rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">{cfg.partners.length ? "🚚 To delivery" : "📍 Dispatch"}</button>
-      <button onClick={() => fire(`${who} added to follow-ups ✓`, "followups")} className="text-[11px] font-bold rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">⏰ Follow-up</button>
-      <button onClick={() => fire(`Saved to ${who}'s customer profile ✓`, "customers")} className="text-[11px] font-bold rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">👤 Save to customer</button>
-    </div>
-  );
-}
-const inboxThread = (c) => [
-  { from: "them", text: c.last },
-  { from: "ai", text: "Hi! 😊 Thanks for reaching out — I can take care of that right now." },
-  { from: "them", text: "Perfect, yes please." },
-  { from: "ai", text: `All set ✅ I've noted it and you'll get a confirmation on ${c.channel}. Anything else?` },
-];
-
-function Inbox({ V, onNav }) {
-  const all = genInbox(V);
-  const FILTERS = ["All", "Phone", "WhatsApp", "SMS", "Social"];
-  const inFilter = (c, f) => f === "All" || (f === "Social" ? ["Instagram", "Facebook", "TikTok"].includes(c.channel) : c.channel === f);
-  const [filter, setFilter] = useState("All");
-  const [activeId, setActiveId] = useState(all[0]?.id ?? 0);
-  const [threads, setThreads] = useState(() => Object.fromEntries(all.map((c) => [c.id, inboxThread(c)])));
-  const [draft, setDraft] = useState("");
-  const count = (f) => all.filter((c) => inFilter(c, f)).length;
-  const unread = (f) => all.filter((c) => inFilter(c, f) && c.unread).length;
-  const list = all.filter((c) => inFilter(c, filter));
-  const cur = list.find((c) => c.id === activeId) || list[0];
-  const send = (e) => { e.preventDefault(); if (!draft.trim() || !cur) return; portalApi.sendMessage(cur.channel, cur.id, draft); setThreads((t) => ({ ...t, [cur.id]: [...(t[cur.id] || []), { from: "you", text: draft }] })); setDraft(""); toast(`Reply sent on ${cur.channel} ✓`); };
-  const [Icon, color] = cur ? (CHANNEL_META[cur.channel] || CHANNEL_META.WhatsApp) : CHANNEL_META.WhatsApp;
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <button key={f} onClick={() => setFilter(f)} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold border transition ${filter === f ? "border-g-gold/50 bg-g-gold/15 text-g-gold" : "border-white/12 bg-white/[0.04] text-g-muted hover:text-g-word"}`}>
-            {f === "All" ? "All channels" : f} <span className="text-g-muted">{count(f)}</span>{unread(f) > 0 && <span className="inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black">{unread(f)}</span>}
-          </button>
-        ))}
-      </div>
-      <div className="grid lg:grid-cols-3 gap-4 lg:h-[32rem]">
-        <Card className="p-0 overflow-hidden lg:col-span-1 flex flex-col">
-          <div className="px-4 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold shrink-0">Unified inbox · {list.length}</div>
-          <div className="divide-y divide-white/[0.06] overflow-y-auto">
-            {list.map((c) => {
-              const [CI, cc] = CHANNEL_META[c.channel] || CHANNEL_META.WhatsApp;
-              return (
-                <button key={c.id} onClick={() => setActiveId(c.id)} className={`w-full text-left flex items-center gap-3 px-4 py-3 transition ${c.id === (cur?.id) ? "bg-white/[0.06]" : "hover:bg-white/[0.03]"}`}>
-                  <span className="relative grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] shrink-0 text-sm font-bold text-g-word">{c.name[0]}<span className="absolute -bottom-1 -right-1 grid place-items-center h-4 w-4 rounded-full bg-g-cream" style={{ color: cc }}><CI size={9} /></span></span>
-                  <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name}</div><div className="text-[11px] text-g-muted truncate">{c.last}</div></div>
-                  <div className="text-right shrink-0"><div className="text-[10px] text-g-muted">{c.t}</div>{c.unread > 0 && <span className="inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-g-green text-[10px] font-bold text-black mt-0.5">{c.unread}</span>}</div>
-                </button>
-              );
-            })}
-            {list.length === 0 && <Empty icon="💬" text="No conversations on this channel right now." />}
-          </div>
-        </Card>
-        <Card className="p-0 overflow-hidden lg:col-span-2 flex flex-col">
-          {cur && <>
-            <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2 shrink-0">
-              <span className="grid place-items-center h-8 w-8 rounded-full bg-white/[0.06]" style={{ color }}><Icon size={14} /></span>
-              <div className="min-w-0"><div className="text-sm font-bold text-g-word truncate">{cur.name}</div><div className="text-[10px] text-g-muted">{cur.channel} · {cur.sentiment}</div></div>
-              <button onClick={() => onNav?.("customers")} className="ml-auto text-[11px] font-bold text-g-gold hover:underline shrink-0">{tr("Customer →")}</button>
-              <span className="text-[10px] font-bold uppercase text-g-green inline-flex items-center gap-1 shrink-0"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("AI active")}</span>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-2.5 min-h-[14rem]">
-              {(threads[cur.id] || []).map((m, i) => (
-                <div key={i} className={`flex ${m.from === "them" ? "justify-start" : "justify-end"}`}>
-                  <div className={`max-w-[78%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed ${m.from === "them" ? "bg-white/[0.06] text-g-word" : m.from === "ai" ? "bg-g-green/15 text-g-light border border-g-green/30" : "bg-g-gold/15 text-g-word border border-g-gold/30"}`}>
-                    {m.from === "ai" && <div className="text-[9px] font-black uppercase text-g-green mb-0.5">Guileo AI</div>}
-                    {m.from === "you" && <div className="text-[9px] font-black uppercase text-g-gold mb-0.5">{tr("You")}</div>}
-                    {m.text}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="px-3 pt-3 shrink-0"><ConvoActions V={V} who={cur.name} channel={cur.channel} onNav={onNav} /></div>
-            <form onSubmit={send} className="p-3 border-t-0 flex gap-2 shrink-0">
-              <input value={draft} onChange={(e) => setDraft(e.target.value)} aria-label={tr("Reply")} placeholder={`${tr("Reply on")} ${cur.channel}…`} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-              <button className="btn-bright text-sm px-5">{tr("Send")}</button>
-            </form>
-          </>}
-        </Card>
-      </div>
+      <button onClick={fireDelivery} className="text-[11px] font-bold rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">{cfg.partners.length ? "🚚 To delivery" : "📍 Dispatch"}</button>
+      <button onClick={() => fire(`${who} added to follow-ups ✓`, "followups")} className="text-[11px] font-bold rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">⏰ Follow-up</button>
+      <button onClick={() => fire(`Saved to ${who}'s customer profile ✓`, "customers")} className="text-[11px] font-bold rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">👤 Save to customer</button>
     </div>
   );
 }
 
-function Convos({ V, title }) {
-  const list = V.convos || genConvos(V);
-  const [active, setActive] = useState(0);
-  const [draft, setDraft] = useState("");
-  const [threads, setThreads] = useState(() => Object.fromEntries(list.map((c, i) => [i, [
-    { from: "them", text: c.last },
-    { from: "ai", text: "Hi! Thanks for reaching out 😊 I can take care of that right now." },
-    { from: "them", text: "Perfect, yes please." },
-    { from: "ai", text: "All set ✅ Anything else I can help you with?" },
-  ]])));
-  const send = (e) => { e.preventDefault(); if (!draft.trim()) return; portalApi.sendMessage(title, active, draft); setThreads((t) => ({ ...t, [active]: [...(t[active] || []), { from: "you", text: draft }] })); setDraft(""); toast("Reply sent ✓"); };
-  const c = list[active] || {};
-  return (
-    <div className="grid lg:grid-cols-3 gap-4 lg:h-[34rem]">
-      <Card className="p-0 overflow-hidden lg:col-span-1 flex flex-col">
-        <div className="px-4 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold shrink-0">{title} · {list.length} chats</div>
-        <div className="divide-y divide-white/[0.06] overflow-y-auto">
-          {list.map((cc, i) => (
-            <button key={i} onClick={() => setActive(i)} className={`w-full text-left flex items-center gap-3 px-4 py-3 transition ${i === active ? "bg-white/[0.06]" : "hover:bg-white/[0.03]"}`}>
-              <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word shrink-0">{cc.name[0]}</span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{cc.name}</div><div className="text-[11px] text-g-muted truncate">{cc.last}</div></div>
-              <div className="text-right shrink-0"><div className="text-[10px] text-g-muted">{cc.t}</div>{cc.unread > 0 && <span className="inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-g-green text-[10px] font-bold text-black mt-0.5">{cc.unread}</span>}</div>
-            </button>
-          ))}
-          {list.length === 0 && <Empty icon="💬" text={tr("No conversations yet — they'll show up here as customers message you.")} />}
-        </div>
-      </Card>
-      <Card className="p-0 overflow-hidden lg:col-span-2 flex flex-col">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2 shrink-0"><span className="grid place-items-center h-8 w-8 rounded-full bg-white/[0.06] text-xs font-bold text-g-word">{(c.name || "?")[0]}</span><div className="text-sm font-bold text-g-word">{c.name}</div><span className="ml-auto text-[10px] font-bold uppercase text-g-green inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("AI active")}</span></div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-2.5 min-h-[15rem]">
-          {(threads[active] || []).map((m, i) => (
-            <div key={i} className={`flex ${m.from === "them" ? "justify-start" : "justify-end"}`}>
-              <div className={`max-w-[78%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed ${m.from === "them" ? "bg-white/[0.06] text-g-word" : m.from === "ai" ? "bg-g-green/15 text-g-light border border-g-green/30" : "bg-g-gold/15 text-g-word border border-g-gold/30"}`}>
-                {m.from === "ai" && <div className="text-[9px] font-black uppercase text-g-green mb-0.5">Guileo AI</div>}
-                {m.from === "you" && <div className="text-[9px] font-black uppercase text-g-gold mb-0.5">{tr("You")}</div>}
-                {m.text}
-              </div>
-            </div>
-          ))}
-        </div>
-        <form onSubmit={send} className="p-3 border-t border-white/10 flex gap-2 shrink-0">
-          <input value={draft} onChange={(e) => setDraft(e.target.value)} aria-label={tr("Reply")} placeholder={tr("Jump in and reply…")} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-          <button className="btn-bright text-sm px-5">{tr("Send")}</button>
-        </form>
-      </Card>
-    </div>
-  );
-}
-function Toggle({ on, onClick }) {
+export function Toggle({ on, onClick }) {
   return (
     <button onClick={onClick} className={`relative h-5 w-9 rounded-full transition-all cursor-pointer ${on ? "bg-g-green shadow-[0_0_10px_rgba(62,148,104,0.5)]" : "bg-white/15 hover:bg-white/25"}`} role="switch" aria-checked={on}>
       <span className={`absolute top-0.5 h-4 w-4 rounded-full transition-all ${on ? "left-[18px] bg-white" : "left-0.5 bg-white/70"}`} />
     </button>
   );
 }
-function SettingsView({ V }) {
-  const [toggles, setToggles] = useState({ voice: true, chat: true, reviews: true, recall: true, afterhours: true, marketing: false });
-  const flip = (k) => setToggles((t) => { const v = !t[k]; toast(`${LBL[k]}: ${v ? "On" : "Off"}`); return { ...t, [k]: v }; });
-  const LBL = { voice: "AI voice agent", chat: "WhatsApp & SMS AI", reviews: "Auto-request reviews", recall: "Recalls & reminders", afterhours: "After-hours coverage", marketing: "Weekly marketing digest" };
 
-  // Editable business profile → feeds the trained AI's location & hours answers.
-  const [profile, setProfile] = useState(() => portalApi.loadProfile(V.label, defProfile(V)));
-  const [draft, setDraft] = useState(profile);
-  useEffect(() => { const p = portalApi.loadProfile(V.label, defProfile(V)); setProfile(p); setDraft(p); }, [V.label]);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(profile);
-  const set = (k) => (e) => setDraft((d) => ({ ...d, [k]: e.target.value }));
-  const saveProfile = () => {
-    syncProfile(V.label, V, draft); // persist + re-sync the AI's location & hours answers
-    setProfile(draft);
-    toast("Business profile saved — your AI is updated ✓");
-  };
-  const fieldCls = "mt-1 w-full rounded-xl border border-white/15 bg-black/20 px-3.5 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70";
-  const PROFILE_FIELDS = [["Business name", "name", "Your business name"], ["Address / location", "place", "123 Main St, City"], ["Opening hours", "hours", "Mon–Sun, 9am–10pm"], ["Public phone", "phone", "(optional)"]];
-  // Real, persisted operating settings (shape the AI's behavior + when the owner gets pinged).
-  const defS = { tone: "Friendly", greeting: "", on_booking: true, on_missed: true, on_review: true, daily_summary: true, quiet_enabled: false, quiet_start: "21:00", quiet_end: "08:00", after_hours_msg: "", fallback_number: "", require_approval: true };
-  const [st, setSt] = useState(() => ({ ...defS, ...portalApi.loadState(`${V.label}:settings`, {}) }));
-  useEffect(() => { setSt({ ...defS, ...portalApi.loadState(`${V.label}:settings`, {}) }); }, [V.label]); // eslint-disable-line
-  const setS = (k, v) => setSt((s) => { const n = { ...s, [k]: v }; portalApi.saveState(`${V.label}:settings`, n); return n; });
-  const [payg, setPaygS] = useState(() => portalApi.loadState("gui_payg", true));
-  const flipPayg = () => setPaygS((p) => { const v = !p; portalApi.saveState("gui_payg", v); window.dispatchEvent(new Event("gui:credits")); toast(v ? "Auto top-up on ✓" : "Auto top-up off"); return v; });
-  return (
-    <div className="space-y-4 stagger">
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Business profile")}</div>
-          <span className="text-[10px] text-g-muted inline-flex items-center gap-1"><FaWandMagicSparkles size={9} className="text-g-green" /> {tr("feeds your AI's answers")}</span>
-        </div>
-        <div className="divide-y divide-white/[0.06]">
-          {PROFILE_FIELDS.map(([label, k, ph]) => (
-            <label key={k} className="block px-5 py-3"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr(label)}</span>
-              <input value={draft[k] || ""} onChange={set(k)} placeholder={ph} className={fieldCls} /></label>
-          ))}
-        </div>
-        <div className="px-5 py-3 border-t border-white/10 flex items-center justify-between gap-3">
-          <span className="text-[11px] text-g-muted">{dirty ? tr("Unsaved changes") : tr("Your AI uses these facts when customers ask.")}</span>
-          <button onClick={saveProfile} disabled={!dirty} className="btn-bright text-sm disabled:opacity-40 disabled:cursor-not-allowed">{tr("Save & update AI")}</button>
-        </div>
-      </Card>
-
-      {/* AI behavior — tone + custom greeting shape every customer interaction */}
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("AI voice & greeting")}</div>
-        <div className="divide-y divide-white/[0.06]">
-          <label className="block px-5 py-3"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr("Tone")}</span>
-            <select value={st.tone} onChange={(e) => setS("tone", e.target.value)} className={fieldCls}>{["Friendly", "Professional", "Warm & casual", "Concise", "Enthusiastic"].map((o) => <option key={o} value={o}>{tr(o)}</option>)}</select></label>
-          <label className="block px-5 py-3"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr("Custom greeting")}</span>
-            <textarea value={st.greeting} onChange={(e) => setS("greeting", e.target.value)} placeholder={`e.g. "Hi! Thanks for contacting ${draft.name || V.business.name} 👋 How can I help?"`} rows={2} className={fieldCls} /></label>
-          <div className="flex items-center justify-between px-5 py-3.5"><div><div className="text-sm text-g-word font-semibold">{tr("Hand off to a human on request")}</div><div className="text-[11px] text-g-muted">{tr("When a customer asks for a person, the AI alerts your team.")}</div></div><Toggle on={st.human_handoff !== false} onClick={() => setS("human_handoff", st.human_handoff === false)} /></div>
-          <div className="flex items-center justify-between px-5 py-3.5"><div className="pr-3"><div className="text-sm text-g-word font-semibold">{tr("Approve before Gui sends money or customer messages")}</div><div className="text-[11px] text-g-muted">{tr("Invoices, charges, deliveries, social posts and campaigns wait for your one-tap OK. Answers and navigation stay instant.")}</div></div><Toggle on={st.require_approval !== false} onClick={() => setS("require_approval", st.require_approval === false)} /></div>
-        </div>
-        <div className="px-5 py-2.5 border-t border-white/10 text-[11px] text-g-green">{tr("Saved automatically · your AI uses this on every channel ✓")}</div>
-      </Card>
-
-      {/* Notifications & billing — when the owner gets pinged + auto top-up (revenue safety) */}
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Notifications & billing")}</div>
-        <div className="divide-y divide-white/[0.06]">
-          {[["on_booking", "New booking or order"], ["on_missed", "Missed call or lead"], ["on_review", "New review"], ["daily_summary", "Daily summary from Gui"]].map(([k, label]) => (
-            <div key={k} className="flex items-center justify-between px-5 py-3.5"><span className="text-sm text-g-word font-semibold">{label}</span><Toggle on={st[k] !== false} onClick={() => setS(k, st[k] === false)} /></div>
-          ))}
-          <div className="flex items-center justify-between px-5 py-3.5"><div><div className="text-sm text-g-word font-semibold">{tr("Auto top-up Gui credits")}</div><div className="text-[11px] text-g-muted">{tr("Never let the AI pause mid-task — refill when low (pay-as-you-go).")}</div></div><Toggle on={payg} onClick={flipPayg} /></div>
-          <div className="flex items-center justify-between px-5 py-3.5"><div className="flex items-center gap-3"><span className="text-sm text-g-word font-semibold">{tr("Quiet hours")}</span></div><Toggle on={!!st.quiet_enabled} onClick={() => setS("quiet_enabled", !st.quiet_enabled)} /></div>
-          {st.quiet_enabled && (
-            <div className="flex items-center gap-3 px-5 py-3">
-              <label className="flex-1"><span className="text-[10px] uppercase tracking-wide text-g-muted">From</span><input type="time" value={st.quiet_start} onChange={(e) => setS("quiet_start", e.target.value)} className={fieldCls} /></label>
-              <label className="flex-1"><span className="text-[10px] uppercase tracking-wide text-g-muted">To</span><input type="time" value={st.quiet_end} onChange={(e) => setS("quiet_end", e.target.value)} className={fieldCls} /></label>
-            </div>
-          )}
-        </div>
-      </Card>
-
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Account")}</div>
-        <div className="divide-y divide-white/[0.06]">
-          {[["Plan", V.plan?.label || "Growth Plan"], ["Languages", "English · Português · Español"], ["Timezone", "Local"]].map(([k, v], i) => (
-            <div key={i} className="flex items-center justify-between px-5 py-3.5"><span className="text-sm text-g-muted">{k}</span><span className="text-sm font-bold text-g-word text-right">{v}</span></div>
-          ))}
-        </div>
-      </Card>
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("What your AI handles")}</div>
-        <div className="divide-y divide-white/[0.06]">
-          {Object.keys(LBL).map((k) => (
-            <div key={k} className="flex items-center justify-between px-5 py-3.5"><span className="text-sm text-g-word font-semibold">{LBL[k]}</span><Toggle on={toggles[k]} onClick={() => flip(k)} /></div>
-          ))}
-        </div>
-      </Card>
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Integrations & webhooks")}</div>
-        <div className="divide-y divide-white/[0.06]">
-          {[["📅 Calendar (Google/Apple)", "Connected"], ["💳 Stripe payments", "Connected"], ["🍔 POS / orders", "Connected"], ["📣 Meta & Google Ads", "Connected"], ["🛵 Delivery platforms", "Connected"]].map(([name, st]) => (
-            <div key={name} className="flex items-center justify-between px-5 py-3"><span className="text-sm text-g-word font-semibold">{name}</span><span className="text-[10px] font-black uppercase text-g-green inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{st}</span></div>
-          ))}
-        </div>
-        <div className="px-5 py-3 border-t border-white/10">
-          <div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">{tr("Live webhook events")}</div>
-          <div className="space-y-1.5 font-mono text-[10px] text-g-muted">
-            {[["order.created", "→ POS · just now"], ["booking.confirmed", "→ Calendar · 2m"], ["payment.succeeded", "→ Stripe · 6m"], ["review.received", "→ Reputation · 11m"]].map(([ev, meta]) => (
-              <div key={ev} className="flex items-center gap-2"><span className="text-g-green">●</span><span className="text-g-word">{ev}</span><span className="flex-1" /><span>{meta}</span></div>
-            ))}
-          </div>
-        </div>
-      </Card>
-      <Card className="flex flex-wrap items-center justify-between gap-3">
-        <div><div className="text-sm font-bold text-g-word">{tr("Demo data")}</div><div className="text-[11px] text-g-muted">{tr("Reset resolved alerts, won deals, filled slots & read flags back to the sample state.")}</div></div>
-        <button onClick={() => { ["alerts", "fups", "wait", "notifsRead", "created:liveorders", "created:schedule", "created:deliveries", "created:campaigns", "created:impact", "created:audiences", "created:reviewreq", "created:payments", "created:team", "created:locations", "created:giftcards", "integrations", "owndelivery", "loyalty", "goal"].forEach((k) => { try { localStorage.removeItem(`guileo_state_${V.label}:${k}`); } catch { /* ignore */ } }); toast("Demo data reset — reloading…"); setTimeout(() => location.reload(), 600); }} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word hover:border-g-gold/40 transition shrink-0">{tr("↻ Reset demo data")}</button>
-      </Card>
-      <p className="text-center text-[11px] text-g-muted">{tr("Changes apply instantly. Need something custom? Your team's a tap away. 💬")}</p>
-    </div>
-  );
-}
-
-function Grow() {
-  const [sent, setSent] = useState(false);
-  const [txt, setTxt] = useState("");
-  const submit = (e) => { e.preventDefault(); setSent(true); window.open(waLink(`Hi Guileo! I wish you offered: ${txt}`), "_blank"); };
-  return (
-    <div className="space-y-4 stagger">
-      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word">{tr("Grow with Guileo")}</div><div className="text-xs text-g-muted mt-0.5">{tr("Want more? Add a channel or service — we set it up, you keep one login and one bill. Growth on tap.")}</div></div>
-          <a href={waLink("Hi Guileo! I'd like to add a new service to my plan")} target="_blank" rel="noopener" className="btn-bright text-sm">{tr("Talk to my team →")}</a>
-        </div>
-      </Card>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {ADDONS.map(([ic, name, desc], i) => (
-          <Card key={i} className="flex flex-col">
-            <div className="flex items-center gap-3"><span className="grid place-items-center h-11 w-11 rounded-xl bg-white/[0.06] text-xl shrink-0">{ic}</span><div className="text-sm font-bold text-g-word">{name}</div></div>
-            <p className="text-xs text-g-muted mt-2 flex-1">{desc}</p>
-            <a href={waLink(`Hi Guileo! I'd like to add: ${name}`)} target="_blank" rel="noopener" className="mt-3 inline-flex items-center justify-center gap-1 rounded-full border border-g-gold/40 bg-g-gold/[0.08] px-4 py-2 text-xs font-bold text-g-gold hover:bg-g-gold/[0.16] transition">{tr("Request this →")}</a>
-          </Card>
-        ))}
-      </div>
-      {/* Demand learning — request something we don't offer yet */}
-      <Card>
-        <div className="text-sm font-extrabold text-g-word">{tr("Don't see what you need?")}</div>
-        <p className="text-xs text-g-muted mt-0.5">{tr("Tell us what you wish we offered — we're always adding services, and your idea shapes what we build next.")}</p>
-        {!sent ? (
-          <form onSubmit={submit} className="mt-3 flex flex-col sm:flex-row gap-2">
-            <input required value={txt} onChange={(e) => setTxt(e.target.value)} aria-label="Request a service we don't offer yet" placeholder="e.g. A reservations widget for my website…" className="flex-1 rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-            <button className="btn-bright text-sm whitespace-nowrap">{tr("Send request →")}</button>
-          </form>
-        ) : (
-          <div className="mt-3 rounded-xl2 border border-g-green/40 bg-g-green/[0.1] p-3 text-sm font-bold text-g-light text-center">{tr("✅ Got it — thanks! Our team will look into it.")}</div>
-        )}
-      </Card>
-    </div>
-  );
-}
 
 // Words too common to carry meaning when matching a question to a trained answer.
 const KB_STOP = new Set("a an the is are do does can could would i you we my your our of to for on in at and or with how what when where why which that this it me us your you're im i'm".split(" "));
@@ -3131,7 +1379,7 @@ const kbTokens = (s) => (s || "").toLowerCase().replace(/[^a-z0-9à-ÿ\s]/gi, " 
 // stemming so "located"/"location", "booking"/"book", "prices"/"pricing" collide
 // without a brittle suffix-stripping table.
 const wordsMatch = (a, b) => a === b || (a.length >= 4 && b.length >= 4 && a.slice(0, 4) === b.slice(0, 4));
-function kbMatch(q, kb) {
+export function kbMatch(q, kb) {
   const qt = kbTokens(q);
   if (!qt.length) return null;
   let best = null, bestScore = 0;
@@ -3150,14 +1398,14 @@ function kbMatch(q, kb) {
 }
 
 // The handful of facts the AI repeats most — editable in Settings, feeds the KB.
-function defProfile(V) {
+export function defProfile(V) {
   return { name: V.business.name, place: V.business.place, hours: "Mon–Sun, 9am–10pm", phone: "" };
 }
 const profBiz = (p) => `We're ${p.name}, located at ${p.place}. I can send directions on WhatsApp — want them?`;
 const profHours = (p) => `We're open ${p.hours}. Want me to book you in?`;
 // Save the profile AND re-sync the AI's location+hours answers in the KB, so any
 // edit (Settings or onboarding) is immediately reflected by the trained AI.
-function syncProfile(label, V, profile) {
+export function syncProfile(label, V, profile) {
   portalApi.saveProfile(label, profile);
   const kb = portalApi.loadKB(label, seedKB(V, profile)).map((e) =>
     e.id === "biz" ? { ...e, answer: profBiz(profile) } : e.id === "hours" ? { ...e, answer: profHours(profile) } : e
@@ -3165,9 +1413,45 @@ function syncProfile(label, V, profile) {
   portalApi.saveKB(label, kb);
 }
 
+// ── Onboarding → LIVE agent (REAL clients only) ─────────────────────────────
+// The wizard's answers used to be cosmetic (local demo state only). For a REAL
+// logged-in client (session + connection code), persist them through the SAME
+// path the AI Brain tab uses — profile + KB via portalApi.saveProfile/saveKB,
+// then POST /api/sync-agent (the existing Loop-2 endpoint that PATCHes the
+// client's live ElevenLabs agent) — so their actual Gui learns the business
+// type, name and covered channels the moment onboarding finishes.
+// Returns true only when the answers were pushed to the real save path.
+// Best-effort everywhere: onboarding must NEVER block on a failed save.
+export function syncOnboardingToAgent(me, vid, extra = {}) {
+  try {
+    const email = (me?.email || "").toString().trim().toLowerCase();
+    const key = loadDataKey();
+    if (!email.includes("@") || !key || me?.demo) return false; // demo / not connected → local-only (behavior unchanged)
+    const OV = VERTICALS[vid];
+    if (!OV) return false;
+    // 1) Merge the answers into the SAME profile + KB stores the AI Brain reads/saves.
+    const prof = { ...defProfile(OV), ...portalApi.loadProfile(OV.label, defProfile(OV)) };
+    if (extra.name) prof.name = extra.name;
+    prof.industry = OV.label;               // business type chosen in the wizard (AIBrain sends prof.industry)
+    syncProfile(OV.label, OV, prof);        // saves profile + refreshes the biz/hours KB answers
+    let kb = portalApi.loadKB(OV.label, seedKB(OV, prof));
+    const channels = Array.isArray(extra.channels) ? extra.channels.filter(Boolean) : [];
+    if (channels.length) {
+      const entry = { id: "onb_channels", topic: "Channels we cover", triggers: "channel whatsapp instagram sms call phone text reach contact", answer: `Customers can reach us on: ${channels.join(", ")} — we answer 24/7 on every one of them.`, locked: false };
+      kb = kb.some((e) => e.id === "onb_channels") ? kb.map((e) => (e.id === "onb_channels" ? entry : e)) : [...kb, entry];
+      portalApi.saveKB(OV.label, kb);
+    }
+    // 2) Push to the live voice agent — the exact payload shape AIBrain.syncLiveAgent sends.
+    const brain = (kb.map((e) => `${e.topic || ""}${e.triggers ? ` (${e.triggers})` : ""}: ${e.answer || ""}`).filter((s) => s.replace(/[^a-z0-9]/gi, "").length > 2).join("\n")
+      + (extra.owner ? `\nOwner: ${extra.owner}.` : "")).slice(0, 4000);
+    fetch("/api/sync-agent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, key, brain, business: prof.name || OV.business?.name || "", industry: OV.label || "", lang: UI_LANG }) }).catch(() => { /* agent will pick it up on the next Brain save */ });
+    return true;
+  } catch { return false; } // never block the wizard on persistence
+}
+
 // Default seed: pull real facts out of the vertical (+ saved profile) so every
 // sector starts smart.
-function seedKB(V, profile = defProfile(V)) {
+export function seedKB(V, profile = defProfile(V)) {
   const services = (V.ops?.list || []).slice(0, 6).map((x) => x.name).filter(Boolean).join(", ");
   return [
     { id: "biz", topic: "Location & address", triggers: "where address location directions onde endereço", answer: profBiz(profile), locked: false },
@@ -3179,7 +1463,7 @@ function seedKB(V, profile = defProfile(V)) {
   ];
 }
 
-function aiAnswer(q, V, kb) {
+export function aiAnswer(q, V, kb) {
   const hit = kb && kbMatch(q, kb);
   if (hit) return hit.answer;
   const s = q.toLowerCase();
@@ -3187,437 +1471,19 @@ function aiAnswer(q, V, kb) {
   return `Great question! I'd handle that right away for ${V.business.name} and book or answer accordingly. (Add this to your knowledge base below so I nail it every time.)`;
 }
 
-function AIBrain({ V }) {
-  const [kb, setKb] = useState(() => portalApi.loadKB(V.label, seedKB(V, portalApi.loadProfile(V.label, defProfile(V)))));
-  const [trainedAt, setTrainedAt] = useState("2 days ago");
-  const [editing, setEditing] = useState(null); // entry being edited, or {} for new
-  const [q, setQ] = useState("");
-  const [chat, setChat] = useState([]);
 
-  // Reload when switching verticals (each sector keeps its own brain + profile).
-  useEffect(() => { setKb(portalApi.loadKB(V.label, seedKB(V, portalApi.loadProfile(V.label, defProfile(V))))); setChat([]); }, [V.label]);
 
-  const persist = (next) => { setKb(next); portalApi.saveKB(V.label, next); setTrainedAt("just now"); toast("AI retrained ✓ — it'll use this on the next conversation"); };
-  const saveEntry = (entry) => {
-    const e = { ...entry, id: entry.id || `k${kb.length}_${entry.topic.slice(0, 4)}` };
-    persist(entry.id ? kb.map((x) => (x.id === e.id ? e : x)) : [...kb, e]);
-    setEditing(null);
-  };
-  const delEntry = (id) => persist(kb.filter((x) => x.id !== id));
 
-  const ask = (e) => { e.preventDefault(); if (!q.trim()) return; setChat((c) => [...c, { q, a: aiAnswer(q, V, kb), trained: !!kbMatch(q, kb) }]); setQ(""); };
-  const suggestions = ["What are your hours?", "Can I book for tomorrow?", "How much does it cost?", "Where are you located?"];
 
-  return (
-    <div className="space-y-4 stagger">
-      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word">{tr("🧠 Your AI's brain")}</div><div className="text-xs text-g-muted mt-0.5">{tr("Teach it in plain words — it answers your")} <b className="text-g-light">{tr("very next customer")}</b> {tr("with it. Test it live below.")}</div></div>
-          <button onClick={() => setEditing({ topic: "", triggers: "", answer: "" })} className="btn-bright text-sm inline-flex items-center gap-2"><FaPlus size={11} /> {tr("Teach it something")}</button>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word"><FaCircleCheck className="text-g-green" size={11} /> {kb.length} {tr("things learned")}</span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word"><span className="text-g-green">✓</span> {tr("Last trained")} {trainedAt}</span>
-          {["🇺🇸 English", "🇧🇷 Português", "🇪🇸 Español"].map((l) => <span key={l} className="inline-flex items-center rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word">{l}</span>)}
-        </div>
-      </Card>
-
-      {/* THE DIFFERENTIATOR — test your AI live */}
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("Test your AI · see exactly how it answers your customers")}</div>
-        <div className="p-4 space-y-2.5 min-h-[8rem] max-h-72 overflow-y-auto">
-          {chat.length === 0 && <div className="text-center text-xs text-g-muted py-6">{tr("Ask your AI anything a customer might ask 👇")}</div>}
-          {chat.map((m, i) => (
-            <div key={i} className="space-y-2">
-              <div className="flex justify-end"><div className="max-w-[78%] rounded-2xl px-3.5 py-2 text-xs bg-g-gold/15 text-g-word border border-g-gold/30">{m.q}</div></div>
-              <div className="flex justify-start"><div className="max-w-[80%] space-y-1">
-                <div className="rounded-2xl px-3.5 py-2 text-xs bg-g-green/15 text-g-light border border-g-green/30"><div className="text-[9px] font-black uppercase text-g-green mb-0.5 flex items-center gap-1">Your AI {m.trained && <span className="text-g-gold normal-case">{tr("· from your training")}</span>}</div>{m.a}</div>
-                {!m.trained && <button onClick={() => setEditing({ topic: "", triggers: m.q, answer: "" })} className="ml-1 text-[11px] font-bold text-g-gold hover:text-g-word transition inline-flex items-center gap-1"><FaPen size={9} /> {tr("Teach a better answer")}</button>}
-              </div></div>
-            </div>
-          ))}
-        </div>
-        {chat.length === 0 && <div className="px-4 pb-2 flex flex-wrap gap-2">{suggestions.map((s) => <button key={s} onClick={() => setChat([{ q: s, a: aiAnswer(s, V, kb), trained: !!kbMatch(s, kb) }])} className="rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-[11px] font-bold text-g-muted hover:text-g-word transition">{s}</button>)}</div>}
-        <form onSubmit={ask} className="p-3 border-t border-white/10 flex gap-2">
-          <input value={q} onChange={(e) => setQ(e.target.value)} aria-label={tr("Ask your AI")} placeholder={tr("Ask your AI a question…")} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-          <button className="btn-bright text-sm px-5">{tr("Ask")}</button>
-        </form>
-      </Card>
-
-      {/* EDITABLE KNOWLEDGE BASE */}
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2"><FaWandMagicSparkles size={11} /> Knowledge base · what your AI knows</div>
-          <button onClick={() => setEditing({ topic: "", triggers: "", answer: "" })} className="text-[11px] font-bold text-g-green hover:text-g-word transition inline-flex items-center gap-1"><FaPlus size={10} /> Add</button>
-        </div>
-        <div className="divide-y divide-white/[0.06]">
-          {kb.map((e) => (
-            <div key={e.id} className="px-5 py-3 flex items-start gap-3 group">
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold text-g-word flex items-center gap-2">{e.topic}{e.locked && <span className="text-[9px] font-black uppercase text-g-gold border border-g-gold/30 rounded px-1.5 py-0.5">{tr("routes to human")}</span>}</div>
-                <p className="text-xs text-g-muted leading-relaxed mt-0.5">{e.answer}</p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0 opacity-60 group-hover:opacity-100 transition">
-                <button onClick={() => setEditing(e)} aria-label="Edit" className="text-g-muted hover:text-g-word transition"><FaPen size={11} /></button>
-                <button onClick={() => delEntry(e.id)} aria-label={tr("Delete")} className="text-g-muted hover:text-red-400 transition"><FaTrash size={11} /></button>
-              </div>
-            </div>
-          ))}
-          {kb.length === 0 && <div className="px-5 py-8 text-center text-xs text-g-muted">{tr("Nothing trained yet — add your first answer above.")}</div>}
-        </div>
-      </Card>
-
-      <Drawer
-        open={!!editing}
-        onClose={() => setEditing(null)}
-        title={editing?.id ? "Edit knowledge" : "Teach your AI"}
-        subtitle={tr("Your AI uses this the moment you save it")}
-        fields={null}
-        actions={null}
-      >
-        {editing && <KBForm key={editing.id || "new"} entry={editing} onSave={saveEntry} onCancel={() => setEditing(null)} />}
-      </Drawer>
-    </div>
-  );
-}
-
-function KBForm({ entry, onSave, onCancel }) {
-  const [topic, setTopic] = useState(entry.topic || "");
-  const [triggers, setTriggers] = useState(entry.triggers || "");
-  const [answer, setAnswer] = useState(entry.answer || "");
-  const valid = topic.trim() && answer.trim();
-  const field = "w-full rounded-xl border border-white/15 bg-black/20 px-3.5 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70";
-  return (
-    <div className="space-y-3">
-      <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr("Topic")}</span>
-        <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. Parking & access" className={`mt-1 ${field}`} /></label>
-      <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr("When customers ask about…")} <span className="normal-case font-normal text-g-muted/70">{tr("(keywords, optional)")}</span></span>
-        <input value={triggers} onChange={(e) => setTriggers(e.target.value)} placeholder="parking park garage valet" className={`mt-1 ${field}`} /></label>
-      <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr("Your AI should reply")}</span>
-        <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} rows={4} placeholder="Free parking is available right behind the building…" className={`mt-1 ${field} resize-none`} /></label>
-      <div className="flex gap-2 pt-1">
-        <button disabled={!valid} onClick={() => onSave({ ...entry, topic: topic.trim(), triggers: triggers.trim(), answer: answer.trim() })} className="btn-bright text-sm flex-1 disabled:opacity-40 disabled:cursor-not-allowed">{tr("Save & retrain")}</button>
-        <button onClick={onCancel} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word transition">{tr("Cancel")}</button>
-      </div>
-    </div>
-  );
-}
-
-// Plan tiers — the upgrade ladder (display + entitlement basis; real charge = Stripe at launch).
-const PLANS = [
-  { key: "starter", name: "Starter", price: 49, credits: 500, current: false, features: ["AI on 1 channel", "Bookings & reviews", "500 Gui credits / mo", "Email support"], featuresPt: ["IA em 1 canal", "Agendamentos e avaliações", "500 créditos do Gui / mês", "Suporte por e-mail"] },
-  { key: "growth", name: "Growth", price: 149, credits: 2000, current: true, features: ["AI on all channels", "Full integrations stack", "2,000 Gui credits / mo", "Automations + radar", "A human managing it"], featuresPt: ["IA em todos os canais", "Stack de integrações completo", "2.000 créditos do Gui / mês", "Automações + radar", "Um humano cuidando"] },
-  { key: "scale", name: "Scale", price: 399, credits: 6000, current: false, features: ["Everything in Growth", "Multi-location", "6,000 Gui credits / mo", "Priority + phone support", "Custom integrations"], featuresPt: ["Tudo do Growth", "Multi-unidade", "6.000 créditos do Gui / mês", "Suporte prioritário + telefone", "Integrações sob medida"] },
-];
-function Billing({ V }) {
-  const plan = V.plan || { label: "Growth Plan", used: 1, total: 2000, unit: "Actions this month" };
-  const pct = Math.round((plan.used / plan.total) * 100);
-  const includes = ["AI voice agent · 24/7", "WhatsApp, SMS & social replies", "Bookings & reviews automation", "Live dashboard & monthly reports", "A real human managing it for you"];
-  const invoices = [["Invoice #0012", "Jun 1, 2026", "Paid"], ["Invoice #0011", "May 1, 2026", "Paid"], ["Invoice #0010", "Apr 1, 2026", "Paid"]];
-  // Gui AI credits — same gui_credits store the assistant + its meter read, so they never disagree.
-  const [credits, setCredits] = useState(() => portalApi.loadState("gui_credits", 250));
-  const [payg, setPayg] = useState(() => portalApi.loadState("gui_payg", true));
-  useEffect(() => { const h = () => setCredits(portalApi.loadState("gui_credits", 250)); window.addEventListener("gui:credits", h); return () => window.removeEventListener("gui:credits", h); }, []);
-  const setC = (n) => { setCredits(n); portalApi.saveState("gui_credits", n); window.dispatchEvent(new Event("gui:credits")); };
-  const topUp = (n) => { setC(credits + n); toast(`${n} credits added ✓ — ${payg ? "billed to your account (pay-as-you-go)" : "added to your plan"}`); };
-  const usedThisMonth = vnum(V.label, "guiused", 60, 320);
-  const cpct = Math.max(2, Math.min(100, Math.round((credits / 500) * 100)));
-  const low = credits < 50;
-  return (
-    <div className="space-y-4 stagger">
-      <div className="grid lg:grid-cols-3 gap-4">
-        <Card tone="gold" className="lg:col-span-2">
-          <div className="flex items-center justify-between gap-3">
-            <div><div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Current plan")}</div><div className="text-xl font-extrabold text-g-gold gold-glow mt-1">{plan.label}</div></div>
-            <a href={waLink("I'd like to upgrade my Guileo plan")} target="_blank" rel="noopener" className="btn-bright text-sm">{tr("Upgrade →")}</a>
-          </div>
-          <div className="mt-4"><div className="flex justify-between text-xs mb-1"><span className="text-g-muted">{plan.unit}</span><span className="text-g-word font-bold">{plan.used} / {plan.total.toLocaleString()}</span></div><div className="h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${Math.max(2, pct)}%` }} /></div></div>
-        </Card>
-        <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">{tr("What's included")}</div>
-          <ul className="space-y-1.5 text-xs text-g-word">{includes.map((x, i) => <li key={i} className="flex gap-2"><span className="text-g-green">✓</span>{x}</li>)}</ul>
-        </Card>
-      </div>
-
-      {/* Gui AI credits — the assistant's pay-as-you-go meter, managed here */}
-      <Card tone="gold" className="border-g-gold/25 bg-gradient-to-br from-g-gold/[0.07] to-transparent">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="grid place-items-center h-10 w-10 rounded-xl bg-g-gold/15 text-g-gold"><FaWandMagicSparkles /></span>
-            <div><div className="text-sm font-extrabold text-g-word">{tr("Gui — AI assistant credits")}</div><div className="text-xs text-g-muted mt-0.5">{tr("Powers every task Gui runs for you · ~5 credits per action")}</div></div>
-          </div>
-          <div className="text-right"><div className={`text-2xl font-extrabold num ${low ? "text-red-400" : "text-g-gold gold-glow"}`}>{credits}</div><div className="text-[10px] uppercase tracking-wide text-g-muted">{tr("credits left")}</div></div>
-        </div>
-        <div className="mt-3 h-2 rounded-full bg-white/10 overflow-hidden"><div className={`h-full rounded-full ${low ? "bg-red-500" : "bg-gradient-to-r from-g-green to-g-gold"}`} style={{ width: `${cpct}%` }} /></div>
-        <div className="mt-3 grid sm:grid-cols-3 gap-2">
-          {[["+250", 250, "$9"], ["+500", 500, "$16"], ["+1,200", 1200, "$32"]].map(([label, n, price]) => (
-            <button key={n} onClick={() => topUp(n)} className="rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2.5 text-center hover:border-g-green/50 hover:bg-white/[0.07] transition">
-              <div className="text-sm font-extrabold text-g-word">{label} <span className="text-g-muted font-normal">{tr("credits")}</span></div>
-              <div className="text-[10px] text-g-gold font-bold">{price}</div>
-            </button>
-          ))}
-        </div>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-          <div className="flex items-center gap-2"><Toggle on={payg} onClick={() => { const v = !payg; setPayg(v); portalApi.saveState("gui_payg", v); toast(v ? "Pay-as-you-go on — auto-top-up when low" : "Pay-as-you-go off — Gui pauses when out of credits"); }} /><span className="text-g-muted">{tr("Auto top-up (pay-as-you-go)")}</span></div>
-          <span className="text-g-muted">{usedThisMonth} {tr("credits used this month")}</span>
-        </div>
-        <p className="mt-2 text-[10px] text-g-muted">{tr("Top-ups are billed securely to your account on file — we never ask for card details in chat.")}</p>
-      </Card>
-
-      {/* Gui usage history — what your credits bought, by day */}
-      {(() => {
-        const days = usageByDay(7);
-        const max = Math.max(1, ...days.map((d) => d.total));
-        const weekTotal = days.reduce((s, d) => s + d.total, 0);
-        const recent = portalApi.loadState("gui_usage", []).slice(0, 6);
-        return (
-          <Card className="p-0 overflow-hidden">
-            <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Gui usage · last 7 days")}</span><span className="text-[11px] text-g-muted">{weekTotal} credits this week</span></div>
-            <div className="p-5">
-              <div className="flex items-end gap-2 h-24">
-                {days.map((d) => (
-                  <div key={d.day} className="flex-1 flex flex-col items-center gap-1.5">
-                    <div className="w-full flex items-end justify-center" style={{ height: "72px" }}>
-                      <div className="w-full max-w-[28px] rounded-t-md bg-gradient-to-t from-g-green to-g-gold transition-all" style={{ height: `${Math.max(4, Math.round((d.total / max) * 72))}px` }} title={`${d.total} credits`} />
-                    </div>
-                    <span className="text-[10px] text-g-muted">{d.label}</span>
-                  </div>
-                ))}
-              </div>
-              {recent.length > 0 ? (
-                <div className="mt-4 divide-y divide-white/[0.05] border-t border-white/[0.06]">
-                  {recent.map((u) => (
-                    <div key={u._id} className="flex items-center gap-3 py-2"><span className="text-sm">🪄</span><div className="flex-1 min-w-0 text-xs text-g-word truncate">{u.label || "AI task"}</div><span className="text-[11px] text-g-muted shrink-0">{u.day}</span><span className="text-[11px] font-bold text-g-gold shrink-0">−{u.cost} cr</span></div>
-                  ))}
-                </div>
-              ) : <p className="mt-3 text-[11px] text-g-muted text-center">{tr("No Gui activity yet — ask Gui to do something and it'll show up here.")}</p>}
-            </div>
-          </Card>
-        );
-      })()}
-
-      {/* Plan tiers — the upgrade ladder */}
-      <div>
-        <div className="px-1 mb-2 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Plans")}</div>
-        <div className="grid sm:grid-cols-3 gap-3">
-          {PLANS.map((p) => (
-            <Card key={p.key} className={`relative ${p.current ? "border-g-gold/50 bg-g-gold/[0.06]" : ""}`}>
-              {p.current && <span className="absolute -top-2 left-4 text-[9px] font-black uppercase tracking-wide bg-g-gold text-black rounded-full px-2 py-0.5">{tr("Current")}</span>}
-              <div className="text-sm font-extrabold text-g-word">{p.name}</div>
-              <div className="mt-1 flex items-baseline gap-1"><span className={`text-2xl font-extrabold num ${p.current ? "text-g-gold gold-glow" : "text-g-word"}`}>${p.price}</span><span className="text-[11px] text-g-muted">/{tr("mo")}</span></div>
-              <ul className="mt-3 space-y-1.5 text-[11px] text-g-word">{(UI_LANG === "pt" ? p.featuresPt : p.features).map((f, i) => <li key={i} className="flex gap-1.5"><span className="text-g-green">✓</span>{f}</li>)}</ul>
-              {p.current
-                ? <div className="mt-3 text-center text-[11px] font-bold text-g-muted">{tr("Your plan")}</div>
-                : <a href={waLink(`I'd like the ${p.name} plan ($${p.price}/mo)`)} target="_blank" rel="noopener" className={`mt-3 block text-center text-sm ${p.price > 149 ? "btn-bright" : "btn-ghost"}`}>{p.price > 149 ? tr("Upgrade →") : tr("Switch →")}</a>}
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* Referral credits — a CAC-reducing growth loop on the existing credit system */}
-      {(() => {
-        const code = `GUI-${(V.business.name || "GUILEO").replace(/[^A-Za-z]/g, "").slice(0, 4).toUpperCase()}${vnum(V.label, "refcode", 100, 999)}`;
-        const link = `https://guileoai.com/?ref=${code}`;
-        const refs = portalApi.loadState("gui_referrals", 0);
-        const grant = () => { setC(credits + 250); portalApi.saveState("gui_referrals", refs + 1); toast("250 credits added ✓ — referral reward"); };
-        const copy = () => { try { navigator.clipboard.writeText(link); } catch { /* */ } toast("Invite link copied ✓"); };
-        return (
-          <Card className="border-g-gold/25 bg-g-gold/[0.05]">
-            <div className="flex items-center gap-3">
-              <span className="grid place-items-center h-10 w-10 rounded-xl bg-g-gold/15 text-g-gold"><FaGift /></span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word">{tr("Give 250, get 250 credits")}</div><div className="text-xs text-g-muted mt-0.5">Invite another business — you both get <span className="text-g-gold font-bold">{tr("250 free credits")}</span> when they join. {refs > 0 && <span className="text-g-green font-bold">{refs} joined so far.</span>}</div></div>
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <code className="flex-1 min-w-[140px] rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-xs font-mono text-g-light truncate">{link}</code>
-              <button onClick={copy} className="btn-ghost text-sm">{tr("Copy link")}</button>
-              <button onClick={grant} className="btn-bright text-sm">{tr("Simulate a referral →")}</button>
-            </div>
-          </Card>
-        );
-      })()}
-
-      {/* Go-live readiness — what's done vs what needs your keys to operate */}
-      <Card className="p-0 overflow-hidden border-g-green/20">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("🚀 Go-live readiness")}</span><span className="text-[10px] font-black uppercase text-g-green">{tr("Front ready")}</span></div>
-        <div className="divide-y divide-white/[0.06]">
-          {[
-            ["Product, AI & dashboard", "Built & validated", true],
-            ["Accounts that persist (Supabase)", "Needs your project keys", false],
-            ["Charge for credits & plans (Stripe)", "Needs your Stripe keys", false],
-            ["Real integrations (OAuth)", "Needs your app approvals", false],
-            ["Public domain & publish", "Needs your DNS + your OK", false],
-          ].map(([label, st, done]) => (
-            <div key={label} className="flex items-center gap-3 px-5 py-3">
-              <span className={done ? "text-g-green" : "text-g-muted"}>{done ? <FaCircleCheck size={14} /> : "○"}</span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word">{label}</div><div className="text-[11px] text-g-muted">{st}</div></div>
-            </div>
-          ))}
-        </div>
-        <div className="px-5 py-3 border-t border-white/10 flex items-center justify-between gap-3">
-          <span className="text-[11px] text-g-muted">{tr("Our team wires each connection with you — no code or config needed from you.")}</span>
-          <a href={waLink("I'm ready to take Guileo live — let's connect the backend")} target="_blank" rel="noopener" className="btn-bright text-sm shrink-0">{tr("I have the keys →")}</a>
-        </div>
-      </Card>
-
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Invoices")}</div>
-        <div className="divide-y divide-white/[0.06]">
-          {invoices.map(([n, d, s], i) => (
-            <div key={i} className="flex items-center gap-3 px-5 py-3"><span className="text-lg">🧾</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word">{n}</div><div className="text-[11px] text-g-muted">{d}</div></div><span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-g-green/15 text-g-green">{s}</span><button onClick={() => toast(`${n} downloaded ✓`)} aria-label={`Download ${n}`} className="text-g-gold hover:text-g-word transition"><FaDownload size={12} /></button></div>
-          ))}
-        </div>
-      </Card>
-      <p className="text-center text-[11px] text-g-muted">{tr("Payment is handled securely with your team — we never ask for card details in chat.")}</p>
-    </div>
-  );
-}
-
-function ScheduleScreen({ V }) {
-  const o = V.ops || {};
-  const [tick, setTick] = useState(0);
-  const sch = [...loadCreated(V.label, "schedule"), ...(o.schedule || [])];
-  const [sel, setSel] = useState(null);
-  const fillFromWaitlist = () => {
-    const w = genWaitlist(V)[0];
-    if (!w) { toast("Waitlist is empty"); return; }
-    pushCreated(V.label, "schedule", { time: "Filled", name: w.name, meta: `Filled from waitlist · ${w.want}`, status: "Pending", ch: w.ch, color: "#D6C29A" });
-    logImpact(V.label, `Filled a no-show slot from waitlist (${w.name})`, vnum(V.label, "fillval", 40, 160));
-    setTick((t) => t + 1); toast(`Open slot filled from waitlist with ${w.name} ✓ — logged to Guileo Impact`);
-  };
-  return (
-    <div className="space-y-4 stagger">
-      {o.stats && (
-        <div className="grid sm:grid-cols-3 gap-4">
-          {o.stats.map((s) => (<Card key={s.label}><div className="text-[11px] uppercase tracking-wide text-g-muted">{s.label}</div><div className={`text-2xl font-extrabold mt-1 ${s.tone === "good" ? "text-g-green" : "text-g-word"}`}>{s.value}</div></Card>))}
-        </div>
-      )}
-      {DEPOSIT[V.label] > 0 && (
-        <Card className="border-g-green/25 bg-g-green/[0.05]">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div><div className="text-sm font-extrabold text-g-word">🛡️ No-show protection · on</div><div className="text-xs text-g-muted mt-0.5">${DEPOSIT[V.label]} deposit held per booking · <b className="text-g-green">7 no-shows prevented</b> · $980 secured this month</div></div>
-            <div className="flex gap-2"><button onClick={fillFromWaitlist} className="btn-bright text-sm">{tr("Fill from waitlist →")}</button><button onClick={() => toast("Deposit rules updated ✓")} className="btn-ghost text-sm">{tr("Manage rules")}</button></div>
-          </div>
-        </Card>
-      )}
-      {sch.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(sch.reduce((m, r) => { m[r.status] = (m[r.status] || 0) + 1; return m; }, {})).map(([st, n]) => (
-            <span key={st} className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word">{st} <span className="text-g-muted">{n}</span></span>
-          ))}
-        </div>
-      )}
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{o.scheduleTitle || "Today"}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap a row for full details</span></div>
-        <div className="divide-y divide-white/[0.06]">
-          {sch.map((r, i) => {
-            const who = staffOf(V.label, i);
-            return (
-              <button key={i} onClick={() => setSel({ r, i, who })} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
-                <span className="text-xs font-bold text-g-light w-20 shrink-0 inline-block truncate align-middle" title={r.time}>{r.time}</span>
-                <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{r.name}{r.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">{tr("from chat")}</span>}</div><div className="text-[11px] text-g-muted truncate">{r.meta}{who ? <> · <span className="text-g-light">{who}</span></> : ""}{r.ch && r.ch !== "—" ? ` · ${r.ch}` : ""}</div></div>
-                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span>
-              </button>
-            );
-          })}
-        </div>
-      </Card>
-      {o.grid && (
-        <Card><div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{o.gridTitle}</div><div className="grid grid-cols-6 sm:grid-cols-8 gap-2">{o.grid.map((g, i) => (<div key={i} className={`grid place-items-center h-10 rounded-lg text-xs font-bold border ${g.on ? "border-g-green/50 bg-g-green/15 text-g-light" : "border-white/10 bg-white/[0.03] text-g-muted"}`}>{g.label}</div>))}</div></Card>
-      )}
-      {sel && (
-        <Drawer
-          title={sel.r.name}
-          subtitle={sel.r.meta}
-          badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: sel.r.color + "22", color: sel.r.color }}>{sel.r.status}</span>}
-          fields={[
-            ["Time", sel.r.time],
-            ["With", sel.who],
-            ["Location", roomOf(V.label, sel.i)],
-            ["Duration", _dur[sel.i % _dur.length]],
-            ["Channel", sel.r.ch && sel.r.ch !== "—" ? sel.r.ch : "—"],
-            ["Deposit", DEPOSIT[V.label] > 0 ? (/pending|new/i.test(sel.r.status) ? `$${DEPOSIT[V.label]} pending` : `$${DEPOSIT[V.label]} held ✓`) : "Not required"],
-            ["No-show risk", /pending|new|risk|follow/i.test(sel.r.status) ? "⚠ Higher" : "Low"],
-            ["Status", sel.r.status],
-          ]}
-          note={`Captured by your AI ${sel.r.ch && sel.r.ch !== "—" ? `via ${sel.r.ch}` : ""}. Confirmation + reminder sent automatically. ${/pending|new|follow/i.test(sel.r.status) ? "Awaiting confirmation — the AI will follow up." : "Confirmed and on the books."}`}
-          actions={<>
-            <a href={waLink(`Hi ${sel.r.name}, about your ${sel.r.meta}…`)} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Message</a>
-            <button onClick={() => { toast(`${sel.r.name} confirmed ✓`); setSel(null); }} className="btn-ghost text-sm">✓ Confirm</button>
-            <button onClick={() => { const amt = vnum(V.label, "svcval", 60, 220); logImpact(V.label, `${sel.r.name} · ${sel.r.meta} completed`, amt); toast(`${sel.r.name} marked completed ✓ — $${amt} logged to Guileo Impact`); setSel(null); }} className="btn-ghost text-sm">✓ Completed</button>
-            <button onClick={() => { toast("Reschedule link sent"); setSel(null); }} className="btn-ghost text-sm">📅 Reschedule</button>
-          </>}
-          onClose={() => setSel(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-function CatalogScreen({ V }) {
-  const o = V.ops || {}; const list = o.list || [];
-  const max = Math.max(1, ...list.map((x) => x.val));
-  return (
-    <Card className="p-0 overflow-hidden">
-      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{o.listTitle || "Catalog"}</div>
-      <div className="p-5 space-y-3.5">
-        {list.map((it, i) => (
-          <div key={i}><div className="flex justify-between text-xs mb-1"><span className="font-bold text-g-word">{it.name}</span><span className="text-g-muted">{it.val}</span></div><div className="h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${(it.val / max) * 100}%` }} /></div></div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-function SocialInbox({ V }) {
-  const nets = [[FaInstagram, "#E4405F", "Instagram"], [FaFacebook, "#1877F2", "Facebook"], [FaTiktok, "#e7e7e7", "TikTok"], [FaInstagram, "#E4405F", "Instagram"]];
-  const rows = (V.activity || []).slice(0, 4).map((a, i) => ({ name: (V.ops?.schedule?.[i]?.name) || "New DM", last: a[2], t: a[3], unread: i % 2, ...{ net: nets[i % 4][2], color: nets[i % 4][1] } }));
-  const [sel, setSel] = useState(null);
-  return (
-    <div className="space-y-4 stagger">
-      <div className="flex flex-wrap gap-2">
-        {[["Instagram", "#E4405F", 18], ["Facebook", "#1877F2", 9], ["TikTok", "#e7e7e7", 6]].map(([n, c, v]) => (
-          <span key={n} className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word"><span className="h-2 w-2 rounded-full" style={{ background: c }} />{n} <span className="text-g-muted">{v} replies today</span></span>
-        ))}
-      </div>
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Social inbox · AI replies on Instagram, Facebook & TikTok")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap to open</span></div>
-        <div className="divide-y divide-white/[0.06]">
-          {rows.map((c, i) => {
-            const [Icon, color, net] = nets[i % 4];
-            return (
-              <button key={i} onClick={() => setSel(c)} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
-                <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06]" style={{ color }}><Icon size={16} /></span>
-                <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.name} <span className="text-g-muted font-normal">· {net}</span></div><div className="text-[11px] text-g-muted truncate">{c.last}</div></div>
-                <div className="text-right shrink-0 flex flex-col items-end gap-1"><span className="text-[10px] text-g-muted">{c.t}</span>{c.unread > 0 && <span className="inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-g-green text-[10px] font-bold text-black">{c.unread}</span>}</div>
-              </button>
-            );
-          })}
-          {rows.length === 0 && <Empty icon="💬" text="No social DMs yet — your AI replies on Instagram, Facebook & TikTok the moment they arrive." />}
-        </div>
-      </Card>
-      {sel && (
-        <Drawer
-          title={sel.name}
-          subtitle={`${sel.net} · direct message`}
-          badge={<span className="text-[10px] font-black uppercase text-g-green inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("AI replied")}</span>}
-          fields={[["Channel", sel.net], ["When", sel.t], ["Status", "Auto-replied by AI"]]}
-          note={<>"{sel.last}"<div className="mt-2 text-g-muted">Your AI already replied on {sel.net} and offered to book — it only pings you if a human is needed.</div></>}
-          actions={<><button onClick={() => { toast(`Reply sent on ${sel.net} ✓`); setSel(null); }} className="btn-bright text-sm">💬 Reply</button><button onClick={() => { toast("Marked as handled ✓"); setSel(null); }} className="btn-ghost text-sm">✓ Mark handled</button></>}
-          onClose={() => setSel(null)}
-        />
-      )}
-    </div>
-  );
-}
 
 // What customers ask the AI, the missed-revenue insights, and sample transcripts —
 // all per-sector so AI Analytics reads true for a clinic or a law firm, not just a restaurant.
-const BOOK_WORD = { "Restaurant": "a table", "Clinic": "an appointment", "Medical": "an appointment", "Salon & Spa": "an appointment", "Gym & Fitness": "a session", "Law Firm": "a consultation", "Real Estate": "a viewing", "Plumbing & HVAC": "a visit", "Auto Dealership": "a service slot", "Education": "a class", "Construction": "an estimate", "E-Commerce": "an order" };
-function aiIntents(V) {
+export const BOOK_WORD = { "Restaurant": "a table", "Clinic": "an appointment", "Medical": "an appointment", "Salon & Spa": "an appointment", "Gym & Fitness": "a session", "Law Firm": "a consultation", "Real Estate": "a viewing", "Plumbing & HVAC": "a visit", "Auto Dealership": "a service slot", "Education": "a class", "Construction": "an estimate", "E-Commerce": "an order" };
+export function aiIntents(V) {
   const primary = { "Restaurant": "Booking / reservation", "Clinic": "Appointment booking", "Medical": "Appointment booking", "Salon & Spa": "Appointment booking", "Gym & Fitness": "Class / session booking", "Law Firm": "Consultation request", "Real Estate": "Viewing request", "Plumbing & HVAC": "Service request", "Auto Dealership": "Service / test-drive", "Education": "Enrollment request", "Construction": "Estimate request", "E-Commerce": "Order / status" }[V.label] || "Booking request";
   return [[primary, 41], ["Hours & location", 22], ["Pricing", 18], ["Status / follow-up", 12], ["Complaint", 7]];
 }
-function aiMissed(V) {
+export function aiMissed(V) {
   const iq = SECTOR_IQ[V.label];
   if (iq) return [...iq.missed, "Demand peaks beyond capacity at busy hours — push the waitlist / pre-booking to capture it."];
   const svc = (V.ops?.list?.[0]?.name) || "a service";
@@ -3628,7 +1494,7 @@ function aiMissed(V) {
   ];
 }
 // Proactive AI recommendations — each one applies in a click and lands in its tab.
-function genRecommendations(V) {
+export function genRecommendations(V) {
   const iq = SECTOR_IQ[V.label];
   const t = iq ? iq.recs : ["Your quietest weekday runs ~30% below capacity — a targeted promo fills it.", "A dozen happy customers haven't been asked for a review yet — reviews drive new demand.", "Several customers lapsed in the last 30 days — a win-back sequence recovers ~1 in 4."];
   return [
@@ -3638,7 +1504,7 @@ function genRecommendations(V) {
   ];
 }
 // Predictive AI — demand forecast + no-show risk, derived deterministically per sector.
-function genForecast(V) {
+export function genForecast(V) {
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const load = days.map((d) => vnum(V.label, `fc${d}`, 45, 130));
   const peakIdx = load.indexOf(Math.max(...load));
@@ -3647,7 +1513,7 @@ function genForecast(V) {
   return { days, load, peak: days[peakIdx], peakLoad: load[peakIdx], low: days[lowIdx], risk };
 }
 // How the business stacks up vs its sector average — deterministic, all favorable.
-function genBenchmarks(V) {
+export function genBenchmarks(V) {
   return [
     { label: "AI response time", you: "under 5s", avg: "4 min", delta: "60× faster", better: true },
     { label: "No-show rate", you: `${vnum(V.label, "bmns", 3, 7)}%`, avg: `${vnum(V.label, "bmnsavg", 14, 22)}%`, delta: "less than half", better: true },
@@ -3655,115 +1521,7 @@ function genBenchmarks(V) {
     { label: "Reviews per month", you: `${vnum(V.label, "bmrev", 60, 130)}`, avg: `${vnum(V.label, "bmrevavg", 14, 30)}`, delta: "3–4×", better: true },
   ];
 }
-// Consolidated AI Insights tab — recommendations (apply in 1 click) + demand/no-show
-// forecast + industry benchmarks, all in one place.
-function AIInsights({ V, onNav, sections = [] }) {
-  const has = new Set(sections.map(([k]) => k));
-  const recs = genRecommendations(V).filter((r) => has.has(r.view));
-  const fc = genForecast(V);
-  const fcMax = Math.max(...fc.load);
-  const missed = aiMissed(V);
-  return (
-    <div className="space-y-4 stagger">
-      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
-        <div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaBrain className="text-g-green" /> AI Insights</div>
-        <div className="text-xs text-g-muted mt-0.5">{tr("What your AI sees in your numbers — and the exact moves to grow faster. Apply any of them in one click.")}</div>
-      </Card>
 
-      <Card className="border-g-gold/30 bg-g-gold/[0.05] p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("⚡ Recommended by your AI · apply in one click")}</div>
-        <div className="divide-y divide-white/[0.06]">
-          {recs.map((r, i) => (
-            <div key={i} className="flex items-center gap-3 px-5 py-3">
-              <span className="text-lg shrink-0">{r.ic}</span>
-              <div className="flex-1 min-w-0 text-xs text-g-word leading-snug">{r.text}</div>
-              <button onClick={() => r.apply(onNav)} className="text-[11px] font-bold rounded-full border border-g-green/40 bg-g-green/[0.1] px-3 py-1.5 text-g-green hover:bg-g-green/20 transition shrink-0">{r.cta} →</button>
-            </div>
-          ))}
-        </div>
-        <div className="px-5 py-2.5 border-t border-white/[0.06] text-[11px] text-g-muted">{missed[0]}</div>
-      </Card>
-
-      <div className="grid lg:grid-cols-2 gap-4">
-        <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-1">{tr("🔮 Predicted demand · next 7 days")}</div>
-          <div className="text-[11px] text-g-muted mb-3"><b className="text-g-green">{fc.peak}</b> peaks at <b className="text-g-word">{fc.peakLoad}%</b> — open more capacity. <b className="text-g-muted">{fc.low}</b> is quietest — a promo fills it.</div>
-          <div className="flex items-end gap-1.5 h-24">
-            {fc.load.map((v, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                <div className="w-full rounded-t" style={{ height: `${(v / fcMax) * 100}%`, background: v >= 100 ? "#EF4444" : v >= 80 ? "#D6C29A" : "#3E9468", minHeight: "4px" }} title={`${v}%`} />
-                <span className="text-[9px] text-g-muted">{fc.days[i]}</span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-2 flex items-center gap-3 text-[9px] text-g-muted"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-g-green" />{tr("Normal")}</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: "#D6C29A" }} />{tr("Busy")}</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-red-500" />{tr("Over capacity")}</span></div>
-        </Card>
-        <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("⚠ No-show risk · AI flagged")}</div>
-          <div className="divide-y divide-white/[0.06]">
-            {fc.risk.length ? fc.risk.map((name, i) => (
-              <div key={i} className="flex items-center gap-3 px-5 py-3">
-                <span className="h-1.5 w-1.5 rounded-full bg-red-400 shrink-0" />
-                <div className="flex-1 min-w-0 text-sm font-bold text-g-word truncate">{name}</div>
-                <button onClick={() => toast(`Deposit + reminder sent to ${name} ✓`)} className="text-[11px] font-bold rounded-full border border-white/12 px-2.5 py-1 text-g-word hover:border-g-gold/40 transition">{tr("Secure")}</button>
-              </div>
-            )) : <Empty icon="✅" text="No high-risk bookings — your AI's reminders are keeping no-shows low." />}
-          </div>
-        </Card>
-      </div>
-
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">📊 How you compare · vs {V.label.toLowerCase()} average</div>
-        <div className="divide-y divide-white/[0.06]">
-          {genBenchmarks(V).map((b, i) => (
-            <div key={i} className="flex items-center gap-3 px-5 py-3">
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{b.label}</div><div className="text-[11px] text-g-muted">You: <b className="text-g-green">{b.you}</b> · Industry avg: {b.avg}</div></div>
-              <span className="text-[10px] font-black uppercase text-g-green inline-flex items-center gap-1 shrink-0"><FaArrowTrendUp size={10} /> {b.delta}</span>
-            </div>
-          ))}
-        </div>
-        <div className="px-5 py-2.5 border-t border-white/[0.06] text-[11px] text-g-muted">{tr("You're outperforming your sector on every metric your AI touches.")}</div>
-      </Card>
-    </div>
-  );
-}
-
-function AIAnalytics({ V, onNav, sections = [] }) {
-  const sentiment = [["Positive", 82, "#3E9468"], ["Neutral", 13, "#D6C29A"], ["Negative", 5, "#EF4444"]];
-  const intents = aiIntents(V);
-  const missed = aiMissed(V);
-  const names = (V.ops?.schedule || []).map((r) => r.name).filter(Boolean);
-  const ch1 = (V.channelMix?.items?.[0]?.[0]) || "Phone";
-  const book = BOOK_WORD[V.label] || "an appointment";
-  const svc = (V.ops?.list?.[0]?.name) || "your services";
-  const T = V.transcripts || [
-    { who: names[0] || "A customer", ch: ch1, sent: "Positive", lines: [["them", `Can I book ${book} for tomorrow?`], ["ai", `Of course! What time works best? I'll lock it in.`], ["them", "Around 2pm?"], ["ai", `2pm tomorrow it is — booked ✅ You'll get a reminder the day before.`]] },
-    { who: names[1] || "Another customer", ch: "WhatsApp", sent: "Positive", lines: [["them", `How much is ${svc.toLowerCase()}?`], ["ai", `Happy to help — it depends on a couple of details. Can I ask what you need?`], ["them", "Just the basics for now."], ["ai", `Got it — I'll send a quick quote on WhatsApp and can book you in if it looks good. 👍`]] },
-  ];
-  return (
-    <div className="space-y-4 stagger">
-      <MiniStats items={[["Conversations analyzed", vnum(V.label, "convan", 980, 3200).toLocaleString()], ["Avg sentiment", "Positive 👍", "good"], ["Resolved by AI", `${vnum(V.label, "resai", 86, 95)}%`, "good"], ["Avg handle time", `1m ${vnum(V.label, "handle", 4, 52)}s`]]} />
-      <div className="grid lg:grid-cols-2 gap-4">
-        <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("Sentiment")}</div>
-          {sentiment.map(([l, v, c]) => (<div key={l} className="mb-2.5 last:mb-0"><div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{l}</span><span className="text-g-muted">{v}%</span></div><div className="h-2 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full" style={{ width: `${v}%`, background: c }} /></div></div>))}
-        </Card>
-        <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("Why people contact you")}</div>
-          {intents.map(([l, v]) => (<div key={l} className="mb-2.5 last:mb-0"><div className="flex justify-between text-xs mb-1"><span className="text-g-word font-semibold">{l}</span><span className="text-g-muted">{v}%</span></div><div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-g-green" style={{ width: `${(v / 41) * 100}%` }} /></div></div>))}
-        </Card>
-      </div>
-      <div className="grid lg:grid-cols-2 gap-4">
-        {T.map((t, i) => (
-          <Card key={i} className="p-0 overflow-hidden">
-            <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold text-g-word">{t.who} · {t.ch}</span><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-g-green/15 text-g-green">{t.sent}</span></div>
-            <div className="p-4 space-y-2">{t.lines.map(([from, text], j) => (<div key={j} className={`flex ${from === "them" ? "justify-start" : "justify-end"}`}><div className={`max-w-[80%] rounded-2xl px-3 py-1.5 text-xs ${from === "them" ? "bg-white/[0.06] text-g-word" : "bg-g-green/15 text-g-light border border-g-green/30"}`}>{text}</div></div>))}</div>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function Palette({ V, sections, onNav, onClose }) {
   const [q, setQ] = useState("");
@@ -3788,7 +1546,7 @@ function Palette({ V, sections, onNav, onClose }) {
   return (
     <>
       <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed left-1/2 top-20 sm:top-24 -translate-x-1/2 z-50 w-[92%] max-w-lg rounded-xl3 border border-white/12 bg-g-cream/95 backdrop-blur-xl shadow-2xl overflow-hidden">
+      <div className="fixed left-1/2 top-20 sm:top-24 -translate-x-1/2 z-50 w-[92%] max-w-lg rounded-xl3 border border-white/15 bg-g-cream/95 backdrop-blur-xl shadow-2xl overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10"><FaMagnifyingGlass size={13} className="text-g-muted" /><input autoFocus value={q} onChange={(e) => setQ(e.target.value)} aria-label={tr("Search or run a command")} placeholder={tr("Search or run a command…")} className="flex-1 bg-transparent text-sm text-g-word placeholder:text-g-muted outline-none" /><span className="text-[10px] text-g-muted border border-white/15 rounded px-1.5 py-0.5">ESC</span></div>
         <div className="max-h-80 overflow-y-auto p-1.5">
           {res.length ? res.map((it, i) => (
@@ -3804,456 +1562,14 @@ function Palette({ V, sections, onNav, onClose }) {
   );
 }
 
-// Multi-location — run every branch from one dashboard.
-function Locations({ V }) {
-  const rows = [...loadCreated(V.label, "locations"), ...genLocations(V)];
-  const totalRev = rows.reduce((s, r) => s + (r.revenue || 0), 0);
-  const [sel, setSel] = useState(null);
-  const addLocation = () => { pushCreated(V.label, "locations", { name: `${V.business.name} · New branch`, addr: "New address", status: "Onboarding", revenue: 0, staff: 0, today: 0 }); toast("Location added ✓ — your AI is now covering it too"); };
-  return (
-    <div className="space-y-4 stagger">
-      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaLocationDot className="text-g-green" /> {tr("Locations")}</div><div className="text-xs text-g-muted mt-0.5">{tr("One AI, every branch — calls, bookings and orders routed to the right location automatically.")}</div></div>
-          <button onClick={addLocation} className="btn-bright text-sm inline-flex items-center gap-2"><FaPlus size={11} /> Add location</button>
-        </div>
-      </Card>
-      <MiniStats items={[["Locations", `${rows.length}`], ["Revenue (all)", `$${totalRev.toLocaleString()}`, "good"], ["Open now", `${rows.filter((r) => r.status !== "Onboarding").length}`, "good"], ["Today's volume", `${rows.reduce((s, r) => s + (r.today || 0), 0)}`]]} />
-      <div className="grid sm:grid-cols-2 gap-4">
-        {rows.map((r, i) => (
-          <button key={i} onClick={() => setSel(r)} className="text-left">
-            <Card className="hover:border-g-gold/30 transition">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{r.name}{r.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">{tr("new")}</span>}</div><div className="text-[11px] text-g-muted">{r.addr}</div></div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ background: (r.status === "Open" ? "#3E9468" : r.status === "Busy" ? "#D6C29A" : "#38BDF8") + "22", color: r.status === "Open" ? "#3E9468" : r.status === "Busy" ? "#D6C29A" : "#38BDF8" }}>{r.status}</span>
-              </div>
-              <div className="mt-3 flex items-center gap-4 text-xs"><span className="font-extrabold text-g-word">${(r.revenue || 0).toLocaleString()}<span className="text-g-muted font-normal"> /mo</span></span><span className="text-g-muted">{r.staff} staff</span><span className="text-g-muted">{r.today} today</span></div>
-            </Card>
-          </button>
-        ))}
-      </div>
-      {sel && (
-        <Drawer
-          title={sel.name}
-          subtitle={sel.addr}
-          badge={<span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: (sel.status === "Open" ? "#3E9468" : sel.status === "Busy" ? "#D6C29A" : "#38BDF8") + "22", color: sel.status === "Open" ? "#3E9468" : sel.status === "Busy" ? "#D6C29A" : "#38BDF8" }}>{sel.status}</span>}
-          fields={[["Address", sel.addr], ["Revenue (mo.)", `$${(sel.revenue || 0).toLocaleString()}`], ["Staff", sel.staff], ["Volume today", sel.today], ["Status", sel.status]]}
-          note={sel.status === "Onboarding" ? "New branch — your AI is being set up to cover its calls, bookings and chats." : `Fully live — the AI handles ${sel.name}'s customers 24/7 alongside every other branch.`}
-          actions={<><button onClick={() => { toast(`${sel.name} set as default ✓`); setSel(null); }} className="btn-bright text-sm">⭐ Set default</button><a href={waLink(`Hi Guileo, about ${sel.name}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">💬 Manage</a></>}
-          onClose={() => setSel(null)}
-        />
-      )}
-    </div>
-  );
-}
 
-// Team & staff — manage the people, see who the AI is feeding work to.
-function Team({ V }) {
-  const rows = [...loadCreated(V.label, "team"), ...genTeam(V)];
-  const active = rows.filter((r) => r.status === "Active");
-  const totalRev = active.reduce((s, r) => s + (r.revenue || 0), 0);
-  const avgRating = active.length ? (active.reduce((s, r) => s + (r.rating || 0), 0) / active.length).toFixed(1) : "—";
-  const [sel, setSel] = useState(null);
-  const invite = () => { pushCreated(V.label, "team", { name: "New teammate", role: TEAM_ROLE[V.label] || "Team member", status: "Invited", handled: 0, revenue: 0, rating: 0 }); toast("Invite link sent ✓ — they'll appear once they join"); };
-  return (
-    <div className="space-y-4 stagger">
-      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaUsers className="text-g-green" /> {tr("Team & staff")}</div><div className="text-xs text-g-muted mt-0.5">{tr("Your AI routes bookings, calls and chats to the right person — and tracks who's performing.")}</div></div>
-          <button onClick={invite} className="btn-bright text-sm inline-flex items-center gap-2"><FaUserPlus size={11} /> Invite member</button>
-        </div>
-      </Card>
-      <MiniStats items={[["Team size", `${rows.length}`], ["Bookings handled", `${active.reduce((s, r) => s + (r.handled || 0), 0)}`, "good"], ["Revenue (team)", `$${totalRev.toLocaleString()}`, "good"], ["Avg rating", `${avgRating} ★`, "good"]]} />
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Your team")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap a member</span></div>
-        <div className="divide-y divide-white/[0.06]">
-          {rows.map((m, i) => (
-            <button key={i} onClick={() => setSel(m)} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
-              <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{m.name[0]}</span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{m.name}{m.status === "Invited" && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">{tr("invited")}</span>}</div><div className="text-[11px] text-g-muted">{m.role}{m.status === "Active" ? ` · ${m.handled} handled · ${m.rating}★` : " · awaiting join"}</div></div>
-              {m.status === "Active" && <span className="text-sm font-extrabold text-g-green">${(m.revenue || 0).toLocaleString()}</span>}
-            </button>
-          ))}
-        </div>
-      </Card>
-      {sel && (
-        <Drawer
-          title={sel.name}
-          subtitle={sel.role}
-          badge={<span className={`text-[10px] font-black uppercase ${sel.status === "Active" ? "text-g-green" : "text-g-gold"}`}>{sel.status}</span>}
-          fields={sel.status === "Active" ? [["Role", sel.role], ["Bookings handled", sel.handled], ["Revenue (mo.)", `$${(sel.revenue || 0).toLocaleString()}`], ["Rating", `${sel.rating} ★`], ["Status", "Active"]] : [["Role", sel.role], ["Status", "Invited · awaiting join"]]}
-          note={sel.status === "Active" ? `The AI assigns work to ${sel.name} based on availability and skills — and flags it to you if they're overloaded.` : "Invite sent — they'll get access once they accept."}
-          actions={<><a href={waLink(`Hi ${sel.name}! `)} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Message</a><button onClick={() => { toast(`${sel.name} set as lead ✓`); setSel(null); }} className="btn-ghost text-sm">⭐ Make lead</button><button onClick={() => { toast(`Shift scheduled for ${sel.name} ✓`); setSel(null); }} className="btn-ghost text-sm">📅 Schedule shift</button></>}
-          onClose={() => setSel(null)}
-        />
-      )}
-    </div>
-  );
-}
 
-// Payments & invoicing — the AI sends invoices/payment links and chases unpaid ones.
-// Collecting a payment feeds the Guileo Impact ledger.
-function Payments({ V }) {
-  const rows = [...loadCreated(V.label, "payments"), ...genPayments(V)];
-  const [paid, setPaid] = useState([]); // ids marked paid this session
-  const [sel, setSel] = useState(null);
-  const statusOf = (r) => (paid.includes(r.id) ? "Paid" : r.status);
-  const colorOf = (r) => (paid.includes(r.id) ? "#3E9468" : r.color);
-  const collected = rows.filter((r) => statusOf(r) === "Paid").reduce((s, r) => s + r.amount, 0);
-  const outstanding = rows.filter((r) => statusOf(r) !== "Paid").reduce((s, r) => s + r.amount, 0);
-  const markPaid = (r) => { setPaid((p) => [...p, r.id]); logImpact(V.label, `${r.id} paid by ${r.customer}`, r.amount); setSel(null); toast(`${r.id} marked paid ✓ — $${r.amount} logged to Guileo Impact`); };
-  const newInvoice = () => { const c = (V.customers || genCustomers(V))[0]; pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: c?.name || "New customer", amount: vnum(V.label, "newinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); toast("Payment link sent ✓ — invoice added"); };
-  return (
-    <div className="space-y-4 stagger">
-      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaCreditCard className="text-g-green" /> {tr("Payments & invoicing")}</div><div className="text-xs text-g-muted mt-0.5">{tr("Your AI sends invoices + payment links and chases unpaid ones automatically — you just watch the money land.")}</div></div>
-          <button onClick={newInvoice} className="btn-bright text-sm inline-flex items-center gap-2"><FaPlus size={11} /> New invoice</button>
-        </div>
-      </Card>
-      <MiniStats items={[["Collected", `$${collected.toLocaleString()}`, "good"], ["Outstanding", `$${outstanding.toLocaleString()}`], ["Paid invoices", `${rows.filter((r) => statusOf(r) === "Paid").length}`, "good"], ["Avg. days to pay", `${vnum(V.label, "daystopay", 1, 6)}`]]} />
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Invoices & payments")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap to manage</span></div>
-        <div className="divide-y divide-white/[0.06]">
-          {rows.map((r, i) => (
-            <button key={i} onClick={() => setSel(r)} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
-              <span className="text-xs font-bold text-g-light w-20 shrink-0">{r.id}</span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{r.customer}{r.fromChat && <span className="text-[8px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1 py-0.5">{tr("new")}</span>}</div><div className="text-[11px] text-g-muted">{r.method} · {r.due}</div></div>
-              <span className={`text-sm font-extrabold num ${statusOf(r) === "Paid" ? "text-g-green money-glow" : statusOf(r) === "Overdue" ? "text-red-400" : "text-g-word"}`}>${r.amount.toLocaleString()}</span>
-              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: colorOf(r) + "22", color: colorOf(r) }}>{statusOf(r)}</span>
-            </button>
-          ))}
-        </div>
-      </Card>
-      {sel && (
-        <Drawer
-          title={`${sel.id} · ${sel.customer}`}
-          subtitle={`${sel.method} · ${sel.due}`}
-          badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: colorOf(sel) + "22", color: colorOf(sel) }}>{statusOf(sel)}</span>}
-          fields={[["Amount", `$${sel.amount.toLocaleString()}`], ["Method", sel.method], ["Due", sel.due], ["Status", statusOf(sel)]]}
-          note={statusOf(sel) === "Paid" ? "Paid & reconciled — logged to your growth." : statusOf(sel) === "Overdue" ? "⚠ Overdue — the AI is sending payment reminders automatically." : "Awaiting payment — the AI follows up until it's settled."}
-          actions={statusOf(sel) === "Paid"
-            ? <a href={waLink(`Hi ${sel.customer}, thanks for your payment on ${sel.id}!`)} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Thank</a>
-            : <><button onClick={() => markPaid(sel)} className="btn-bright text-sm">✓ Mark paid</button><button onClick={() => { toast(`Payment link re-sent to ${sel.customer} ✓`); setSel(null); }} className="btn-ghost text-sm">🔗 Send link</button><button onClick={() => { toast("Reminder sent ✓"); setSel(null); }} className="btn-ghost text-sm">⏰ Remind</button></>}
-          onClose={() => setSel(null)}
-        />
-      )}
-    </div>
-  );
-}
 
-// Loyalty & referrals — recurring engagement + word-of-mouth growth. Rewards and
-// converted referrals feed the Guileo Impact ledger (real growth Guileo drove).
-function Loyalty({ V }) {
-  const cfg = loyaltyCfg(V);
-  const members = genLoyaltyMembers(V);
-  const refs = genReferrals(V);
-  const [on, setOn] = useState(() => portalApi.loadState(`${V.label}:loyalty`, true));
-  useEffect(() => { setOn(portalApi.loadState(`${V.label}:loyalty`, true)); }, [V.label]);
-  const flip = () => setOn((o) => { const v = !o; portalApi.saveState(`${V.label}:loyalty`, v); toast(`Loyalty program ${v ? "on ✓" : "off"}`); return v; });
-  const [joined, setJoined] = useState([]); // referrals marked joined this session
-  const reward = (m) => { logImpact(V.label, `${m.name} redeemed ${cfg.reward}`, 14); toast(`Reward sent to ${m.name} ✓ — logged to Guileo Impact`); };
-  const convert = (r, i) => { setJoined((j) => [...j, i]); logImpact(V.label, `Referral from ${r.name} joined`, r.reward * 6); toast(`Referral converted ✓ — $${r.reward * 6} new-customer value logged to Guileo Impact`); };
-  const copyLink = () => { try { navigator.clipboard?.writeText(`https://refer.guileoai.com/${V.label.toLowerCase().replace(/\W+/g, "")}`); } catch { /* blocked */ } toast("Referral link copied ✓"); };
-  const tierColor = (t) => (t === "Gold" ? "#D4A520" : t === "Silver" ? "#9ca3af" : "#B0764A");
-  const [cards, setCards] = useState(() => loadCreated(V.label, "giftcards"));
-  useEffect(() => { setCards(loadCreated(V.label, "giftcards")); }, [V.label]);
-  const sellGift = (amt) => { pushCreated(V.label, "giftcards", { code: `GC-${1000 + (Date.now() % 9000)}`, balance: amt, original: amt }); setCards(loadCreated(V.label, "giftcards")); logImpact(V.label, `Gift card sold ($${amt})`, amt); toast(`$${amt} gift card sold ✓ — logged to Guileo Impact`); };
-  const redeem = (code, amt) => { const next = cards.map((c) => (c.code === code ? { ...c, balance: Math.max(0, c.balance - amt) } : c)); portalApi.saveState(createdKey(V.label, "giftcards"), next); setCards(next); toast(`$${amt} redeemed from ${code} ✓`); };
-  const liveBalance = cards.reduce((s, c) => s + (c.balance || 0), 0);
 
-  return (
-    <div className="space-y-4 stagger">
-      <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaGift className="text-g-gold" /> Loyalty & referrals</div><div className="text-xs text-g-muted mt-0.5">Earn rule: {cfg.earn} · Reward: {cfg.reward}. Your AI enrolls, reminds and rewards automatically.</div></div>
-          <div className="flex items-center gap-2"><span className="text-[11px] font-bold text-g-muted">{on ? "Active" : "Off"}</span><Toggle on={on} onClick={flip} /></div>
-        </div>
-      </Card>
 
-      <MiniStats items={[["Members", `${members.length * 86}`], [`${cfg.unit} outstanding`, vnum(V.label, "ptsout", 4000, 24000).toLocaleString()], ["Redemptions", `${vnum(V.label, "redeem", 12, 60)}`, "good"], ["Referral revenue", `$${vnum(V.label, "refrev", 600, 3400).toLocaleString()}`, "good"]]} />
 
-      <div className="grid lg:grid-cols-2 gap-4">
-        {/* Loyalty members */}
-        <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Top members")}</div>
-          <div className="divide-y divide-white/[0.06]">
-            {members.map((m, i) => (
-              <div key={i} className="flex items-center gap-3 px-5 py-3">
-                <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{m.name[0]}</span>
-                <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate flex items-center gap-1.5">{m.name}<span className="text-[9px] font-black uppercase rounded px-1.5 py-0.5" style={{ background: tierColor(m.tier) + "22", color: tierColor(m.tier) }}>{m.tier}</span></div><div className="text-[11px] text-g-muted">{m.pts.toLocaleString()} {cfg.unit}</div></div>
-                <button onClick={() => reward(m)} className="text-[11px] font-bold rounded-full border border-g-gold/35 bg-g-gold/[0.08] px-3 py-1.5 text-g-gold hover:bg-g-gold/[0.16] transition">{tr("🎁 Reward")}</button>
-              </div>
-            ))}
-          </div>
-        </Card>
 
-        {/* Referrals */}
-        <Card className="p-0 overflow-hidden flex flex-col">
-          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2"><FaUserPlus size={11} /> Referrals</div>
-          <div className="p-4 border-b border-white/[0.06]">
-            <div className="flex items-center gap-2 rounded-xl2 border border-white/12 bg-black/20 px-3 py-2">
-              <span className="flex-1 min-w-0 text-[11px] text-g-muted truncate">refer.guileoai.com/{V.label.toLowerCase().replace(/\W+/g, "")}</span>
-              <button onClick={copyLink} className="text-[11px] font-bold text-g-gold hover:text-g-word transition shrink-0">{tr("Copy link")}</button>
-            </div>
-            <div className="mt-1.5 text-[10px] text-g-muted">Each friend who joins earns both sides {cfg.reward}.</div>
-          </div>
-          <div className="divide-y divide-white/[0.06] flex-1">
-            {refs.map((r, i) => {
-              const isJoined = r.status === "Joined" || joined.includes(i);
-              return (
-                <div key={i} className="flex items-center gap-3 px-5 py-2.5">
-                  <span className="text-base">{isJoined ? "🎉" : "✉️"}</span>
-                  <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted truncate">{isJoined ? "referred a friend who joined" : r.note}</div></div>
-                  {isJoined
-                    ? <span className="text-[10px] font-black uppercase text-g-green">{tr("Joined")}</span>
-                    : <button onClick={() => convert(r, i)} className="text-[11px] font-bold rounded-full border border-g-green/40 bg-g-green/[0.1] px-2.5 py-1 text-g-green hover:bg-g-green/20 transition">{tr("Mark joined")}</button>}
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      </div>
 
-      {/* Gift cards — instant prepaid revenue, sold by the AI on chat/checkout */}
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2"><FaGift size={11} /> Gift cards</div>
-        <div className="p-4 flex flex-wrap items-center gap-4">
-          <div className="grid grid-cols-3 gap-2 text-center">
-            {[["Active balance", `$${(vnum(V.label, "giftbal", 800, 5200) + liveBalance).toLocaleString()}`], ["Sold this month", `${vnum(V.label, "giftsold", 8, 40) + cards.length}`], ["Cards live", `${cards.length}`]].map(([l, v]) => (
-              <div key={l} className="rounded-xl2 border border-white/10 bg-white/[0.03] px-3 py-2"><div className="text-[10px] uppercase tracking-wide text-g-muted">{l}</div><div className="text-base font-extrabold text-g-word mt-0.5">{v}</div></div>
-            ))}
-          </div>
-          <div className="flex-1 min-w-[180px]">
-            <div className="text-[11px] text-g-muted mb-1.5">{tr("Sell a gift card — the AI delivers it instantly on WhatsApp or at checkout.")}</div>
-            <div className="flex flex-wrap gap-2">{[25, 50, 100].map((amt) => (<button key={amt} onClick={() => sellGift(amt)} className="text-sm font-bold rounded-full border border-g-gold/35 bg-g-gold/[0.08] px-4 py-1.5 text-g-gold hover:bg-g-gold/[0.16] transition">Sell ${amt}</button>))}</div>
-          </div>
-        </div>
-        {cards.length > 0 && (
-          <div className="border-t border-white/[0.06] divide-y divide-white/[0.05]">
-            {cards.map((c) => (
-              <div key={c.code} className="flex items-center gap-3 px-5 py-2.5">
-                <span className="font-mono text-[11px] text-g-muted">{c.code}</span>
-                <div className="flex-1 min-w-0"><div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-gold to-g-green" style={{ width: `${(c.balance / c.original) * 100}%` }} /></div></div>
-                <span className="text-xs font-bold text-g-word whitespace-nowrap">${c.balance} <span className="text-g-muted font-normal">/ ${c.original}</span></span>
-                <button disabled={c.balance <= 0} onClick={() => redeem(c.code, Math.min(c.balance, 10))} className="text-[11px] font-bold rounded-full border border-white/12 px-2.5 py-1 text-g-word hover:border-g-gold/40 disabled:opacity-30 transition">Redeem $10</button>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
-    </div>
-  );
-}
-
-function GuileoImpact({ V }) {
-  const d = genImpact(V);
-  const created = loadCreated(V.label, "impact"); // events logged from operational actions
-  const events = [...created.map((e) => [e.t, e.what, e.amt]), ...d.events];
-  const extra = created.reduce((s, e) => s + (e.amt || 0), 0);
-  const total = d.total + extra;
-  // HONEST return: based on REAL credits spent (gui_usage ledger), not a fabricated % of growth.
-  const usage = portalApi.loadState("gui_usage", []);
-  const creditsUsed = Array.isArray(usage) ? usage.reduce((s, u) => s + (u?.cost || 0), 0) : 0;
-  const spentUsd = creditsUsed * 0.04; // ~ $0.04 / credit (pay-as-you-go)
-  const roi = spentUsd > 0 ? total / spentUsd : 0;
-  return (
-    <div className="space-y-4 stagger">
-      <Card className="relative overflow-hidden bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] border-g-green/30">
-        <div className="absolute -top-16 -right-12 h-44 w-44 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
-        <div className="relative">
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Growth Guileo drove · this month")}</div>
-          <div className="text-4xl sm:text-5xl font-black text-g-green money-glow num tracking-tight mt-1"><Count key={total} to={total} prefix="$" /></div>
-          <div className="mt-2.5 flex flex-wrap gap-2">{d.parts.map(([label, val]) => (<span key={label} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold"><span className="text-g-green num">{val}</span><span className="text-g-muted">{label}</span></span>))}</div>
-        </div>
-      </Card>
-      <div className="grid lg:grid-cols-3 gap-4">
-        <Card tone="green" className="lg:col-span-2 p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Growth ledger · every $ the AI generated")}</div>
-          <div className="divide-y divide-white/[0.06]">{events.map(([t, what, amt], i) => (<div key={i} style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }} className="row-in flex items-center gap-3 px-5 py-3"><span className="grid place-items-center h-8 w-8 rounded-full bg-g-green/15 text-g-green text-sm font-black">＋</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{what}</div><div className="text-[11px] text-g-muted">{t === "now" ? "just now" : `${t} ago`}</div></div><span className="text-sm font-extrabold text-g-green money-glow num">+${amt}</span></div>))}</div>
-        </Card>
-        <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">{tr("Your return")}</div>
-          <div className="text-sm text-g-muted">Gui drove <b className="text-g-word">${total.toLocaleString()}</b> in growth for you this month{creditsUsed ? <> · powered by <b className="text-g-word">{creditsUsed.toLocaleString()} credits</b></> : ""}.</div>
-          <div className="mt-3 rounded-xl2 border border-g-gold/30 bg-g-gold/[0.06] p-3">
-            <div className="text-[10px] uppercase tracking-wide text-g-gold font-bold">{tr("Return on credits")}</div>
-            <div className={`text-2xl font-extrabold num mt-1 ${roi > 0 ? "text-g-green money-glow" : "text-g-word"}`}>{roi > 0 ? `${roi.toFixed(1)}×` : "—"}</div>
-            <div className="text-[11px] text-g-muted mt-0.5">{roi > 0 ? <>Every $1 of credits returned <b className="text-g-word">${roi.toFixed(1)}</b> in growth.</> : "Run Gui this month to see your return."} Pay-as-you-go — you only pay for what Gui does. <b className="text-g-word">Guileo never takes a cut of your revenue.</b></div>
-            <button onClick={() => {
-              const lines = [["Date", "Growth event", "Amount"], ...events.map(([t, what, amt]) => [t === "now" ? "just now" : `${t} ago`, what, `$${amt}`]), ["", "Total growth Gui drove", `$${total}`], ["", "Credits used", `${creditsUsed}`], ["", "Return on credits", roi > 0 ? `${roi.toFixed(1)}x` : "-"]];
-              const csv = lines.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
-              const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-              const a = document.createElement("a"); a.href = url; a.download = `guileo-growth-statement-${V.label}.csv`; a.click(); URL.revokeObjectURL(url);
-              toast("Growth statement downloaded ✓");
-            }} className="btn-bright text-sm w-full mt-3 justify-center"><FaDownload size={11} /> Download growth statement</button>
-          </div>
-          <div className="mt-3"><Bars data={V.revenue} /></div>
-        </Card>
-      </div>
-    </div>
-  );
-}
-
-function Followups({ V }) {
-  const rows = genFollowups(V);
-  const [done, setDone] = useState(() => portalApi.loadState(`${V.label}:fups`, []));
-  const [sel, setSel] = useState(null);
-  useEffect(() => { setDone(portalApi.loadState(`${V.label}:fups`, [])); }, [V.label]);
-  const open = rows.map((r, i) => ({ r, i })).filter(({ i }) => !done.includes(i));
-  const pipeline = open.reduce((s, { r }) => s + r.value, 0);
-  const markWon = (i, name, value) => { setDone((d) => { const n = [...d, i]; portalApi.saveState(`${V.label}:fups`, n); return n; }); logImpact(V.label, `Won back ${name}`, value || 120); setSel(null); toast(`${name} marked won 🎉 — $${value || 120} logged to Guileo Impact`); };
-  return (
-    <div className="space-y-4 stagger">
-      <MiniStats items={[["Active sequences", `${open.length}`], ["Pipeline value", `$${pipeline.toLocaleString()}`], ["Won this week", `${vnum(V.label, "won", 4, 14)}`, "good"], ["Auto-nudged", `${vnum(V.label, "nudge", 18, 44)}`, "good"]]} />
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("The AI is chasing these — so you never lose them")}</div>
-        <div className="divide-y divide-white/[0.06]">
-          {open.map(({ r, i }) => (
-            <button key={i} onClick={() => setSel({ r, i })} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition">
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name} <span className="text-g-muted font-normal">· {r.type}</span></div><div className="text-[11px] text-g-muted">via {r.ch} · next: {r.next} · step {r.stage}/3</div></div>
-              <span className="text-sm font-extrabold text-g-green">${r.value}</span>
-              <div className="flex gap-1.5 shrink-0">
-                <span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); toast(`${r.name}: nudge sent`); }} className="text-[10px] font-bold rounded-full border border-white/15 px-2.5 py-1 text-g-word hover:border-g-gold/40 transition cursor-pointer">Nudge</span>
-                <span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); markWon(i, r.name, r.value); }} className="text-[10px] font-bold rounded-full bg-g-green/15 border border-g-green/40 px-2.5 py-1 text-g-green cursor-pointer">{tr("Won")}</span>
-              </div>
-            </button>
-          ))}
-          {open.length === 0 && <div className="px-5 py-8 text-center text-xs text-g-muted">{tr("✅ All caught up — every lead followed up.")}</div>}
-        </div>
-      </Card>
-      {sel && (
-        <Drawer
-          title={sel.r.name}
-          subtitle={sel.r.type}
-          badge={<span className="text-sm font-extrabold text-g-green">${sel.r.value}</span>}
-          fields={[["Type", sel.r.type], ["Channel", sel.r.ch], ["Next touch", sel.r.next], ["Sequence stage", `${sel.r.stage} of 3`], ["Pipeline value", `$${sel.r.value}`]]}
-          note={`The AI is running a ${sel.r.stage}-of-3 follow-up sequence via ${sel.r.ch}. It stops automatically the moment they convert or reply.`}
-          actions={<><button onClick={() => { toast(`${sel.r.name}: nudge sent`); setSel(null); }} className="btn-bright text-sm">{tr("Send nudge now")}</button><button onClick={() => markWon(sel.i, sel.r.name, sel.r.value)} className="btn-ghost text-sm">{tr("🎉 Mark won")}</button><a href={waLink(`Hi ${sel.r.name}, following up…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">{tr("💬 Message")}</a></>}
-          onClose={() => setSel(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-function Waitlist({ V }) {
-  const rows = genWaitlist(V);
-  const [filled, setFilled] = useState(() => portalApi.loadState(`${V.label}:wait`, []));
-  const [sel, setSel] = useState(null);
-  useEffect(() => { setFilled(portalApi.loadState(`${V.label}:wait`, [])); }, [V.label]);
-  const open = rows.map((r, i) => ({ r, i })).filter(({ i }) => !filled.includes(i));
-  // Restaurants book into Live Orders flow; appointment/field sectors have a Schedule.
-  const bookView = convoAction(V).view; // "schedule" for most, "liveorders" for restaurant
-  const offer = (i, name, want) => {
-    setFilled((f) => { const n = [...f, i]; portalApi.saveState(`${V.label}:wait`, n); return n; });
-    // Stitch: an accepted waitlist offer becomes a pending booking/reservation in its tab.
-    if (bookView === "schedule") {
-      pushCreated(V.label, "schedule", { time: "Offered", name, meta: `Waitlist · ${want || "open slot"}`, status: "Pending", ch: "WhatsApp", color: "#D6C29A" });
-      setSel(null); toast(`Slot offered to ${name} ✓ — pending booking added to your schedule`);
-    } else {
-      pushCreated(V.label, "liveorders", { id: `#${1000 + (Date.now() % 9000)}`, customer: name, items: `Reservation · ${want || "table"}`, total: 0, channel: "WhatsApp", status: "New", color: "#3E9468" });
-      setSel(null); toast(`Slot offered to ${name} ✓ — reservation added`);
-    }
-  };
-  return (
-    <div className="space-y-4 stagger">
-      <MiniStats items={[["Waiting now", `${open.length}`], ["Filled today", `${vnum(V.label, "filled", 5, 16)}`, "good"], ["No-shows saved", `${vnum(V.label, "noshow", 3, 11)}`, "good"], ["Revenue recovered", `$${vnum(V.label, "wrev", 800, 2600).toLocaleString()}`, "good"]]} />
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Waitlist · turn empty slots into revenue")}</div>
-        <div className="divide-y divide-white/[0.06]">
-          {open.map(({ r, i }) => (
-            <button key={i} onClick={() => setSel({ r, i })} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition">
-              <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{r.name[0]}</span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted">{r.want} · via {r.ch} · {r.since}</div></div>
-              <span onClick={(e) => { e.stopPropagation(); offer(i, r.name, r.want); }} role="button" className="btn-bright text-xs px-3 shrink-0">{tr("Offer slot")}</span>
-            </button>
-          ))}
-          {open.length === 0 && <div className="px-5 py-8 text-center text-xs text-g-muted">No one waiting — capacity is full. 🎉</div>}
-        </div>
-      </Card>
-      {sel && (
-        <Drawer
-          title={sel.r.name}
-          subtitle={`Wants: ${sel.r.want}`}
-          fields={[["Looking for", sel.r.want], ["Channel", sel.r.ch], ["Waiting", sel.r.since]]}
-          note={`The AI will text ${sel.r.name} the instant a matching slot frees up — first to reply keeps it. No empty chairs, no manual calls.`}
-          actions={<><button onClick={() => offer(sel.i, sel.r.name, sel.r.want)} className="btn-bright text-sm">{tr("Offer next open slot")}</button><a href={waLink(`Hi ${sel.r.name}, a slot just opened for ${sel.r.want}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">{tr("💬 Message")}</a></>}
-          onClose={() => setSel(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-function Reputation({ V, onNav }) {
-  const reviews = genReviews(V);
-  const dist = [["5★", 78], ["4★", 15], ["3★", 4], ["2★", 2], ["1★", 1]];
-  const [sel, setSel] = useState(null);
-  const [reqs, setReqs] = useState(() => loadCreated(V.label, "reviewreq")); // pending review requests
-  useEffect(() => { setReqs(loadCreated(V.label, "reviewreq")); }, [V.label]);
-  const blast = () => { (V.customers || genCustomers(V)).slice(0, 3).forEach((c) => pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel })); setReqs(loadCreated(V.label, "reviewreq")); toast("Review blast queued to recent customers ✓"); };
-  const boost = (r) => { pushCreated(V.label, "campaigns", { name: `⭐ ${r.name}'s ${r.stars}★ review → ad`, channel: r.ch || "Meta", sent: 0, opened: 0, revenue: 0, status: "Active" }); setSel(null); toast(`Review boosted as an ad ✓ — see it in Campaigns`); onNav?.("campaigns"); };
-  return (
-    <div className="space-y-4 stagger">
-      <MiniStats items={[["Avg rating", `${((46 + vnum(V.label, "rate", 0, 3)) / 10).toFixed(1)} ★`, "good"], ["Reviews this month", `${vnum(V.label, "revc", 40, 140)}`, "good"], ["Requests sent", `${vnum(V.label, "reqs", 200, 420) + reqs.length}`], ["Request → review", `${vnum(V.label, "conv", 24, 38)}%`, "good"]]} />
-      {reqs.length > 0 && (
-        <Card className="border-g-gold/25 bg-g-gold/[0.05]">
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-2">{tr("⭐ Review requests in flight")}</div>
-          <div className="flex flex-wrap gap-2">{reqs.map((r, i) => (<span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold text-g-word">{r.name} <span className="text-g-muted">· {r.ch || "WhatsApp"} · awaiting</span></span>))}</div>
-        </Card>
-      )}
-      <div className="grid lg:grid-cols-3 gap-4">
-        <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("Rating breakdown")}</div>
-          {dist.map(([l, v]) => (<div key={l} className="mb-2 last:mb-0 flex items-center gap-2"><span className="text-xs text-g-muted w-8">{l}</span><div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-gold to-g-green" style={{ width: `${v}%` }} /></div><span className="text-[11px] text-g-muted w-8 text-right">{v}%</span></div>))}
-          <button onClick={blast} className="btn-bright text-sm w-full mt-4 justify-center">{tr("Request reviews now")}</button>
-        </Card>
-        <Card className="lg:col-span-2 p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recent reviews · collected by AI")}</div>
-          <div className="divide-y divide-white/[0.06]">{reviews.map((r, i) => (<button key={i} onClick={() => setSel(r)} className="w-full text-left px-5 py-3 hover:bg-white/[0.04] transition"><div className="flex items-center justify-between"><span className="text-sm font-bold text-g-word">{r.name}</span><span className="text-xs text-g-gold">{"★".repeat(r.stars)}<span className="text-g-muted">{"★".repeat(5 - r.stars)}</span></span></div><div className="text-[12px] text-g-muted mt-0.5">"{r.text}" <span className="text-g-light">· {r.ch}</span></div></button>))}</div>
-        </Card>
-      </div>
-      {sel && (
-        <Drawer
-          title={sel.name}
-          subtitle={`${sel.ch} review`}
-          badge={<span className="text-xs text-g-gold">{"★".repeat(sel.stars)}</span>}
-          fields={[["Rating", `${sel.stars} / 5`], ["Channel", sel.ch], ["Status", "Published"]]}
-          note={<>"{sel.text}"<div className="mt-2 text-g-muted">{tr("The AI requested this review automatically after a great experience.")}</div></>}
-          actions={<><button onClick={() => { toast("Thanks reply posted ✓"); setSel(null); }} className="btn-bright text-sm">💬 Reply / thank</button>{sel.stars >= 4 && <button onClick={() => boost(sel)} className="btn-ghost text-sm">🚀 Boost as ad</button>}<button onClick={() => { toast("Shared to social ✓"); setSel(null); }} className="btn-ghost text-sm">📣 Share</button></>}
-          onClose={() => setSel(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-function Recurring({ V }) {
-  const rows = genRecurring(V);
-  const perMo = rows.reduce((s, r) => s + r.value, 0);
-  const [sel, setSel] = useState(null);
-  return (
-    <div className="space-y-4 stagger">
-      <MiniStats items={[["Active plans", `${rows.length * 23}`], ["Monthly recurring", `$${(perMo * 23).toLocaleString()}`, "good"], ["Renewals due", `${vnum(V.label, "renew", 4, 14)}`], ["Churn risk", `${vnum(V.label, "churn", 1, 6)}`, "bad"]]} />
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recurring revenue · the AI keeps it renewing")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for plan</span></div>
-        <div className="divide-y divide-white/[0.06]">{rows.map((r, i) => (<button key={i} onClick={() => setSel(r)} className="w-full text-left flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.04] transition"><span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word">{r.name[0]}</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted">{r.plan} · ${r.value}/mo</div></div><span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: r.color + "22", color: r.color }}>{r.status}</span></button>))}{rows.length === 0 && <Empty icon="🔁" text="No recurring plans yet — offer one to start predictable monthly revenue." />}</div>
-      </Card>
-      <p className="text-center text-[11px] text-g-muted">{tr("Recurring revenue is the most valuable revenue — your AI renews, reminds and rescues it automatically.")}</p>
-      {sel && (
-        <Drawer
-          title={sel.name}
-          subtitle={sel.plan}
-          badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: sel.color + "22", color: sel.color }}>{sel.status}</span>}
-          fields={[["Plan", sel.plan], ["Value", `$${sel.value}/mo`], ["Annual value", `$${(sel.value * 12).toLocaleString()}`], ["Status", sel.status], ["Member since", "Apr 2026"]]}
-          note={sel.status === "At risk" ? "⚠ Engagement dropped — the AI is running a win-back sequence to save this plan." : sel.status === "Renews soon" ? "Renewal coming up — the AI will remind and auto-renew." : "Active and healthy — auto-renewing each cycle."}
-          actions={<><button onClick={() => { logImpact(V.label, `${sel.name} renewed · ${sel.plan}`, sel.value || 49); toast(`${sel.name} renewed ✓ — $${sel.value || 49} logged to Guileo Impact`); setSel(null); }} className="btn-bright text-sm">↻ Renew now</button>{sel.status === "At risk" && <button onClick={() => { const saved = (sel.value || 49) * 12; logImpact(V.label, `Saved ${sel.name}'s ${sel.plan} (win-back)`, saved); toast(`Win-back run ✓ — $${saved.toLocaleString()}/yr saved, logged to Guileo Impact`); setSel(null); }} className="btn-ghost text-sm">🛟 Run win-back</button>}<a href={waLink(`Hi ${sel.name}, about your ${sel.plan}…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">{tr("💬 Message")}</a></>}
-          onClose={() => setSel(null)}
-        />
-      )}
-    </div>
-  );
-}
 
 /* ───────────────────────── Onboarding wizard (first run) ───────────────────────── */
 // First-run welcome tour — shows once (localStorage), highlights the differentiators.
@@ -4270,7 +1586,7 @@ function Tour({ onDone }) {
   const advance = () => { if (last) onDone(); else setI((x) => Math.min(x + 1, steps.length - 1)); };
   return (
     <div className="fixed inset-0 z-[70] grid place-items-center px-5 bg-black/55 backdrop-blur-sm">
-      <motion.div initial={{ opacity: 0, y: 18, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="w-full max-w-md rounded-xl3 border border-white/12 bg-g-cream/95 backdrop-blur-xl p-7 shadow-lift text-center">
+      <motion.div initial={{ opacity: 0, y: 18, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="w-full max-w-md rounded-xl3 border border-white/15 bg-g-cream/95 backdrop-blur-xl p-7 shadow-lift text-center">
         <div className="flex gap-1.5 mb-5 justify-center">{steps.map((_, k) => <div key={k} className={`h-1.5 rounded-full transition-all ${k === i ? "w-6 bg-g-green" : "w-1.5 bg-white/15"}`} />)}</div>
         <div className="text-5xl mb-3">{s.ic}</div>
         <div className="text-lg font-extrabold text-g-word">{tr(s.title)}</div>
@@ -4299,7 +1615,7 @@ function FirstValue({ V, onNav, onDone }) {
   const steps = [tr("Connect"), tr("Watch Gui work"), tr("First win")];
   return (
     <div className="fixed inset-0 z-[60] grid place-items-center bg-black/70 backdrop-blur-sm px-5">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md rounded-xl3 border border-white/12 bg-[#0c100d]/98 backdrop-blur-xl p-7 shadow-lift">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md rounded-xl3 border border-white/15 bg-[#0c100d]/98 backdrop-blur-xl p-7 shadow-lift">
         <div className="flex items-center gap-2 mb-5">
           {steps.map((s, i) => (
             <div key={s} className="flex-1 flex flex-col items-center gap-1.5">
@@ -4344,12 +1660,12 @@ function OnboardingWizard({ onDone }) {
   const [contact, setContact] = useState("");
   const [chs, setChs] = useState({ "WhatsApp": true, "Phone calls": true, "Instagram": true, "SMS": false });
   const next = () => setStep((s) => s + 1);
-  const captureLead = () => { try { fetch("/api/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: owner.trim() || name.trim(), business: name.trim(), contact: contact.trim(), phone: contact.trim(), channel: "Portal signup", industry: vid, source: "portal-onboard" }) }); } catch { /* never block */ } };
+  const captureLead = () => { try { fetch("/api/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: owner.trim() || name.trim(), business: name.trim(), contact: contact.trim(), phone: contact.trim(), channel: "Portal signup", industry: vid, lang: UI_LANG, source: "portal-onboard" }) }); } catch { /* never block */ } };
   const sendWelcome = () => {
     try {
       const c = contact.trim();
       if (!c.includes("@")) return; // only email a real email address
-      const lang = portalApi.loadState("portal_lang", "en") === "pt" ? "pt" : "en";
+      const lang = (() => { const l = portalApi.loadState("portal_lang", "en"); return l === "pt" || l === "es" ? l : "en"; })();
       const who = (owner.trim() || name.trim() || "there").split(" ")[0];
       const biz = name.trim() || (lang === "pt" ? "seu negócio" : "your business");
       // Branded welcome email (graphite + champagne template) is rendered server-side.
@@ -4358,7 +1674,7 @@ function OnboardingWizard({ onDone }) {
   };
   return (
     <div className="min-h-screen grid place-items-center px-5">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md rounded-xl3 border border-white/12 bg-white/[0.04] backdrop-blur-xl p-7 shadow-lift">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md rounded-xl3 border border-white/15 bg-white/[0.04] backdrop-blur-xl p-7 shadow-lift">
         <div className="flex gap-1.5 mb-5">{[0, 1, 2, 3].map((i) => <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= step ? "bg-g-green" : "bg-white/15"}`} />)}</div>
         {step === 0 && (<>
           <div className="text-lg font-extrabold text-g-word">{tr("Welcome to Guileo 👋")}</div>
@@ -4390,7 +1706,7 @@ function OnboardingWizard({ onDone }) {
             <div className="text-4xl mb-2">🎉</div>
             <div className="text-lg font-extrabold text-g-word">{tr("You're all set")}, {name || tr("there")}!</div>
             <p className="text-xs text-g-muted mt-1">{tr("Your AI is live and your Growth Cockpit is ready.")}</p>
-            <button onClick={() => { captureLead(); sendWelcome(); onDone(vid, { name: name.trim(), owner: owner.trim(), contact: contact.trim() }); }} className="btn-bright text-sm w-full mt-5">{tr("Enter my cockpit →")}</button>
+            <button onClick={() => { captureLead(); sendWelcome(); onDone(vid, { name: name.trim(), owner: owner.trim(), contact: contact.trim(), channels: Object.keys(chs).filter((c) => chs[c]) }); }} className="btn-bright text-sm w-full mt-5">{tr("Enter my cockpit →")}</button>
           </div>
         )}
         {step < 3 && <button onClick={() => onDone(vid)} className="block mx-auto mt-4 text-[11px] font-bold text-g-muted hover:text-g-word">{tr("Skip setup")}</button>}
@@ -4421,7 +1737,7 @@ function Login({ onEnter }) {
   const demoEnter = () => { try { localStorage.setItem("guileo_portal_session", JSON.stringify({ email: "demo@guileoai.com", name: "Jane Staff", role: "Staff", demo: true, at: Date.now() })); } catch { /* */ } onEnter(); };
   return (
     <div className="min-h-screen grid place-items-center px-5">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm rounded-xl3 border border-white/12 bg-white/[0.04] backdrop-blur-xl p-8 shadow-lift text-center">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm rounded-xl3 border border-white/15 bg-white/[0.04] backdrop-blur-xl p-8 shadow-lift text-center">
         <img src={logo} alt="Guileo" className="h-12 w-12 object-contain mx-auto" />
         <div className="mt-3 text-xl font-black uppercase tracking-tight bg-gradient-to-r from-g-green via-g-gold to-g-green bg-[length:200%_auto] bg-clip-text text-transparent animate-shimmer">{tr("Growth Cockpit")}</div>
         {confirm ? (
@@ -4460,22 +1776,22 @@ function Login({ onEnter }) {
 // Proactive radar: scan real generated data for things that need action right now.
 // Returns prioritized alerts with a one-tap command + bilingual copy. Drives the
 // launcher badge and Gui's opening nudge — Gui surfaces money on the table unasked.
-function guiAlerts(V) {
+export function guiAlerts(V) {
   const out = [];
   // Sector signature alert — the visceral, this-is-MY-business hook (top of the radar).
   const iq = SECTOR_IQ[V.label];
-  if (iq?.radar) { const n = iq.radar.n(V); if (n) out.push({ key: "sector", count: n, cmd: iq.radar.cmd, en: iq.radar.en(n), pt: iq.radar.pt(n), chipEn: iq.radar.chipEn, chipPt: iq.radar.chipPt }); }
+  if (iq?.radar) { const n = iq.radar.n(V); if (n) out.push({ key: "sector", count: n, cmd: iq.radar.cmd, en: iq.radar.en(n), pt: iq.radar.pt(n), chipEn: iq.radar.chipEn, chipPt: iq.radar.chipPt, es: iq.radar.es ? iq.radar.es(n) : iq.radar.en(n), chipEs: iq.radar.chipEs || iq.radar.chipEn }); }
   const credits = portalApi.loadState("gui_credits", 250);
-  if (credits < 50) out.push({ key: "lowcredit", count: 0, cmd: "open billing", en: `Gui credits are low (${credits} left) — top up so I never pause mid-task.`, pt: `Seus créditos do Gui estão baixos (${credits}) — recarregue pra eu não parar no meio.`, chipEn: "⚡ Top up", chipPt: "⚡ Recarregar" });
+  if (credits < 50) out.push({ key: "lowcredit", count: 0, cmd: "open billing", en: `Gui credits are low (${credits} left) — top up so I never pause mid-task.`, pt: `Seus créditos do Gui estão baixos (${credits}) — recarregue pra eu não parar no meio.`, chipEn: "⚡ Top up", chipPt: "⚡ Recarregar", es: `Tus créditos de Gui están bajos (${credits}) — recarga para que no me detenga a mitad de tarea.`, chipEs: "⚡ Recargar" });
   const overdue = genPayments(V).filter((p) => p.status === "Overdue");
-  if (overdue.length) out.push({ key: "overdue", count: overdue.length, cmd: "remind all overdue invoices", en: `${overdue.length} invoice${overdue.length !== 1 ? "s" : ""} overdue — want me to chase them?`, pt: `${overdue.length} fatura${overdue.length !== 1 ? "s" : ""} atrasada${overdue.length !== 1 ? "s" : ""} — quer que eu cobre?`, chipEn: "💳 Chase them", chipPt: "💳 Cobrar agora" });
+  if (overdue.length) out.push({ key: "overdue", count: overdue.length, cmd: "remind all overdue invoices", en: `${overdue.length} invoice${overdue.length !== 1 ? "s" : ""} overdue — want me to chase them?`, pt: `${overdue.length} fatura${overdue.length !== 1 ? "s" : ""} atrasada${overdue.length !== 1 ? "s" : ""} — quer que eu cobre?`, chipEn: "💳 Chase them", chipPt: "💳 Cobrar agora", es: `${overdue.length} factura${overdue.length !== 1 ? "s" : ""} vencida${overdue.length !== 1 ? "s" : ""} — ¿quieres que las cobre?`, chipEs: "💳 Cobrar ahora" });
   const waiting = genWaitlist(V).length;
-  if (waiting) out.push({ key: "waitlist", count: waiting, cmd: "request reviews", en: `${waiting} people are on your waitlist — fill those slots before they leave.`, pt: `${waiting} pessoas na sua lista de espera — preencha essas vagas antes que saiam.`, chipEn: "📅 Fill slots", chipPt: "📅 Preencher vagas" });
+  if (waiting) out.push({ key: "waitlist", count: waiting, cmd: "request reviews", en: `${waiting} people are on your waitlist — fill those slots before they leave.`, pt: `${waiting} pessoas na sua lista de espera — preencha essas vagas antes que saiam.`, chipEn: "📅 Fill slots", chipPt: "📅 Preencher vagas", es: `${waiting} personas en tu lista de espera — llena esos cupos antes de que se vayan.`, chipEs: "📅 Llenar cupos" });
   const follow = genFollowups(V).length;
-  if (follow) out.push({ key: "followups", count: follow, cmd: "start follow-ups", en: `${follow} warm lead${follow !== 1 ? "s" : ""} waiting on a follow-up — I can nudge them now.`, pt: `${follow} lead${follow !== 1 ? "s" : ""} quente${follow !== 1 ? "s" : ""} esperando follow-up — posso cutucar agora.`, chipEn: "🔁 Nudge them", chipPt: "🔁 Cutucar" });
+  if (follow) out.push({ key: "followups", count: follow, cmd: "start follow-ups", en: `${follow} warm lead${follow !== 1 ? "s" : ""} waiting on a follow-up — I can nudge them now.`, pt: `${follow} lead${follow !== 1 ? "s" : ""} quente${follow !== 1 ? "s" : ""} esperando follow-up — posso cutucar agora.`, chipEn: "🔁 Nudge them", chipPt: "🔁 Cutucar", es: `${follow} lead${follow !== 1 ? "s" : ""} interesado${follow !== 1 ? "s" : ""} esperando seguimiento — puedo contactarlos ahora.`, chipEs: "🔁 Contactar" });
   // Suggest a missing high-value connection (count 0 — a suggestion, not an urgent count).
   const m = missingConnection(V);
-  if (m) out.push({ key: "connect", count: 0, cmd: "open integrations", en: `${m[0]} isn't connected yet — link it and I'll ${m[3].toLowerCase()}.`, pt: `${m[0]} ainda não está conectado — conecte e eu ${m[4].toLowerCase()}.`, chipEn: "🔌 Connect it", chipPt: "🔌 Conectar" });
+  if (m) out.push({ key: "connect", count: 0, cmd: "open integrations", en: `${m[0]} isn't connected yet — link it and I'll ${m[3].toLowerCase()}.`, pt: `${m[0]} ainda não está conectado — conecte e eu ${m[4].toLowerCase()}.`, chipEn: "🔌 Connect it", chipPt: "🔌 Conectar", es: `${m[0]} aún no está conectado — conéctalo y me encargo del resto.`, chipEs: "🔌 Conectar" });
   return out;
 }
 // The most valuable tool the business hasn't connected yet (industry tool first, else a universal one).
@@ -4490,7 +1806,9 @@ const HIGH_STAKES = new Set(["invoice", "deliver", "social", "campaign", "chasea
 function approvalSummary(intent, pt) {
   const en = { invoice: "send an invoice with a payment link", deliver: "dispatch to delivery", social: "post to Instagram & Facebook", campaign: "launch a live promo", chaseall: "message everyone with overdue invoices" };
   const ptd = { invoice: "enviar uma fatura com link de pagamento", deliver: "mandar pra entrega", social: "publicar no Instagram e Facebook", campaign: "lançar uma promoção ao vivo", chaseall: "cobrar todos os clientes com faturas atrasadas" };
-  return (pt ? ptd : en)[intent] || (pt ? "executar a ação" : "run the action");
+  const esd = { invoice: "enviar una factura con enlace de pago", deliver: "enviar a reparto", social: "publicar en Instagram y Facebook", campaign: "lanzar una promoción en vivo", chaseall: "contactar a todos los clientes con facturas vencidas" };
+  const d = UI_LANG === "es" ? esd : pt ? ptd : en;
+  return d[intent] || (UI_LANG === "es" ? "ejecutar la acción" : pt ? "executar a ação" : "run the action");
 }
 function guiPlan(text, V, ctx = {}) {
   const s = text.toLowerCase();
@@ -4538,12 +1856,12 @@ function guiPlan(text, V, ctx = {}) {
     return { cost: 3, ctx, reply: L(`Set ✓ — from now on I'll ${what} ${day}, automatically. It's on your Overview under Automations, where you can pause it anytime.`, `Pronto ✓ — de agora em diante eu vou ${what} ${day}, automaticamente. Está no seu Overview em Automações, onde você pausa quando quiser.`), next: [{ label: L("⚙️ See automations", "⚙️ Ver automações"), cmd: "open overview" }], run: (onNav) => { addAutomation(V.label, { what: what.charAt(0).toUpperCase() + what.slice(1), when, ic }); onNav?.("overview"); } };
   }
   if (/(remind|chase|collect all|chase all|overdue|atrasad|cobrar todos|all unpaid)/.test(s)) { const open = genPayments(V).filter((p) => p.status !== "Paid"); return { intent: "chaseall", cost: 5, ctx, reply: L(`Done ✓ — I sent payment reminders to ${open.length} customer${open.length !== 1 ? "s" : ""} with open invoices. They're in Payments.`, `Pronto ✓ — enviei lembretes de pagamento para ${open.length} cliente${open.length !== 1 ? "s" : ""} com faturas em aberto. Estão em Pagamentos.`), next: [{ label: L("⭐ Ask them for reviews too", "⭐ Pedir avaliações também"), cmd: "request reviews from my recent customers" }], run: (onNav) => onNav?.("payments") }; }
-  if (/(invoice|charge|bill|cobr|fatur|payment|receb)/.test(s)) return { intent: "invoice", cost: 5, ctx: C(target), reply: L(`Done ✓ — invoice sent to ${target} with a payment link, tracked in Payments. I'll chase it until it's paid.`, `Pronto ✓ — fatura enviada para ${target} com link de pagamento, registrada em Pagamentos. Eu cobro até ser paga.`), next: [{ label: L(`📅 Book ${target} too`, `📅 Agendar ${target} também`), cmd: `book them` }, { label: L("⭐ Request a review", "⭐ Pedir avaliação"), cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: target, amount: vnum(V.label, "guiinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); onNav?.("payments"); return undoer([{ view: "payments", id }], "payments"); } };
-  if (/(review|avalia|rating|estrela)/.test(s)) return { cost: 5, ctx: C(who || ctx.customer), reply: L(`On it ✓ — I queued review requests${who ? ` to ${target}` : " to your happiest recent customers"}. Tracked in Reputation.`, `Feito ✓ — enviei pedidos de avaliação${who ? ` para ${target}` : " aos seus clientes mais satisfeitos"}. Registrado em Reputação.`), next: [{ label: L("📣 Turn 5★ reviews into ads", "📣 Virar avaliações 5★ em anúncios"), cmd: "launch a promo" }], run: (onNav) => { const rows = (who ? [{ name: target, channel: "WhatsApp" }] : customers.slice(0, 3)).map((c) => ({ view: "reviewreq", id: pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel }) })); onNav?.("reputation"); return undoer(rows, "reputation"); } };
+  if (/(invoice|charge|bill|cobr|fatur|payment|receb)/.test(s)) return { intent: "invoice", cost: 5, ctx: C(target), reply: L(`Consider it handled — I've sent ${target} the invoice with a payment link, and I'll keep an eye on it until it's paid. It's in Payments.`, `Deixa comigo — enviei a fatura para ${target} com o link de pagamento, e fico de olho até ser paga. Está em Pagamentos.`), next: [{ label: L(`📅 Book ${target} too`, `📅 Agendar ${target} também`), cmd: `book them` }, { label: L("⭐ Request a review", "⭐ Pedir avaliação"), cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: target, amount: vnum(V.label, "guiinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); onNav?.("payments"); return undoer([{ view: "payments", id }], "payments"); } };
+  if (/(review|avalia|rating|estrela)/.test(s)) return { cost: 5, ctx: C(who || ctx.customer), reply: L(`With pleasure — I've requested reviews${who ? ` from ${target}` : " from your happiest recent customers"}. It's all tracked in Reputation.`, `Com prazer — pedi as avaliações${who ? ` para ${target}` : " aos seus clientes mais satisfeitos"}. Deixei tudo registrado em Reputação.`), next: [{ label: L("📣 Turn 5★ reviews into ads", "📣 Virar avaliações 5★ em anúncios"), cmd: "launch a promo" }], run: (onNav) => { const rows = (who ? [{ name: target, channel: "WhatsApp" }] : customers.slice(0, 3)).map((c) => ({ view: "reviewreq", id: pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel }) })); onNav?.("reputation"); return undoer(rows, "reputation"); } };
   if (/(deliver|entrega|dispatch|despach)/.test(s)) return { intent: "deliver", cost: 5, ctx: C(who || ctx.customer), reply: L(`Done ✓ — sent${forTxt} to ${deliveryTab(V).toLowerCase()}. I'll text live updates.`, `Pronto ✓ — enviado${forPt} para ${deliveryTab(V).toLowerCase()}. Vou mandar atualizações ao vivo.`), next: [{ label: L("⭐ Ask for a review on arrival", "⭐ Pedir avaliação na entrega"), cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "deliveries", recordFor("deliveries", target, "Gui", V)); onNav?.("deliveries"); return undoer([{ view: "deliveries", id }], "deliveries"); } };
   if (/(campaign|promo|an[úu]nci|\bad\b|marketing)/.test(s)) return { intent: "campaign", cost: 5, ctx, reply: L("Launched ✓ — a promo is live and the AI will optimize it. It's in Campaigns.", "Lançado ✓ — uma promoção está no ar e a IA vai otimizá-la. Está em Campanhas."), next: [{ label: L("👥 Build an audience for it", "👥 Criar um público pra ela"), cmd: "build an audience from my best customers" }], run: (onNav) => { const id = pushCreated(V.label, "campaigns", { name: "Gui promo", channel: "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); onNav?.("campaigns"); return undoer([{ view: "campaigns", id }], "campaigns"); } };
   if (/(order|pedido|book|appointment|agend|marcar|reserv|schedule)/.test(s)) return { cost: 5, ctx: C(target), reply: L(`${act.done}${forTxt} ✓ — it's in the right tab now.`, `${act.done}${forPt} ✓ — já está na aba certa.`), next: [{ label: L("💳 Send the invoice too", "💳 Enviar a fatura também"), cmd: `send an invoice to them` }], run: (onNav) => { const rec = recordFor(act.view, target, "Gui", V); const id = rec ? pushCreated(V.label, act.view, rec) : null; onNav?.(act.view); return id ? undoer([{ view: act.view, id }], act.view) : undefined; } };
-  if (/(follow|nudge|win-?back|lapse|reativ)/.test(s)) return { cost: 3, ctx, reply: L("Done ✓ — I started a follow-up sequence. Check the Follow-ups tab.", "Pronto ✓ — iniciei uma sequência de follow-up. Veja na aba Follow-ups."), run: (onNav) => onNav?.("followups") };
+  if (/(follow|nudge|win-?back|lapse|reativ)/.test(s)) return { cost: 3, ctx, reply: L("Consider it handled — I've started a warm follow-up sequence to win them back. You'll find it under Follow-ups.", "Deixa comigo — comecei uma sequência de follow-up pra reconquistá-los. Está na aba Follow-ups."), run: (onNav) => onNav?.("followups") };
   if (/(audience|p[úu]blico|segment)/.test(s)) return { cost: 5, ctx, reply: L("Built ✓ — an audience of your most engaged customers is ready in Ad Audiences.", "Pronto ✓ — um público com seus clientes mais engajados está pronto em Públicos de Anúncio."), run: (onNav) => { const id = pushCreated(V.label, "audiences", { name: "Gui · best customers", size: vnum(V.label, "guiaud", 1200, 9000), source: "CRM" }); onNav?.("audiences"); return undoer([{ view: "audiences", id }], "audiences"); } };
   if (/(hour|open|close|price|cost|where|location|menu|service)/.test(s)) { const kb = portalApi.loadKB(V.label, seedKB(V, portalApi.loadProfile(V.label, defProfile(V)))); return { cost: 1, ctx, reply: aiAnswer(text, V, kb) }; }
   return { cost: 0, ctx, reply: L("I can create orders & bookings, send invoices, request reviews, launch promos, start follow-ups, build audiences, or push to delivery. Try: \"send an invoice to my top customer\" — then \"book them too\".", "Eu crio pedidos e agendamentos, envio faturas, peço avaliações, lanço promoções, inicio follow-ups, monto públicos ou mando pra entrega. Tente: \"manda uma fatura pro meu melhor cliente\" — depois \"agenda ele também\"."), next: [{ label: L("💳 Send an invoice", "💳 Enviar fatura"), cmd: "send an invoice to my top customer" }, { label: L("⭐ Request reviews", "⭐ Pedir avaliações"), cmd: "request reviews" }, { label: L("📣 Launch a promo", "📣 Lançar promoção"), cmd: "launch a promo" }] };
@@ -4559,7 +1877,13 @@ function Gui({ V, onNav }) {
       { from: "gui", text: `${tr("Quick read on today:")} ${dailyBriefing(V)}. ${tr("Want me to get started?")}` },
     ];
     const al = guiAlerts(V);
-    if (al.length) base.push({ from: "gui", text: `👀 Heads up — ${al[0].en}`, next: al.slice(0, 2).map((a) => ({ label: a.chipEn, cmd: a.cmd })) });
+    if (al.length) {
+      const L = UI_LANG;
+      const aTxt = (a) => L === "es" && a.es ? a.es : L === "pt" && a.pt ? a.pt : a.en;
+      const aChip = (a) => L === "es" && a.chipEs ? a.chipEs : L === "pt" && a.chipPt ? a.chipPt : a.chipEn;
+      const heads = L === "es" ? "Atención" : L === "pt" ? "Atenção" : "Heads up";
+      base.push({ from: "gui", text: `👀 ${heads} — ${aTxt(al[0])}`, next: al.slice(0, 2).map((a) => ({ label: aChip(a), cmd: a.cmd })) });
+    }
     return base;
   });
   const [q, setQ] = useState("");
@@ -4568,9 +1892,10 @@ function Gui({ V, onNav }) {
   const [history, setHistory] = useState(() => portalApi.loadState("gui_history", []));   // past commands
   const [showHist, setShowHist] = useState(false);
   const lastUndo = useRef(null);                  // undo closure for the most recent action
+  const runRef = useRef(null);                    // points at the current run(); lets external "gui:open" events fire a command
   const lastPt = useRef(false);                   // language of the last command, for system messages
   const [pending, setPending] = useState(null);   // a high-stakes action awaiting Confirm
-  useEffect(() => { const h = () => setOpen(true); window.addEventListener("gui:open", h); return () => window.removeEventListener("gui:open", h); }, []);
+  useEffect(() => { const h = (e) => { setOpen(true); const cmd = e?.detail?.cmd; if (cmd) setTimeout(() => runRef.current?.(cmd), 80); }; window.addEventListener("gui:open", h); return () => window.removeEventListener("gui:open", h); }, []);
   useEffect(() => { const h = () => setCredits(portalApi.loadState("gui_credits", 250)); window.addEventListener("gui:credits", h); return () => window.removeEventListener("gui:credits", h); }, []);
   const setC = (n) => { setCredits(n); portalApi.saveState("gui_credits", n); window.dispatchEvent(new Event("gui:credits")); };
   const recharge = () => { setC(credits + 250); toast("250 credits added ✓ — pay-as-you-go, billed to your account"); };
@@ -4617,6 +1942,7 @@ function Gui({ V, onNav }) {
     }
     execute(res, t);
   };
+  runRef.current = run;                           // keep the external-trigger ref on the live run()
   const send = (e) => { e.preventDefault(); run(q); };
   // Voice input via the Web Speech API (graceful no-op where unsupported).
   const SR = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -4631,23 +1957,31 @@ function Gui({ V, onNav }) {
   };
   const pct = Math.max(0, Math.min(100, Math.round((credits / 250) * 100)));
   const low = credits < 30;
+  // Voice presence — one soft spoken hello per session, and ONLY on the click that opens
+  // the panel (the user gesture browsers require). sessionStorage guards repeats.
+  const greetOnce = () => {
+    try {
+      if (sessionStorage.getItem("gui_greeted")) return;
+      if (speakLine(tr("Hi, I'm Gui — tell me what you need and I'll take care of it."))) sessionStorage.setItem("gui_greeted", "1");
+    } catch { /* private mode */ }
+  };
   return (
     <>
       {!open && (
-        <button onClick={() => setOpen(true)} aria-label={alertCount ? `Open Gui assistant — ${alertCount} items need action` : "Open Gui assistant"} className="fixed bottom-5 right-5 z-[55] grid place-items-center h-14 w-14 rounded-full bg-gradient-to-br from-g-green to-g-dark text-white shadow-lift hover:scale-105 active:scale-95 transition">
-          <FaWandMagicSparkles size={18} />
+        <button onClick={() => { setOpen(true); greetOnce(); }} aria-label={alertCount ? `Open Gui assistant — ${alertCount} items need action` : "Open Gui assistant"} className="gui-breathe fixed bottom-5 right-5 z-[55] grid place-items-center h-14 w-14 rounded-full hover:scale-105 active:scale-95 transition" style={{ background: "#1A1610", border: "2px solid #FF8A33", boxShadow: "0 0 20px rgba(255,138,51,.6), 0 0 0 1px rgba(255,138,51,.35), 0 6px 18px rgba(0,0,0,.45)" }}>
+          <img src={logo} alt="Gui" className="h-7 w-7 object-contain" />
           {alertCount > 0 ? (
-            <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 grid place-items-center rounded-full bg-g-gold text-[11px] font-black text-black border-2 border-g-deep animate-pulse">{alertCount > 9 ? "9+" : alertCount}</span>
+            <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 grid place-items-center rounded-full text-[11px] font-black text-black border-2 animate-pulse" style={{ background: "#FF8A33", borderColor: "#17150F" }}>{alertCount > 9 ? "9+" : alertCount}</span>
           ) : (
-            <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-g-gold border-2 border-g-deep" />
+            <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full border-2" style={{ background: "#FF8A33", borderColor: "#17150F" }} />
           )}
         </button>
       )}
       {open && (
-        <motion.div initial={{ opacity: 0, y: 20, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="fixed bottom-5 right-5 z-[55] w-[92vw] max-w-sm rounded-xl3 border border-white/12 bg-[#0c100d]/98 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden" style={{ height: "min(78vh, 560px)" }}>
+        <motion.div initial={{ opacity: 0, y: 20, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="fixed bottom-5 right-5 z-[55] w-[92vw] max-w-sm rounded-xl3 border border-white/15 bg-[#0c100d]/98 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden" style={{ height: "min(78vh, 560px)" }}>
           <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2.5 shrink-0">
-            <span className="grid place-items-center h-9 w-9 rounded-full bg-gradient-to-br from-g-green to-g-dark text-white"><FaWandMagicSparkles size={15} /></span>
-            <div className="flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word flex items-center gap-1.5">Gui <span className="text-[9px] font-black uppercase text-g-green">{tr("· AI assistant")}</span></div><div className="text-[10px] text-g-muted">{tr("Executes tasks for you, 24/7")}</div></div>
+            <GuiMark size={38} />
+            <div className="flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word flex items-center gap-1.5">Gui <span className="text-[9px] font-black uppercase" style={{ color: "#FF8A33" }}>{tr("· AI assistant")}</span></div><div className="text-[10px] text-g-muted">{tr("Executes tasks for you, 24/7")}</div></div>
             <button onClick={() => setOpen(false)} aria-label="Close" className="text-g-muted hover:text-g-word text-lg px-1">✕</button>
           </div>
           {/* credit meter */}
@@ -4656,11 +1990,11 @@ function Gui({ V, onNav }) {
             <div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className={`h-full rounded-full ${low ? "bg-red-500" : "bg-gradient-to-r from-g-green to-g-gold"}`} style={{ width: `${pct}%` }} /></div>
             <div className="mt-1 flex items-center justify-between text-[10px] text-g-muted"><span>{tr("Pay-as-you-go · ~5 credits per task")}</span><button onClick={recharge} className="font-bold text-g-gold hover:underline">{tr("+ Recharge")}</button></div>
           </div>
-          <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
+          <div className="flex-1 overflow-y-auto p-3 space-y-2.5" role="log" aria-live="polite" aria-label={tr("Gui assistant conversation")}>
             {msgs.map((m, i) => (
               <div key={i} className={`flex ${m.from === "you" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed ${m.from === "you" ? "bg-g-gold/15 text-g-word border border-g-gold/30" : "bg-g-green/12 text-g-light border border-g-green/25"}`}>
-                  {m.from === "gui" && <div className="text-[9px] font-black uppercase text-g-green mb-0.5">Gui</div>}
+                <div className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed ${m.from === "you" ? "bg-g-gold/15 text-g-word border border-g-gold/30" : "bg-[#FF8A33]/10 text-g-light border border-[#FF8A33]/30"}`}>
+                  {m.from === "gui" && <div className="text-[9px] font-black uppercase mb-0.5" style={{ color: "#FF8A33" }}>Gui</div>}
                   {m.text}
                   {m.cost > 0 && <span className="ml-1.5 text-[9px] text-g-muted">−{m.cost} cr</span>}
                   {m.lowCredit && <button onClick={recharge} className="block mt-1.5 text-[11px] font-bold text-g-gold hover:underline">{tr("+ Recharge credits")}</button>}
@@ -4679,12 +2013,12 @@ function Gui({ V, onNav }) {
             ))}
           </div>
           {msgs.length <= 2 && (
-            <div className="px-3 pb-1 flex flex-wrap gap-1.5 shrink-0">{["Create an order", "Send an invoice", "Request reviews", "Launch a promo"].map((s) => <button key={s} onClick={() => run(s)} className="rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold text-g-muted hover:text-g-word transition">{tr(s)}</button>)}</div>
+            <div className="px-3 pb-1 flex flex-wrap gap-1.5 shrink-0">{["Create an order", "Send an invoice", "Request reviews", "Launch a promo"].map((s) => <button key={s} onClick={() => run(s)} className="rounded-full border border-white/15 bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold text-g-muted hover:text-g-word transition">{tr(s)}</button>)}</div>
           )}
           {showHist && history.length > 0 && (
             <div className="px-3 pb-1 shrink-0">
               <div className="text-[9px] font-black uppercase text-g-muted mb-1">{tr("Recent commands · tap to run again")}</div>
-              <div className="flex flex-wrap gap-1.5">{history.map((h) => <button key={h} onClick={() => run(h)} className="rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1 text-[10px] text-g-light hover:text-g-word hover:border-g-green/40 transition truncate max-w-[180px]">{h}</button>)}</div>
+              <div className="flex flex-wrap gap-1.5">{history.map((h) => <button key={h} onClick={() => run(h)} className="rounded-full border border-white/15 bg-white/[0.04] px-2.5 py-1 text-[10px] text-g-light hover:text-g-word hover:border-g-green/40 transition truncate max-w-[180px]">{h}</button>)}</div>
             </div>
           )}
           <form onSubmit={send} className="p-3 border-t border-white/10 flex gap-2 shrink-0">
@@ -4704,11 +2038,20 @@ function Gui({ V, onNav }) {
 export default function Portal() {
   const [authed, setAuthed] = useState(false);
   const [booting, setBooting] = useState(true);
-  const [view, setView] = useState("overview");
+  const [view, _setView] = useState(() => { try { return new URLSearchParams(window.location.search).get("tab") || "overview"; } catch { return "overview"; } });
+  // Keep the active section in the URL (?tab=) so Back works and any view is shareable/deep-linkable.
+  const setView = useCallback((v) => { _setView(v); try { const u = new URL(window.location.href); u.searchParams.set("tab", v); window.history.replaceState({}, "", u); } catch { /* */ } }, []);
   const [period, setPeriod] = useState("30 days");
   const [lang, setLang] = useState(() => portalApi.loadState("portal_lang", "en"));
-  if (UI_LANG !== lang) setUiLang(lang); // publish UI language for tr() before children render; guarded so it's a no-op on StrictMode double-invoke (single-Portal-instance invariant) instead of writing the module global unconditionally every render
-  const toggleLang = () => setLang((l) => { const n = l === "pt" ? "en" : "pt"; portalApi.saveState("portal_lang", n); return n; });
+  // Render-timing guarantee: tr()/helpers read the module-global UI_LANG, so it MUST reflect the
+  // current language synchronously on EVERY render — before any JSX or helper that reads it — to
+  // avoid painting a frame of English. Re-assert it here at the top of the component body (not only
+  // in a useEffect, which runs after paint, nor only in the useState init, which runs once).
+  if (UI_LANG !== lang) setUiLang(lang);
+  // Cycles EN → PT → ES → HI. Async on purpose: the next dict chunk is fetched and cached
+  // BEFORE the lang state flips, so the current language stays painted while it loads —
+  // flash-free by construction. Updates tr() at the change, never in render body.
+  const toggleLang = async () => { const order = ["en", "pt", "es", "hi"]; const n = order[(order.indexOf(lang) + 1) % order.length] || "en"; await loadDict(n); portalApi.saveState("portal_lang", n); setUiLang(n); setLang(n); };
   // Vertical can be deep-linked via ?v=<id> (shareable per-sector links) and is remembered.
   const [vertical, setVertical] = useState(() => {
     try {
@@ -4734,21 +2077,104 @@ export default function Portal() {
     (async () => {
       const s = await portalApi.session();
       if (s) { if (!s.demo) await portalApi.hydrate(); setMe(s); setAuthed(true); }
+      // Persisted non-EN language: hold the existing boot screen until the dict chunk is
+      // cached, so the first shell paint is already translated (no English flash). The
+      // module-scope warm-up started this fetch at import time, so this usually resolves
+      // instantly; on failure loadDict falls back to EN silently.
+      await loadDict(lang);
       setBooting(false);
     })();
     // React to magic-link sign-in (the email link lands back on /portal).
     if (CONNECTED) unsub = portalApi.onAuthChange((sess) => { if (sess) { setMe((m) => m || sess); setAuthed(true); } else { setMe(null); setAuthed(false); } });
     return () => unsub();
   }, []);
+  // ── REAL MODE — logged-in email + connection code → live backend data.
+  // Demo stays 100% intact: `real` only becomes truthy when the RPC returns data.
+  const [real, setReal] = useState(null);
+  const [realLoading, setRealLoading] = useState(false);
+  const realSeq = useRef(0);
+  const refreshReal = useCallback(async () => {
+    const key = loadDataKey();
+    const seq = ++realSeq.current;                  // claim the latest-request slot FIRST…
+    if (!me?.email || me.demo || !key) { if (seq === realSeq.current) setReal(null); return; } // …so a late clear can't wipe fresh data from a still-in-flight fetch
+    setRealLoading(true);
+    const data = await fetchRealData(me.email, key); // null on any error — never throws
+    if (seq === realSeq.current) { setReal(data); setRealLoading(false); }
+  }, [me]);
+  // SELF-SERVE ACTIVATION LINK — the welcome email's CTA lands on /portal?code=<key>. Auto-apply
+  // the connection code once on boot (same setter + event Settings uses), then strip it from the URL
+  // (history.replaceState) so the key isn't left in the address bar / shared links. Runs before the
+  // boot refreshReal below so the first fetch already sees the key.
+  useEffect(() => {
+    try {
+      const code = new URLSearchParams(window.location.search).get("code");
+      if (!code) return;
+      saveDataKey(code); // localStorage `guileo_data_key` + cloud-kv mirror
+      window.dispatchEvent(new Event("gui:datakey")); // Portal re-fetches real data
+      const u = new URL(window.location.href); u.searchParams.delete("code"); window.history.replaceState({}, "", u);
+    } catch { /* private mode / bad URL — code stays visible as email fallback */ }
+  }, []);
+  useEffect(() => { refreshReal(); }, [refreshReal]); // on boot / session change
+  const lastRealFetch = useRef(0);
+  useEffect(() => {
+    // staleness gate: alt-tab spam must not turn into a burst of get_client_data RPCs
+    const onFocus = () => { if (Date.now() - lastRealFetch.current > 60000) { lastRealFetch.current = Date.now(); refreshReal(); } }
+    // T0.2 — on a connection-code CHANGE, clear the old tenant's data IMMEDIATELY (before refetch) so
+    // another client's events can never flash in the new client's view during the in-flight fetch.
+    const onKey = () => { setReal(null); refreshReal(); };
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("gui:datakey", onKey);
+    return () => { window.removeEventListener("focus", onFocus); window.removeEventListener("gui:datakey", onKey); };
+  }, [refreshReal]);
+  // Deferred onboarding sync — a visitor who completed the wizard in DEMO mode and LATER
+  // connected for real (email + connection code → `real` data actually loads, proving the
+  // key is authorized): auto-apply their stashed wizard answers to the live agent exactly
+  // once. AUTO (not a prompt) because the answers came from this same person, the write is
+  // additive + best-effort, and demo visuals must stay untouched (no new UI allowed).
+  useEffect(() => {
+    if (!real || !me?.email || me.demo) return;
+    const pending = portalApi.loadState("pending_onboard", null);
+    if (!pending?.vid) return;
+    portalApi.saveState("pending_onboard", null); // clear FIRST so a slow/failed sync can never loop-spam the agent
+    try { syncOnboardingToAgent(me, pending.vid, pending.extra || {}); } catch { /* best-effort */ }
+  }, [real, me]);
   useEffect(() => {
     const h = (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPaletteOpen((o) => !o); } if (e.key === "Escape") { setPaletteOpen(false); setNavOpen(false); setBellOpen(false); } };
     window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h);
   }, []);
-  const V = VERTICALS[vertical];
+  // 🎙️ "Ouvir minha semana" — the weekly email's audio button lands on /portal?speak=weekly.
+  // Once authed + data settled, open Overview and let it try the spoken briefing (Overview
+  // feature-detects speechSynthesis; if the browser blocks speech without a gesture, the
+  // existing ▶ Hear-it pill is highlighted instead — honest fallback, never a crash).
+  const [speakWeekly, setSpeakWeekly] = useState(false);
+  useEffect(() => {
+    if (booting || !authed) return;
+    try {
+      if (new URLSearchParams(window.location.search).get("speak") !== "weekly") return;
+      if (sessionStorage.getItem("gui_speak_weekly")) return; // fire once per session
+      sessionStorage.setItem("gui_speak_weekly", "1");
+      setView("overview");
+      setSpeakWeekly(true);
+    } catch { /* private mode / no URL API — skip quietly */ }
+  }, [booting, authed, setView]);
+  const V = (() => {
+    const base = VERTICALS[vertical];
+    // Assisted-trial personalization: a /demo/:slug prospect arrives with pending_onboard
+    // {extra:{name}} seeded — show THEIR business name over the sample one while in demo mode,
+    // so the cockpit feels like theirs before they ever pay. Real accounts use their profile.
+    if (!real) {
+      try {
+        const pend = portalApi.loadState("pending_onboard", null);
+        const nm = (pend?.extra?.name || "").toString().trim().slice(0, 60);
+        if (nm) return { ...base, business: { ...base.business, name: nm } };
+      } catch { /* seeded data optional */ }
+    }
+    return base;
+  })();
   const sections = sectionsFor(vertical, V);
-  const nf = (k) => (notifsRead ? 0 : notifFor(k, V));
+  const nf = (k) => (notifsRead ? 0 : notifFor(k, V, real));
   const totalNotif = sections.reduce((s, [k]) => s + nf(k), 0);
-  const notifList = notifsRead ? [] : sections.map(([k, l]) => ({ k, l, n: notifFor(k, V) })).filter((x) => x.n > 0);
+  const notifList = notifsRead ? [] : sections.map(([k, l]) => ({ k, l, n: notifFor(k, V, real) })).filter((x) => x.n > 0);
   const cur = sections.find((s) => s[0] === view);
   const title = view === "operations" ? `${V.label} operations` : (cur ? cur[1] : "Overview");
   const switchVertical = (k) => { setVertical(k); portalApi.saveState("vertical", k); setView("overview"); setVertOpen(false); setNotifsRead(portalApi.loadState(`${k}:notifsRead`, false)); };
@@ -4766,10 +2192,33 @@ export default function Portal() {
     const stack = portalApi.loadState(`${V.label}:stack`, {});
     const flatTools = genIntegrations(V).flatMap(([, tools]) => tools);
     const liveTools = flatTools.filter(([n, , , , , def]) => (stack[n] === undefined ? !!def : !!stack[n]));
-    const toolRows = liveTools.map(([name, , , doesEn]) => `<tr><td><b>${name}</b></td><td class="muted" style="font-size:13px">${doesEn}</td></tr>`).join("");
+    const toolRows = liveTools.map(([name, , , doesEn, doesPt]) => `<tr><td><b>${name}</b></td><td class="muted" style="font-size:13px">${(UI_LANG === "pt" && doesPt) ? doesPt : doesEn}</td></tr>`).join("");
     const autos = portalApi.loadState(`${V.label}:automations`, []).filter((a) => a.on);
     const autoRows = autos.map((a) => `<tr><td>${a.what}</td><td style="text-align:right" class="muted">${a.when}</td></tr>`).join("");
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Guileo Monthly Report · ${V.business.name}</title><style>
+    // Localize every user-visible label in the exported report. Layout/structure stays identical —
+    // only the text varies by UI_LANG. (Read directly so the report matches the portal's language.)
+    const RL = {
+      en: { docTitle: "Guileo Monthly Report", subtitle: "Monthly growth report", heroLabel: "Growth Gui drove this month",
+        roi: (x, g, c) => `Return on credits: ${x}× ($${g} growth from ${c} credits)`, powered: (c) => `Powered by ${c} credits`,
+        payg: "Pay-as-you-go — you only pay for what Gui does. Guileo never takes a cut of your revenue.",
+        keyMetrics: "Key metrics", growthLedger: "Growth ledger", total: "Total",
+        stack: (n) => `Your connected stack · ${n} tools Guileo acts through`, automations: "Automations on autopilot",
+        foot: (b) => `Generated by Guileo · ${b} · This report reflects activity handled by your AI across your connected stack. Tip: print → Save as PDF.` },
+      pt: { docTitle: "Relatório Mensal Guileo", subtitle: "Relatório mensal de crescimento", heroLabel: "Crescimento que a Gui gerou este mês",
+        roi: (x, g, c) => `Retorno sobre créditos: ${x}× ($${g} de crescimento a partir de ${c} créditos)`, powered: (c) => `Impulsionado por ${c} créditos`,
+        payg: "Pague conforme o uso — você só paga pelo que a Gui faz. A Guileo nunca fica com uma fatia da sua receita.",
+        keyMetrics: "Métricas principais", growthLedger: "Razão de crescimento", total: "Total",
+        stack: (n) => `Suas ferramentas conectadas · ${n} ferramentas pelas quais a Guileo atua`, automations: "Automações no piloto automático",
+        foot: (b) => `Gerado pela Guileo · ${b} · Este relatório reflete a atividade gerida pela sua IA em todas as suas ferramentas conectadas. Dica: imprimir → Salvar como PDF.` },
+      es: { docTitle: "Informe Mensual Guileo", subtitle: "Informe mensual de crecimiento", heroLabel: "Crecimiento que Gui generó este mes",
+        roi: (x, g, c) => `Retorno sobre créditos: ${x}× ($${g} de crecimiento a partir de ${c} créditos)`, powered: (c) => `Impulsado por ${c} créditos`,
+        payg: "Paga por uso — solo pagas por lo que hace Gui. Guileo nunca se queda con una parte de tus ingresos.",
+        keyMetrics: "Métricas clave", growthLedger: "Libro de crecimiento", total: "Total",
+        stack: (n) => `Tus herramientas conectadas · ${n} herramientas a través de las que actúa Guileo`, automations: "Automatizaciones en piloto automático",
+        foot: (b) => `Generado por Guileo · ${b} · Este informe refleja la actividad gestionada por tu IA en todas tus herramientas conectadas. Consejo: imprimir → Guardar como PDF.` },
+    };
+    const L = RL[UI_LANG] || RL.en;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${L.docTitle} · ${V.business.name}</title><style>
       *{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1a1f1c;max-width:760px;margin:40px auto;padding:0 24px;line-height:1.5}
       h1{font-size:26px;margin:0}.muted{color:#6b7280}.hero{background:linear-gradient(135deg,#e9f6ef,#fbf6e8);border:1px solid #d9e9df;border-radius:16px;padding:24px;margin:20px 0}
       .big{font-size:44px;font-weight:900;letter-spacing:-1px}.share{background:#fff7e6;border:1px solid #f0d99b;border-radius:12px;padding:14px;margin-top:14px}
@@ -4777,18 +2226,18 @@ export default function Portal() {
       .foot{color:#9ca3af;font-size:12px;margin-top:30px;border-top:1px solid #eee;padding-top:14px}@media print{body{margin:0}}
     </style></head><body>
       <div style="display:flex;justify-content:space-between;align-items:flex-end">
-        <div><h1>${V.business.name}</h1><div class="muted">${V.business.place} · Monthly growth report</div></div>
+        <div><h1>${V.business.name}</h1><div class="muted">${V.business.place} · ${L.subtitle}</div></div>
         <div style="font-weight:900;color:#1f9d57">GUILEO</div>
       </div>
-      <div class="hero"><div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#9a7b1f;font-weight:700">Growth Gui drove this month</div>
+      <div class="hero"><div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#9a7b1f;font-weight:700">${L.heroLabel}</div>
         <div class="big">$${impact.total.toLocaleString()}</div>
-        <div class="share"><b>${roi > 0 ? `Return on credits: ${roi.toFixed(1)}× ($${impact.total.toLocaleString()} growth from ${creditsUsed.toLocaleString()} credits)` : `Powered by ${creditsUsed.toLocaleString()} credits`}</b><br><span class="muted">Pay-as-you-go — you only pay for what Gui does. Guileo never takes a cut of your revenue.</span></div>
+        <div class="share"><b>${roi > 0 ? L.roi(roi.toFixed(1), impact.total.toLocaleString(), creditsUsed.toLocaleString()) : L.powered(creditsUsed.toLocaleString())}</b><br><span class="muted">${L.payg}</span></div>
       </div>
-      <h3>Key metrics</h3><table>${kpiRows}</table>
-      <h3>Growth ledger</h3><table>${eventRows}<tr><td><b>Total</b></td><td style="text-align:right"><b>$${impact.total.toLocaleString()}</b></td></tr></table>
-      <h3>Your connected stack · ${liveTools.length} tools Guileo acts through</h3><table>${toolRows}</table>
-      ${autoRows ? `<h3>Automations on autopilot</h3><table>${autoRows}</table>` : ""}
-      <div class="foot">Generated by Guileo · ${V.business.name} · This report reflects activity handled by your AI across your connected stack. Tip: print → Save as PDF.</div>
+      <h3>${L.keyMetrics}</h3><table>${kpiRows}</table>
+      <h3>${L.growthLedger}</h3><table>${eventRows}<tr><td><b>${L.total}</b></td><td style="text-align:right"><b>$${impact.total.toLocaleString()}</b></td></tr></table>
+      <h3>${L.stack(liveTools.length)}</h3><table>${toolRows}</table>
+      ${autoRows ? `<h3>${L.automations}</h3><table>${autoRows}</table>` : ""}
+      <div class="foot">${L.foot(V.business.name)}</div>
     </body></html>`;
     const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
     const win = window.open(url, "_blank");
@@ -4808,44 +2257,67 @@ export default function Portal() {
   // Lazy view registry: each entry is a thunk so ONLY the active view's element tree
   // is built per render (was instantiating all ~40 components on every toast/lang/period change).
   const views = {
-    overview: () => <Overview V={V} onNav={setView} sections={sections} period={period} />,
-    leads: () => <LeadsDigest V={V} onNav={setView} lang={lang} />,
+    overview: () => <Overview V={V} onNav={setView} sections={sections} period={period} real={real} onRefresh={refreshReal} refreshing={realLoading} autoSpeak={speakWeekly} onAutoSpoke={() => setSpeakWeekly(false)} email={me?.email} dataKey={loadDataKey()} />,
+    leads: () => <LeadsDigest V={V} onNav={setView} lang={lang} real={real} />,
+    leadstoday: () => <LeadsToday V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
     deliveries: () => <Deliveries V={V} />,
-    inbox: () => <Inbox V={V} onNav={setView} />,
-    impact: () => <GuileoImpact V={V} />,
+    inbox: () => <Inbox V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    impact: () => <GuileoImpact V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     followups: () => <Followups V={V} />,
     waitlist: () => <Waitlist V={V} />,
-    recurring: () => <Recurring V={V} />,
+    recurring: () => <Recurring V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     reputation: () => <Reputation V={V} onNav={setView} />,
     loyalty: () => <Loyalty V={V} />,
     payments: () => <Payments V={V} />,
     team: () => <Team V={V} />,
-    locations: () => <Locations V={V} />,
-    operations: () => <Operations V={V} />,
-    schedule: () => <ScheduleScreen V={V} />,
+    locations: () => <Locations V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    operations: () => <Operations V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    schedule: () => <ScheduleScreen V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    riskradar: () => <RiskRadar V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    schedulesync: () => <ScheduleSync V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    googlehub: () => <GoogleHub V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    socialhub: () => <SocialHub V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    emergency: () => <EmergencyLog V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     catalog: () => <CatalogScreen V={V} />,
     social: () => <SocialInbox V={V} />,
-    analytics: () => <AIAnalytics V={V} onNav={setView} sections={sections} />,
-    insights: () => <AIInsights V={V} onNav={setView} sections={sections} />,
-    integrations: () => <Integrations V={V} onNav={setView} lang={lang} />,
+    analytics: () => <AIAnalytics V={V} onNav={setView} sections={sections} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    insights: () => <AIInsights V={V} real={real} onNav={setView} sections={sections} />,
+    integrations: () => <Integrations V={V} onNav={setView} lang={lang} me={me} />,
     liveorders: () => <LiveOrders V={V} />,
     kitchen: () => <Kitchen V={V} />,
     menu: () => <MenuView V={V} />,
     customers: () => <Customers V={V} onNav={setView} />,
+    crm: () => <CRM360 V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    command: () => <CommandCenter V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    finance: () => <FinanceDept V={V} onNav={setView} email={me?.email} dataKey={loadDataKey()} />,
+    marketing: () => <MarketingDept V={V} onNav={setView} email={me?.email} dataKey={loadDataKey()} />,
+    dates: () => <MarketingDates V={V} onNav={setView} email={me?.email} dataKey={loadDataKey()} />,
+    coupons: () => <Coupons V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    mycompany: () => <MyCompanyOS V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    growthintel: () => <GrowthIntel V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    experience: () => <Experience V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    timeline: () => <Timeline V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    capture: () => <CaptureTools V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    mktleads: () => <MarketplaceLeads V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    storm: () => <StormMode V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    retention: () => <GrowthDept V={V} onNav={setView} email={me?.email} dataKey={loadDataKey()} />,
+    documents: () => <DocsArea V={V} email={me?.email} dataKey={loadDataKey()} />,
     campaigns: () => <Campaigns V={V} onNav={setView} />,
     audiences: () => <Audiences V={V} onNav={setView} />,
-    calllogs: () => <CallLogs V={V} onNav={setView} />,
+    calllogs: () => <CallLogs V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
     dialer: () => <Dialer />,
-    whatsapp: () => <Convos V={V} title="WhatsApp" />,
-    sms: () => <Convos V={V} title="SMS" />,
+    whatsapp: () => <Convos V={V} title="WhatsApp" real={real} />,
+    sms: () => <Convos V={V} title="SMS" real={real} />,
     channels: () => <Channels />,
     ads: () => <Ads />,
-    support: () => <Support />,
-    docs: () => <Docs />,
+    support: () => <Support onNav={setView} email={me?.email} dataKey={loadDataKey()} />,
+    trainer: () => <Trainer V={V} onNav={setView} email={me?.email} dataKey={loadDataKey()} lang={lang} />,
+    kb: () => <KnowledgeBase V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    docs: () => <Docs real={real} />,
     grow: () => <Grow />,
-    brain: () => <AIBrain V={V} />,
-    billing: () => <Billing V={V} />,
-    settings: () => <SettingsView V={V} />,
+    brain: () => <AIBrain V={V} me={me} />,
+    billing: () => <Billing V={V} real={real} onNav={setView} email={me?.email} />,
+    settings: () => <SettingsView V={V} real={real} me={me} />,
   };
   const content = (views[view] || views.overview)();
 
@@ -4860,6 +2332,28 @@ export default function Portal() {
     if (extra?.name && OV) syncProfile(OV.label, OV, { ...defProfile(OV), name: extra.name });
     // Persist the new client to the clients registry (graceful — no-op if table/auth absent).
     try { portalApi.saveClient({ name: extra?.owner || extra?.name, business: extra?.name, sector: vid, contact: extra?.contact }); } catch { /* never block */ }
+    // REAL client — persist the wizard's answers (business type, name, covered channels)
+    // into their live agent via the SAME save+sync path the AI Brain tab uses. Demo
+    // visitors keep exactly the old behavior, but we stash the answers so they can be
+    // auto-applied once if they later connect (see the deferred-sync effect above).
+    try {
+      const applied = syncOnboardingToAgent(me, vid, extra || {});
+      if (applied) portalApi.saveState("pending_onboard", null);
+      else portalApi.saveState("pending_onboard", { vid, extra: extra || {}, at: Date.now() });
+    } catch { /* never block the wizard */ }
+    // CLOSE THE LOOP — turn the wizard from cosmetic into a real funnel entry. Every completion
+    // becomes a captured lead; if they gave an email, pre-seed their Gui brain in pending-onboarding
+    // so the moment they pay (/planos → Stripe → webhook) a trained Gui is born automatically.
+    // All fire-and-forget — never blocks exploring the demo.
+    try {
+      const contact = (extra?.contact || "").toString().trim();
+      const isEmail = contact.includes("@");
+      const seedBrain = `Business: ${extra?.name || OV?.label || vid}. Sector: ${OV?.label || vid}. Owner: ${extra?.owner || ""}.`.slice(0, 3500);
+      if (isEmail) {
+        fetch("/api/selfserve-signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: contact, business: extra?.name || "", industry: vid, lang: UI_LANG, brain: seedBrain, phone: "" }) }).catch(() => {});
+      }
+      fetch("/api/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: extra?.owner || extra?.name || "", phone: isEmail ? "" : contact, email: isEmail ? contact : "", business: extra?.name || "", industry: vid, lang: UI_LANG, source: "portal-wizard", noCall: true, consent: false }) }).catch(() => {});
+    } catch { /* never block the wizard */ }
   }} /></div>;
 
   return (
@@ -4870,7 +2364,7 @@ export default function Portal() {
       {/* Mobile backdrop */}
       {navOpen && <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden" onClick={() => setNavOpen(false)} />}
       {/* Sidebar — slide-over on mobile, static on desktop */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[82vw] overflow-y-auto transform transition-transform duration-300 ${navOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static lg:z-auto lg:w-60 lg:max-w-none lg:min-h-screen border-r border-white/10 bg-[#070b10]/98 lg:bg-white/[0.03] backdrop-blur-xl lg:sticky lg:top-0 flex flex-col`}>
+      <aside id="portal-sidebar" className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[82vw] overflow-y-auto transform transition-transform duration-300 ${navOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static lg:z-auto lg:w-60 lg:max-w-none lg:min-h-screen border-r border-white/10 bg-[#070b10]/98 lg:bg-white/[0.03] backdrop-blur-xl lg:sticky lg:top-0 flex flex-col`}>
         <div className="flex items-center gap-2 px-5 py-4">
           <img src={logo} alt="Guileo" className="h-8 w-8 object-contain" />
           <div className="leading-tight flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word">{tr("Growth Cockpit")}</div><div className="text-[10px] text-g-muted truncate">{V.icon} {V.business.name}</div></div>
@@ -4910,13 +2404,22 @@ export default function Portal() {
           })()}
         </nav>
         <div className="block px-4 mt-auto py-4 space-y-3">
-          {V.plan && (
-            <div className="rounded-xl2 border border-g-gold/25 bg-g-gold/[0.06] p-3">
-              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wide"><span className="text-g-gold">{V.plan.label}</span><span className="text-g-muted">{V.plan.used} / {V.plan.total.toLocaleString()}</span></div>
-              <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${Math.max(2, (V.plan.used / V.plan.total) * 100)}%` }} /></div>
-              <div className="mt-1.5 text-[10px] text-g-muted">{V.plan.unit}</div>
-            </div>
-          )}
+          <PlantBloom V={V} real={real} />
+          {(real || V.plan) && (() => {
+            // real mode: the card shows the TENANT's plan + remaining credits — never the demo meter
+            const label = real ? ({ starter: "Essential", growth: "Personalized", scale: "Full Operation" }[real.plan] || real.plan || "Plan") : V.plan.label;
+            const totals = { starter: 500, growth: 2000, scale: 6000 };
+            const total = real ? (totals[real.plan] || 0) : (V.plan.total || 0);
+            const left = real ? (Number(real.credits) || 0) : Math.max(0, (V.plan.total || 0) - (V.plan.used || 0));
+            const pct = total ? Math.max(2, Math.min(100, (left / total) * 100)) : 2;
+            return (
+              <div className="rounded-xl2 border border-g-gold/25 bg-g-gold/[0.06] p-3">
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wide"><span className="text-g-gold">{label}</span><span className="text-g-muted">{real ? `${left.toLocaleString()} / ${total ? total.toLocaleString() : "—"}` : `${V.plan.used} / ${(V.plan.total || 0).toLocaleString()}`}</span></div>
+                <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${pct}%` }} /></div>
+                <div className="mt-1.5 text-[10px] text-g-muted">{real ? tr("Gui credits remaining") : V.plan.unit}</div>
+              </div>
+            );
+          })()}
           <div className="flex items-center gap-2">
             <span className="grid place-items-center h-8 w-8 rounded-full bg-g-green/15 text-xs font-bold text-g-light">{((me?.name || me?.email || "G").trim()[0] || "G").toUpperCase()}</span>
             <div className="leading-tight min-w-0 flex-1"><div className="text-xs font-bold text-g-word truncate">{me?.name || me?.email || "Jane Staff"}</div><div className="text-[10px] text-g-muted truncate">{me && !me.demo ? tr(me.role || "Owner") : tr("Demo mode")}</div></div>
@@ -4930,22 +2433,22 @@ export default function Portal() {
         {/* topbar */}
         <header className="flex items-center justify-between gap-3 px-5 sm:px-8 py-4 border-b border-white/10 bg-white/[0.02] backdrop-blur-md sticky top-0 z-20">
           <div className="flex items-center gap-3 min-w-0">
-            <button onClick={() => setNavOpen(true)} className="lg:hidden grid place-items-center h-9 w-9 rounded-xl border border-white/12 bg-white/[0.04] text-g-word shrink-0" aria-label={tr("Open menu")}>☰</button>
+            <button onClick={() => setNavOpen(true)} aria-expanded={navOpen} aria-controls="portal-sidebar" className="lg:hidden grid place-items-center h-9 w-9 rounded-xl border border-white/15 bg-white/[0.04] text-g-word shrink-0" aria-label={tr("Open menu")}>☰</button>
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-extrabold text-g-word truncate flex items-center gap-2">{tr(title, lang)}{me?.demo ? <span className="text-[9px] font-black uppercase tracking-wide bg-g-gold/20 text-g-gold border border-g-gold/30 rounded-full px-2 py-0.5 shrink-0">{tr("Demo · sample data")}</span> : null}</h1>
-              <p className="text-[11px] text-g-muted truncate">{V.business.name} · {V.business.place} · {V.business.since}</p>
+              <h1 className="text-lg sm:text-xl font-extrabold text-g-word truncate flex items-center gap-2">{tr(title, lang)}{real && REAL_VIEWS.has(view) ? <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wide bg-g-green/15 text-g-green border border-g-green/40 rounded-full px-2 py-0.5 shrink-0 shadow-[0_0_10px_rgba(62,148,104,0.35)]"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("LIVE — real data")}</span> : real ? <span className="text-[9px] font-black uppercase tracking-wide bg-g-gold/15 text-g-gold border border-g-gold/30 rounded-full px-2 py-0.5 shrink-0">{tr("Sample preview")}</span> : <button onClick={() => setView("settings")} title={tr("Sample data · connect →")} className="text-[9px] font-black uppercase tracking-wide bg-g-gold/20 text-g-gold border border-g-gold/30 rounded-full px-2 py-0.5 shrink-0 hover:bg-g-gold/30 transition">{tr("Sample data · connect →")}</button>}</h1>
+              <p className="text-[11px] text-g-muted truncate">{(() => { const bp = real ? portalApi.loadProfile(V.label, {}) : null; return bp && bp.name ? `${bp.name}${bp.address ? " · " + bp.address : ""}` : `${V.business.name} · ${V.business.place} · ${V.business.since}`; })()}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <button onClick={() => setPaletteOpen(true)} className="hidden md:flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs text-g-muted w-40 hover:border-g-gold/40 transition"><FaMagnifyingGlass size={11} /><span className="truncate">{tr("Search… ⌘K")}</span></button>
-            <button onClick={exportReport} className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word hover:border-g-gold/40 transition"><FaDownload size={11} /> {tr("Report", lang)}</button>
-            <button onClick={toggleLang} title={tr("Language")} aria-label={tr("Toggle language")} className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-black text-g-word hover:border-g-gold/40 transition"><span className={lang === "en" ? "text-g-gold" : "text-g-muted"}>EN</span><span className="text-g-muted">·</span><span className={lang === "pt" ? "text-g-gold" : "text-g-muted"}>PT</span></button>
+            <button onClick={() => setPaletteOpen(true)} className="hidden md:flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs text-g-muted w-40 hover:border-g-gold/40 transition"><FaMagnifyingGlass size={11} /><span className="truncate">{tr("Search… ⌘K")}</span></button>
+            {!real && <button onClick={exportReport} className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word hover:border-g-gold/40 transition"><FaDownload size={11} /> {tr("Report", lang)}</button>}
+            <button onClick={toggleLang} title={tr("Language")} aria-label={tr("Toggle language")} className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-black text-g-word hover:border-g-gold/40 transition"><span className={lang === "en" ? "text-g-gold" : "text-g-muted"}>EN</span><span className="text-g-muted">·</span><span className={lang === "pt" ? "text-g-gold" : "text-g-muted"}>PT</span><span className="text-g-muted">·</span><span className={lang === "es" ? "text-g-gold" : "text-g-muted"}>ES</span><span className="text-g-muted">·</span><span className={lang === "hi" ? "text-g-gold" : "text-g-muted"}>HI</span></button>
             <div className="relative">
-              <button onClick={() => setBellOpen((o) => !o)} className="relative grid place-items-center h-9 w-9 rounded-full border border-white/12 bg-white/[0.04] text-g-muted hover:text-g-word transition" aria-label={`Notifications (${totalNotif})`}><FaBell size={13} />{totalNotif > 0 && <span className="absolute -top-1 -right-1 inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black shadow-[0_0_8px_rgba(239,68,68,0.6)]">{totalNotif}</span>}</button>
+              <button onClick={() => setBellOpen((o) => !o)} className="relative grid place-items-center h-9 w-9 rounded-full border border-white/15 bg-white/[0.04] text-g-muted hover:text-g-word transition" aria-label={`Notifications (${totalNotif})`}><FaBell size={13} />{totalNotif > 0 && <span className="absolute -top-1 -right-1 inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black shadow-[0_0_8px_rgba(239,68,68,0.6)]">{totalNotif}</span>}</button>
               {bellOpen && (
                 <>
                   <div className="fixed inset-0 z-20" onClick={() => setBellOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-72 max-h-96 overflow-y-auto rounded-xl2 border border-white/12 bg-g-cream/95 backdrop-blur-xl shadow-lift z-30 p-1.5">
+                  <div className="absolute right-0 mt-2 w-72 max-h-96 overflow-y-auto rounded-xl2 border border-white/15 bg-g-cream/95 backdrop-blur-xl shadow-lift z-30 p-1.5">
                     <div className="flex items-center justify-between px-2.5 py-1.5"><span className="text-[10px] font-bold uppercase tracking-wide text-g-muted">{tr("Notifications")}</span>{totalNotif > 0 && <button onClick={markAllRead} className="text-[10px] font-bold text-g-gold hover:underline">{tr("Mark all read")}</button>}</div>
                     {notifList.length ? notifList.map(({ k, l, n }) => (
                       <button key={k} onClick={() => { setView(k); setBellOpen(false); }} className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-bold text-left text-g-muted hover:text-g-word hover:bg-white/[0.06] transition">
@@ -4957,7 +2460,7 @@ export default function Portal() {
                 </>
               )}
             </div>
-            <div className="hidden lg:flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.04] p-1">
+            <div className="hidden lg:flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.04] p-1">
               {["7 days", "30 days", "90 days"].map((p) => (
                 <button key={p} onClick={() => setPeriod(p)} className={`rounded-full px-3 py-1 text-xs font-bold transition ${period === p ? "bg-g-gold/20 text-g-gold ring-1 ring-g-gold/40 shadow-[0_0_12px_rgba(214,194,154,0.18)]" : "text-g-muted hover:text-g-word hover:bg-white/[0.05]"}`}>{tr(p)}</button>
               ))}
@@ -4981,7 +2484,7 @@ export default function Portal() {
             {vertOpen && (
               <>
                 <div className="fixed inset-0 z-20" onClick={() => setVertOpen(false)} />
-                <div role="listbox" className="absolute right-0 mt-2 w-56 max-h-80 overflow-y-auto rounded-xl2 border border-white/12 bg-g-cream/95 backdrop-blur-xl shadow-lift z-30 p-1.5">
+                <div role="listbox" className="absolute right-0 mt-2 w-56 max-h-80 overflow-y-auto rounded-xl2 border border-white/15 bg-g-cream/95 backdrop-blur-xl shadow-lift z-30 p-1.5">
                   <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-g-muted">{tr("Industry · demo")}</div>
                   {VERTICAL_KEYS.map((k) => {
                     const on = vertical === k;
@@ -4999,10 +2502,27 @@ export default function Portal() {
         </div>
         )}
 
+        {/* REAL client who hasn't connected yet → label the preview prominently so fabricated
+            sample numbers NEVER read as their real money. Clears the moment a valid code is pasted. */}
+        {!me?.demo && !real && (
+          <div className="px-5 sm:px-8 pt-4">
+            <button onClick={() => setView("settings")} className="w-full text-left rounded-xl2 border border-g-gold/40 bg-g-gold/[0.10] px-4 py-3 flex flex-wrap items-center gap-3 hover:border-g-gold/70 transition">
+              <span className="text-lg">📊</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-bold text-g-word">{tr("You're seeing sample data — this isn't your real account yet.")}</div>
+                <div className="text-[11.5px] text-g-muted">{tr("Paste your connection code (from your welcome email) in Settings to see your real calls, bookings and revenue.")}</div>
+              </div>
+              <span className="shrink-0 rounded-full bg-g-gold px-3 py-1.5 text-[12px] font-extrabold text-black">{tr("Connect →")}</span>
+            </button>
+          </div>
+        )}
+
         {/* content — keyed by view+vertical = clean remount/fade per switch */}
         <div className="p-5 sm:p-8">
           <motion.div key={view + vertical} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
-            {content}
+            <Suspense fallback={<div className="p-8 text-g-muted text-sm">{tr("Loading your cockpit…")}</div>}>
+              {content}
+            </Suspense>
           </motion.div>
         </div>
       </main>

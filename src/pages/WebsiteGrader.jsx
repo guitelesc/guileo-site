@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLang } from "../i18n.jsx";
+import { useSeo } from "../lib/seo.js";
 
 // /grader — Website Grader lead magnet: enter a URL → instant "audit" (heuristic, believable) →
 // shows the leaks + a grade → captures the lead (→ /api/lead → /admin). An ad destination.
@@ -52,11 +53,62 @@ const T = {
     sent: "✓ Recebido! Mandamos seu plano de ajuste sob medida e já entramos em contato.",
     again: "Avaliar outro site",
   },
+  es: {
+    eyebrow: "Gratis · auditoría de tu web en 20s",
+    h1: "¿Tu web está perdiendo clientes?",
+    sub: "La mayoría de los sitios de pymes pierden leads en silencio. Recibe una nota al instante + los arreglos exactos — gratis.",
+    ph: "tunegocio.com",
+    grade: "Analizar mi web →",
+    grading: "Analizando…",
+    scoreLabel: "Nota de tu web",
+    leaksTitle: "Qué está perdiendo",
+    leaks: [
+      ["📞", "Sin llamada / chat al instante", "Quien tiene una duda se va — no puede contactarte ahora."],
+      ["📅", "Sin reservas 24/7", "Quien llega fuera de horario no reserva — reserva con tu competencia."],
+      ["⚡", "Lento / no mobile-first", "La mayoría del tráfico es móvil; una página lenta pierde la mitad."],
+      ["🔁", "Sin captura de seguimiento", "Sin capturar email/WhatsApp = el lead se pierde para siempre."],
+      ["⭐", "Poca prueba / reseñas", "Sin confianza visible → el visitante duda y se va."],
+    ],
+    fixTitle: "Guileo lo arregla todo",
+    fixLine: "Una recepción con IA + una web que captura, reserva y da seguimiento 24/7.",
+    namePh: "Tu nombre", contactPh: "WhatsApp / teléfono / email",
+    cta: "Quiero mi plan de arreglo gratis →",
+    sent: "✓ ¡Recibido! Te enviamos tu plan de arreglo a medida y te contactamos enseguida.",
+    again: "Analizar otra web",
+  },
+  hi: {
+    eyebrow: "मुफ्त · 20-सेकंड वेबसाइट ऑडिट",
+    h1: "क्या आपकी वेबसाइट आपके ग्राहक खो रही है?",
+    sub: "ज़्यादातर छोटे-व्यवसाय की साइटें चुपचाप लीड्स खो देती हैं। तुरंत स्कोर + सटीक सुधार पाएं — मुफ्त।",
+    ph: "yourbusiness.com",
+    grade: "मेरी वेबसाइट जांचें →",
+    grading: "स्कैन हो रहा है…",
+    scoreLabel: "आपकी वेबसाइट का स्कोर",
+    leaksTitle: "क्या लीक हो रहा है",
+    leaks: [
+      ["📞", "तुरंत कॉल / चैट नहीं", "सवाल वाले विज़िटर चले जाते हैं — अभी आपसे संपर्क का कोई तरीका नहीं।"],
+      ["📅", "24/7 बुकिंग नहीं", "समय के बाद आने वाले बुक नहीं कर पाते — वे आपके प्रतिस्पर्धी को बुक करते हैं।"],
+      ["⚡", "धीमी / मोबाइल-फर्स्ट नहीं", "ज़्यादातर ट्रैफिक मोबाइल है; धीमे पेज आधे को खो देते हैं।"],
+      ["🔁", "फॉलो-अप कैप्चर नहीं", "ईमेल/WhatsApp न पकड़ना = लीड हमेशा के लिए गई।"],
+      ["⭐", "कमज़ोर प्रमाण / रिव्यू", "कोई दिखने वाला भरोसा नहीं → विज़िटर झिझकते हैं और चले जाते हैं।"],
+    ],
+    fixTitle: "Guileo यह सब ठीक करती है",
+    fixLine: "एक AI फ्रंट डेस्क + एक साइट जो 24/7 कैप्चर, बुक और फॉलो-अप करती है।",
+    namePh: "आपका नाम", contactPh: "WhatsApp / फोन / ईमेल",
+    cta: "मेरा मुफ्त सुधार प्लान पाएं →",
+    sent: "✓ मिल गया! हम आपका अनुकूलित सुधार प्लान भेजेंगे और जल्द संपर्क करेंगे।",
+    again: "दूसरी साइट जांचें",
+  },
 };
 
 export default function WebsiteGrader() {
   const { lang } = useLang();
-  const t = T[lang === "pt" ? "pt" : "en"];
+  useSeo({
+    title: lang === "hi" ? "मुफ्त वेबसाइट ग्रेडर — जानें क्या आपके ग्राहक खर्च कर रहा है" : lang === "pt" ? "Avaliação de Site Grátis — descubra o que custa clientes" : lang === "es" ? "Análisis Web Gratis — descubre qué te cuesta clientes" : "Free Website Grader — Find What's Costing You Customers",
+    description: lang === "hi" ? "अपनी वेबसाइट 20 सेकंड में जांचें, मुफ्त। तुरंत स्कोर पाएं और देखें कहाँ वह लीड्स खोती है — और Guileo इसे कैसे ठीक करती है ऐसी AI से जो 24/7 जवाब देती, बुक करती और फॉलो-अप करती है।" : lang === "pt" ? "Avalie seu site em 20 segundos, de graça. Receba uma nota na hora e veja onde ele vaza leads — e como a Guileo conserta tudo com IA que atende, agenda e faz follow-up 24/7." : lang === "es" ? "Analiza tu web en 20 segundos, gratis. Recibe una nota al instante y descubre dónde pierde clientes — y cómo Guileo lo arregla con IA que atiende, agenda y da seguimiento 24/7." : "Grade your website in 20 seconds, free. Get an instant score and see exactly where it leaks leads — plus how Guileo fixes it with AI that answers, books and follows up 24/7.",
+    path: "/grader",
+  });
+  const t = T[lang === "hi" ? "hi" : lang === "es" ? "es" : lang === "pt" ? "pt" : "en"];
   const [url, setUrl] = useState("");
   const [stage, setStage] = useState("input"); // input | grading | result | done
   const [score, setScore] = useState(0);
@@ -95,7 +147,7 @@ export default function WebsiteGrader() {
 
         {stage === "input" && (
           <div className="mt-7 rounded-2xl border border-g-line bg-white/[0.04] p-5 backdrop-blur-sm">
-            <input value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && run()} placeholder={t.ph}
+            <input value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === "Enter" && run()} placeholder={t.ph} aria-label={t.ph}
               className="w-full rounded-full border border-g-line bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/60" />
             <button onClick={run} className="btn mt-3 w-full justify-center text-sm">{t.grade}</button>
           </div>
@@ -130,9 +182,9 @@ export default function WebsiteGrader() {
               <div className="rounded-2xl border border-g-green/30 bg-g-green/[0.06] p-5">
                 <div className="text-[14px] font-black text-g-word">🌱 {t.fixTitle}</div>
                 <div className="mt-1 text-[13px] text-g-ink">{t.fixLine}</div>
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.namePh}
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.namePh} aria-label={t.namePh}
                   className="mt-3 w-full rounded-full border border-g-line bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/60" />
-                <input value={contact} onChange={(e) => setContact(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder={t.contactPh}
+                <input value={contact} onChange={(e) => setContact(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder={t.contactPh} aria-label={t.contactPh}
                   className="mt-2 w-full rounded-full border border-g-line bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/60" />
                 <button onClick={submit} className="btn-bright mt-3 w-full justify-center text-sm">{t.cta}</button>
               </div>

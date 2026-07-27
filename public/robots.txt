@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+# Internal / partner-only tooling — keep out of search results
+Disallow: /proposta
+Disallow: /pitch
+Disallow: /deck
+Disallow: /cola
+Disallow: /parceiro
+Disallow: /academia
+Disallow: /leads
+Disallow: /contratos
+Disallow: /setup-agenda
+
+Sitemap: https://guileoai.com/sitemap.xml

@@ -211,7 +211,7 @@ export default function LiveDemo() {
           const Icon = a.icon;
           return (
             <button key={a.key} onClick={() => play(a)}
-              className="group inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-bold text-g-word hover:border-g-green/60 hover:bg-white/[0.08] transition">
+              className="group inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-bold text-g-word hover:border-g-green/60 hover:bg-white/[0.08] transition">
               <span style={{ color: a.color }}><Icon size={11} /></span>{a.chip}
             </button>
           );
