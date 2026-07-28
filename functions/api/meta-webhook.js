@@ -30,6 +30,7 @@
 // Per-tenant page access tokens live in client_integrations (provider='meta') via db/meta_integration.sql.
 // ═════════════════════════════════════════════════════════════════════════════
 import { json, safeEq } from "../lib/guard.js";
+import { svcRpc } from "../lib/sb.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -106,7 +107,7 @@ async function crmUpsert(env, email, senderId, name, source) {
 //    assistant greets returning customers by name and continues where they left off. ──
 async function callerContext(env, email, senderId) {
   try {
-    const r = await rpc("crm_caller_context", { p_secret: env.INGEST_SECRET || "", p_email: email, p_phone: String(senderId) });
+    const r = await svcRpc(env, "crm_caller_context", { p_secret: env.INGEST_SECRET || "", p_email: email, p_phone: String(senderId) });
     if (!r.ok) return "";
     const c = await r.json().catch(() => null);
     if (!c || typeof c !== "object") return "";

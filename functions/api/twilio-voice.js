@@ -7,6 +7,7 @@
 // Twilio config: Phone Numbers → your number → Voice → webhook POST
 //   https://guileoai.com/api/twilio-voice
 import { json, safeEq } from "./../lib/guard.js";
+import { svcRpc } from "./../lib/sb.js";
 import { sendText } from "./../lib/twilio.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -100,11 +101,7 @@ async function callerMemory(env, email, phone) {
       // greeting can name the actual service; fall back to crm_caller_lookup when it isn't pasted
       // yet. Both INGEST-gated; caller_name/caller_last/caller_note stay the injected vars.
       try {
-        const cx = await fetch(`${SB_URL}/rest/v1/rpc/crm_caller_context`, {
-          method: "POST",
-          headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ p_secret: env.INGEST_SECRET, p_email: email, p_phone: phone }),
-        });
+        const cx = await svcRpc(env, "crm_caller_context", { p_secret: env.INGEST_SECRET, p_email: email, p_phone: phone });
         if (cx.ok) {
           const j = await cx.json().catch(() => null);
           if (j && typeof j === "object" && (j.name || j.visits_count > 1)) {

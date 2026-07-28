@@ -26,7 +26,8 @@ begin
         'clients_total',  (select count(*) from public.client_credits),
         'clients_active', (select count(*) from public.client_credits where credits>0 and paused_at is null),
         'clients_paused', (select count(*) from public.client_credits where paused_at is not null),
-        'active_30d',     (select count(distinct client_email) from public.client_events where created_at >= now() - interval '30 days')
+        'active_30d',     (select count(distinct client_email) from public.client_events where created_at >= now() - interval '30 days'),
+        'first_value',    (select count(*) from public.client_events where type='first_value')
       )
   ) into v;
   return v;

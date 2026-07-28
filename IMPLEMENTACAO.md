@@ -130,5 +130,6 @@ Ou, sabendo o `agent_id`, direto: `select public.client_agent_upsert('glo_ing_7f
 **Quando:** cliente fecha → tudo dispara sozinho até o projeto começar. "Automatiza o envio, nunca a decisão."
 **Passos (cadeia):** 1 contrato → 2 welcome → 3 fatura → 4 acesso (auto-provision) → 5 kickoff + **brief IA** → 6 relatório ROI mensal → 7 check-in 30/60/90 (sentimento). `/api/onboarding` (SECRET-only: cron+stripe), `onboard_status` = barra de progresso + painel de conversão. E-mails via emailTemplates.js.
 **Gatilhos:** stripe-webhook (pago→avança acesso, deferido/wrapped) + cron-tick (check-in diário · report dia 1º).
+**Primeiro-valor-na-1ª-hora:** pago→Gui nasce→dispara 1 ligação real pro telefone do DONO discando como a Gui dele (path interno /api/call, DNC+caps+E.164), o dono ouve a própria Gui na hora. Deferido/wrapped (nunca toca dinheiro), dedup `claim_credit_event('first_value:<email>')` (recompra não re-disca; renovação nem entra). Sem telefone→pula (welcome email leva o número). Loga client_event `first_value`.
 **Chave externa:** `ESIGN_WEBHOOK` (contrato auto-assinado; inerte até setar) · `KICKOFF_URL` (link de agenda).
 **Prova:** start→29% idempotente · sentiment ghost rejeitado (0 linha) · 403 sem segredo.

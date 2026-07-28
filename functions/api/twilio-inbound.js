@@ -8,6 +8,7 @@
 // Twilio config: Phone Numbers → your number → Messaging → webhook POST
 //   https://guileoai.com/api/twilio-inbound
 import { json, safeEq } from "./../lib/guard.js";
+import { svcRpc } from "./../lib/sb.js";
 import { webchatSentiment } from "./../lib/cxEngine.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -143,10 +144,7 @@ async function handleElevenInitiation(env, body) {
       // Prefer the RICHER crm_caller_context (adds last booked service) so the agent can greet with
       // the actual service; fall back to crm_caller_lookup when it isn't pasted yet. Both INGEST-gated.
       try {
-        const cx = await fetch(`${SB_URL}/rest/v1/rpc/crm_caller_context`, {
-          method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ p_secret: env.INGEST_SECRET, p_email: email, p_phone: caller }),
-        });
+        const cx = await svcRpc(env, "crm_caller_context", { p_secret: env.INGEST_SECRET, p_email: email, p_phone: caller });
         if (cx.ok) {
           const j = await cx.json().catch(() => null);
           if (j && typeof j === "object" && (j.name || j.visits_count > 1)) {

@@ -3,7 +3,7 @@
 // password (verified server-side via admin_site_stats), then it reaches the support +
 // inventory RPCs with the server-side SCHED_SECRET. Surfaces the whole ticket queue
 // across every tenant, our platform inventory (numbers/hardware/accounts), and health.
-import { json, rateLimited } from "../lib/guard.js";
+import { json, rateLimited, sameOrigin } from "../lib/guard.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -12,6 +12,7 @@ const rpc = (name, body) => fetch(`${SB}/rest/v1/rpc/${name}`, { method: "POST",
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
+    if (!sameOrigin(request)) return json({ error: "forbidden" }, 403);
     // slow brute-force on the admin password (the gate below verifies it server-side)
     if (await rateLimited(request, env, "broto", 30)) return json({ error: "too many requests" }, 429);
     const b = await request.json().catch(() => ({}));
@@ -26,11 +27,13 @@ export async function onRequestPost(context) {
 
     if (action === "ticket_set") {
       const r = await rpc("support_ticket_set", { p_secret: secret, p_id: b.id, p_status: b.status || null, p_resolution: b.resolution || null, p_assigned: b.assigned || null });
-      return json({ ok: r.ok });
+      const okv = r.ok ? await r.json().catch(() => false) : false; // parse the RPC bool, not the HTTP status
+      return json({ ok: okv === true });
     }
     if (action === "ticket_reply") {
       const r = await rpc("support_ticket_reply", { p_secret: secret, p_id: b.id, p_role: b.role || "human", p_text: b.text || "" });
-      return json({ ok: r.ok });
+      const okv = r.ok ? await r.json().catch(() => false) : false;
+      return json({ ok: okv === true });
     }
     if (action === "inv_upsert") {
       const r = await rpc("inventory_upsert", { p_secret: secret, p_id: b.id || null, p_kind: b.kind || "number", p_label: b.label || "", p_status: b.status || "available", p_assigned: b.assigned || null, p_meta: b.meta || {} });

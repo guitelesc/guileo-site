@@ -17,8 +17,9 @@ export async function onRequest(context) {
     if (request.method === "POST") p = await request.json().catch(() => ({}));
     const q = (k) => p[k] ?? url.searchParams.get(k);
 
-    // DIGEST-gated (o cron passa o token do lado do servidor; randoms não disparam).
-    if (env.DIGEST_TOKEN && !safeEq((q("token") || "").toString(), env.DIGEST_TOKEN)) return json({ ok: false, error: "unauthorized" }, 401);
+    // DIGEST-gated, FAIL-CLOSED: if DIGEST_TOKEN is unset OR the token doesn't match, refuse — the
+    // brief carries cross-tenant company state and must never be reachable without the server token.
+    if (!env.DIGEST_TOKEN || !safeEq((q("token") || "").toString(), env.DIGEST_TOKEN)) return json({ ok: false, error: "unauthorized" }, 401);
 
     const to = (q("to") || env.OWNER_EMAIL || "smart@guileoai.com").toString().trim();
     // SEGURANÇA: o brief carrega o estado da companhia — só pro inbox do dono.

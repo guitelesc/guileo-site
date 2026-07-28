@@ -8,7 +8,7 @@
 
 export const SIM_VERTICALS = [
   {
-    key: "restaurant", icon: "🍕", portalV: "restaurant",
+    key: "restaurant", icon: "🍕", portalV: "restaurant", mood: ["casual", "happy"],
     label: { en: "Restaurant", pt: "Restaurante", es: "Restaurante", hi: "रेस्टोरेंट" },
     lines: {
       en: [
@@ -38,7 +38,7 @@ export const SIM_VERTICALS = [
     },
   },
   {
-    key: "clinic", icon: "🦷", portalV: "clinic",
+    key: "clinic", icon: "🦷", portalV: "clinic", mood: ["anxious", "reassured"],
     label: { en: "Clinic / Dental", pt: "Clínica / Odonto", es: "Clínica / Dental", hi: "क्लीनिक / डेंटल" },
     lines: {
       en: [
@@ -68,7 +68,7 @@ export const SIM_VERTICALS = [
     },
   },
   {
-    key: "salon", icon: "💇", portalV: "salon",
+    key: "salon", icon: "💇", portalV: "salon", mood: ["hopeful", "delighted"],
     label: { en: "Salon & Spa", pt: "Salão & Spa", es: "Salón & Spa", hi: "सैलून और स्पा" },
     lines: {
       en: [
@@ -98,7 +98,7 @@ export const SIM_VERTICALS = [
     },
   },
   {
-    key: "plumbing", icon: "🔧", portalV: "homeservices",
+    key: "plumbing", icon: "🔧", portalV: "homeservices", mood: ["panicked", "relieved"],
     label: { en: "Plumbing / HVAC", pt: "Encanador / Ar", es: "Plomería / HVAC", hi: "प्लंबिंग / HVAC" },
     lines: {
       en: [
@@ -128,7 +128,7 @@ export const SIM_VERTICALS = [
     },
   },
   {
-    key: "realestate", icon: "🏠", portalV: "realestate",
+    key: "realestate", icon: "🏠", portalV: "realestate", mood: ["curious", "confident"],
     label: { en: "Real Estate", pt: "Imóveis", es: "Inmobiliaria", hi: "रियल एस्टेट" },
     lines: {
       en: [
@@ -158,7 +158,7 @@ export const SIM_VERTICALS = [
     },
   },
   {
-    key: "gym", icon: "💪", portalV: "gym",
+    key: "gym", icon: "💪", portalV: "gym", mood: ["hesitant", "motivated"],
     label: { en: "Gym & Fitness", pt: "Academia", es: "Gimnasio", hi: "जिम और फ़िटनेस" },
     lines: {
       en: [

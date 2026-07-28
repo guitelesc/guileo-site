@@ -2,7 +2,7 @@
 // Server-side proxy so the INGEST_SECRET never ships in the public /admin bundle.
 // Body: { token, email, rows:[{name,phone,channel}] }. Verifies the admin token against
 // the token-gated blitz_stats RPC, then ingests the dormant list with the server's secret.
-import { json } from "../lib/guard.js";
+import { json, sameOrigin, rateLimited } from "../lib/guard.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -14,6 +14,9 @@ const rpc = (name, body) => fetch(`${SB_URL}/rest/v1/rpc/${name}`, {
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
+    if (!sameOrigin(request)) return json({ error: "forbidden" }, 403);
+    // throttle admin-password guessing on this endpoint (mirrors broto/company-os).
+    if (await rateLimited(request, env, "admin-blitz", 20)) return json({ error: "too many requests" }, 429);
     const b = await request.json();
     const token = (b.token || "").toString();
     // AUTH FIRST — verify the admin token before any field validation, so an unauthenticated

@@ -10,7 +10,7 @@
 import { json } from "../lib/guard.js";
 import { buildConversationConfig, forwardingInstructions, buildDefaultSchedulePayload } from "../lib/provision.js";
 import { emitFailure } from "../lib/failure.js";
-import { welcomeSelfServeEmail, sellerClientLiveEmail } from "../lib/emailTemplates.js";
+import { welcomeSelfServeEmail, sellerClientLiveEmail, teamKickoffBriefEmail } from "../lib/emailTemplates.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -371,6 +371,43 @@ export async function onRequestPost(context) {
 
     // log the onboarding as a real event
     try { await rpc("ingest_client_event", { p_secret: ING, p_email: email, p_type: "provision", p_channel: "system", p_summary: `🚀 Cliente ativado: ${business}${result.number ? " · " + result.number : ""}`, p_amount: 0, p_payload: { agent_id: result.agent_id || "" } }); } catch { /* */ }
+
+    // ONBOARDING NURTURE SEED — admin-onboarded clients do NOT pass through stripe-webhook, so they
+    // would never enter the onboarding machine. Stamp access + stash name/lang here too, so the cron
+    // nurture (check-in 30/60/90 + monthly ROI, which fire off the 'access' stamp) reaches them —
+    // and greets them by name in their language. Best-effort; never blocks activation.
+    try {
+      await rpc("onboard_advance", { p_secret: ING, p_email: email, p_step: "invoice" });
+      await rpc("onboard_advance", { p_secret: ING, p_email: email, p_step: "access" });
+      await rpc("onboard_set_meta", { p_secret: ING, p_email: email, p_meta: { name: (b.owner_name || b.agent_name || "").toString() || email.split("@")[0], lang: (b.lang || "pt").toString(), business: (b.business || "").toString() } });
+    } catch { /* nurture seed best-effort */ }
+
+    // TEAM KICKOFF BRIEF — the team gets an AI-generated one-page launch plan for this new client
+    // (internal, to OWNER_EMAIL — never the client). Deduped once per client so a re-run of onboarding
+    // never re-sends. Best-effort; never blocks activation.
+    try {
+      if (env.RESEND_API_KEY) {
+        const owner = (env.OWNER_EMAIL || "smart@guileoai.com").split(",")[0].trim();
+        const claim = await rpc("claim_credit_event", { p_secret: env.PEND_SECRET || "gx_pend_7Qk2mZ9vR4tLpW8n_cit3l3s", p_event_id: `team_brief:${email}`, p_email: email });
+        const fresh = claim.ok ? (await claim.json()) === true : false;
+        if (fresh && owner) {
+          const origin = new URL(request.url).origin;
+          const br = await fetch(`${origin}/api/onboarding`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "brief", client_email: email, secret: ING, lang: (b.lang || "pt").toString() }),
+          });
+          const brief = br.ok ? ((await br.json())?.brief || "") : "";
+          if (brief) {
+            const { subject, html } = teamKickoffBriefEmail({ business: (b.business || "").toString() || email.split("@")[0], brief, lang: (b.lang || "pt").toString() });
+            await fetch("https://api.resend.com/emails", {
+              method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: [owner], subject, html }),
+            });
+            result.steps.team_brief = "ok";
+          } else result.steps.team_brief = "skipped (no brief)";
+        }
+      }
+    } catch { result.steps.team_brief = "err"; /* team brief is best-effort */ }
 
     // golden moment for the SELLER: their wallet client just went LIVE — best-effort, awaited.
     try {

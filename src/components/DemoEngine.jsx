@@ -23,7 +23,7 @@
 // (border-g-line / bg-white/[0.03]) so it reads on BOTH the cream Admin surface and
 // the cement seller/public surfaces.
 // ============================================================================
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useLang } from "../i18n.jsx";
 import { waLink } from "../data/contact.js";
 
@@ -47,6 +47,7 @@ const T4 = {
     chat: { hi: "Hi! How can we help?", u: "Do you have availability today?", a: "Yes — I can book you right now. What time works?" },
     dm: "Answered by their brain", callFor: "Gui answering for", live: "live", ringing: "Ringing…",
     callNow: "Hear Gui now — get the call", callPh: "Your phone (with country code)", calling: "Calling…", callSent: "Gui is calling you now ✓", callErr: "Couldn't place the call — check the number.",
+    hearReal: "Hear the real voice", voicePlaying: "Playing…",
     adCard: "ready-to-run ads", emailCard: "Email in their tone", seoCard: "Ranking page for",
     appHint: "Their app, their brand", tapToBook: "Tap to book",
   },
@@ -68,6 +69,7 @@ const T4 = {
     chat: { hi: "Oi! Como posso ajudar?", u: "Tem horário hoje?", a: "Tenho — já posso agendar. Que horário fica bom?" },
     dm: "Respondido pelo cérebro dele", callFor: "Gui atendendo pela", live: "ao vivo", ringing: "Chamando…",
     callNow: "Ouça a Gui agora — receba a ligação", callPh: "Seu telefone com DDD", calling: "Ligando…", callSent: "A Gui está te ligando agora ✓", callErr: "Não consegui ligar — confira o número.",
+    hearReal: "Ouvir a voz real", voicePlaying: "Tocando…",
     adCard: "anúncios prontos", emailCard: "E-mail no tom dele", seoCard: "Página rankeando em",
     appHint: "O app dele, a marca dele", tapToBook: "Toque pra agendar",
   },
@@ -89,6 +91,7 @@ const T4 = {
     chat: { hi: "¡Hola! ¿Cómo puedo ayudar?", u: "¿Tienes hora hoy?", a: "Sí — puedo agendarte ahora. ¿Qué hora te queda bien?" },
     dm: "Respondido por su cerebro", callFor: "Gui atendiendo por", live: "en vivo", ringing: "Llamando…",
     callNow: "Escucha a Gui ahora — recibe la llamada", callPh: "Tu teléfono con código", calling: "Llamando…", callSent: "Gui te está llamando ahora ✓", callErr: "No pude llamar — revisa el número.",
+    hearReal: "Escuchar la voz real", voicePlaying: "Reproduciendo…",
     adCard: "anuncios listos", emailCard: "Email en su tono", seoCard: "Página posicionando en",
     appHint: "Su app, su marca", tapToBook: "Toca para reservar",
   },
@@ -110,6 +113,7 @@ const T4 = {
     chat: { hi: "नमस्ते! कैसे मदद करूँ?", u: "क्या आज समय है?", a: "हाँ — मैं अभी बुक कर सकता हूँ। कौन सा समय ठीक है?" },
     dm: "उनके ब्रेन द्वारा उत्तर", callFor: "Gui उत्तर दे रही है", live: "लाइव", ringing: "रिंग हो रहा है…",
     callNow: "Gui को अभी सुनें — कॉल पाएँ", callPh: "आपका फ़ोन (कोड सहित)", calling: "कॉल कर रहे हैं…", callSent: "Gui आपको अभी कॉल कर रही है ✓", callErr: "कॉल नहीं हो सका — नंबर जाँचें।",
+    hearReal: "असली आवाज़ सुनें", voicePlaying: "चल रहा है…",
     adCard: "तैयार विज्ञापन", emailCard: "उनके टोन में ईमेल", seoCard: "रैंकिंग पेज:",
     appHint: "उनका ऐप, उनकी ब्रांड", tapToBook: "बुक करने के लिए टैप करें",
   },
@@ -148,6 +152,23 @@ async function callDemo(action, payload) {
   return r.json();
 }
 
+// Normalize a brand kit into the shape the previews render: services as plain strings and facts as
+// a short array of sentence strings. The backend (and older saved demos) may return services as
+// {name,price} objects and facts as one paragraph string — rendering those directly crashes React
+// ("Objects are not valid as a child" / string.find is not a function). This makes every path safe.
+function normBrand(b) {
+  if (!b || typeof b !== "object") return b;
+  const services = Array.isArray(b.services)
+    ? b.services.map((s) => (typeof s === "string" ? s : (s && s.name ? (s.price ? `${s.name} · ${s.price}` : s.name) : ""))).filter(Boolean).slice(0, 8)
+    : [];
+  const facts = Array.isArray(b.facts)
+    ? b.facts
+    : (typeof b.facts === "string" && b.facts.trim()
+        ? b.facts.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean).slice(0, 6)
+        : []);
+  return { ...b, services, facts };
+}
+
 export default function DemoEngine({ surface = "public", presetToken = null }) {
   const { lang } = useLang();
   const t = T4[lang] || T4.en;
@@ -169,7 +190,7 @@ export default function DemoEngine({ surface = "public", presetToken = null }) {
     if (!presetToken) return;
     let alive = true;
     callDemo("get", { token: presetToken })
-      .then((d) => { if (alive && d?.brand) { setBrand(d.brand); if (d.productId) setProduct(d.productId); } })
+      .then((d) => { if (alive && d?.brand) { setBrand(normBrand(d.brand)); if (d.productId) setProduct(d.productId); } })
       .catch(() => {});
     return () => { alive = false; };
   }, [presetToken]);
@@ -180,7 +201,7 @@ export default function DemoEngine({ surface = "public", presetToken = null }) {
     setPullState("go"); setBrand(null); setToken(null); setShareState("idle");
     try {
       const d = await callDemo("brand", { query: q });
-      if (d?.brand) { setBrand(d.brand); setPullState("idle"); logView(d.brand, product); }
+      if (d?.brand) { const nb = normBrand(d.brand); setBrand(nb); setPullState("idle"); logView(nb, product); }
       else setPullState("err");
     } catch { setPullState("err"); }
   }, [query, product]);
@@ -241,9 +262,16 @@ export default function DemoEngine({ surface = "public", presetToken = null }) {
 
   return (
     <div className="rounded-2xl border border-g-line bg-white/[0.03] p-5 backdrop-blur-sm text-g-word">
-      <div className="text-[11px] font-black uppercase tracking-wider" style={{ color: brand ? colors.accent : FALLBACK_ACCENT }}>{t.eyebrow}</div>
-      <h2 className="mt-1 text-[19px] font-black leading-tight">{t.title}</h2>
-      <p className="mt-1 max-w-2xl text-[12.5px] text-g-muted">{t.sub}</p>
+      {/* On the public landing the section already carries its own visitor-framed heading, so the
+          internal (seller-toned "show any product in THEIR brand") header is hidden to avoid a
+          duplicate + wrong-audience title. Seller/admin surfaces keep it. */}
+      {surface !== "public" && (
+        <>
+          <div className="text-[11px] font-black uppercase tracking-wider" style={{ color: brand ? colors.accent : FALLBACK_ACCENT }}>{t.eyebrow}</div>
+          <h2 className="mt-1 text-[19px] font-black leading-tight">{t.title}</h2>
+          <p className="mt-1 max-w-2xl text-[12.5px] text-g-muted">{t.sub}</p>
+        </>
+      )}
 
       {/* ── SEARCH ── */}
       <div className="mt-4 flex flex-wrap gap-2">
@@ -558,6 +586,35 @@ function VoicePreview({ brand, colors, t, lang }) {
   // Gui greets AS this brand via dynamic variables ({{business}}/{{need}}). Not a mock.
   const [phone, setPhone] = useState("");
   const [st, setSt] = useState("idle"); // idle | go | done | err
+
+  // REAL neural voice (ElevenLabs via /api/tts) speaking a line PERSONALIZED to this brand — so the
+  // visitor hears "Gui" answering for THEIR business, in Victoria (♀) or Bruno (♂). Cached server-side.
+  const [vVoice, setVVoice] = useState("victoria");
+  const [vSt, setVSt] = useState("idle"); // idle | go
+  const audioRef = useRef(null);
+  // stop any playing greeting when the visitor switches product (unmounts this preview).
+  useEffect(() => () => { if (audioRef.current) { try { audioRef.current.pause(); audioRef.current.src = ""; } catch { /* */ } } }, []);
+  const greeting = () => {
+    const n = brand?.name || (lang === "en" ? "your business" : lang === "es" ? "su negocio" : "seu negócio");
+    return lang === "en" ? `Hi! This is Gui, answering for ${n}. How can I help you today?`
+      : lang === "es" ? `¡Hola! Soy Gui, atendiendo por ${n}. ¿Cómo puedo ayudarle hoy?`
+      : lang === "hi" ? `नमस्ते! मैं Gui हूँ, ${n} के लिए बात कर रही हूँ। मैं आपकी कैसे मदद कर सकती हूँ?`
+      : `Oi! Aqui é a Gui, atendendo pela ${n}. Como posso te ajudar hoje?`;
+  };
+  const playVoice = async (voice) => {
+    setVVoice(voice); setVSt("go");
+    try {
+      const r = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: greeting(), voice, lang }) });
+      if (!r.ok) { setVSt("idle"); return; }
+      const url = URL.createObjectURL(await r.blob());
+      if (audioRef.current) { try { audioRef.current.pause(); } catch { /* */ } }
+      const a = new Audio(url); audioRef.current = a;
+      a.onended = () => { URL.revokeObjectURL(url); setVSt("idle"); };
+      a.onerror = () => setVSt("idle");
+      await a.play().catch(() => setVSt("idle"));
+    } catch { setVSt("idle"); }
+  };
+
   const placeCall = async (e) => {
     e?.preventDefault?.();
     const p = phone.trim();
@@ -591,6 +648,20 @@ function VoicePreview({ brand, colors, t, lang }) {
           {[10, 20, 14, 26, 18, 30, 16, 22, 12].map((h, i) => <span key={i} className="w-1.5 rounded-full" style={{ height: h, background: colors.accent, opacity: 0.4 + (i % 3) * 0.25 }} />)}
         </div>
         <div className="mt-3 rounded-lg bg-white/[0.05] px-3 py-2 text-left text-[11px] text-white/80">“{brand.name}, {t.chat.hi} {t.chat.a}”</div>
+
+        {/* REAL neural voice — hear Gui greet AS this brand, Victoria (♀) or Bruno (♂) */}
+        <div className="mt-3">
+          <div className="text-[10px] font-black uppercase tracking-wide text-white/50">{t.hearReal}</div>
+          <div className="mt-1.5 flex gap-1.5">
+            {[{ k: "victoria", g: "♀", n: "Victoria" }, { k: "bruno", g: "♂", n: "Bruno" }].map((v) => (
+              <button key={v.k} onClick={() => playVoice(v.k)} disabled={vSt === "go"}
+                className="flex-1 rounded-lg px-2 py-2 text-[12px] font-black text-black disabled:opacity-60"
+                style={{ background: vSt === "go" && vVoice === v.k ? "#9c9485" : colors.accent }}>
+                {vSt === "go" && vVoice === v.k ? `▊ ${t.voicePlaying}` : `▶ ${v.g} ${v.n}`}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* REAL call trigger */}
         {st === "done" ? (

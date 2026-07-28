@@ -52,7 +52,7 @@ export async function onRequestPost(context) {
 
     // ── COUPONS ──────────────────────────────────────────────────────────────
     if (action === "list") {
-      const r = await rpc("coupon_list", { p_secret: secret, p_client_email: email });
+      const r = await rpc("coupon_list", { p_secret: secret, p_client_email: email, p_key: key });
       if (!r.ok) return json({ ok: true, ready: false, note: "Paste db/coupons.sql in Supabase to activate coupons.", coupons: [] });
       const coupons = (await r.json()) || [];
       return json({ ok: true, ready: true, count: Array.isArray(coupons) ? coupons.length : 0, coupons });

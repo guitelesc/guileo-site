@@ -103,3 +103,9 @@ com o app, um DM de teste chega no CRM e a Gui responde.
 3. Eu faço o **redeploy** (env vars novas exigem) e rodo o **curl de prova** da seção → confirmo que acendeu (ou aponto o que faltou).
 
 *Cada motor tem UMA chave clara. O sistema fica honesto e inerte até você tê-la — nunca finge estar ligado.*
+
+## 9. 🔐 SUPABASE_SERVICE_ROLE — fechar a arquitetura (blindagem final do data-plane)
+**O que acende:** fecha o vazamento cross-tenant nas funções DUAL-USO (agente/webhooks chamam sem chave de cliente: `crm_upsert_contact`, `ingest_client_event`, `crm_caller_context`, `package_list`, `noshow_risk`, `support_ticket_list`) + o /admin. As 8 funções SÓ-do-portal já foram blindadas (chave verificada por dentro; ver db/hardening_dataplane.sql). Faltam essas.
+**PASSO A (copiar):** Supabase → projeto `ynihodbknhjirkdogxby` → ⚙️ Project Settings → **API** → "Project API keys" → linha **`service_role` (secret)** → Reveal → Copy.
+**PASSO B (colar):** Cloudflare → Workers & Pages → guileoai → Settings → Variables and Secrets → **Production** → Add → nome **`SUPABASE_SERVICE_ROLE`**, valor = a chave, marcar **Secret** → Save.
+**Depois (Claude faz):** troca os Workers dual-uso pra chamar com a service_role (server-only, nunca vai pro bundle) → `revoke execute ... from anon` nessas RPCs → o literal commitado + a anon JWT viram inúteis. Deploy + prova (curl direto com o literal → agora 401/permission denied).

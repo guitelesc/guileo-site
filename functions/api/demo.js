@@ -120,15 +120,23 @@ RULES: Use ONLY information present in the text. If a field is not found, use ""
 // ── action handlers ──────────────────────────────────────────────────────────
 
 async function doBrand(env, b) {
-  const rawUrl = s(b.url, 300).trim();
-  const handle = s(b.handle, 120).trim();
-  const name = s(b.name, 160).trim();
-  const url = normalizeUrl(rawUrl || handle || name);
+  // The landing/DemoEngine sends ONE field `query`; sellers/admin may send url/handle/name.
+  // Accept all. Return the kit BOTH wrapped in `brand` (what the UI reads) AND flat (curl/back-compat).
+  const query = s(b.query, 300).trim();
+  const rawUrl = s(b.url, 300).trim() || (query && !query.startsWith("@") ? query : "");
+  const handle = s(b.handle, 120).trim() || (query.startsWith("@") ? query : "");
+  const explicitName = s(b.name, 160).trim();
+  const url = normalizeUrl(rawUrl || handle);
+  const reply = (kit) => json({ ok: true, brand: kit, ...kit });
+  // a human-readable seed name from whatever was typed (@handle → handle, domain.com → domain).
+  const seedName = explicitName || s(query || rawUrl || handle, 160)
+    .replace(/^@/, "").replace(/^https?:\/\//i, "").replace(/\/.*$/, "")
+    .replace(/\.(com|net|org|io|co|app|us|br|shop|store|me)(\.[a-z]{2})?$/i, "").trim();
 
-  // No fetchable site (bare @handle or plain brand name) → honest empty kit seeded with the name.
+  // No fetchable site (bare @handle or plain brand name) → honest kit seeded with the NAME the visitor
+  // typed (never invented) so the preview still personalizes and the lead is never dead-ended.
   if (!url) {
-    const seedName = name || (handle ? handle.replace(/^@/, "") : "");
-    return json({ ok: true, name: seedName, tagline: "", facts: "", colors: {}, logo: "", services: [], source: handle ? "handle" : "name" });
+    return reply({ name: seedName, tagline: "", facts: "", colors: {}, logo: "", services: [], source: (handle || query.startsWith("@")) ? "handle" : "name" });
   }
 
   let html = "";
@@ -139,22 +147,21 @@ async function doBrand(env, b) {
       cf: { cacheTtl: 300 },
     });
     if (resp.ok) html = await resp.text();
-  } catch { /* leave html empty → honest empty kit below */ }
+  } catch { /* leave html empty → honest name-seeded kit below */ }
 
-  if (!html) return json({ ok: true, name, tagline: "", facts: "", colors: {}, logo: "", services: [], source: "url", note: "site não acessível" });
+  if (!html) return reply({ name: seedName, tagline: "", facts: "", colors: {}, logo: "", services: [], source: "url", note: "site não acessível" });
 
   const colors = extractColors(html);
   const logo = extractLogo(html, url);
   const text = htmlToText(html);
-  const kit = (await summarizeBrand(env, text, name)) || {};
+  const kit = (await summarizeBrand(env, text, explicitName || seedName)) || {};
 
   const services = Array.isArray(kit.services)
     ? kit.services.filter((x) => x && x.name).map((x) => ({ name: s(x.name, 120), price: s(x.price, 40) })).slice(0, 8)
     : [];
 
-  return json({
-    ok: true,
-    name: s(kit.name || name, 160),
+  return reply({
+    name: s(kit.name || explicitName || seedName, 160),
     tagline: s(kit.tagline, 240),
     facts: s(kit.facts, 4000),
     colors,
@@ -180,7 +187,11 @@ function doScreenshot(env, b) {
 }
 
 async function doSave(env, b) {
-  const brand = (b.brand && typeof b.brand === "object") ? b.brand : b;
+  // fold the chosen product into the saved brand JSON so a reopened /vitrine link restores it
+  // (demo_save only persists p_brand; no separate column needed).
+  const base = (b.brand && typeof b.brand === "object") ? b.brand : b;
+  const pid = s(b.productId || b.product, 60).trim();
+  const brand = pid ? { ...base, _product: pid } : base;
   try {
     const r = await rpc("demo_save", { p_secret: INGEST(env), p_brand: brand });
     if (!r.ok) return json({ ok: false, error: "save failed" }, 500);
@@ -198,19 +209,41 @@ async function doGet(env, b) {
     if (!r.ok) return json({ ok: false, error: "not found" }, 404);
     const brand = await r.json().catch(() => null);
     if (!brand) return json({ ok: false, error: "not found" }, 404);
-    return json({ ok: true, brand });
+    return json({ ok: true, brand, productId: (brand && brand._product) || "" });
   } catch { return json({ ok: false, error: "not found" }, 404); }
 }
 
-async function doEvent(env, b, kind) {
+async function doEvent(env, b, kind, request) {
   const token = s(b.demo_token || b.token, 200).trim();
-  const product = s(b.product, 120).trim();
+  const product = s(b.product || b.productId, 120).trim(); // UI sends `productId`; sellers send `product`
+  const brandName = s(b.brand?.name || b.brand, 200);
   const contact = kind === "lead"
-    ? { name: s(b.name, 160), email: s(b.email, 200), contact: s(b.contact, 200), brand: s(b.brand?.name || b.brand, 200) }
-    : { brand: s(b.brand?.name || b.brand, 200) };
+    ? { name: s(b.name, 160), email: s(b.email, 200), contact: s(b.contact, 200), brand: brandName }
+    : { brand: brandName };
   try {
     await rpc("demo_event", { p_secret: INGEST(env), p_token: token, p_kind: kind, p_product: product, p_contact: contact });
   } catch { /* analytics best-effort — never block the demo */ }
+
+  // A DEMO LEAD is a HOT prospect — don't let it die as an analytics row. Forward it into the real
+  // lead funnel (/api/lead) so the OWNER gets alerted, it lands in the CRM, and speed-to-lead can
+  // fire. Best-effort; never blocks the demo response.
+  if (kind === "lead" && request) {
+    const c = s(b.contact || b.email, 200).trim();
+    if (c) {
+      try {
+        const origin = new URL(request.url).origin;
+        await fetch(`${origin}/api/lead`, {
+          method: "POST", headers: { "Content-Type": "application/json", Origin: origin },
+          body: JSON.stringify({
+            name: s(b.name, 120), contact: c, email: s(b.email, 160),
+            business: brandName, source: "demo",
+            message: `Interessado na demo personalizada${product ? " · " + product : ""}${brandName ? " · " + brandName : ""}`,
+            lang: s(b.lang, 5) || "pt",
+          }),
+        });
+      } catch { /* lead forward is best-effort */ }
+    }
+  }
   return json({ ok: true });
 }
 
@@ -269,7 +302,7 @@ export async function onRequestPost(context) {
       case "screenshot": return doScreenshot(env, b);
       case "save":       return await doSave(env, b);
       case "get":        return await doGet(env, b);
-      case "lead":       return await doEvent(env, b, "lead");
+      case "lead":       return await doEvent(env, b, "lead", request);
       case "view":       return await doEvent(env, b, "view");
       case "checkout":   return await doCheckout(env, b);
       case "stats":      return await doStats(env, b);

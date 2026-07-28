@@ -62,11 +62,14 @@ export async function onRequestPost(context) {
     if (await rateLimited(request, env, "seller-prospects", 90)) return json({ error: "too many requests" }, 429);
     const b = await request.json().catch(() => ({}));
     const action = (b.action || "").toString();
-    const ING = env.INGEST_SECRET || "glo_ing_7f3da9c2b4e8";
+    const ING = env.INGEST_SECRET || ""; // fail-closed: never ship a real secret literal as fallback
 
     // AUTH — every action needs a valid seller; the authenticated email is the ONLY scope used below.
     const seller = await sellerAuthFull(env, b.seller_email || (b.seller && b.seller.email), b.seller_code || b.token);
     if (!seller) return json({ error: "unauthorized" }, 401);
+    // The shared team code (roster:false) accepts any typed email → it must NOT read/mutate another
+    // seller's private prospect CRM. Prospects require a PERSONAL roster code (roster:true).
+    if (!seller.roster) return json({ error: "unauthorized" }, 401);
 
     // ── LIST (+ stats) — the seller's whole pipeline in one round-trip ──────────────────────────────
     if (action === "list") {

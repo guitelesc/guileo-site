@@ -190,13 +190,20 @@ export default function Quiz() {
     description: lang === "pt" ? "Responda 5 perguntas e descubra seu Score de Crescimento com IA: quanto você perde por mês em leads e a stack Guileo recomendada pro seu negócio. Grátis, 2 minutos." : lang === "es" ? "Responde 5 preguntas y descubre tu Puntuación de Crecimiento con IA: cuánto pierdes al mes en leads y el stack Guileo recomendado para tu negocio. Gratis, 2 minutos." : lang === "hi" ? "5 सवालों के जवाब दें और पाएँ अपना AI ग्रोथ स्कोर: हर महीने कितने लीड्स में कितना खोते हैं और आपके व्यवसाय के लिए सुझाया Guileo स्टैक। मुफ़्त, 2 मिनट।" : "Answer 5 questions to get your AI Growth Score: how much revenue you leak each month and the Guileo stack recommended for your business. Free, takes 2 minutes.",
     path: "/quiz",
   });
-  const [step, setStep] = useState(-1); // -1 intro · 0 industry · 1..5 Qs · 6 needs · 99 result
   // Ad message-match: personalize the hero to the vertical of the ad that was clicked.
   const [adm] = useState(() => {
     try { return AD_MATCH[new URLSearchParams(window.location.search).get("utm_content")] || null; } catch { return null; }
   });
   const admL = lang === "pt" ? "pt" : "en"; // es/hi fall back to EN (ads are EN)
-  const [ind, setInd] = useState(null);
+  // QUIZ-AD entry (endowed progress, Nunes & Drèze): the ad itself was question 1
+  // (?q1=a|b|c). Arriving with an answer skips intro + industry and lands straight
+  // on question 2 with progress already earned — started tasks get finished (Zeigarnik).
+  const [q1] = useState(() => {
+    try { return (new URLSearchParams(window.location.search).get("q1") || "").toLowerCase() || null; } catch { return null; }
+  });
+  const fromQuizAd = !!(adm && q1);
+  const [step, setStep] = useState(fromQuizAd ? 1 : -1); // -1 intro · 0 industry · 1..5 Qs · 6 needs · 99 result
+  const [ind, setInd] = useState(fromQuizAd ? adm.ind : null);
   const [ans, setAns] = useState([]);
   const [needs, setNeeds] = useState([]);
   const [lead, setLead] = useState({ name: "", contact: "" });
@@ -265,6 +272,11 @@ export default function Quiz() {
 
         {step >= 1 && step <= total && (
           <div key={`q${step}`} style={{ animation: "qfade .4s ease both" }}>
+            {fromQuizAd && step === 1 && (
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-g-green/35 bg-g-green/[0.09] px-3.5 py-1.5 text-[12.5px] font-bold text-g-light">
+                ✓ {lang === "pt" ? "Pergunta 1 respondida no anúncio — continua!" : "Question 1 answered — keep going!"}
+              </div>
+            )}
             <div className="text-[12px] font-bold text-g-muted">{stepLbl(step + 1, total + 2)}</div>
             <h2 className="mt-2 text-[24px] font-bold leading-snug text-g-word">{L(QUESTIONS[step - 1].q)}</h2>
             <div className="mt-5 space-y-2.5">

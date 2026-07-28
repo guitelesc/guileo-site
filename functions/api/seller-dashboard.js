@@ -80,6 +80,9 @@ export async function onRequestPost(context) {
 
     const seller = await sellerAuthFull(env, b.seller_email || (b.seller && b.seller.email), b.seller_code || b.token);
     if (!seller) return json({ error: "unauthorized" }, 401);
+    // Shared team code (roster:false) accepts any typed email → it must NOT expose another seller's
+    // wallet/commission dashboard. Per-seller data requires a PERSONAL roster code (roster:true).
+    if (!seller.roster) return json({ error: "unauthorized" }, 401);
     // ref: the roster slug wins; the client-supplied ref (localStorage) is a fallback for the leads join.
     const ref = (seller.ref || b.ref || (b.seller && b.seller.ref) || "").toString().slice(0, 40);
 

@@ -59,7 +59,7 @@ export async function onRequestPost(context) {
     }
 
     // default: list
-    const r = await rpc("kb_list", { p_secret: ING, p_email: email });
+    const r = await rpc("kb_list", { p_secret: ING, p_email: email, p_key: key });
     if (!r.ok) return json({ ok: true, ready: false, note: "Paste db/tenant_kb.sql in Supabase to activate your Knowledge Base.", count: 0, items: [] });
     const items = (await r.json().catch(() => [])) || [];
     return json({ ok: true, ready: true, count: items.length, items });

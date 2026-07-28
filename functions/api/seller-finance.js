@@ -73,6 +73,10 @@ export async function onRequestPost(context) {
     // ONLY scope used — we resolve the ref from the AUTHENTICATED seller, never from an arbitrary body.
     const seller = await sellerAuthFull(env, b.seller_email || (b.seller && b.seller.email), b.seller_code || (b.seller && b.seller.code));
     if (!seller) return json({ error: "unauthorized" }, 401);
+    // The SHARED team code (roster:false) must NOT open another seller's financial ledger — it lets
+    // the caller type any email. Financial data needs a PERSONAL roster code (roster:true). Same guard
+    // as seller-payouts.js. A team-code seller sees only their own dashboard counts, not the ledger.
+    if (!seller.roster) return json({ error: "unauthorized" }, 401);
 
     // Call the ledger RPC with the AUTHENTICATED seller's email (wallet + pct scope) and their ref
     // (attribution slug). The RPC prefers sellers.ref_slug from the email and treats ref as fallback.

@@ -64,6 +64,12 @@ ad-restaurant · ad-clinic · ad-dental · ad-hvac · ad-realestate · ad-gym ·
 
 **Loop de medição fechado:** anúncio → utm_content → quiz message-matched → lead no /admin com origem → (venda) → CPL real por vertical E custo por venda. No dia 7: print do Ads Manager + eu cruzo com /admin.
 
+## 🧩 QUIZ-AD (o formato de maior probabilidade — teste da semana 2)
+O anúncio É a pergunta 1 do quiz (`ads-creatives/quizad-restaurant.png`): "How many calls does your restaurant miss every day?" com opções A/B/C (a C "Honestly… no idea 😬" destacada — é a que dono clica).
+**Link:** `https://guileoai.com/quiz?utm_source=meta&utm_medium=paid&utm_campaign=g1-leads-us&utm_content=restaurant&q1=c`
+Quem clica cai DIRETO na pergunta 2 com banner "✓ Question 1 answered — keep going!" e progresso já contado. Ciência: efeito Zeigarnik (tarefa começada pede conclusão) + progresso dotado (Nunes & Drèze) + conteúdo interativo ~2× estático.
+**Alternativa paralela a testar: Meta Instant Forms** — no conjunto, escolher "Formulário instantâneo" em vez de site e replicar 3 perguntas do quiz no formulário nativo (2-3× mais leads documentado; qualidade um pouco menor — comparar custo POR VENDA, não por lead).
+
 ## 🔓 Destravas futuras (sobem o teto)
 - **A2P/caller-ID** (Luis, Twilio) → libera CTA "a Gui te liga" = conversão muito maior
 - **META_APP_SECRET** → WhatsApp/Messenger como canal de resposta

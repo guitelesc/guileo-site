@@ -45,7 +45,7 @@ export async function onRequestPost(context) {
     const action = (b.action || "list").toString();
 
     if (action === "list") {
-      const r = await rpc("giftcard_list", { p_secret: secret, p_client_email: email });
+      const r = await rpc("giftcard_list", { p_secret: secret, p_client_email: email, p_key: key });
       if (!r.ok) return json({ ok: true, ready: false, note: NOTE, cards: [] });
       const cards = (await r.json()) || [];
       return json({ ok: true, ready: true, count: Array.isArray(cards) ? cards.length : 0, cards });

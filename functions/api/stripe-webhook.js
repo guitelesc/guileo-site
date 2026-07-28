@@ -3,7 +3,7 @@
 // email is credited (1 credit per USD) in client_credits, which the portal reads live.
 // Signature-verified with STRIPE_WEBHOOK_SECRET (whsec_…). Works in test & live mode.
 import { json, safeEq } from "../lib/guard.js";
-import { welcomeSelfServeEmail, ownerAlertEmail, dunningEmail, sellerCommissionEmail } from "../lib/emailTemplates.js";
+import { welcomeSelfServeEmail, ownerAlertEmail, dunningEmail, sellerCommissionEmail, teamKickoffBriefEmail } from "../lib/emailTemplates.js";
 import { provisionClientAgent, buyAndBindNumber, forwardingInstructions, buildDefaultSchedulePayload } from "../lib/provision.js";
 import { emitFailure } from "../lib/failure.js";
 import { reportPurchase } from "../lib/adsConversions.js";
@@ -367,9 +367,16 @@ export async function onRequestPost(context) {
         // 1.1 — credits are what the customer PAID for; if storage fails, surface LOUDLY (a paid-but-not-
         // credited customer is a money-back trigger). We don't 500 here (the event is already marked seen,
         // so a retry would skip) — instead emit a failure event so /admin catches it within seconds.
-        const cr = await rpc("add_client_credits", { p_secret: ING, p_email: email, p_credits: credits, p_plan: plan.slice(0, 80) });
-        if (!cr.ok) await emitFailure(env, "credit_storage_failed", email, `paid $${(cents / 100).toFixed(2)} → ${credits} cr NOT stored`, { session: obj.id || "" });
-        await rpc("ingest_client_event", { p_secret: ING, p_email: email, p_type: "payment", p_channel: "stripe", p_summary: `Payment · $${(cents / 100).toFixed(2)} → +${credits} credits${plan ? " · " + plan : ""}`, p_amount: cents / 100, p_payload: { session: obj.id || "" } });
+        // Wrapped so a THROWN rpc rejection (not just a non-2xx) can NEVER propagate to the outer catch
+        // → 400 → Stripe retry → mark_webhook_seen already true → silently dropped with no alert. On any
+        // failure we emit LOUDLY and still ACK, so a paid-but-uncredited customer is caught in /admin.
+        try {
+          const cr = await rpc("add_client_credits", { p_secret: ING, p_email: email, p_credits: credits, p_plan: plan.slice(0, 80) });
+          if (!cr.ok) await emitFailure(env, "credit_storage_failed", email, `paid $${(cents / 100).toFixed(2)} → ${credits} cr NOT stored`, { session: obj.id || "" });
+          await rpc("ingest_client_event", { p_secret: ING, p_email: email, p_type: "payment", p_channel: "stripe", p_summary: `Payment · $${(cents / 100).toFixed(2)} → +${credits} credits${plan ? " · " + plan : ""}`, p_amount: cents / 100, p_payload: { session: obj.id || "" } });
+        } catch (ce) {
+          await emitFailure(env, "credit_storage_failed", email, `paid $${(cents / 100).toFixed(2)} → ${credits} cr threw (${String(ce).slice(0, 80)}) — credit MANUALLY`, { session: obj.id || "" }).catch(() => {});
+        }
 
         // ADS ATTRIBUTION — report the REAL purchase to Meta CAPI + GA4 server-side (best-effort,
         // deferred past the ACK). eventId = Stripe SESSION id: webhook retries re-send the SAME id,
@@ -464,6 +471,67 @@ export async function onRequestPost(context) {
                 // wrapped so it can NEVER touch the money path). onboard_advance stamps only once per step.
                 try { await rpc("onboard_advance", { p_secret: ING, p_email: email, p_step: "invoice" }); } catch { /* */ }
                 try { await rpc("onboard_advance", { p_secret: ING, p_email: email, p_step: "access" }); } catch { /* */ }
+                // Stash name/lang/business so the cron nurture (check-in 30/60/90 + monthly ROI, which
+                // fire off the 'access' stamp) greet the client BY NAME in THEIR language — instead of
+                // going out generic (onboard_start, which normally stashes this, isn't in the paid flow).
+                try { await rpc("onboard_set_meta", { p_secret: ING, p_email: email, p_meta: { name: (obj.customer_details?.name || "").toString(), lang: provLang, business: bizName } }); } catch { /* nurture personalization is best-effort */ }
+                // ── FIRST VALUE IN THE FIRST HOUR ──
+                // The owner just paid + their Gui was born. Prove it instantly: place ONE real call
+                // to the OWNER'S OWN phone, dialing AS their own agent (internal path → client_email
+                // resolves their caller-ID/voice/name), so within minutes they HEAR their Gui greet
+                // their business. To the owner themselves (never a customer), through the hardened
+                // /api/call gate (DNC + caps + E.164 still apply). Best-effort, deferred, wrapped —
+                // it can never touch the money path. Fires at most once (inside the once-per-session
+                // provision block). No phone on file → we skip silently (the welcome email carries the
+                // live number to call instead — nothing fake).
+                try {
+                  const ownerPhone = (pend?.phone || obj.customer_details?.phone || "").toString().trim();
+                  // ONCE-PER-TENANT: claim a dedicated key so a re-purchase (a /planos-direct buyer has
+                  // no pending row to flag) can never dial the owner twice. true = first claim → dial.
+                  let mayCall = false;
+                  try { const fc = await rpc("claim_credit_event", { p_secret: PEND_SECRET, p_event_id: `first_value:${email}`, p_email: email }); if (fc.ok) mayCall = (await fc.json()) === true; } catch { /* claim RPC missing → skip the call, never double-dial */ }
+                  if (ownerPhone && provNumber && mayCall) {
+                    const origin = new URL(request.url).origin;
+                    const cr = await fetch(`${origin}/api/call`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", Origin: origin, "x-guileo-internal": env.DIGEST_TOKEN || "" },
+                      body: JSON.stringify({
+                        phone: ownerPhone, client_email: email, business: bizName,
+                        name: (obj.customer_details?.name || "").toString(),
+                        need: provLang === "en"
+                          ? `Welcome call — your Gui is LIVE. Greet the owner warmly, confirm the agent is answering for their business, and invite them to try it.`
+                          : `Ligação de boas-vindas — a Gui já está no ar. Cumprimente o dono com carinho, confirme que a Gui já atende pelo negócio dele e convide a testar.`,
+                        lang: provLang,
+                      }),
+                    });
+                    await rpc("ingest_client_event", { p_secret: ING, p_email: email, p_type: cr.ok ? "first_value" : "first_value_failed", p_channel: "voice", p_summary: cr.ok ? `🎁 Primeira ligação de valor disparada pro dono (${ownerPhone})` : `⚠️ Primeira ligação de valor NÃO discada (HTTP ${cr.status})`, p_amount: 0, p_payload: { phone: ownerPhone } });
+                  }
+                } catch { /* first-value call is best-effort — never blocks provisioning or money */ }
+                // TEAM KICKOFF BRIEF (self-serve parity with /admin) — the team gets an AI launch plan
+                // for every paying client. Deduped once per client; skipped if the client is "thin"
+                // (no captured brain → brief action returns empty). Best-effort, deferred, wrapped.
+                try {
+                  if (env.RESEND_API_KEY) {
+                    const owner = (env.OWNER_EMAIL || "smart@guileoai.com").split(",")[0].trim();
+                    const claim = await rpc("claim_credit_event", { p_secret: PEND_SECRET, p_event_id: `team_brief:${email}`, p_email: email });
+                    const fresh = claim.ok ? (await claim.json()) === true : false;
+                    if (fresh && owner) {
+                      const origin = new URL(request.url).origin;
+                      const br = await fetch(`${origin}/api/onboarding`, {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ action: "brief", client_email: email, secret: ING, lang: provLang }),
+                      });
+                      const brief = br.ok ? ((await br.json())?.brief || "") : "";
+                      if (brief) {
+                        const { subject, html } = teamKickoffBriefEmail({ business: bizName, brief, lang: provLang });
+                        await fetch("https://api.resend.com/emails", {
+                          method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+                          body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: [owner], subject, html }),
+                        });
+                      }
+                    }
+                  }
+                } catch { /* team brief is best-effort — never blocks provisioning or money */ }
               } else {
                 // surface the failure to the owner so it can be finished by hand — never silently drop it
                 try { await rpc("ingest_client_event", { p_secret: ING, p_email: email, p_type: "provision_failed", p_channel: "system", p_summary: `⚠️ Gui NÃO criada no pagamento (${email}) — finalizar no /admin · ${prov.step}`, p_amount: 0, p_payload: { step: prov.step } }); } catch { /* */ }

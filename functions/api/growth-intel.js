@@ -129,7 +129,7 @@ export async function onRequestPost(context) {
     }
 
     // default: ltv
-    const r = await rpc("crm_ltv", { p_secret: secret, p_email: email });
+    const r = await rpc("crm_ltv", { p_secret: secret, p_client_email: email, p_key: key });
     if (!r.ok) return json({ ...notPasted, ltv: null });
     const ltv = await r.json().catch(() => null);
     return json({ ok: true, ready: true, ltv });

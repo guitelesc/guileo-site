@@ -249,6 +249,8 @@ export default function Admin() {
                 <Arrow />
                 <Step n={ret.active_30d} label="Ativos 30d" tone="orange" />
                 <Arrow />
+                <Step n={ret.first_value} label="🎁 1º valor" tone="amber" sub="ligações disparadas" />
+                <Arrow />
                 <Step n={ret.clients_paused} label="Pausados" tone={ret.clients_paused > 0 ? "red" : "green"} />
               </div>
             </>

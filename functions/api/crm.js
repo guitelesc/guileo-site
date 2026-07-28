@@ -60,7 +60,7 @@ export async function onRequestPost(context) {
       if (!["inquiry", "quoted", "booked", "won", "lost"].includes(stage)) return json({ error: "invalid stage" }, 400);
       const mr = await fetch(`${SB}/rest/v1/rpc/crm_deal_move`, {
         method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ p_secret: env.INGEST_SECRET || "", p_email: email, p_deal_id: dealId, p_stage: stage }),
+        body: JSON.stringify({ p_secret: env.INGEST_SECRET || "", p_email: email, p_deal_id: dealId, p_stage: stage, p_key: key }),
       });
       if (!mr.ok) return json({ ok: false, ready: false, note: "Paste db/crm_deal_move.sql to activate stage moves." });
       const moved = (await mr.json().catch(() => [])) || [];
@@ -127,7 +127,7 @@ export async function onRequestPost(context) {
 
     // ── action: marketing_dates — commemorative dates + birthday config (marketing_dates_list) ──
     if (b.action === "marketing_dates") {
-      const mr = await rpc("marketing_dates_list", { p_secret: ingest, p_client_email: email });
+      const mr = await rpc("marketing_dates_list", { p_secret: ingest, p_client_email: email, p_key: key });
       if (!mr.ok) return json({ ok: true, ready: false, note: "Paste db/growth_dates.sql to activate marketing dates.", dates: [] });
       const mj = await mr.json().catch(() => ({}));
       return json({ ok: true, ready: true, dates: Array.isArray(mj?.dates) ? mj.dates : [] });
@@ -170,7 +170,9 @@ export async function onRequestPost(context) {
 
     // ── default: the contact book (crm_list_contacts) ──
     const limit = Math.min(Math.max(parseInt(b.limit, 10) || 200, 1), 1000);
-    const r = await rpc("crm_list_contacts", { p_secret: secret, p_email: email, p_limit: limit });
+    // p_key → the RPC re-asserts the client key INSIDE the DB (defense against a direct-to-Supabase
+    // call that bypasses this Worker's get_client_data gate). Hardening slice 1.
+    const r = await rpc("crm_list_contacts", { p_secret: secret, p_email: email, p_limit: limit, p_key: key });
     if (!r.ok) return json({ ok: true, ready: false, note: "Paste db/crm_spine.sql in Supabase to activate the CRM.", count: 0, contacts: [] });
     const rows = (await r.json()) || [];
     return json({ ok: true, ready: true, count: rows.length, contacts: rows });

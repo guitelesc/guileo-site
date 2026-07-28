@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import VoiceAgent from "../components/VoiceAgent";
@@ -25,6 +25,11 @@ import AddOnsV2 from "../components/AddOnsV2";
 import { waLink, bookLink } from "../data/contact.js";
 import { useLang } from "../i18n.jsx";
 import { useSeo } from "../lib/seo.js";
+
+// Personalized-brand demo (heavy: AI brand pull + preview surfaces) — lazy so it ships as its own
+// chunk and never bloats the landing's first paint. The visitor types their site → sees THEIR
+// business with Gui → becomes a captured lead feeding the onboarding funnel.
+const DemoEngine = lazy(() => import("../components/DemoEngine.jsx"));
 
 
 /* Shared section header — the LegsV2/MethodV2 pattern: mono uppercase champagne eyebrow
@@ -106,6 +111,25 @@ export default function Home() {
       <LegsV2 />             {/* The WHY — the 3 pillars own performance / sales / growth (the emotional spine) */}
       <PillarsProducts />    {/* The WHAT — each pillar's REAL products → result → value (replaces WholePicture + old ProductResults; aligns landing to the platform) */}
       <ChannelsStrip />      {/* Reach — a slim logo strip (folded from the old full ChannelsV2 phone section) */}
+
+      {/* SEE-IT-ON-YOUR-BRAND — the personalized visual demo as a landing lead magnet. Visitor types
+          their site → sees their own business with Gui → captured as a lead. Feeds the onboarding funnel. */}
+      <section id="veja" className="relative px-5 py-16">
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(620px_320px_at_50%_0%,rgba(255,138,51,0.08),transparent)]" />
+        <div className="mx-auto max-w-3xl">
+          <SectionHead
+            eyebrow={lang === "pt" ? "🪄 VEJA NA SUA MARCA" : lang === "es" ? "🪄 VELO EN TU MARCA" : lang === "hi" ? "🪄 अपनी ब्रांड में देखें" : "🪄 SEE IT ON YOUR BRAND"}
+            h2={lang === "pt" ? "Veja sua empresa com a Gui — em segundos" : lang === "es" ? "Mira tu empresa con Gui — en segundos" : lang === "hi" ? "अपना व्यवसाय Gui के साथ देखें — सेकंडों में" : "See your business with Gui — in seconds"}
+            sub={lang === "pt" ? "Digite seu site ou @ — montamos uma prévia na sua marca na hora." : lang === "es" ? "Escribe tu sitio o @ — armamos una vista previa en tu marca al instante." : lang === "hi" ? "अपनी साइट या @ डालें — हम तुरंत आपकी ब्रांड में प्रीव्यू बनाते हैं।" : "Type your site or @ — we build a preview in your brand instantly."}
+            className="mb-6" subMax="max-w-2xl" />
+          <Reveal>
+            <Suspense fallback={<div className="rounded-2xl border border-g-line bg-white/[0.03] p-8 text-center text-[13px] text-g-muted">…</div>}>
+              <DemoEngine surface="public" />
+            </Suspense>
+          </Reveal>
+        </div>
+      </section>
+
       <MethodV2 />           {/* How you start — live in under 7 days, human-led */}
       <ProofV2 />            {/* Trust badges, right before the demo + offer */}
       <FounderProof />       {/* Founder note + (future) real client quotes — the human voice before the demo */}

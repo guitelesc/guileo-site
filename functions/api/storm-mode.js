@@ -81,7 +81,7 @@ export async function onRequestPost(context) {
       const reopen_on = isDate(b.reopen_on) ? b.reopen_on : new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10);
       const message = (b.message || "").toString().trim().slice(0, 600) || defaultMessage(brand.business);
 
-      const r = await rpc("storm_activate", { p_secret: secret, p_email: email, p_starts_on: starts_on, p_reopen_on: reopen_on, p_message: message });
+      const r = await rpc("storm_activate", { p_secret: secret, p_email: email, p_starts_on: starts_on, p_reopen_on: reopen_on, p_message: message, p_key: key });
       if (!r.ok) return json({ ok: false, ready: false, note: NOT_PASTED });
       const res = (await r.json().catch(() => ({}))) || {};
       if (!res.ok) return json({ ok: false, ready: true, ...res });

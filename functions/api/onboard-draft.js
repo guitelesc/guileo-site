@@ -193,6 +193,7 @@ export async function onRequestPost(context) {
       }
       const seller = await sellerAuthFull(env, b.seller_email || (b.seller && b.seller.email), b.seller_code);
       if (!seller) return json({ error: "unauthorized" }, 401);
+      if (!seller.roster) return json({ error: "unauthorized" }, 401); // shared team code can't list another seller's drafts
       const r = await rpc("draft_list", { p_secret: ING, p_seller_email: seller.email });
       return json({ ok: true, scope: "seller", rows: r.ok ? await r.json() : [] });
     }
@@ -204,6 +205,7 @@ export async function onRequestPost(context) {
       const isAdmin = await adminOk(b.token);
       const seller = isAdmin ? null : await sellerAuthFull(env, b.seller_email || (b.seller && b.seller.email), b.seller_code);
       if (!isAdmin && !seller) return json({ error: "unauthorized" }, 401);
+      if (!isAdmin && !seller.roster) return json({ error: "unauthorized" }, 401); // shared team code can't read another seller's draft
       const r = await rpc("draft_get", { p_secret: ING, p_id: id, p_seller_email: isAdmin ? "" : seller.email });
       if (!r.ok) return json({ error: "not found" }, 404);
       const row = await r.json().catch(() => null);

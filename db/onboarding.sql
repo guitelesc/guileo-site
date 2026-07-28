@@ -208,3 +208,25 @@ grant execute on function public.onboard_sentiment(text, text, text) to anon;
 grant execute on function public.onboard_checkin_due(text, int)    to anon;
 grant execute on function public.onboard_report_due(text, int)     to anon;
 grant execute on function public._onb_ord(text)                    to anon;
+
+-- SET META — stash name/lang/business so the cron nurture (check-in/report, which fire off the
+-- 'access' stamp) can greet the client by name in their language. Called at access time by
+-- stripe-webhook (onboard_start, which normally stashes this, isn't in the paid flow). Merge-only,
+-- blank incoming values are ignored (never blanks an existing value). Idempotent, secret-gated.
+create or replace function public.onboard_set_meta(p_secret text, p_email text, p_meta jsonb)
+returns boolean language plpgsql security definer set search_path=public as $$
+declare v_email text := lower(trim(coalesce(p_email,'')));
+begin
+  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then return false; end if;
+  if v_email='' or position('@' in v_email)=0 then return false; end if;
+  insert into public.onboarding_state (client_email) values (v_email) on conflict (client_email) do nothing;
+  update public.onboarding_state
+     set meta = coalesce(meta,'{}'::jsonb) || (select coalesce(jsonb_object_agg(k, v),'{}'::jsonb)
+                                               from jsonb_each(coalesce(p_meta,'{}'::jsonb)) as e(k,v)
+                                               where nullif(trim(both '"' from v::text),'') is not null),
+         updated_at = now()
+   where client_email = v_email;
+  return true;
+exception when others then return false;
+end $$;
+grant execute on function public.onboard_set_meta(text,text,jsonb) to anon;

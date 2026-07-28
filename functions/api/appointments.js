@@ -34,7 +34,7 @@ export async function onRequestPost(context) {
     const r = await fetch(`${SB}/rest/v1/rpc/biz_list_appointments`, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: ANON, Authorization: `Bearer ${ANON}` },
-      body: JSON.stringify({ p_secret: env.SCHED_SECRET, p_email: email, p_limit: 60 }),
+      body: JSON.stringify({ p_secret: env.SCHED_SECRET, p_email: email, p_limit: 60, p_key: key }),
     });
     if (!r.ok) return json({ appointments: [] });
     const d = await r.json();

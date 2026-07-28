@@ -452,6 +452,37 @@ export function companyBriefEmail({ dateLabel = "Today", did = {}, needs = {}, l
 }
 
 // 3) PROPOSAL / SERVICES EMAIL — "what Guileo can do for you": services + ideas + a proposal CTA.
+// INTERNAL team launch plan — when a new client is provisioned, the TEAM (OWNER_EMAIL) gets the
+// AI-generated one-page kickoff brief so they walk into the launch already knowing the client's
+// world. Not client-facing (no booking/portal CTA) — it's an internal ops brief.
+export function teamKickoffBriefEmail({ business = "the client", brief = "", lang = "pt" } = {}) {
+  business = esc(business);
+  const briefHtml = esc(brief).replace(/\n{2,}/g, "</p><p style='margin:10px 0 0;'>").replace(/\n/g, "<br/>");
+  const t = lang === "en" ? {
+    subject: `🚀 New client live: ${business} — launch plan`,
+    pre: `AI kickoff brief for ${business}, ready for the team.`,
+    eyebrow: "Team · launch plan", h1: `${business} is live`,
+    intro: `A new client just went live. Here's the AI-generated one-page launch brief so the team knows their world before the first touch.`,
+    briefT: "Kickoff brief", cta: "Open /admin", foot: "Generated automatically at activation. Confirm the details on the kickoff call.",
+  } : {
+    subject: `🚀 Cliente novo no ar: ${business} — plano de lançamento`,
+    pre: `Briefing de kickoff por IA de ${business}, pronto pro time.`,
+    eyebrow: "Time · plano de lançamento", h1: `${business} está no ar`,
+    intro: `Um cliente novo acabou de entrar. Segue o briefing de lançamento de uma página (gerado por IA) pro time já conhecer o mundo dele antes do primeiro contato.`,
+    briefT: "Briefing de kickoff", cta: "Abrir /admin", foot: "Gerado automaticamente na ativação. Confirme os detalhes na reunião de kickoff.",
+  };
+  const body = `
+  <h1 style="font-size:24px;font-weight:900;color:${B.ink};margin:0 0 4px;letter-spacing:-.5px;">${t.h1}</h1>
+  <div class="g-intro" style="font-size:15px;color:${B.ink2};line-height:1.7;margin-top:8px;">${t.intro}</div>
+  <div style="height:16px;line-height:16px;font-size:0;">&nbsp;</div>
+  ${panel(`<div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin-bottom:8px;">${t.briefT}</div>
+    <div style="font-size:14px;color:${B.ink2};line-height:1.7;"><p style="margin:0;">${briefHtml || "&mdash;"}</p></div>`)}
+  <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(t.cta, B.site + "/admin")}</div>
+  <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+}
+
 export function proposalEmail({ name = "there", business = "your business", lang = "en" } = {}) {
   name = esc(name); business = esc(business);
   const t = lang === "pt" ? {
