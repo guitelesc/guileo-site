@@ -9,6 +9,21 @@ import { useSeo } from "../lib/seo.js";
 // lead capture. Plus a partner path for agencies. Branded (guileoai.com aesthetic).
 // Fully quadrilingual (EN·PT·ES·HI) via the site i18n hook — API payloads stay EN.
 
+// ── AD MESSAGE-MATCH (CRO science: the landing headline must mirror the ad clicked;
+// scent-break costs 20–50% of conversion). Ads link with utm_content=<vertical> →
+// the hero personalizes to that vertical's pain + its industry card is highlighted.
+// Numbers MATCH the ad creatives in ads-creatives/ (same loss figure end-to-end).
+const AD_MATCH = {
+  restaurant: { ind: 3, h1a: { en: "Your restaurant is leaking ", pt: "Seu restaurante está vazando " }, h1b: { en: "$3,500 every month.", pt: "$3.500 todo mês." } },
+  clinic: { ind: 0, h1a: { en: "No-shows are costing you ", pt: "Faltas estão te custando " }, h1b: { en: "$5,400 every month.", pt: "$5.400 todo mês." } },
+  dental: { ind: 0, h1a: { en: "An empty chair is ", pt: "Uma cadeira vazia é " }, h1b: { en: "$4,800/mo walking out.", pt: "$4.800/mês indo embora." } },
+  hvac: { ind: 5, h1a: { en: "Missed emergency calls cost ", pt: "Chamados de emergência perdidos custam " }, h1b: { en: "$7,600 every month.", pt: "$7.600 todo mês." } },
+  realestate: { ind: 2, h1a: { en: "Cold leads are costing you ", pt: "Leads frios estão te custando " }, h1b: { en: "$9,200 every month.", pt: "$9.200 todo mês." } },
+  gym: { ind: 6, h1a: { en: "Uncalled trial leads = ", pt: "Leads de teste sem retorno = " }, h1b: { en: "$4,200/mo lost.", pt: "$4.200/mês perdidos." } },
+  auto: { ind: 7, h1a: { en: "Waiting buyers are costing you ", pt: "Compradores esperando custam " }, h1b: { en: "$11,000 every month.", pt: "$11.000 todo mês." } },
+  ecommerce: { ind: 4, h1a: { en: "Abandoned carts are costing you ", pt: "Carrinhos abandonados custam " }, h1b: { en: "$6,100 every month.", pt: "$6.100 todo mês." } },
+};
+
 const INDUSTRIES = [
   { name: { en: "Clinic / Dental", pt: "Clínica / Dentista", es: "Clínica / Dental", hi: "क्लिनिक / डेंटल" }, base: 5400 },
   { name: { en: "Law Firm", pt: "Advocacia", es: "Bufete de abogados", hi: "लॉ फ़र्म" }, base: 8200 },
@@ -176,6 +191,11 @@ export default function Quiz() {
     path: "/quiz",
   });
   const [step, setStep] = useState(-1); // -1 intro · 0 industry · 1..5 Qs · 6 needs · 99 result
+  // Ad message-match: personalize the hero to the vertical of the ad that was clicked.
+  const [adm] = useState(() => {
+    try { return AD_MATCH[new URLSearchParams(window.location.search).get("utm_content")] || null; } catch { return null; }
+  });
+  const admL = lang === "pt" ? "pt" : "en"; // es/hi fall back to EN (ads are EN)
   const [ind, setInd] = useState(null);
   const [ans, setAns] = useState([]);
   const [needs, setNeeds] = useState([]);
@@ -221,9 +241,10 @@ export default function Quiz() {
           <div key="intro" style={{ animation: "qfade .5s ease both" }} className="text-center">
             <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold">{u("free60")}</div>
             <h1 className="mt-4 font-black leading-[0.98] tracking-tight" style={{ fontSize: "clamp(2.2rem,6vw,3.4rem)" }}>
-              <span className="text-g-word">{u("h1a")}</span>
-              <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "qshine 7s linear infinite" }}>{u("h1b")}</span>
+              <span className="text-g-word">{adm ? adm.h1a[admL] : u("h1a")}</span>
+              <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "qshine 7s linear infinite" }}>{adm ? adm.h1b[admL] : u("h1b")}</span>
             </h1>
+            {adm && <p className="mt-2 text-[13.5px] font-semibold text-g-green">{lang === "pt" ? "Veja em 2 minutos como parar o vazamento ↓" : "See how to stop the leak — 2 minutes ↓"}</p>}
             <p className="mx-auto mt-4 max-w-md text-[15px] text-g-ink">{u("intro1")}<span className="font-semibold text-g-word">{u("introScore")}</span>{u("intro2")}<span className="font-semibold text-g-green">{u("introStack")}</span>{u("intro3")}</p>
             <button onClick={() => setStep(0)} className="mt-8 rounded-full bg-gradient-to-r from-g-green to-g-dark px-8 py-3.5 text-[15px] font-bold text-white shadow-[0_18px_50px_-14px_rgba(62,148,104,0.7)] transition hover:brightness-110">{u("getScore")}</button>
             <div className="mt-4 text-[12px] text-g-muted">{u("nologin")}</div>
@@ -236,7 +257,7 @@ export default function Quiz() {
             <h2 className="mt-2 text-[24px] font-bold text-g-word">{u("qIndustry")}</h2>
             <div className="mt-5 grid grid-cols-2 gap-2.5">
               {INDUSTRIES.map((x, i) => (
-                <button key={x.name.en} onClick={() => { setInd(i); setStep(1); }} className={`rounded-xl border px-4 py-3 text-left text-[14px] font-semibold transition hover:-translate-y-0.5 hover:border-g-green/40 hover:bg-white/[0.06] ${x.partner ? "border-g-gold/40 bg-g-gold/[0.06] text-g-gold" : "border-g-line bg-white/[0.03] text-g-ink"}`}>{L(x.name)}</button>
+                <button key={x.name.en} onClick={() => { setInd(i); setStep(1); }} className={`rounded-xl border px-4 py-3 text-left text-[14px] font-semibold transition hover:-translate-y-0.5 hover:border-g-green/40 hover:bg-white/[0.06] ${adm && adm.ind === i ? "border-g-green/60 bg-g-green/[0.10] text-g-word ring-1 ring-g-green/40" : x.partner ? "border-g-gold/40 bg-g-gold/[0.06] text-g-gold" : "border-g-line bg-white/[0.03] text-g-ink"}`}>{L(x.name)}{adm && adm.ind === i ? " ✓" : ""}</button>
               ))}
             </div>
           </div>

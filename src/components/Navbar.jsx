@@ -91,6 +91,7 @@ export default function Navbar() {
             <a href="/#pricing" className="navlink whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word xl:text-sm">{t.nav?.pricing || "Pricing"}</a>
             {/* Self-serve plans — the only page where a visitor can PAY today; must be reachable from nav */}
             <a href="/planos" className="navlink whitespace-nowrap text-[13px] font-semibold text-g-gold/90 transition-colors hover:text-g-gold xl:text-sm">{isHi ? "प्लान" : isPt ? "Planos" : isEs ? "Planes" : "Plans"}</a>
+            <a href="/vitrine" className="navlink whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word xl:text-sm">{isHi ? "डेमो" : isPt || isEs ? "Vitrine" : "Demo"}</a>
             <a href="/blog" className="navlink whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word xl:text-sm">Blog</a>
           </div>
         </div>
@@ -130,6 +131,7 @@ export default function Navbar() {
             <a href="/#industries" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-muted">{t.nav?.industries || "Industries"}</a>
             <a href="/#pricing" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-muted">{t.nav?.pricing || "Pricing"}</a>
             <a href="/planos" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-gold">{isHi ? "प्लान" : isPt ? "Planos" : isEs ? "Planes" : "Plans"}</a>
+            <a href="/vitrine" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-muted">{isHi ? "डेमो" : isPt || isEs ? "Vitrine" : "Demo"}</a>
             <a href="/blog" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-muted">Blog</a>
           </div>
           <a href="/portal" onClick={() => setOpen(false)} className="inline-flex items-center gap-2 text-sm font-extrabold text-g-gold"><FaGaugeHigh size={13} /> {t.nav?.cockpit || "Growth Cockpit"}</a>

@@ -43,6 +43,27 @@ ad-restaurant · ad-clinic · ad-dental · ad-hvac · ad-realestate · ad-gym ·
 - **Meta semanal:** CPL alvo ≤ $12 no teste · 1ª venda paga ~5 meses de anúncio
 - Rodada de otimização comigo a cada 7 dias: eu leio /admin + Ads Manager (você me manda print) → pauso/escalo criativos
 
+## 🔬 PROTOCOLO CIENTÍFICO (regras de decisão por dados — sem achismo)
+
+**Fundamentos aplicados:** loss-framing (aversão à perda, Kahneman/Tversky) · números específicos (efeito de precisão) · creative liquidity (best practice documentada do Meta) · **message-match** ad→landing (o /quiz agora espelha o título/dor do anúncio clicado via utm_content e destaca a indústria — quebra de cheiro custa 20–50% da conversão).
+
+**⚠️ Realidade da fase de aprendizado:** o Meta pede ~50 conversões/semana pra "aprender"; com $10/dia teremos ~5–8. Consequência: o algoritmo fica sub-otimizado → **as decisões são NOSSAS, por regras estatísticas** (abaixo), não do algoritmo. (Alternativa se leads vierem <5/sem: trocar o evento de otimização pra "quiz iniciado" — mais volume de sinal.)
+
+**Benchmarks de referência (US · serviços SMB · Meta):** CTR 0,9–1,6% · CPL $15–40 · nosso alvo $12 é agressivo — não entre em pânico com CPL $20 no início.
+
+**Regras de decisão (aplicar SÓ no dia 7, depois a cada 7 dias):**
+| Situação | Ação | Base |
+|---|---|---|
+| Criativo com CTR < 0,7% após ≥2.000 impressões | PAUSAR | amostra suficiente pra CTR |
+| Criativo com 0 leads após gastar 3× o CPL-alvo ($36) | PAUSAR | limite de perda por hipótese |
+| Criativo com CPL < $15 e ≥3 leads | +20% de orçamento (máx 1×/3 dias) | escalar devagar preserva aprendizado |
+| Julgar criativo com < 1.000 impressões | NÃO julgar | ruído estatístico |
+| Campanha inteira CPL > $40 por 14 dias | trocar OFERTA (não o criativo) — testar CTA "agendar demo" vs quiz | problema de oferta, não de mídia |
+
+**Teste de UMA variável por vez (calendário):** Sem 1–2: os 8 criativos competem (variável = vertical/dor). Sem 3: melhor vertical → testar headline loss vs gain ("perde $3.500" vs "recupere $3.500"). Sem 4: melhor copy → testar CTA (Growth Score vs Book demo). Nunca 2 mudanças juntas — atribuição impossível.
+
+**Loop de medição fechado:** anúncio → utm_content → quiz message-matched → lead no /admin com origem → (venda) → CPL real por vertical E custo por venda. No dia 7: print do Ads Manager + eu cruzo com /admin.
+
 ## 🔓 Destravas futuras (sobem o teto)
 - **A2P/caller-ID** (Luis, Twilio) → libera CTA "a Gui te liga" = conversão muito maior
 - **META_APP_SECRET** → WhatsApp/Messenger como canal de resposta

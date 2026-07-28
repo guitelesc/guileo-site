@@ -11,6 +11,7 @@ import WarRoom from "../components/WarRoom.jsx";
 import OnboardApprovals from "../components/OnboardApprovals.jsx";
 import ClientWallet from "../components/ClientWallet.jsx";
 import SellerManager from "../components/SellerManager.jsx";
+import DemoEngine from "../components/DemoEngine.jsx";
 import { ACTIVATION_STEPS, ACTIVATION_SECTORS, pickL } from "../data/activation.js";
 
 // /admin — Luis's private command center. Simple password gate (basic, frontend-level —
@@ -61,6 +62,7 @@ export default function Admin() {
   const [blitzState, setBlitzState] = useState("idle");  // idle | busy | err
   const [blitzMsg, setBlitzMsg] = useState("");          // upload result note
   const [blitzStats, setBlitzStats] = useState(null);    // { total, pending, contacted, replied, won }
+  const [journey, setJourney] = useState(null);          // { demo, onboarding, retention } — unified funnel
   const [statsState, setStatsState] = useState("idle");  // idle | busy | err
   const [realEvents, setRealEvents] = useState([]); // platform-wide REAL events (calls, payments, messages)
   const [siteStats, setSiteStats] = useState(null); // visit analytics (privacy-first, own beacon)
@@ -105,6 +107,9 @@ export default function Admin() {
       if (alive && !ev.error) setRealEvents(ev.data || []);
       const st = await supabase.rpc("admin_site_stats", { p_token: token });
       if (alive && !st.error) setSiteStats(st.data || null);
+      // unified lead journey: demo → onboarding → retention (one token-gated aggregate)
+      const jr = await supabase.rpc("admin_journey", { p_token: token });
+      if (alive && !jr.error) setJourney(jr.data || null);
       if (alive) setLastSync(new Date()); // stamp: the REAL feeds just refreshed
     };
     load();
@@ -191,12 +196,76 @@ export default function Admin() {
     </div>
   );
 
+  // ── JORNADA — one board, the whole lead lifecycle: demo → onboarding → retenção (REAL RPC) ──
+  const JourneyBoard = ({ j }) => {
+    const demo = j?.demo || {}, onb = j?.onboarding || {}, ret = j?.retention || {};
+    const Step = ({ n, label, tone = "orange", sub }) => (
+      <div className="flex-1 min-w-[120px] rounded-xl border bg-white/[0.04] p-3 text-center"
+        style={{ borderColor: `${TONE[tone]}44` }}>
+        <div className="text-[24px] font-black" style={{ color: TONE[tone] }}>{n ?? 0}</div>
+        <div className="mt-0.5 text-[11px] font-bold text-g-word">{label}</div>
+        {sub != null && <div className="text-[10.5px] text-g-muted">{sub}</div>}
+      </div>
+    );
+    const Arrow = () => <div className="hidden self-center px-1 text-g-muted sm:block">→</div>;
+    const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) : 0);
+    return (
+      <div className="mt-5 space-y-5">
+        <div className="rounded-2xl border border-g-line bg-white/[0.04] p-5 backdrop-blur-sm">
+          <div className="text-[12px] font-bold uppercase tracking-wider text-g-gold">🧭 Jornada do lead — demo → onboarding → retenção</div>
+          <p className="mt-1 text-[12px] text-g-muted">Do primeiro clique na demo ao cliente que fica. Números reais, atualizam a cada 5s.</p>
+          {!j ? (
+            <div className="mt-4 text-[13px] text-g-muted">Carregando…</div>
+          ) : (
+            <>
+              {/* STAGE 1 · DEMO */}
+              <div className="mt-4 text-[11px] font-black uppercase tracking-wide text-g-muted">1 · Demo (vitrine)</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Step n={demo.views} label="Views" tone="blue" />
+                <Arrow />
+                <Step n={demo.leads} label="Leads" tone="orange" sub={`${pct(demo.leads, demo.views)}% dos views`} />
+                <Arrow />
+                <Step n={demo.checkout_start} label="Checkout" tone="amber" />
+                <Arrow />
+                <Step n={demo.checkout_done} label="Pago" tone="green" sub={`${pct(demo.checkout_done, demo.checkout_start)}% fecha`} />
+              </div>
+              {/* STAGE 2 · ONBOARDING */}
+              <div className="mt-5 text-[11px] font-black uppercase tracking-wide text-g-muted">2 · Onboarding (do sim ao kickoff)</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Step n={onb.total} label="Na esteira" tone="blue" />
+                <Arrow />
+                <Step n={onb.provisioned} label="Provisionado" tone="orange" sub="Gui nasceu" />
+                <Arrow />
+                <Step n={onb.kickoff} label="Kickoff" tone="amber" />
+                <Arrow />
+                <Step n={onb.done} label="Completo" tone="green" />
+              </div>
+              {/* STAGE 3 · RETENÇÃO */}
+              <div className="mt-5 text-[11px] font-black uppercase tracking-wide text-g-muted">3 · Retenção (base que paga)</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Step n={ret.clients_total} label="Clientes" tone="blue" />
+                <Arrow />
+                <Step n={ret.clients_active} label="Ativos" tone="green" sub={`${pct(ret.clients_active, ret.clients_total)}%`} />
+                <Arrow />
+                <Step n={ret.active_30d} label="Ativos 30d" tone="orange" />
+                <Arrow />
+                <Step n={ret.clients_paused} label="Pausados" tone={ret.clients_paused > 0 ? "red" : "green"} />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // ── Cockpit tabs — pura reorganização de layout (mesmos componentes, mesmo token, mesma auth) ──
   const TABS = [
     { key: "overview", icon: "📊", label: "Visão geral" },
+    { key: "jornada", icon: "🧭", label: "Jornada" },
     { key: "clientes", icon: "👥", label: "Clientes & Vendas" },
     { key: "companyos", icon: "🏢", label: "Company OS" },
     { key: "integracoes", icon: "🔌", label: "Integrações" },
+    { key: "demo", icon: "🎬", label: "Demo Engine" },
     { key: "suporte", icon: "🎧", label: "Suporte & Ops" },
     { key: "qualidade", icon: "🎯", label: "Qualidade" },
   ];
@@ -377,6 +446,9 @@ export default function Admin() {
             </details>
           </div>
         )}
+
+        {/* ═════════════════════ 🧭 JORNADA (demo → onboarding → retenção) ═════════════════════ */}
+        {tab === "jornada" && <JourneyBoard j={journey} />}
 
         {/* ═════════════════════ 👥 CLIENTES & VENDAS ═════════════════════ */}
         {tab === "clientes" && (
@@ -720,6 +792,13 @@ export default function Admin() {
             <ChannelStatus token={token} />
             {/* ── CONECTAR META — dono cola o Page Access Token → liga IG/Messenger a um cliente ── */}
             <MetaConnect token={token} />
+          </div>
+        )}
+
+        {/* ═════════════════════ 🎬 DEMO ENGINE ═════════════════════ */}
+        {tab === "demo" && (
+          <div className="mt-5 rounded-2xl bg-[#161512] p-3 text-g-ink">
+            <DemoEngine surface="admin" />
           </div>
         )}
 

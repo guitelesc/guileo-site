@@ -392,6 +392,22 @@ export async function onRequestPost(context) {
         // 200 fast and run this in the background via context.waitUntil. ZERO change to credit logic:
         // add_client_credits / ledger / referral all stay inline & synchronous above; only the
         // provision+welcome SCHEDULING moved here (their inner logic is byte-for-byte unchanged).
+        // DEMO ATTRIBUTION (additive, deferred, wrapped) — if this session came from a
+        // personalized demo, client_reference_id is demo_<token>_<product>. Close the funnel
+        // with a checkout_done event. A failure here can NEVER touch the credit logic above.
+        if (isCheckout) context.waitUntil((async () => {
+          try {
+            const ref = (obj.client_reference_id || "").toString();
+            if (ref.startsWith("demo_")) {
+              const rest = ref.slice(5);
+              const usc = rest.indexOf("_");
+              const dToken = usc > 0 ? rest.slice(0, usc) : rest;
+              const dProduct = usc > 0 ? rest.slice(usc + 1) : "";
+              await rpc("demo_event", { p_secret: env.INGEST_SECRET || "glo_ing_7f3da9c2b4e8", p_token: dToken, p_kind: "checkout_done", p_product: dProduct, p_contact: { email } });
+            }
+          } catch { /* attribution best-effort */ }
+        })());
+
         if (isCheckout) context.waitUntil((async () => {
         let provNumber = "", provLang = langFromCountry((obj.customer_details?.address?.country || "").toString().toUpperCase()), fwd = null, pend = null, bizName = "";
         if (env.ELEVENLABS_API_KEY) {
@@ -444,6 +460,10 @@ export async function onRequestPost(context) {
                 else await emitFailure(env, "number_provision_failed", email, `agent ok but no number — finish in /admin · ${num.reason || ""}`, { agent_id: prov.agent_id });
                 try { await rpc("mark_pending_provisioned", { p_secret: PEND_SECRET, p_email: email, p_agent_id: prov.agent_id }); } catch { /* */ }
                 try { await rpc("ingest_client_event", { p_secret: ING, p_email: email, p_type: "provision", p_channel: "system", p_summary: `🚀 Gui ativada automaticamente no pagamento${provNumber ? " · " + provNumber : " (número pendente)"}${plan ? " · " + plan : ""}`, p_amount: 0, p_payload: { agent_id: prov.agent_id, number: provNumber } }); } catch { /* */ }
+                // ONBOARDING MACHINE hook: paid → invoice+access reached. Advance the funnel (idempotent;
+                // wrapped so it can NEVER touch the money path). onboard_advance stamps only once per step.
+                try { await rpc("onboard_advance", { p_secret: ING, p_email: email, p_step: "invoice" }); } catch { /* */ }
+                try { await rpc("onboard_advance", { p_secret: ING, p_email: email, p_step: "access" }); } catch { /* */ }
               } else {
                 // surface the failure to the owner so it can be finished by hand — never silently drop it
                 try { await rpc("ingest_client_event", { p_secret: ING, p_email: email, p_type: "provision_failed", p_channel: "system", p_summary: `⚠️ Gui NÃO criada no pagamento (${email}) — finalizar no /admin · ${prov.step}`, p_amount: 0, p_payload: { step: prov.step } }); } catch { /* */ }
@@ -490,6 +510,10 @@ export async function onRequestPost(context) {
         if (isCheckout) {
           try {
             let refCode = (obj.client_reference_id || "").toString().trim();
+            // A "demo_<token>_<product>" ref belongs to the Demo funnel (handled by the DEMO
+            // ATTRIBUTION block above) — it is NOT a seller/referral slug. Skip it here so a
+            // demo sale never pollutes the seller-commission feed or triggers a bogus lookup.
+            if (refCode.startsWith("demo_")) refCode = "";
             if (!refCode) {
               // off-site conversion fallback: the ref captured on this buyer's lead rows (90d).
               const rr = await rpc("lead_ref_lookup", { p_secret: ING, p_contact: email });

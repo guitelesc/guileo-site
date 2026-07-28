@@ -86,7 +86,6 @@ const Quiz = lazyRetry(() => import("./pages/Quiz"));
 const Calculator = lazyRetry(() => import("./pages/Calculator"));
 const Partners = lazyRetry(() => import("./pages/Partners"));
 const CampaignLP = lazyRetry(() => import("./pages/CampaignLP")); // paid-traffic LPs (/lp/:slug), noindex
-import ConsentBanner from "./components/ConsentBanner.jsx";
 const LeadsInbox = lazyRetry(() => import("./pages/LeadsInbox"));
 const LandingV2 = lazyRetry(() => import("./pages/LandingV2")); // backup of the rebuilt landing
 const Admin = lazyRetry(() => import("./pages/Admin")); // Luis's private command center
@@ -123,6 +122,7 @@ const LeadGeneration = lazyRetry(() => import("./pages/LeadGeneration")); // lea
 const SetupAgenda = lazyRetry(() => import("./pages/SetupAgenda")); // admin onboarding for the scheduling engine
 const Sign = lazyRetry(() => import("./pages/Sign")); // public contract e-signature page (/sign?t=token)
 const DemoLink = lazyRetry(() => import("./pages/DemoLink")); // seller's personalized demo link (/demo/:slug?n=&v=&s=) — Gui calls the prospect already knowing their business
+const DemoPage = lazyRetry(() => import("./pages/DemoPage")); // public "vitrine" — any product rendered in the client's brand (/vitrine/:token?)
 
 // Privacy-first visit beacon → /api/hit (page + referrer host + lang only; no cookies,
 // no IDs). Fires once per pageload + on SPA route changes via history patching.
@@ -225,11 +225,13 @@ export default function App() {
             <Route path="/setup-agenda" element={<SetupAgenda />} />
             <Route path="/sign" element={<Sign />} />
             <Route path="/demo/:slug" element={<DemoLink />} />
+            <Route path="/vitrine" element={<DemoPage />} />
+            <Route path="/vitrine/:token" element={<DemoPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
         </main>
-        <ConsentBanner />
+        {/* ConsentBanner removido a pedido do Luis (2026-07-28) */}
     </BrowserRouter>
     </LangProvider>
     </ErrorBoundary>

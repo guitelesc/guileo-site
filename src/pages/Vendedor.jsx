@@ -16,6 +16,7 @@ import SellerCloser from "../components/SellerCloser.jsx";
 import SellerIdeas from "../components/SellerIdeas.jsx";
 import SellerContract from "../components/SellerContract.jsx";
 import SellerFinance from "../components/SellerFinance.jsx";
+import DemoEngine from "../components/DemoEngine.jsx";
 import { ACTIVATION_STEPS, ACTIVATION_SECTORS, pickL } from "../data/activation.js";
 
 // Shared hub-wide CSS: the AI-CTA glow (Gui orange #FF8A33, subtle pulse — cement design stays
@@ -59,7 +60,7 @@ const T = {
     nameField: "Seu nome", email: "Seu email", code: "Código de acesso (do time)", enter: "Entrar", entering: "Entrando…",
     invalid: "Email ou código inválido. Fala com o Luis pra liberar seu acesso.", needBoth: "Preencha email e código.",
     logout: "Sair", hi: "Olá",
-    nav: { start: "Início", painel: "📊 Painel", alvos: "🎯 Alvos do dia", followup: "🗓️ Follow-up", fechar: "💰 Fechar", cards: "Pitch Cards", quote: "Orçamento", contrato: "📄 Contrato", financeiro: "🧾 Financeiro", cadastro: "➕ Cadastrar cliente", academy: "Academia", metas: "Minhas Metas", treino: "Treino", ativ: "Ativação", jogadas: "💡 Jogadas", support: "Suporte" },
+    nav: { start: "Início", painel: "📊 Painel", alvos: "🎯 Alvos do dia", followup: "🗓️ Follow-up", fechar: "💰 Fechar", demo: "🎬 Demo", cards: "Pitch Cards", quote: "Orçamento", contrato: "📄 Contrato", financeiro: "🧾 Financeiro", cadastro: "➕ Cadastrar cliente", academy: "Academia", metas: "Minhas Metas", treino: "Treino", ativ: "Ativação", jogadas: "💡 Jogadas", support: "Suporte" },
     cadTitle: "Cadastrar cliente", cadSub: "Preencha o cadastro completo do cliente — negócio, agente, unidades, serviços e canais. Salva um rascunho; o Luis aprova e a Gui dedicada nasce.",
     cadMine: "Meus cadastros", cadNone: "Nenhum cadastro ainda — preencha o formulário acima pra criar o primeiro.", cadDraft: "rascunho", cadLive: "no ar", cadRefresh: "↻ Atualizar",
     ativTitle: "Ativação do cliente", ativSub: "Passo a passo pra deixar a Gui do cliente no ar depois que ele paga. Siga em ordem.",
@@ -110,7 +111,7 @@ const T = {
     nameField: "Your name", email: "Your email", code: "Access code (from your team)", enter: "Sign in", entering: "Signing in…",
     invalid: "Invalid email or code. Ask Luis to enable your access.", needBoth: "Enter email and code.",
     logout: "Sign out", hi: "Hi",
-    nav: { start: "Start", painel: "📊 Panel", alvos: "🎯 Targets", followup: "🗓️ Follow-up", fechar: "💰 Close", cards: "Pitch Cards", quote: "Quote", contrato: "📄 Contract", financeiro: "🧾 Finance", cadastro: "➕ Add client", academy: "Academy", metas: "My Goals", treino: "Practice", ativ: "Activation", jogadas: "💡 Plays", support: "Support" },
+    nav: { start: "Start", painel: "📊 Panel", alvos: "🎯 Targets", followup: "🗓️ Follow-up", fechar: "💰 Close", demo: "🎬 Demo", cards: "Pitch Cards", quote: "Quote", contrato: "📄 Contract", financeiro: "🧾 Finance", cadastro: "➕ Add client", academy: "Academy", metas: "My Goals", treino: "Practice", ativ: "Activation", jogadas: "💡 Plays", support: "Support" },
     cadTitle: "Add client", cadSub: "Fill the full client intake — business, agent, locations, services and channels. It saves a draft; Luis approves and the dedicated Gui is born.",
     cadMine: "My intakes", cadNone: "No intakes yet — fill the form above to create the first one.", cadDraft: "draft", cadLive: "live", cadRefresh: "↻ Refresh",
     ativTitle: "Client activation", ativSub: "Step by step to get the client's Gui live after they pay. Follow in order.",
@@ -157,7 +158,7 @@ const T = {
     nameField: "Tu nombre", email: "Tu correo", code: "Código de acceso (del equipo)", enter: "Entrar", entering: "Entrando…",
     invalid: "Correo o código inválido. Pídele a Luis que habilite tu acceso.", needBoth: "Completa correo y código.",
     logout: "Salir", hi: "Hola",
-    nav: { start: "Inicio", painel: "📊 Panel", alvos: "🎯 Objetivos", followup: "🗓️ Seguimiento", fechar: "💰 Cerrar", cards: "Pitch Cards", quote: "Presupuesto", contrato: "📄 Contrato", financeiro: "🧾 Finanzas", cadastro: "➕ Alta cliente", academy: "Academia", metas: "Mis Metas", treino: "Práctica", ativ: "Activación", jogadas: "💡 Jugadas", support: "Soporte" },
+    nav: { start: "Inicio", painel: "📊 Panel", alvos: "🎯 Objetivos", followup: "🗓️ Seguimiento", fechar: "💰 Cerrar", demo: "🎬 Demo", cards: "Pitch Cards", quote: "Presupuesto", contrato: "📄 Contrato", financeiro: "🧾 Finanzas", cadastro: "➕ Alta cliente", academy: "Academia", metas: "Mis Metas", treino: "Práctica", ativ: "Activación", jogadas: "💡 Jugadas", support: "Soporte" },
     cadTitle: "Alta de cliente", cadSub: "Completa el alta del cliente — negocio, agente, sucursales, servicios y canales. Guarda un borrador; Luis aprueba y nace la Gui dedicada.",
     cadMine: "Mis altas", cadNone: "Sin altas aún — completa el formulario de arriba para crear la primera.", cadDraft: "borrador", cadLive: "en vivo", cadRefresh: "↻ Actualizar",
     ativTitle: "Activación del cliente", ativSub: "Paso a paso para dejar la Gui del cliente en vivo después de que paga. Sigue en orden.",
@@ -1007,7 +1008,7 @@ export default function Vendedor() {
   if (!seller) return <Login t={t} lang={lang} setLang={setLang} onIn={setSeller} />;
 
   const logout = () => { try { localStorage.removeItem(SELLER_KEY); } catch { /* ignore */ } setSeller(null); };
-  const NAV = [["start", t.nav.start], ["painel", t.nav.painel], ["alvos", t.nav.alvos], ["followup", t.nav.followup], ["fechar", t.nav.fechar], ["cards", t.nav.cards], ["quote", t.nav.quote], ["contrato", t.nav.contrato], ["financeiro", t.nav.financeiro], ["cadastro", t.nav.cadastro], ["treino", t.nav.treino], ["ativ", t.nav.ativ], ["metas", t.nav.metas], ["jogadas", t.nav.jogadas], ["academy", t.nav.academy], ["support", t.nav.support]];
+  const NAV = [["start", t.nav.start], ["painel", t.nav.painel], ["alvos", t.nav.alvos], ["followup", t.nav.followup], ["fechar", t.nav.fechar], ["demo", t.nav.demo || "🎬 Demo"], ["cards", t.nav.cards], ["quote", t.nav.quote], ["contrato", t.nav.contrato], ["financeiro", t.nav.financeiro], ["cadastro", t.nav.cadastro], ["treino", t.nav.treino], ["ativ", t.nav.ativ], ["metas", t.nav.metas], ["jogadas", t.nav.jogadas], ["academy", t.nav.academy], ["support", t.nav.support]];
 
   return (
     <div className="surface-real min-h-screen text-g-ink">
@@ -1047,6 +1048,7 @@ export default function Vendedor() {
           {tab === "alvos" && <SellerProspect lang={lang} seller={seller} market={market} nav={nav} />}
           {tab === "followup" && <SellerFollowup lang={lang} seller={seller} market={market} nav={nav} handoff={handoff} />}
           {tab === "fechar" && <SellerCloser lang={lang} seller={seller} market={market} nav={nav} handoff={handoff} />}
+          {tab === "demo" && <DemoEngine surface="seller" />}
           {tab === "jogadas" && <SellerIdeas lang={lang} seller={seller} market={market} nav={nav} />}
           {tab === "cards" && <PitchCards t={t} lang={lang} seller={seller} />}
           {tab === "quote" && <SellerQuote lang={lang} sellerName={seller.name} sellerEmail={seller.email} onQuote={() => logSellerEvent(seller, "quote")} handoff={handoff} market={market} />}

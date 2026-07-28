@@ -117,3 +117,18 @@ Ou, sabendo o `agent_id`, direto: `select public.client_agent_upsert('glo_ing_7f
 
 ---
 *Nova rota recorrente? Adicione aqui com um nome ROTA-XXX. É o índice de execução do dia a dia.*
+
+## ROTA-DEMO — vitrine personalizada (vende na call)
+**Quando:** mostrar qualquer produto na marca do cliente (call/vendedor) ou dar um link que vende sozinho.
+**Passos:** entra URL/@/marca → `/api/demo action:brand` puxa marca real (logo/cores/negócio) + fatos do site → escolhe produto → prévia na marca (site+widget · IG skin · app mockup · voz · ads/SEO/email) → "copiar link" (`action:save`) = `/vitrine/:token` compartilhável → `action:lead`/`view` capturam no CRM/analytics. Onde: `DemoEngine.jsx` em /vendedor, /admin, /vitrine público + nav.
+**Chave externa (acende sozinho):** `SCREENSHOT_API` (screenshot ao vivo do site; sem ela = placeholder honesto).
+**Checkout embutido (demo→compra 1-clique):** botões de plano na demo → `/api/demo action:checkout` devolve o Payment Link **canônico já auditado** (KEEP_URLS) com `?client_reference_id=demo_<token>_<produto>` (sanitizado [A-Za-z0-9_-]). Stripe copia o ref na sessão → stripe-webhook loga `checkout_done` (funil fecha) **sem tocar em crédito**. Ref `demo_` é ignorado pelo bloco de comissão de vendedor. Analytics: `action:stats` (contagens view→lead→checkout_start→checkout_done por produto; painel no /vendedor+/admin).
+**Voz na demo:** card "voice" tem input de telefone → `POST /api/call` (gate blindado: sameOrigin+caps+DNC+E.164) com `business`/`need` como dynamic_variables → a Gui LIGA saudando como a marca. Não é widget in-browser (convai removido). Caveat: caller-ID US não-registrado pode silenciar o toque até A2P.
+**Prova:** `/api/demo` 200 · `/vitrine` 200 · SSRF bloqueado · token 64-char · checkout devolve só os 3 links · ref sanitizado · stats agrega funil · `/api/call` da demo: inválido→400, cross-origin→403.
+
+## ROTA-ONBOARD — máquina do "sim ao kickoff" (7 passos)
+**Quando:** cliente fecha → tudo dispara sozinho até o projeto começar. "Automatiza o envio, nunca a decisão."
+**Passos (cadeia):** 1 contrato → 2 welcome → 3 fatura → 4 acesso (auto-provision) → 5 kickoff + **brief IA** → 6 relatório ROI mensal → 7 check-in 30/60/90 (sentimento). `/api/onboarding` (SECRET-only: cron+stripe), `onboard_status` = barra de progresso + painel de conversão. E-mails via emailTemplates.js.
+**Gatilhos:** stripe-webhook (pago→avança acesso, deferido/wrapped) + cron-tick (check-in diário · report dia 1º).
+**Chave externa:** `ESIGN_WEBHOOK` (contrato auto-assinado; inerte até setar) · `KICKOFF_URL` (link de agenda).
+**Prova:** start→29% idempotente · sentiment ghost rejeitado (0 linha) · 403 sem segredo.

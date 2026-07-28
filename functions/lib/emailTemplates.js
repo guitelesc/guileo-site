@@ -2344,3 +2344,150 @@ export function sellerWeeklyEmail({ sellerName = "", stats = {}, topClients = []
   <div align="center">${cta(t.cta, B.site + "/vendedor")}</div>`;
   return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang: pt ? "pt" : "en" }) };
 }
+
+// ── ONBOARDING MACHINE (7-step chain) ───────────────────────────────────────
+// The three emails the go-live machine sends. Branded via the shared shell so they read
+// as the same world as the platform. "Automate the sending, never the deciding."
+
+// STEP 2 — WELCOME PACKET. Contract signed → sent within ~1 min. Sets expectations: the 7 steps.
+export function welcomePacketEmail({ name = "there", business = "your business", lang = "en", portalUrl = "https://guileoai.com/portal", kickoffUrl = "" } = {}) {
+  name = esc(name); business = esc(business);
+  const t = lang === "pt" ? {
+    subject: `Bem-vindo a bordo — vamos ativar ${business} 🌱`,
+    pre: "Seu kit de boas-vindas: exatamente o que acontece a seguir, passo a passo.",
+    eyebrow: "Kit de boas-vindas", h1: `Bem-vindo a bordo, ${name}`,
+    intro: `Contrato assinado — que alegria ter <b style="color:${B.ink};">${business}</b> conosco. A partir daqui, cuidamos de tudo para deixar seu Gui no ar. Veja exatamente o que vem a seguir:`,
+    stepsTitle: "O caminho até o kickoff",
+    steps: [
+      ["Fatura", "Enviamos sua primeira fatura — um clique para pagar com segurança."],
+      ["Acesso liberado", "Pagou, seu Gui nasce automaticamente e o painel abre."],
+      ["Kickoff + briefing", "Agendamos a reunião e preparamos um briefing de uma página do seu negócio."],
+      ["Acompanhamento", "Todo mês, um relatório de resultados. E um toque no dia 30, 60 e 90."],
+    ],
+    cta: "Abrir meu painel 🚀", cta2: "Agendar o kickoff 📅",
+    foot: "Qualquer dúvida, é só responder — uma pessoa de verdade lê cada mensagem.",
+  } : lang === "es" ? {
+    subject: `Bienvenido a bordo — activemos ${business} 🌱`,
+    pre: "Su kit de bienvenida: exactamente qué pasa a continuación, paso a paso.",
+    eyebrow: "Kit de bienvenida", h1: `Bienvenido a bordo, ${name}`,
+    intro: `Contrato firmado — qué alegría tener a <b style="color:${B.ink};">${business}</b> con nosotros. Desde aquí nos ocupamos de todo para dejar su Gui en marcha. Esto es lo que sigue:`,
+    stepsTitle: "El camino hasta el kickoff",
+    steps: [
+      ["Factura", "Le enviamos su primera factura — un clic para pagar con seguridad."],
+      ["Acceso activado", "Al pagar, su Gui nace automáticamente y el panel se abre."],
+      ["Kickoff + briefing", "Agendamos la reunión y preparamos un briefing de una página de su negocio."],
+      ["Seguimiento", "Cada mes, un informe de resultados. Y un saludo al día 30, 60 y 90."],
+    ],
+    cta: "Abrir mi panel 🚀", cta2: "Agendar el kickoff 📅",
+    foot: "Cualquier duda, solo responda — una persona real lee cada mensaje.",
+  } : {
+    subject: `Welcome aboard — let's bring ${business} live 🌱`,
+    pre: "Your welcome packet: exactly what happens next, step by step.",
+    eyebrow: "Welcome packet", h1: `Welcome aboard, ${name}`,
+    intro: `Contract signed — we're delighted to have <b style="color:${B.ink};">${business}</b> with us. From here we handle everything to get your Gui live. Here's exactly what comes next:`,
+    stepsTitle: "The path to kickoff",
+    steps: [
+      ["Invoice", "We send your first invoice — one click to pay securely."],
+      ["Access on", "Once paid, your Gui is born automatically and your dashboard opens."],
+      ["Kickoff + brief", "We book the meeting and prepare a one-page brief of your business."],
+      ["Follow-through", "Every month, a results report. And a hello on day 30, 60 and 90."],
+    ],
+    cta: "Open my dashboard 🚀", cta2: "Book the kickoff 📅",
+    foot: "Any questions, just reply — a real person reads every message.",
+  };
+  const step = (n, ti, de) => `<tr><td style="padding:8px 0;"><table role="presentation" width="100%"><tr>
+    <td width="40" valign="top"><div style="width:30px;height:30px;border-radius:9px;background:${B.panel2};border:1px solid ${B.line};color:${B.gold};font-weight:800;font-size:13px;text-align:center;line-height:30px;">${n}</div></td>
+    <td valign="top" style="padding-left:6px;"><div style="font-size:14.5px;font-weight:700;color:${B.ink};">${ti}</div><div style="font-size:13px;color:${B.muted};line-height:1.6;margin-top:2px;">${de}</div></td></tr></table></td></tr>`;
+  const body = `
+  <h1 style="font-size:25px;font-weight:900;color:${B.ink};margin:0 0 4px;letter-spacing:-.5px;">${t.h1} 🌱</h1>
+  <div class="g-intro" style="font-size:16px;color:${B.ink2};line-height:1.72;margin-top:10px;">${t.intro}</div>
+  <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
+  ${panel(`<div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin-bottom:6px;">${t.stepsTitle}</div>
+    <table role="presentation" width="100%">${t.steps.map((s, i) => step(i + 1, s[0], s[1])).join("")}</table>`)}
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(t.cta, portalUrl)}</div>
+  ${kickoffUrl ? `<div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div><div align="center">${cta2(t.cta2, kickoffUrl)}</div>` : ""}
+  <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+}
+
+// STEP 5 — KICKOFF BRIEF. Access on → a one-page AI-written brief (from intake + site facts) plus
+// the kickoff booking link. `brief` is plain text (paragraphs/lines) generated upstream by /api/onboarding.
+export function kickoffBriefEmail({ name = "there", business = "your business", lang = "en", brief = "", bookingUrl = "", portalUrl = "https://guileoai.com/portal" } = {}) {
+  name = esc(name); business = esc(business);
+  const briefHtml = esc(brief).replace(/\n{2,}/g, "</p><p style='margin:10px 0 0;'>").replace(/\n/g, "<br/>");
+  const t = lang === "pt" ? {
+    subject: `Seu briefing de kickoff — ${business} 📋`,
+    pre: "Uma página com o essencial do seu negócio, pronta para nossa reunião.",
+    eyebrow: "Briefing de kickoff", h1: `Prontos para começar, ${name}`,
+    intro: `Preparamos um briefing de uma página sobre <b style="color:${B.ink};">${business}</b> — para chegarmos ao kickoff já entendendo o seu mundo.`,
+    briefT: "Briefing", cta: "Agendar o kickoff 📅", cta2: "Abrir meu painel 🚀",
+    foot: "Se algo no briefing não bater, responda este email — ajustamos antes da reunião.",
+  } : lang === "es" ? {
+    subject: `Su briefing de kickoff — ${business} 📋`,
+    pre: "Una página con lo esencial de su negocio, lista para nuestra reunión.",
+    eyebrow: "Briefing de kickoff", h1: `Listos para empezar, ${name}`,
+    intro: `Preparamos un briefing de una página sobre <b style="color:${B.ink};">${business}</b> — para llegar al kickoff ya entendiendo su mundo.`,
+    briefT: "Briefing", cta: "Agendar el kickoff 📅", cta2: "Abrir mi panel 🚀",
+    foot: "Si algo del briefing no encaja, responda este correo — lo ajustamos antes de la reunión.",
+  } : {
+    subject: `Your kickoff brief — ${business} 📋`,
+    pre: "A one-pager on your business, ready for our kickoff call.",
+    eyebrow: "Kickoff brief", h1: `Ready to begin, ${name}`,
+    intro: `We've prepared a one-page brief on <b style="color:${B.ink};">${business}</b> — so we walk into kickoff already understanding your world.`,
+    briefT: "The brief", cta: "Book the kickoff 📅", cta2: "Open my dashboard 🚀",
+    foot: "If anything in the brief looks off, just reply — we'll fix it before the call.",
+  };
+  const body = `
+  <h1 style="font-size:25px;font-weight:900;color:${B.ink};margin:0 0 4px;letter-spacing:-.5px;">${t.h1}</h1>
+  <div class="g-intro" style="font-size:16px;color:${B.ink2};line-height:1.72;margin-top:10px;">${t.intro}</div>
+  <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
+  ${panel(`<div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin-bottom:8px;">${t.briefT}</div>
+    <div style="font-size:14px;color:${B.ink2};line-height:1.7;"><p style="margin:0;">${briefHtml || "&mdash;"}</p></div>`)}
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  ${bookingUrl ? `<div align="center">${cta(t.cta, bookingUrl)}</div><div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div>` : ""}
+  <div align="center">${cta2(t.cta2, portalUrl)}</div>
+  <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+}
+
+// STEP 7 — ONE-QUESTION CHECK-IN (day 30/60/90). One question, three 1-tap answers whose links carry
+// the sentiment back to GET /api/onboarding (vote) → onboard_sentiment flags lukewarm/cold. The caller
+// substitutes the client email into the __EMAIL__ token before sending.
+export function onboardingCheckinEmail({ name = "there", business = "your business", lang = "en", day = 30, voteBase = "https://guileoai.com/api/onboarding" } = {}) {
+  name = esc(name); business = esc(business);
+  const d = [30, 60, 90].includes(Number(day)) ? Number(day) : 30;
+  const t = lang === "pt" ? {
+    subject: `${name}, como estão os primeiros ${d} dias? 🌱`,
+    pre: "Uma pergunta, um toque — queremos que esteja indo bem.",
+    eyebrow: `Check-in · dia ${d}`, h1: `Como vai, ${name}?`,
+    q: `Estamos há ${d} dias juntos em <b style="color:${B.ink};">${business}</b>. Numa palavra: como está sendo?`,
+    warm: "😊 Ótimo", luke: "😐 Mais ou menos", cold: "😕 Podia melhorar",
+    foot: "Seja qual for o toque, alguém de verdade lê e cuida.",
+  } : lang === "es" ? {
+    subject: `${name}, ¿cómo van los primeros ${d} días? 🌱`,
+    pre: "Una pregunta, un toque — queremos que le vaya bien.",
+    eyebrow: `Check-in · día ${d}`, h1: `¿Cómo va, ${name}?`,
+    q: `Llevamos ${d} días juntos en <b style="color:${B.ink};">${business}</b>. En una palabra: ¿cómo va?`,
+    warm: "😊 Genial", luke: "😐 Más o menos", cold: "😕 Podría mejorar",
+    foot: "Sea cual sea el toque, una persona real lo lee y se ocupa.",
+  } : {
+    subject: `${name}, how are the first ${d} days? 🌱`,
+    pre: "One question, one tap — we want this going well for you.",
+    eyebrow: `Check-in · day ${d}`, h1: `How's it going, ${name}?`,
+    q: `We're ${d} days in with <b style="color:${B.ink};">${business}</b>. In one word: how's it going?`,
+    warm: "😊 Great", luke: "😐 So-so", cold: "😕 Could be better",
+    foot: "Whichever you tap, a real person reads it and follows up.",
+  };
+  const pill = (label, href, accent) => `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:6px auto;"><tr><td align="center" style="border-radius:999px;background:${B.panel};border:1px solid ${accent};"><a href="${href}" style="display:inline-block;padding:13px 30px;font-family:'Inter','Segoe UI',Arial,sans-serif;font-size:14.5px;font-weight:700;color:${B.ink};text-decoration:none;border-radius:999px;">${label}</a></td></tr></table>`;
+  const u = (v) => `${voteBase}?vote=${v}&email=__EMAIL__&day=${d}`;
+  const body = `
+  <h1 style="font-size:25px;font-weight:900;color:${B.ink};margin:0 0 4px;letter-spacing:-.5px;">${t.h1}</h1>
+  <div class="g-intro" style="font-size:16px;color:${B.ink2};line-height:1.72;margin-top:10px;">${t.q}</div>
+  <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
+  ${pill(t.warm, u("warm"), B.green)}
+  ${pill(t.luke, u("lukewarm"), B.gold)}
+  ${pill(t.cold, u("cold"), "#c2603a")}
+  <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:18px;">${t.foot}</div>`;
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+}

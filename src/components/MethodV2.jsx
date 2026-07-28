@@ -54,9 +54,7 @@ export default function MethodV2() {
       {/* GARDEN SCENE — the system is planted, nurtured & harvested; the plant literally grows */}
       <div className="relative mx-auto mt-10 max-w-5xl">
         <div className="relative grid grid-cols-3 gap-2 sm:gap-6">
-          {/* soil line behind all three — the growing ground */}
-          <div className="pointer-events-none absolute inset-x-2 top-[160px] h-[3px] rounded-full bg-white/10" />
-          <div className="pointer-events-none absolute left-2 right-2 top-[160px] h-[3px] origin-left rounded-full bg-gradient-to-r from-g-gold via-g-green to-g-copper" style={{ animation: "mvgrow 1.8s ease .4s both" }} />
+          {/* (traço horizontal removido a pedido do Luis — ficava solto/feio) */}
 
           {STEPS.map((s, i) => {
             const harvest = s.phase === "Harvest";

@@ -113,12 +113,7 @@ export default function LegsV2() {
         {/* calm aurora wash behind the scene — presence without stealing the text */}
         <div className="pointer-events-none absolute inset-x-0 -top-8 h-64 bg-[radial-gradient(720px_280px_at_50%_30%,rgba(62,148,104,0.08),transparent)]" />
         <div className="relative grid grid-cols-3 gap-2 sm:gap-6">
-          {/* energy line behind all three stations */}
-          <div className="pointer-events-none absolute inset-x-2 top-[120px] h-[3px] rounded-full bg-white/10" />
-          <div className="pointer-events-none absolute left-2 right-2 top-[120px] h-[3px] origin-left rounded-full bg-gradient-to-r from-g-green via-g-gold to-g-copper" style={{ animation: "lgrow 1.8s ease .4s both" }} />
-          {/* energy pulses traveling along the line into the result — gold + green chasing */}
-          <span className="pointer-events-none absolute top-[117px] h-[9px] w-[9px] rounded-full bg-g-gold shadow-[0_0_14px_rgba(214,194,154,0.9)]" style={{ animation: "lflow 3.2s linear 1.6s infinite" }} />
-          <span className="pointer-events-none absolute top-[118px] h-[6px] w-[6px] rounded-full bg-g-green shadow-[0_0_11px_rgba(62,148,104,0.9)]" style={{ animation: "lflow 3.2s linear 3.2s infinite" }} />
+          {/* (traço horizontal removido a pedido do Luis — ficava solto/feio; a conexão fica pelas setas Performance → Sales → Growth) */}
 
           {L.steps.map((s, i) => {
             const st = STATIONS[i];

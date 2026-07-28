@@ -53,6 +53,12 @@ export async function onRequest(context) {
       // window) + capped + email-only, so the daily re-run never double-surveys anyone.
       targets.push({ name: "cx-survey", url: `${base}/api/cx-survey?token=${t}` });
       targets.push({ name: "money-reconcile", url: `${base}/api/money-reconcile?token=${t}` });
+      // ONBOARDING MACHINE step 7: day-30/60/90 one-question check-in. Atomic-claimed per milestone
+      // (onboard_checkin_due), so the daily re-run never re-sends — safe every day.
+      targets.push({ name: "onboarding-checkin", url: `${base}/api/onboarding?sweep=checkin&token=${t}` });
+      // ONBOARDING MACHINE step 6: monthly ROI report. Claimed per calendar month (onboard_report_due)
+      // and fired on the 1st @13h only (not the 14h retry) → exactly one ROI report per client per month.
+      if (hourUTC === 13 && new Date().getUTCDate() === 1) targets.push({ name: "onboarding-report", url: `${base}/api/onboarding?sweep=report&token=${t}` });
       // Data-cannot-lie: nightly cross-department invariant sweep; alerts if any HIGH contradiction.
       targets.push({ name: "integrity-sweep", url: `${base}/api/integrity-sweep?token=${t}` });
       // weekly (Monday 13:00 UTC): the "Your Gui this week" value report — skipped clients with
