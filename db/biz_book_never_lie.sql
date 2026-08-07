@@ -1,0 +1,14 @@
+-- Aplicado em 2026-08-07 (via MCP). Guardado aqui porque toda mudança de SQL tem que existir no repo.
+-- BIZ_BOOK NUNCA DEVOLVE "OK" SEM AGENDAMENTO.
+--
+-- Dois pontos devolviam sucesso vazio:
+--  1. `if found` (estado do Postgres) em vez de `v_existing.id is not null` (o valor).
+--  2. O tratamento de unique_violation devolvia ok=true INCONDICIONALMENTE. Cenário real:
+--     cliente marca → cancela → tenta o MESMO horário. A chave de idempotência colide com o
+--     registro cancelado, o insert viola, e o tratamento respondia {"ok":true, id:null}.
+--     A agente dizia "pronto, agendado" e não havia nada. A pessoa aparece no dia sem horário.
+--     Agora: sem registro vivo, insere de novo SEM a chave (remarcar após cancelar tem que
+--     funcionar), e uma rede final recusa qualquer retorno sem id.
+--
+-- A definição vigente está no banco; para revisar: select pg_get_functiondef(oid) from pg_proc
+-- where proname='biz_book';

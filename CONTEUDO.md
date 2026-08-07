@@ -1,7 +1,8 @@
 # 📱 GUILEO — Máquina de Conteúdo (2 linhas editoriais)
 
 > Objetivo: o cliente ENTENDER de fato o que somos em 3 segundos — e contratar.
-> Regra: todo post mostra COISA REAL (produto funcionando, site entregue, número verdadeiro). Nada de frase motivacional genérica.
+> Regra 1: todo post mostra COISA REAL (produto funcionando, site entregue, número verdadeiro). Nada de frase motivacional genérica.
+> **Regra 2 · IDIOMA: INGLÊS SEMPRE (mercado = NYC/US).** Preços em $. Cenários NYC (delivery no Brooklyn, clínica em Queens, brownstone em Manhattan). PT só se um dia abrirmos linha pra comunidade BR — decisão separada.
 
 ## As 2 linhas editoriais
 
@@ -87,4 +88,37 @@ Sem férias, sem "já fechou", sem cliente esperando na linha. Qualquer idioma, 
 🌱 IA + marketing que atende, vende e cresce seu negócio 24/7
 ⚡ No ar em 7 dias · garantia 30 dias
 👇 Faz a Gui te ligar:
+guileoai.com/quiz?ref=ig
+
+---
+
+## 📦 LOTE 1 — VERSÃO OFICIAL EN (usar ESTA · assets *-en em social-assets/)
+
+### Post 1 · REEL `reel-pov-947pm-en.mp4` (AI line)
+**Caption:**
+POV: it's 9:47 PM, your restaurant is closed… and the phone rings. 📞
+Before: a lost customer. Now: Gui answers, takes the order, upsells the drink and confirms — on her own.
+This isn't a concept. It's what we install in 7 days.
+👉 Comment **"GUI"** and she'll call you so you can hear it live.
+#aiforbusiness #restaurantowner #nycrestaurants #smallbusiness #automation
+
+### Post 2 · PHOTO `post-showcase-site-en.png` (AD line)
+**Caption:**
+A pretty website doesn't pay rent. A website with AI inside does. 💰
+We delivered this one in 7 days: premium design, 4 languages, and Gui built in — answering every visitor.
+Your business deserves a storefront that SELLS, not one that just exists.
+👉 Want yours? Link in bio or DM us.
+#webdesign #nycbusiness #smallbusinessowner #marketing #ai
+
+### Post 3 · PHOTO `post-gui-24-7-en.png` (AI line)
+**Caption:**
+She answers. Books. Sells. 24/7. 🌱
+No days off, no "we're closed", no customer left hanging. Any language, any hour — and you see everything on your dashboard.
+👉 Comment "GUI" and she'll call you right now.
+#aiagent #customerservice #nycsmallbusiness #leadgeneration #automation
+
+### Instagram bio (@guileoai) — EN:
+🌱 AI + marketing that answers, sells & grows your business 24/7
+⚡ Live in 7 days · 30-day guarantee · NYC
+👇 Let Gui call you:
 guileoai.com/quiz?ref=ig
