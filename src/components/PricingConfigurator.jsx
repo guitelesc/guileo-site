@@ -42,14 +42,14 @@ const OUTCOMES = [
   { ic: "💰", en: "Recover lost sales", pt: "Recuperar vendas", es: "Recuperar ventas perdidas", hi: "खोई बिक्री वापस पाएँ", credits: 140, value: 1400 },
   { ic: "📅", en: "Fill my calendar", pt: "Lotar a agenda", es: "Llenar mi agenda", hi: "मेरा कैलेंडर भरें", credits: 100, value: 800 },
   { ic: "🎯", en: "More leads (ads)", pt: "Mais leads (ads)", es: "Más leads (ads)", hi: "ज़्यादा लीड (ऐड्स)", credits: 180, value: 1600 },
-  { ic: "🎬", en: "Content & social", pt: "Conteúdo & redes", es: "Contenido y redes", hi: "कंटेंट & सोशल", credits: 160, value: 700 },
+  { ic: "🎬", en: "Content & social", pt: "Conteúdo e redes", es: "Contenido y redes", hi: "कंटेंट & सोशल", credits: 160, value: 700 },
   { ic: "🌐", en: "Website / app / software", pt: "Site / app / software", es: "Sitio / app / software", hi: "वेबसाइट / ऐप / सॉफ़्टवेयर", credits: 200, value: 1200 },
-  { ic: "💬", en: "WhatsApp & SMS replies", pt: "Respostas WhatsApp & SMS", es: "Respuestas WhatsApp y SMS", hi: "WhatsApp & SMS जवाब", credits: 110, value: 850 },
+  { ic: "💬", en: "WhatsApp & SMS replies", pt: "Respostas WhatsApp e SMS", es: "Respuestas WhatsApp y SMS", hi: "WhatsApp & SMS जवाब", credits: 110, value: 850 },
   { ic: "⭐", en: "More 5★ reviews", pt: "Mais avaliações 5★", es: "Más reseñas 5★", hi: "ज़्यादा 5★ समीक्षाएँ", credits: 80, value: 500 },
   { ic: "🤖", en: "Automate the busywork", pt: "Automatizar tarefas", es: "Automatizar tareas", hi: "बेकार काम ऑटोमेट करें", credits: 120, value: 1000 },
   { ic: "🛒", en: "Online store / e-commerce", pt: "Loja online / e-commerce", es: "Tienda online / e-commerce", hi: "ऑनलाइन स्टोर / ई-कॉमर्स", credits: 180, value: 1300 },
-  { ic: "📊", en: "Dashboards & CRM", pt: "Dashboards & CRM", es: "Dashboards y CRM", hi: "डैशबोर्ड & CRM", credits: 90, value: 600 },
-  { ic: "📈", en: "Track & grow profit", pt: "Medir & crescer o lucro", es: "Medir y aumentar la ganancia", hi: "मुनाफ़ा मापें & बढ़ाएँ", credits: 90, value: 1100 },
+  { ic: "📊", en: "Dashboards & CRM", pt: "Dashboards e CRM", es: "Dashboards y CRM", hi: "डैशबोर्ड & CRM", credits: 90, value: 600 },
+  { ic: "📈", en: "Track & grow profit", pt: "Medir e crescer o lucro", es: "Medir y aumentar la ganancia", hi: "मुनाफ़ा मापें & बढ़ाएँ", credits: 90, value: 1100 },
   // (power-up add-ons live in the dedicated AddOns section above — kept out here to fit one screen + avoid duplication)
 ];
 const TIERS = [

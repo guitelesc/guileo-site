@@ -2,18 +2,42 @@
 
 > Cada ROTA é uma receita testada. Antes de qualquer uma, o contrato de 3s é o [ARQUITETURA.md](ARQUITETURA.md).
 > Convenção: `ROTA-NOME` · **Quando** · **Passos** · **Prova**. Tudo escopado por `client_email` (tenant).
-> Segredos: INGEST `glo_ing_7f3da9c2b4e8` · SCHED `gss_7Kx2mQ9vR4tZ8nL` · deploy `npx wrangler pages deploy dist --project-name=guileoai --branch=main`.
+> Segredos: INGEST `glo_ing_7f3da9c2b4e8` · SCHED `gss_Kp9mX4vR2tZ7nQ5wL8bc` · deploy `npx wrangler pages deploy dist --project-name=guileoai --branch=main`.
 
 ---
 
 ## ROTA-ATIVAR · nascer um cliente novo
-**Quando:** fechar um cliente. **Passos:** vendedor preenche tudo em `/vendedor → ➕ Cadastrar cliente` → vira draft (`onboard_drafts`) → Luis aprova em `/admin` (senha `Guileo2026`) → `onboard-client.js` cria agente ElevenLabs + cérebro + agenda + widget + código de conexão. **⚠️ Se o tenant JÁ tem `biz_*` dados** (carga manual prévia), a aprovação DUPLICA → rode `biz_admin_import(SCHED, email, {...,"replace":true})` pra limpar. **Prova:** `select status,agent_id,number from onboard_drafts where client_email=…` → status `live`.
+**Quando:** fechar um cliente. **Passos:** vendedor preenche tudo em `/vendedor → ➕ Cadastrar cliente` → vira draft (`onboard_drafts`) → Luis aprova em `/admin` (a senha ROTACIONA — leia sempre do banco: `select pg_get_functiondef(oid) from pg_proc where proname='_admin_ok'`; anotar a senha em doc só cria doc mentiroso) → `onboard-client.js` cria agente ElevenLabs + cérebro + agenda + widget + código de conexão. **⚠️ Se o tenant JÁ tem `biz_*` dados** (carga manual prévia), a aprovação DUPLICA → rode `biz_admin_import(SCHED, email, {...,"replace":true})` pra limpar. **Prova:** `select status,agent_id,number from onboard_drafts where client_email=…` → status `live`.
 
 ## ROTA-NUMERO · dar voz ao agente (mapear número Twilio)
 **Quando:** agente nasceu com `number=null` e precisa atender/ligar por voz. **Fluxo no /admin (card do cliente "live"):**
 1. **📋 Meus números Twilio** → `POST /api/twilio-numbers` (admin-gated) lista os números da conta e diz ONDE cada um está: 🟢 `Livre` · 🔒 `Agente de [Negócio]` · 🔒 `Número do demo do site (saída)` (esse é o `+19864443334` do demo da landing — NÃO usar pra cliente).
 2. Clica um 🟢 **Livre** → preenche o campo → **🔢 Mapear número** → `POST /api/bind-number {email, number}` importa no ElevenLabs convai + PATCH `agent_id` + `draft_set_number`.
 **Como o lister sabe o "onde":** cruza a lista `/v1/convai/phone-numbers` (agente por número) com `onboard_drafts.agent_id → business`. **Regra:** nunca mapear o número do demo num cliente; um número = um agente. **Prova:** endpoint devolve `{ok:true, phone_number_id}` + ligar pro número → o agente atende. **Arquivos:** `functions/api/twilio-numbers.js`, `functions/api/bind-number.js`, `src/components/OnboardApprovals.jsx`.
+
+## ROTA-PROVISION · conseguir um número pro cliente (reusa antes de comprar)
+**Quando:** cliente novo e nenhum número livre óbvio — antes do ROTA-NUMERO. É a **única rota que gasta dinheiro sozinha**, então roda em duas etapas.
+1. **Simular:** `POST /api/provision-number {token, email}` → responde `dry_run:true` com `would_reuse` (custo 0) ou `would_buy` + `cost_usd` + saldo + quantas compras já saíram hoje. **Nada acontece sem `confirm:true`.**
+2. **Efetivar:** o mesmo POST com `"confirm": true` → reserva o ocioso (custo 0) ou compra. Depois: **ROTA-NUMERO** pra ligar a voz.
+
+**As 6 travas (todas fail-closed — se a leitura falha, a rota RECUSA):** ① reusa ocioso antes de comprar · ② piso de saldo `PROVISION_BALANCE_FLOOR_USD` (padrão 25; saldo ilegível = recusa) · ③ teto diário `PROVISION_MAX_PER_DAY` (padrão 3) · ④ idempotência por tenant (`client_number_for`) · ⑤ `dry_run` padrão · ⑥ admin-only + rate-limit 6/5min.
+**Por que atômico:** contar-e-depois-gastar é corrida — dois cliques simultâneos passavam os dois. `provision_claim` tranca (`pg_advisory_xact_lock`), conta o teto e **reserva o número no mesmo instante**; `provision_settle(ok=false)` solta se a compra falhar.
+**Nunca oferece:** número de outro cliente (união `client_agents` + `client_integrations` + `provision_log`) nem o `+19864443334` do demo (`functions/lib/reserved.js`, compartilhado com o bind-number).
+**Prova:** sem token → 401; token errado + `confirm:true` → 401 (a compra é inalcançável); `provision_claim` do mesmo número 2× → `numero_ja_reclamado`; `p_max:1` no 2º → `teto_diario`.
+**Arquivos:** `functions/api/provision-number.js`, `functions/lib/reserved.js`, RPCs `provision_claim`/`provision_settle`/`client_number_for`/`client_agents_numbers`.
+
+## ROTA-VENDEDOR-IA · o crachá que protege as ferramentas de IA
+**Quando:** mexer no `/vendedor` ou no `/api/pitch-ai`. **O que é:** o login (`/api/seller-login`) devolve um `sid` — HMAC-SHA256 de `email|expira` assinado com o `INGEST_SECRET` (server-only, 30 dias, sem estado). O `pitch-ai` exige esse `sid` e recusa 401 sem ele.
+**Por que existe:** o `pitch-ai` era protegido só por `sameOrigin` + limite por IP — e isso **não é autenticação**: qualquer visitante da guileoai.com chamava pelo console. Custava modelo pago pela Guileo e entregava o material de venda (dores, objeções, cunha competitiva) de graça, inclusive pra concorrente.
+**Cuidado:** todo `fetch("/api/pitch-ai")` novo tem que mandar `sid: sellerSid()`; resposta `auth_required` → `sidExpired(d)` limpa a sessão e o vendedor refaz o login uma vez.
+**Prova:** sem sid → 401 · sid forjado → 401 · login (roster e código do time) → sid de ~90 chars · com sid real → 200 com o texto da IA. **Arquivos:** `functions/lib/sellerSession.js`, `functions/api/seller-login.js`, `functions/api/pitch-ai.js`, `src/pages/Vendedor.jsx`.
+
+## ROTA-CRM-CLASSIFICA · quem é cada cliente (o tanque dos motores de retenção)
+**Quando:** sempre — roda sozinha no cron diário (13h/14h UTC), antes dos motores de retenção. Manual: `GET /api/crm-classify?token=DIGEST` (todos) ou `{email}` pra um tenant.
+**O que faz, só com FATO:** `ltv_cents` = soma dos atendimentos concluídos × preço · `lifecycle` lead→customer(1ª reserva)→loyal(3+)→dormant(60d) · `churn_risk` 0-100 pela recência (lead nunca tem risco: quem nunca veio não "abandona") · `visit_count` real · `tags` = `prefere:<unidade>` + `servico:<top>`.
+**Por que existe:** a Gui já criava a ficha e a história, mas NINGUÉM preenchia a classificação — um contato com 3 ligações desde julho seguia `lead`, LTV $0, tags `[]`. E aniversário/win-back/reativação/churn **leem exatamente esses campos**: motores prontos, tanque vazio, nada quebrava e nada disparava.
+**Prova:** sem atendimento → `atualizados:0` (não promove ninguém no vácuo); com 1 atendimento concluído → `lead → customer · $118 · ["prefere:Astoria","servico:Massage"]`; apagando o atendimento, volta a `lead`.
+**Arquivos:** `functions/api/crm-classify.js`, RPC `crm_classify_sweep`, wire em `functions/api/cron-tick.js`.
 
 ## ROTA-GCAL · conectar o Google Agenda do cliente
 **Quando:** cliente quer ver as reservas no calendário que já usa. **Passos:** dono do cliente entra no cockpit `/portal → Integrações → Conectar Google` (OAuth, 1 clique) → `gcal-connect.js` guarda o refresh_token (`client_integrations` provider='gcal'). Toda reserva depois cai lá via `gcalPush` em `agent-schedule.js`. **Precisa:** `GOOGLE_CLIENT_ID/SECRET` no Cloudflare (já setados). **Prova:** reservar → evento aparece no Google Agenda do dono.
@@ -22,7 +46,7 @@
 **Quando:** cliente quer a IA atendendo por chat no site dele. **Passos:** copiar o snippet do card no `/admin` (ou montar: `<script src="https://guileoai.com/gui-widget.js" data-guileo="EMAIL_DO_CLIENTE" data-lang="pt" defer></script>`) → cliente cola no site. Logo/cor/nome vêm do perfil dele. **Prova:** curl `POST /api/widget-chat {client:EMAIL, sessionId, message}` → responde com preços reais do cliente.
 
 ## ROTA-PRECOS · atualizar serviços/preços de um cliente
-**Quando:** cliente confirma preços novos. **Passos:** `select biz_admin_import('gss_7Kx2mQ9vR4tZ8nL', 'EMAIL', '{"replace":true,"locations":[…],"services":[{"name":…,"price_cents":…}],"professionals":[…]}'::jsonb)`. `price_cents=null` = "especialista confirma". **Prova:** `biz_lookup(SCHED, email)` mostra os preços novos; o chat/voz cotam na hora.
+**Quando:** cliente confirma preços novos. **Passos:** `select biz_admin_import('gss_Kp9mX4vR2tZ7nQ5wL8bc', 'EMAIL', '{"replace":true,"locations":[…],"services":[{"name":…,"price_cents":…}],"professionals":[…]}'::jsonb)`. `price_cents=null` = "especialista confirma". **Prova:** `biz_lookup(SCHED, email)` mostra os preços novos; o chat/voz cotam na hora.
 
 ## ROTA-IDIOMA · adicionar idioma
 **Quando:** mercado novo. **UI (4 langs):** dict em `src/i18n.jsx` + cada página. **VOZ (20 langs):** `LANGS_SPOKEN` em `functions/lib/provision.js` — o agente detecta e responde. **Cadastro:** checkboxes em `OnboardWizard.jsx`. **Prova:** trocar idioma na página converte tudo; agente responde no idioma do cliente.
@@ -133,3 +157,25 @@ Ou, sabendo o `agent_id`, direto: `select public.client_agent_upsert('glo_ing_7f
 **Primeiro-valor-na-1ª-hora:** pago→Gui nasce→dispara 1 ligação real pro telefone do DONO discando como a Gui dele (path interno /api/call, DNC+caps+E.164), o dono ouve a própria Gui na hora. Deferido/wrapped (nunca toca dinheiro), dedup `claim_credit_event('first_value:<email>')` (recompra não re-disca; renovação nem entra). Sem telefone→pula (welcome email leva o número). Loga client_event `first_value`.
 **Chave externa:** `ESIGN_WEBHOOK` (contrato auto-assinado; inerte até setar) · `KICKOFF_URL` (link de agenda).
 **Prova:** start→29% idempotente · sentiment ghost rejeitado (0 linha) · 403 sem segredo.
+
+## ROTA-VOZ — a agente soa nativa (e feliz) em cada idioma
+
+**Quando:** o cliente diz "tá gringo", "não parece brasileiro", "a voz é fria/robótica"; ou depois de melhorar o critério de escolha de voz.
+
+**Como funciona (automático, sem clique):** `functions/lib/voiceLibrary.js` garante uma voz NATIVA por idioma. Se a conta ElevenLabs não tem, ele busca na biblioteca pública e adiciona sozinho. `provision.js` põe essa voz no `language_presets[idioma].overrides.tts.voice_id` — a **voz segue o idioma**: inglês na voz do cliente, português numa brasileira, espanhol numa latina.
+
+**Passos:**
+1. Nada. Todo `POST /api/sync-agent` e todo cliente novo já resolvem sozinhos.
+2. Para forçar uma reescolha depois de mudar o critério: subir `VOICE_POLICY` em `voiceLibrary.js` (`v2` → `v3`) e sincronizar. As vozes antigas ficam paradas na conta, sem uso.
+3. Voz escolhida À MÃO pelo Luis no painel da ElevenLabs SEMPRE vence — o código só age quando não existe voz do idioma.
+
+**Calor da voz:** `WARMTH` em `provision.js` (`stability: 0.45`). Quanto MAIOR o stability, mais monótona. Não mexer em `speed` — o Luis aprovou a velocidade atual.
+
+**Prova:**
+```bash
+curl -s -X POST https://guileoai.com/api/sync-agent -H 'Content-Type: application/json' \
+  -d '{"email":"<cliente>","key":"<connection key>","lang":"en"}' | python3 -m json.tool
+```
+O campo `languages.voice_by_lang` mostra NOME e SOTAQUE de cada voz — `pt-br → … · brazilian` é a prova. Id sozinho não prova nada.
+
+**Limite honesto:** a ElevenLabs só aceita 34 idiomas de conversa. Cantonês, crioulo haitiano, bengali e punjabi NÃO existem lá — pedir um deles derruba a config inteira do agente. Lista real: `LANGS_SPOKEN` (16).

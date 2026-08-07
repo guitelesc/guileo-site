@@ -20,7 +20,7 @@ returns text
 language plpgsql security definer set search_path = public as $$
 declare v_state text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then return null; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then return null; end if;
   if coalesce(p_email,'') = '' then return null; end if;
   -- opaque, unguessable; core pg_catalog gen_random_uuid (gen_random_bytes lives in the
   -- `extensions` schema on Supabase and is invisible under search_path=public). 64 hex chars.
@@ -38,7 +38,7 @@ returns text
 language plpgsql security definer set search_path = public as $$
 declare v_email text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then return null; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then return null; end if;
   update public.google_oauth_pending
      set used = true
    where state = p_state and used = false and expires_at > now()

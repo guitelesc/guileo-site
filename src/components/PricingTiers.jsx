@@ -1,6 +1,7 @@
 import { useLang } from "../i18n.jsx";
 import { Reveal, Stagger, Item } from "../lib/ui.jsx";
 import { GUILEO_PLANS } from "../data/guileoPlans.js";
+import { SELF_SERVE_PLANS } from "../data/selfServePlans.js";
 
 // PricingTiers — the REAL price on the landing (audit: desire was built but the number lived only on
 // /planos, forcing a reload). Anchors the 3 canonical self-serve tiers from guileoPlans.js — the
@@ -35,9 +36,37 @@ export default function PricingTiers() {
         <Stagger className="mt-12 grid grid-cols-1 gap-5 lg:grid-cols-3" gap={0.09}>
           {GUILEO_PLANS.map((p) => {
             const pop = !!p.featured;
-            const price = isBR ? p.priceBR : p.price;
+            // Bind display price + checkout to ONE object: SELF_SERVE_PLANS carries the audited live
+            // Stripe Payment Link, so the USD number shown is the number Stripe charges (matched by key).
+            const ss = SELF_SERVE_PLANS.find((s) => s.id === p.key);
+            // BRL is a separate Mercado Pago track (no USD Payment Link) → keep the BRL label + the
+            // current /planos hand-off so a pt buyer is never sent to a $USD link.
+            const price = isBR ? p.priceBR : (ss ? `$${ss.price}` : p.price);
             const feats = (p.feats[lang] || p.feats.en);
             const tag = (p.tag[lang] || p.tag.en);
+            // Straight-to-Stripe CTA (removes the /planos reload). Mirror EXACTLY how Planos.jsx builds
+            // the checkout URL: prefill the payer email + carry ref as client_reference_id (Stripe echoes
+            // it to the webhook for seller/referral attribution). Only when a USD Payment Link exists and
+            // the price shown is USD — otherwise fall back to the existing /planos?plan= behavior.
+            let ctaHref = `/planos?plan=${p.key}`;
+            if (ss && ss.url && !isBR) {
+              ctaHref = ss.url;
+              try {
+                const q = new URLSearchParams(window.location.search);
+                const em = (q.get("email") || "").trim();
+                let ref = (q.get("ref") || "").trim();
+                if (!ref) {
+                  try {
+                    const st = JSON.parse(localStorage.getItem("guileo_ref") || "null");
+                    if (st && st.ref && (!st.at || Date.now() - st.at < 90 * 864e5)) ref = String(st.ref);
+                  } catch { /* legacy/corrupt value — ignore */ }
+                }
+                const parts = [];
+                if (em) parts.push(`prefilled_email=${encodeURIComponent(em)}`);
+                if (ref) parts.push(`client_reference_id=${encodeURIComponent(ref.slice(0, 200))}`);
+                if (parts.length) ctaHref = `${ss.url}${ss.url.includes("?") ? "&" : "?"}${parts.join("&")}`;
+              } catch { /* SSR/no-window safe */ }
+            }
             return (
               <Item key={p.key} variant="up">
                 <article className={`relative flex h-full flex-col overflow-hidden rounded-2xl border p-6 backdrop-blur transition-all duration-300 ${pop ? "border-g-green/45 bg-g-green/[0.06] lg:-translate-y-2" : "border-white/10 bg-white/[0.03] hover:-translate-y-1"}`}
@@ -63,7 +92,7 @@ export default function PricingTiers() {
                     ))}
                   </ul>
 
-                  <a href={`/planos?plan=${p.key}`} className={`mt-auto pt-6 ${pop ? "" : ""}`}>
+                  <a href={ctaHref} className={`mt-auto pt-6 ${pop ? "" : ""}`}>
                     <span className={`block w-full rounded-xl px-4 py-3 text-center text-[13px] font-bold transition ${pop ? "btn-bright" : "border border-white/15 bg-white/[0.04] text-g-word hover:border-g-green/40 hover:bg-g-green/[0.06]"}`}>{pop ? t.ctaPop : t.cta}</span>
                   </a>
                 </article>

@@ -7,9 +7,11 @@
 import { safeEq } from "../lib/guard.js";
 import { actionConfirmEmail, ownerAlertEmail } from "../lib/emailTemplates.js";
 import { emitFailure } from "../lib/failure.js";
+import { tenantMp, mintPix } from "../lib/pix.js";
 import { sendText } from "../lib/twilio.js";
 import { isEmergency, callOwnerEmergency } from "../lib/emergencyCall.js";
 import { guardCharge } from "../lib/spendGuard.js";
+import { sbKey, svcRpc } from "../lib/sb.js";
 const isEmailAddr = (s) => /.+@.+\..+/.test((s || "").toString());
 const SB_URL_DEFAULT = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON_DEFAULT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -81,19 +83,30 @@ export async function onRequestPost(context) {
     // ── MONEY DECISION ────────────────────────────────────────────────────────────────────────────
     // Is this a real charge we could collect? invoice/deposit with an amount + Stripe configured.
     const isCharge = ["invoice", "deposit"].includes(action);
-    const chargeable = isCharge && !!rec.amount && !!env.STRIPE_SECRET_KEY;
+    // BR: cobrar não depende mais só do Stripe. Um cliente brasileiro cobra por PIX (Mercado
+    // Pago conectado), e antes disso caía sempre em "connect Stripe to collect" — beco sem
+    // saída que matava a venda. INGEST_SECRET é o que permite consultar a conta PIX do tenant.
+    const chargeable = isCharge && !!rec.amount && (!!env.STRIPE_SECRET_KEY || !!env.INGEST_SECRET);
     const isOwner = tenant === (env.OWNER_EMAIL || "smart@guileoai.com").toString().toLowerCase() || tenant === "demo@guileoai.com";
     // STRIPE CONNECT: charge on the CLIENT'S connected account so the money lands with THEM (not Guileo).
     // A single fast Supabase RPC tells us whether they can actually collect. We do this synchronously
     // (it's cheap and it decides HONESTY: promise a link only if one can truly go out).
     let connAcct = "";
+    let pixReady = false;
     if (chargeable && !isOwner && env.INGEST_SECRET) {
-      try {
-        const lr = await fetch(`${SB_URL}/rest/v1/rpc/client_stripe_lookup`, { method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" }, body: JSON.stringify({ p_secret: env.INGEST_SECRET, p_email: tenant }) });
-        if (lr.ok) { const t = await lr.json(); if (t && t.charges_enabled && t.account_id) connAcct = t.account_id; }
-      } catch { /* RPC not installed → treat as not connected */ }
+      if (env.STRIPE_SECRET_KEY) {
+        try {
+          const lr = await fetch(`${SB_URL}/rest/v1/rpc/client_stripe_lookup`, { method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" }, body: JSON.stringify({ p_secret: env.INGEST_SECRET, p_email: tenant }) });
+          if (lr.ok) { const t = await lr.json(); if (t && t.charges_enabled && t.account_id) connAcct = t.account_id; }
+        } catch { /* RPC not installed → treat as not connected */ }
+      }
+      // PIX é a via BRASILEIRA e só é consultada quando o Stripe não resolve — assim um
+      // cliente que tem os dois continua no caminho de sempre (zero regressão).
+      if (!connAcct) {
+        try { const mp = await tenantMp(env, tenant); pixReady = !!mp.ready; } catch { /* não conectado */ }
+      }
     }
-    const canCollect = chargeable && (connAcct || isOwner);
+    const canCollect = chargeable && (connAcct || pixReady || isOwner);
 
     // ── SPEND GUARD ───────────────────────────────────────────────────────────────────────────────
     // Defense-in-depth on money: before ANY link is minted, the amount must pass the tenant's spend
@@ -135,9 +148,31 @@ export async function onRequestPost(context) {
     if (canCollect) {
       context.waitUntil((async () => {
         try {
-          const payLink = await stripePaymentLink(env, rec.amount, rec.business || "Guileo", interval, connAcct, tenant);
-          if (payLink) rec.details = appendPayLink(rec.details, action, interval, payLink);
-          else await emitFailure(env, "paylink_mint_failed", tenant, `Gui promised a pay link for $${rec.amount} but Stripe didn't create it — team must send it manually`, {});
+          let payLink = "";
+          if (connAcct || isOwner) {
+            payLink = await stripePaymentLink(env, rec.amount, rec.business || "Guileo", interval, connAcct, tenant);
+            if (payLink) rec.details = appendPayLink(rec.details, action, interval, payLink);
+            else await emitFailure(env, "paylink_mint_failed", tenant, `Gui promised a pay link for $${rec.amount} but Stripe didn't create it — team must send it manually`, {});
+          } else if (pixReady) {
+            // BRASIL — PIX na conta do próprio cliente. `ref` é a chave de idempotência ponta a
+            // ponta (Mercado Pago + banco): o MESMO pedido nunca vira dois QR nem duas receitas.
+            // Preferimos o request_id do agente; sem ele, derivamos do contato + valor, que é
+            // estável dentro de um atendimento (mesma lógica do reserveRef da agenda).
+            const ref = (b.request_id || `${rec.contact || rec.name || "anon"}:${rec.amount}`).toString().slice(0, 120);
+            const px = await mintPix(env, tenant, {
+              amountCents: Math.round(Number(rec.amount) * 100),
+              description: rec.details || rec.business || "Pagamento",
+              payerEmail: rec.contact && rec.contact.includes("@") ? rec.contact : "",
+              payerName: rec.name || "", ref,
+            });
+            if (px.ok) {
+              // ticket_url é uma página real do MP com o QR — funciona como "link" em SMS/WhatsApp.
+              payLink = px.ticketUrl || "";
+              rec.details = `${rec.details ? rec.details + " · " : ""}PIX R$${(px.amountCents / 100).toFixed(2)} · copia-e-cola: ${px.copiaECola}`.slice(0, 500);
+            } else {
+              await emitFailure(env, "pix_mint_failed", tenant, `Gui prometeu PIX de R$${rec.amount} mas o Mercado Pago não gerou (${px.reason}${px.detail ? ": " + px.detail : ""}) — enviar manualmente`, { reason: px.reason });
+            }
+          }
           await sideEffects({ env, b, rec, action, interval, tenant, testMode, connAcct, payLink, SB_URL, SB_ANON });
         } catch { /* background pipeline is best-effort — the caller already got the bridge reply */ }
       })());
@@ -149,8 +184,8 @@ export async function onRequestPost(context) {
     // owner/demo, OR Stripe isn't configured). We must NOT promise a link that will never arrive.
     // Flag the record, alert the owner to connect Stripe, and speak an honest "team will send it".
     if (isCharge && rec.amount && !canCollect) {
-      rec.details = `${rec.details ? rec.details + " · " : ""}⚠️ payment requested ($${rec.amount}) — connect Stripe to collect`.slice(0, 500);
-      try { await emitFailure(env, "stripe_not_connected", tenant, `Gui tried to charge $${rec.amount} but ${tenant} hasn't connected Stripe — connect to collect`, {}); } catch { /* */ }
+      rec.details = `${rec.details ? rec.details + " · " : ""}⚠️ payment requested ($${rec.amount}) — connect Stripe or PIX (Mercado Pago) to collect`.slice(0, 500);
+      try { await emitFailure(env, "payments_not_connected", tenant, `Gui tried to charge $${rec.amount} but ${tenant} has NO payment account connected — connect Stripe (US) or Mercado Pago/PIX (BR) to collect`, {}); } catch { /* */ }
     }
 
     // Non-charge actions (and charge-without-collect) have NO slow Stripe calls, so they run inline:
@@ -263,10 +298,7 @@ async function sideEffects({ env, b, rec, action, interval, tenant, testMode, co
     try {
       const dollars = parseFloat(String(rec.amount).replace(/[^0-9.]/g, ""));
       if (isFinite(dollars) && dollars > 0) {
-        await fetch(`${SB_URL}/rest/v1/rpc/ingest_client_event`, {
-          method: "POST",
-          headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
+        await svcRpc(env, "ingest_client_event", {
             p_secret: env.INGEST_SECRET,
             p_email: tenant,
             p_type: action,
@@ -274,7 +306,6 @@ async function sideEffects({ env, b, rec, action, interval, tenant, testMode, co
             p_summary: `💵 ${action} ($${rec.amount})${rec.name ? ` — ${rec.name}` : ""}${rec.business ? ` · ${rec.business}` : ""}`.slice(0, 300),
             p_amount: dollars,
             p_payload: { from: rec.contact || "", business: rec.business || "", channel: "Phone" },
-          }),
         });
       }
     } catch { /* additive — never break the call's 200 response */ }
@@ -286,7 +317,7 @@ async function sideEffects({ env, b, rec, action, interval, tenant, testMode, co
       const isEmail = isEmailAddr(rec.contact);
       const cents = rec.amount ? Math.round((parseFloat(String(rec.amount).replace(/[^0-9.]/g, "")) || 0) * 100) : 0;
       const isMoney = ["sale", "order", "invoice", "deposit"].includes(action);
-      const crmRpc = (fn, body) => fetch(`${SB_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" }, body: JSON.stringify({ p_secret: env.SCHED_SECRET, ...body }) });
+      const crmRpc = (fn, body) => fetch(`${SB_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" }, body: JSON.stringify({ p_secret: env.SCHED_SECRET, ...body }) });
       const ur = await crmRpc("crm_upsert_contact", { p_email: tenant, p_phone: isEmail ? "" : rec.contact, p_contact_email: isEmail ? rec.contact : "", p_name: rec.name || "", p_source: `gui:${action}`, p_amount_cents: isMoney ? cents : 0 });
       const contactId = ur.ok ? (await ur.json().catch(() => null)) : null; // scalar uuid
       if (contactId) {
@@ -406,10 +437,7 @@ async function sideEffects({ env, b, rec, action, interval, tenant, testMode, co
     try {
       const email = tenant; // attribute to the pinned tenant (never caller body)
       const whom = rec.name || rec.contact || "Caller";
-      await fetch(`${SB_URL}/rest/v1/rpc/ingest_client_event`, {
-        method: "POST",
-        headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await svcRpc(env, "ingest_client_event", {
           p_secret: env.INGEST_SECRET || "",
           p_email: email,
           p_type: "message",
@@ -417,7 +445,6 @@ async function sideEffects({ env, b, rec, action, interval, tenant, testMode, co
           p_summary: `${whom}: ${rec.details || rec.message}`.slice(0, 300),
           p_amount: 0,
           p_payload: { from: rec.contact || "", channel: "Phone" },
-        }),
       });
     } catch { /* additive — never break the call's 200 response */ }
   }

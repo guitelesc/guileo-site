@@ -58,10 +58,22 @@ function CommandCenter({ V, onNav, real = null, email = "", dataKey = "" }) {
       else toast(tr("Couldn't reach the reactivation engine — try again."));
     } catch { toast(tr("Couldn't reach the reactivation engine — try again.")); }
   };
+  // Over-confirm — Gui actually reaches every high-risk booking (branded email now, phone queued for
+  // the confirm engine). Only claims "reminded" on a true send count from the backend; else "queued".
+  const overConfirm = async () => {
+    if (!dataKey) { toast(tr("Connect your account to over-confirm for real.")); return; }
+    toast(`${tr("Gui is over-confirming")} ${risky} ${tr("bookings")}…`);
+    try {
+      const r = await fetch("/api/noshow-radar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: dataKey, email, action: "confirm" }) });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d?.ok) toast((Number(d.sent) || 0) > 0 ? `${tr("Gui reminded")} ${d.sent} ${tr("customers")} ✓` : tr("Queued ✓ — Gui will remind them"));
+      else toast(tr("Couldn't reach the confirmation engine — try again."));
+    } catch { toast(tr("Couldn't reach the confirmation engine — try again.")); }
+  };
   const nba = [];
   if (overdue.length) nba.push({ icon: "🏦", label: `${overdue.length} ${tr("overdue invoices")} (${fmtMoney(overdueSum)})`, cta: tr("Review & collect"), act: () => { toast(`${tr("Opening your overdue invoices")} →`); onNav?.("finance"); } });
   if (cold) nba.push({ icon: "🔄", label: `${cold} ${tr("contacts going cold")}`, cta: tr("Reactivate"), act: reactivate });
-  if (risky) nba.push({ icon: "🔮", label: `${risky} ${tr("high-risk no-shows")}`, cta: tr("Over-confirm"), act: () => toast(`${tr("Gui is over-confirming")} ${risky} ${tr("bookings")} ✓`) });
+  if (risky) nba.push({ icon: "🔮", label: `${risky} ${tr("high-risk no-shows")}`, cta: tr("Over-confirm"), act: overConfirm });
 
   const wonCount = deals.filter((d) => d.status === "won" || d.stage === "won").length;
   const brief = `${tr("This week Gui kept")} ${contacts.length} ${tr("contacts moving, closed")} ${wonCount} ${tr("deals worth")} ${fmtMoney(wonVal)}, ${tr("and flagged")} ${churn} ${tr("at-risk +")} ${risky} ${tr("likely no-shows to act on.")}`;

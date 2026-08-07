@@ -17,7 +17,7 @@ declare
   v_id     uuid;
 begin
   -- INGEST-gated (same literal the ingest pipeline uses) — this returns customer PII, never expose ungated.
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   if v_phone is null then return; end if;

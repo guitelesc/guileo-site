@@ -13,7 +13,7 @@ import { json } from "../lib/guard.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
-const ING = "glo_ing_7f3da9c2b4e8";
+const ING = "";
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 const rpc = (env, fn, args) => fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {
   method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },

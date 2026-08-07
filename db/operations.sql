@@ -22,7 +22,7 @@ declare
   v_jobs jsonb := '[]'::jsonb;
   v_total int := 0; v_upcoming int := 0; v_inprog int := 0; v_done int := 0; v_noshow int := 0; v_overdue int := 0;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' then raise exception 'tenant required' using errcode = '22023'; end if;
 
   begin
@@ -78,7 +78,7 @@ returns boolean
 language plpgsql security definer set search_path = public as $$
 declare v_tenant text := lower(trim(p_email)); v_st text := lower(trim(coalesce(p_status,''))); v_id uuid;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' or p_id is null then return false; end if;
   if v_st not in ('booked','in_progress','completed','no_show','cancelled') then raise exception 'bad status' using errcode = '22023'; end if;
   update biz_appointments set status = v_st where id = p_id and client_email = v_tenant returning id into v_id;
@@ -89,5 +89,5 @@ grant execute on function public.ops_board(text,text,timestamptz,timestamptz) to
 grant execute on function public.ops_set_status(text,text,uuid,text)          to anon;
 
 -- PROOF:
--- select public.ops_board('glo_ing_7f3da9c2b4e8','natura@guileoai.com');   -- {ready,stats,jobs[...]}
--- select public.ops_set_status('glo_ing_7f3da9c2b4e8','natura@guileoai.com','<job-uuid>','in_progress'); -- true
+-- select public.ops_board('glo_ing_c7f2a9e4b8d16350','natura@guileoai.com');   -- {ready,stats,jobs[...]}
+-- select public.ops_set_status('glo_ing_c7f2a9e4b8d16350','natura@guileoai.com','<job-uuid>','in_progress'); -- true

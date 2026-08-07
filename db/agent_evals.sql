@@ -10,7 +10,7 @@
 -- SEGURANÇA (padrão do repo):
 --   • RLS ON, SEM policy anon → ninguém lê a tabela direto pelo PostgREST.
 --   • Escrita/leitura só via RPC SECURITY DEFINER gated pelo literal INGEST
---     ('glo_ing_7f3da9c2b4e8' = env INGEST_SECRET). grant execute to anon (a RPC
+--     ('glo_ing_c7f2a9e4b8d16350' = env INGEST_SECRET). grant execute to anon (a RPC
 --     é o único portão). Idempotente: pode rodar este arquivo quantas vezes quiser.
 --   • NÃO guarda PII de cliente-final: só o texto do CASE (sintético) + a nota do
 --     juiz. Nenhum dado de tenant cruza aqui.
@@ -44,7 +44,7 @@ alter table public.agent_evals enable row level security;
 
 -- ── Gate helper (idempotente; mesmo literal INGEST do resto do pipeline de dados). ──
 create or replace function public._agent_eval_ok(p_secret text)
-returns boolean language sql immutable as $$ select p_secret is not distinct from 'glo_ing_7f3da9c2b4e8' $$;
+returns boolean language sql immutable as $$ select p_secret is not distinct from 'glo_ing_c7f2a9e4b8d16350' $$;
 
 -- ── GRAVA um resultado de caso (o harness chama 1x por caso, exceto em dry-run). ──
 create or replace function public.agent_eval_record(

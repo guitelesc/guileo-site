@@ -20,7 +20,7 @@ const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
 const rpc = (fn, body) => fetch(`${SB}/rest/v1/rpc/${fn}`, { method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
 const s = (v, n = 400) => (v == null ? "" : v.toString().slice(0, n));
-const INGEST = (env) => env.INGEST_SECRET || "glo_ing_7f3da9c2b4e8";
+const INGEST = (env) => env.INGEST_SECRET || "";
 
 const MODEL_CHAIN = ["claude-fable-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"];
 
@@ -52,14 +52,35 @@ function normalizeUrl(raw) {
 
 // Strip HTML → readable text for the summarizer. Drops script/style, collapses whitespace.
 function htmlToText(html) {
-  return s(html, 400000)
+  const src = s(html, 400000);
+  // FIRST capture structured data BEFORE stripping <script> — schema.org JSON-LD (LocalBusiness/
+  // Restaurant/Organization) carries the REAL name/hours/address/phone/menu/priceRange even on
+  // JS-rendered sites where the visible HTML is thin; <title>+meta description/og summarize the
+  // business. This is what makes the demo pitch "super real" instead of generic.
+  const head = [];
+  const title = src.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  if (title) head.push("TITLE: " + title[1].replace(/<[^>]+>/g, " ").trim());
+  for (const re of [
+    /<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i,
+    /<meta[^>]+property=["']og:(?:title|description)["'][^>]+content=["']([^"']+)["']/gi,
+  ]) {
+    const all = src.match(re); if (all) head.push((Array.isArray(all) ? all.join(" · ") : all[1]).replace(/<[^>]*content=["']|["'][^>]*>/g, " "));
+  }
+  let ld = "";
+  const blocks = src.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
+  for (const b of blocks.slice(0, 6)) {
+    ld += " " + b.replace(/<script[^>]*>/i, "").replace(/<\/script>/i, "").replace(/\s+/g, " ").trim().slice(0, 3500);
+  }
+  const structured = (head.join(" · ") + (ld ? "  SCHEMA: " + ld : "")).replace(/\s+/g, " ").trim();
+  const body = src
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#\d+;/g, " ")
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 12000);
+    .trim();
+  return (structured + "\n\n" + body).trim().slice(0, 15000);
 }
 
 // Best-effort brand COLORS from inline styles / theme-color meta. Honest: none found → {}.
@@ -67,9 +88,16 @@ function extractColors(html) {
   const out = {};
   const theme = html.match(/<meta[^>]+name=["']theme-color["'][^>]+content=["']([^"']+)["']/i);
   if (theme) out.primary = s(theme[1], 24).trim();
-  const hexes = (html.match(/#[0-9a-fA-F]{6}\b/g) || [])
-    .map((h) => h.toLowerCase())
-    .filter((h) => h !== "#ffffff" && h !== "#000000");
+  // Site moderno raramente tem #rrggbb no HTML — a cor vive no CSS externo, em hex de 3
+  // dígitos ou em rgb(). Só o padrão de 6 dígitos deixava a demo SEM COR na maioria dos
+  // prospects, que é justamente o que ela promete ("na marca do cliente").
+  const hex3to6 = (h) => "#" + h.slice(1).split("").map((c) => c + c).join("").toLowerCase();
+  const rgbToHex = (r, g, b) => "#" + [r, g, b].map((n) => Math.max(0, Math.min(255, +n)).toString(16).padStart(2, "0")).join("");
+  const hexes = [
+    ...(html.match(/#[0-9a-fA-F]{6}\b/g) || []).map((h) => h.toLowerCase()),
+    ...(html.match(/#[0-9a-fA-F]{3}\b/g) || []).map(hex3to6),
+    ...[...html.matchAll(/rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/g)].map((m) => rgbToHex(m[1], m[2], m[3])),
+  ].filter((h) => h !== "#ffffff" && h !== "#000000");
   if (!out.primary && hexes.length) out.primary = hexes[0];
   if (hexes.length) {
     const accent = hexes.find((h) => h !== out.primary);
@@ -80,13 +108,30 @@ function extractColors(html) {
 
 // Best-effort LOGO url: og:image → apple-touch-icon → favicon link → /favicon.ico. Absolute-ized.
 function extractLogo(html, base) {
-  const abs = (u) => { try { return new URL(s(u, 500).trim(), base).toString(); } catch { return ""; } };
-  const og = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
-  if (og) return abs(og[1]);
-  const apple = html.match(/<link[^>]+rel=["'][^"']*apple-touch-icon[^"']*["'][^>]+href=["']([^"']+)["']/i);
-  if (apple) return abs(apple[1]);
-  const icon = html.match(/<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]+href=["']([^"']+)["']/i);
-  if (icon) return abs(icon[1]);
+  // SÓ http(s) vale como logo. Sem este filtro, um favicon inline (data:…) ou um href
+  // quebrado virava a string "data:;" — que é TRUTHY, então a vitrine renderizava uma
+  // imagem quebrada em cima do pitch em vez de cair no fallback. Melhor logo nenhum do
+  // que ícone quebrado na tela do prospect.
+  const abs = (u) => {
+    try {
+      const url = new URL(s(u, 500).trim(), base);
+      if (url.protocol !== "http:" && url.protocol !== "https:") return "";
+      return url.toString();
+    } catch { return ""; }
+  };
+  // Cadeia de tentativas: um candidato REJEITADO (data:, href quebrado) não pode encerrar a
+  // busca — tem que cair no próximo. Antes, um og:image inline zerava o logo de um site que
+  // tinha apple-touch-icon perfeitamente válido logo abaixo.
+  const tries = [
+    html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i),
+    html.match(/<link[^>]+rel=["'][^"']*apple-touch-icon[^"']*["'][^>]+href=["']([^"']+)["']/i),
+    html.match(/<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]+href=["']([^"']+)["']/i),
+  ];
+  for (const m of tries) {
+    if (!m) continue;
+    const u = abs(m[1]);
+    if (u) return u;
+  }
   return abs("/favicon.ico");
 }
 
@@ -97,12 +142,20 @@ async function summarizeBrand(env, text, hintName) {
 {"name":"","tagline":"","facts":"","services":[{"name":"","price":""}]}
 RULES: Use ONLY information present in the text. If a field is not found, use "" (or [] for services). NEVER invent a business name, service, or price. "tagline" = one short line describing what the business does. "facts" = a compact factual paragraph (hours, location, specialties, what to know) usable as an AI receptionist's brain. "services" = up to 8 real offerings; include "price" only if a price actually appears, else "".`;
   const user = `Website text${hintName ? ` for "${hintName}"` : ""}:\n\n${text}`;
+  // Overall ~10s budget on the demo path: a slow model must never stall the pitch. Each call gets a
+  // per-request AbortController bounded by the remaining budget; once it's spent we stop trying.
+  const deadline = Date.now() + 10000;
   for (const model of MODEL_CHAIN) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 500) break; // out of budget — return null → honest colors/logo-only kit
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), remaining);
     try {
       const r = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
         body: JSON.stringify({ model, max_tokens: 900, system, messages: [{ role: "user", content: user }] }),
+        signal: ctrl.signal,
       });
       if (r.ok) {
         const d = await r.json().catch(() => ({}));
@@ -112,9 +165,39 @@ RULES: Use ONLY information present in the text. If a field is not found, use ""
       } else if (r.status === 401 || r.status === 402) {
         break; // auth/billing won't be fixed by another model
       }
-    } catch { /* try next model */ }
+    } catch { /* abort/timeout or network — try next model if budget remains */ }
+    finally { clearTimeout(timer); }
   }
   return null;
+}
+
+// SUPER-REAL FALLBACK — when the scrape is thin (bot-blocked / JS shell / timeout), the demo still
+// gets a rich, vertical-typical brain so it never sounds generic. ILLUSTRATIVE only: first-person
+// context true of ANY business in that vertical — NO invented prices, addresses, or specifics.
+const INDUSTRY_TEMPLATES = {
+  restaurant: { tagline: "Reservations, takeout & questions — answered 24/7", facts: "We take table reservations, takeout and delivery orders, and answer questions about hours, the menu, and private events. Gui picks up every call day and night, books tables, starts takeout orders, and captures catering leads so nothing is missed at the host stand.", services: ["Table reservation", "Takeout order", "Catering / private event", "Hours & menu questions"] },
+  dental: { tagline: "New patients & appointments — never a missed call", facts: "We book cleanings, checkups, and new-patient visits, handle rescheduling, and answer insurance and hours questions. Gui answers 24/7, fills open chairs, confirms appointments to cut no-shows, and captures every new-patient call — even after hours.", services: ["Book appointment", "New patient intake", "Reschedule / confirm", "Insurance & hours questions"] },
+  medical: { tagline: "Patients booked & questions answered, 24/7", facts: "We schedule visits, handle rescheduling and reminders, and answer hours, location, and service questions. Gui answers every call, books and confirms appointments to reduce no-shows, and routes urgent needs to a human — so no patient goes unanswered.", services: ["Book appointment", "Reschedule / confirm", "New patient intake", "Hours & services questions"] },
+  salon: { tagline: "Every booking captured — even after hours", facts: "We book cuts, color, nails, facials, and treatments, manage rescheduling, and answer pricing and availability questions. Gui answers 24/7, fills the calendar, confirms to cut no-shows, and rebooks regulars so no chair sits empty.", services: ["Book appointment", "Reschedule / confirm", "Pricing & availability", "Rebook a regular"] },
+  home: { tagline: "Every job lead answered & scheduled fast", facts: "We take service requests, quote typical jobs, schedule visits, and handle urgent calls. Gui answers 24/7, captures the job details, books the visit, flags emergencies to a human immediately, and follows up on every estimate so no lead goes cold.", services: ["Schedule a service visit", "Request a quote", "Emergency / urgent", "Follow up on an estimate"] },
+  realestate: { tagline: "Never miss a buyer or seller lead", facts: "We field buyer and seller inquiries, book showings, answer listing and pricing questions, and route hot leads fast. Gui answers 24/7, qualifies the lead, books the showing, and follows up so no prospect slips away.", services: ["Book a showing", "Buyer / seller inquiry", "Listing & pricing questions", "Lead follow-up"] },
+  gym: { tagline: "Trials booked & members supported, 24/7", facts: "We book tours and free trials, answer membership and class questions, and handle scheduling. Gui answers every call, books trials, follows up with prospects, and helps members with class times and plans so no sign-up is missed.", services: ["Book a tour / trial", "Membership questions", "Class schedule", "Prospect follow-up"] },
+  law: { tagline: "Every potential client captured & screened", facts: "We take new-client inquiries, screen matters, book consultations, and answer practice and hours questions. Gui answers 24/7, captures the case details, books the consult, and routes urgent matters — so no potential client is lost to voicemail.", services: ["Book a consultation", "New client intake", "Practice area questions", "Urgent matter routing"] },
+  auto: { tagline: "Service & sales calls answered instantly", facts: "We book service appointments, answer parts and pricing questions, and capture sales inquiries. Gui answers 24/7, schedules service, follows up on quotes, and routes sales leads so no customer waits on hold.", services: ["Book a service appointment", "Parts & pricing questions", "Sales inquiry", "Quote follow-up"] },
+  default: { tagline: "Answers, books & sells — 24/7", facts: "We answer questions about hours, pricing, and availability, book appointments, quote jobs, and follow up on leads. Gui picks up every call and message day and night, captures each customer, books the work, and follows up so no call or sale is ever missed.", services: ["Answer & book", "Quote a price", "Capture the lead", "Follow up"] },
+};
+function inferIndustry(t) {
+  const x = (t || "").toLowerCase();
+  if (/restaurant|caf[eé]|coffee|deli|pizz|kitchen|grill|eatery|bakery|bistro|dining|cheesecake|taco|sushi|steak|burger|brew/.test(x)) return "restaurant";
+  if (/dental|dentist|orthodont|\bsmile/.test(x)) return "dental";
+  if (/clinic|medical|doctor|physician|derma|health|wellness|med\s?spa|pediatric|urgent care/.test(x)) return "medical";
+  if (/salon|\bspa\b|beauty|\bhair|\bnail|barber|lash|\bbrow|aesthetic|waxing/.test(x)) return "salon";
+  if (/plumb|hvac|heating|cooling|\belectric|roofing|clean|landscap|contractor|handyman|pest|garage|remodel|paint/.test(x)) return "home";
+  if (/realty|real estate|realtor|properties|\bhomes\b|mortgage|listing/.test(x)) return "realestate";
+  if (/\bgym\b|fitness|yoga|pilates|crossfit|\btraining|martial|\bmma\b/.test(x)) return "gym";
+  if (/\blaw\b|attorney|\blegal\b|lawyer|firm/.test(x)) return "law";
+  if (/\bauto|\bcar\b|dealership|mechanic|\btire|motors|collision/.test(x)) return "auto";
+  return "default";
 }
 
 // ── action handlers ──────────────────────────────────────────────────────────
@@ -136,38 +219,94 @@ async function doBrand(env, b) {
   // No fetchable site (bare @handle or plain brand name) → honest kit seeded with the NAME the visitor
   // typed (never invented) so the preview still personalizes and the lead is never dead-ended.
   if (!url) {
-    return reply({ name: seedName, tagline: "", facts: "", colors: {}, logo: "", services: [], source: (handle || query.startsWith("@")) ? "handle" : "name" });
+    const tpl = INDUSTRY_TEMPLATES[inferIndustry(seedName)] || INDUSTRY_TEMPLATES.default;
+    return reply({ name: seedName, tagline: tpl.tagline, facts: tpl.facts, colors: {}, logo: "", services: tpl.services.map((n) => ({ name: n, price: "" })), source: (handle || query.startsWith("@")) ? "handle" : "name" });
   }
 
   let html = "";
   try {
-    const resp = await fetch(url, {
-      redirect: "follow",
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; GuileoDemoBot/1.0; +https://guileoai.com)", Accept: "text/html" },
-      cf: { cacheTtl: 300 },
-    });
-    if (resp.ok) html = await resp.text();
-  } catch { /* leave html empty → honest name-seeded kit below */ }
+    // Hard 7s cap on the external site pull — a slow/hanging site must never freeze the pitch.
+    // On abort/timeout the fetch throws → we fall through to the honest name-seeded kit below.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 7000);
+    try {
+      const resp = await fetch(url, {
+        redirect: "follow",
+        // Real browser UA + full Accept — many business sites (Squarespace/Wix/Magento) serve a thin
+        // JS shell (empty facts) to obvious bots but full server-rendered HTML to a browser. This is a
+        // one-page preview of the site the visitor themselves typed (like Slack/Twitter link previews).
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        cf: { cacheTtl: 300 },
+        signal: ctrl.signal,
+      });
+      if (resp.ok) html = await resp.text();
+    } finally { clearTimeout(timer); }
+  } catch { /* leave html empty → honest name-seeded kit below (timeout/abort included) */ }
 
-  if (!html) return reply({ name: seedName, tagline: "", facts: "", colors: {}, logo: "", services: [], source: "url", note: "site não acessível" });
+  if (!html) {
+    const tpl = INDUSTRY_TEMPLATES[inferIndustry(seedName)] || INDUSTRY_TEMPLATES.default;
+    return reply({ name: seedName, tagline: tpl.tagline, facts: tpl.facts, colors: {}, logo: "", services: tpl.services.map((n) => ({ name: n, price: "" })), source: "url", note: "site não acessível" });
+  }
 
-  const colors = extractColors(html);
+  let colors = extractColors(html);
+  // A cor de um site moderno quase nunca está no HTML — está na folha de estilo. Sem este
+  // passo a demo saía SEM COR pra maioria dos prospects, e "vitrine na marca do cliente"
+  // virava um card cinza genérico. Uma folha só, com teto de tempo e de tamanho: se demorar
+  // ou vier gigante, seguimos sem cor em vez de travar o pitch.
+  if (!colors.primary) {
+    try {
+      const cssHref = (html.match(/<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["']/i)
+        || html.match(/<link[^>]+href=["']([^"']+\.css[^"']*)["']/i))?.[1];
+      if (cssHref) {
+        const cssUrl = new URL(cssHref, url).toString();
+        if (/^https?:$/.test(new URL(cssUrl).protocol)) {
+          const cr = await fetch(cssUrl, { signal: AbortSignal.timeout(2500), headers: { "user-agent": "GuileoDemoBot/1.0" } });
+          if (cr.ok) {
+            const css = (await cr.text()).slice(0, 120000);
+            const fromCss = extractColors(css);
+            if (fromCss.primary) colors = fromCss;
+          }
+        }
+      }
+    } catch { /* sem cor é honesto; travar o pitch não é */ }
+  }
   const logo = extractLogo(html, url);
   const text = htmlToText(html);
   const kit = (await summarizeBrand(env, text, explicitName || seedName)) || {};
 
-  const services = Array.isArray(kit.services)
+  let services = Array.isArray(kit.services)
     ? kit.services.filter((x) => x && x.name).map((x) => ({ name: s(x.name, 120), price: s(x.price, 40) })).slice(0, 8)
     : [];
 
+  const finalName = s(kit.name || explicitName || seedName, 160);
+  let tagline = s(kit.tagline, 240);
+  let facts = s(kit.facts, 4000);
+  // SUPER-REAL FALLBACK: scrape came back thin (bot-blocked / JS shell / timeout) → fill the brain
+  // with an illustrative, vertical-typical template so the demo is always rich. Real name/colors/logo
+  // stay on top; industry inferred from the name + whatever text we did get. No invented specifics.
+  let generic = false;
+  if (!facts && services.length === 0) {
+    const tpl = INDUSTRY_TEMPLATES[inferIndustry(`${finalName} ${text}`)] || INDUSTRY_TEMPLATES.default;
+    tagline = tagline || tpl.tagline;
+    facts = tpl.facts;
+    services = tpl.services.map((n) => ({ name: n, price: "" }));
+    generic = true;
+  }
+
+  // O fallback acima é bom (demo nunca fica vazia) mas era SILENCIOSO: a resposta dizia
+  // source:"url" como se tivéssemos lido o site, quando na prática só o nome era do cliente.
+  // Muitos sites (WordPress atrás de proteção, SPA) entregam página cheia ao navegador e uma
+  // casca vazia a IP de datacenter — foi o que aconteceu com naturaspanyc.com. O vendedor
+  // precisa SABER disso antes de mostrar pro prospect, senão leva um "não é isso que a gente
+  // faz" na frente do cliente. `generic` diz a verdade; quem consome decide o que fazer.
   return reply({
-    name: s(kit.name || explicitName || seedName, 160),
-    tagline: s(kit.tagline, 240),
-    facts: s(kit.facts, 4000),
-    colors,
-    logo,
-    services,
-    source: "url",
+    name: finalName, tagline, facts, colors, logo, services, source: "url",
+    generic,
+    ...(generic ? { note: "o site não entregou dados legíveis (proteção anti-bot ou página em JS) — conteúdo típico do setor; revise antes de mostrar" } : {}),
   });
 }
 
@@ -176,13 +315,17 @@ function doScreenshot(env, b) {
   const url = normalizeUrl(s(b.url, 300).trim());
   if (!url) return json({ ready: false, note: "sem URL para captura" });
   if (!env.SCREENSHOT_API) return json({ ready: false, note: "aguardando SCREENSHOT_API" });
-  // env.SCREENSHOT_API is a URL template; {url} is replaced with the encoded target,
-  // otherwise the encoded target is appended as a query param.
+  // Template de URL do provedor. DOIS marcadores, porque os provedores discordam:
+  //   {url}      → alvo CODIFICADO (quem recebe a URL como query param)
+  //   {raw_url}  → alvo CRU, no caminho (thum.io e afins; com a URL codificada dão 400)
+  // Sem {raw_url} a plataforma ficava presa a um estilo só de provedor.
   const enc = encodeURIComponent(url);
   const tpl = s(env.SCREENSHOT_API, 500);
-  const shot = tpl.includes("{url}")
-    ? tpl.replace("{url}", enc)
-    : tpl + (tpl.includes("?") ? "&" : "?") + "url=" + enc;
+  const shot = tpl.includes("{raw_url}")
+    ? tpl.replace("{raw_url}", url)
+    : tpl.includes("{url}")
+      ? tpl.replace("{url}", enc)
+      : tpl + (tpl.includes("?") ? "&" : "?") + "url=" + enc;
   return json({ ready: true, url: shot });
 }
 

@@ -8,7 +8,7 @@
 --     primeiro nome/ref, clientes e $ pago — NUNCA email nem personal_code).
 --
 -- SEGURANÇA: mesmo padrão dos outros — SECURITY DEFINER gated pelo literal INGEST
--- ('glo_ing_7f3da9c2b4e8' = env INGEST_SECRET), RLS já ligada nas tabelas base,
+-- ('glo_ing_c7f2a9e4b8d16350' = env INGEST_SECRET), RLS já ligada nas tabelas base,
 -- grant execute to anon (as RPCs são o ÚNICO acesso). READ-only.
 -- Requer db/onboard_completo.sql (onboard_drafts) + db/seller_wallet.sql
 -- (assigned_seller) + db/seller_roster.sql (sellers.ref_slug/commission_pct).
@@ -34,7 +34,7 @@ declare
   v_conv_mo   int     := 0;
   v_pct       numeric := 10;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_email = '' or position('@' in v_email) = 0 then
     return jsonb_build_object('clients', jsonb_build_object('total', 0, 'live', 0, 'draft', 0),
       'leads_30d', 0, 'converted', 0, 'paid', 0, 'commission_pct', 10, 'ref', '');
@@ -130,7 +130,7 @@ create or replace function public.seller_leaderboard(p_secret text)
 returns json
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return coalesce((
     select json_agg(row_to_json(x) order by x.paid desc, x.clients desc, x.name asc)
     from (

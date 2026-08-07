@@ -62,7 +62,7 @@ export default function Home() {
   const { t, lang } = useLang();
   useSeo({
     title: lang === "pt" ? "Guileo — Soluções Inteligentes para o seu Negócio · IA que atende, agenda e vende 24/7" : lang === "es" ? "Guileo — Soluciones Inteligentes para tu Negocio · IA que atiende, agenda y vende 24/7" : "Guileo — Intelligent Solutions for Your Business · AI that Answers, Books & Sells 24/7",
-    description: lang === "pt" ? "Sua IA Guileo atende ligações, responde mensagens, agenda e fecha vendas 24/7 em 20+ idiomas. No ar em até 7 dias. A partir de $149/mês, 30 dias de garantia." : lang === "es" ? "Tu IA Guileo atiende llamadas, responde mensajes, agenda y cierra ventas 24/7 en 20+ idiomas. En marcha en 7 días. Desde $149/mes, 30 días de garantía." : "Your Guileo AI answers calls, replies to messages, books appointments and closes sales 24/7 in 20+ languages. Live in 7 days. From $149/mo, 30-day money-back.",
+    description: lang === "pt" ? "Sua IA Guileo atende ligações, responde mensagens, agenda e fecha vendas 24/7 em 16 idiomas. No ar em até 7 dias. A partir de $149/mês, 30 dias de garantia." : lang === "es" ? "Tu IA Guileo atiende llamadas, responde mensajes, agenda y cierra ventas 24/7 en 16 idiomas. En marcha en 7 días. Desde $149/mes, 30 días de garantía." : "Your Guileo AI answers calls, replies to messages, books appointments and closes sales 24/7 in 16 languages. Live in 7 days. From $149/mo, 30-day money-back.",
     path: "/",
   });
   // FAQPage JSON-LD built from the SAME items the Accordion renders, so the schema always matches

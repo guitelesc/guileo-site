@@ -104,7 +104,11 @@ com o app, um DM de teste chega no CRM e a Gui responde.
 
 *Cada motor tem UMA chave clara. O sistema fica honesto e inerte até você tê-la — nunca finge estar ligado.*
 
-## 9. 🔐 SUPABASE_SERVICE_ROLE — fechar a arquitetura (blindagem final do data-plane)
+## 9. 🔐 SUPABASE_SERVICE_ROLE — ✅ JÁ COLADA (2026-08-04) — falta só revogar o anon
+> **ESTADO REAL:** o segredo **já está no Cloudflare** (`wrangler pages secret list` mostra `SUPABASE_SERVICE_ROLE: Value Encrypted`), e as RPCs novas (`provision_claim`, `client_agents_numbers`, `client_number_for`, `provision_settle`) já são **service_role-only** e funcionam em prod. Os PASSOS A e B abaixo estão **feitos** — sobra o `revoke execute ... from anon` nas RPCs dual-uso antigas.
+>
+> *(Esta seção dizia "pendente" até 2026-08-04 e induziu um revisor a concluir que o provisionamento inteiro fail-openava em prod. Runbook desatualizado é armadilha: quando uma chave acender, marque aqui no mesmo dia.)*
+
 **O que acende:** fecha o vazamento cross-tenant nas funções DUAL-USO (agente/webhooks chamam sem chave de cliente: `crm_upsert_contact`, `ingest_client_event`, `crm_caller_context`, `package_list`, `noshow_risk`, `support_ticket_list`) + o /admin. As 8 funções SÓ-do-portal já foram blindadas (chave verificada por dentro; ver db/hardening_dataplane.sql). Faltam essas.
 **PASSO A (copiar):** Supabase → projeto `ynihodbknhjirkdogxby` → ⚙️ Project Settings → **API** → "Project API keys" → linha **`service_role` (secret)** → Reveal → Copy.
 **PASSO B (colar):** Cloudflare → Workers & Pages → guileoai → Settings → Variables and Secrets → **Production** → Add → nome **`SUPABASE_SERVICE_ROLE`**, valor = a chave, marcar **Secret** → Save.

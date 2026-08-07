@@ -5,6 +5,7 @@
 import { factsBlock } from "../lib/productFacts.js";
 import { guardSystemPrompt } from "../lib/guiConstitution.js";
 import { json, sameOrigin, rateLimited } from "../lib/guard.js";
+import { verifySession } from "../lib/sellerSession.js";
 
 // One hardened Claude call for every mode. Fixes two field-reported failure classes:
 // (1) Anthropic requires the FIRST message to be role:"user" — the practice roleplay seeds the
@@ -60,6 +61,14 @@ export async function onRequestPost(context) {
     if (!sameOrigin(request)) return json({ error: "forbidden" }, 403);
     if (await rateLimited(request, env, "pitch-ai", 15)) return json({ error: "too many requests" }, 429);
     const b = await request.json().catch(() => ({}));
+
+    // PORTÃO DE VENDEDOR. `sameOrigin` não é autenticação — só diz que a chamada veio de uma
+    // página nossa, coisa que qualquer visitante consegue. Sem isto, as ferramentas de IA do
+    // vendedor rodavam pra qualquer um: gasto de modelo pago pela Guileo e o material de venda
+    // (dores, objeções, cunha competitiva) servido de graça, inclusive pra concorrente.
+    // O crachá é assinado no /api/seller-login e guardado com o perfil no navegador.
+    const who = await verifySession(env, (b.sid || "").toString());
+    if (!who) return json({ error: "auth_required", message: "Entre de novo no /vendedor pra usar as ferramentas de IA." }, 401);
     const mode = (b.mode || "pitch").toString();
 
     // ── OBJECTION-BUSTER mode: seller types what the client said → calm, non-aggressive reframe ──

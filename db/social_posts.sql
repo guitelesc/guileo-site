@@ -15,7 +15,7 @@
 --   • Absolute multi-tenant isolation — every read/mutation is bound to (client_email, id).
 --     A UUID alone NEVER authorizes anything; one tenant's posts never leak to another.
 --   • RLS ON, NO anon policy — only the SECURITY DEFINER RPCs below reach the table.
---   • INGEST-gated by hardcoded literal ('glo_ing_7f3da9c2b4e8' = env INGEST_SECRET);
+--   • INGEST-gated by hardcoded literal ('glo_ing_c7f2a9e4b8d16350' = env INGEST_SECRET);
 --     Supabase forbids GUC (`alter database set`) so the gate is a literal, like every RPC.
 --   • Idempotent (create-or-replace / if-not-exists). EXCEPTION blocks degrade gracefully —
 --     a missing table returns empty/null, never a 500.
@@ -72,7 +72,7 @@ language plpgsql security definer set search_path = public
 as $$
 declare v_tenant text := lower(trim(p_email)); v_row public.social_posts%rowtype;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant is null or v_tenant = '' or position('@' in v_tenant) = 0 then raise exception 'bad tenant' using errcode = '22023'; end if;
   insert into public.social_posts (client_email, channel, content, media_url, status, scheduled_at, meta)
   values (
@@ -100,7 +100,7 @@ language plpgsql security definer set search_path = public
 as $$
 declare v_tenant text := lower(trim(p_email));
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return coalesce((
     select jsonb_agg(to_jsonb(t) order by t.created_at desc)
     from (
@@ -122,7 +122,7 @@ language plpgsql security definer set search_path = public
 as $$
 declare v_tenant text := lower(trim(p_email)); v_row public.social_posts%rowtype;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select * into v_row from public.social_posts where client_email = v_tenant and id = p_id;
   if not found then return null; end if;
   return to_jsonb(v_row);
@@ -140,7 +140,7 @@ language plpgsql security definer set search_path = public
 as $$
 declare v_tenant text := lower(trim(p_email)); v_row public.social_posts%rowtype;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   update public.social_posts
     set status = 'draft',                 -- 'draft' = approved & ready to publish (the connector publishes next)
         meta = meta || jsonb_build_object('approved_at', now()),
@@ -162,7 +162,7 @@ language plpgsql security definer set search_path = public
 as $$
 declare v_tenant text := lower(trim(p_email)); v_row public.social_posts%rowtype;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   update public.social_posts
     set status = 'published',
         external_id = nullif(trim(coalesce(p_external_id,'')), ''),
@@ -186,7 +186,7 @@ language plpgsql security definer set search_path = public
 as $$
 declare v_tenant text := lower(trim(p_email)); v_row public.social_posts%rowtype;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   update public.social_posts
     set status = 'failed',
         error = left(coalesce(p_error,'publish failed'), 400),
@@ -210,7 +210,7 @@ returns jsonb
 language plpgsql security definer set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return (
     select tokens from client_integrations
     where client_email = lower(trim(p_email)) and provider = 'meta'
@@ -229,7 +229,7 @@ language plpgsql security definer set search_path = public
 as $$
 declare v_tenant text := lower(trim(p_email)); v_mode text; v_tokens jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   v_mode := case when lower(coalesce(p_mode,'')) = 'auto' then 'auto' else 'approve' end;
   insert into client_integrations (client_email, provider, tokens)
   values (v_tenant, 'meta', jsonb_build_object('publish_mode', v_mode))
@@ -251,7 +251,7 @@ language plpgsql security definer set search_path = public
 as $$
 declare v_tenant text := lower(trim(coalesce(p_email,'')));
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return coalesce((
     select jsonb_agg(to_jsonb(u))
     from (

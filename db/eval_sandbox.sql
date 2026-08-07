@@ -51,5 +51,5 @@ begin
 end $$;
 
 -- PROVE (round-trip, read-only) — both should return the sandbox as guiReply will see it:
---   select get_client_profile('glo_ing_7f3da9c2b4e8','eval-sandbox@guileoai.com');
---   select biz_lookup('gss_7Kx2mQ9vR4tZ8nL','eval-sandbox@guileoai.com')->'services';
+--   select get_client_profile('glo_ing_c7f2a9e4b8d16350','eval-sandbox@guileoai.com');
+--   select biz_lookup('gss_Kp9mX4vR2tZ7nQ5wL8bc','eval-sandbox@guileoai.com')->'services';

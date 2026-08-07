@@ -3,6 +3,7 @@
 // Admin-gated for now; graceful note until db/crm_spine.sql is pasted.
 //   POST { token, email, limit? } -> { ok, ready, count, contacts:[...] }
 import { json } from "../lib/guard.js";
+import { svcRpc } from "../lib/sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -103,6 +104,42 @@ export async function onRequestPost(context) {
       const leads = (await lr.json().catch(() => [])) || [];
       const arr = Array.isArray(leads) ? leads : [];
       return json({ ok: true, ready: true, count: arr.length, leads: arr });
+    }
+
+    // ── action: lead_status_map — the client's own working status per lead (novo→contatado→fechado)
+    // so "Leads do dia" survives a refresh / another device. service_role RPC, tenant-scoped by the
+    // already-validated email. Graceful ready:false until db/client_lead_status.sql is live. ──
+    if (b.action === "lead_status_map") {
+      try {
+        const mr = await svcRpc(env, "client_lead_status_map", { p_secret: ingest, p_email: email });
+        if (!mr.ok) return json({ ok: true, ready: false, map: {} });
+        const map = await mr.json().catch(() => ({}));
+        return json({ ok: true, ready: true, map: map && typeof map === "object" ? map : {} });
+      } catch { return json({ ok: true, ready: false, map: {} }); }
+    }
+
+    // ── action: lead_status_set — the client marks where they took a lead. Idempotent upsert. ──
+    if (b.action === "lead_status_set") {
+      const leadId = (b.lead_id || "").toString().slice(0, 120);
+      const status = (b.status || "novo").toString().toLowerCase();
+      if (!leadId) return json({ error: "lead_id required" }, 400);
+      // Whitelist at the edge (the RPC also clamps unknown→novo, but reject early — defense in depth).
+      if (!["novo", "contatado", "fechado", "perdido"].includes(status)) return json({ error: "invalid status" }, 400);
+      try {
+        const sr = await svcRpc(env, "client_lead_status_set", { p_secret: ingest, p_email: email, p_lead_id: leadId, p_status: status });
+        return json({ ok: sr.ok && !!(await sr.json().catch(() => false)) });
+      } catch { return json({ ok: false }); }
+    }
+
+    // ── action: lead_note_set — the client's free-text note on a lead (independent of status). ──
+    if (b.action === "lead_note_set") {
+      const leadId = (b.lead_id || "").toString().slice(0, 120);
+      const notes = (b.notes || "").toString().slice(0, 2000);
+      if (!leadId) return json({ error: "lead_id required" }, 400);
+      try {
+        const nr = await svcRpc(env, "client_lead_note_set", { p_secret: ingest, p_email: email, p_lead_id: leadId, p_notes: notes });
+        return json({ ok: nr.ok && !!(await nr.json().catch(() => false)) });
+      } catch { return json({ ok: false }); }
     }
 
     // ── action: lead_callback — REAL callback through the hardened dial gate (/api/call), the SAME

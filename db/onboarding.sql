@@ -50,7 +50,7 @@ create or replace function public.onboard_start(p_secret text, p_email text, p_m
 returns json language plpgsql security definer set search_path=public as $$
 declare v_email text := lower(trim(coalesce(p_email,''))); v_row public.onboarding_state;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   if v_email = '' or position('@' in v_email) = 0 then return json_build_object('ok', false, 'error', 'bad email'); end if;
 
   insert into public.onboarding_state (client_email, step, steps, meta)
@@ -75,7 +75,7 @@ returns json language plpgsql security definer set search_path=public as $$
 declare v_email text := lower(trim(coalesce(p_email,''))); v_ord int := public._onb_ord(p_step);
         v_already boolean; v_row public.onboarding_state;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   if v_email = '' or position('@' in v_email) = 0 then return json_build_object('ok', false, 'error', 'bad email'); end if;
   if v_ord = 0 then return json_build_object('ok', false, 'error', 'unknown step'); end if;
 
@@ -101,7 +101,7 @@ create or replace function public.onboard_status(p_secret text, p_email text)
 returns json language plpgsql security definer set search_path=public as $$
 declare v_email text := lower(trim(coalesce(p_email,''))); v_row public.onboarding_state; v_done int;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   select * into v_row from public.onboarding_state where client_email = v_email;
   if not found then
     return json_build_object('ok', true, 'found', false, 'step', 0, 'done', 0, 'pct', 0,
@@ -128,7 +128,7 @@ create or replace function public.onboard_sentiment(p_secret text, p_email text,
 returns json language plpgsql security definer set search_path=public as $$
 declare v_email text := lower(trim(coalesce(p_email,''))); v_val text := lower(trim(coalesce(p_val,'')));
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   if v_val not in ('warm','lukewarm','cold') then return json_build_object('ok', false, 'error', 'bad value'); end if;
   insert into public.onboarding_state (client_email, sentiment, step, steps)
     values (v_email, v_val, 7, jsonb_build_object('checkin', to_jsonb(now())))
@@ -152,7 +152,7 @@ create or replace function public.onboard_checkin_due(p_secret text, p_limit int
 returns json language plpgsql security definer set search_path=public as $$
 declare v_out json;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   -- SINGLE atomic statement: pick the (limited) due set and claim EXACTLY that set in one UPDATE,
   -- so a milestone is never stamped-sent without being returned to the caller (no silent skip).
   with pick as (
@@ -185,7 +185,7 @@ create or replace function public.onboard_report_due(p_secret text, p_limit int 
 returns json language plpgsql security definer set search_path=public as $$
 declare v_month text := to_char(now(),'YYYY-MM'); v_out json;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   select json_agg(json_build_object('client_email',client_email,
            'lang',coalesce(meta->>'lang',''),
            'name',coalesce(meta->>'name', meta#>>'{brand,contactName}','')))
@@ -217,7 +217,7 @@ create or replace function public.onboard_set_meta(p_secret text, p_email text, 
 returns boolean language plpgsql security definer set search_path=public as $$
 declare v_email text := lower(trim(coalesce(p_email,'')));
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then return false; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then return false; end if;
   if v_email='' or position('@' in v_email)=0 then return false; end if;
   insert into public.onboarding_state (client_email) values (v_email) on conflict (client_email) do nothing;
   update public.onboarding_state

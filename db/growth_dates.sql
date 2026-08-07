@@ -13,8 +13,8 @@
 --   4) SLOW-DAY PROMO — dia com baixa ocupação nas próximas 48-72h → flash promo (OPT-IN).
 --
 -- GATES (dois segredos, como no resto do banco):
---   • INGEST literal 'glo_ing_7f3da9c2b4e8'  → RPCs de datas/marketing/opt-in (grant anon).
---   • _gui_sched_ok('gss_7Kx2mQ9vR4tZ8nL')   → RPCs que tocam agenda (biz_*): rebook/waitlist/slow-day.
+--   • INGEST literal 'glo_ing_c7f2a9e4b8d16350'  → RPCs de datas/marketing/opt-in (grant anon).
+--   • _gui_sched_ok('gss_Kp9mX4vR2tZ7nQ5wL8bc')   → RPCs que tocam agenda (biz_*): rebook/waitlist/slow-day.
 -- ============================================================================
 
 -- ── 1a) ANIVERSÁRIO no contato (a tabela que crm_upsert_contact escreve) ─────
@@ -58,7 +58,7 @@ create or replace function public.marketing_date_claim(
 ) returns boolean language plpgsql security definer set search_path = public as $$
 declare v_email text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   insert into biz_marketing_sent (client_email, kind, ref, period)
   values (lower(trim(p_client_email)), lower(trim(p_kind)), coalesce(nullif(trim(p_ref),''),'-'), coalesce(nullif(trim(p_period),''),'-'))
   on conflict (client_email, kind, ref, period) do nothing
@@ -74,7 +74,7 @@ create or replace function public.marketing_dates_set(
 ) returns jsonb language plpgsql security definer set search_path = public as $$
 declare v_id uuid; v_kind text := lower(coalesce(nullif(trim(p_kind),''),'holiday'));
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_kind not in ('birthday','holiday','anniversary') then v_kind := 'holiday'; end if;
   if p_month is null or p_month < 1 or p_month > 12 or p_day is null or p_day < 1 or p_day > 31 then
     return jsonb_build_object('ok', false, 'reason', 'bad_date');
@@ -100,7 +100,7 @@ create or replace function public.marketing_dates_list(p_secret text, p_client_e
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare v jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select coalesce(jsonb_agg(jsonb_build_object(
       'id', id, 'kind', kind, 'label', label, 'month', month, 'day', day,
       'message', message, 'offer', offer, 'active', active
@@ -113,7 +113,7 @@ create or replace function public.marketing_dates_delete(p_secret text, p_client
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare n int;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   delete from biz_marketing_dates where id = p_id and client_email = lower(trim(p_client_email));
   get diagnostics n = row_count;
   return jsonb_build_object('ok', n > 0);
@@ -124,7 +124,7 @@ create or replace function public.marketing_dates_today(p_secret text, p_client_
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare v jsonb; d date := (now() at time zone 'UTC')::date;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select coalesce(jsonb_agg(jsonb_build_object(
       'id', id, 'kind', kind, 'label', label, 'message', message, 'offer', offer
     )), '[]'::jsonb)
@@ -140,7 +140,7 @@ create or replace function public.crm_birthday_contacts(p_secret text, p_client_
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare v jsonb; d date := (now() at time zone 'UTC')::date;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select coalesce(jsonb_agg(jsonb_build_object(
       'id', id, 'name', full_name, 'email', email, 'phone', phone
     )), '[]'::jsonb)
@@ -164,7 +164,7 @@ create or replace function public.crm_marketing_recipients(
 ) returns jsonb language plpgsql security definer set search_path = public as $$
 declare v jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select coalesce(jsonb_agg(jsonb_build_object(
       'id', id, 'name', full_name, 'email', email, 'phone', phone, 'lifecycle', lifecycle
     )), '[]'::jsonb)
@@ -266,7 +266,7 @@ grant execute on function public.biz_waitlist_fill_on_cancel(text,text,uuid) to 
 create or replace function public.slowday_set_auto(p_secret text, p_email text, p_on boolean)
 returns boolean language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   insert into client_integrations (client_email, provider, tokens)
   values (lower(trim(p_email)), 'slowday_auto', jsonb_build_object('on', case when p_on then '1' else '0' end))
   on conflict (client_email, provider) do update set tokens = excluded.tokens, updated_at = now();
@@ -276,7 +276,7 @@ end $$;
 create or replace function public.slowday_auto_enabled(p_secret text, p_email text)
 returns boolean language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return coalesce((
     select tokens->>'on' = '1' from client_integrations
     where client_email = lower(trim(p_email)) and provider = 'slowday_auto' limit 1
@@ -286,7 +286,7 @@ end $$;
 create or replace function public.slowday_auto_list(p_secret text)
 returns table(client_email text) language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return query
     select ci.client_email from client_integrations ci
     where ci.provider = 'slowday_auto' and ci.tokens->>'on' = '1';
@@ -351,10 +351,10 @@ end $$;
 grant execute on function public.slowday_candidates(text,text,int,numeric,int) to anon;
 
 -- ✅ Pronto. Testes rápidos (troque o email):
---   select marketing_dates_set('glo_ing_7f3da9c2b4e8','dono@negocio.com','holiday','Dia das Mães',5,11,'Feliz Dia das Mães 💚','20% em qualquer serviço');
---   select marketing_dates_list('glo_ing_7f3da9c2b4e8','dono@negocio.com');
---   select marketing_dates_today('glo_ing_7f3da9c2b4e8','dono@negocio.com');
---   select crm_birthday_contacts('glo_ing_7f3da9c2b4e8','dono@negocio.com');
---   select crm_rebook_due('gss_7Kx2mQ9vR4tZ8nL','dono@negocio.com');
---   select slowday_set_auto('glo_ing_7f3da9c2b4e8','dono@negocio.com',true);
---   select slowday_candidates('gss_7Kx2mQ9vR4tZ8nL','dono@negocio.com');
+--   select marketing_dates_set('glo_ing_c7f2a9e4b8d16350','dono@negocio.com','holiday','Dia das Mães',5,11,'Feliz Dia das Mães 💚','20% em qualquer serviço');
+--   select marketing_dates_list('glo_ing_c7f2a9e4b8d16350','dono@negocio.com');
+--   select marketing_dates_today('glo_ing_c7f2a9e4b8d16350','dono@negocio.com');
+--   select crm_birthday_contacts('glo_ing_c7f2a9e4b8d16350','dono@negocio.com');
+--   select crm_rebook_due('gss_Kp9mX4vR2tZ7nQ5wL8bc','dono@negocio.com');
+--   select slowday_set_auto('glo_ing_c7f2a9e4b8d16350','dono@negocio.com',true);
+--   select slowday_candidates('gss_Kp9mX4vR2tZ7nQ5wL8bc','dono@negocio.com');

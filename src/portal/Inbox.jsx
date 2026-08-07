@@ -122,8 +122,10 @@ function Inbox({ V, onNav, real = null, email = "", dataKey = "" }) {
     setSending(true);
     const d = await inboxApi("send", email, dataKey, { thread: cur.id, channel: cur.channel, contact: cur.contact, phone: cur.phone || "", body });
     setSending(false);
-    if (d.sent) toast(`${tr("Sent via")} ${cur.channel}.`);
-    else if (d.pending) toast(d.note || tr("Reply logged — delivery pending on this channel."));
+    // HONEST: "Sent ✓" ONLY when the backend confirms the message truly left the system (d.sent).
+    // Otherwise it was only logged to the thread → say so (backend note tells which channel/why).
+    if (d.sent) toast(`${tr("Sent via")} ${cur.channel} ✓`);
+    else if (d.pending) toast(d.note || `${tr("Reply saved — not delivered on")} ${cur.channel} ${tr("yet.")}`);
     else toast(tr("Reply failed — try again."));
   };
 

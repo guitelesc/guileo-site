@@ -91,17 +91,35 @@ export default function Navbar() {
             <a href="/#pricing" className="navlink whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word xl:text-sm">{t.nav?.pricing || "Pricing"}</a>
             {/* Self-serve plans — the only page where a visitor can PAY today; must be reachable from nav */}
             <a href="/planos" className="navlink whitespace-nowrap text-[13px] font-semibold text-g-gold/90 transition-colors hover:text-g-gold xl:text-sm">{isHi ? "प्लान" : isPt ? "Planos" : isEs ? "Planes" : "Plans"}</a>
-            <a href="/vitrine" className="navlink whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word xl:text-sm">{isHi ? "डेमो" : isPt || isEs ? "Vitrine" : "Demo"}</a>
-            <a href="/blog" className="navlink whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word xl:text-sm">Blog</a>
+            <a href="/vitrine" className="navlink hidden whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word xl:inline-flex xl:text-sm">{isHi ? "शोकेस" : isPt || isEs ? "Vitrine" : "Showcase"}</a>
+            <a href="/blog" className="navlink hidden whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word xl:inline-flex xl:text-sm">Blog</a>
           </div>
         </div>
         {/* right — language, experience, cockpit, CTA */}
         <div className="flex shrink-0 items-center gap-2">
-          <div className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-1 py-1 ring-1 ring-white/[0.04] backdrop-blur-md lg:flex">
-            {LANGS.map(([code, flag]) => (
-              <button key={code} onClick={() => setLang(code)} title={LANG_NAMES[code]} aria-label={LANG_NAMES[code]} aria-pressed={lang === code}
-                className={`grid h-9 w-9 place-items-center rounded-full text-sm transition ${lang === code ? "scale-110 bg-g-green/15 ring-1 ring-g-green/30" : "opacity-60 hover:opacity-100"}`}>{flag}</button>
-            ))}
+          {/* SELETOR DE IDIOMA COMPACTO — antes eram 4 bandeiras lado a lado, ~110px fixos que
+              empurravam o menu da esquerda para debaixo delas (em 1280px o "Blog" ficava 49px
+              soterrado: ilegível e não clicável, bem na página que o anúncio paga para as pessoas
+              verem). Esconder um link de cada vez era remendo — o próximo rótulo mais comprido
+              quebrava de novo. Uma bandeira só + painel no hover devolve ~110px e faz o menu
+              parar de brigar por espaço, independente do idioma ou do tamanho dos rótulos. */}
+          <div className="group relative hidden lg:block">
+            <button aria-label={LANG_NAMES[lang]} aria-haspopup="true"
+              className="flex h-9 items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 text-sm ring-1 ring-white/[0.04] backdrop-blur-md transition hover:bg-white/[0.09]">
+              <span>{(LANGS.find(([c]) => c === lang) || LANGS[0])[1]}</span>
+              <svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+            {/* group-focus-within = paridade de teclado (tab abre o painel, igual aos menus) */}
+            <div className="invisible absolute right-0 top-full z-50 pt-2 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+              <div className="flex flex-col gap-0.5 rounded-2xl border border-white/10 bg-[#161512]/95 p-1.5 ring-1 ring-white/10 shadow-[0_44px_100px_-34px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
+                {LANGS.map(([code, flag]) => (
+                  <button key={code} onClick={() => setLang(code)} aria-pressed={lang === code}
+                    className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-[13px] font-semibold transition ${lang === code ? "bg-g-green/15 text-g-word ring-1 ring-g-green/30" : "text-g-muted hover:bg-white/[0.06] hover:text-g-word"}`}>
+                    <span className="text-sm">{flag}</span>{LANG_NAMES[code]}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
           {/* Existing-client login — kept quiet (text link) so it never competes with the one primary CTA */}
           <a href="/portal" className="hidden items-center gap-1.5 whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word md:inline-flex"><FaGaugeHigh size={12} /> {t.nav?.cockpit || "Client login"}</a>
@@ -131,7 +149,7 @@ export default function Navbar() {
             <a href="/#industries" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-muted">{t.nav?.industries || "Industries"}</a>
             <a href="/#pricing" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-muted">{t.nav?.pricing || "Pricing"}</a>
             <a href="/planos" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-gold">{isHi ? "प्लान" : isPt ? "Planos" : isEs ? "Planes" : "Plans"}</a>
-            <a href="/vitrine" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-muted">{isHi ? "डेमो" : isPt || isEs ? "Vitrine" : "Demo"}</a>
+            <a href="/vitrine" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-muted">{isHi ? "शोकेस" : isPt || isEs ? "Vitrine" : "Showcase"}</a>
             <a href="/blog" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-muted">Blog</a>
           </div>
           <a href="/portal" onClick={() => setOpen(false)} className="inline-flex items-center gap-2 text-sm font-extrabold text-g-gold"><FaGaugeHigh size={13} /> {t.nav?.cockpit || "Growth Cockpit"}</a>

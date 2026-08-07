@@ -19,7 +19,7 @@ const U = {
   cpName: { pt: "Nome da contraparte", en: "Counterparty name", es: "Nombre de la contraparte" },
   cpEmail: { pt: "Email (opcional)", en: "Email (optional)", es: "Correo (opcional)" },
   amount: { pt: "Valor (ex: R$5.000 ou $1,500)", en: "Amount (e.g. $1,500)", es: "Monto (ej: $1,500)" },
-  gen: { pt: "Gerar & criar link de assinatura", en: "Generate & create sign link", es: "Generar y crear enlace de firma" },
+  gen: { pt: "Gerar e criar link de assinatura", en: "Generate & create sign link", es: "Generar y crear enlace de firma" },
   generating: { pt: "Gerando…", en: "Generating…", es: "Generando…" },
   link: { pt: "Link de assinatura (envie pra contraparte):", en: "Sign link (send to the counterparty):", es: "Enlace de firma (envíalo a la contraparte):" },
   copy: { pt: "Copiar", en: "Copy", es: "Copiar" },

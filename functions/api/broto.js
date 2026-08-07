@@ -4,6 +4,7 @@
 // inventory RPCs with the server-side SCHED_SECRET. Surfaces the whole ticket queue
 // across every tenant, our platform inventory (numbers/hardware/accounts), and health.
 import { json, rateLimited, sameOrigin } from "../lib/guard.js";
+import { svcRpc } from "../lib/sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -82,7 +83,7 @@ export async function onRequestPost(context) {
 
     // default: the BROTO dashboard payload — whole queue + inventory in one round-trip.
     const [tq, iv] = await Promise.all([
-      rpc("support_ticket_list", { p_secret: secret, p_email: "", p_limit: 300 }),
+      svcRpc(env, "support_ticket_list", { p_secret: secret, p_email: "", p_limit: 300 }),
       rpc("inventory_list", { p_secret: secret, p_limit: 500 }),
     ]);
     const tickets = tq.ok ? (await tq.json()) || [] : [];

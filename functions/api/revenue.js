@@ -49,7 +49,7 @@ export async function onRequestPost(context) {
     const gdj = await gd.json().catch(() => null);
     if (!(gdj && typeof gdj === "object" && Array.isArray(gdj.events))) return json({ error: "unauthorized" }, 401);
 
-    const secret = env.INGEST_SECRET || "glo_ing_7f3da9c2b4e8";
+    const secret = env.INGEST_SECRET || "";
     const now = new Date();
     // UTC calendar windows — MATCHES client-report.js so the cockpit and the weekly email agree.
     const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();

@@ -13,6 +13,7 @@ import ClientWallet from "../components/ClientWallet.jsx";
 import SellerManager from "../components/SellerManager.jsx";
 import DemoEngine from "../components/DemoEngine.jsx";
 import { ACTIVATION_STEPS, ACTIVATION_SECTORS, pickL } from "../data/activation.js";
+import { GUILEO_PLANS, planByKey } from "../data/guileoPlans.js";
 
 // /admin — Luis's private command center. Simple password gate (basic, frontend-level —
 // good enough to keep casual access out of a monitoring view; real auth comes with the
@@ -69,7 +70,7 @@ export default function Admin() {
   const [lastSync, setLastSync] = useState(null); // when the token-gated feeds last returned (REAL)
   const [tick, setTick] = useState(0); // ↻ manual refresh — bump forces the live loader to re-run now
   // Onboard a client — one form turns a paying client live (agent + number + code + profile)
-  const [ob, setOb] = useState({ email: "", business: "", industry: "", agent_name: "", lang: "pt", plan: "Personalized", credits: "440", brain: "", review_link: "", forward_number: "", number_mode: "buy", existing_number: "", area_code: "" });
+  const [ob, setOb] = useState({ email: "", business: "", industry: "", agent_name: "", lang: "pt", plan: "growth", credits: String(planByKey("growth").credits), notify_phone: "", brain: "", review_link: "", forward_number: "", number_mode: "buy", existing_number: "", area_code: "" });
   const [obState, setObState] = useState("idle"); // idle | busy | done | err
   const [obResult, setObResult] = useState(null);
   const [planState, setPlanState] = useState("idle"); // idle | busy | done | err
@@ -286,7 +287,7 @@ export default function Admin() {
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-g-muted">↻ atualiza a cada 5s{lastSync ? ` · última ${lastSync.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}` : ""}</span>
             <button onClick={() => { setState("loading"); setTick((t) => t + 1); }} title="Recarregar agora" className="rounded-full border border-g-green/40 px-3 py-1.5 text-[12px] font-bold text-g-green hover:bg-g-green/10">↻ Atualizar</button>
-            <button onClick={() => { try { sessionStorage.removeItem("guileo_admin"); } catch {} setUnlocked(false); }} className="rounded-full border border-g-line px-3 py-1.5 text-[12px] font-bold text-g-muted hover:text-g-word">Lock</button>
+            <button onClick={() => { try { sessionStorage.removeItem("guileo_admin_tok"); } catch {} setToken(""); setUnlocked(false); }} className="rounded-full border border-g-line px-3 py-1.5 text-[12px] font-bold text-g-muted hover:text-g-word">Lock</button>
           </div>
         </div>
 
@@ -473,6 +474,15 @@ export default function Admin() {
                 <select value={ob.lang} onChange={(e) => setOb((o) => ({ ...o, lang: e.target.value }))} className="rounded-xl border border-g-line bg-white/[0.05] px-4 py-2.5 text-[13px] text-g-word focus:border-g-gold/50 focus:outline-none">
                   <option value="pt">🇧🇷 Português</option><option value="es">🇪🇸 Español</option><option value="en">🇺🇸 English</option>
                 </select>
+                {/* PLANO — troca o plano ajusta os créditos-padrão (fonte única guileoPlans.js); o operador ainda pode sobrescrever no campo ao lado */}
+                <select value={ob.plan} onChange={(e) => setOb((o) => ({ ...o, plan: e.target.value, credits: String(planByKey(e.target.value).credits) }))} className="rounded-xl border border-g-line bg-white/[0.05] px-4 py-2.5 text-[13px] text-g-word focus:border-g-gold/50 focus:outline-none">
+                  {GUILEO_PLANS.map((p) => <option key={p.key} value={p.key}>{p.name} — {p.price} · {p.credits} créditos</option>)}
+                </select>
+                <input type="number" min="0" value={ob.credits} onChange={(e) => setOb((o) => ({ ...o, credits: e.target.value }))} placeholder="Créditos"
+                  className="rounded-xl border border-g-line bg-white/[0.05] px-4 py-2.5 text-[13px] text-g-word placeholder:text-g-muted focus:border-g-gold/50 focus:outline-none" />
+                {/* 🚨 Celular do dono — o número que o telefone dele TOCA numa emergência/escalada. Sem isso, o "toca de verdade" fica no escuro. */}
+                <input value={ob.notify_phone} onChange={(e) => setOb((o) => ({ ...o, notify_phone: e.target.value }))} placeholder="Celular do dono p/ emergência — toca de verdade"
+                  className="sm:col-span-2 rounded-xl border border-g-line bg-white/[0.05] px-4 py-2.5 text-[13px] text-g-word placeholder:text-g-muted focus:border-g-gold/50 focus:outline-none" />
               </div>
               <textarea value={ob.brain} onChange={(e) => setOb((o) => ({ ...o, brain: e.target.value }))} rows={3} placeholder="Cérebro do Gui: serviços, preços, regras, horário — o que ele precisa saber pra atender e vender por esse negócio."
                 className="mt-2 w-full rounded-xl border border-g-line bg-white/[0.05] px-4 py-2.5 text-[13px] text-g-word placeholder:text-g-muted focus:border-g-gold/50 focus:outline-none" />

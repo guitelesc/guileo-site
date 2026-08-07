@@ -27,7 +27,7 @@ returns jsonb
 language plpgsql security definer set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return (
     select tokens
     from client_integrations
@@ -42,14 +42,14 @@ grant execute on function public.gb_creds_lookup(text, text) to anon;
 --    (the connector's "connect" action already stores them via store_integration; this is the
 --    no-HTTP path). Same INGEST gate. Same tokens shape above.
 -- Example:
---   select public.gb_creds_store('glo_ing_7f3da9c2b4e8', 'natura@guileoai.com',
+--   select public.gb_creds_store('glo_ing_c7f2a9e4b8d16350', 'natura@guileoai.com',
 --     jsonb_build_object('account_id','1234','location_id','5678','refresh_token','1//0g…'));
 create or replace function public.gb_creds_store(p_secret text, p_email text, p_tokens jsonb)
 returns boolean
 language plpgsql security definer set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   insert into client_integrations (client_email, provider, tokens)
   values (lower(trim(p_email)), 'google_business', coalesce(p_tokens, '{}'::jsonb))
   on conflict (client_email, provider) do update
@@ -78,7 +78,7 @@ language plpgsql security definer set search_path = public
 as $$
 declare v_tenant text := lower(trim(p_email));
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return coalesce((
     select jsonb_agg(review_id)
     from gbp_reviews_seen
@@ -98,7 +98,7 @@ language plpgsql security definer set search_path = public
 as $$
 declare v_tenant text := lower(trim(p_email)); v_new boolean := false;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if p_review_id is null or length(trim(p_review_id)) = 0 then return false; end if;
   insert into gbp_reviews_seen (client_email, review_id, replied, reply_text, replied_at)
   values (v_tenant, p_review_id, coalesce(p_replied, false), p_reply_text,

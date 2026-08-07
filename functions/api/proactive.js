@@ -4,7 +4,9 @@
 // upcoming appointments are collected (biz_due_reminders) and emailed where an email exists (SMS lights
 // up at A2P). Per-business; iterates the configured client list (PROACTIVE_EMAILS) or the demo set.
 import { json, safeEq } from "../lib/guard.js";
-import { reengageEmail, appointmentReminderEmail, birthdayEmail, anniversaryEmail, recallEmail, loyaltyMilestoneEmail, welcomeFirstVisitEmail, rebookEmail, promoEmail, proposalEmail } from "../lib/emailTemplates.js";
+import { sbKey } from "../lib/sb.js";
+import { reengageEmail, appointmentReminderEmail, birthdayEmail, anniversaryEmail, recallEmail, loyaltyMilestoneEmail, welcomeFirstVisitEmail, rebookEmail, promoEmail, proposalEmail, moneyRecoveredEmail } from "../lib/emailTemplates.js";
+import { brandFor } from "../lib/clientBrand.js";
 
 // Friendly date label from an ISO timestamp (UTC) — "Sex 20/06 · 14:30".
 const DOW = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -13,6 +15,12 @@ const fmtWhen = (iso) => { try { const d = new Date(iso); return `${DOW[d.getUTC
 const SCHED_SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const SCHED_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
 const isEmail = (s) => /.+@.+\..+/.test((s || "").toString());
+// After-hours heuristic on a captured event timestamp (UTC): call before 08:00, at/after 18:00, or on
+// a weekend. Approximation (we don't hold the tenant's timezone) — feeds only the DISCLOSED estimate in
+// moneyRecoveredEmail, never presented as cash. Mirrors growth-intel.js money_proof.
+const isAfterHours = (iso) => { try { const d = new Date(iso); const h = d.getUTCHours(); const wd = d.getUTCDay(); return wd === 0 || wd === 6 || h < 8 || h >= 18; } catch { return false; } };
+// Customer emails go out in the CLIENT profile's language — pt / es / en supported (same rule as automations.js).
+const langNorm = (v) => { const l = (v || "").toString().toLowerCase().slice(0, 2); return l === "pt" ? "pt" : l === "es" ? "es" : "en"; };
 
 const rpc = (env, fn, body) => fetch(`${SCHED_SB}/rest/v1/rpc/${fn}`, {
   method: "POST", headers: { apikey: SCHED_ANON, Authorization: `Bearer ${SCHED_ANON}`, "Content-Type": "application/json" },
@@ -22,7 +30,7 @@ const rpc = (env, fn, body) => fetch(`${SCHED_SB}/rest/v1/rpc/${fn}`, {
 // The DATES/growth RPCs (marketing_*, crm_birthday_contacts, marketing_date_claim, db/growth_dates.sql)
 // are INGEST-gated, not SCHED-gated — so they get the INGEST secret. Graceful: missing key → {} no-op.
 const ingRpc = (env, fn, body) => fetch(`${SCHED_SB}/rest/v1/rpc/${fn}`, {
-  method: "POST", headers: { apikey: SCHED_ANON, Authorization: `Bearer ${SCHED_ANON}`, "Content-Type": "application/json" },
+  method: "POST", headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" },
   body: JSON.stringify({ ...body, p_secret: env.INGEST_SECRET || "" }),
 }).then((r) => r.json()).catch(() => ({}));
 
@@ -79,16 +87,58 @@ export async function onRequestPost(context) {
   // DATES + GROWTH (db/growth_dates.sql): crm_contacts.birth_date birthdays, per-client commemorative
   // dates (biz_marketing_dates), and post-service rebooking nudges. All dedup atomically; EMAIL now.
   let crmBirthdays = 0, marketingDates = 0, rebookNudges = 0;
+  // MONTHLY VALUE EMAIL to the OWNER — counted separately from customer sends.
+  let valueReports = 0;
   const yr = String(new Date().getUTCFullYear());
 
   for (const email of businesses) {
     if (sends >= MAX_SENDS) break; // per-run cap reached — the rotating offset serves the rest next run
+    // Per-tenant language — every lifecycle email below renders in the CLIENT profile's language (was hardcoded).
+    const profile = (await ingRpc(env, "get_client_profile", { p_email: email })) || {};
+    const L = langNorm(profile.lang);
+
+    // ── MONTHLY VALUE EMAIL (owner) — the branded "here's what Gui recovered for you" proof that
+    // justifies the subscription. Sent ONCE per calendar month to the tenant OWNER (client_email —
+    // the only owner address we hold), in their brand (logo/accent) + language. REAL numbers only:
+    // the SAME data path /api/growth-intel money_proof uses (revenue_month = the authoritative money
+    // spine in cents + client_events_since booking count). NEVER fabricated — if the tenant has no
+    // collected money AND no bookings this month, we skip entirely (nothing to prove). Dedup is
+    // atomic: we only claim the month (marketing_date_claim, kind=value_report, period=YYYY-MM) once
+    // we actually have data to send, so a no-data early run doesn't burn the tenant's month, and the
+    // claim makes the send idempotent across runs / the rotating offset. INGEST-gated → no-op if the
+    // growth RPCs aren't pasted yet. Counts against the same per-run capSend (Resend quota).
+    if (env.INGEST_SECRET && isEmail(email) && sends < MAX_SENDS) {
+      const vNow = new Date();
+      const vMonthStart = new Date(Date.UTC(vNow.getUTCFullYear(), vNow.getUTCMonth(), 1)).toISOString();
+      const [vRev, vEvsRaw] = await Promise.all([
+        ingRpc(env, "revenue_month", { p_email: email, p_since: vMonthStart }),
+        ingRpc(env, "client_events_since", { p_email: email, p_since: vMonthStart }),
+      ]);
+      const vEvs = Array.isArray(vEvsRaw) ? vEvsRaw : [];
+      const vCollectedCents = (vRev && typeof vRev.total_cents === "number") ? Math.max(0, Math.round(vRev.total_cents)) : 0;
+      const vBookings = vEvs.filter((e) => e && e.type === "booking").length;
+      // Derived after-hours call count (was hardcoded 0) → the monthly email stops shipping a blank stat.
+      const vAfterHours = vEvs.filter((e) => e && e.type === "call" && isAfterHours(e.created_at)).length;
+      // Only send when there's REAL recovered value to show (money collected or bookings booked).
+      if (vCollectedCents > 0 || vBookings > 0) {
+        const vPeriod = `${vNow.getUTCFullYear()}-${String(vNow.getUTCMonth() + 1).padStart(2, "0")}`;
+        const vClaimed = await ingRpc(env, "marketing_date_claim", { p_client_email: email, p_kind: "value_report", p_ref: "owner", p_period: vPeriod });
+        if (vClaimed === true) {
+          const brand = await brandFor(env, email);
+          const ML = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          const vMonthLabel = `${ML[vNow.getUTCMonth()]} ${vNow.getUTCFullYear()}`;
+          const { subject, html } = moneyRecoveredEmail({ business: brand.business, logo: brand.logo_url, brandColor: brand.accent, month: vMonthLabel, callsAfterHours: vAfterHours, bookings: vBookings, collectedCents: vCollectedCents, noShowsPrevented: 0, lang: brand.lang });
+          if (await capSend(email, subject, html)) valueReports++;
+        }
+      }
+    }
+
     // #9 churn-save — email a branded win-back to customers dormant 60+ days (only those with an email).
     // TCPA-safe: NEVER auto-dials; email only.
     const dorm = await rpc(env, "biz_dormant_customers", { p_email: email, p_days: 60, p_limit: 25 });
     for (const c of (dorm?.dormant || [])) {
       if (!isEmail(c.contact)) continue;
-      const { subject, html } = reengageEmail({ name: c.name || "there", business: "", lang: "en" });
+      const { subject, html } = reengageEmail({ name: c.name || "there", business: "", lang: L });
       if (await capSend(c.contact, subject, html)) {
         reactivated++;
         // FIX (audit HIGH): log a winback event so (a) the churn block below dedups against it in the
@@ -107,7 +157,7 @@ export async function onRequestPost(context) {
     const churn = await ingRpc(env, "churn_reengage_candidates", { p_email: email, p_limit: 15 });
     for (const c of (Array.isArray(churn) ? churn : [])) {
       if (!isEmail(c.email)) continue;
-      const { subject, html } = reengageEmail({ name: c.name || "there", business: "", lang: "en" });
+      const { subject, html } = reengageEmail({ name: c.name || "there", business: "", lang: L });
       if (await capSend(c.email, subject, html)) {
         reactivated++;
         // log the winback so the next sweep dedupes this contact for 30d (payload.contact = email)
@@ -122,7 +172,7 @@ export async function onRequestPost(context) {
     const rem = await rpc(env, "biz_due_reminders", { p_email: email, p_hours: 24, p_limit: 50 });
     for (const a of (rem?.due || [])) {
       if (!isEmail(a.contact)) continue;
-      const { subject, html } = appointmentReminderEmail({ name: a.name || "there", service: a.service || "", whenLabel: fmtWhen(a.when), ref: a.ref || "", lang: "pt", bizEmail: email });
+      const { subject, html } = appointmentReminderEmail({ name: a.name || "there", service: a.service || "", whenLabel: fmtWhen(a.when), ref: a.ref || "", lang: L, bizEmail: email });
       if (await capSend(a.contact, subject, html)) reminded++;
     }
 
@@ -130,7 +180,7 @@ export async function onRequestPost(context) {
     const bd = await rpc(env, "biz_birthdays", { p_email: email, p_within: 0, p_limit: 100 });
     for (const c of (bd?.birthdays || [])) {
       if (!isEmail(c.contact)) continue;
-      const { subject, html } = birthdayEmail({ name: c.name || "there", business: "", lang: "pt" });
+      const { subject, html } = birthdayEmail({ name: c.name || "there", business: "", lang: L });
       if (await capSend(c.contact, subject, html)) birthdays++;
     }
 
@@ -138,7 +188,7 @@ export async function onRequestPost(context) {
     const anv = await rpc(env, "biz_anniversaries", { p_email: email, p_limit: 100 });
     for (const c of (anv?.anniversaries || [])) {
       if (!isEmail(c.contact)) continue;
-      const { subject, html } = anniversaryEmail({ name: c.name || "there", business: "", years: c.years || 1, lang: "pt" });
+      const { subject, html } = anniversaryEmail({ name: c.name || "there", business: "", years: c.years || 1, lang: L });
       if (await capSend(c.contact, subject, html)) anniversaries++;
     }
 
@@ -146,7 +196,7 @@ export async function onRequestPost(context) {
     const rc = await rpc(env, "biz_recall_due", { p_email: email, p_days: 180, p_limit: 100 });
     for (const c of (rc?.recall || [])) {
       if (!isEmail(c.contact)) continue;
-      const { subject, html } = recallEmail({ name: c.name || "there", business: "", lang: "pt", bizEmail: email });
+      const { subject, html } = recallEmail({ name: c.name || "there", business: "", lang: L, bizEmail: email });
       if (await capSend(c.contact, subject, html)) recalls++;
     }
 
@@ -154,7 +204,7 @@ export async function onRequestPost(context) {
     const ly = await rpc(env, "biz_loyalty_due", { p_email: email, p_step: 10, p_limit: 100 });
     for (const c of (ly?.loyalty || [])) {
       if (!isEmail(c.contact)) continue;
-      const { subject, html } = loyaltyMilestoneEmail({ name: c.name || "there", business: "", milestone: c.milestone || 10, lang: "pt" });
+      const { subject, html } = loyaltyMilestoneEmail({ name: c.name || "there", business: "", milestone: c.milestone || 10, lang: L });
       if (await capSend(c.contact, subject, html)) {
         loyalty++;
         // log a 'loyalty' event so the autonomous VIP-thank below (company_crm_vips) dedups against this
@@ -169,7 +219,7 @@ export async function onRequestPost(context) {
     const wc = await rpc(env, "biz_welcome_due", { p_email: email, p_limit: 100 });
     for (const c of (wc?.welcome || [])) {
       if (!isEmail(c.contact)) continue;
-      const { subject, html } = welcomeFirstVisitEmail({ name: c.name || "there", business: "", lang: "pt" });
+      const { subject, html } = welcomeFirstVisitEmail({ name: c.name || "there", business: "", lang: L });
       if (await capSend(c.contact, subject, html)) welcomes++;
     }
 
@@ -177,7 +227,7 @@ export async function onRequestPost(context) {
     const rb = await rpc(env, "biz_rebook_due", { p_email: email, p_limit: 100 });
     for (const c of (rb?.rebook || [])) {
       if (!isEmail(c.contact)) continue;
-      const { subject, html } = rebookEmail({ name: c.name || "there", business: "", service: c.service || "", lang: "pt", bizEmail: email });
+      const { subject, html } = rebookEmail({ name: c.name || "there", business: "", service: c.service || "", lang: L, bizEmail: email });
       if (await capSend(c.contact, subject, html)) rebooks++;
     }
 
@@ -188,7 +238,7 @@ export async function onRequestPost(context) {
       if (!isEmail(c.email)) continue;
       const claimed = await ingRpc(env, "marketing_date_claim", { p_client_email: email, p_kind: "birthday", p_ref: (c.id || c.email).toString(), p_period: yr });
       if (claimed !== true) continue; // already wished this year (or racing run owns it)
-      const { subject, html } = birthdayEmail({ name: c.name || "there", business: "", lang: "pt" });
+      const { subject, html } = birthdayEmail({ name: c.name || "there", business: "", lang: L });
       if (await capSend(c.email, subject, html)) crmBirthdays++;
     }
 
@@ -204,7 +254,7 @@ export async function onRequestPost(context) {
           if (!isEmail(c.email)) continue;
           const claimed = await ingRpc(env, "marketing_date_claim", { p_client_email: email, p_kind: (dt.kind || "holiday").toString(), p_ref: (dt.id || "").toString(), p_period: `${yr}:${(c.id || c.email).toString()}` });
           if (claimed !== true) continue;
-          const { subject, html } = promoEmail({ name: c.name || "there", business: "", headline: dt.label || "", message: dt.message || "", offer: dt.offer || "", lang: "pt", bizEmail: email });
+          const { subject, html } = promoEmail({ name: c.name || "there", business: "", headline: dt.label || "", message: dt.message || "", offer: dt.offer || "", lang: L, bizEmail: email });
           if (await capSend(c.email, subject, html)) marketingDates++;
         }
       }
@@ -217,7 +267,7 @@ export async function onRequestPost(context) {
       if (!isEmail(a.contact)) continue;
       const claimed = await ingRpc(env, "marketing_date_claim", { p_client_email: email, p_kind: "rebook", p_ref: (a.appointment_id || "").toString(), p_period: "-" });
       if (claimed !== true) continue;
-      const { subject, html } = rebookEmail({ name: a.name || "there", business: "", service: a.service || "", lang: "pt", bizEmail: email });
+      const { subject, html } = rebookEmail({ name: a.name || "there", business: "", service: a.service || "", lang: L, bizEmail: email });
       if (await capSend(a.contact, subject, html)) rebookNudges++;
     }
   }
@@ -254,5 +304,5 @@ export async function onRequestPost(context) {
     }
   }
 
-  return json({ ok: true, reactivated, reminded, birthdays, anniversaries, recalls, loyalty, welcomes, rebooks, crmBirthdays, marketingDates, rebookNudges, vipThanks, leadNurtures, businesses: businesses.length });
+  return json({ ok: true, reactivated, reminded, birthdays, anniversaries, recalls, loyalty, welcomes, rebooks, crmBirthdays, marketingDates, rebookNudges, valueReports, vipThanks, leadNurtures, businesses: businesses.length });
 }

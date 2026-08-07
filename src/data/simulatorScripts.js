@@ -69,7 +69,7 @@ export const SIM_VERTICALS = [
   },
   {
     key: "salon", icon: "💇", portalV: "salon", mood: ["hopeful", "delighted"],
-    label: { en: "Salon & Spa", pt: "Salão & Spa", es: "Salón & Spa", hi: "सैलून और स्पा" },
+    label: { en: "Salon & Spa", pt: "Salão e Spa", es: "Salón & Spa", hi: "सैलून और स्पा" },
     lines: {
       en: [
         { who: "caller", text: "Hey, do you have anything for a cut and color on Saturday?" },

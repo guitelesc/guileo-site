@@ -6,6 +6,7 @@
 // On success returns the seller's PUBLIC profile only (name, email, ref) — never the code.
 // `ref` flows into the existing ?ref= attribution pipeline so Track-A commissions are credited.
 import { json, sameOrigin, rateLimited, safeEq } from "../lib/guard.js";
+import { signSession } from "../lib/sellerSession.js";
 
 // DB roster (db/seller_roster.sql) — the source of truth when present, managed from /admin. Checked
 // best-effort BEFORE the env/bootstrap flow: an RPC 404/error just falls through, NEVER breaks login.
@@ -95,6 +96,15 @@ function roster(env) {
   return BOOTSTRAP;
 }
 
+// Toda saída de sucesso passa por aqui: anexa o CRACHÁ assinado (sid) ao perfil.
+// Sem isso o /api/pitch-ai não tem como saber que quem chama passou pelo login — era
+// exatamente o buraco: as ferramentas de IA do vendedor rodavam pra qualquer visitante.
+// `sid` null (sem INGEST_SECRET) NÃO quebra o login; o pitch-ai é que recusa.
+async function okSeller(env, seller) {
+  const sid = await signSession(env, seller.email);
+  return json({ ok: true, seller: { ...seller, sid } });
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
@@ -109,23 +119,23 @@ export async function onRequestPost(context) {
 
     // 0) DB roster (managed in /admin) — source of truth when present. best-effort; error → fall through.
     const dbSeller = await sellerAuthDB(env, email, code);
-    if (dbSeller) return json({ ok: true, seller: dbSeller });
+    if (dbSeller) return okSeller(env, dbSeller);
 
     // 0.4) PERSONAL CODE — the code alone identifies the seller server-side (impersonation-proof: the
     //      ref comes from the DB row the code owns, NOT the typed email). Wins over the shared team code.
     const codeSeller = await sellerCodeLogin(env, code);
-    if (codeSeller) return json({ ok: true, seller: codeSeller });
+    if (codeSeller) return okSeller(env, codeSeller);
 
     // 1) Named seller with a personal code (roster) — wins, so custom name/ref are honored.
     const match = roster(env).find(
       (s) => (s.email || "").trim().toLowerCase() === email && safeEq(String(s.code || ""), code)
     );
     if (match) {
-      return json({ ok: true, seller: {
+      return okSeller(env, {
         name: match.name || email.split("@")[0],
         email,
         ref: (match.ref || email.split("@")[0]).toString().slice(0, 40),
-      } });
+      });
     }
 
     // 2) Shared TEAM invite code — any collaborator self-registers; ref derived from their email.
@@ -143,11 +153,11 @@ export async function onRequestPost(context) {
         return json({ ok: false, error: "personal_code_required",
           message: "Este email já tem um código pessoal. Entre com ele (não o código do time) pra proteger suas comissões." }, 403);
       }
-      return json({ ok: true, seller: {
+      return okSeller(env, {
         name: typedName || email.split("@")[0],
         email,
         ref: slug(email.split("@")[0]) || "team",
-      } });
+      });
     }
 
     return json({ ok: false, error: "invalid" }, 401);

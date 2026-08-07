@@ -3,11 +3,15 @@
 // no invented metrics — the founder's word is the proof until clients speak. Sits right
 // above the live "Let Gui call you" demo: read why it exists, then watch it work.
 
+import { useState, useEffect } from "react";
 import { useLang } from "../i18n.jsx";
 import { Reveal } from "../lib/ui.jsx";
 
-// Real client quotes go here — {name, business, text:{en,pt,es,hi}} — DO NOT fabricate
-const QUOTES = [];
+// PROVA SOCIAL REAL — os depoimentos vêm do banco, e SÓ os que o Luis aprovou
+// (/api/testimonial → testimonials_public, que filtra approved=true). Antes isto era
+// um array vazio no código: honesto, mas sem jeito de nunca encher. Agora o cliente
+// escreve no cockpit, o Luis aprova, e aparece aqui — sem nada fabricado no meio.
+// Falha de rede → lista vazia → a seção some. Nunca inventa depoimento.
 
 const COPY = {
   en: {
@@ -39,6 +43,17 @@ const COPY = {
 export default function FounderProof() {
   const { lang } = useLang();
   const C = COPY[lang] || COPY.en;
+  // Depoimentos APROVADOS, no idioma da página. Sem `lang` na chamada a landing
+  // mostraria uma citação em português pra um visitante em inglês.
+  const [quotes, setQuotes] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/testimonial?lang=${encodeURIComponent(lang || "en")}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => { if (alive && Array.isArray(d)) setQuotes(d); })
+      .catch(() => { /* rede ruim → seção some, nunca inventa */ });
+    return () => { alive = false; };
+  }, [lang]);
 
   return (
     <section className="relative overflow-hidden px-5 py-16">
@@ -61,19 +76,19 @@ export default function FounderProof() {
         </div>
       </Reveal>
 
-      {/* Testimonials — rendered only once real quotes exist (never fake social proof) */}
-      {QUOTES.length > 0 && (
+      {/* Depoimentos — só renderiza quando existe quote REAL e aprovada */}
+      {quotes.length > 0 && (
         <div className="mx-auto mt-12 max-w-5xl">
           <Reveal className="mb-7 text-center">
             <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold">{C.quotesHead}</div>
           </Reveal>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {QUOTES.map((q, i) => (
-              <Reveal key={q.name} delay={i * 0.08}>
+            {quotes.map((q, i) => (
+              <Reveal key={`${q.author}-${i}`} delay={i * 0.08}>
                 <figure className="h-full rounded-xl3 border border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-g-green/40">
-                  <blockquote className="text-[14px] leading-relaxed text-g-word">“{(q.text && (q.text[lang] || q.text.en)) || ""}”</blockquote>
+                  <blockquote className="text-[14px] leading-relaxed text-g-word">“{q.quote}”</blockquote>
                   <figcaption className="mt-4 text-[12px] text-g-muted">
-                    <span className="font-bold text-g-light">{q.name}</span> · {q.business}
+                    <span className="font-bold text-g-light">{q.author}</span>{q.role ? ` · ${q.role}` : ""}
                   </figcaption>
                 </figure>
               </Reveal>

@@ -144,7 +144,18 @@ export async function onRequestPost(context) {
       if (!s) return json({ error: "seller not found in roster" }, 404);
       if (s.active === false) return json({ error: "seller is disabled — re-enable before inviting" }, 409);
       const lang = (b.lang || "pt").toString() === "en" ? "en" : "pt";
-      const tpl = sellerWelcomeEmail({ name: s.name || email.split("@")[0], email, code: s.personal_code || "", ref: s.ref || "", lang });
+      // território vem do roster (sellers.territory) — o vendedor vê a área que é dele, com nome próprio
+      // Pipeline REAL do vendedor — número que só existe se houver prospect de verdade.
+      // "Já tem X negócios te esperando" só motiva se for verdade; se for 0, some da mensagem.
+      let pipe = 0;
+      try {
+        const pr = await rpc("seller_prospect_count", { p_secret: ING, p_seller_email: email });
+        if (pr.ok) pipe = Number(await pr.json().catch(() => 0)) || 0;
+      } catch { /* sem contagem → o e-mail sai sem a linha, nunca com número inventado */ }
+      const tpl = sellerWelcomeEmail({
+        name: s.name || email.split("@")[0], email, code: s.personal_code || "",
+        ref: s.ref || "", territory: s.territory || "",
+        commissionPct: Number(s.commission_pct) || 0, prospects: pipe, lang });
       const mr = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },

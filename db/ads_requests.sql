@@ -15,7 +15,7 @@
 --   cancelled  → cancelada
 --
 -- SEGURANÇA: RLS ON sem policy anon → só as funções SECURITY DEFINER tocam a tabela.
--- Gate = mesmo literal INGEST do resto do pipeline ('glo_ing_7f3da9c2b4e8', ver
+-- Gate = mesmo literal INGEST do resto do pipeline ('glo_ing_c7f2a9e4b8d16350', ver
 -- db/collections_optin.sql / db/marketplace_leads.sql). Tudo escopado por client_email:
 -- nenhum tenant lê/escreve o pedido de outro. O set_status admin casa (email, id) juntos.
 -- ============================================================================
@@ -40,7 +40,7 @@ alter table public.ads_requests enable row level security;
 
 -- ── GATE helper (mesmo literal do pipeline de ingest) ────────────────────────
 create or replace function public._ads_ok(p_secret text) returns boolean
-language sql immutable as $$ select p_secret = 'glo_ing_7f3da9c2b4e8' $$;
+language sql immutable as $$ select p_secret = 'glo_ing_c7f2a9e4b8d16350' $$;
 
 -- normaliza status para um dos estados válidos (default seguro = 'requested')
 create or replace function public._ads_norm_status(p_status text) returns text

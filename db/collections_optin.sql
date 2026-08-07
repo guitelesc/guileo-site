@@ -11,7 +11,7 @@
 create or replace function public.collections_set_auto(p_secret text, p_email text, p_on boolean)
 returns boolean language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   insert into client_integrations (client_email, provider, tokens)
   values (lower(trim(p_email)), 'collections_auto', jsonb_build_object('on', case when p_on then '1' else '0' end))
   on conflict (client_email, provider) do update set tokens = excluded.tokens, updated_at = now();
@@ -22,7 +22,7 @@ end $$;
 create or replace function public.collections_auto_enabled(p_secret text, p_email text)
 returns boolean language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return coalesce((
     select tokens->>'on' = '1'
     from client_integrations
@@ -35,7 +35,7 @@ end $$;
 create or replace function public.collections_auto_list(p_secret text)
 returns table(client_email text) language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return query
     select ci.client_email
     from client_integrations ci

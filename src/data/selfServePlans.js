@@ -46,6 +46,6 @@ export const SELF_SERVE_PLANS = [
 // { guileo:"topup", credits }) then paste the links minted by GET /api/setup-selfserve?token=… here.
 // Empty url → the Billing card shows the option grayed out ("available soon") — nothing fake ships.
 export const TOPUPS = [
-  { id: "topup500", credits: 500, price: 49, url: "" },
-  { id: "topup1500", credits: 1500, price: 119, url: "" },
+  { id: "topup500", credits: 500, price: 49, url: "https://buy.stripe.com/fZu6oH2iT4QIcqjgM53Nm0h" },
+  { id: "topup1500", credits: 1500, price: 119, url: "https://buy.stripe.com/4gMdR9cXx4QIfCv67r3Nm0i" },
 ];

@@ -19,6 +19,7 @@ export default function OnboardApprovals({ token }) {
   const [copied, setCopied] = useState("");
   const [numIn, setNumIn] = useState({});      // draft id -> number typed
   const [bindingId, setBindingId] = useState(null);
+  const [provId, setProvId] = useState(null);
   const [bindMsg, setBindMsg] = useState({});  // draft id -> bind result message
   const [twNums, setTwNums] = useState(null);  // Twilio numbers on the account
   const [loadingNums, setLoadingNums] = useState(false);
@@ -85,6 +86,34 @@ export default function OnboardApprovals({ token }) {
       setBindMsg((m) => ({ ...m, [id]: d.ok ? `✅ Número ${d.number} mapeado — o agente já atende nele.` : (d.error || d.note || "Não consegui mapear.") }));
     } catch { setBindMsg((m) => ({ ...m, [id]: "Erro de rede." })); }
     setBindingId(null);
+  };
+
+  // ROTA-PROVISION — conseguir um número quando NÃO tem nenhum livre óbvio.
+  // Dois passos de propósito: o 1º clique só SIMULA (o back devolve dry_run) e o 2º confirma.
+  // É a única tela do /admin que pode gastar dinheiro, então o valor exato aparece ANTES —
+  // nunca "clicou e comprou". Se o back devolve reuso, o custo é zero e o texto diz isso.
+  const provision = async (id, email) => {
+    setProvId(id);
+    try {
+      const ask = (body) => fetch("/api/provision-number", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, email, ...body }) }).then((r) => r.json().catch(() => ({})));
+
+      const sim = await ask({});
+      if (sim.already) { setNumIn((m) => ({ ...m, [id]: sim.number })); setBindMsg((m) => ({ ...m, [id]: `✅ Este cliente já tem o número ${sim.number} — nada comprado.` })); return; }
+      if (!sim.ok) { setBindMsg((m) => ({ ...m, [id]: `⛔ ${sim.note || sim.blocked || sim.error || "não consegui"}` })); return; }
+
+      const reuse = sim.source === "reuse";
+      const alvo = reuse ? sim.would_reuse : sim.would_buy;
+      const pergunta = reuse
+        ? `Reservar o número ${alvo} pra ${email}?\n\nCUSTO: $0 — já é da conta, está ocioso.`
+        : `COMPRAR o número ${alvo} pra ${email}?\n\n💵 CUSTO: $${Number(sim.cost_usd).toFixed(2)} agora + mensalidade da Twilio.\nSaldo: $${Number(sim.balance).toFixed(2)} · comprados hoje: ${sim.bought_today ?? "?"}/${sim.max_per_day}\n\nIsso gasta dinheiro de verdade.`;
+      if (!window.confirm(pergunta)) { setBindMsg((m) => ({ ...m, [id]: "Cancelado — nada foi feito." })); return; }
+
+      const done = await ask({ confirm: true });
+      if (!done.ok) { setBindMsg((m) => ({ ...m, [id]: `⛔ ${done.note || done.blocked || done.error || "não consegui"}` })); return; }
+      setNumIn((m) => ({ ...m, [id]: done.number }));
+      setBindMsg((m) => ({ ...m, [id]: `${done.source === "reuse" ? "✅ Reservado" : "💵 Comprado"} ${done.number} (custo $${Number(done.cost_usd || 0).toFixed(2)})${done.recorded === false ? " ⚠️ mas NÃO registrado — confira o console da Twilio" : ""}. Agora clique “Mapear número”.` }));
+    } catch { setBindMsg((m) => ({ ...m, [id]: "Erro de rede — nada foi comprado." })); }
+    finally { setProvId(null); }
   };
 
   // list the Twilio numbers on the account so you can pick the spare one (ROTA-NUMERO helper)
@@ -169,6 +198,7 @@ export default function OnboardApprovals({ token }) {
                       <input value={numIn[d.id] || ""} onChange={(e) => setNumIn((m) => ({ ...m, [d.id]: e.target.value }))} placeholder="+13055551234" className="rounded-lg border border-white/15 bg-white/[0.05] px-3 py-1.5 text-[13px] text-g-word placeholder:text-g-muted/50 outline-none focus:border-g-green/50" />
                       <button type="button" disabled={bindingId === d.id} onClick={() => bindNumber(d.id, d.client_email)} className="rounded-full bg-gradient-to-r from-g-green to-g-dark px-3.5 py-1.5 text-[11.5px] font-black text-white disabled:opacity-60">{bindingId === d.id ? "mapeando…" : "🔢 Mapear número"}</button>
                       <button type="button" disabled={loadingNums} onClick={loadNums} className="rounded-full border border-white/15 px-3 py-1.5 text-[11.5px] font-bold text-g-muted hover:text-g-word disabled:opacity-60">{loadingNums ? "buscando…" : "📋 Meus números Twilio"}</button>
+                      <button type="button" disabled={provId === d.id} onClick={() => provision(d.id, d.client_email)} title="Reusa um número ocioso da conta; só compra se não houver nenhum — e sempre pergunta antes" className="rounded-full border border-g-gold/40 bg-g-gold/10 px-3 py-1.5 text-[11.5px] font-bold text-g-gold hover:bg-g-gold/20 disabled:opacity-60">{provId === d.id ? "procurando…" : "🎯 Conseguir número"}</button>
                     </div>
                     {Array.isArray(twNums) && (
                       twNums.length === 0

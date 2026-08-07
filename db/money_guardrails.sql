@@ -24,7 +24,7 @@ declare
   v_since timestamptz := now() - make_interval(days => greatest(1, coalesce(p_days, 30)));
   v_out json;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select json_build_object(
     'window_days', greatest(1, coalesce(p_days, 30)),
     'since', v_since,
@@ -58,4 +58,4 @@ end $$;
 grant execute on function public.money_reconcile(text, int) to anon;
 
 -- ✅ Done. Reconcile any window with:
---   select public.money_reconcile('glo_ing_7f3da9c2b4e8', 30);
+--   select public.money_reconcile('glo_ing_c7f2a9e4b8d16350', 30);

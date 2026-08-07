@@ -36,7 +36,7 @@ returns text
 language plpgsql security definer set search_path = public as $$
 declare v_token text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then return null; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then return null; end if;
   v_token := replace(gen_random_uuid()::text,'-','') || replace(gen_random_uuid()::text,'-','');
   insert into public.demo_saved(demo_token, brand)
   values (v_token, coalesce(p_brand, '{}'::jsonb));
@@ -50,7 +50,7 @@ returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare v_brand jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then return null; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then return null; end if;
   select brand into v_brand from public.demo_saved where demo_token = p_token;
   return v_brand;  -- null when no row matched
 exception when others then return null;
@@ -61,7 +61,7 @@ create or replace function public.demo_event(p_secret text, p_token text, p_kind
 returns boolean
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then return false; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then return false; end if;
   -- funnel kinds: view → lead → checkout_start (clicked buy) → checkout_done (Stripe paid).
   if coalesce(p_kind,'') not in ('view','lead','checkout_start','checkout_done') then return false; end if;
   insert into public.demo_events(demo_token, kind, product, contact)
@@ -77,7 +77,7 @@ returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare v jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then return null; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then return null; end if;
   select jsonb_build_object(
     'totals', coalesce((
       select jsonb_object_agg(kind, c) from (

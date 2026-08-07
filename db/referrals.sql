@@ -78,7 +78,7 @@ set search_path = public
 as $$
 declare v_referred text; v_code text; v_referrer text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   v_referred := lower(trim(coalesce(p_referred_email, '')));
   v_code     := trim(coalesce(p_ref_code, ''));
   if v_referred = '' or v_referred !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' or v_code = '' then
@@ -108,7 +108,7 @@ set search_path = public
 as $$
 declare v_referred text; v_reward int; v_referrer text; v_code text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   v_referred := lower(trim(coalesce(p_referred_email, '')));
   v_reward   := greatest(0, coalesce(p_reward_credits, 0));
   if v_referred = '' then return jsonb_build_object('converted', false); end if;

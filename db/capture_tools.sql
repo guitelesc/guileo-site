@@ -9,10 +9,10 @@
 --      connector; inert until env.GOOGLE_BUSINESS_* + tenant connect.
 --
 -- SECURITY: every RPC is SECURITY DEFINER, INGEST-gated by the same literal the ingest pipeline uses
--- ('glo_ing_7f3da9c2b4e8'), granted to anon, and CLIENT-SCOPED by p_email — no tenant can read/write
+-- ('glo_ing_c7f2a9e4b8d16350'), granted to anon, and CLIENT-SCOPED by p_email — no tenant can read/write
 -- another tenant's forms, submissions or photo-quotes. Tables have RLS ON so only the definer funcs
 -- reach them. crm_upsert_contact (scheduling-gated) is called from inside the definer with the sched
--- literal 'gss_7Kx2mQ9vR4tZ8nL' (best-effort: missing func just skips the CRM lead, never errors).
+-- literal 'gss_Kp9mX4vR2tZ7nQ5wL8bc' (best-effort: missing func just skips the CRM lead, never errors).
 -- ============================================================================
 
 -- ── TABLES ──────────────────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ alter table photo_quotes       enable row level security;
 
 -- ── helper: uniform INGEST gate ──────────────────────────────────────────────
 create or replace function public._capture_ok(p_secret text) returns boolean
-language sql immutable as $$ select p_secret is not distinct from 'glo_ing_7f3da9c2b4e8' $$;
+language sql immutable as $$ select p_secret is not distinct from 'glo_ing_c7f2a9e4b8d16350' $$;
 
 -- ── INTAKE FORMS: upsert (create/edit) — tenant-scoped ────────────────────────
 create or replace function public.intake_form_upsert(
@@ -127,7 +127,7 @@ begin
   -- best-effort → capture becomes a CRM lead (scheduling-gated func; skip silently if absent)
   begin
     perform public.crm_upsert_contact(
-      'gss_7Kx2mQ9vR4tZ8nL', v_tenant, v_phone, v_email, v_name, 'intake-form', 0
+      'gss_Kp9mX4vR2tZ7nQ5wL8bc', v_tenant, v_phone, v_email, v_name, 'intake-form', 0
     );
   exception when undefined_function or others then null; end;
 
@@ -173,7 +173,7 @@ begin
 
   begin
     perform public.crm_upsert_contact(
-      'gss_7Kx2mQ9vR4tZ8nL', v_tenant,
+      'gss_Kp9mX4vR2tZ7nQ5wL8bc', v_tenant,
       case when coalesce(p_contact,'') ~ '[0-9]' then p_contact else null end,   -- phone-ish
       case when position('@' in coalesce(p_contact,'')) > 0 then p_contact else null end,  -- email-ish
       nullif(trim(coalesce(p_name,'')),''), 'photo-quote', 0

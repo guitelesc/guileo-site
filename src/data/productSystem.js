@@ -61,7 +61,7 @@ export const PRODUCTS = [
   },
   {
     id: "reactivation", icon: "♻️", accent: "#FF4FA3", category: { en: "Growth", pt: "Crescimento", es: "Crecimiento", hi: "ग्रोथ" },
-    name: { en: "Reactivation & Churn-save", pt: "Reativação & Anti-churn", es: "Reactivación & Anti-churn", hi: "रीएक्टिवेशन" },
+    name: { en: "Reactivation & Churn-save", pt: "Reativação e Anti-churn", es: "Reactivación & Anti-churn", hi: "रीएक्टिवेशन" },
     result: {
       en: "Gui spots loyal customers about to vanish — by their own rhythm — and brings them back before you lose them.",
       pt: "A Gui vê o cliente fiel prestes a sumir — pelo ritmo dele — e traz de volta antes de você perder.",
@@ -99,12 +99,12 @@ export const PRODUCTS = [
     id: "multilingual", icon: "🌎", accent: "#33C6D6", category: { en: "Reach", pt: "Alcance", es: "Alcance", hi: "पहुँच" },
     name: { en: "Multilingual Voice", pt: "Voz Multilíngue", es: "Voz Multilingüe", hi: "बहुभाषी वॉइस" },
     result: {
-      en: "Gui answers each caller in their own language (20+) — your whole neighborhood becomes your market.",
-      pt: "A Gui atende cada cliente no idioma dele (20+) — o bairro inteiro vira seu mercado.",
-      es: "Gui atiende a cada cliente en su idioma (20+) — todo tu vecindario es tu mercado.",
-      hi: "गुई हर कॉलर को उसकी भाषा (20+) में जवाब देती है — पूरा मोहल्ला आपका बाज़ार।",
+      en: "Gui answers each caller in their own language (16) — your whole neighborhood becomes your market.",
+      pt: "A Gui atende cada cliente no idioma dele (16) — o bairro inteiro vira seu mercado.",
+      es: "Gui atiende a cada cliente en su idioma (16) — todo tu vecindario es tu mercado.",
+      hi: "गुई हर कॉलर को उसकी भाषा (16) में जवाब देती है — पूरा मोहल्ला आपका बाज़ार।",
     },
-    resultMetric: { value: "20+", unit: { en: "languages, one warmth", pt: "idiomas, um só carinho", es: "idiomas, una calidez", hi: "भाषाएँ" } },
+    resultMetric: { value: "16", unit: { en: "languages, one warmth", pt: "idiomas, um só carinho", es: "idiomas, una calidez", hi: "भाषाएँ" } },
     resultIsEstimate: false, credits: "call", activationKey: null, plans: ["starter", "growth", "scale"],
   },
   {
@@ -121,7 +121,7 @@ export const PRODUCTS = [
   },
   {
     id: "close_collect", icon: "💳", accent: "#5EC26A", category: { en: "Money", pt: "Dinheiro", es: "Dinero", hi: "पैसा" },
-    name: { en: "Close & Collect", pt: "Fecha & Cobra", es: "Cierra & Cobra", hi: "क्लोज़ & कलेक्ट" },
+    name: { en: "Close & Collect", pt: "Fecha e Cobra", es: "Cierra & Cobra", hi: "क्लोज़ & कलेक्ट" },
     result: {
       en: "Gui quotes the exact price, closes the sale, and collects on the call — a pay-link by SMS or a deposit to book.",
       pt: "A Gui passa o preço exato, fecha a venda e cobra na ligação — link de pagamento por SMS ou depósito pra agendar.",

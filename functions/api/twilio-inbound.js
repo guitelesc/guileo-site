@@ -10,6 +10,7 @@
 import { json, safeEq } from "./../lib/guard.js";
 import { svcRpc } from "./../lib/sb.js";
 import { webchatSentiment } from "./../lib/cxEngine.js";
+import { guiReply } from "./../lib/guiBrain.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -29,11 +30,7 @@ async function validTwilioSig(url, params, sig, token) {
 
 async function ingest(env, email, channel, summary, payload) {
   try {
-    await fetch(`${SB_URL}/rest/v1/rpc/ingest_client_event`, {
-      method: "POST",
-      headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ p_secret: env.INGEST_SECRET || "", p_email: email, p_type: "message", p_channel: channel, p_summary: summary.slice(0, 300), p_amount: 0, p_payload: payload || {} }),
-    });
+    await svcRpc(env, "ingest_client_event", { p_secret: env.INGEST_SECRET || "", p_email: email, p_type: "message", p_channel: channel, p_summary: summary.slice(0, 300), p_amount: 0, p_payload: payload || {} });
   } catch { /* never block the reply */ }
 }
 
@@ -43,10 +40,7 @@ async function ingest(env, email, channel, summary, payload) {
 async function ingestInboundMessage(env, email, twilioChannel, fromNameOrNumber, messageBody, from) {
   try {
     const p_channel = twilioChannel === "whatsapp" ? "WhatsApp" : "SMS";
-    await fetch(`${SB_URL}/rest/v1/rpc/ingest_client_event`, {
-      method: "POST",
-      headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
+    await svcRpc(env, "ingest_client_event", {
         p_secret: env.INGEST_SECRET || "",
         p_email: email,
         p_type: "message",
@@ -54,7 +48,6 @@ async function ingestInboundMessage(env, email, twilioChannel, fromNameOrNumber,
         p_summary: `${fromNameOrNumber}: ${messageBody}`.slice(0, 300),
         p_amount: 0,
         p_payload: { from, channel: p_channel },
-      }),
     });
   } catch { /* additive — never break the Twilio response */ }
 }
@@ -65,11 +58,7 @@ async function ingestInboundMessage(env, email, twilioChannel, fromNameOrNumber,
 async function crmUpsert(env, email, phone, name, source) {
   try {
     if (!env.SCHED_SECRET || !phone) return;
-    await fetch(`${SB_URL}/rest/v1/rpc/crm_upsert_contact`, {
-      method: "POST",
-      headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ p_secret: env.SCHED_SECRET, p_email: email, p_phone: phone, p_contact_email: "", p_name: name || "", p_source: source || "sms", p_amount_cents: 0 }),
-    });
+    await svcRpc(env, "crm_upsert_contact", { p_secret: env.SCHED_SECRET, p_email: email, p_phone: phone, p_contact_email: "", p_name: name || "", p_source: source || "sms", p_amount_cents: 0 });
   } catch { /* CRM not live yet → never break the Twilio response */ }
 }
 
@@ -86,38 +75,6 @@ async function getProfile(env, email) {
   return null;
 }
 
-// AI sales reply — Gui's text brain (Claude). Falls back to a warm handoff without the key.
-// With a client profile, Gui speaks FOR that business instead of selling Guileo.
-async function aiReply(env, userMsg, channel, profile) {
-  if (!env.ANTHROPIC_API_KEY) {
-    return "Hey! This is Gui from Guileo 🌱 A real human from our team will reply to you within the hour. Meanwhile: we build AI systems that answer calls, book clients and run your marketing — guileoai.com";
-  }
-  try {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-fable-5",
-        max_tokens: 300,
-        system: (() => {
-          if (profile?.business_name) {
-            let s = `You are Gui, the AI ${channel} assistant representing ${profile.business_name}. Reply in the user's language, SHORT (2-4 sentences max, this is ${channel}), warm and helpful: answer questions, help the customer book or get what they need, and capture their request clearly. Never invent prices, services or availability — when unsure, say the team will confirm shortly.`;
-            if (profile.stripe_link) s += ` When the customer wants to pay or asks for the price link, share exactly this payment link: ${profile.stripe_link}`;
-            return s;
-          }
-          return `You are Gui, Guileo's AI ${channel} agent and best SALESPERSON (guileoai.com). Guileo builds AI systems that run & grow local businesses: GUILEO BRAIN (AI agents answering calls/messages, booking, quoting 24/7 — owns PERFORMANCE), GUILEO.AD (ads/content/funnels run daily — owns SALES), GUILEO GROW (every lead followed up, monitored 24/7 — the GROWTH result), plus GUILEO BUILD (sites/apps/software). Live in under 7 days, 30-day money-back, tailored pricing (never invent a price — a specialist quotes same day). Results: +$15K/mo avg revenue, 3.2x ROI in 90 days, -40% ad waste. Reply in the user's language, SHORT (2-4 sentences max, this is ${channel}), warm, and always move toward the close: ask for their business type, then offer a tailored quote or a demo call. Never invent features or prices.`;
-        })(),
-        messages: [{ role: "user", content: userMsg.slice(0, 1200) }],
-      }),
-    });
-    if (!r.ok) throw new Error("api");
-    const d = await r.json();
-    return (d.content?.[0]?.text || "").slice(0, 1500) || "Got it! A human from our team will follow up shortly. 🌱";
-  } catch {
-    return "Got your message! A real human from Guileo will reply within the hour. 🌱";
-  }
-}
-
 // ── CALLER MEMORY (inbound voice) ─────────────────────────────────────────────
 // Client numbers are imported straight into ElevenLabs convai (provision.js → elevenBindNumber), so an
 // inbound CALL is answered by ElevenLabs directly — no Guileo TwiML runs before pickup. The one real
@@ -126,7 +83,10 @@ async function aiReply(env, userMsg, channel, profile) {
 // ElevenLabs POSTs JSON { caller_id, agent_id, called_number, call_sid } with our x-guileo-secret header;
 // we answer { type, dynamic_variables } within ~1s so pickup is never delayed.
 async function handleElevenInitiation(env, body) {
-  const empty = { caller_name: "", caller_last: "", caller_note: "" };
+  // caller_phone É O BINA. Sem ele a agente pedia o telefone de quem estava ligando DAQUELE
+  // telefone — o Luis teve que ditar o número duas vezes na primeira ligação real (2026-08-07).
+  // Perguntar o que o sistema já sabe queima o bem mais escasso da ligação: o tempo dele.
+  const empty = { caller_name: "", caller_last: "", caller_note: "", caller_phone: "" };
   const reply = (vars) => new Response(JSON.stringify({ type: "conversation_initiation_client_data", dynamic_variables: vars }), {
     status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
   try {
@@ -140,7 +100,7 @@ async function handleElevenInitiation(env, body) {
         body: JSON.stringify({ p_secret: env.INGEST_SECRET, p_number: called }),
       });
       const email = lr.ok ? await lr.json().catch(() => null) : null;
-      if (!email) return empty;
+      if (!email) return { ...empty, caller_phone: caller };
       // Prefer the RICHER crm_caller_context (adds last booked service) so the agent can greet with
       // the actual service; fall back to crm_caller_lookup when it isn't pasted yet. Both INGEST-gated.
       try {
@@ -155,7 +115,7 @@ async function handleElevenInitiation(env, body) {
               if (j.visits_count > 1) last += ` — visit #${j.visits_count}`;
             } catch { /* keep last empty */ }
             const note = j.last_service ? ` · last: ${String(j.last_service).slice(0, 120)}` : j.summary ? ` · last: ${String(j.summary).slice(0, 120)}` : "";
-            return { caller_name: (j.name || "").toString().slice(0, 80), caller_last: last, caller_note: note };
+            return { caller_name: (j.name || "").toString().slice(0, 80), caller_last: last, caller_note: note, caller_phone: caller };
           }
         }
       } catch { /* fall through to crm_caller_lookup */ }
@@ -163,10 +123,10 @@ async function handleElevenInitiation(env, body) {
         method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
         body: JSON.stringify({ p_secret: env.INGEST_SECRET, p_email: email, p_phone: caller }),
       });
-      if (!cr.ok) return empty; // RPC not pasted yet (db/crm_caller_lookup.sql) → graceful new-caller
+      if (!cr.ok) return { ...empty, caller_phone: caller }; // RPC not pasted yet (db/crm_caller_lookup.sql) → graceful new-caller
       const rows = await cr.json().catch(() => []);
       const c = Array.isArray(rows) ? rows[0] : rows;
-      if (!c || !c.full_name) return empty;
+      if (!c || !c.full_name) return { ...empty, caller_phone: caller };
       let last = "";
       try {
         const days = Math.floor((Date.now() - new Date(c.last_seen_at).getTime()) / 86400000);
@@ -177,10 +137,13 @@ async function handleElevenInitiation(env, body) {
         caller_name: (c.full_name || "").toString().slice(0, 80),
         caller_last: last,
         caller_note: c.last_summary ? ` · last: ${String(c.last_summary).slice(0, 120)}` : "",
+        caller_phone: caller,
       };
     })();
     // TIME-BOUND: never make ElevenLabs wait on the DB — 800ms or the caller is just "new".
-    return reply(await Promise.race([lookup, new Promise((res) => setTimeout(() => res(empty), 800))]));
+    // Mesmo no timeout o BINA vai: ele veio no próprio evento da ligação, não do banco. Perder o
+    // número porque o banco demorou seria perder o dado mais certo que temos.
+    return reply(await Promise.race([lookup, new Promise((res) => setTimeout(() => res({ ...empty, caller_phone: caller }), 800))]));
   } catch { return reply(empty); }
 }
 
@@ -307,7 +270,23 @@ export async function onRequestPost(context) {
     // WhatsApp provides it; a bare number is never stored as a name). Best-effort, never blocks.
     await crmUpsert(env, email, fromPhone, (params.get("ProfileName") || "").trim(), channel === "whatsapp" ? "whatsapp" : "sms");
 
-    const reply = await aiReply(env, body, channel, profile);
+    // UNIFIED TEXT BRAIN — the SAME cérebro webchat/Meta use (guiBrain.guiReply). The tenant is
+    // pinned SERVER-SIDE by the number→email mapping resolved above (never the untrusted message
+    // body), so Gui answers in THIS business's own voice, quotes its real biz_services prices, and
+    // closes — with the constitution guard + validateOutput floor (inside guiReply) making a risky
+    // refund/discount promise or off-list price impossible to send as the business. guiReply never
+    // throws and always returns a warm `reply` (honest ack when the tenant/key is missing).
+    const gr = await guiReply(env, {
+      email,
+      channel,
+      from: from.replace("whatsapp:", ""),
+      text: body,
+      history: [],
+      lang: (profile?.lang || "").toString().toLowerCase().slice(0, 2),
+    });
+    const reply = (gr && gr.reply) ? gr.reply
+      : (isPT ? "Recebi sua mensagem! A equipe te responde em instantes. 🌱"
+              : "Got your message! The team will reply shortly. 🌱");
     await ingest(env, email, channel, `🤖 Gui replied: ${reply.slice(0, 140)}`, { to: from });
     return twiml(reply);
   } catch {

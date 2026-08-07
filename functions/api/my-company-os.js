@@ -4,6 +4,7 @@
 // e devolve null num mismatch → a chave de um cliente NUNCA lê o dado de outro. Sem fallback OWNER.
 //   POST { token|key, email } -> { ok, departments:[{key,label,icon,accent,kpi_value,kpi_label,ready}] }
 import { json } from "../lib/guard.js";
+import { svcRpc } from "../lib/sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -23,8 +24,13 @@ export async function onRequestPost(context) {
     const gdj = await gd.json().catch(() => null);
     if (!(gdj && typeof gdj === "object" && Array.isArray(gdj.events))) return json({ error: "unauthorized" }, 401);
 
-    const r = await rpc("my_company_os", { p_secret: env.INGEST_SECRET || "", p_email: email });
-    if (!r.ok) return json({ ok: true, ready: false, departments: [] });
+    // LOTE 2 do fechamento do anon: esta leitura passa pela service_role (só o servidor a tem),
+    // então `my_company_os` pode ser revogada do anon. O portão de tenant acima continua no anon
+    // de propósito — `get_client_data` é o par email↔chave que o cockpit usa, e sai num lote depois.
+    const r = await svcRpc(env, "my_company_os", { p_secret: env.INGEST_SECRET || "", p_email: email });
+    // `ready:false` aqui é degradação honesta (o painel mostra vazio, não um erro falso), mas
+    // silencia falha: se ISSO começar a vir vazio pra todo mundo, suspeite da chave, não do dado.
+    if (!r || !r.ok) return json({ ok: true, ready: false, departments: [], note: `leitura indisponível (${r && r.status})` });
     const rows = await r.json().catch(() => []);
     if (rows && rows.error) return json({ ok: true, ready: false, departments: [] });
     return json({ ok: true, departments: Array.isArray(rows) ? rows : [] });

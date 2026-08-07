@@ -26,7 +26,7 @@ const NOTIFS = [
   { app: "TikTok", t: "3m", line: { en: "Posted a clip · 12.4k views overnight", pt: "Postou um clipe · 12,4k views da noite pro dia", es: "Publicó un clip · 12,4k vistas de la noche a la mañana", hi: "क्लिप पोस्ट की · रातभर में 12.4k व्यू" } },
   { app: "LinkedIn", t: "6m", line: { en: "Published an article · 18 new leads", pt: "Publicou um artigo · 18 novos leads", es: "Publicó un artículo · 18 nuevos leads", hi: "आर्टिकल पब्लिश किया · 18 नए लीड" } },
   { app: "Telegram", t: "9m", line: { en: "Answered 30 group questions instantly", pt: "Respondeu 30 perguntas no grupo na hora", es: "Respondió 30 preguntas del grupo al instante", hi: "ग्रुप के 30 सवालों के तुरंत जवाब दिए" } },
-  { app: "Facebook", t: "12m", line: { en: "Replied to 24 comments & messages", pt: "Respondeu 24 comentários & mensagens", es: "Respondió 24 comentarios y mensajes", hi: "24 कमेंट और मैसेज के जवाब दिए" } },
+  { app: "Facebook", t: "12m", line: { en: "Replied to 24 comments & messages", pt: "Respondeu 24 comentários e mensagens", es: "Respondió 24 comentarios y mensajes", hi: "24 कमेंट और मैसेज के जवाब दिए" } },
   { app: "Instagram", t: "15m", line: { en: "Scheduled 5 reels for the week", pt: "Agendou 5 reels para a semana", es: "Programó 5 reels para la semana", hi: "हफ़्ते के लिए 5 रील शेड्यूल कीं" } },
   { app: "WhatsApp", t: "20m", line: { en: "Closed 3 sales right in the chat", pt: "Fechou 3 vendas direto no chat", es: "Cerró 3 ventas directo en el chat", hi: "चैट में ही 3 बिक्री पूरी कीं" } },
   { app: "Google", t: "26m", line: { en: "Replied to 7 reviews · kept 4.9★", pt: "Respondeu 7 avaliações · manteve 4,9★", es: "Respondió 7 reseñas · mantuvo 4,9★", hi: "7 समीक्षाओं के जवाब दिए · 4.9★ बनाए रखा" } },

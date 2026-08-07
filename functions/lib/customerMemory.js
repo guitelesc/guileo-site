@@ -26,16 +26,17 @@
 //     reconhece. Contato sem telefone E sem email ⇒ { known:false } (nada a resolver).
 // ═════════════════════════════════════════════════════════════════════════════
 
+import { sbKey } from "./sb.js";
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 // Same anon fallback guiBrain.js / widget-chat.js / stripe-webhook.js use (env rotates it).
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
 // Same literals the pipelines gate on (Supabase forbids a GUC → hardcoded, env overrides).
-const INGEST_FALLBACK = "glo_ing_7f3da9c2b4e8"; // read gate (customer_memory_get / crm_caller_context)
-const SCHED_FALLBACK  = "gss_7Kx2mQ9vR4tZ8nL";  // write gate (crm_upsert_contact / crm_log_event)
+const INGEST_FALLBACK = ""; // read gate (customer_memory_get / crm_caller_context)
+const SCHED_FALLBACK  = "";  // write gate (crm_upsert_contact / crm_log_event)
 
 const rpc = (env, name, body) => fetch(`${SB}/rest/v1/rpc/${name}`, {
   method: "POST",
-  headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+  headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" },
   body: JSON.stringify(body),
 });
 

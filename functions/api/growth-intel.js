@@ -6,14 +6,20 @@
 //   POST { token, email, action:"forecast" }  -> { ok, ready, forecast:{...} }
 //   POST { token, email, action:"abandoned", older_min? } -> { ok, ready, count, intents:[...] }
 //   POST { token, email, action:"recover", intent_id, name?, contact? } -> { ok, claimed }
+//   POST { token, email, action:"money_proof" } -> { ok, ready, month, since, proof:{...}, real:{...} }
 // Reads via growth_intel.sql RPCs (INGEST-gated server-side). Same proven per-tenant
 // gate call-logs/crm/noshow-radar use: get_client_data binds email↔connection-key and
 // returns null on a mismatch, so one tenant's key can NEVER read another tenant's data.
 // No OWNER_EMAIL fallback. Graceful { ready:false } note until db/growth_intel.sql is pasted.
 import { json } from "../lib/guard.js";
 import { reengageEmail } from "../lib/emailTemplates.js";
+import { sbKey } from "../lib/sb.js";
 
 const isEmailAddr = (s) => /.+@.+\..+/.test((s || "").toString());
+// After-hours heuristic on a captured event timestamp: a call landing before 08:00, at/after
+// 18:00, or on a weekend (UTC). This is an APPROXIMATION (we don't hold the tenant's timezone/
+// business-hours) → the figures it feeds are always labeled as an estimate, never as cash.
+const isAfterHours = (iso) => { try { const d = new Date(iso); const h = d.getUTCHours(); const wd = d.getUTCDay(); return wd === 0 || wd === 6 || h < 8 || h >= 18; } catch { return false; } };
 async function sendReengageEmail(env, to, name) {
   if (!env.RESEND_API_KEY || !isEmailAddr(to)) return false;
   try {
@@ -48,7 +54,7 @@ export async function onRequestPost(context) {
 
     const secret = env.INGEST_SECRET || "";
     const rpc = (name, body) => fetch(`${SB}/rest/v1/rpc/${name}`, {
-      method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+      method: "POST", headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     const notPasted = { ok: true, ready: false, note: "Paste db/growth_intel.sql in Supabase to activate Growth Intelligence." };
@@ -126,6 +132,62 @@ export async function onRequestPost(context) {
         p_payload: { kind: "churn-reengage", contact: emailed ? contact.toLowerCase() : contact, suggested, via, risk: Number(b.risk) || null },
       });
       return json({ ok: true, queued: true, via, sent: emailed });
+    }
+
+    if (action === "money_proof") {
+      // MONEY-RECOVERED PROOF — the monthly "here's what Gui recovered for you" deliverable that
+      // justifies the subscription. REAL per-tenant numbers only, from data already captured:
+      //   • collected_cents ← revenue_month (the authoritative money spine, in cents; same RPC the
+      //     cockpit + weekly report use — excludes cancelled/no-show).
+      //   • bookings ← client_events_since, counting type='booking' this calendar month (same rule as
+      //     client-report.js).
+      // after_hours = call events whose timestamp lands outside 08:00–18:00 or on a weekend (UTC
+      // approximation — see isAfterHours; labeled estimate, never cash). estimated_value_cents is a
+      // conservative benchmark vs a human receptionist using the SAME disclosed rates moneyRecoveredEmail
+      // discloses ($75/booking, $40/after-hours call) PLUS the exact collected cash — real:estimated is
+      // true whenever any input is real, but it is NEVER presented as collected money. no-show prevented
+      // stays 0/real:false (the no-show engine tracks ones that HAPPENED, not prevented). A cron/portal
+      // renders/sends via moneyRecoveredEmail using these figures.
+      const now = new Date();
+      const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+      const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const monthLabel = `${MONTHS[now.getUTCMonth()]} ${now.getUTCFullYear()}`;
+      const [revR, evR] = await Promise.all([
+        rpc("revenue_month", { p_secret: secret, p_email: email, p_since: monthStart }),
+        rpc("client_events_since", { p_secret: secret, p_email: email, p_since: monthStart }),
+      ]);
+      const rev = revR.ok ? await revR.json().catch(() => null) : null;
+      const evsRaw = evR.ok ? await evR.json().catch(() => null) : null;
+      const evs = Array.isArray(evsRaw) ? evsRaw : [];
+      const eventsReal = evR.ok && Array.isArray(evsRaw);
+      const collectedReal = !!(rev && typeof rev.total_cents === "number");
+      const collected_cents = collectedReal ? Math.max(0, Math.round(rev.total_cents)) : 0;
+      const bookings = eventsReal ? evs.filter((e) => e && e.type === "booking").length : 0;
+      const calls_answered = eventsReal ? evs.filter((e) => e && e.type === "call").length : 0;
+      const calls_after_hours = eventsReal ? evs.filter((e) => e && e.type === "call" && isAfterHours(e.created_at)).length : 0;
+      // Benchmarked-value estimate (cents): exact collected cash + $75/booking + $40/after-hours call.
+      // SAME disclosed rates moneyRecoveredEmail uses. NEVER a substitute for collected — it's the
+      // "value recovered vs a receptionist" figure, returned with real.estimated so the UI can label it.
+      const estimated_value_cents = collected_cents + bookings * 7500 + calls_after_hours * 4000;
+      const proof = {
+        month: monthLabel,
+        calls_after_hours,      // real: derived from captured call timestamps (UTC after-hours heuristic)
+        calls_answered,         // real total calls answered this month (truthful bonus figure)
+        bookings,
+        collected_cents,
+        estimated_value_cents,  // benchmarked estimate — NEVER presented as collected cash
+        noshows_prevented: 0,   // no captured "prevented" signal → honest 0 (see `real`)
+      };
+      const real = {
+        calls_after_hours: eventsReal, // now derived from captured call timestamps
+        calls_answered: eventsReal,
+        bookings: eventsReal,
+        collected_cents: collectedReal,
+        estimated: eventsReal || collectedReal, // the benchmarked total is real whenever any input is real
+        noshows_prevented: false, // no-show engine tracks occurred, not prevented
+      };
+      const ready = collectedReal || eventsReal;
+      return json({ ok: true, ready, month: monthLabel, since: monthStart, proof, real, ...(ready ? {} : { note: notPasted.note }) });
     }
 
     // default: ltv

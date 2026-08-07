@@ -21,7 +21,7 @@ returns table(
 )
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return query
     select i.id, i.contact_id, c.full_name, c.phone, coalesce(c.consent_sms, true),
       i.number, i.amount_cents, i.due_at,
@@ -45,7 +45,7 @@ create or replace function public.finance_mark_nudged(p_secret text, p_email tex
 returns boolean language plpgsql security definer set search_path = public as $$
 declare v_id uuid;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   update crm_invoices i
      set nudged_at = now(), updated_at = now()
    where i.id = p_id
@@ -64,7 +64,7 @@ create or replace function public.finance_mark_paid(p_secret text, p_email text,
 returns boolean language plpgsql security definer set search_path = public as $$
 declare v_id uuid;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   update crm_invoices i
      set status = 'paid', paid_at = now(), updated_at = now()
    where i.id = p_id

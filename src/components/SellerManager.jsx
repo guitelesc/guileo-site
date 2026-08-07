@@ -36,6 +36,10 @@ export default function SellerManager({ token }) {
   // TEAM RANKING — the whole roster ranked by refund-net commission (💰). Same verified money
   // RPCs as the individual hub, aggregated server-side (action=leaderboard). null=loading.
   const [board, setBoard] = useState(null);
+  // 🚀 Lead Boss activity — per-seller worked/closed on the seeded prospect bench (/api/seller-leads all).
+  const [leadBoard, setLeadBoard] = useState(null);
+  // ⚙️ Platform motor stats — email suppression/campaigns + client/seller lead activity (this session's motors).
+  const [motors, setMotors] = useState(null);
   // PAYOUTS — the owner's manual "repasse pago" ledger per seller (POST /api/seller-payouts).
   const [pays, setPays] = useState({});          // email → { loading } | { payouts, balance } | { err }
   const [payForm, setPayForm] = useState({});    // email → { amount, note }
@@ -120,7 +124,29 @@ export default function SellerManager({ token }) {
       setBoard(Array.isArray(d.board) ? d.board : []);
     } catch { setBoard([]); }
   };
-  useEffect(() => { if (token) { load(); loadBoard(); } /* eslint-disable-next-line */ }, [token]);
+  const loadLeadBoard = async () => {
+    setLeadBoard(null);
+    try {
+      const r = await fetch("/api/seller-leads", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "all", token }),
+      });
+      const d = await r.json().catch(() => ({}));
+      setLeadBoard(Array.isArray(d.rows) ? d.rows : []);
+    } catch { setLeadBoard([]); }
+  };
+  const loadMotors = async () => {
+    setMotors(null);
+    try {
+      const r = await fetch("/api/seller-leads", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "motors", token }),
+      });
+      const d = await r.json().catch(() => ({}));
+      setMotors(d && d.ok && d.stats ? d.stats : {});
+    } catch { setMotors({}); }
+  };
+  useEffect(() => { if (token) { load(); loadBoard(); loadLeadBoard(); loadMotors(); } /* eslint-disable-next-line */ }, [token]);
 
   const copy = (txt, tag) => { try { navigator.clipboard?.writeText(txt); setCopied(tag); setTimeout(() => setCopied(""), 1600); } catch { /* */ } };
   const welcomeText = (s) =>
@@ -188,7 +214,7 @@ export default function SellerManager({ token }) {
           🤝 Vendedores
           {Array.isArray(rows) && <span className="rounded-full border border-g-line bg-white/[0.04] px-2 py-0.5 text-[11px] font-bold text-g-word">{rows.length}</span>}
         </div>
-        <button onClick={() => { setRows(null); load(); loadBoard(); }} className="rounded-full border border-g-line bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-g-ink hover:border-g-green/40 hover:text-g-word">↻</button>
+        <button onClick={() => { setRows(null); load(); loadBoard(); loadLeadBoard(); loadMotors(); }} className="rounded-full border border-g-line bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-g-ink hover:border-g-green/40 hover:text-g-word">↻</button>
       </div>
       <p className="mt-1 text-[11.5px] text-g-muted">Cada vendedor tem um código pessoal. Quem entra com ele vê a chave completa dos clientes que assinou.</p>
 
@@ -219,6 +245,57 @@ export default function SellerManager({ token }) {
                     <td className="px-1.5 py-1.5 text-right text-g-ink">{v.wallet}</td>
                     <td className="px-1.5 py-1.5 text-right text-g-ink">{v.paying}</td>
                     <td className="px-1.5 py-1.5 text-right font-black" style={{ color: i === 0 ? GUI : OK }}>${Number(v.commission).toLocaleString("en-US")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── ⚙️ MOTORES (plataforma) — visão dos sistemas deste ciclo ── */}
+      {motors && Object.keys(motors).length > 0 && (
+        <div className="mt-3 rounded-xl border border-g-line bg-white/[0.03] p-3">
+          <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-g-word">⚙️ Motores · plataforma</div>
+          <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {[
+              ["📇 Vendedores c/ leads", motors.sellers_working_leads, "fechados", motors.seller_leads_closed],
+              ["👤 Clientes c/ leads", motors.clients_working_leads, "trabalhados", motors.client_leads_worked],
+              ["🏆 Leads fechados (cliente)", motors.client_leads_closed],
+              ["📧 Campanhas enviadas", motors.campaigns_sent, "e-mails", motors.campaign_emails],
+              ["🚫 Descadastros", motors.suppressions],
+            ].map(([label, val, sub, subval], i) => (
+              <div key={i} className="rounded-lg border border-g-line bg-white/[0.02] p-2.5">
+                <div className="text-[9.5px] font-bold uppercase tracking-wide text-g-muted leading-tight">{label}</div>
+                <div className="mt-1 text-lg font-black text-g-word tabular-nums">{Number(val || 0).toLocaleString("pt-BR")}</div>
+                {sub != null && <div className="text-[10px] text-g-muted">{Number(subval || 0).toLocaleString("pt-BR")} {sub}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── 🚀 LEAD BOSS — atividade dos vendedores no bench de leads semeados ── */}
+      {Array.isArray(leadBoard) && leadBoard.length > 0 && (
+        <div className="mt-3 rounded-xl border border-g-green/25 bg-g-green/[0.04] p-3">
+          <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-g-green">🚀 Lead Boss — atividade</div>
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full min-w-[420px] border-collapse text-[12px]">
+              <thead>
+                <tr className="text-[9.5px] font-bold uppercase tracking-wide text-g-muted">
+                  <th className="px-1.5 py-1 text-left">Vendedor</th>
+                  <th className="px-1.5 py-1 text-right">Trabalhados</th>
+                  <th className="px-1.5 py-1 text-right">Fechados</th>
+                  <th className="px-1.5 py-1 text-right">Última ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leadBoard.map((v) => (
+                  <tr key={v.seller_email} className="border-t border-g-line">
+                    <td className="px-1.5 py-1.5 font-bold text-g-word">{v.seller_email}</td>
+                    <td className="px-1.5 py-1.5 text-right text-g-ink">{v.worked}/{v.leads}</td>
+                    <td className="px-1.5 py-1.5 text-right font-black" style={{ color: OK }}>{v.closed}</td>
+                    <td className="px-1.5 py-1.5 text-right text-g-muted">{v.last_activity ? new Date(v.last_activity).toLocaleDateString() : "—"}</td>
                   </tr>
                 ))}
               </tbody>

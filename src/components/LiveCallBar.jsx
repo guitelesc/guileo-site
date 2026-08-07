@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLang } from "../i18n.jsx";
 import mark from "../assets/guileo-mark.png";
+import ConsentText from "./ConsentText.jsx";
 
 // Compact "AI calls you" bar — drop it anywhere on the site.
 // Captures the lead (/api/lead) and triggers the call (/api/call) if configured.
@@ -55,7 +56,7 @@ export default function LiveCallBar({ source = "callbar" }) {
             </div>
             <label className={`flex items-start gap-2 text-[10px] leading-snug ${err && !consent ? "text-g-gold" : "text-g-muted"}`}>
               <input type="checkbox" required checked={consent} onChange={(e) => { setConsent(e.target.checked); if (e.target.checked) setErr(false); }} className="mt-0.5 shrink-0" />
-              <span>{C.consent}</span>
+              <span><ConsentText lang={lang} /></span>
             </label>
           </form>
         )}

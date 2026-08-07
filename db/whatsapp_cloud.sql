@@ -27,7 +27,7 @@ language plpgsql security definer set search_path = public
 as $$
 declare v jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   if p_phone_number_id is null or trim(p_phone_number_id) = '' then return null; end if;
@@ -48,7 +48,7 @@ returns jsonb
 language plpgsql security definer set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   return (
@@ -79,7 +79,7 @@ language plpgsql security definer set search_path = public
 as $$
 declare v_rows integer := 0;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   if p_msg_id is null or trim(p_msg_id) = '' then return true; end if; -- no id → never block
@@ -98,7 +98,7 @@ language plpgsql security definer set search_path = public
 as $$
 declare n integer;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   with d as (delete from whatsapp_cloud_seen where seen_at < now() - interval '30 days' returning 1)

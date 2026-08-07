@@ -12,7 +12,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   insert into client_integrations (client_email, provider, tokens)
   values (lower(trim(p_email)), 'notify_phone',
           jsonb_build_object('phone', regexp_replace(coalesce(p_phone, ''), '[^0-9+]', '', 'g')))
@@ -28,7 +28,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return (
     select tokens->>'phone'
     from client_integrations

@@ -70,7 +70,26 @@ export async function onRequestPost(context) {
     });
     // free numbers first, reserved last
     out.sort((a, b) => ((a.reserved || a.bound) === (b.reserved || b.bound) ? 0 : (a.reserved || a.bound) ? 1 : -1));
-    return json({ ok: true, count: out.length, numbers: out });
+    // DIAGNÓSTICO DA CONTA — qual conta Twilio a plataforma está REALMENTE usando, e com
+    // quanto saldo. Sem isto o /admin lista números sem dizer de onde vêm: em 2026-08 havia
+    // duas contas (a antiga e uma nova de trial) e ninguém sabia pra qual os segredos
+    // apontavam. Número sem saldo é telefone mudo — o cliente só descobre na 1ª ligação.
+    const acct = { sid: (env.TWILIO_ACCOUNT_SID || "").slice(0, 10) + "…", from: env.TWILIO_FROM || null };
+    try {
+      const [br, ar] = await Promise.all([
+        fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Balance.json`, { headers: { Authorization: auth } }),
+        fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}.json`, { headers: { Authorization: auth } }),
+      ]);
+      if (br.ok) { const b = await br.json().catch(() => ({})); acct.balance_usd = Number(b.balance); acct.currency = b.currency; }
+      if (ar.ok) { const a = await ar.json().catch(() => ({})); acct.friendly_name = a.friendly_name; acct.status = a.status; acct.type = a.type; }
+    } catch { acct.note = "não consegui ler saldo/estado da conta"; }
+    // Trial não liga pra número não-verificado: é a diferença entre "funciona no teste" e
+    // "funciona pro cliente". Diga isso em voz alta, não deixe descobrir no cliente.
+    acct.trial = acct.type === "Trial";
+    if (acct.trial) acct.aviso = "CONTA TRIAL — só liga pra números verificados. Faça upgrade antes de vender.";
+    if (Number.isFinite(acct.balance_usd) && acct.balance_usd < 20) acct.aviso_saldo = `Saldo $${acct.balance_usd.toFixed(2)} — recarregue; sem saldo o telefone fica mudo.`;
+
+    return json({ ok: true, count: out.length, numbers: out, account: acct });
   } catch (e) {
     return json({ error: String(e).slice(0, 160) }, 400);
   }

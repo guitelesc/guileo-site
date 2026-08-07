@@ -19,9 +19,11 @@ const ORANGE = "#FF8A33"; // Gui / agent signal color
 // into payload.languages. The PORTAL/UI itself stays 4 languages (UI_LANGS) — that's the primary select.
 const LANG_OPTS = [
   ["pt", "🇧🇷 Português"], ["en", "🇺🇸 English"], ["es", "🇪🇸 Español"], ["hi", "🇮🇳 हिन्दी"],
-  ["zh", "🇨🇳 中文 Mandarim"], ["yue", "🇭🇰 粵語 Cantonês"], ["ru", "🇷🇺 Русский Russo"], ["ko", "🇰🇷 한국어 Coreano"],
-  ["ht", "🇭🇹 Kreyòl Ayisyen"], ["fr", "🇫🇷 Français"], ["ar", "🇸🇦 العربية Árabe"], ["vi", "🇻🇳 Tiếng Việt"],
-  ["tl", "🇵🇭 Tagalog"], ["bn", "🇧🇩 বাংলা Bengali"], ["pa", "🇮🇳 ਪੰਜਾਬੀ Punjabi"], ["de", "🇩🇪 Deutsch"],
+  // Cantonês, crioulo haitiano, bengali e punjabi saíram em 2026-08-05: a plataforma de voz não os
+  // suporta, e oferecer no cadastro um idioma que a agente não fala é vender o que não existe.
+  ["zh", "🇨🇳 中文 Mandarim"], ["ru", "🇷🇺 Русский Russo"], ["ko", "🇰🇷 한국어 Coreano"],
+  ["fr", "🇫🇷 Français"], ["ar", "🇸🇦 العربية Árabe"], ["vi", "🇻🇳 Tiếng Việt"],
+  ["tl", "🇵🇭 Tagalog"], ["de", "🇩🇪 Deutsch"],
   ["it", "🇮🇹 Italiano"], ["pl", "🇵🇱 Polski"], ["ja", "🇯🇵 日本語"], ["uk", "🇺🇦 Українська"],
 ];
 const UI_LANGS = ["pt", "en", "es", "hi"]; // the owner's portal languages — only these can be PRIMARY

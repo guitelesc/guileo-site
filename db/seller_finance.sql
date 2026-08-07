@@ -17,7 +17,7 @@
 --   Um cliente que pagou por QUALQUER um dos caminhos entra no extrato uma vez.
 --
 -- SEGURANÇA: mesmo padrão dos outros — SECURITY DEFINER gated pelo literal INGEST
--- ('glo_ing_7f3da9c2b4e8' = env INGEST_SECRET), RLS já ligada nas tabelas base,
+-- ('glo_ing_c7f2a9e4b8d16350' = env INGEST_SECRET), RLS já ligada nas tabelas base,
 -- grant execute to anon (as RPCs são o ÚNICO acesso). READ-only. NUNCA devolve
 -- personal_code nem email de OUTRO vendedor — só o extrato do vendedor escopado.
 -- Degrada em silêncio (bloco EXCEPTION) — nunca um 500 pro hub.
@@ -54,7 +54,7 @@ declare
   v_comm   numeric := 0;
   v_count  int     := 0;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_email = '' or position('@' in v_email) = 0 then
     return jsonb_build_object('pct', 10,
       'totals', jsonb_build_object('paid', 0, 'commission', 0, 'clients', 0),

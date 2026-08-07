@@ -30,6 +30,7 @@
 import { json, rateLimited } from "../lib/guard.js";
 import { ownerAlertEmail } from "../lib/emailTemplates.js";
 import { emitFailure } from "../lib/failure.js";
+import { svcRpc } from "../lib/sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -103,15 +104,34 @@ export async function onRequestPost(context) {
     // No OWNER_EMAIL fallback — a wrong key can never write into (or read from) another tenant.
     // Accept both spellings in the URL (?client=&token= per the docs, ?email=&key= per the
     // cockpit's copy-paste link) — a no-code recipe must never 401 on a synonym.
-    const email = (b.email || b.client || u.searchParams.get("client") || u.searchParams.get("email") || "").toString().trim().toLowerCase();
+    let email = (b.email || b.client || u.searchParams.get("client") || u.searchParams.get("email") || "").toString().trim().toLowerCase();
     const key = (b.token || b.key || u.searchParams.get("token") || u.searchParams.get("key") || "").toString().trim();
-    if (!email.includes("@") || !key) return json({ error: "unauthorized" }, 401);
-    const gd = await rpc("get_client_data", { p_email: email, p_key: key });
-    if (!gd.ok) return json({ error: "unauthorized" }, 401);
-    const gdj = await gd.json().catch(() => null);
-    if (!(gdj && typeof gdj === "object" && Array.isArray(gdj.events))) return json({ error: "unauthorized" }, 401);
-
     const action = (b.action || "ingest").toString();
+
+    // ── AUTENTICAÇÃO POR SLUG (site do cliente) ──────────────────────────────────
+    // O formulário do site PÚBLICO do cliente não pode carregar a chave de conexão dele
+    // (ficaria no HTML, à vista de qualquer visitante). Em vez disso ele manda só o slug,
+    // e nós resolvemos slug→tenant no servidor via client_site_owner (service-role).
+    // Restrito a `ingest`: um slug NUNCA lê a lista de leads nem muda status — só entrega
+    // um lead novo, que é exatamente o que um formulário público precisa poder fazer.
+    const siteSlug = (b.site_slug || "").toString().trim().toLowerCase();
+    let viaSlug = false;
+    if (!email && siteSlug && action === "ingest") {
+      try {
+        const or_ = await svcRpc(env, "client_site_owner", { p_secret: env.INGEST_SECRET || "", p_slug: siteSlug });
+        const owner = or_ && or_.ok ? ((await or_.json().catch(() => "")) || "").toString().trim().toLowerCase() : "";
+        if (owner.includes("@")) { email = owner; viaSlug = true; }
+      } catch { /* slug inválido/não publicado → cai no 401 abaixo */ }
+    }
+
+    if (!email.includes("@")) return json({ error: "unauthorized" }, 401);
+    if (!viaSlug) {
+      if (!key) return json({ error: "unauthorized" }, 401);
+      const gd = await rpc("get_client_data", { p_email: email, p_key: key });
+      if (!gd.ok) return json({ error: "unauthorized" }, 401);
+      const gdj = await gd.json().catch(() => null);
+      if (!(gdj && typeof gdj === "object" && Array.isArray(gdj.events))) return json({ error: "unauthorized" }, 401);
+    }
 
     // ── TENANT: list ──
     if (action === "list") {
@@ -175,7 +195,7 @@ export async function onRequestPost(context) {
     //    Best-effort, same crm_upsert_contact pattern as lead.js / delivery-webhook.js.
     if (env.SCHED_SECRET && !duplicate) {
       try {
-        await rpc("crm_upsert_contact", { p_secret: env.SCHED_SECRET, p_email: email, p_phone: lead.phone, p_contact_email: lead.email, p_name: lead.name || "", p_source: `marketplace:${source}`, p_amount_cents: 0 });
+        await svcRpc(env, "crm_upsert_contact", { p_secret: env.SCHED_SECRET, p_email: email, p_phone: lead.phone, p_contact_email: lead.email, p_name: lead.name || "", p_source: `marketplace:${source}`, p_amount_cents: 0 });
       } catch { /* CRM is additive — never block the ingest */ }
     }
 

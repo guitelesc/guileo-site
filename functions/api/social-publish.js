@@ -74,7 +74,7 @@ async function brandContext(env, email) {
     if (g.ok) { const rows = await g.json().catch(() => null); const row = Array.isArray(rows) ? rows[0] : rows; if (row) { ctx.brain = s(row.brain, 2500); ctx.business = ctx.business || s(row.business, 160); ctx.industry = ctx.industry || s(row.industry, 80); } }
   } catch { /* brain optional */ }
   try {
-    const m = await rpc("biz_lookup", { p_secret: env.SCHED_SECRET || "gss_7Kx2mQ9vR4tZ8nL", p_email: email });
+    const m = await rpc("biz_lookup", { p_secret: env.SCHED_SECRET || "", p_email: email });
     if (m.ok) { const menu = await m.json().catch(() => null); if (menu && Array.isArray(menu.services)) ctx.menu = menu.services.filter((v) => v && v.name).slice(0, 20); }
   } catch { /* menu optional */ }
   return ctx;

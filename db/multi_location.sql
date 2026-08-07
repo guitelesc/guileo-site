@@ -93,6 +93,6 @@ begin
 end $$;
 
 -- ✅ Pronto. Teste rápido (troque o email):
---   select biz_location_set('gss_7Kx2mQ9vR4tZ8nL','dono@negocio.com',null,'Filial Centro','Av. Central 100','Miami',null,'America/New_York',true);
---   select biz_locations_admin_list('gss_7Kx2mQ9vR4tZ8nL','dono@negocio.com');
+--   select biz_location_set('gss_Kp9mX4vR2tZ7nQ5wL8bc','dono@negocio.com',null,'Filial Centro','Av. Central 100','Miami',null,'America/New_York',true);
+--   select biz_locations_admin_list('gss_Kp9mX4vR2tZ7nQ5wL8bc','dono@negocio.com');
 --   -- desativar a ÚNICA unidade ativa → {"ok":false,"reason":"last_location"}.

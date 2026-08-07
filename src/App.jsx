@@ -79,6 +79,8 @@ function useReferralAttribution() {
 }
 
 const Servicos = lazyRetry(() => import("./pages/Servicos"));
+const ClientSite = lazyRetry(() => import("./pages/ClientSite")); // /site/:slug — o site REAL do cliente (produto foundation)
+const PrimeiraSemana = lazyRetry(() => import("./pages/PrimeiraSemana")); // o que o cliente recebe DE VERDADE na 1a semana (material do vendedor)
 const Portal = lazyRetry(() => import("./pages/Portal"));
 const Contratos = lazyRetry(() => import("./pages/Contratos"));
 const LiveActivity = lazyRetry(() => import("./pages/LiveActivity"));
@@ -99,6 +101,7 @@ const Roteiro = lazyRetry(() => import("./pages/Roteiro")); // 2-min live-demo s
 const Prospects = lazyRetry(() => import("./pages/Prospects")); // first-sales kit — 10 best prospect types + cold-approach message + 3-step path
 const Deck = lazyRetry(() => import("./pages/Deck")); // collaborator sales deck — navigable web presentation
 const Vendedor = lazyRetry(() => import("./pages/Vendedor")); // logged-in seller hub — playbook + pitch cards (lib+AI) + quote generator + support
+const Equipe = lazyRetry(() => import("./pages/Equipe")); // internal team hub — 🛠 tech support queue + 📊 marketing/ads performance
 const ConectarPagamento = lazyRetry(() => import("./pages/ConectarPagamento")); // client connects their own Stripe → Gui charges land in THEIR account
 const Kit = lazyRetry(() => import("./pages/Kit")); // print-optimized per-niche field kit one-pager (built from pitch-card data)
 const Planos = lazyRetry(() => import("./pages/Planos")); // self-service Track-A plans (Stripe subscribe → auto-activate)
@@ -107,6 +110,8 @@ const NossaGente = lazyRetry(() => import("./pages/NossaGente")); // BLUE OCEAN 
 const Compliance = lazyRetry(() => import("./pages/Compliance")); // the moat — TCPA/A2P compliance done-for-you
 const HealthCompliance = lazyRetry(() => import("./pages/HealthCompliance")); // HIPAA posture — sell clinics honestly
 const Privacy = lazyRetry(() => import("./pages/Privacy"));
+// /sms — prova pública de opt-in para o revisor da campanha A2P 10DLC (erro 30909)
+const SmsOptIn = lazyRetry(() => import("./pages/SmsOptIn"));
 const Terms = lazyRetry(() => import("./pages/Terms"));
 const Refunds = lazyRetry(() => import("./pages/Refunds")); // refund/cancellation policy (paid product)
 const Contact = lazyRetry(() => import("./pages/Contact")); // contact / imprint (LGPD/GDPR/CCPA)
@@ -169,6 +174,8 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/servicos" element={<Servicos />} />
+            <Route path="/site/:slug" element={<ClientSite />} />
+            <Route path="/primeira-semana" element={<PrimeiraSemana />} />
             <Route path="/portal" element={<Portal />} />
             <Route path="/live" element={<LiveActivity />} />
             <Route path="/quiz" element={<Quiz />} />
@@ -190,6 +197,13 @@ export default function App() {
             <Route path="/prospeccao" element={<Navigate to="/prospects" replace />} />
             <Route path="/deck" element={<Deck />} />
             <Route path="/vendedor" element={<Vendedor />} />
+            {/* Hub interno da equipe — /tecnico e /marketing abrem a mesma página na aba certa */}
+            <Route path="/equipe" element={<Equipe />} />
+            <Route path="/tecnico" element={<Equipe />} />
+            {/* FIX #6 (revisor 2026-07-31): /marketing JÁ é a página pública (linha ~183). A rota
+                duplicada nunca ganhava o empate no react-router, então o alias do hub era letra morta.
+                O hub interno de marketing vive em /marketing-hub. */}
+            <Route path="/marketing-hub" element={<Equipe />} />
             <Route path="/receber" element={<ConectarPagamento />} />
             <Route path="/get-paid" element={<Navigate to="/receber" replace />} />
             <Route path="/conectar-stripe" element={<Navigate to="/receber" replace />} />
@@ -201,6 +215,7 @@ export default function App() {
             <Route path="/plans" element={<Navigate to="/planos" replace />} />
             <Route path="/precos" element={<Navigate to="/planos" replace />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/sms" element={<SmsOptIn />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/refunds" element={<Refunds />} />
             <Route path="/cancellation" element={<Refunds />} />

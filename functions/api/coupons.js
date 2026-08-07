@@ -15,6 +15,8 @@
 import { json } from "../lib/guard.js";
 import { brandFor, GUILEO_BRAND } from "../lib/clientBrand.js";
 import * as tpl from "../lib/emailTemplates.js";
+import { unsubUrl } from "../lib/unsub.js";
+import { svcRpc } from "../lib/sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -132,6 +134,16 @@ export async function onRequestPost(context) {
       }
       if (!campaign) return json({ error: "campaign not found" }, 400);
 
+      // MONEY/ABUSE GATE (adversarial review 2026-07-30) — a PAUSED (past-due) tenant must NOT blast
+      // emails at Guileo's Resend cost. Fail-OPEN on a transient check error (never hard-block a
+      // legit send on a flaky RPC), fail-CLOSED on an explicit paused=true.
+      try {
+        const pr = await rpc("is_client_paused", { p_secret: secret, p_email: email });
+        if (pr.ok && (await pr.json().catch(() => false)) === true) {
+          return json({ ok: false, paused: true, sent: 0, note: "Account paused — resolve billing to send campaigns." });
+        }
+      } catch { /* transient → fall through (best-effort, matches the codebase) */ }
+
       // Resolve the branded builder by name (promoEmail | couponEmail | newsEmail). Namespace import
       // keeps this file from crashing if the branded-email slice isn't deployed yet.
       const template = (campaign.template || campaign.kind || "promo").toString().toLowerCase();
@@ -167,40 +179,94 @@ export async function onRequestPost(context) {
         if (recipients.length >= 300) break;
       }
 
+      // CAN-SPAM (adversarial review 2026-07-30) — drop anyone who unsubscribed from THIS client's
+      // marketing. Best-effort read (service_role, per-tenant): a transient failure never blocks the
+      // whole campaign, but a live suppression is always honored.
+      try {
+        const supR = await svcRpc(env, "email_suppressed_list", { p_secret: env.INGEST_SECRET || "", p_client_email: email });
+        if (supR.ok) {
+          const raw = await supR.json().catch(() => []);
+          const sup = new Set((Array.isArray(raw) ? raw : []).map((x) => String(x).toLowerCase()));
+          if (sup.size) for (let i = recipients.length - 1; i >= 0; i--) if (sup.has(recipients[i].email)) recipients.splice(i, 1);
+        }
+      } catch { /* suppression read failed → send to the resolved audience (rare) */ }
+
+      // PER-RECIPIENT IDEMPOTENCY (adversarial review 2026-07-30) — for a SAVED campaign, drop anyone
+      // this campaign already emailed, so a re-send / partial-retry NEVER double-emails or double-charges.
+      // Inline campaigns (no id) can't be keyed → one-shot, no dedup (rare path). Best-effort read.
+      if (campaignId) {
+        try {
+          const sr = await svcRpc(env, "campaign_recipients_sent", { p_secret: env.INGEST_SECRET || "", p_campaign_id: campaignId });
+          if (sr.ok) {
+            const raw = await sr.json().catch(() => []);
+            const already = new Set((Array.isArray(raw) ? raw : []).map((x) => String(x).toLowerCase()));
+            if (already.size) for (let i = recipients.length - 1; i >= 0; i--) if (already.has(recipients[i].email)) recipients.splice(i, 1);
+          }
+        } catch { /* idempotency read failed → proceed (chunked send keeps dupes rare) */ }
+      }
+
       if (!env.RESEND_API_KEY) return json({ ok: false, sent: 0, note: "RESEND_API_KEY not configured." });
 
       const from = `${(brand.business || "Guileo").replace(/[<>]/g, "")} <${(env.EMAIL_FROM_ADDR || "noreply@guileoai.com")}>`;
-      let sent = 0;
-      for (const rcp of recipients) {
-        // Render THIS client's branded email. Builders take the resolved brand + campaign fields.
+      // Render + send ONE branded email (best-effort → returns the email on Resend 2xx, else "").
+      const sendOne = async (rcp) => {
+        // Per-recipient one-click unsubscribe URL (HMAC token, tamper-proof) → into the footer + headers.
+        const uUrl = await unsubUrl(env, "https://guileoai.com", email, rcp.email);
         const built = build({
-          brand,
-          name: rcp.name || "there",
-          business: brand.business,
-          lang: brand.lang,
-          subject: campaign.subject || "",
-          headline: campaign.headline || campaign.subject || "",
-          title: campaign.subject || campaign.headline || "",
-          message: campaign.body || "",
-          body: campaign.body || "",
-          coupon,
+          brand, name: rcp.name || "there", business: brand.business, lang: brand.lang,
+          subject: campaign.subject || "", headline: campaign.headline || campaign.subject || "",
+          title: campaign.subject || campaign.headline || "", message: campaign.body || "",
+          body: campaign.body || "", coupon, unsubscribeUrl: uUrl,
         }) || {};
         const subject = (campaign.subject && campaign.subject.trim()) || built.subject || "";
         const html = built.html || "";
-        if (!html) continue;
-        const sr = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ from, to: [rcp.email], subject, html }),
-        });
-        if (sr.ok) sent++;
+        if (!html) return "";
+        try {
+          const sr = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+            // RFC 8058 one-click unsubscribe headers → Gmail/Apple show a native "Unsubscribe" button.
+            body: JSON.stringify({ from, to: [rcp.email], subject, html, headers: { "List-Unsubscribe": `<${uUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } }),
+          });
+          return sr.ok ? rcp.email : "";
+        } catch { return ""; }
+      };
+      // Send in parallel CHUNKS (adversarial review 2026-07-30): 300 sequential fetches (~45s) risked a
+      // Pages Functions wall-time/subrequest timeout MID-LOOP → partial send with no metering. Chunking
+      // cuts wall-time ~10× so the whole batch reliably completes (then we meter + mark once).
+      const sentEmails = [];
+      const CHUNK = 10;
+      for (let i = 0; i < recipients.length; i += CHUNK) {
+        const results = await Promise.all(recipients.slice(i, i + CHUNK).map(sendOne));
+        for (const e of results) if (e) sentEmails.push(e);
+      }
+      const sent = sentEmails.length;
+      // Idempotency ledger — record who received THIS campaign so a re-send/retry skips them (no dupes,
+      // no double-charge). Best-effort; saved campaigns only (inline has no stable id).
+      if (campaignId && sentEmails.length) {
+        try { await svcRpc(env, "campaign_recipients_mark", { p_secret: env.INGEST_SECRET || "", p_campaign_id: campaignId, p_emails: sentEmails }); } catch { /* best-effort */ }
       }
 
       // Mark the campaign sent (only for a saved campaign).
       if (campaignId && /^[0-9a-f-]{36}$/i.test(campaignId)) {
         await rpc("campaign_mark_sent", { p_secret: secret, p_id: campaignId, p_count: sent }).catch(() => {});
       }
-      return json({ ok: true, ready: true, audience: recipients.length, sent });
+
+      // CREDIT METERING — the email-marketing motor consumes credits (MOTORES.md: every Gui action
+      // costs credits). Charge 1 credit per email that ACTUALLY went out (never per attempt), AFTER
+      // the send, best-effort: metering must never block or fail a broadcast that already happened,
+      // and we never charge for mail that didn't send. deduct_client_credits is INGEST-gated + tenant-
+      // scoped by p_email (the authenticated tenant), so this can't touch another client's balance.
+      if (sent > 0) {
+        // CRITICAL FIX (adversarial review 2026-07-30): deduct_client_credits is IDEMPOTENT by p_ref
+        // (global PK credit_deduct_idem.ref) — reusing the campaign id (or the constant "campaign" for
+        // inline sends) made EVERY re-send free after the first. Usage metering must charge EVERY send,
+        // so the ref MUST be unique per send. Date.now()+counter is unique in a Worker (not a workflow).
+        const meterRef = `camp:${(campaignId || "inline").toString().slice(0, 40)}:${Date.now()}:${sent}`;
+        try { await rpc("deduct_client_credits", { p_secret: secret, p_email: email, p_credits: sent, p_reason: "email-campaign", p_ref: meterRef }); }
+        catch { /* metering is best-effort — the emails already went out */ }
+      }
+      return json({ ok: true, ready: true, audience: recipients.length, sent, credits_spent: sent });
     }
 
     return json({ error: "unknown action" }, 400);

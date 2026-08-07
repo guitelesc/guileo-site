@@ -29,6 +29,21 @@ function normSrc(s = "") {
 }
 const srcName = (k) => { const s = SOURCES[k] || SOURCES.other; return UI_LANG === "es" ? s.es : UI_LANG === "pt" ? s.label : s.en; };
 
+// The client's own working status per lead (persisted). Tap the pill to advance the stage.
+const CLS = {
+  novo:      { pt: "Novo",      en: "New",       es: "Nuevo",     c: "#FF8A33" },
+  contatado: { pt: "Contatado", en: "Contacted", es: "Contactado", c: "#3FB4FF" },
+  fechado:   { pt: "Fechado",   en: "Won",       es: "Cerrado",   c: "#3E9468" },
+};
+const CLS_CYCLE = ["novo", "contatado", "fechado"];
+const clsLabel = (k) => { const s = CLS[k] || CLS.novo; return UI_LANG === "es" ? s.es : UI_LANG === "pt" ? s.pt : s.en; };
+
+// Digits for tel:/wa.me from any phone spelling. "" when there's no usable number.
+const digitsOf = (p) => String(p || "").replace(/[^0-9]/g, "");
+// First email found on a lead row (backend spellings vary).
+const emailOf = (r) => String((r && (r.email || r.contact_email || r.contact)) || "").trim();
+const isEmailStr = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+
 // Status pill color by meaning — new = Gui orange, contacted/called = info, booked/won = done green.
 const statusColor = (st = "") => {
   const t = String(st).toLowerCase();
@@ -52,6 +67,41 @@ function LeadsToday({ V, onNav, real = null, email = "", dataKey = "" }) {
   const [err, setErr] = useState(false);
   const [busy, setBusy] = useState({});   // lead id → true while the callback request is inflight
   const [done, setDone] = useState({});   // lead id → true once Gui is calling back (optimistic)
+  const [statusMap, setStatusMap] = useState({}); // lead id → { s: status, n: notes } (persisted)
+  const [openNote, setOpenNote] = useState(null); // lead id whose note editor is open
+
+  // Load the client's saved per-lead status (novo→contatado→fechado) so the board survives a refresh
+  // / another device. Real mode only; best-effort (feature degrades to no manual status if unavailable).
+  useEffect(() => {
+    if (demo || !dataKey || !email) return;
+    let alive = true;
+    fetch("/api/crm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "lead_status_map", token: dataKey, email }) })
+      .then((r) => r.json()).then((d) => { if (alive && d && d.ok && d.map && typeof d.map === "object") setStatusMap(d.map); }).catch(() => {});
+    return () => { alive = false; };
+  }, [demo, dataKey, email]);
+
+  // The map is { lead_id: { s: status, n: notes } }. Advance one stage (novo→contatado→fechado),
+  // optimistic then CONFIRM + REVERT on failure (a 401/{ok:false} must not masquerade as saved).
+  const advanceStatus = async (lead) => {
+    if (demo || !lead?.id) return;
+    const cur = (statusMap[lead.id] || {}).s || "novo";
+    if (cur === "fechado") return; // already at the last stage
+    const next = CLS_CYCLE[Math.min(CLS_CYCLE.indexOf(cur) + 1, CLS_CYCLE.length - 1)];
+    setStatusMap((m) => ({ ...m, [lead.id]: { ...(m[lead.id] || {}), s: next } }));
+    const revert = () => { setStatusMap((m) => ({ ...m, [lead.id]: { ...(m[lead.id] || {}), s: cur } })); toast(tr("I couldn't save that — try again.")); };
+    try {
+      const r = await fetch("/api/crm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "lead_status_set", token: dataKey, email, lead_id: lead.id, status: next }) });
+      const d = await r.json().catch(() => ({}));
+      if (!d || !d.ok) revert();
+    } catch { revert(); }
+  };
+  // Free-text note per lead — typed locally, flushed to the DB on blur (independent of status).
+  const setNoteLocal = (id, text) => setStatusMap((m) => ({ ...m, [id]: { ...(m[id] || {}), n: text } }));
+  const saveNote = (lead) => {
+    if (demo || !lead?.id) return;
+    const text = (statusMap[lead.id] || {}).n || "";
+    fetch("/api/crm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "lead_note_set", token: dataKey, email, lead_id: lead.id, notes: text }) }).catch(() => {});
+  };
 
   useEffect(() => {
     let alive = true;
@@ -127,20 +177,59 @@ function LeadsToday({ V, onNav, real = null, email = "", dataKey = "" }) {
                   {list.map((r, i) => {
                     const isDone = done[r.id];
                     return (
-                      <div key={r.id || i} style={{ animationDelay: `${i * 45}ms` }} className="row-in flex items-center gap-3 px-5 py-3 flex-wrap sm:flex-nowrap">
+                      <div key={r.id || i} style={{ animationDelay: `${i * 45}ms` }} className="row-in px-5 py-3">
+                        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
                         <span className="grid place-items-center h-9 w-9 rounded-full shrink-0 text-base" style={{ background: s.color + "1e" }}>{s.emoji}</span>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-bold text-g-word truncate">{r.name || tr("Lead")}{r.service ? <span className="text-g-muted font-normal"> · {r.service}</span> : null}</div>
                           <div className="text-[11px] text-g-muted truncate">{r.phone || "—"}{when(r) ? ` · ${when(r)}` : ""}</div>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ background: statusColor(r.status) + "22", color: statusColor(r.status) }}>{r.status || tr("New")}</span>
-                        {isDone ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-g-green px-2.5 py-1.5 shrink-0 whitespace-nowrap">📞 {tr("Gui is calling back")}</span>
-                        ) : (
-                          <button onClick={() => callback(r)} disabled={demo || busy[r.id]} title={demo ? tr("Available when connected — sample data") : undefined}
-                            className="rounded-full border border-[#FF8A33]/40 bg-[#FF8A33]/10 px-3 py-1.5 text-[11px] font-bold text-g-word hover:bg-[#FF8A33]/20 transition disabled:opacity-45 disabled:cursor-not-allowed whitespace-nowrap shrink-0">
-                            {busy[r.id] ? "…" : `📞 ${tr("Gui calls back")}`}
-                          </button>
+                        {!demo ? (() => {
+                          const cs = (statusMap[r.id] || {}).s || "novo"; const col = (CLS[cs] || CLS.novo).c;
+                          return (
+                            <button onClick={() => advanceStatus(r)} title={tr("Tap to advance: New → Contacted → Won")}
+                              className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ring-1 transition hover:brightness-125" style={{ background: col + "22", color: col, borderColor: col + "55" }}>
+                              {clsLabel(cs)}
+                            </button>
+                          );
+                        })() : (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ background: statusColor(r.status) + "22", color: statusColor(r.status) }}>{r.status || tr("New")}</span>
+                        )}
+                        {/* ACT NOW — the owner works the lead themselves (call / WhatsApp / email), OR lets Gui do it.
+                            Direct-contact links only in real mode (demo numbers are fake). */}
+                        <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                          {!demo && digitsOf(r.phone) && (
+                            <a href={`tel:+${digitsOf(r.phone)}`} title={tr("Call now")}
+                              className="rounded-full border border-g-info/35 bg-g-info/10 px-2.5 py-1.5 text-[11px] font-bold text-g-word hover:bg-g-info/20 transition">📞</a>
+                          )}
+                          {!demo && digitsOf(r.phone) && (
+                            <a href={`https://wa.me/${digitsOf(r.phone)}`} target="_blank" rel="noopener" title="WhatsApp"
+                              className="rounded-full border border-g-green/35 bg-g-green/10 px-2.5 py-1.5 text-[11px] font-bold text-g-word hover:bg-g-green/20 transition">💬</a>
+                          )}
+                          {!demo && isEmailStr(emailOf(r)) && (
+                            <a href={`mailto:${emailOf(r)}`} title={tr("Email")}
+                              className="rounded-full border border-g-gold/35 bg-g-gold/10 px-2.5 py-1.5 text-[11px] font-bold text-g-word hover:bg-g-gold/20 transition">✉️</a>
+                          )}
+                          {isDone ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-g-green px-2.5 py-1.5 whitespace-nowrap">🤖 {tr("Gui is calling back")}</span>
+                          ) : (
+                            <button onClick={() => callback(r)} disabled={demo || busy[r.id]} title={demo ? tr("Available when connected — sample data") : tr("Let Gui call this lead back for you")}
+                              className="rounded-full border border-[#FF8A33]/40 bg-[#FF8A33]/10 px-3 py-1.5 text-[11px] font-bold text-g-word hover:bg-[#FF8A33]/20 transition disabled:opacity-45 disabled:cursor-not-allowed whitespace-nowrap">
+                              {busy[r.id] ? "…" : `🤖 ${tr("Gui calls back")}`}
+                            </button>
+                          )}
+                          {!demo && (
+                            <button onClick={() => setOpenNote(openNote === r.id ? null : r.id)} title={tr("Add a note")}
+                              className={`rounded-full border px-2.5 py-1.5 text-[11px] font-bold transition ${((statusMap[r.id] || {}).n) ? "border-g-gold/40 bg-g-gold/10 text-g-word" : "border-white/15 bg-white/[0.04] text-g-muted hover:text-g-word"}`}>📝</button>
+                          )}
+                        </div>
+                        </div>
+                        {!demo && openNote === r.id && (
+                          <div className="mt-2.5">
+                            <textarea value={(statusMap[r.id] || {}).n || ""} onChange={(e) => setNoteLocal(r.id, e.target.value)} onBlur={() => saveNote(r)}
+                              placeholder={tr("Your note on this lead…")} rows={2}
+                              className="w-full rounded-lg border border-white/12 bg-white/[0.04] px-3 py-2 text-[12.5px] text-g-word placeholder:text-g-muted/50 focus:outline-none focus:border-g-green/40" />
+                          </div>
                         )}
                       </div>
                     );

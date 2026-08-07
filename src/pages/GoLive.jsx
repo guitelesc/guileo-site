@@ -77,7 +77,7 @@ export default function GoLive() {
     { en: "Your business", pt: "Seu negócio", es: "Tu negocio", hi: "आपका व्यवसाय" },
     { en: "Your customers", pt: "Seus clientes", es: "Tus clientes", hi: "आपके ग्राहक" },
     { en: "Teach Gui", pt: "Ensine a Gui", es: "Enseña a Gui", hi: "Gui को सिखाएँ" },
-    { en: "Review & activate", pt: "Revisar & ativar", es: "Revisar y activar", hi: "जाँचें और चालू करें" },
+    { en: "Review & activate", pt: "Revisar e ativar", es: "Revisar y activar", hi: "जाँचें और चालू करें" },
   ];
 
   // a contact must be a real email OR a real phone — block garbage ("asdf") so the Stripe webhook can

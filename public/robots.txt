@@ -11,6 +11,10 @@ Disallow: /parceiro
 Disallow: /academia
 Disallow: /leads
 Disallow: /contratos
+Disallow: /equipe
+Disallow: /tecnico
+Disallow: /marketing-hub
+Disallow: /vendedor
 Disallow: /setup-agenda
 
 Sitemap: https://guileoai.com/sitemap.xml

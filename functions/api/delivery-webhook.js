@@ -9,6 +9,7 @@
 // Goal: the restaurant sees EVERY order (Uber, DoorDash, Grubhub, iFood + Gui's own commission-free direct
 // orders) in one screen — and the revenue rolls up in one place.
 import { json, safeEq } from "../lib/guard.js";
+import { sbKey, svcRpc } from "../lib/sb.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -114,10 +115,7 @@ export async function onRequestPost(context) {
 
     // 3) Inbox event — so it also surfaces in the portal feed.
     try {
-      await fetch(`${SB_URL}/rest/v1/rpc/ingest_client_event`, {
-        method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ p_secret: env.INGEST_SECRET || "", p_email: email, p_type: "order", p_channel: platform, p_summary: `🛵 ${platform} order${total ? ` ($${total})` : ""}: ${itemsText || customer}`.slice(0, 300), p_amount: total || 0, p_payload: { platform, ref, customer } }),
-      });
+      await svcRpc(env, "ingest_client_event", { p_secret: env.INGEST_SECRET || "", p_email: email, p_type: "order", p_channel: platform, p_summary: `🛵 ${platform} order${total ? ` ($${total})` : ""}: ${itemsText || customer}`.slice(0, 300), p_amount: total || 0, p_payload: { platform, ref, customer } });
     } catch { /* additive */ }
 
     // 4) COMPANY OS — stitch the order into the customer's 360° contact timeline (best-effort).
@@ -128,7 +126,7 @@ export async function onRequestPost(context) {
       if (cphone || cemail) {
         try {
           const cents = total > 0 ? Math.round(total * 100) : 0;
-          const crmRpc = (fn, body) => fetch(`${SB_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" }, body: JSON.stringify({ p_secret: env.SCHED_SECRET, ...body }) });
+          const crmRpc = (fn, body) => fetch(`${SB_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" }, body: JSON.stringify({ p_secret: env.SCHED_SECRET, ...body }) });
           const ur = await crmRpc("crm_upsert_contact", { p_email: email, p_phone: cphone, p_contact_email: cemail, p_name: customer, p_source: `delivery:${platform}`, p_amount_cents: cents });
           const contactId = ur.ok ? await ur.json() : null;
           if (contactId) {

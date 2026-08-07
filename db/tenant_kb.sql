@@ -6,7 +6,7 @@
 -- deferring to the team.
 --
 -- SECURITY: every RPC is SECURITY DEFINER, INGEST-gated by the same literal the ingest pipeline
--- uses ('glo_ing_7f3da9c2b4e8'), granted to anon, and CLIENT-SCOPED by p_email — no tenant can
+-- uses ('glo_ing_c7f2a9e4b8d16350'), granted to anon, and CLIENT-SCOPED by p_email — no tenant can
 -- read/write another tenant's KB. The table has RLS ON so only the definer funcs reach it.
 -- The HTTP surface (/api/kb) additionally binds email↔connection-key via get_client_data before
 -- ever calling these, so a client token only ever touches its OWN tenant's KB.
@@ -30,7 +30,7 @@ alter table client_kb enable row level security;
 
 -- ── helper: uniform INGEST gate ──────────────────────────────────────────────
 create or replace function public._kb_ok(p_secret text) returns boolean
-language sql immutable as $$ select p_secret is not distinct from 'glo_ing_7f3da9c2b4e8' $$;
+language sql immutable as $$ select p_secret is not distinct from 'glo_ing_c7f2a9e4b8d16350' $$;
 
 -- ── UPSERT (create/edit a Q&A) — tenant-scoped ───────────────────────────────
 create or replace function public.kb_upsert(

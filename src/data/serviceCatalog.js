@@ -47,12 +47,12 @@ export const CATALOG = [
       },
       {
         icon: "🌐",
-        name: { en: "Multilingual voice (20+ languages)", pt: "Atendimento trilíngue (EN·PT·ES)", es: "Atención trilingüe (EN·PT·ES)", hi: "त्रिभाषी सेवा (EN·PT·ES)" },
+        name: { en: "Multilingual voice (16 languages)", pt: "Atendimento trilíngue (EN·PT·ES)", es: "Atención trilingüe (EN·PT·ES)", hi: "त्रिभाषी सेवा (EN·PT·ES)" },
         does: {
-          en: "Gui detects the caller's language and answers in it — English, Spanish, Portuguese, Mandarin, Russian, Korean, Haitian Creole and 20+ more, same warmth in every one.",
-          pt: "A Gui percebe o idioma de quem liga e atende nele — inglês, espanhol, português, mandarim, russo, coreano, crioulo haitiano e mais de 20 — o mesmo carinho em todos.",
-          es: "Gui detecta el idioma de quien llama y atiende en él — inglés, español, portugués, mandarín, ruso, coreano, criollo haitiano y 20+ más — la misma calidez en todos.",
-          hi: "गुई कॉलर की भाषा पहचानकर उसी में जवाब देती है — अंग्रेज़ी, स्पैनिश, पुर्तगाली, मैंडरिन, रूसी, कोरियाई समेत 20+ भाषाएँ — हर एक में वही गर्मजोशी।",
+          en: "Gui detects the caller's language and answers in it — English, Spanish, Brazilian Portuguese, Mandarin, Hindi, Russian, Korean, French, Arabic, Vietnamese, Tagalog and more: 16 languages, same warmth in every one.",
+          pt: "A Gui percebe o idioma de quem liga e atende nele — inglês, espanhol, português brasileiro, mandarim, hindi, russo, coreano, francês, árabe, vietnamita, tagalo e mais: 16 idiomas, o mesmo carinho em todos.",
+          es: "Gui detecta el idioma de quien llama y atiende en él — inglés, español, portugués brasileño, mandarín, hindi, ruso, coreano, francés, árabe, vietnamita, tagalo y más: 16 idiomas, la misma calidez en todos.",
+          hi: "गुई कॉलर की भाषा पहचानकर उसी में जवाब देती है — अंग्रेज़ी, स्पैनिश, पुर्तगाली, मैंडरिन, रूसी, कोरियाई समेत 16 भाषाएँ — हर एक में वही गर्मजोशी।",
         },
         gain: {
           en: "No customer lost to a language barrier.",
@@ -143,7 +143,7 @@ export const CATALOG = [
     icon: "📅",
     group: {
       en: "Scheduling & Operations",
-      pt: "Agenda & Operação",
+      pt: "Agenda e Operação",
       es: "Agenda & Operación",
       hi: "शेड्यूल और संचालन",
     },
@@ -298,7 +298,7 @@ export const CATALOG = [
     icon: "💰",
     group: {
       en: "Sales & Collection",
-      pt: "Vendas & Cobrança",
+      pt: "Vendas e Cobrança",
       es: "Ventas & Cobranza",
       hi: "बिक्री और वसूली",
     },
@@ -334,7 +334,7 @@ export const CATALOG = [
       },
       {
         icon: "🤝",
-        name: { en: "Close & collect", pt: "Fecha & cobra", es: "Cierra & cobra", hi: "क्लोज़ और कलेक्ट" },
+        name: { en: "Close & collect", pt: "Fecha e cobra", es: "Cierra & cobra", hi: "क्लोज़ और कलेक्ट" },
         does: {
           en: "Gui closes the sale and collects on the same call — pay-link by SMS, money landing in YOUR own Stripe account.",
           pt: "A Gui fecha a venda e cobra na mesma ligação — link de pagamento por SMS, dinheiro caindo no SEU próprio Stripe.",
@@ -822,7 +822,7 @@ export const CATALOG = [
       },
       {
         icon: "📣",
-        name: { en: "Marketing & ads", pt: "Marketing & anúncios", es: "Marketing & anuncios", hi: "मार्केटिंग और विज्ञापन" },
+        name: { en: "Marketing & ads", pt: "Marketing e anúncios", es: "Marketing & anuncios", hi: "मार्केटिंग और विज्ञापन" },
         does: {
           en: "Campaigns, ads and lead generation managed for you — feeding leads straight to Gui, who calls them in ~60 seconds.",
           pt: "Campanhas, anúncios e geração de leads gerenciados pra você — alimentando a Gui, que liga pro lead em ~60 segundos.",

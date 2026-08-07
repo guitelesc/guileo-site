@@ -6,6 +6,8 @@
 // analysis detects one) for the client identified by dynamic_variables.client_email.
 import { json, safeEq } from "../lib/guard.js";
 import { callAlertEmail } from "../lib/emailTemplates.js";
+import { sbKey, svcRpc } from "../lib/sb.js";
+import { emitFailure } from "../lib/failure.js";
 
 const isEmail = (s) => /.+@.+\..+/.test((s || "").toString());
 const fmtDur = (s) => s == null ? "" : (s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`);
@@ -35,22 +37,41 @@ async function logCall(env, row) {
 
 // #6 — per-call sentiment + intent. Classifies the transcript with Claude Haiku (fast/cheap).
 // Turns every call into tone/intent data (the substrate for the Business Brain, H3).
-async function classifyCall(env, transcript) {
+// CADEIA de modelos, não um só. A versão anterior chamava `claude-fable-5` e, em QUALQUER
+// falha (modelo indisponível pra chave, 429, erro de rede), devolvia null calado — foi por
+// isso que a 1ª ligação real da Natura ficou com sentiment/intent NULL e o painel do dono
+// não tinha leitura nenhuma da conversa. Agora tenta a cadeia e, se TODOS falharem, grita.
+const CLASSIFY_CHAIN = ["claude-fable-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"];
+async function classifyCall(env, transcript, email) {
   if (!env.ANTHROPIC_API_KEY || !transcript || transcript.length < 20) return null;
+  let lastStatus = 0, lastDetail = "";
+  for (const model of CLASSIFY_CHAIN) {
+    try {
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+        body: JSON.stringify({
+          model, max_tokens: 150,
+          messages: [{ role: "user", content: `Classify this phone call. Reply ONLY compact JSON, no prose: {"sentiment":"positive|neutral|negative","intent":"2-4 words","note":"one short line"}\n\nTRANSCRIPT:\n${transcript.slice(0, 6000)}` }],
+        }),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        const m = (j?.content?.[0]?.text || "").match(/\{[\s\S]*\}/);
+        if (m) { try { return JSON.parse(m[0]); } catch { /* tenta o próximo modelo */ } }
+        lastStatus = 200; lastDetail = "resposta sem JSON";
+      } else {
+        lastStatus = r.status; lastDetail = (await r.text().catch(() => "")).slice(0, 160);
+        if (r.status === 401 || r.status === 402) break; // chave/saldo: outro modelo não resolve
+      }
+    } catch (e) { lastStatus = 0; lastDetail = String(e).slice(0, 120); }
+  }
+  // Falha TOTAL: sem isto o dono simplesmente não vê o humor das ligações e ninguém percebe.
   try {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-fable-5", max_tokens: 150,
-        messages: [{ role: "user", content: `Classify this phone call. Reply ONLY compact JSON, no prose: {"sentiment":"positive|neutral|negative","intent":"2-4 words","note":"one short line"}\n\nTRANSCRIPT:\n${transcript.slice(0, 6000)}` }],
-      }),
-    });
-    if (!r.ok) return null;
-    const j = await r.json();
-    const m = (j?.content?.[0]?.text || "").match(/\{[\s\S]*\}/);
-    return m ? JSON.parse(m[0]) : null;
-  } catch { return null; }
+    await emitFailure(env, "call_classify_failed", email || "",
+      `Não consegui classificar a ligação (${lastStatus}): ${lastDetail}`, { status: lastStatus });
+  } catch { /* nunca bloqueia o webhook */ }
+  return null;
 }
 
 // COST LEDGER (unit economics) — record what THIS call cost Guileo at the voice provider.
@@ -73,10 +94,10 @@ async function recordVoiceCost(env, email, convId, durSecs) {
 }
 
 async function ingest(env, email, type, channel, summary, amount, payload) {
-  const r = await rpc("ingest_client_event", {
+  const r = await svcRpc(env, "ingest_client_event", {
     p_secret: env.INGEST_SECRET || "",
     p_email: email, p_type: type, p_channel: channel,
-    p_summary: (summary || "").slice(0, 300), p_amount: amount || 0,
+    p_summary: (summary || "").slice(0, 1200), p_amount: amount || 0,
     p_payload: payload || {},
   });
   return r.ok;
@@ -127,7 +148,7 @@ export async function onRequestPost(context) {
     const tx = Array.isArray(d?.transcript)
       ? d.transcript.map((t) => `${t.role === "agent" ? "Gui" : "Customer"}: ${(t.message || "").trim()}`).filter((x) => x.length > 5).join("\n")
       : "";
-    const cls = await classifyCall(env, tx);
+    const cls = await classifyCall(env, tx, email);
     const mood = cls ? ({ positive: "😊", neutral: "😐", negative: "😞" }[cls.sentiment] || "") : "";
 
     // Compact, bounded transcript for the portal drawer: last 60 turns, role + text only.
@@ -148,7 +169,7 @@ export async function onRequestPost(context) {
         conversation_id: convId, agent_id: agentId,
         sentiment: cls?.sentiment || null, intent: cls?.intent || null, note: cls?.note || null,
         duration_secs: dur ? Math.round(dur) : null, success: ok || null, end_reason: endReason,
-        summary_clean: (summary || "").slice(0, 300), transcript: turns,
+        summary_clean: (summary || "").slice(0, 1200), transcript: turns,
       });
 
     // COST LEDGER — record the voice-provider cost of this call (only if the rate env is set).
@@ -156,7 +177,7 @@ export async function onRequestPost(context) {
 
     // Mirror into the owned project so the portal can show the analysis + full transcript.
     await logCall(env, {
-      p_email: email, p_conv: convId, p_summary: (summary || "").slice(0, 300),
+      p_email: email, p_conv: convId, p_summary: (summary || "").slice(0, 1200),
       p_sentiment: cls?.sentiment || null, p_intent: cls?.intent || null, p_note: cls?.note || null,
       p_duration: dur ? Math.round(dur) : null, p_success: ok || null, p_end_reason: endReason,
       p_amount: 0, p_transcript: turns,
@@ -168,7 +189,7 @@ export async function onRequestPost(context) {
       const caller = (vars.system__caller_id || vars.caller_id || vars.from || d?.metadata?.phone_call?.external_number || "").toString().trim();
       if (caller) {
         try {
-          const crmRpc = (fn, body) => fetch(`${SB_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" }, body: JSON.stringify({ p_secret: env.SCHED_SECRET, ...body }) });
+          const crmRpc = (fn, body) => fetch(`${SB_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" }, body: JSON.stringify({ p_secret: env.SCHED_SECRET, ...body }) });
           const ur = await crmRpc("crm_upsert_contact", { p_email: email, p_phone: caller, p_contact_email: "", p_name: (vars.caller_name || vars.customer_name || "").toString().slice(0, 80), p_source: "voice", p_amount_cents: 0 });
           const contactId = ur.ok ? await ur.json() : null;
           if (contactId) {

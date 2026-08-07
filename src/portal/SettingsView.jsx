@@ -4,12 +4,12 @@ import { FaWandMagicSparkles } from "react-icons/fa6";
 import { loadDataKey, saveDataKey, toast, portalApi, fetchRealData } from "../lib/portalApi.js";
 import { tr, defProfile, syncProfile, Card, Toggle, UI_LANG } from "../pages/Portal.jsx";
 
-// Panel UI ships in 4 languages; the AI agent speaks 20+. (Kills the old "3 idiomas" fossil.)
+// Panel UI ships in 4 languages; the AI agent speaks 16. (Kills the old "3 idiomas" fossil.)
 const LANG_LINE = {
-  en: "Panel EN·PT·ES·HI · Gui speaks 20+ languages",
-  pt: "Painel EN·PT·ES·HI · Gui atende em 20+ idiomas",
-  es: "Panel EN·PT·ES·HI · Gui atiende en 20+ idiomas",
-  hi: "पैनल EN·PT·ES·HI · Gui 20+ भाषाओं में बात करती है",
+  en: "Panel EN·PT·ES·HI · Gui speaks 16 languages",
+  pt: "Painel EN·PT·ES·HI · Gui atende em 16 idiomas",
+  es: "Panel EN·PT·ES·HI · Gui atiende en 16 idiomas",
+  hi: "पैनल EN·PT·ES·HI · Gui 16 भाषाओं में बात करती है",
 };
 
 function SettingsView({ V, real = null, me = null }) {

@@ -5,6 +5,7 @@
 // NÃO mexe em agenda/dados — só liga a VOZ. Admin verificado via blitz_stats (mesma porta do /admin).
 import { json } from "../lib/guard.js";
 import { elevenBindNumber } from "../lib/provision.js";
+import { isReserved } from "../lib/reserved.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -22,8 +23,9 @@ export async function onRequestPost(context) {
     if (!email.includes("@")) return json({ error: "email required" }, 400);
     if (!/^\+?[0-9]{8,15}$/.test(number)) return json({ error: "número inválido (use E.164, ex: +13055551234)" }, 400);
     // GUARD: the platform demo/outbound line is RESERVED — never bind it to a client agent.
-    const RESERVED = new Set(["19864443334"]);
-    if (RESERVED.has(number.replace(/[^0-9]/g, ""))) return json({ error: "🚫 Esse é o número RESERVADO do demo do site — escolha um número livre pro cliente." }, 400);
+    // A lista vive em lib/reserved.js porque o /api/provision-number precisa da MESMA — duas
+    // cópias divergem no dia em que alguém acrescenta um número só numa delas.
+    if (isReserved(number)) return json({ error: "🚫 Esse é o número RESERVADO do demo do site — escolha um número livre pro cliente." }, 400);
 
     // ── ADMIN GATE (same as setup-business / onboard-client) ──
     const vr = await rpc("blitz_stats", { p_token: token, p_email: "" });
@@ -42,6 +44,15 @@ export async function onRequestPost(context) {
     // import the number into ElevenLabs convai + assign the agent (auto-wires Twilio voice webhook)
     const bind = await elevenBindNumber(env, number, agentId, email.split("@")[0]);
     if (!bind || !bind.ok) return json({ ok: false, note: "não consegui mapear o número — confira se ele está na conta Twilio", detail: bind && bind.reason });
+
+    // register the mapped number EVERYWHERE the onboard path does (onboard-client.js step 5), so the
+    // number is consistently known to the agent/CRM — not just wired in ElevenLabs. set_client_number is
+    // the canonical tenant→number link; surface its failure (never leave the number silently orphaned).
+    const snr = await rpc("set_client_number", { p_secret: env.INGEST_SECRET || "", p_email: email, p_number: number });
+    if (!snr || !snr.ok) return json({ ok: false, agent_id: agentId, number, phone_number_id: bind.phone_number_id, note: `número mapeado na voz, mas NÃO registrado no CRM (set_client_number ${snr && snr.status}) — o agente/CRM pode não reconhecer o número; tente de novo` });
+    // register the tenant→agent map in the accessible registry (same as onboard step 5) so /api/call
+    // dials speed-to-lead callbacks AS this client's OWN Gui + their el_phone_number_id. Best-effort.
+    try { await rpc("client_agent_upsert", { p_secret: env.INGEST_SECRET || "", p_email: email, p_agent_id: agentId, p_el_phone_number_id: bind.phone_number_id || "", p_number: number }); } catch { /* registry write best-effort */ }
 
     // best-effort: record the live number on the draft so /admin shows it
     try { await rpc("draft_set_number", { p_secret: env.INGEST_SECRET || "", p_email: email, p_number: number }); } catch { /* optional RPC */ }

@@ -8,7 +8,7 @@
 -- ➕ Add client tab (that's where the real onboarding draft lives) — this table is the CHASE.
 --
 -- SECURITY: every RPC is SECURITY DEFINER, INGEST-gated by the same literal the ingest pipeline
--- uses ('glo_ing_7f3da9c2b4e8' — see db/marketplace_leads.sql / db/coupons.sql), granted to anon,
+-- uses ('glo_ing_c7f2a9e4b8d16350' — see db/marketplace_leads.sql / db/coupons.sql), granted to anon,
 -- and SELLER-SCOPED by p_seller_email — a seller NEVER sees, edits, or deletes another seller's
 -- prospect. The HTTP layer (functions/api/seller-prospects.js) always passes the AUTHENTICATED
 -- seller_email, never the one from the body. Table has RLS ON with NO anon policies, so only the
@@ -38,7 +38,7 @@ alter table public.seller_prospects enable row level security;
 
 -- ── GATE helper (same literal as the ingest pipeline) ─────────────────────────
 create or replace function public._sp_ok(p_secret text) returns boolean
-language sql immutable as $$ select p_secret = 'glo_ing_7f3da9c2b4e8' $$;
+language sql immutable as $$ select p_secret = 'glo_ing_c7f2a9e4b8d16350' $$;
 
 -- Normalizers kept inline so a stage/market typo can never poison the pipeline.
 --   stage  → one of the 6 canonical values, default 'abordado'

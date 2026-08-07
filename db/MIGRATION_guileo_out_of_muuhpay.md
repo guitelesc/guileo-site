@@ -11,7 +11,7 @@ Guileo-owned project **`ynihodbknhjirkdogxby`** ("smart@guileoai.com's Project",
 
 ## Already extracted
 - **33 Guileo functions** (full source) → `guileo-site/_migra_funcs.csv` (cols: nome, args, definicao).
-  Gate secret is hardcoded in them: `glo_ing_7f3da9c2b4e8` (= INGEST_SECRET). Recreate VERBATIM so the
+  Gate secret is hardcoded in them: `glo_ing_c7f2a9e4b8d16350` (= INGEST_SECRET). Recreate VERBATIM so the
   gate keeps matching the code's env — no code change to the secret needed.
 
 ### The 33 functions

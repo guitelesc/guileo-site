@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLang } from "../i18n.jsx";
+import ConsentText from "./ConsentText.jsx";
 
 // Live platform CX — real aggregate from the XM engine (/api/pulse-stat → cx_platform_pulse).
 // Only surfaces once it's backed by enough real data; otherwise the section stays fully static.
@@ -317,7 +318,7 @@ export default function PulseSection() {
             </div>
             <label className={`flex items-start gap-2 text-[11px] leading-snug ${err && !consent ? "text-g-gold" : "text-g-muted"}`}>
               <input type="checkbox" required checked={consent} onChange={(e) => { setConsent(e.target.checked); if (e.target.checked) setErr(false); }} className="mt-0.5 h-4 w-4 shrink-0 accent-g-green" />
-              <span>{G.consent}</span>
+              <span><ConsentText lang={lang} /></span>
             </label>
             {err && (!phone.trim() || !consent) && <p role="alert" className="text-center text-[12px] font-semibold text-g-gold">{G.consentErr}</p>}
           </form>

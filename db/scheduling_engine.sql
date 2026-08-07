@@ -6,7 +6,7 @@
 -- SEGURANÇA: as funções são SECURITY DEFINER e EXIGEM um segredo dedicado guardado
 -- numa GUC do banco. FECHADAS por padrão: sem a GUC certa, retornam 'unauthorized'.
 -- >>> RODE ESTA LINHA UMA VEZ (já vem com o valor certo) para LIGAR o motor: <<<
---     alter database postgres set app.gui_sched_secret = 'gss_7Kx2mQ9vR4tZ8nL';
+--     alter database postgres set app.gui_sched_secret = 'gss_Kp9mX4vR2tZ7nQ5wL8bc';
 -- (Esse mesmo valor está no segredo SCHED_SECRET da Cloudflare, que o Gui usa.)
 -- ============================================================================
 

@@ -47,7 +47,8 @@ const T4 = {
     chat: { hi: "Hi! How can we help?", u: "Do you have availability today?", a: "Yes — I can book you right now. What time works?" },
     dm: "Answered by their brain", callFor: "Gui answering for", live: "live", ringing: "Ringing…",
     callNow: "Hear Gui now — get the call", callPh: "Your phone (with country code)", calling: "Calling…", callSent: "Gui is calling you now ✓", callErr: "Couldn't place the call — check the number.",
-    hearReal: "Hear the real voice", voicePlaying: "Playing…",
+    callSkipped: "Already sent — check your phone.", callCapped: "Try again in a minute.",
+    hearReal: "Hear the real voice", voicePlaying: "Playing…", voiceWarm: "Voice warming up — tap again.",
     adCard: "ready-to-run ads", emailCard: "Email in their tone", seoCard: "Ranking page for",
     appHint: "Their app, their brand", tapToBook: "Tap to book",
   },
@@ -69,7 +70,8 @@ const T4 = {
     chat: { hi: "Oi! Como posso ajudar?", u: "Tem horário hoje?", a: "Tenho — já posso agendar. Que horário fica bom?" },
     dm: "Respondido pelo cérebro dele", callFor: "Gui atendendo pela", live: "ao vivo", ringing: "Chamando…",
     callNow: "Ouça a Gui agora — receba a ligação", callPh: "Seu telefone com DDD", calling: "Ligando…", callSent: "A Gui está te ligando agora ✓", callErr: "Não consegui ligar — confira o número.",
-    hearReal: "Ouvir a voz real", voicePlaying: "Tocando…",
+    callSkipped: "Já enviamos — confira seu telefone.", callCapped: "Tente de novo em um minuto.",
+    hearReal: "Ouvir a voz real", voicePlaying: "Tocando…", voiceWarm: "Voz aquecendo — toque de novo.",
     adCard: "anúncios prontos", emailCard: "E-mail no tom dele", seoCard: "Página rankeando em",
     appHint: "O app dele, a marca dele", tapToBook: "Toque pra agendar",
   },
@@ -91,7 +93,8 @@ const T4 = {
     chat: { hi: "¡Hola! ¿Cómo puedo ayudar?", u: "¿Tienes hora hoy?", a: "Sí — puedo agendarte ahora. ¿Qué hora te queda bien?" },
     dm: "Respondido por su cerebro", callFor: "Gui atendiendo por", live: "en vivo", ringing: "Llamando…",
     callNow: "Escucha a Gui ahora — recibe la llamada", callPh: "Tu teléfono con código", calling: "Llamando…", callSent: "Gui te está llamando ahora ✓", callErr: "No pude llamar — revisa el número.",
-    hearReal: "Escuchar la voz real", voicePlaying: "Reproduciendo…",
+    callSkipped: "Ya te llamamos — revisa tu teléfono.", callCapped: "Inténtalo de nuevo en un minuto.",
+    hearReal: "Escuchar la voz real", voicePlaying: "Reproduciendo…", voiceWarm: "Voz calentando — toca de nuevo.",
     adCard: "anuncios listos", emailCard: "Email en su tono", seoCard: "Página posicionando en",
     appHint: "Su app, su marca", tapToBook: "Toca para reservar",
   },
@@ -113,7 +116,8 @@ const T4 = {
     chat: { hi: "नमस्ते! कैसे मदद करूँ?", u: "क्या आज समय है?", a: "हाँ — मैं अभी बुक कर सकता हूँ। कौन सा समय ठीक है?" },
     dm: "उनके ब्रेन द्वारा उत्तर", callFor: "Gui उत्तर दे रही है", live: "लाइव", ringing: "रिंग हो रहा है…",
     callNow: "Gui को अभी सुनें — कॉल पाएँ", callPh: "आपका फ़ोन (कोड सहित)", calling: "कॉल कर रहे हैं…", callSent: "Gui आपको अभी कॉल कर रही है ✓", callErr: "कॉल नहीं हो सका — नंबर जाँचें।",
-    hearReal: "असली आवाज़ सुनें", voicePlaying: "चल रहा है…",
+    callSkipped: "पहले ही भेज दिया — अपना फ़ोन देखें।", callCapped: "एक मिनट में फिर कोशिश करें।",
+    hearReal: "असली आवाज़ सुनें", voicePlaying: "चल रहा है…", voiceWarm: "आवाज़ तैयार हो रही है — फिर टैप करें।",
     adCard: "तैयार विज्ञापन", emailCard: "उनके टोन में ईमेल", seoCard: "रैंकिंग पेज:",
     appHint: "उनका ऐप, उनकी ब्रांड", tapToBook: "बुक करने के लिए टैप करें",
   },
@@ -146,10 +150,19 @@ const domainOf = (brand) => {
   try { return new URL(brand?.url?.startsWith("http") ? brand.url : "https://" + (brand?.url || "")).hostname; } catch { return (brand?.url || (brand?.name || "brand").toLowerCase().replace(/[^a-z0-9]/g, "") + ".com").replace(/^https?:\/\//, ""); }
 };
 
-async function callDemo(action, payload) {
-  const r = await fetch("/api/demo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, ...payload }) });
-  if (!r.ok) throw new Error("demo " + action + " " + r.status);
-  return r.json();
+// TIMEOUT: ler o site do cliente leva ~10s (é busca + IA). Sem teto, uma rede ruim deixa o
+// botão girando pra sempre — e quem está vendo é o CLIENTE, na reunião. 30s e devolve erro.
+async function callDemo(action, payload, ms = 30000) {
+  const ctrl = new AbortController();
+  const kill = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const r = await fetch("/api/demo", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, ...payload }), signal: ctrl.signal,
+    });
+    if (!r.ok) throw new Error("demo " + action + " " + r.status);
+    return await r.json();
+  } finally { clearTimeout(kill); }
 }
 
 // Normalize a brand kit into the shape the previews render: services as plain strings and facts as
@@ -176,6 +189,7 @@ export default function DemoEngine({ surface = "public", presetToken = null }) {
   const [query, setQuery] = useState("");
   const [brand, setBrand] = useState(null);
   const [pullState, setPullState] = useState("idle"); // idle | go | err
+  const [pullSecs, setPullSecs] = useState(0);          // segundos na espera — 10s calados parecem travamento
   const [product, setProduct] = useState("website");
   const [token, setToken] = useState(presetToken);
   const [shareState, setShareState] = useState("idle"); // idle | go | done
@@ -199,11 +213,14 @@ export default function DemoEngine({ surface = "public", presetToken = null }) {
     const q = query.trim();
     if (!q) return;
     setPullState("go"); setBrand(null); setToken(null); setShareState("idle");
+    setPullSecs(0);
+    const tick = setInterval(() => setPullSecs((n) => n + 1), 1000);
     try {
       const d = await callDemo("brand", { query: q });
       if (d?.brand) { const nb = normBrand(d.brand); setBrand(nb); setPullState("idle"); logView(nb, product); }
       else setPullState("err");
     } catch { setPullState("err"); }
+    finally { clearInterval(tick); }
   }, [query, product]);
 
   const logView = useCallback((b, pid) => { callDemo("view", { token, productId: pid, brand: b }).catch(() => {}); }, [token]);
@@ -285,10 +302,17 @@ export default function DemoEngine({ surface = "public", presetToken = null }) {
         <button onClick={pull} disabled={pullState === "go" || !query.trim()}
           className="rounded-xl px-4 py-2.5 text-[13px] font-bold text-black disabled:opacity-50"
           style={{ background: FALLBACK_ACCENT }}>
-          {pullState === "go" ? t.pulling : t.pull}
+          {pullState === "go" ? `${t.pulling}${pullSecs ? ` ${pullSecs}s` : ""}` : t.pull}
         </button>
         {brand && <button onClick={resetBrand} className="rounded-xl border border-g-line px-3 py-2.5 text-[12px] font-bold text-g-muted hover:text-g-word">↺ {t.reset}</button>}
       </div>
+      {pullState === "go" && (
+        <div className="mt-2 text-[12px] text-g-muted">
+          {lang === "pt" ? "Lendo o site dele e montando a marca — costuma levar uns 10 segundos."
+           : lang === "es" ? "Leyendo su sitio y armando la marca — suele tardar unos 10 segundos."
+           : "Reading their site and building the brand kit — this usually takes about 10 seconds."}
+        </div>
+      )}
       {pullState === "err" && <div className="mt-2 text-[12px] text-g-gold">{t.pullErr}</div>}
 
       {/* ── BRAND KIT ── */}
@@ -585,12 +609,13 @@ function VoicePreview({ brand, colors, t, lang }) {
   // A REAL call — the hardened /api/call gate (per-IP caps + DNC + E.164) dials the visitor and
   // Gui greets AS this brand via dynamic variables ({{business}}/{{need}}). Not a mock.
   const [phone, setPhone] = useState("");
-  const [st, setSt] = useState("idle"); // idle | go | done | err
+  const [st, setSt] = useState("idle"); // idle | go | done | skipped | capped | err  (honest: only "done" = a call was actually placed)
 
   // REAL neural voice (ElevenLabs via /api/tts) speaking a line PERSONALIZED to this brand — so the
   // visitor hears "Gui" answering for THEIR business, in Victoria (♀) or Bruno (♂). Cached server-side.
   const [vVoice, setVVoice] = useState("victoria");
-  const [vSt, setVSt] = useState("idle"); // idle | go
+  const [vSt, setVSt] = useState("idle"); // idle | go | warm  (warm = tts non-200/empty, honest retry hint)
+  const [vHide, setVHide] = useState(false); // 501 = voice not configured → hide the block, no fake success
   const audioRef = useRef(null);
   // stop any playing greeting when the visitor switches product (unmounts this preview).
   useEffect(() => () => { if (audioRef.current) { try { audioRef.current.pause(); audioRef.current.src = ""; } catch { /* */ } } }, []);
@@ -605,14 +630,19 @@ function VoicePreview({ brand, colors, t, lang }) {
     setVVoice(voice); setVSt("go");
     try {
       const r = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: greeting(), voice, lang }) });
-      if (!r.ok) { setVSt("idle"); return; }
-      const url = URL.createObjectURL(await r.blob());
+      // Honest micro-states — never a silent no-op. 501 = voice not wired → hide the whole block.
+      // Any other non-200 (502, transient) → "voice warming up — tap again". Empty body → same.
+      if (r.status === 501) { setVHide(true); setVSt("idle"); return; }
+      if (!r.ok) { setVSt("warm"); return; }
+      const blob = await r.blob();
+      if (!blob || !blob.size) { setVSt("warm"); return; }
+      const url = URL.createObjectURL(blob);
       if (audioRef.current) { try { audioRef.current.pause(); } catch { /* */ } }
       const a = new Audio(url); audioRef.current = a;
       a.onended = () => { URL.revokeObjectURL(url); setVSt("idle"); };
-      a.onerror = () => setVSt("idle");
-      await a.play().catch(() => setVSt("idle"));
-    } catch { setVSt("idle"); }
+      a.onerror = () => setVSt("warm");
+      await a.play().catch(() => setVSt("warm"));
+    } catch { setVSt("warm"); }
   };
 
   const placeCall = async (e) => {
@@ -631,7 +661,13 @@ function VoicePreview({ brand, colors, t, lang }) {
           lang,
         }),
       });
-      setSt(r.ok ? "done" : "err");
+      // Never claim "calling now" unless a call was really placed. The gate returns
+      // {ok:true, skipped:...} when a call was recently sent (no new dial), 429 when capped.
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d?.skipped) setSt("skipped");
+      else if (r.ok && d?.ok) setSt("done");
+      else if (r.status === 429) setSt("capped");
+      else setSt("err");
     } catch { setSt("err"); }
   };
   return (
@@ -649,23 +685,29 @@ function VoicePreview({ brand, colors, t, lang }) {
         </div>
         <div className="mt-3 rounded-lg bg-white/[0.05] px-3 py-2 text-left text-[11px] text-white/80">“{brand.name}, {t.chat.hi} {t.chat.a}”</div>
 
-        {/* REAL neural voice — hear Gui greet AS this brand, Victoria (♀) or Bruno (♂) */}
-        <div className="mt-3">
-          <div className="text-[10px] font-black uppercase tracking-wide text-white/50">{t.hearReal}</div>
-          <div className="mt-1.5 flex gap-1.5">
-            {[{ k: "victoria", g: "♀", n: "Victoria" }, { k: "bruno", g: "♂", n: "Bruno" }].map((v) => (
-              <button key={v.k} onClick={() => playVoice(v.k)} disabled={vSt === "go"}
-                className="flex-1 rounded-lg px-2 py-2 text-[12px] font-black text-black disabled:opacity-60"
-                style={{ background: vSt === "go" && vVoice === v.k ? "#9c9485" : colors.accent }}>
-                {vSt === "go" && vVoice === v.k ? `▊ ${t.voicePlaying}` : `▶ ${v.g} ${v.n}`}
-              </button>
-            ))}
+        {/* REAL neural voice — hear Gui greet AS this brand, Victoria (♀) or Bruno (♂).
+            Hidden entirely if TTS isn't wired (501) — never a dead button that fakes success. */}
+        {!vHide && (
+          <div className="mt-3">
+            <div className="text-[10px] font-black uppercase tracking-wide text-white/50">{t.hearReal}</div>
+            <div className="mt-1.5 flex gap-1.5">
+              {[{ k: "victoria", g: "♀", n: "Victoria" }, { k: "bruno", g: "♂", n: "Bruno" }].map((v) => (
+                <button key={v.k} onClick={() => playVoice(v.k)} disabled={vSt === "go"}
+                  className="flex-1 rounded-lg px-2 py-2 text-[12px] font-black text-black disabled:opacity-60"
+                  style={{ background: vSt === "go" && vVoice === v.k ? "#9c9485" : colors.accent }}>
+                  {vSt === "go" && vVoice === v.k ? `▊ ${t.voicePlaying}` : `▶ ${v.g} ${v.n}`}
+                </button>
+              ))}
+            </div>
+            {vSt === "warm" && <div className="mt-1.5 text-[11px] font-bold text-g-gold">{t.voiceWarm}</div>}
           </div>
-        </div>
+        )}
 
-        {/* REAL call trigger */}
+        {/* REAL call trigger — honest states: green only when a call was truly placed. */}
         {st === "done" ? (
           <div className="mt-3 text-[12px] font-bold text-g-green">{t.callSent}</div>
+        ) : st === "skipped" ? (
+          <div className="mt-3 text-[12px] font-bold text-white/80">{t.callSkipped}</div>
         ) : (
           <form onSubmit={placeCall} className="mt-3 flex flex-col gap-2">
             <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder={t.callPh}
@@ -675,6 +717,7 @@ function VoicePreview({ brand, colors, t, lang }) {
               {st === "go" ? t.calling : "📞 " + t.callNow}
             </button>
             {st === "err" && <span className="text-[11px] text-g-gold">{t.callErr}</span>}
+            {st === "capped" && <span className="text-[11px] text-g-gold">{t.callCapped}</span>}
           </form>
         )}
       </div>

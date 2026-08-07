@@ -29,7 +29,7 @@ returns jsonb
 language plpgsql security definer set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return (
     select tokens
     from client_integrations
@@ -44,7 +44,7 @@ grant execute on function public.mb_creds_lookup(text, text) to anon;
 -- This helper lets Luis paste a tenant's full multi-studio MindBody creds directly in SQL (handy
 -- for Natura's two studios) without the HTTP round-trip. Same INGEST gate. Same tokens shape above.
 -- Example (Natura — fill in the real source credential once MindBody partner access is granted):
---   select public.mb_creds_store('glo_ing_7f3da9c2b4e8', 'natura@guileoai.com',
+--   select public.mb_creds_store('glo_ing_c7f2a9e4b8d16350', 'natura@guileoai.com',
 --     jsonb_build_object(
 --       'source_name','Guileo_XXXX', 'source_password','••••',
 --       'site_id','767008',
@@ -55,7 +55,7 @@ returns boolean
 language plpgsql security definer set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   insert into client_integrations (client_email, provider, tokens)
   values (lower(trim(p_email)), 'mindbody', coalesce(p_tokens, '{}'::jsonb))
   on conflict (client_email, provider) do update

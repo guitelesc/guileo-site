@@ -6,25 +6,80 @@
 //   op = "book"         → book a slot (DB EXCLUDE constraint blocks double-booking)
 // Gated by the agent secret (x-guileo-secret / ?secret). Talks to the scheduling DB with SCHED_SECRET.
 import { safeEq } from "../lib/guard.js";
+import { emitFailure } from "../lib/failure.js";
 import { appointmentEmail, ownerAlertEmail, waitlistOfferEmail } from "../lib/emailTemplates.js";
 import { sendText } from "../lib/twilio.js";
 // THE UNIFIED SCHEDULING BRAIN — routes availability/book to a connected external calendar
 // (MindBody/Square/…) when the tenant has one ready, else to the internal biz_* engine. See
 // functions/lib/scheduleAdapter.js. Falls back to internal on ANY external error → zero regression.
 import { resolveScheduler, getAvailability as adapterAvailability, book as adapterBook } from "../lib/scheduleAdapter.js";
+import { brandFor } from "../lib/clientBrand.js";
+import { resolveSlot } from "../lib/slotResolver.js";
+import { svcRpc } from "../lib/sb.js";
 
 // Send a branded confirmation to the CUSTOMER (email now; SMS lights up when A2P clears). Best-effort.
 const isEmail = (s) => /.+@.+\..+/.test((s || "").toString());
-async function sendApptEmail(env, kind, p) {
-  if (!env.RESEND_API_KEY || !isEmail(p.contact)) return false;
+// Devolve o melhor e-mail para ESTE cliente: o que ele deu agora, ou — se ele deu só o telefone —
+// o que já está no cadastro dele. Sem isto, marcar por telefone não gerava confirmação NENHUMA
+// (o SMS está bloqueado pela campanha A2P), e a pessoa desligava sem nada na mão. Foi exatamente
+// a reclamação do Luis em 2026-08-05: "não chegou e-mail nada".
+async function emailDoCliente(env, tenant, contato) {
+  if (isEmail(contato)) return contato;
+  const fone = (contato || "").toString().replace(/[^0-9+]/g, "");
+  if (!fone || !tenant) return "";
   try {
-    const { subject, html } = appointmentEmail({ kind, name: p.name, business: p.business, service: p.service, whenLabel: p.whenLabel, pro: p.pro, location: p.location, ref: p.ref, lang: p.lang || "en" });
-    await fetch("https://api.resend.com/emails", {
-      method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: p.contact, subject, html }),
+    const r = await svcRpc(env, "crm_contact_email", { p_secret: env.SCHED_SECRET || "", p_email: tenant, p_phone: fone });
+    if (!r || !r.ok) return "";
+    const v = await r.json().catch(() => "");
+    return isEmail(v) ? v : "";
+  } catch { return ""; }
+}
+
+async function sendApptEmail(env, kind, p) {
+  if (!env.RESEND_API_KEY) return false;
+  // o destinatário pode vir do cadastro quando a pessoa só deu o telefone
+  const destino = await emailDoCliente(env, p.tenant, p.contact);
+  if (!isEmail(destino)) return false;
+  try {
+    // MARCA DO CLIENTE — o e-mail que confirma o horário é a primeira coisa que o cliente do NEGÓCIO
+    // recebe. Saía com o logo da Guileo: parece que outra empresa marcou pra ele. Agora sai com o
+    // logo, a cor e o nome do negócio, e a Guileo desce pro rodapé como "powered by".
+    // Falha ao carregar a marca não pode impedir a confirmação — cai no visual Guileo, que funciona.
+    const brand = await brandFor(env, p.tenant).catch(() => null);
+    const { subject, html } = appointmentEmail({
+      kind, name: p.name, business: p.business || (brand && brand.business) || "",
+      service: p.service, whenLabel: p.whenLabel, pro: p.pro, location: p.location,
+      // ENDEREÇO E TELEFONE: já estavam em biz_locations e nunca chegavam ao e-mail. Sem eles a
+      // pessoa confirma um horário sem saber PARA ONDE ir — e liga de novo pra perguntar.
+      address: p.address || "", locPhone: p.locPhone || "",
+      ref: p.ref, lang: p.lang || "en", brand,
     });
-    return true;
+    // r.ok matters: Resend answers 4xx on an unverified domain / bad address / rate limit.
+    // Returning true regardless would tell the caller a confirmation went out when it didn't.
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: destino, subject, html }),
+    });
+    return r.ok;
   } catch { return false; }
+}
+
+// Send the customer-facing appointment email AND make a failure visible. Gui tells the
+// customer on the call "I've sent you the confirmation" — if Resend refuses (unverified
+// domain, bad address, rate limit) that promise silently breaks: the customer waits for an
+// email that never comes, forgets, and no-shows. The owner must see it in the cockpit.
+// A non-email contact (phone-only booking) is a legitimate skip, not a failure.
+async function apptEmailOrFlag(env, tenantEmail, kind, p) {
+  const ok = await sendApptEmail(env, kind, { ...p, tenant: tenantEmail });
+  if (ok || !isEmail(p.contact)) return ok;
+  try {
+    await svcRpc(env, "ingest_client_event", {
+      p_secret: env.INGEST_SECRET || "", p_email: tenantEmail, p_type: "message", p_channel: "Email",
+      p_summary: `⚠️ E-mail de ${kind === "book" ? "confirmação" : kind} NÃO foi entregue a ${p.contact} — confirme com o cliente`,
+      p_amount: 0, p_payload: { delivery: "failed", kind, to: String(p.contact || "") },
+    });
+  } catch { /* logging must never break a booking that already succeeded */ }
+  return false;
 }
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -73,10 +128,15 @@ const money = (cents) => {
   return "$" + (Number.isInteger(d) ? d : d.toFixed(2));
 };
 const norm = (s) => (s || "").toString().trim().toLowerCase();
+// Acha o item pelo nome falado. Quando o nome NÃO vem e só existe UMA opção, devolve essa —
+// perguntar "qual serviço?" a um negócio que tem um serviço só é queimar o tempo de quem ligou
+// com uma pergunta cuja resposta o sistema já tem. Vale para serviço, local e profissional.
+// Com duas ou mais opções continua devolvendo null, e aí perguntar é o certo.
 const pick = (arr, name) => {
-  if (!name) return null;
+  const lista = Array.isArray(arr) ? arr : [];
+  if (!name) return lista.length === 1 ? lista[0] : null;
   const n = norm(name);
-  return arr.find((x) => norm(x.name) === n) || arr.find((x) => norm(x.name).includes(n) || n.includes(norm(x.name))) || null;
+  return lista.find((x) => norm(x.name) === n) || lista.find((x) => norm(x.name).includes(n) || n.includes(norm(x.name))) || (lista.length === 1 ? lista[0] : null);
 };
 
 async function rpc(env, fn, body) {
@@ -86,6 +146,21 @@ async function rpc(env, fn, body) {
     body: JSON.stringify({ ...body, p_secret: env.SCHED_SECRET || "" }),
   });
   return r.json();
+}
+
+// TRILHA DAS FERRAMENTAS — 2026-08-04. A Lilian disse "anotei seu pedido" e nada foi marcado,
+// e não deu pra saber se ela chamou op='book' e falhou, ou se nunca chamou: as chamadas de
+// ferramenta não eram registradas em lugar nenhum. Sem essa trilha, todo diagnóstico de
+// "por que a IA não fez X" vira adivinhação. Best-effort e nunca bloqueia a ligação.
+async function logTool(env, email, op, outcome, detail) {
+  try {
+    await svcRpc(env, "ingest_client_event", {
+      p_secret: env.INGEST_SECRET || "", p_email: email,
+      p_type: "agent_tool", p_channel: "voice",
+      p_summary: `🔧 ${op} → ${outcome}${detail ? ` · ${String(detail).slice(0, 120)}` : ""}`,
+      p_amount: 0, p_payload: { op, outcome, detail: String(detail || "").slice(0, 200) },
+    });
+  } catch { /* a ligação vale mais que o log */ }
 }
 
 export async function onRequestPost(context) {
@@ -111,6 +186,9 @@ export async function onRequestPost(context) {
     // resolve the tenant, reject so a misconfigured agent never writes into the wrong business.
     const email = ((request.headers.get("x-guileo-client") || b.client_email || b.email || "").toString()).trim().toLowerCase();
     if (!email || !email.includes("@")) return json({ error: "client_email could not be resolved for this agent" }, 400);
+
+    // registra a TENTATIVA antes de qualquer coisa poder falhar em silêncio
+    await logTool(env, email, op, "chamada");
 
     const menu = await rpc(env, "biz_lookup", { p_email: email });
     if (menu?.error) return json({ message: "I couldn't reach the schedule just now." }, 200);
@@ -185,7 +263,7 @@ export async function onRequestPost(context) {
       const r = await rpc(env, "biz_cancel", { p_email: email, p_appointment_id: id });
       // Give reserved stock/capacity back to the shelf (no-op unless this booking consumed inventory).
       if (r.ok) { try { await rpc(env, "rpc_reserve_release_by_appt", { p_email: email, p_appointment_id: id }); } catch { /* best-effort */ } }
-      if (r.ok) if (!testMode) await sendApptEmail(env, "cancel", { contact: (b.contact || "").toString(), name: (b.name || "").toString(), lang: b.lang });
+      if (r.ok) if (!testMode) await apptEmailOrFlag(env, email, "cancel", { contact: (b.contact || "").toString(), name: (b.name || "").toString(), lang: b.lang });
       // WAITLIST AUTO-FILL — the freed slot goes to the next person waiting for that service/location.
       // biz_waitlist_fill_on_cancel pops + marks them notified (dedup); we reach out by email now / WA
       // when approved. Best-effort: NEVER blocks the cancel; graceful no-op until the waitlist is pasted.
@@ -200,7 +278,19 @@ export async function onRequestPost(context) {
             } else if (/^[0-9+][0-9\s()\-]{6,}$/.test(wc)) {
               const ph = wc.replace(/[^0-9+]/g, "");
               const msg = `🌱 Guileo: uma vaga${w.service ? ` pra ${w.service}` : ""} acabou de abrir! Você estava na lista de espera — quer que eu reserve? É só responder.`.slice(0, 300);
-              await sendText(env, ph, msg, { channel: "whatsapp" });
+              const wt = await sendText(env, ph, msg, { channel: "whatsapp" });
+              if (!wt?.sent) {
+                // The slot is already released and the waitlisted customer was picked — if the
+                // offer never reached them, that slot just goes empty. Surface it so the owner
+                // can call. Silence here = lost revenue nobody can see.
+                try {
+                  await svcRpc(env, "ingest_client_event", {
+                    p_secret: env.INGEST_SECRET || "", p_email: email, p_type: "message", p_channel: "WhatsApp",
+                    p_summary: `⚠️ Oferta de vaga da lista de espera NÃO chegou em ${ph} (${wt?.reason || `HTTP ${wt?.status || "?"}`}) — ligue pra oferecer`,
+                    p_amount: 0, p_payload: { delivery: "failed", to: ph, kind: "waitlist_offer" },
+                  });
+                } catch { /* the cancel already succeeded */ }
+              }
             }
           }
         } catch { /* waitlist fill is a bonus — the cancel already succeeded */ }
@@ -211,10 +301,32 @@ export async function onRequestPost(context) {
       const when = (b.when || b.start || "").toString();
       const id = await findApptId();
       if (!id || !when) return json({ message: "What's the phone number it's under, and the new day and time?" });
-      const r = await rpc(env, "biz_reschedule", { p_email: email, p_appointment_id: id, p_new_start: when });
-      if (r.ok) if (!testMode) await sendApptEmail(env, "reschedule", { contact: (b.contact || "").toString(), name: (b.name || "").toString(), whenLabel: fmt(when, bizTz), lang: b.lang });
-      if (!r.ok && r.reason === "closed_date") return json({ ok: false, reason: "closed_date", message: closedMsg(b.lang, fmtDay(when, bizTz, b.lang), r.note, "") });
-      return json({ ok: !!r.ok, message: r.ok ? `Moved to ${fmt(when, bizTz)}. You'll get a new confirmation.` : (r.reason === "slot_taken" ? "That new time's taken — want another?" : "I couldn't move that one.") });
+
+      // MESMO DEFEITO DO BOOK, e aqui era pior: a frase falada ("amanhã às 3") ia CRUA para o
+      // banco como se fosse um carimbo de data. Ou o Postgres recusava, ou — se o texto por acaso
+      // fosse interpretável — o agendamento era MOVIDO PARA O DIA ERRADO e a pessoa só descobria
+      // faltando. Remarcar nunca funcionou por telefone, e ninguém tinha percebido.
+      // Agora resolvemos contra a agenda REAL do mesmo serviço, e só então movemos.
+      const f = await rpc(env, "biz_find_appointments", { p_email: email, p_contact: (b.contact || "").toString() });
+      const atual = (f.appointments || []).find((a) => a.id === id) || (f.appointments || [])[0] || null;
+      const svcAtual = atual ? pick(services, atual.service) : null;
+      let novoIso = when;
+      if (svcAtual) {
+        const av = await rpc(env, "biz_availability", { p_email: email, p_service_id: svcAtual.id, p_limit: 30 });
+        const m = resolveSlot(when, av.slots || [], bizTz);
+        if (!m) {
+          const alts = (av.slots || []).slice(0, 3).map((s2) => fmt(s2.start, bizTz)).join("; ");
+          return json({ ok: false, slots: av.slots || [], message: alts ? `That time isn't open — I have ${alts}. Which works?` : `I couldn't find that time — want me to check another day?` });
+        }
+        novoIso = m.start;
+      } else if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(when)) {
+        // sem saber o serviço não dá pra resolver a fala — melhor perguntar que mover às cegas
+        return json({ ok: false, message: "Which service is it for? I'll find the next opening." });
+      }
+      const r = await rpc(env, "biz_reschedule", { p_email: email, p_appointment_id: id, p_new_start: novoIso });
+      if (r.ok) if (!testMode) await apptEmailOrFlag(env, email, "reschedule", { contact: (b.contact || "").toString(), name: (b.name || "").toString(), whenLabel: fmt(novoIso, bizTz), lang: b.lang });
+      if (!r.ok && r.reason === "closed_date") return json({ ok: false, reason: "closed_date", message: closedMsg(b.lang, fmtDay(novoIso, bizTz, b.lang), r.note, "") });
+      return json({ ok: !!r.ok, message: r.ok ? `Moved to ${fmt(novoIso, bizTz)}. You'll get a new confirmation.` : (r.reason === "slot_taken" ? "That new time's taken — want another?" : "I couldn't move that one.") });
     }
 
     // resolve names → records
@@ -269,7 +381,7 @@ export async function onRequestPost(context) {
           if (!testMode) {
             // Same customer-facing confirmation + owner alert + CRM as the internal path. No gcalPush:
             // the external calendar IS the tenant's system of record, so there's nothing to mirror to Google.
-            await sendApptEmail(env, "book", { contact: (b.contact || "").toString(), name: (b.name || "").toString(), service: svc.name, whenLabel: fmt(startX, bizTz), pro: pro?.name || "", location: loc?.name || "", ref: ext.external_ref, lang: b.lang });
+            await apptEmailOrFlag(env, email, "book", { contact: (b.contact || "").toString(), name: (b.name || "").toString(), service: svc.name, whenLabel: fmt(startX, bizTz), pro: pro?.name || "", location: loc?.name || "", address: loc?.address || "", locPhone: loc?.phone || "", ref: ext.external_ref, lang: b.lang });
             if (env.RESEND_API_KEY && email.includes("@")) {
               try {
                 const { subject, html } = ownerAlertEmail({ kind: "booking", customer: (b.name || "").toString(), details: `${svc.name}${pro?.name ? ` · ${pro.name}` : ""}${loc?.name ? ` · ${loc.name}` : ""} · via ${scB.provider}`, when: fmt(startX, bizTz), lang: b.lang });
@@ -279,9 +391,9 @@ export async function onRequestPost(context) {
             await rpc(env, "biz_customer_touch", { p_email: email, p_contact: (b.contact || "").toString(), p_name: (b.name || "").toString(), p_points: 10, p_visit: true });
             try {
               const c = (b.contact || "").toString(); const isEm = /.+@.+\..+/.test(c);
-              const ur = await rpc(env, "crm_upsert_contact", { p_email: email, p_phone: isEm ? "" : c, p_contact_email: isEm ? c : "", p_name: (b.name || "").toString(), p_source: `gui:book:${scB.provider}`, p_amount_cents: 0 });
-              const cid = (typeof ur === "string") ? ur : null;
-              if (cid) {
+              const ur = await svcRpc(env, "crm_upsert_contact", { p_secret: env.SCHED_SECRET || "", p_email: email, p_phone: isEm ? "" : c, p_contact_email: isEm ? c : "", p_name: (b.name || "").toString(), p_source: `gui:book:${scB.provider}`, p_amount_cents: 0 });
+              const cid = ur.ok ? await ur.json().catch(() => null) : null;
+              if (typeof cid === "string" && cid) {
                 await rpc(env, "crm_log_event", { p_email: email, p_contact_id: cid, p_type: "booking", p_channel: "Phone", p_summary: `Booked ${svc.name} for ${fmt(startX, bizTz)} (via ${scB.provider})`.slice(0, 400), p_amount_cents: Math.max(0, svc.price_cents || 0), p_dedupe: `book:${scB.provider}:${ext.external_ref || startX}`, p_payload: { ref: ext.external_ref || "", source: scB.provider } });
                 await rpc(env, "crm_deal_upsert", { p_email: email, p_contact_id: cid, p_title: `${svc.name}`.slice(0, 80), p_value_cents: Math.max(0, svc.price_cents || 0), p_stage: "booked", p_source: `gui-${scB.provider}` });
               }
@@ -304,11 +416,21 @@ export async function onRequestPost(context) {
       // resolve the pro: explicit, else the one free at that time from a fresh availability check
       let proId = pro?.id || null, locId = loc?.id || null, startIso = (b.when || b.start || "").toString();
       if (!startIso) return json({ message: "What day and time would you like?" });
-      if (!proId) {
+      // O HORÁRIO SEMPRE PRECISA SER RESOLVIDO. Antes isto só rodava quando o profissional era
+      // desconhecido — e no dia em que o profissional passou a ser escolhido sozinho (negócio com
+      // um profissional só), a resolução foi PULADA e a frase falada ("amanhã às 10") seguiria
+      // crua para o banco como se fosse um carimbo de data. O que a pessoa fala nunca é um
+      // timestamp; resolver não é opcional.
+      {
         const av = await rpc(env, "biz_availability", { p_email: email, p_service_id: svc.id, p_location_id: locId, p_limit: 30 });
-        // Match on the instant (epoch ±60s), not string identity — the DB and the agent can format
-        // the same moment differently (offset vs Z, ms, seconds) and a string mismatch loses the slot.
-        const match = (av.slots || []).find((s) => Math.abs(Date.parse(s.start) - Date.parse(startIso)) < 60000);
+        // A agente fala como gente ("amanhã às 9") — a ferramenta pede isso na própria descrição.
+        // O código antigo fazia Date.parse desse texto e comparava com o instante do slot. Duas
+        // formas de falhar, as duas silenciosas: NaN (nunca casa) ou uma data INVENTADA
+        // (Date.parse("amanhã às 9") = 2001-09-01). Por isso NENHUM cliente conseguia marcar por
+        // telefone — a agente tentava 5 vezes e escalava, com a agenda vazia do outro lado.
+        // resolveSlot só devolve um horário que ESTÁ nesta lista; na dúvida devolve null e a
+        // agente oferece as opções reais. Ver functions/lib/slotResolver.test.mjs.
+        const match = resolveSlot(startIso, av.slots || [], bizTz);
         if (!match) {
           const alts = (av.slots || []).slice(0, 3).map((s) => `${fmt(s.start, bizTz)} with ${s.pro}`).join("; ");
           // SPECIAL DATES: if the requested day is closed (vacation/holiday), say WHY — not just "taken".
@@ -316,7 +438,8 @@ export async function onRequestPost(context) {
           if (sp) return json({ ok: false, reason: "closed_date", slots: av.slots || [], message: closedMsg(b.lang, fmtDay(startIso, bizTz, b.lang), sp.note, alts) });
           return json({ ok: false, slots: av.slots || [], message: alts ? `That time isn't open anymore — I have ${alts}. Want one of those?` : `That time isn't available — want me to check another day?` });
         }
-        proId = match.pro_id; locId = match.location_id; startIso = match.start;
+        // o profissional/local explícito continua valendo; o horário vem sempre do slot real
+        proId = proId || match.pro_id; locId = locId || match.location_id; startIso = match.start;
       }
       // capture per-vertical attributes the agent collected (party size, address, intake notes, etc.)
       const attrs = {};
@@ -392,12 +515,25 @@ export async function onRequestPost(context) {
       if (needsReserve && res?.ok && res.appointment_id) {
         try { await rpc(env, "ops_reservation_link", { p_email: email, p_ref: reserveRef, p_appointment_id: res.appointment_id }); } catch { /* best-effort */ }
       }
+      // ── NUNCA DIZER "AGENDADO" SEM AGENDAMENTO ───────────────────────────────────────────────
+      // Em 2026-08-07 a prova de ciclo capturou a resposta crua:
+      //   {"ok":true,"appointment_id":null,"ref":null,"message":"Done — booked for Fri, Aug 7…"}
+      // ok=true, agendamento NULO, e a agente dizia "pronto". A pessoa desliga confiando, aparece
+      // no dia e não existe nada — é o dano máximo que este produto pode causar a um cliente.
+      // Um "ok" sem id não é sucesso: é uma promessa sem lastro. Aqui isso vira falha explícita.
+      if (res?.ok && !res.appointment_id && res.status !== "hold") {
+        await emitFailure(env, "book_sem_id", email, "biz_book devolveu ok sem appointment_id — marcação NÃO confirmada ao cliente", { slot: startIso, service: svc?.name || "" }).catch(() => {});
+        return json({ ok: false, reason: "book_unconfirmed",
+          message: b.lang === "pt" ? "Não consegui confirmar essa reserva agora — prefiro não te garantir um horário que não ficou de pé. Posso pedir para alguém da equipe te confirmar em minutos?"
+            : b.lang === "es" ? "No pude confirmar esa reserva ahora — prefiero no prometerle un horario que no quedó. ¿Puedo pedir que alguien del equipo se lo confirme en minutos?"
+            : "I couldn't confirm that booking just now — I'd rather not promise you a time that didn't hold. Can I have someone from the team confirm it with you in a few minutes?" });
+      }
       if (res?.ok) {
         const held = res.status === "hold" ? ` (held for 5 min while we confirm)` : "";
         const refTxt = res.ref ? ` Your confirmation number is ${res.ref}.` : "";
         // send the branded confirmation (email now if they gave an email; SMS lights up once A2P clears)
         if (res.status !== "hold") {
-          if (!testMode) await sendApptEmail(env, "book", { contact: (b.contact || "").toString(), name: (b.name || "").toString(), service: svc.name, whenLabel: fmt(startIso, bizTz), pro: pro?.name || "", location: loc?.name || "", ref: res.ref, lang: b.lang });
+          if (!testMode) await apptEmailOrFlag(env, email, "book", { contact: (b.contact || "").toString(), name: (b.name || "").toString(), service: svc.name, whenLabel: fmt(startIso, bizTz), pro: pro?.name || "", location: loc?.name || "", address: loc?.address || "", locPhone: loc?.phone || "", ref: res.ref, lang: b.lang });
           // OWNER ALERT — ping the business owner (tenant) the instant a booking comes in, so they
           // don't have to watch the cockpit. Best-effort; tenant is pinned server-side.
           if (!testMode && env.RESEND_API_KEY && email.includes("@")) {
@@ -435,14 +571,17 @@ export async function onRequestPost(context) {
           try {
             const c = (b.contact || "").toString();
             const isEm = /.+@.+\..+/.test(c);
-            const ur = await rpc(env, "crm_upsert_contact", { p_email: email, p_phone: isEm ? "" : c, p_contact_email: isEm ? c : "", p_name: (b.name || "").toString(), p_source: "gui:book", p_amount_cents: 0 });
-            const cid = (typeof ur === "string") ? ur : null;
-            if (cid) {
+            const ur = await svcRpc(env, "crm_upsert_contact", { p_secret: env.SCHED_SECRET || "", p_email: email, p_phone: isEm ? "" : c, p_contact_email: isEm ? c : "", p_name: (b.name || "").toString(), p_source: "gui:book", p_amount_cents: 0 });
+            const cid = ur.ok ? await ur.json().catch(() => null) : null;
+            if (typeof cid === "string" && cid) {
               await rpc(env, "crm_log_event", { p_email: email, p_contact_id: cid, p_type: "booking", p_channel: "Phone", p_summary: `Booked ${svc.name} for ${fmt(startIso, bizTz)}`.slice(0, 400), p_amount_cents: Math.max(0, svc.price_cents || 0), p_dedupe: `book:${res.appointment_id}`, p_payload: { ref: res.ref || "" } });
               await rpc(env, "crm_deal_upsert", { p_email: email, p_contact_id: cid, p_title: `${svc.name}`.slice(0, 80), p_value_cents: Math.max(0, svc.price_cents || 0), p_stage: "booked", p_source: "gui-schedule" });
             }
           } catch { /* CRM not live yet → never block the booking */ }
         }
+        // desfecho REAL da reserva na trilha — é o registro que faltava pra saber se a
+        // ligação virou agendamento ou morreu no caminho.
+        await logTool(env, email, "book", "OK", `${svc.name} · ${fmt(startIso, bizTz)} · ref ${res.ref || "—"}`);
         return json({ ok: true, appointment_id: res.appointment_id, ref: res.ref, status: res.status, message: `Done — ${svc.name} ${res.status === "hold" ? "held" : "booked"} for ${fmt(startIso, bizTz)}${held}.${refTxt} You'll get a confirmation. Anything else?` });
       }
       if (res?.reason === "slot_taken") return json({ ok: false, message: `That time was just taken — want the next opening instead?` });
@@ -474,11 +613,22 @@ export async function onRequestPost(context) {
       let proId = pro?.id || null, locId = loc?.id || null;
       if (!proId) {
         const av = await rpc(env, "biz_availability", { p_email: email, p_service_id: svc.id, p_location_id: locId, p_limit: 30 });
-        // Match on the instant (epoch ±60s), not string identity (see availability/book above).
-        const m = (av.slots || []).find((s) => Math.abs(Date.parse(s.start) - Date.parse(startIso)) < 60000) || (av.slots || [])[0];
-        if (m) { proId = m.pro_id; locId = m.location_id; startIso = m.start; }
+        // MESMO conserto do book (ver slotResolver.js) — e aqui o antigo era ainda pior: quando o
+        // horário não casava, ele caía em `|| slots[0]` e marcava o PRIMEIRO livre em silêncio.
+        // Quem pediu "terça às 18h" saía com 12 semanas marcadas no horário errado, sem aviso.
+        // Marcar errado calado é pior que não marcar: agora recusa e oferece as opções reais.
+        const m = resolveSlot(startIso, av.slots || [], bizTz);
+        if (!m) {
+          const alts = (av.slots || []).slice(0, 3).map((s2) => fmt(s2.start, bizTz)).join("; ");
+          return json({ ok: false, slots: av.slots || [], message: alts ? `I couldn't find that exact time — I have ${alts}. Which works?` : `I couldn't find that time — want me to check another day?` });
+        }
+        proId = m.pro_id; locId = m.location_id; startIso = m.start;
       }
-      const base = new Date(startIso); const booked = [];
+      const base = new Date(startIso);
+      // Cinto de segurança: startIso aqui SEMPRE vem de um slot real do motor. Se algum dia
+      // deixar de vir, `new Date` daria Invalid Date e a série inteira sairia como NaN.
+      if (Number.isNaN(base.getTime())) return json({ ok: false, message: "I couldn't pin that start time — which day and time would you like?" });
+      const booked = [];
       for (let i = 0; i < weeks; i++) {
         const when = new Date(base.getTime() + i * 7 * 86400000).toISOString();
         const r = await bookIdem(env, { p_email: email, p_pro_id: proId, p_location_id: locId, p_service_id: svc.id, p_name: (b.name || "").toString(), p_contact: (b.contact || "").toString(), p_start: when }, `${email}:${(b.contact || "").toString()}:${svc.id}:${when}`);

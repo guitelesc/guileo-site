@@ -13,6 +13,7 @@
 // so the owner sees "Webchat lead" in the cockpit feed.
 import { json, corsHeaders, rateLimited } from "../lib/guard.js";
 import { webchatSentiment } from "../lib/cxEngine.js";
+import { svcRpc } from "../lib/sb.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -31,7 +32,7 @@ const rpc = (name, body) => fetch(`${SB_URL}/rest/v1/rpc/${name}`, {
 async function crmUpsert(env, email, phone, contactEmail, name) {
   try {
     if (!env.SCHED_SECRET || (!phone && !contactEmail)) return;
-    await rpc("crm_upsert_contact", {
+    await svcRpc(env, "crm_upsert_contact", {
       p_secret: env.SCHED_SECRET, p_email: email, p_phone: phone || "",
       p_contact_email: contactEmail || "", p_name: name || "", p_source: "webchat", p_amount_cents: 0,
     });
@@ -56,7 +57,7 @@ async function bookingIntent(env, email, contact, name, service) {
 // Fire-and-forget cockpit event (portal feed). Never blocks or breaks the reply.
 async function ingest(env, email, type, summary, payload) {
   try {
-    await rpc("ingest_client_event", {
+    await svcRpc(env, "ingest_client_event", {
       p_secret: env.INGEST_SECRET || "", p_email: email, p_type: type, p_channel: "Webchat",
       p_summary: (summary || "").slice(0, 300), p_amount: 0, p_payload: payload || {},
     });
@@ -212,7 +213,7 @@ export async function onRequestPost(context) {
     // (biz_services) so the chat quotes EXACT prices/durations instead of deferring to the team.
     // SCHED-gated literal; best-effort — no menu just means we fall back to "team confirms".
     try {
-      const mr = await rpc("biz_lookup", { p_secret: env.SCHED_SECRET || "gss_7Kx2mQ9vR4tZ8nL", p_email: client });
+      const mr = await rpc("biz_lookup", { p_secret: env.SCHED_SECRET || "", p_email: client });
       if (mr.ok) {
         const menu = await mr.json().catch(() => null);
         const svcs = (menu && Array.isArray(menu.services)) ? menu.services : [];

@@ -3,7 +3,7 @@
    plays per row: ✅ ask Gui for an extra confirmation, or 👻 mark the ghost (feeds the model). */
 import { useState, useEffect } from "react";
 import { FaTriangleExclamation, FaGhost, FaCheck } from "react-icons/fa6";
-import { fetchNoshowRadar, markNoshow, confirmNudge, toast } from "../lib/portalApi.js";
+import { fetchNoshowRadar, markNoshow, toast } from "../lib/portalApi.js";
 import { tr, Card, Empty, SectionSkeleton, UI_LANG, vnum } from "../pages/Portal.jsx";
 
 // Risk badge — signal colors by meaning: ≥80 red (danger), ≥60 amber (attention), else green (safe).
@@ -61,9 +61,21 @@ function RiskRadar({ V, real = null, email = "", dataKey = "" }) {
 
   const doConfirm = async (r) => {
     setDone((d) => ({ ...d, [r.appointment_id]: "confirmed" }));          // optimistic
-    toast(tr("Confirmation nudge sent — it shows in your feed ✓"));
-    const res = await confirmNudge(dataKey, email, r.appointment_id, r.customer_name);
-    if (!res.ok) { setDone((d) => { const n = { ...d }; delete n[r.appointment_id]; return n; }); toast(tr("I couldn't save that — check your connection and try again.")); }
+    // Real endpoint returns { ok, sent, via } — only claim "reminded" on a true send; else "queued".
+    let res = {};
+    try {
+      const rr = await fetch("/api/noshow-radar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: dataKey, email: email || "", action: "confirm", appointment_id: r.appointment_id }),
+      });
+      res = rr.ok ? await rr.json().catch(() => ({})) : {};
+    } catch { res = {}; }
+    if (res && res.ok) {
+      toast((Number(res.sent) || 0) > 0 ? tr("Confirmed ✓ — Gui reminded them") : tr("Queued ✓ — Gui will remind them"));
+    } else {
+      setDone((d) => { const n = { ...d }; delete n[r.appointment_id]; return n; });
+      toast(tr("I couldn't save that — check your connection and try again."));
+    }
   };
   const doNoshow = async (r) => {
     setAsking(null);

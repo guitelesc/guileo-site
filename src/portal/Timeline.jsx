@@ -22,6 +22,10 @@ const STR = {
     summary: "The money, end to end", flowNote: "Gui turns supplier cost into profit in your hand — and flags what could come back.",
     sample: "Sample data — connect your account to see your real flow.",
     notReady: "Connect your account and install the money engines to see your real timeline.",
+    recoverTitle: "Recover the return risk", recoverSub: "One click and Gui reaches out to win each customer back.",
+    recover: "Gui recover →", sending: "Sending…", reaching: "Gui is reaching out ✓",
+    queued: "Queued — Gui will reach out ✓", recFail: "Couldn't queue — retry",
+    riskWord: "risk", daysAgo: "d ago", ltvWord: "at risk",
   },
   pt: {
     title: "Do fornecedor ao cliente", live: "AO VIVO", est: "exemplo",
@@ -31,6 +35,10 @@ const STR = {
     summary: "O dinheiro, de ponta a ponta", flowNote: "A Gui transforma o custo do fornecedor em lucro na sua mão — e sinaliza o que pode voltar.",
     sample: "Dados de exemplo — conecte sua conta para ver seu fluxo real.",
     notReady: "Conecte sua conta e instale os motores de dinheiro para ver sua linha do tempo real.",
+    recoverTitle: "Recupere o risco de retorno", recoverSub: "Um clique e a Gui vai atrás de cada cliente pra trazer de volta.",
+    recover: "Gui recupera →", sending: "Enviando…", reaching: "Gui está indo atrás ✓",
+    queued: "Na fila — a Gui vai atrás ✓", recFail: "Não deu — tentar de novo",
+    riskWord: "risco", daysAgo: "d atrás", ltvWord: "em risco",
   },
   es: {
     title: "Del proveedor al cliente", live: "EN VIVO", est: "ejemplo",
@@ -40,6 +48,10 @@ const STR = {
     summary: "El dinero, de punta a punta", flowNote: "Gui convierte el costo del proveedor en ganancia en tu mano — y señala lo que puede volver.",
     sample: "Datos de ejemplo — conecta tu cuenta para ver tu flujo real.",
     notReady: "Conecta tu cuenta e instala los motores de dinero para ver tu línea de tiempo real.",
+    recoverTitle: "Recupera el riesgo de retorno", recoverSub: "Un clic y Gui contacta a cada cliente para recuperarlo.",
+    recover: "Gui recupera →", sending: "Enviando…", reaching: "Gui está contactando ✓",
+    queued: "En cola — Gui contactará ✓", recFail: "No se pudo — reintentar",
+    riskWord: "riesgo", daysAgo: "d atrás", ltvWord: "en riesgo",
   },
   hi: {
     title: "आपूर्तिकर्ता से ग्राहक तक", live: "लाइव", est: "नमूना",
@@ -49,6 +61,10 @@ const STR = {
     summary: "पैसा, शुरू से अंत तक", flowNote: "Gui आपूर्तिकर्ता की लागत को आपके हाथ में मुनाफ़े में बदलती है — और जो लौट सकता है उसे चिह्नित करती है।",
     sample: "नमूना डेटा — अपना असली प्रवाह देखने के लिए खाता जोड़ें।",
     notReady: "अपनी असली टाइमलाइन देखने के लिए खाता जोड़ें और मनी इंजन इंस्टॉल करें।",
+    recoverTitle: "वापसी जोखिम की भरपाई करें", recoverSub: "एक क्लिक और Gui हर ग्राहक को वापस लाने के लिए संपर्क करती है।",
+    recover: "Gui वापस लाए →", sending: "भेज रहे…", reaching: "Gui संपर्क कर रही है ✓",
+    queued: "कतार में — Gui संपर्क करेगी ✓", recFail: "विफल — पुनः प्रयास",
+    riskWord: "जोखिम", daysAgo: "द पहले", ltvWord: "जोखिम में",
   },
 };
 const T = (k) => (STR[UI_LANG] || STR.en)[k] || STR.en[k] || k;
@@ -61,6 +77,15 @@ const money = (cents) => {
   catch { return `$${Math.round(v)}`; }
 };
 const num = (n) => (Number.isFinite(Number(n)) ? Number(n).toLocaleString(LOCALE()) : "—");
+const isEmailAddr = (s) => /.+@.+\..+/.test((s || "").toString());
+// The real contact we can hand the reengage path: a valid email (Gui reactivates NOW) or, failing that,
+// a phone (queued for SMS/call). Empty → the row is NOT recoverable and must be hidden.
+const contactOf = (r) => {
+  const e = ((r && r.contact_email) || "").toString().trim();
+  if (isEmailAddr(e)) return e;
+  const p = ((r && r.phone) || "").toString().trim();
+  return p || "";
+};
 
 // ── deterministic demo payload (mirrors how the sibling tabs fake a live-looking flow) ──
 function genDemo(V) {
@@ -127,7 +152,88 @@ function Node({ stage, i }) {
   );
 }
 
-function TimelineView({ d, real }) {
+// ── RECUPERAR O RISCO DE RETORNO — 1-clique real ──────────────────────────────
+// The Timeline surfaces "return risk" money aggregate; this makes it ACTIONABLE. In REAL mode we pull the
+// tenant's actual at-risk contacts (growth-intel action:"churn" → same per-tenant gate, risk>=50) and give
+// each row a "Gui recover →" button that fires the REAL reengage path (action:"reengage") for THAT contact.
+//   • Only real mode + a real contact (email or phone). No contact → the row is hidden (IRON RULE 1).
+//   • Success is claimed ONLY on ok:true from the endpoint — sent→"reaching out", else honest "queued".
+//     Anything else → honest retry button. Never a fabricated "done" (IRON RULE 2).
+//   • Degrades to nothing (returns null) if not connected, SQL not pasted, or no recoverable contact —
+//     it never crashes the tab and never appears in demo (IRON RULE, zero-downtime).
+function ReturnRiskRecover({ email, dk }) {
+  const [rows, setRows] = useState(null);  // null=loading, [] = none/hidden
+  const [st, setSt] = useState({});        // idx -> "sending" | "sent" | "queued" | "error"
+
+  useEffect(() => {
+    let alive = true;
+    if (!email || !dk) { setRows([]); return; }
+    fetch("/api/growth-intel", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, token: dk, action: "churn" }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (alive) setRows(j && j.ready && Array.isArray(j.atRisk) ? j.atRisk : []); })
+      .catch(() => { if (alive) setRows([]); });
+    return () => { alive = false; };
+  }, [email, dk]);
+
+  if (rows === null) return null; // silent while the real list is in flight — never a fake state
+  const list = rows.map((r, i) => ({ r, i, contact: contactOf(r) })).filter((x) => !!x.contact);
+  if (list.length === 0) return null; // degrade to hidden: no real, recoverable contact
+
+  async function recover(r, i, contact) {
+    setSt((s) => ({ ...s, [i]: "sending" }));
+    try {
+      const res = await fetch("/api/growth-intel", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, token: dk, action: "reengage", name: r.name, contact, suggested: r.suggested_action, risk: r.risk }),
+      });
+      const j = res.ok ? await res.json().catch(() => null) : null;
+      if (j && j.ok) setSt((s) => ({ ...s, [i]: j.sent ? "sent" : "queued" })); // honest: sent NOW vs queued
+      else setSt((s) => ({ ...s, [i]: "error" }));
+    } catch { setSt((s) => ({ ...s, [i]: "error" })); }
+  }
+
+  return (
+    <Card>
+      <div className="text-xs font-bold uppercase tracking-wide mb-1" style={{ color: AMBER }}>{T("recoverTitle")}</div>
+      <p className="text-[11px] text-g-muted mb-3">{T("recoverSub")}</p>
+      <div className="space-y-2">
+        {list.map(({ r, i, contact }) => {
+          const status = st[i] || "idle";
+          const days = Number(r.days_since_visit);
+          const ltvCents = Number.isFinite(Number(r.ltv)) ? Math.round(Number(r.ltv) * 100) : null;
+          return (
+            <div key={i} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-g-word truncate">{r.name || "Cliente"}</div>
+                <div className="text-[11px] text-g-muted num truncate">
+                  {Number.isFinite(Number(r.risk)) ? `${num(r.risk)}% ${T("riskWord")}` : ""}
+                  {Number.isFinite(days) ? ` · ${num(days)}${T("daysAgo")}` : ""}
+                  {ltvCents && ltvCents > 0 ? ` · ${money(ltvCents)} ${T("ltvWord")}` : ""}
+                </div>
+              </div>
+              {status === "sent" || status === "queued" ? (
+                <span className="shrink-0 text-[11px] font-black text-right" style={{ color: OK }}>{status === "sent" ? T("reaching") : T("queued")}</span>
+              ) : status === "error" ? (
+                <button onClick={() => recover(r, i, contact)} className="shrink-0 text-[11px] font-black underline" style={{ color: ALERT }}>{T("recFail")}</button>
+              ) : (
+                <button onClick={() => recover(r, i, contact)} disabled={status === "sending"}
+                  className="shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-wide transition disabled:opacity-60"
+                  style={{ background: GUI + "22", color: GUI, boxShadow: `inset 0 0 0 1px ${GUI}55` }}>
+                  {status === "sending" ? T("sending") : T("recover")}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function TimelineView({ d, real, email = "", dk = "" }) {
   const stages = Array.isArray(d.stages) ? d.stages : [];
   const m = d.money || {};
   const cost = intCents(m.cost_cents), rev = intCents(m.revenue_cents), profit = intCents(m.profit_cents), risk = intCents(m.risk_cents);
@@ -190,6 +296,9 @@ function TimelineView({ d, real }) {
         </div>
         <div className="mt-3 text-[11px] text-g-muted leading-snug">{T("flowNote")}</div>
       </Card>
+
+      {/* 1-CLICK RECOVER — only real mode + real contact; self-hides otherwise (never in demo) */}
+      {real && email && dk && <ReturnRiskRecover email={email} dk={dk} />}
     </div>
   );
 }
@@ -242,7 +351,7 @@ function Timeline({ V, real = null, email = "", dataKey = "" }) {
           {T("sample")}
         </div>
       )}
-      <TimelineView d={d} real={!!real} />
+      <TimelineView d={d} real={!!real} email={email} dk={dk} />
     </>
   );
 }

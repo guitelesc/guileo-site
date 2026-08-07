@@ -27,7 +27,7 @@ export default function Calculator() {
     free: { en: "Free · 20 seconds", pt: "Grátis · 20 segundos", es: "Gratis · 20 segundos", hi: "मुफ़्त · 20 सेकंड" },
     h1a: { en: "How much are missed calls ", pt: "Quanto as ligações perdidas ", es: "¿Cuánto te cuestan las ", hi: "मिस्ड कॉल आपको " },
     h1b: { en: "costing you?", pt: "estão te custando?", es: "llamadas perdidas?", hi: "कितनी महँगी पड़ रही हैं?" },
-    missedLbl: { en: "Calls & messages missed / week", pt: "Ligações & mensagens perdidas / semana", es: "Llamadas y mensajes perdidos / semana", hi: "मिस्ड कॉल & मैसेज / सप्ताह" },
+    missedLbl: { en: "Calls & messages missed / week", pt: "Ligações e mensagens perdidas / semana", es: "Llamadas y mensajes perdidos / semana", hi: "मिस्ड कॉल & मैसेज / सप्ताह" },
     valueLbl: { en: "Avg. value of a customer / job", pt: "Valor médio de um cliente / serviço", es: "Valor promedio de un cliente / trabajo", hi: "एक ग्राहक / काम का औसत मूल्य" },
     losing: { en: "You're losing about", pt: "Você está perdendo cerca de", es: "Estás perdiendo cerca de", hi: "आप लगभग खो रहे हैं" },
     walking: { en: "walking out the door.", pt: "saindo pela porta.", es: "saliendo por la puerta.", hi: "दरवाज़े से बाहर जा रहा है।" },

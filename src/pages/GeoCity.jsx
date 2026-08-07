@@ -50,7 +50,7 @@ export default function GeoCity({ intent = "receptionist" } = {}) {
         name: "Guileo", url: "https://guileoai.com",
         areaServed: c.areaServed,
         address: { "@type": "PostalAddress", addressLocality: c.city, addressRegion: c.region, addressCountry: c.country },
-        description: "AI receptionist and growth automation for local businesses — multilingual (20+ languages), 24/7.",
+        description: "AI receptionist and growth automation for local businesses — multilingual (16 languages), 24/7.",
       });
     }
     const faqItems = t?.faq?.items || [];

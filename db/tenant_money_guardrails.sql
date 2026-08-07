@@ -24,7 +24,7 @@ returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare v record;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   -- atomic gate: decrementa só se houver saldo E a compra for DESTE tenant.
   update public.package_purchases set sessions_used = sessions_used + 1
     where id = p_purchase_id
@@ -49,7 +49,7 @@ create or replace function public.package_delete(p_secret text, p_client_email t
 returns boolean
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   delete from public.packages where id = p_id and client_email = lower(trim(p_client_email));
   return found;
 end $$;
@@ -63,7 +63,7 @@ create or replace function public.membership_delete(p_secret text, p_client_emai
 returns boolean
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   delete from public.memberships where id = p_id and client_email = lower(trim(p_client_email));
   return found;
 end $$;
@@ -77,7 +77,7 @@ create or replace function public.coupon_delete(p_secret text, p_client_email te
 returns boolean
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   delete from public.coupons where id = p_id and client_email = lower(trim(p_client_email));
   return found;
 end $$;
@@ -94,7 +94,7 @@ returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare v record;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   -- atomic gate: só incrementa quando ativo, dentro da janela, sob o limite E do tenant certo.
   update public.coupons set redeemed = redeemed + 1
     where id = p_id
@@ -133,7 +133,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if coalesce(trim(p_ref), '') = '' then return json_build_object('converted', 0, 'paid', 0); end if;
   return (
     with leads as (

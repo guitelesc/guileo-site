@@ -41,8 +41,12 @@
 //   GET  /api/agent-eval?token=DIGEST&tenant=x@y.com   → troca o tenant-sandbox do "voice"
 // ═════════════════════════════════════════════════════════════════════════════
 import { json, safeEq } from "../lib/guard.js";
+import { svcRpc } from "../lib/sb.js";
 import { AGENT_EVAL_CASES } from "../../src/data/agentEvalCases.js";
 import { ACTION_EVAL_CASES, ACTION_EVAL_SANDBOX_TENANT } from "../../src/data/actionEvalCases.js";
+// Casos POR VERTICAL — o risco real de cada setor (clínica/advocacia/restaurante/HVAC…).
+// O golden set original não tinha dimensão de vertical: media o cérebro genericamente.
+import { VERTICAL_EVAL_CASES } from "../../src/data/verticalEvalCases.js";
 // guiBrain EXPORTA guiReply + askClaude (o runner da cadeia de modelos que o JUIZ usa).
 import { guiReply, askClaude } from "../lib/guiBrain.js";
 // Namespaces + feature-detect: essas duas brains são internas até o patch de 1 linha acima.
@@ -259,6 +263,32 @@ export async function onRequest(context) {
   const onlyCase = (url.searchParams.get("case") || body.case || "").toString().trim();
   const tenant = (url.searchParams.get("tenant") || body.tenant || env.EVAL_SANDBOX_TENANT || env.EVAL_TENANT || EVAL_TENANT_DEFAULT).toString().trim().toLowerCase();
 
+  // ── TRAVA DE GASTO: 1 rodada por dia, decidida no BANCO ──────────────────────
+  // Rodar o golden set gasta modelo de verdade. O /api/cron-tick é POST PÚBLICO (só
+  // rate-limited) e é ele que dispara esta rota às 00h com o DIGEST do servidor — então
+  // quem soubesse a URL podia forçar várias rodadas pagas na mesma janela. A reserva é
+  // atômica: a 1ª chamada do dia ganha, as seguintes saem sem gastar nada.
+  // Não trava: `dry=1` (inerte, não grava) nem `force=1` (o operador pediu de propósito).
+  // Uma varredura em lotes manda o MESMO run_id (e offset>0) nos lotes seguintes: reservar
+  // ali travaria o lote 2 em diante e a varredura nunca terminaria. Só o lote inicial reserva.
+  const force = url.searchParams.get("force") === "1" || body.force === true;
+  const isContinuation = !!(url.searchParams.get("run_id") || body.run_id) || Number(url.searchParams.get("offset") ?? body.offset ?? 0) > 0;
+  if (!dry && !force && !onlyAgent && !onlyCase && !isContinuation) {
+    let claimed = null;
+    try {
+      // svcRpc (service_role): ops_run_claim é revogada do anon, então o helper local
+      // devolveria null e a trava viraria decoração.
+      const cr = await svcRpc(env, "ops_run_claim", { p_secret: env.INGEST_SECRET || "", p_kind: "agent-eval", p_hours: 20 });
+      claimed = cr && cr.ok ? await cr.json().catch(() => null) : null;
+      if (claimed !== true && claimed !== false) claimed = null;
+    } catch { claimed = null; }
+    // null = RPC indisponível → deixa rodar (medição não pode sumir por causa do portão);
+    // false = já rodou nesta janela → sai barato, sem chamar modelo.
+    if (claimed === false) {
+      return json({ ok: true, skipped: "ja_rodou_hoje", note: "o eval já rodou nesta janela de 20h — nada gasto. Use ?force=1 pra rodar mesmo assim." });
+    }
+  }
+
   // run_id: gerado por padrão, mas ACEITA um passado (?run_id= / body.run_id) pra que os
   // lotes de uma varredura chunked caiam TODOS sob a MESMA run em agent_evals (histórico limpo).
   const runId = (url.searchParams.get("run_id") || body.run_id || `eval_${Date.now()}`).toString().slice(0, 64);
@@ -273,7 +303,7 @@ export async function onRequest(context) {
     return json(out);
   }
 
-  let cases = AGENT_EVAL_CASES.concat(ACTION_EVAL_CASES);
+  let cases = AGENT_EVAL_CASES.concat(VERTICAL_EVAL_CASES, ACTION_EVAL_CASES);
   if (onlyAgent) cases = cases.filter((c) => c.agent === onlyAgent);
   if (onlyCase) cases = cases.filter((c) => c.id === onlyCase);
   out.total = cases.length; // tamanho do conjunto (filtrado) inteiro — não só deste lote

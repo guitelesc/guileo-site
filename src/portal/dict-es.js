@@ -1108,4 +1108,11 @@ export default {
   "Inactive": "Inactiva",
   "today": "hoy",
   "Deactivate": "Desactivar",
+  "Add a note": "Agregar nota",
+  "Your note on this lead…": "Tu nota sobre este lead…",
+  "Tap to advance: New → Contacted → Won": "Toca para avanzar: Nuevo → Contactado → Cerrado",
+  "Call now": "Llamar ahora",
+  "Gui calls back": "Gui devuelve la llamada",
+  "Gui is calling back": "Gui está devolviendo la llamada",
+  "Let Gui call this lead back for you": "Deja que Gui devuelva la llamada por ti",
 };

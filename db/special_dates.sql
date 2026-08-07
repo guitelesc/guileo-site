@@ -269,6 +269,6 @@ begin
 end $$;
 
 -- ✅ Pronto. Teste rápido (troque o email):
---   select biz_set_special_date('gss_7Kx2mQ9vR4tZ8nL','dono@negocio.com','2026-11-26',true,null,null,'Feriado — Ação de Graças');
---   select biz_list_special_dates('gss_7Kx2mQ9vR4tZ8nL','dono@negocio.com');
+--   select biz_set_special_date('gss_Kp9mX4vR2tZ7nQ5wL8bc','dono@negocio.com','2026-11-26',true,null,null,'Feriado — Ação de Graças');
+--   select biz_list_special_dates('gss_Kp9mX4vR2tZ7nQ5wL8bc','dono@negocio.com');
 --   -- biz_availability não devolve mais slots em 2026-11-26; biz_book nesse dia → reason='closed_date'.

@@ -32,6 +32,7 @@
 // see sendWhatsApp() / sendWhatsAppTemplate() below.
 // ═════════════════════════════════════════════════════════════════════════════
 import { json, safeEq } from "../lib/guard.js";
+import { svcRpc } from "../lib/sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -103,8 +104,38 @@ export async function sendWhatsApp(env, tenant, to, text, opts = {}) {
       }),
     });
     const d = await r.json().catch(() => ({}));
-    return { ok: r.ok, id: d?.messages?.[0]?.id || null, raw: d };
+    if (r.ok) return { ok: true, id: d?.messages?.[0]?.id || null, raw: d };
+
+    // BR nono digito: o wa_id que a Meta entrega no webhook pode vir SEM o 9
+    // (contas antigas), mas o numero que o WhatsApp aceita como destino pode ser o
+    // COM o 9 — e vice-versa. Quando a primeira forma e recusada, tentamos a outra
+    // uma unica vez. So dispara em erro, entao nao muda nada no caminho feliz.
+    const alt = brAltNinth(dest);
+    if (alt && !opts._retry) return sendWhatsApp(env, tenant, alt, text, { ...opts, _retry: true });
+    return { ok: false, id: null, raw: d };
   } catch (e) { return { ok: false, reason: "transport", error: String(e) }; }
+}
+
+// 55 + DD + 9 + 8 digitos  <->  55 + DD + 8 digitos. Devolve null se nao for celular BR.
+function brAltNinth(n) {
+  const d = String(n || "").replace(/[^0-9]/g, "");
+  if (/^55[0-9]{2}9[0-9]{8}$/.test(d)) return "55" + d.slice(2, 4) + d.slice(5);
+  if (/^55[0-9]{2}[0-9]{8}$/.test(d)) return "55" + d.slice(2, 4) + "9" + d.slice(4);
+  return null;
+}
+
+// ── honest failure log ─────────────────────────────────────────────────────────
+// A reply the customer never received must NOT look like a delivered reply. Same
+// INGEST-gated path the brain uses, so it lands in the cockpit timeline next to the
+// optimistic "Gui replied" line and contradicts it out loud.
+async function logSendFailure(env, email, to, why, meta = {}) {
+  try {
+    await svcRpc(env, "ingest_client_event", {
+      p_secret: env.INGEST_SECRET || "", p_email: email, p_type: "message", p_channel: "WhatsApp",
+      p_summary: `⚠️ Resposta da Gui NÃO foi entregue (WhatsApp): ${String(why).slice(0, 200)}`,
+      p_amount: 0, p_payload: { delivery: "failed", to: String(to || ""), reason: String(why || ""), ...meta },
+    });
+  } catch { /* never let logging break the webhook ACK */ }
 }
 
 // PROACTIVE / business-initiated send OUTSIDE the 24h window — MUST use a template that
@@ -226,7 +257,22 @@ export async function onRequestPost(context) {
             });
             // Reply goes back through THIS tenant's own Cloud-API number/token (never Twilio,
             // never another tenant). Inside the 24h window since it answers an inbound message.
-            if (reply) await sendWhatsApp(env, tenant, from, reply);
+            //
+            // We MUST check the result. The brain already logged "🤖 Gui replied: …" before this
+            // line runs, so a rejected send would leave the cockpit claiming an answer the customer
+            // never got — the worst kind of failure: silent, and it looks like success. When Meta
+            // refuses (expired token, number off the allow-list in dev, 24h window closed), we log
+            // the real reason so the cockpit and the owner see the truth.
+            if (reply) {
+              const sent = await sendWhatsApp(env, tenant, from, reply);
+              if (!sent || !sent.ok) {
+                const err = sent?.raw?.error || {};
+                const why = err.message || sent?.reason || "unknown";
+                await logSendFailure(env, tenant.client_email, from, why, {
+                  code: err.code ?? null, phone_number_id: String(phoneNumberId || ""), message_id: msgId,
+                });
+              }
+            }
           })();
           jobs.push(work);
         }

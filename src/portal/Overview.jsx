@@ -52,6 +52,228 @@ function ReceberBanner({ email = "", dataKey = "" }) {
   );
 }
 
+// MONEY RECOVERED — the retention hero: shows, in ONE prominent card, the real value Gui recovered
+// this month, pulled from /api/growth-intel action:"money_proof" (revenue_month spine + client_events).
+// REAL numbers only: the collected total is the hero figure; bookings / calls answered / after-hours
+// ride along as supporting proof, each shown ONLY when its `real` flag is true. When nothing is
+// collected yet but Gui booked real jobs, the benchmarked estimated value becomes the hero — clearly
+// labeled "estimated" so it can never read as cash. Metrics the endpoint still can't derive (no-shows
+// prevented) come back real:false and are never rendered — never faked. A skeleton shows while loading;
+// an honest empty state shows when the endpoint isn't ready or
+// the tenant genuinely has nothing yet. Silent in demo (no email/key) and on any auth hiccup, so the
+// sample view can never display a fabricated recovery number.
+function MoneyRecovered({ email = "", dataKey = "", onNav, views }) {
+  const [st, setSt] = useState("loading"); // loading | ready | empty | off
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    if (!email || !email.includes("@") || !dataKey) { setSt("off"); return; } // demo / not a real client → render nothing
+    let alive = true;
+    setSt("loading");
+    fetch("/api/growth-intel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "money_proof", email, token: dataKey }) })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!alive) return;
+        if (!d || d.ok !== true) { setSt("off"); return; } // 401/error → stay silent, never fabricate
+        setData(d);
+        setSt(d.ready ? "ready" : "empty");
+      })
+      .catch(() => { if (alive) setSt("off"); }); // transient error → render nothing
+    return () => { alive = false; };
+  }, [email, dataKey]);
+
+  if (st === "off") return null;
+
+  const L = (en, pt, es) => (UI_LANG === "pt" ? pt : UI_LANG === "es" ? es : en);
+  const title = L("💰 Money Gui recovered for you", "💰 Dinheiro que a Gui recuperou pra você", "💰 Dinero que Gui recuperó para ti");
+
+  // SKELETON — while the endpoint loads (never a placeholder number)
+  if (st === "loading") {
+    return (
+      <Card className="relative overflow-hidden bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.05] border-g-green/25">
+        <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{title}</div>
+        <div className="mt-2 h-11 w-40 rounded-lg bg-white/[0.06] animate-pulse" />
+        <div className="mt-3 flex gap-2"><div className="h-6 w-24 rounded-full bg-white/[0.05] animate-pulse" /><div className="h-6 w-24 rounded-full bg-white/[0.05] animate-pulse" /></div>
+      </Card>
+    );
+  }
+
+  const p = (data && data.proof) || {};
+  const rl = (data && data.real) || {};
+  const collectedUsd = rl.collected_cents ? Math.max(0, Math.round((p.collected_cents || 0) / 100)) : 0;
+  const bookings = rl.bookings ? (p.bookings || 0) : 0;
+  const calls = rl.calls_answered ? (p.calls_answered || 0) : 0;
+  const afterHours = rl.calls_after_hours ? (p.calls_after_hours || 0) : 0;
+  // Benchmarked "value recovered vs a receptionist" (never presented as cash). Only shown when real.
+  const estimatedUsd = rl.estimated ? Math.max(0, Math.round((p.estimated_value_cents || 0) / 100)) : 0;
+  const month = (data && data.month) || p.month || "";
+  const hasAny = collectedUsd > 0 || bookings > 0 || calls > 0 || estimatedUsd > 0;
+
+  // EMPTY — endpoint not ready OR everything genuinely zero → honest, encouraging state (no fake $)
+  if (st === "empty" || !hasAny) {
+    return (
+      <Card className="bg-gradient-to-br from-g-green/[0.06] to-transparent border-g-green/20">
+        <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{title}</div>
+        <div className="mt-1.5 text-sm text-g-muted leading-snug">{L(
+          "As Gui answers calls, books, and collects for you, your recovered total shows up right here — real dollars, this month.",
+          "Conforme a Gui atende, agenda e cobra por você, o total recuperado aparece bem aqui — dinheiro real, neste mês.",
+          "A medida que Gui atiende, agenda y cobra por ti, tu total recuperado aparece aquí — dinero real, este mes."
+        )}</div>
+      </Card>
+    );
+  }
+
+  // REAL — the hero number is the money collected; bookings/calls ride along as supporting proof
+  return (
+    <Card className="relative overflow-hidden bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] border-g-green/30">
+      <div className="absolute -top-16 -right-12 h-40 w-40 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
+      <div className="relative">
+        <div className="text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2 flex-wrap">
+          {title}
+          <span className="inline-flex items-center gap-1 text-[9px] font-black text-g-green normal-case"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{L("LIVE — real data", "AO VIVO — dados reais", "EN VIVO — datos reales")}</span>
+          {month && <span className="text-[10px] font-bold text-g-muted normal-case">· {month}</span>}
+        </div>
+        {collectedUsd > 0 ? (
+          <>
+            <div className="mt-1 text-4xl sm:text-5xl font-black text-g-green money-glow num tracking-tight"><Count key={"mr-" + collectedUsd} to={collectedUsd} prefix="$" /></div>
+            <div className="mt-1 text-[11px] font-bold text-g-muted">{L("collected for you this month by Gui", "cobrado pra você neste mês pela Gui", "cobrado para ti este mes por Gui")}</div>
+          </>
+        ) : (bookings > 0 && estimatedUsd > 0) ? (
+          // No cash collected yet, but Gui booked real jobs → show the benchmarked value as the hero,
+          // clearly flagged as an estimate (never as collected money).
+          <>
+            <div className="mt-1 text-4xl sm:text-5xl font-black text-g-green money-glow num tracking-tight"><Count key={"est-" + estimatedUsd} to={estimatedUsd} prefix="$" /></div>
+            <div className="mt-1 text-[11px] font-bold text-g-muted">{L("estimated · benchmarked vs a receptionist", "estimado · comparado a uma recepcionista", "estimado · comparado con una recepcionista")}</div>
+          </>
+        ) : (
+          <div className="mt-1 text-sm font-bold text-g-word">{L("Gui is already working for you this month", "A Gui já está trabalhando por você neste mês", "Gui ya está trabajando por ti este mes")}</div>
+        )}
+        {(bookings > 0 || calls > 0 || afterHours > 0) && (
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            {bookings > 0 && <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold"><span className="text-g-green num">{bookings.toLocaleString()}</span><span className="text-g-muted">{L("bookings", "agendamentos", "reservas")}</span></span>}
+            {calls > 0 && <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold"><span className="text-g-green num">{calls.toLocaleString()}</span><span className="text-g-muted">{L("calls answered", "chamadas atendidas", "llamadas atendidas")}</span></span>}
+            {afterHours > 0 && <span className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] border border-white/10 px-3 py-1 text-[11px] font-bold"><span className="text-g-green num">{afterHours.toLocaleString()}</span><span className="text-g-muted">{L("after-hours", "fora do horário", "fuera de horario")}</span><span className="text-[9px] font-black uppercase text-g-muted/70 tracking-wide">· est</span></span>}
+          </div>
+        )}
+        {/* THE ONE NEXT MOVE — routes to where the owner recovers MORE (protect upcoming money first:
+            Risk Radar; else Inteligência's win-back). Real mode only; hidden if neither tab is available. */}
+        {onNav && (views instanceof Set) && (views.has("riskradar") || views.has("growthintel")) && (() => {
+          const t = views.has("riskradar") ? "riskradar" : "growthintel";
+          return (
+            <button onClick={() => onNav(t)} className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-g-green/40 bg-g-green/10 px-3.5 py-1.5 text-[12px] font-bold text-g-word hover:bg-g-green/20 transition clicky">
+              {t === "riskradar"
+                ? L("See who's at risk →", "Veja quem está em risco →", "Mira quién está en riesgo →")
+                : L("Find more to recover →", "Ache mais pra recuperar →", "Encuentra más por recuperar →")}
+            </button>
+          );
+        })()}
+      </div>
+    </Card>
+  );
+}
+
+// TODAY'S TOP MOVES — REAL PATH. For a signed-in client the "what do I do today" command center is
+// built ONLY from live sources other tabs already read: overdue invoices (/api/crm invoices), at-risk
+// customers (/api/growth-intel churn), no-show radar (/api/noshow-radar), and the 7-day forecast
+// (/api/growth-intel forecast). Each lens renders ONLY when its own endpoint returns real, actionable
+// data (ok:true + ready:true + a non-zero signal) AND its destination tab is actually available — else
+// it is simply omitted. It NEVER shows the demo guiAlerts sample and NEVER fabricates a number. Tapping
+// a tile routes (via the same onNav the demo tiles use) to the tab where the owner really acts. Silent
+// while loading, on any auth hiccup, and when nothing is actionable (renders null so the screen stays
+// calm) — the demo card keeps its own gen* path untouched in the render branch below.
+function RealTopMoves({ email = "", dataKey = "", onNav, views }) {
+  const [st, setSt] = useState("loading"); // loading | ready | off
+  const [lenses, setLenses] = useState([]);
+  const valid = (v) => (views instanceof Set ? views.has(v) : true);
+  useEffect(() => {
+    if (!email || !email.includes("@") || !dataKey) { setSt("off"); return; } // demo / not a real client → nothing
+    let alive = true;
+    setSt("loading");
+    const post = (url, body) =>
+      fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+        .then((r) => (r.ok ? r.json() : null)).catch(() => null); // any 401/error → null → lens omitted, never faked
+    Promise.all([
+      post("/api/crm", { action: "invoices", email, token: dataKey }),
+      post("/api/noshow-radar", { email, token: dataKey }),
+      post("/api/growth-intel", { action: "churn", email, token: dataKey }),
+      post("/api/growth-intel", { action: "forecast", email, token: dataKey }),
+    ]).then(([invR, nsR, chR, fcR]) => {
+      if (!alive) return;
+      const L = (en, pt, es) => (UI_LANG === "pt" ? pt : UI_LANG === "es" ? es : en);
+      const out = [];
+      // 1) Overdue invoices — money already owed. finance is the real A/R view (payments is folded into it).
+      const invTarget = valid("finance") ? "finance" : valid("payments") ? "payments" : null;
+      if (invR && invR.ok === true && invR.ready === true && Array.isArray(invR.invoices) && invTarget) {
+        const overdue = invR.invoices.filter((r) => (r.status || "").toString().toLowerCase() === "overdue");
+        const usd = Math.max(0, Math.round(overdue.reduce((s, r) => s + (Number(r.amount_cents) || 0), 0) / 100));
+        if (overdue.length > 0) out.push({
+          key: "overdue", count: overdue.length, view: invTarget,
+          chip: L("💳 To collect", "💳 A receber", "💳 Por cobrar"),
+          text: usd > 0
+            ? L(`$${usd.toLocaleString()} overdue across ${overdue.length} invoice${overdue.length !== 1 ? "s" : ""} — chase them now.`, `$${usd.toLocaleString()} atrasados em ${overdue.length} fatura${overdue.length !== 1 ? "s" : ""} — cobre agora.`, `$${usd.toLocaleString()} vencidos en ${overdue.length} factura${overdue.length !== 1 ? "s" : ""} — cóbralos ya.`)
+            : L(`${overdue.length} overdue invoice${overdue.length !== 1 ? "s" : ""} to chase.`, `${overdue.length} fatura${overdue.length !== 1 ? "s" : ""} atrasada${overdue.length !== 1 ? "s" : ""} pra cobrar.`, `${overdue.length} factura${overdue.length !== 1 ? "s" : ""} vencida${overdue.length !== 1 ? "s" : ""} por cobrar.`),
+        });
+      }
+      // 2) No-show radar — bookings likely to ghost; confirm them before they do.
+      if (nsR && nsR.ok === true && nsR.ready === true && Number(nsR.highRisk) > 0 && valid("riskradar")) {
+        const n = Number(nsR.highRisk);
+        out.push({
+          key: "noshow", count: n, view: "riskradar",
+          chip: L("👻 No-show risk", "👻 Risco de falta", "👻 Riesgo de ausencia"),
+          text: L(`${n} booking${n !== 1 ? "s" : ""} likely to ghost — confirm them.`, `${n} agendamento${n !== 1 ? "s" : ""} com risco de furar — confirme.`, `${n} reserva${n !== 1 ? "s" : ""} con riesgo de ausencia — confírmalas.`),
+        });
+      }
+      // 3) At-risk customers — loyal regulars about to lapse; win them back.
+      if (chR && chR.ok === true && chR.ready === true && Array.isArray(chR.atRisk) && chR.atRisk.length > 0 && valid("growthintel")) {
+        const n = chR.atRisk.length;
+        out.push({
+          key: "churn", count: n, view: "growthintel",
+          chip: L("⚠️ At risk", "⚠️ Em risco", "⚠️ En riesgo"),
+          text: L(`${n} loyal customer${n !== 1 ? "s" : ""} about to leave — win them back.`, `${n} cliente${n !== 1 ? "s" : ""} fiel${n !== 1 ? "is" : ""} prestes a sumir — reative.`, `${n} cliente${n !== 1 ? "s" : ""} fiel${n !== 1 ? "es" : ""} por irse — recupéralos.`),
+        });
+      }
+      // 4) 7-day forecast — what's coming, so the owner can fill the quiet days (info lens; fills last).
+      if (fcR && fcR.ok === true && fcR.ready === true && fcR.forecast && valid("growthintel")) {
+        const bk = Number(fcR.forecast.expected_bookings_7d) || 0;
+        const usd = Math.max(0, Math.round((Number(fcR.forecast.expected_revenue_7d_cents) || 0) / 100));
+        if (bk > 0 || usd > 0) out.push({
+          key: "forecast", count: 0, view: "growthintel",
+          chip: L("📈 Next 7 days", "📈 Próximos 7 dias", "📈 Próximos 7 días"),
+          text: L(`${usd > 0 ? `$${usd.toLocaleString()} expected` : "Bookings coming"}${bk > 0 ? ` · ${bk} booking${bk !== 1 ? "s" : ""} on the way` : ""}.`, `${usd > 0 ? `$${usd.toLocaleString()} esperados` : "Agendamentos chegando"}${bk > 0 ? ` · ${bk} agendamento${bk !== 1 ? "s" : ""} a caminho` : ""}.`, `${usd > 0 ? `$${usd.toLocaleString()} esperados` : "Reservas en camino"}${bk > 0 ? ` · ${bk} reserva${bk !== 1 ? "s" : ""} en camino` : ""}.`),
+        });
+      }
+      setLenses(out.slice(0, 3));
+      setSt(out.length ? "ready" : "off");
+    });
+    return () => { alive = false; };
+  }, [email, dataKey]); // eslint-disable-line
+
+  if (st !== "ready" || !lenses.length) return null; // silent unless there's a real, actionable move
+  const pt = UI_LANG === "pt", es = UI_LANG === "es";
+  return (
+    <Card className="border-g-gold/30 bg-gradient-to-br from-g-gold/[0.08] to-transparent">
+      <div className="flex items-center justify-between mb-3 gap-2">
+        <span className="text-xs font-bold uppercase tracking-wide text-g-gold inline-flex items-center gap-2 flex-wrap">
+          {es ? "⚡ Tus movimientos de hoy" : pt ? "⚡ Seus movimentos de hoje" : "⚡ Your moves today"}
+          <span className="inline-flex items-center gap-1 text-[9px] font-black text-g-green normal-case"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{es ? "EN VIVO — datos reales" : pt ? "AO VIVO — dados reais" : "LIVE — real data"}</span>
+        </span>
+        <span className="text-[10px] text-g-muted hidden sm:inline shrink-0">{es ? "Toca uno — Gui te lleva" : pt ? "Toque num — a Gui te leva" : "Tap one — Gui takes you there"}</span>
+      </div>
+      <div className="grid sm:grid-cols-3 gap-2.5">
+        {lenses.map((a) => (
+          <button key={a.key} onClick={() => onNav?.(a.view)}
+            className="text-left rounded-xl2 border border-white/10 bg-white/[0.03] hover:border-g-gold/40 hover:bg-white/[0.06] transition p-3.5 flex flex-col gap-2 clicky">
+            <div className="flex items-center gap-2">
+              {a.count > 0 && <span className="grid place-items-center h-5 min-w-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-black">{a.count}</span>}
+              <span className="text-[11px] font-black uppercase tracking-wide text-g-gold">{a.chip}</span>
+            </div>
+            <p className="text-xs text-g-word leading-snug">{a.text}</p>
+          </button>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 function Overview({ V, onNav, sections = [], period = "30 days", real = null, onRefresh, refreshing = false, autoSpeak = false, onAutoSpoke, email = "", dataKey = "" }) {
   const [resolved, setResolved] = useState(() => portalApi.loadState(`${V.label}:alerts`, []));
   const [alertsOpen, setAlertsOpen] = useState(false);
@@ -224,7 +446,9 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
       {/* TODAY'S TOP 3 — the clearest "what do I do next", pulled from the proactive radar.
           Each tile opens Gui and runs that exact action, so a non-technical owner goes from
           "what now?" to "done" in one tap. */}
-      {(() => {
+      {real ? (
+        <RealTopMoves email={email} dataKey={dk} onNav={onNav} views={validViews} />
+      ) : (() => {
         const top = guiAlerts(V).slice(0, 3);
         if (!top.length) return null;
         const pt = UI_LANG === "pt", es = UI_LANG === "es";
@@ -294,6 +518,10 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
           <a href={waLink("I'd like to review my Guileo results")} target="_blank" rel="noopener" className="btn-bright text-sm" style={{ background: "#5f3415", color: "#F4D3B2", border: "1px solid rgba(255,138,51,.22)", boxShadow: "none" }}>{tr("I'll connect you with my team →")}</a>
         </div>
       </Card>
+
+      {/* MONEY RECOVERED — retention hero: the real value Gui recovered this month (money_proof).
+          Silent in demo; skeleton while loading; honest empty state until there's something real. */}
+      <MoneyRecovered email={email} dataKey={dk} onNav={onNav} views={validViews} />
 
       {/* GUI PLANT — the living identity: blooms with the real value Gui generated this month */}
       <GuiPlant monthValue={monthValue} demo={!real} />

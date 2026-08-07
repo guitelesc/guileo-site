@@ -38,7 +38,7 @@ returns jsonb
 language plpgsql stable security definer set search_path = public as $$
 declare v_row public.spend_policy%rowtype;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if p_email is null or length(trim(p_email)) = 0 then raise exception 'email required' using errcode = '22023'; end if;
   select * into v_row from public.spend_policy where lower(client_email) = lower(p_email);
   if not found then
@@ -70,7 +70,7 @@ create or replace function public.spend_policy_set(
 language plpgsql volatile security definer set search_path = public as $$
 declare v_row public.spend_policy%rowtype;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if p_email is null or length(trim(p_email)) = 0 then raise exception 'email required' using errcode = '22023'; end if;
   -- guard: no negative limits ever (money law: never negative)
   if coalesce(p_max_single_cents, 0) < 0 or coalesce(p_max_day_cents, 0) < 0 or coalesce(p_require_human_over_cents, 0) < 0 then
@@ -122,7 +122,7 @@ declare
   v_needs_human  boolean := false;
   v_reason       text := 'ok';
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if length(v_email) = 0 then raise exception 'email required' using errcode = '22023'; end if;
 
   -- nothing chargeable → allow, no human needed (never block on a $0/invalid amount)
@@ -199,8 +199,8 @@ grant execute on function public.spend_policy_set(text, text, int, int, int) to 
 grant execute on function public.spend_check(text, text, bigint)           to anon;
 
 -- ✅ Prove it (round-trip):
---   select public.spend_policy_get('glo_ing_7f3da9c2b4e8', 'natura@guileoai.com');           -- defaults
---   select public.spend_policy_set('glo_ing_7f3da9c2b4e8', 'natura@guileoai.com', 300000, null, 50000);
---   select public.spend_check('glo_ing_7f3da9c2b4e8', 'natura@guileoai.com', 40000);  -- {allow:true,needs_human:false}
---   select public.spend_check('glo_ing_7f3da9c2b4e8', 'natura@guileoai.com', 60000);  -- needs_human (>$500)
---   select public.spend_check('glo_ing_7f3da9c2b4e8', 'natura@guileoai.com', 400000); -- allow:false over_single_limit
+--   select public.spend_policy_get('glo_ing_c7f2a9e4b8d16350', 'natura@guileoai.com');           -- defaults
+--   select public.spend_policy_set('glo_ing_c7f2a9e4b8d16350', 'natura@guileoai.com', 300000, null, 50000);
+--   select public.spend_check('glo_ing_c7f2a9e4b8d16350', 'natura@guileoai.com', 40000);  -- {allow:true,needs_human:false}
+--   select public.spend_check('glo_ing_c7f2a9e4b8d16350', 'natura@guileoai.com', 60000);  -- needs_human (>$500)
+--   select public.spend_check('glo_ing_c7f2a9e4b8d16350', 'natura@guileoai.com', 400000); -- allow:false over_single_limit

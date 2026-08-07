@@ -45,7 +45,7 @@ export async function onRequestPost(context) {
     const vr = await rpc("blitz_stats", { p_token: token, p_email: "" });
     if (!vr) return json({ error: "unauthorized" }, 401);
 
-    const secret = env.INGEST_SECRET || "glo_ing_7f3da9c2b4e8";
+    const secret = env.INGEST_SECRET || "";
     const email = (b.email || "").toString().trim().toLowerCase();
     // janela: mês corrente (UTC), igual revenue.js/client-report.js → cockpit e conta batem.
     const now = new Date();

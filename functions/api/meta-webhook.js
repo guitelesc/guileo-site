@@ -88,7 +88,7 @@ async function markSeen(env, email, mid) {
 // ── portal Inbox event — the inbound DM shows up in the cockpit feed like an SMS/WhatsApp does ─
 async function ingestInbound(env, email, channelLabel, fromName, text, senderId) {
   try {
-    await rpc("ingest_client_event", {
+    await svcRpc(env, "ingest_client_event", {
       p_secret: env.INGEST_SECRET || "", p_email: email, p_type: "message", p_channel: channelLabel,
       p_summary: `${fromName || senderId}: ${text}`.slice(0, 300), p_amount: 0,
       p_payload: { from: senderId, channel: channelLabel },
@@ -100,7 +100,7 @@ async function ingestInbound(env, email, channelLabel, fromName, text, senderId)
 //    (senderId) is the stable contact key. Additive — never blocks the reply. ──
 async function crmUpsert(env, email, senderId, name, source) {
   try {
-    await rpc("crm_upsert_contact", { p_secret: env.INGEST_SECRET || "", p_email: email, p_phone: String(senderId), p_contact_email: null, p_name: name || "", p_source: source || "meta", p_amount_cents: 0 });
+    await svcRpc(env, "crm_upsert_contact", { p_secret: env.SCHED_SECRET || "", p_email: email, p_phone: String(senderId), p_contact_email: null, p_name: name || "", p_source: source || "meta", p_amount_cents: 0 });
   } catch { /* additive */ }
 }
 // ── Caller MEMORY: have we talked to this person before? Returns a compact recognition string so the
@@ -225,9 +225,16 @@ async function processMessagingEvent(env, origin, object, pageId, ev) {
       channel: channel.toLowerCase(), email: tenant.client_email, senderId, fromName, text, origin,
     });
     if (!reply) return; // honest: no brain/token → we logged the inbound; no fake send
-    await sendMetaReply(tenant.page_access_token, senderId, reply);
-    // mirror Gui's reply into the cockpit feed too (matches twilio-inbound's outbound log)
-    await ingestInbound(env, tenant.client_email, channel, "Gui", `🤖 ${reply.slice(0, 140)}`, senderId);
+    // The result MUST be checked: logging the reply without knowing it left would put a
+    // message in the cockpit feed that the customer never received (expired page token,
+    // 24h window closed, permission revoked). Mirror the truth, not the intention.
+    const delivered = await sendMetaReply(tenant.page_access_token, senderId, reply);
+    await ingestInbound(
+      env, tenant.client_email, channel,
+      delivered ? "Gui" : "⚠️ Gui",
+      delivered ? `🤖 ${reply.slice(0, 140)}` : `⚠️ Resposta da Gui NÃO foi entregue (${channel}) — token da Página inválido ou janela de 24h fechada. Texto: ${reply.slice(0, 100)}`,
+      senderId,
+    );
   } catch { /* one event failing must not break the batch */ }
 }
 

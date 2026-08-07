@@ -378,7 +378,7 @@ grant execute on function public.crm_invoices_list(text,text,int) to anon;
 -- SEGURANÇA: as funções são SECURITY DEFINER e EXIGEM um segredo dedicado guardado
 -- numa GUC do banco. FECHADAS por padrão: sem a GUC certa, retornam 'unauthorized'.
 -- >>> RODE ESTA LINHA UMA VEZ (já vem com o valor certo) para LIGAR o motor: <<<
---     alter database postgres set app.gui_sched_secret = 'gss_7Kx2mQ9vR4tZ8nL';
+--     alter database postgres set app.gui_sched_secret = 'gss_Kp9mX4vR2tZ7nQ5wL8bc';
 -- (Esse mesmo valor está no segredo SCHED_SECRET da Cloudflare, que o Gui usa.)
 -- ============================================================================
 
@@ -1314,8 +1314,8 @@ begin
 end $$;
 
 -- ✅ Pronto. Teste rápido (troque o email):
---   select biz_set_special_date('gss_7Kx2mQ9vR4tZ8nL','dono@negocio.com','2026-11-26',true,null,null,'Feriado — Ação de Graças');
---   select biz_list_special_dates('gss_7Kx2mQ9vR4tZ8nL','dono@negocio.com');
+--   select biz_set_special_date('gss_Kp9mX4vR2tZ7nQ5wL8bc','dono@negocio.com','2026-11-26',true,null,null,'Feriado — Ação de Graças');
+--   select biz_list_special_dates('gss_Kp9mX4vR2tZ7nQ5wL8bc','dono@negocio.com');
 --   -- biz_availability não devolve mais slots em 2026-11-26; biz_book nesse dia → reason='closed_date'.
 
 
@@ -1417,8 +1417,8 @@ begin
 end $$;
 
 -- ✅ Pronto. Teste rápido (troque o email):
---   select biz_location_set('gss_7Kx2mQ9vR4tZ8nL','dono@negocio.com',null,'Filial Centro','Av. Central 100','Miami',null,'America/New_York',true);
---   select biz_locations_admin_list('gss_7Kx2mQ9vR4tZ8nL','dono@negocio.com');
+--   select biz_location_set('gss_Kp9mX4vR2tZ7nQ5wL8bc','dono@negocio.com',null,'Filial Centro','Av. Central 100','Miami',null,'America/New_York',true);
+--   select biz_locations_admin_list('gss_Kp9mX4vR2tZ7nQ5wL8bc','dono@negocio.com');
 --   -- desativar a ÚNICA unidade ativa → {"ok":false,"reason":"last_location"}.
 
 
@@ -1521,7 +1521,7 @@ create or replace function public.risk_confirm_claim(p_secret text, p_email text
 returns boolean language plpgsql security definer set search_path = public as $$
 declare v_id uuid;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   update biz_appointments a
      set risk_nudged_at = now()
    where a.id = p_appointment_id
@@ -1538,7 +1538,7 @@ end $$;
 create or replace function public.risk_clients(p_secret text)
 returns table(client_email text) language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return query
     select distinct a.client_email
     from biz_appointments a
@@ -1570,7 +1570,7 @@ create or replace function public.crm_deal_move(p_secret text, p_email text, p_d
 returns table(id uuid, stage text, status text)
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if p_stage not in ('inquiry','quoted','booked','won','lost') then raise exception 'invalid stage'; end if;
   return query
     update crm_deals d
@@ -1609,7 +1609,7 @@ declare
   v_id     uuid;
 begin
   -- INGEST-gated (same literal the ingest pipeline uses) — this returns customer PII, never expose ungated.
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   if v_phone is null then return; end if;
@@ -1669,7 +1669,7 @@ returns table(
 )
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return query
     select i.id, i.contact_id, c.full_name, c.phone, coalesce(c.consent_sms, true),
       i.number, i.amount_cents, i.due_at,
@@ -1690,7 +1690,7 @@ create or replace function public.finance_mark_nudged(p_secret text, p_email tex
 returns boolean language plpgsql security definer set search_path = public as $$
 declare v_id uuid;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   update crm_invoices i
      set nudged_at = now(), updated_at = now()
    where i.id = p_id
@@ -1788,7 +1788,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   insert into client_integrations (client_email, provider, tokens)
   values (lower(trim(p_email)), 'stripe_connect',
           jsonb_build_object('account_id', p_account_id, 'charges_enabled', coalesce(p_charges_enabled, false)))
@@ -1807,7 +1807,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return (
     select tokens
     from client_integrations
@@ -1835,7 +1835,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   insert into client_integrations (client_email, provider, tokens)
   values (lower(trim(p_email)), 'notify_phone',
           jsonb_build_object('phone', regexp_replace(coalesce(p_phone, ''), '[^0-9+]', '', 'g')))
@@ -1851,7 +1851,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return (
     select tokens->>'phone'
     from client_integrations
@@ -1904,7 +1904,7 @@ returns boolean
 language plpgsql security definer set search_path = public as $$
 declare v_email text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   insert into drip_log (email, step)
   values (lower(trim(p_email)), lower(trim(p_step)))
   on conflict (email, step) do nothing
@@ -1921,7 +1921,7 @@ returns boolean
 language plpgsql security definer set search_path = public as $$
 declare v_col text; v_ok boolean;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select column_name into v_col
     from information_schema.columns
    where table_schema = 'public' and table_name = 'client_credits'
@@ -1942,7 +1942,7 @@ create or replace function public.lead_ref_lookup(p_secret text, p_contact text)
 returns text
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return (
     select substring(a.details from '👤ref:([^\s·]+)')
       from gui_actions a
@@ -2010,7 +2010,7 @@ set search_path = public
 as $$
 declare v_email text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   insert into nps_surveys (client_email, surveyed_at)
   values (lower(trim(p_email)), now())
   on conflict (client_email) do update
@@ -2030,7 +2030,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if p_score is null or p_score < 0 or p_score > 10 then raise exception 'bad score' using errcode = '22023'; end if;
   insert into nps_votes (client_email, quarter, score, voted_at)
   values (lower(trim(p_email)), to_char(now(), 'YYYY"Q"Q'), p_score, now())
@@ -2063,7 +2063,7 @@ grant execute on function public.nps_vote(text, text, int) to anon;
 create or replace function public.collections_set_auto(p_secret text, p_email text, p_on boolean)
 returns boolean language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   insert into client_integrations (client_email, provider, tokens)
   values (lower(trim(p_email)), 'collections_auto', jsonb_build_object('on', case when p_on then '1' else '0' end))
   on conflict (client_email, provider) do update set tokens = excluded.tokens, updated_at = now();
@@ -2074,7 +2074,7 @@ end $$;
 create or replace function public.collections_auto_enabled(p_secret text, p_email text)
 returns boolean language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return coalesce((
     select tokens->>'on' = '1'
     from client_integrations
@@ -2087,7 +2087,7 @@ end $$;
 create or replace function public.collections_auto_list(p_secret text)
 returns table(client_email text) language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return query
     select ci.client_email
     from client_integrations ci
@@ -2135,7 +2135,7 @@ set search_path = public
 as $$
 declare v_email text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   insert into ops_silent_alerts (client_email, alerted_at)
   values (lower(trim(p_email)), now())
   on conflict (client_email) do update
@@ -2174,7 +2174,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if coalesce(trim(p_ref), '') = '' then return json_build_object('converted', 0, 'paid', 0); end if;
   return (
     with leads as (
@@ -2219,7 +2219,7 @@ returns text
 language plpgsql security definer set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return (
     select tokens->>'refresh_token'
     from client_integrations
@@ -2243,7 +2243,7 @@ returns jsonb
 language plpgsql security definer set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return (
     select tokens
     from client_integrations

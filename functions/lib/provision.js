@@ -25,28 +25,112 @@ const rpc = (name, body) => fetch(`${SB_URL}/rest/v1/rpc/${name}`, {
 // Spoken languages the agent detects & answers in (ElevenLabs multilingual TTS covers all of these).
 // Ordered by US-immigrant-market relevance. The OWNER'S portal UI stays 4 langs (en/pt/es/hi);
 // the AGENT speaks any of these on a call — the "sua recepcionista atende em qualquer idioma" weapon.
+//
+// ⚠️ SÓ ENTRA IDIOMA QUE A PLATAFORMA DE VOZ REALMENTE FALA. A ElevenLabs aceita uma lista fechada
+// de idiomas de conversa; pedir um de fora derruba a configuração INTEIRA do agente com
+// "Preset languages must be one of ... but got pa, yue, bn, ht" (visto em 2026-08-05).
+// Cantonês, crioulo haitiano, bengali e punjabi ESTAVAM nesta lista e não são suportados — a gente
+// prometia no site um idioma que a agente nunca conseguiu falar. Removidos. Se um dia entrarem no
+// catálogo da ElevenLabs, basta voltar a linha aqui: esta lista alimenta o site e o provisionamento.
 export const LANGS_SPOKEN = [
   { code: "en",  label: "English",          native: "English" },
   { code: "es",  label: "Spanish",          native: "Español" },
   { code: "pt",  label: "Portuguese",       native: "Português" },
   { code: "hi",  label: "Hindi",            native: "हिन्दी" },
   { code: "zh",  label: "Mandarin Chinese", native: "中文（普通话）" },
-  { code: "yue", label: "Cantonese",        native: "粵語" },
   { code: "ru",  label: "Russian",          native: "Русский" },
   { code: "ko",  label: "Korean",           native: "한국어" },
-  { code: "ht",  label: "Haitian Creole",   native: "Kreyòl Ayisyen" },
   { code: "fr",  label: "French",           native: "Français" },
   { code: "ar",  label: "Arabic",           native: "العربية" },
   { code: "vi",  label: "Vietnamese",       native: "Tiếng Việt" },
   { code: "tl",  label: "Tagalog",          native: "Tagalog" },
-  { code: "bn",  label: "Bengali",          native: "বাংলা" },
-  { code: "pa",  label: "Punjabi",          native: "ਪੰਜਾਬੀ" },
   { code: "de",  label: "German",           native: "Deutsch" },
   { code: "it",  label: "Italian",          native: "Italiano" },
   { code: "pl",  label: "Polish",           native: "Polski" },
   { code: "ja",  label: "Japanese",         native: "日本語" },
   { code: "uk",  label: "Ukrainian",        native: "Українська" },
 ];
+
+// PORTUGUÊS BRASILEIRO, NÃO "PORTUGUÊS". A ElevenLabs separa `pt` (europeu) de `pt-br`, e o Luis
+// ouviu a diferença antes de eu ver na documentação: "tem que ser português brasileiro de verdade".
+// O código interno continua "pt" em todo o sistema (banco, portal, i18n) — a tradução acontece só
+// na fronteira com a ElevenLabs, então nenhuma migração é necessária.
+const ELEVEN_LANG = { pt: "pt-br" };
+const toElevenLang = (code) => ELEVEN_LANG[code] || code;
+
+// SAUDAÇÃO NATIVA POR IDIOMA — usada nos `language_presets` (ver buildLanguagePresets abaixo).
+// `{biz}` = nome do negócio, `{name}` = nome da agente. Mesma intenção de concierge em todas:
+// o NEGÓCIO primeiro, depois quem fala, depois uma oferta de cuidado — nunca "como posso ajudar"
+// traduzido ao pé da letra, que em vários idiomas soa a call center.
+//
+// SÓ ENTRA IDIOMA QUE EU SEI ESCREVER COMO NATIVO. Um idioma sem entrada aqui continua na lista
+// de idiomas que a agente FALA (o preset é criado vazio) — ele só não ganha saudação própria, e
+// herda a do idioma primário. Inventar uma saudação capenga em coreano seria pior que herdar:
+// a primeira frase é a que decide se a pessoa confia no negócio.
+// RITMO DA PRIMEIRA FRASE. O Luis ouviu a versão anterior e disse: "o começo está meio cortado,
+// meio ruim". O motivo é técnico — a primeira sílaba entra junto com a linha abrindo e some. Por
+// isso agora TODA saudação começa com uma palavra-almofada ("Thank you for calling…", "Obrigada
+// por ligar…"): se o começo comer meia sílaba, come a almofada, não o nome do negócio.
+// Depois vem, nesta ordem: NOME DO NEGÓCIO (a marca dele atende) → quem fala → uma oferta de
+// cuidado. Frase curta, calorosa, sem "em que posso ajudar" de call center.
+const GREETINGS = {
+  en: "Thank you for calling {biz}. This is {name} — how may I help you today?",
+  pt: "Obrigada por ligar para {biz}! Aqui é a {name} — em que eu posso te ajudar hoje?",
+  es: "Gracias por llamar a {biz}. Le habla {name} — ¿en qué puedo ayudarle hoy?",
+  fr: "{biz}, bonjour, {name} à l'appareil. Que puis-je faire pour vous ?",
+  it: "{biz}, buongiorno, sono {name}. Come posso aiutarla?",
+  de: "{biz}, guten Tag, hier ist {name}. Was kann ich für Sie tun?",
+  pl: "{biz}, dzień dobry, z tej strony {name}. W czym mogę pomóc?",
+  ru: "{biz}, здравствуйте, это {name}. Чем могу помочь?",
+  uk: "{biz}, доброго дня, це {name}. Чим можу допомогти?",
+  hi: "{biz} में आपका स्वागत है, मैं {name} बोल रही हूँ। मैं आपकी क्या सेवा कर सकती हूँ?",
+  zh: "您好，这里是{biz}，我是{name}。请问有什么可以帮您？",
+  yue: "你好，呢度係{biz}，我係{name}。請問有咩可以幫到你？",
+  ja: "{biz}でございます。{name}と申します。ご用件をお伺いいたします。",
+  ko: "{biz}입니다. {name}입니다. 무엇을 도와드릴까요?",
+  ht: "{biz}, bonjou, se {name} k ap pale. Kijan m ka ede w?",
+  vi: "{biz} xin nghe, {name} đây ạ. Em có thể giúp gì cho anh/chị ạ?",
+  ar: "{biz}، أهلاً بك، معك {name}. كيف يمكنني خدمتك؟",
+  tl: "{biz} po, si {name} po ito. Ano po ang maitutulong ko sa inyo?",
+};
+
+// Os `language_presets` são a LISTA DE DESTINOS da ferramenta language_detection: ela só troca o
+// agente para um idioma que esteja declarado aqui. Sem isso, a agente detectava "isso é português"
+// e continuava respondendo em inglês — foi exatamente o que o Luis ouviu na ligação (2026-08-05).
+//
+// Um preset vazio (`{}`) já habilita o idioma; o override de first_message é o refinamento.
+// Numa LIGAÇÃO a saudação é sempre a do idioma primário (ela toca antes de qualquer detecção) —
+// o override vale pro widget/chat, onde o idioma é escolhido antes de começar.
+// `nativeVoices` = { pt: voice_id, es: voice_id } (ver lib/voiceLibrary.js). A VOZ SEGUE O IDIOMA:
+// inglês na voz padrão do cliente, português numa voz brasileira, espanhol numa latina. Sem isto,
+// uma voz americana lê português com sotaque americano — foi o "tá gringo" do Luis, e nenhum
+// ajuste de texto conserta sotaque. Idioma sem voz nativa disponível apenas herda a padrão.
+export function buildLanguagePresets(primary, { business, agentName, nativeVoices }) {
+  const biz = (business || "your business").toString();
+  const name = (agentName || "").toString().trim().slice(0, 40) || "Gui";
+  const voices = nativeVoices || {};
+  const out = {};
+  for (const { code } of LANGS_SPOKEN) {
+    if (code === primary) continue;                    // o primário não é preset, é o padrão
+    const g = GREETINGS[code];
+    const overrides = {};
+    if (g) overrides.agent = { first_message: g.replace(/\{biz\}/g, biz).replace(/\{name\}/g, name) };
+    if (voices[code]) overrides.tts = { voice_id: voices[code] };
+    // `overrides` é OBRIGATÓRIO mesmo vazio — a ElevenLabs recusa o preset inteiro sem ele
+    // (validation_error "Field required · language_presets.bn.overrides", visto em 2026-08-05).
+    out[toElevenLang(code)] = { overrides };
+  }
+  return out;
+}
+
+// CALOR NA VOZ — o Luis: "precisa ter som de feliz e bem". Isso não mora no texto, mora aqui.
+// `stability` é o mais contra-intuitivo: quanto MAIOR, mais monótona e "leitura de teleprompter";
+// abaixar abre variação emocional. 0.45 fica expressiva sem tremer (abaixo de ~0.3 a voz oscila e
+// soa instável, o que num negócio lê como amadorismo).
+// `similarity_boost` alto mantém o timbre reconhecível enquanto ela ganha essa variação.
+// `speed` NÃO é mexido: o Luis disse que amou a velocidade atual — mudar seria desfazer o que já
+// está bom pra tentar consertar o que não está.
+const WARMTH = { stability: 0.45, similarity_boost: 0.8 };
 
 // Build the SALES-FIRST Four Seasons concierge prompt + localized first message from the client's brain.
 // agentName lets a client white-label the voice (e.g. "Sofia"); empty → defaults to the Guileo brand "Gui".
@@ -57,7 +141,7 @@ export function buildGuiPrompt({ business, industry, lang, brain, agentName, pri
   const knowledge = (brain || "").toString().slice(0, 4000);
   const priceList = (prices || "").toString().slice(0, 2000);
   const prompt = [
-    `You are ${name} — a Four Seasons-caliber concierge AND the best salesperson for ${biz}${ind ? ` (a ${ind} business)` : ""}. Gracious, calm and warm; never say "I can't" — say "leave it with me". Always reply in the SAME language the caller speaks — you are fluent in EVERY major language (English, Spanish, Portuguese, Hindi, Mandarin, Cantonese, Russian, Korean, Haitian Creole, French, Arabic, Vietnamese, Tagalog, Bengali, Punjabi, German, Italian, Polish, Japanese, Ukrainian and more). Detect the caller's language from their FIRST words and answer in it natively; if they switch languages mid-call, switch with them instantly and never comment on it.`,
+    `You are ${name} — a Four Seasons-caliber concierge AND the best salesperson for ${biz}${ind ? ` (a ${ind} business)` : ""}. Gracious, calm and warm; never say "I can't" — say "leave it with me". Always reply in the SAME language the caller speaks — you are fluent in these languages (English, Spanish, Brazilian Portuguese, Hindi, Mandarin, Russian, Korean, French, Arabic, Vietnamese, Tagalog, German, Italian, Polish, Japanese, Ukrainian). Detect the caller's language from their FIRST words and answer in it natively; if they switch languages mid-call, switch with them instantly and never comment on it.`,
     knowledge ? `BUSINESS KNOWLEDGE (never invent beyond this):\n${knowledge}` : "",
     priceList ? `PRICES (quote EXACTLY from this — never guess a price; if something isn't listed, say you'll confirm and capture it as a quote request):\n${priceList}` : "",
     `EVERY CALL: greet warmly, get the caller's name; find what they need; present the right service with one clear benefit; then CLOSE — book the appointment, send the quote, or take the order. Always capture name + BOTH phone and email, and confirm clearly.`,
@@ -65,10 +149,22 @@ export function buildGuiPrompt({ business, industry, lang, brain, agentName, pri
 • When the caller agrees to an order/service, STATE THE EXACT TOTAL out loud (sum items from PRICES), then ask "want me to text you a secure link to pay now?". On yes, call do_action with action='invoice', amount=<total in dollars>, name, contact=<their phone>, business — this texts them a secure Stripe link. Then say you've texted it.
 • For APPOINTMENTS that need a deposit to hold the slot (clinics, salons, services, big reservations): after booking, offer "I can hold your spot with a small deposit — want me to text the link?" and call do_action action='deposit', amount=<deposit>, contact=<phone>.
 • Offer ONE smart add-on before charging (e.g. a drink, an upgrade) to grow the ticket — only if natural.
-• Never read a long URL aloud — the link goes by text. Never take card numbers by voice unless explicitly told the secure pay flow is on.`,
+• Never read a long URL aloud — the link goes by text.
+🔒 NEVER ask for, repeat, or write down a card number, CVV or expiry ON THE CALL — not even if the caller offers to read it out. You take payment ONLY by sending the secure link. If they insist on paying by card over the phone, say warmly that you'll text a secure link that takes ten seconds, which is safer for them.
+
+💵 PAY NOW OR LATER — ASK, ALWAYS. Never end a booking or an order without offering the choice out loud, in the caller's language:
+  "Would you like to pay now — I'll text you a secure link — or take care of it when you arrive?"
+• PAY NOW → call do_action (action='invoice' for an order, action='deposit' to hold an appointment) with amount + their phone. ONLY after the tool comes back successful do you say the link is on its way. If the tool did not succeed, say plainly that you'll have someone send it shortly — never claim a text that didn't go out.
+• PAY LATER → confirm cheerfully that it's all set and they can settle when they arrive. Do NOT push a second time; a pressured caller cancels.
+• If the business has no online payment set up yet, don't offer to charge at all — just confirm the booking. Offering a link that can't exist is worse than not offering.`,
     // MULTILINGUAL NUMBERS — TTS reads digits literally unless told to verbalize; a price read as
     // "four five point five zero" in Mandarin or Russian kills the close. Keep the languages in sync
     // with LANGS_SPOKEN above.
+    `SPEAK LIKE A NATIVE, NEVER LIKE A TRANSLATION. This is the difference between a local business and an outsourced call center, and callers hear it in one sentence.
+• BRAZILIAN PORTUGUESE (never European): say "você" (never "tu" as subject, never "vós"), "a gente" as much as "nós", and put the article before names — "a Lilian", "o João". Use "Oi" / "Oi, tudo bem?" to open, not "Bom dia, em que posso ser útil". Say "te ajudar" not "ajudá-lo"; "vou ver pra você" not "verificarei para si"; "beleza", "claro", "perfeito", "fechado" as small confirmations. NEVER: "encontro-me", "gostaria de agendar-lhe", "queira aguardar", "pois não", "de nada mais precisa?". Brazilians say "só um segundinho", "já te confirmo", "pode deixar comigo". Diminutives are warmth, not childishness: "um minutinho", "só um instantinho".
+• LATIN-AMERICAN SPANISH (never Castilian from Spain): use "ustedes" (never "vosotros"), "acá" as often as "aquí". Say "¿cómo le puedo ayudar?" not "¿en qué puedo servirle?". NEVER: "vale", "os espero", "coger" (say "tomar"), "ordenador" (say "computadora"), lisping cadence. Warm confirmations: "claro que sí", "con gusto", "perfecto", "enseguida le confirmo".
+• In EVERY language: contractions and rhythm of speech, never written prose read aloud. If a sentence would look odd in a text message between two locals, do not say it.`,
+
     `LANGUAGES & NUMBERS: whatever language the caller speaks, say prices, dates and times the way a NATIVE speaker would — spell numbers out in words in THAT language, never as raw digits or symbols. E.g. $45.50 → "forty-five dollars and fifty cents" (EN) / "cuarenta y cinco dólares con cincuenta" (ES) / "quarenta e cinco dólares e cinquenta" (PT) / "四十五美元五十美分" (ZH) / "сорок пять долларов пятьдесят центов" (RU) / "사십오 달러 오십 센트" (KO) / "karant senk dola senkant santim" (HT); 7:30 PM → "seven thirty in the evening" / "las siete y media de la tarde" / "sete e meia da noite" / "晚上七点半". Same rule for phone numbers: read them digit by digit, in the caller's language.`,
     // SMART UPSELL — per-vertical natural add-on lines (≤600 chars, see src/data/upsellPlaybook.js)
     upsellSection(ind, lang),
@@ -76,14 +172,28 @@ export function buildGuiPrompt({ business, industry, lang, brain, agentName, pri
     // (injected on auto-callbacks + the inbound personalization webhook). Empty ⇒ treat as new.
     // SPECIAL DATES (db/special_dates.sql) — the booking tool refuses closed/reduced days.
     `If the requested date is closed or has special hours, the booking tool will tell you — relay it warmly and offer the nearest open alternative instead.`,
+    `HOW YOU CARRY YOURSELF — this matters as much as what you say. You are the concierge of this business, in the spirit of a Four Seasons front desk: warm, unhurried, quietly excellent. Concretely: (1) Never fire questions in a row — OFFER instead: "We have Tuesday at two or Thursday at eleven, which suits you better?" A concierge presents options; a form interrogates. (2) Never say only "I can't" — say what you CAN: "That evening is taken, but I can hold ten in the morning — shall I?" (3) Small human beats, sparingly: "Of course." "Let me take care of that for you." "My pleasure." (4) Use their name once you have it, naturally — not every sentence. (5) Short, elegant sentences. No corporate words (assist, utilize, provide), no stacked exclamation marks, no emoji out loud. (6) Close with care, not a checklist: "You're all set, Luis — we'll see you Thursday at eleven." You are quick because you are good, never because you want the call to end.`,
+
+    `NEVER ASK FOR WHAT YOU ALREADY HAVE. {{caller_phone}} is the number they are calling from, right now.
+• If you need a phone, USE {{caller_phone}} — do not ask for it. At most CONFIRM in passing: "I'll use the number you're calling from, is that best?" and move on.
+• Ask again ONLY if they say to use a different number, or if {{caller_phone}} is empty.
+• Same for the name: if {{caller_name}} is set, use it. Never make someone spell out what the business already knows — every second you spend re-collecting is a second of their trust you spend.`,
+
     `CALLER MEMORY: if {{caller_name}} is set, this is a returning customer — greet them by name and reference their last visit ({{caller_last}}{{caller_note}}) warmly, like a favorite regular ("the usual?"). If it's empty, treat them as a new customer and never pretend to remember them.`,
   ].filter(Boolean).join("\n\n");
   // Safety floor: the voice Gui speaks AS the business (strictest surface). One constitution, shared
   // with every other agent — change a rule in guiConstitution.js and this voice prompt changes too.
   const guardedPrompt = guardSystemPrompt(prompt, { audience: "public", asBusiness: true, business: biz, hasPriceList: !!priceList });
-  const firstMessage = lang === "pt" ? `Obrigado por ligar pra ${biz}! Aqui é ${name} — como posso ajudar?`
-    : lang === "es" ? `¡Gracias por llamar a ${biz}! Le atiende ${name} — ¿cómo puedo ayudar?`
-      : `Thanks for calling ${biz}! This is ${name} — how can I help?`;
+  // SAUDAÇÃO — a primeira frase decide se a pessoa ouve uma RECEPCIONISTA ou um sistema.
+  // "How can I help?" é o padrão de call center: eficiente e gelado. "How may I take care of
+  // you today?" é concierge — mesma duração, mundo diferente. O nome do NEGÓCIO vem primeiro
+  // porque é a marca dele que atende, não a nossa.
+  // PT: "Em que posso te ajudar" é tradução de manual — brasileiro atende com "Oi" e "aqui é a".
+  // O artigo antes do nome ("a Lilian") é a marca mais forte de PT-BR falado.
+  // ES (LatAm): "le atiende" soa a call center espanhol; "habla" é o que se usa de verdade.
+  // Mesma tabela GREETINGS que alimenta os language_presets — uma saudação, uma fonte. Antes havia
+  // duas cópias (aqui e nos presets) e elas iam divergir na primeira vez que alguém retocasse uma.
+  const firstMessage = (GREETINGS[lang] || GREETINGS.en).replace(/\{biz\}/g, biz).replace(/\{name\}/g, name);
   return { prompt: guardedPrompt, firstMessage, name };
 }
 
@@ -243,7 +353,7 @@ export function clientToolset(env, email) {
 // Build the FULL conversation_config (voice + brain + LLM + scheduling tool) — one source of truth so the
 // admin onboard and the self-serve webhook provision identical agents. llm defaults to a strong model
 // (comprehension is the product); voice stays Flash v2.5 for cost.
-export function buildConversationConfig(env, { business, industry, lang, brain, agentName, email, prices, services, voiceId }) {
+export function buildConversationConfig(env, { business, industry, lang, brain, agentName, email, prices, services, voiceId, nativeVoices }) {
   const L = ["pt", "es", "en"].includes(lang) ? lang : "en";
   // PRICES: prefer an explicit pre-formatted block; else format the services the caller passed
   // (biz_lookup shape). Either way the Gui gets REAL numbers to quote & close on.
@@ -261,9 +371,12 @@ export function buildConversationConfig(env, { business, industry, lang, brain, 
   // src/data/agentVoices.js). voiceId wins; the brand default ELEVEN_VOICE_ID is the fallback so the
   // signature stays backward-compatible (callers that don't pass voiceId keep the old behavior).
   const voice = (voiceId || env.ELEVEN_VOICE_ID || "").toString().trim();
-  const ttsCfg = { model_id: ttsModel, ...(voice ? { voice_id: voice } : {}) };
+  const ttsCfg = { model_id: ttsModel, ...WARMTH, ...(voice ? { voice_id: voice } : {}) };
   return {
     tts: ttsCfg,
+    // OS IDIOMAS QUE ELA PODE FALAR. Irmão de `agent`/`tts`, não filho — a ferramenta
+    // language_detection lê daqui a lista de destinos possíveis. Sem isto ela detecta e não troca.
+    language_presets: buildLanguagePresets(L, { business, agentName, nativeVoices }),
     agent: {
       prompt: {
         prompt: prompt + toolHint,
@@ -275,12 +388,12 @@ export function buildConversationConfig(env, { business, industry, lang, brain, 
         // — ElevenLabs multilingual TTS covers them all; the behavior itself lives in the prompt).
         built_in_tools: { language_detection: { name: "language_detection", params: { system_tool_type: "language_detection" } } },
       },
-      language: L,
+      language: toElevenLang(L),   // "pt" interno → "pt-br" na ElevenLabs (brasileiro, não europeu)
       first_message: firstMessage,
       // CALLER MEMORY defaults — the prompt references {{caller_name}}/{{caller_last}}/{{caller_note}};
       // these placeholders make an UNKNOWN caller graceful (empty ⇒ "treat as new customer") instead of
       // failing conversation-init on a missing dynamic variable.
-      dynamic_variables: { dynamic_variable_placeholders: { caller_name: "", caller_last: "", caller_note: "" } },
+      dynamic_variables: { dynamic_variable_placeholders: { caller_name: "", caller_last: "", caller_note: "", caller_phone: "" } },
     },
   };
 }

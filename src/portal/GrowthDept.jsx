@@ -7,6 +7,7 @@ function GrowthDept({ V, onNav, email = "", dataKey = "" }) {
   const demo = !dataKey;
   const [contacts, setContacts] = useState([]);
   const [state, setState] = useState(demo ? "ok" : "loading");
+  const [wonback, setWonback] = useState({}); // contact id → true (optimistic, dedupe)
   const load = useCallback(() => {
     setState("loading");
     fetchCRM(dataKey, email).then((d) => { setContacts(d.contacts || []); setState("ok"); }).catch(() => setState("err"));
@@ -34,6 +35,22 @@ function GrowthDept({ V, onNav, email = "", dataKey = "" }) {
       else toast(tr("Couldn't reach the reactivation engine — try again."));
     } catch { toast(tr("Couldn't reach the reactivation engine — try again.")); }
   };
+  // Per-customer "Win back" — REAL reengage (Gui emails now, or queues an SMS/call). Only ever
+  // toasts success on a real ok+queued response; dedupes via `wonback`. In real mode a contact with
+  // no phone/email can't be reached → the button is HIDDEN (never a fake success).
+  const winBack = async (c) => {
+    const contact = (c.phone || c.email || "").toString();
+    const id = c.id || contact || c.full_name;
+    if (!contact || wonback[id]) return;
+    setWonback((s) => ({ ...s, [id]: true }));                        // optimistic + dedupe
+    try {
+      const r = await fetch("/api/growth-intel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "reengage", token: dataKey, email, name: c.full_name || "", contact, suggested: "sms", risk: c.churn_risk }) });
+      const d = await r.json().catch(() => ({}));
+      if (!(r.ok && d?.ok && d?.queued)) { setWonback((s) => { const n = { ...s }; delete n[id]; return n; }); toast(tr("Couldn't reach the reactivation engine — try again.")); return; }
+      const who = c.full_name || tr("this customer");
+      toast(d.sent ? `${tr("Gui reactivated")} ${who} ${tr("by email ✓")}` : `${tr("Gui is reaching out to")} ${who} ✓`);
+    } catch { setWonback((s) => { const n = { ...s }; delete n[id]; return n; }); toast(tr("Couldn't reach the reactivation engine — try again.")); }
+  };
   return (
     <div className="space-y-4 stagger">
       <DeptTabs cur="retention" onNav={onNav} items={[["retention", "Growth & Retention"], ["followups", "Follow-ups"], ["recurring", "Recurring"], ["loyalty", "Loyalty"], ["reputation", "Reputation"], ["waitlist", "Waitlist"]]} />
@@ -47,13 +64,22 @@ function GrowthDept({ V, onNav, email = "", dataKey = "" }) {
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Slipping away")}</span></div>
         <div className="divide-y divide-white/[0.06]">
-          {atRisk.length ? atRisk.slice(0, 40).map((c, i) => (
-            <div key={i} className="flex items-center gap-3 px-5 py-3">
+          {atRisk.length ? atRisk.slice(0, 40).map((c, i) => {
+            const contact = (c.phone || c.email || "").toString();
+            const id = c.id || contact || c.full_name;
+            return (
+            <div key={id || i} className="flex items-center gap-3 px-5 py-3">
               <span className={`grid place-items-center h-9 w-9 rounded-full text-[12px] font-black shrink-0 ${riskCls(c.churn_risk || 0)}`}>{c.churn_risk || 0}</span>
               <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{c.full_name || tr("Unknown")}</div><div className="text-[11px] text-g-muted truncate">{["lapsed", "churned"].includes(c.lifecycle) ? tr("lapsed") : tr("at churn risk")} · {fmtMoney(c.ltv_cents)} LTV</div></div>
-              <button onClick={() => toast(`${tr("Gui is reaching out to")} ${c.full_name || ""} ✓`)} className="btn-ghost text-[12px] shrink-0">{tr("Win back")}</button>
+              {demo ? (
+                <button onClick={() => toast(`${tr("Gui is reaching out to")} ${c.full_name || ""} ✓`)} className="btn-ghost text-[12px] shrink-0">{tr("Win back")}</button>
+              ) : wonback[id] ? (
+                <span className="text-[12px] font-bold text-g-green shrink-0 px-2 py-1">{tr("Reaching out ✓")}</span>
+              ) : contact ? (
+                <button onClick={() => winBack(c)} className="btn-ghost text-[12px] shrink-0">{tr("Win back")}</button>
+              ) : null /* real mode, no phone/email → hide rather than fake a send */}
             </div>
-          )) : <Empty icon="🎉" text={demo ? tr("When a loyal customer starts slipping, Gui flags them here and wins them back automatically.") : tr("Nobody's slipping right now — Gui keeps watching and flags at-risk customers here.")} />}
+          ); }) : <Empty icon="🎉" text={demo ? tr("When a loyal customer starts slipping, Gui flags them here and wins them back automatically.") : tr("Nobody's slipping right now — Gui keeps watching and flags at-risk customers here.")} />}
         </div>
       </Card>
     </div>

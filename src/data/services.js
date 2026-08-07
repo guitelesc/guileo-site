@@ -179,14 +179,14 @@ export const CATS = [
     "color": "#C2A878",
     "cat": {
       "en": "Growth & performance",
-      "pt": "Crescimento & performance",
+      "pt": "Crescimento e performance",
       "es": "Crecimiento y rendimiento"
     },
     "items": [
       {
         "name": {
           "en": "Growth audit & game plan (free)",
-          "pt": "Auditoria de crescimento & plano de ação (grátis)",
+          "pt": "Auditoria de crescimento e plano de ação (grátis)",
           "es": "Auditoría de crecimiento y plan de acción (gratis)"
         },
         "desc": {
@@ -266,7 +266,7 @@ export const CATS = [
       {
         "name": {
           "en": "Local SEO & Google Business",
-          "pt": "SEO local & Google Meu Negócio",
+          "pt": "SEO local e Google Meu Negócio",
           "es": "SEO local y Google Business"
         },
         "desc": {
@@ -286,7 +286,7 @@ export const CATS = [
       {
         "name": {
           "en": "CRO & A/B testing",
-          "pt": "CRO & testes A/B",
+          "pt": "CRO e testes A/B",
           "es": "CRO y pruebas A/B"
         },
         "desc": {
@@ -351,14 +351,14 @@ export const CATS = [
     "color": "#7A1F4B",
     "cat": {
       "en": "Content & social",
-      "pt": "Conteúdo & social",
+      "pt": "Conteúdo e social",
       "es": "Contenido y redes"
     },
     "items": [
       {
         "name": {
           "en": "Content strategy & calendar",
-          "pt": "Estratégia & calendário de conteúdo",
+          "pt": "Estratégia e calendário de conteúdo",
           "es": "Estrategia y calendario de contenido"
         },
         "desc": {
@@ -398,7 +398,7 @@ export const CATS = [
       {
         "name": {
           "en": "Short-form reels & TikTok",
-          "pt": "Reels & TikTok",
+          "pt": "Reels e TikTok",
           "es": "Reels y TikTok"
         },
         "desc": {

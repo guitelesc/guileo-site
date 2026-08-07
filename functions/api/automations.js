@@ -10,6 +10,7 @@
 import { json, safeEq } from "../lib/guard.js";
 import { sendText } from "../lib/twilio.js";
 import { promoEmail } from "../lib/emailTemplates.js";
+import { svcRpc, sbKey } from "../lib/sb.js";
 
 const isEmailAddr = (s) => /.+@.+\..+/.test((s || "").toString());
 // Slow-day promos reach customers TODAY by email (SMS/WhatsApp light up at A2P). Best-effort.
@@ -31,7 +32,7 @@ const MAX_SENDS = 60; // hard cap per run — protects against bad data blasting
 async function rpc(env, fn, args) {
   const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {
     method: "POST",
-    headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
+    headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" },
     body: JSON.stringify({ p_secret: env.INGEST_SECRET || "", ...args }),
   });
   return r.ok ? await r.json() : null;
@@ -192,7 +193,9 @@ export async function onRequest(context) {
         if (riskSent >= RISK_CAP || !budget()) break;
         const email = ((c && c.client_email) || "").toString().trim().toLowerCase();
         if (!email.includes("@")) continue;
-        const rows = (await schedRpc(env, "noshow_risk", { p_email: email, p_days: 2 })) || [];
+        const _nsr = await svcRpc(env, "noshow_risk", { p_secret: env.SCHED_SECRET || "", p_email: email, p_days: 2 });
+        const _nsd = _nsr.ok ? await _nsr.json().catch(() => []) : [];
+        const rows = Array.isArray(_nsd) ? _nsd : [];
         const p = await profileFor(env, profiles, email);
         // PT default preserved — this engine is BR-first; explicit en/es profiles get their language.
         const L = p.lang === "en" ? "en" : (p.lang || "").toString().toLowerCase().slice(0, 2) === "es" ? "es" : "pt";
@@ -205,9 +208,6 @@ export async function onRequest(context) {
           if (!/^\+?[1-9]\d{7,14}$/.test(phone)) { out.riskSkipped++; continue; } // contact is an email or junk
           // COMPLIANCE — same suppression list the hardened dial gate honors. Never text a STOP.
           try { if ((await rpc(env, "is_dnc", { p_phone: phone })) === true) { out.riskSkipped++; continue; } } catch { /* fail-open, matches call.js */ }
-          // ATOMIC claim BEFORE the send — false means another run (or a racing one) owns it.
-          const claimed = await rpc(env, "risk_confirm_claim", { p_email: email, p_appointment_id: a.appointment_id });
-          if (claimed !== true) { out.riskClaimedDupe++; continue; }
           const nome = a.customer_name || (L === "pt" ? "tudo bem" : "there");
           const hola = `¡Hola${a.customer_name ? ` ${a.customer_name}` : ""}!`;
           const biz = p.business_name || (L === "pt" ? "nosso espaço" : L === "es" ? "nuestro local" : "our place");
@@ -219,11 +219,16 @@ export async function onRequest(context) {
               : `Hi ${nome}! Just confirming your appointment ${quando} at ${biz} 🌱 Reply YES to confirm or let me know if you need to reschedule.`;
           const r = await sendText(env, phone, msg, { channel: "whatsapp" });
           if (r.sent) {
+            // ATOMIC claim ONLY AFTER a confirmed send — mirror ENGINE 1's mark-after-send discipline. A
+            // failed send never burns the 7-day lock; the tiny double-send window on a racing run is the
+            // same risk the 24h/2h reminder engine already accepts.
+            const claimed = await rpc(env, "risk_confirm_claim", { p_email: email, p_appointment_id: a.appointment_id });
+            if (claimed !== true) { out.riskClaimedDupe++; continue; }
             riskSent++; out.riskConfirm++; out.sent++;
             await ingest(env, email, "confirm", "whatsapp",
               `🛡️ confirmação extra automática — risco de falta ${a.risk || 0}%`,
               { appointment_id: a.appointment_id, phone, risk: a.risk || 0 });
-          } else out.riskSkipped++; // claim stands 7d; the 24h/2h reminders still cover them
+          } else out.riskSkipped++; // unsent → no claim burned; the appointment retries next run
         }
       }
     }

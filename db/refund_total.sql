@@ -14,7 +14,7 @@ declare
   v_count int := 0;
   v_since timestamptz := coalesce(p_since, now() - interval '30 days');
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if p_email is null or p_email = '' then raise exception 'email required' using errcode = '22023'; end if;
   begin
     select coalesce(round(sum(abs(amount)) * 100)::bigint, 0), count(*)
@@ -32,5 +32,5 @@ end $$;
 grant execute on function public.refund_total_window(text, text, timestamptz) to anon;
 
 -- Prove:
---   select public.refund_total_window('glo_ing_7f3da9c2b4e8','natura@guileoai.com');  -- {ready:true,cents:N,count:M}
+--   select public.refund_total_window('glo_ing_c7f2a9e4b8d16350','natura@guileoai.com');  -- {ready:true,cents:N,count:M}
 --   select public.refund_total_window('wrong','x@y.com');                             -- ERROR 28000 (gate)

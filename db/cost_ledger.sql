@@ -52,7 +52,7 @@ create or replace function public.record_cost_event(
 language plpgsql security definer set search_path = public as $fn$
 declare v_prov text; v_ins int := 0;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   v_prov := lower(trim(coalesce(p_provider, '')));
@@ -83,7 +83,7 @@ declare
   v_since timestamptz := coalesce(p_since, now() - interval '30 days');
   v_by jsonb := '{}'::jsonb; v_total bigint := 0; v_count int := 0;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   begin
@@ -117,7 +117,7 @@ declare
   v_plat_by jsonb := '{}'::jsonb; v_plat_total bigint := 0;
   v_wired jsonb := '[]'::jsonb; v_clients jsonb := '[]'::jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   begin
@@ -168,7 +168,7 @@ declare
   v_since timestamptz := coalesce(p_since, now() - interval '30 days');
   v_total bigint := 0; v_clients jsonb := '[]'::jsonb; v_ready boolean := true;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   begin
@@ -194,9 +194,9 @@ grant execute on function public.cost_summary_all(text, timestamptz)        to a
 grant execute on function public.guileo_receipts_all(text, timestamptz)     to anon;
 
 -- ── PROVA (rodar após colar) ────────────────────────────────────────────────
--- select public.record_cost_event('glo_ing_7f3da9c2b4e8','natura@guileoai.com','elevenlabs','voice_call',12,'conv_demo_1','{}');  -- true
--- select public.record_cost_event('glo_ing_7f3da9c2b4e8','natura@guileoai.com','elevenlabs','voice_call',12,'conv_demo_1','{}');  -- false (idempotente)
--- select public.record_cost_event('glo_ing_7f3da9c2b4e8','natura@guileoai.com','anthropic','llm',3,'msg_demo_1','{}');            -- true
--- select public.cost_summary('glo_ing_7f3da9c2b4e8','natura@guileoai.com', now()-interval '30 days');   -- {total_cents:15, by_provider:{elevenlabs:12,anthropic:3}...}
--- select public.cost_summary_all('glo_ing_7f3da9c2b4e8', now()-interval '30 days');                     -- platform + providers_wired:["elevenlabs","anthropic"] + clients[]
--- select public.guileo_receipts_all('glo_ing_7f3da9c2b4e8', now()-interval '30 days');                  -- recebimentos Guileo por cliente
+-- select public.record_cost_event('glo_ing_c7f2a9e4b8d16350','natura@guileoai.com','elevenlabs','voice_call',12,'conv_demo_1','{}');  -- true
+-- select public.record_cost_event('glo_ing_c7f2a9e4b8d16350','natura@guileoai.com','elevenlabs','voice_call',12,'conv_demo_1','{}');  -- false (idempotente)
+-- select public.record_cost_event('glo_ing_c7f2a9e4b8d16350','natura@guileoai.com','anthropic','llm',3,'msg_demo_1','{}');            -- true
+-- select public.cost_summary('glo_ing_c7f2a9e4b8d16350','natura@guileoai.com', now()-interval '30 days');   -- {total_cents:15, by_provider:{elevenlabs:12,anthropic:3}...}
+-- select public.cost_summary_all('glo_ing_c7f2a9e4b8d16350', now()-interval '30 days');                     -- platform + providers_wired:["elevenlabs","anthropic"] + clients[]
+-- select public.guileo_receipts_all('glo_ing_c7f2a9e4b8d16350', now()-interval '30 days');                  -- recebimentos Guileo por cliente

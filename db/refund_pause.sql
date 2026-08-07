@@ -35,7 +35,7 @@ declare
   v_take   int;
   v_new    int;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' then raise exception 'tenant required' using errcode = '22023'; end if;
 
   -- idempotency: this refund ref already processed → return balance, deduct nothing.
@@ -73,7 +73,7 @@ create or replace function public.set_client_paused(
 language plpgsql security definer set search_path = public as $$
 declare v_tenant text := lower(trim(p_email)); v_now timestamptz;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' then raise exception 'tenant required' using errcode = '22023'; end if;
   v_now := case when coalesce(p_paused, false) then now() else null end;
   if coalesce(p_paused, false) then
@@ -95,7 +95,7 @@ create or replace function public.is_client_paused(p_secret text, p_email text)
 returns boolean language plpgsql security definer set search_path = public as $$
 declare v_tenant text := lower(trim(p_email)); v_at timestamptz;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' then return false; end if;
   select paused_at into v_at from client_credits where client_email = v_tenant;
   return v_at is not null;
@@ -106,10 +106,10 @@ grant execute on function public.set_client_paused(text,text,boolean,text)      
 grant execute on function public.is_client_paused(text,text)                     to anon;
 
 -- PROOF:
--- select public.add_client_credits('glo_ing_7f3da9c2b4e8','demo@guileoai.com',100,'test');            -- 100
--- select public.deduct_client_credits('glo_ing_7f3da9c2b4e8','demo@guileoai.com',30,'refund','rf_1'); -- 70
--- select public.deduct_client_credits('glo_ing_7f3da9c2b4e8','demo@guileoai.com',30,'refund','rf_1'); -- 70 (idempotent)
--- select public.deduct_client_credits('glo_ing_7f3da9c2b4e8','demo@guileoai.com',999,'refund','rf_2');-- 0 (never negative)
--- select public.set_client_paused('glo_ing_7f3da9c2b4e8','demo@guileoai.com',true,'past_due');        -- {paused:true}
--- select public.is_client_paused('glo_ing_7f3da9c2b4e8','demo@guileoai.com');                          -- true
--- select public.set_client_paused('glo_ing_7f3da9c2b4e8','demo@guileoai.com',false);                  -- {paused:false}
+-- select public.add_client_credits('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com',100,'test');            -- 100
+-- select public.deduct_client_credits('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com',30,'refund','rf_1'); -- 70
+-- select public.deduct_client_credits('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com',30,'refund','rf_1'); -- 70 (idempotent)
+-- select public.deduct_client_credits('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com',999,'refund','rf_2');-- 0 (never negative)
+-- select public.set_client_paused('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com',true,'past_due');        -- {paused:true}
+-- select public.is_client_paused('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com');                          -- true
+-- select public.set_client_paused('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com',false);                  -- {paused:false}

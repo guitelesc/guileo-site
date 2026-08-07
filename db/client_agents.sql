@@ -32,7 +32,7 @@ create or replace function public.client_agent_upsert(
 language plpgsql security definer set search_path = public as $$
 declare v_tenant text := lower(trim(p_email));
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' then raise exception 'tenant required' using errcode = '22023'; end if;
   insert into client_agents (client_email, agent_id, el_phone_number_id, number, updated_at)
   values (v_tenant, nullif(trim(coalesce(p_agent_id,'')),''), nullif(trim(coalesce(p_el_phone_number_id,'')),''),
@@ -55,7 +55,7 @@ declare
   v_tenant text := lower(trim(p_email));
   v_agent text; v_pn text; v_num text; v_cc_agent text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' then return jsonb_build_object('agent_id', null, 'el_phone_number_id', null, 'number', null); end if;
   select agent_id, el_phone_number_id, number into v_agent, v_pn, v_num from client_agents where client_email = v_tenant;
   -- FALLBACK: many clients already have their agent_id on client_credits.agent_id (set_client_agent),
@@ -78,7 +78,7 @@ where agent_id is not null and trim(agent_id) <> ''
 on conflict (client_email) do update set agent_id = coalesce(client_agents.agent_id, excluded.agent_id);
 
 -- PROOF:
--- select public.client_agent_upsert('glo_ing_7f3da9c2b4e8','demo@guileoai.com','agent_ABC','pn_XYZ','+15551230000');
--- select public.client_agent_resolve('glo_ing_7f3da9c2b4e8','demo@guileoai.com');   -- {agent_id:agent_ABC, el_phone_number_id:pn_XYZ, number:+15551230000}
--- select public.client_agent_resolve('glo_ing_7f3da9c2b4e8','nobody@guileoai.com'); -- {agent_id:null,...} → call.js uses platform agent
+-- select public.client_agent_upsert('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com','agent_ABC','pn_XYZ','+15551230000');
+-- select public.client_agent_resolve('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com');   -- {agent_id:agent_ABC, el_phone_number_id:pn_XYZ, number:+15551230000}
+-- select public.client_agent_resolve('glo_ing_c7f2a9e4b8d16350','nobody@guileoai.com'); -- {agent_id:null,...} → call.js uses platform agent
 -- delete from client_agents where client_email='demo@guileoai.com';

@@ -11,9 +11,11 @@
 // MP delivers { type:"payment", data:{ id } } (also as ?type=payment&data.id=…). We look the payment up,
 // and only an `approved` payment credits. Refund / chargeback mirror the Stripe path (negative ledger +
 // owner alert; we have no deduct RPC so credits are revoked by hand).
+import { verifyMpSignature } from "../lib/mpSignature.js";
 import { json, safeEq } from "../lib/guard.js";
 import { ownerAlertEmail } from "../lib/emailTemplates.js";
 import { emitFailure } from "../lib/failure.js";
+import { svcRpc } from "../lib/sb.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -32,26 +34,6 @@ const BRL_PLAN = { 79900: "Essential", 249900: "Personalized", 549900: "Full Ope
 
 // Mercado Pago x-signature validation (official manifest: `id:<data.id>;request-id:<x-request-id>;ts:<ts>;`,
 // HMAC-SHA256 with the webhook secret, hex, compared to the v1 part). data.id is lowercased for alphanumerics.
-async function verifyMpSig(sigHeader, requestId, dataId, secret) {
-  try {
-    const parts = Object.fromEntries((sigHeader || "").split(",").map((p) => p.split("=").map((s) => (s || "").trim())));
-    const ts = parts.ts, v1 = parts.v1;
-    if (!ts || !v1) return false;
-    // 10-minute replay window (MP can lag more than Stripe on async PIX confirmations)
-    if (Math.abs(Date.now() / 1000 - Number(ts)) > 600) return false;
-    const id = /[a-z]/i.test(dataId) ? dataId.toLowerCase() : dataId;
-    let manifest = "";
-    if (id) manifest += `id:${id};`;
-    if (requestId) manifest += `request-id:${requestId};`;
-    manifest += `ts:${ts};`;
-    const enc = new TextEncoder();
-    const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-    const mac = await crypto.subtle.sign("HMAC", key, enc.encode(manifest));
-    const hex = [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("");
-    return safeEq(hex, v1);
-  } catch { return false; }
-}
-
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
@@ -75,7 +57,7 @@ export async function onRequestPost(context) {
     // NOT configured we still proceed, because we re-fetch the payment from MP below (the body is never
     // trusted): a forged notification can at worst point us at an id MP will 404 on.
     if (env.MP_WEBHOOK_SECRET) {
-      const ok = await verifyMpSig(request.headers.get("x-signature") || "", request.headers.get("x-request-id") || "", dataId, env.MP_WEBHOOK_SECRET);
+      const ok = await verifyMpSignature(request.headers.get("x-signature") || "", request.headers.get("x-request-id") || "", dataId, env.MP_WEBHOOK_SECRET);
       if (!ok) return json({ error: "bad signature" }, 401);
     }
 
@@ -97,6 +79,16 @@ export async function onRequestPost(context) {
     // external_reference carries the tenant (and optionally the plan) we bound at link-creation time:
     // "client@email|Personalized". The tenant email is authoritative; fall back to the payer email.
     const extRef = (pay.external_reference || "").toString();
+
+    // ── BARREIRA cli: — cobrança DO CLIENTE nunca entra no fluxo de planos ────────
+    // Cobranças PIX que a Gui cria pro cliente-do-cliente usam external_reference
+    // "cli:<tenant>|<pedido>" e são tratadas em /api/pix-webhook. Elas NÃO podem ser
+    // processadas aqui: "cli:spa@x.com" passa no teste de e-mail abaixo (o ":" é um
+    // caractere válido antes do @), então um pagamento de R$799 de um cliente-do-cliente
+    // viraria 500 créditos Guileo para um tenant fantasma. Barrar por prefixo é a única
+    // checagem que não depende de ninguém lembrar dessa sutileza no futuro.
+    if (extRef.startsWith("cli:")) return json({ received: true, ignored: "tenant-collection" });
+
     const [refTenant, refPlan] = extRef.split("|").map((s) => (s || "").trim());
     const email = (refTenant && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(refTenant) ? refTenant : payerEmail).toLowerCase();
     const payId = (pay.id || dataId).toString();
@@ -123,7 +115,7 @@ export async function onRequestPost(context) {
             if (dr.ok) balanceAfter = await dr.json().catch(() => null);
           } catch { /* deduct best-effort; the negative event below still records it */ }
         }
-        await rpc("ingest_client_event", {
+        await svcRpc(env, "ingest_client_event", {
           p_secret: ING, p_email: email, p_type: "refund", p_channel: "mercadopago",
           p_summary: `${label} · -R$${(refundedCents / 100).toFixed(2)} · −${revoke} cr${email ? " · " + email : ""}`,
           p_amount: -(refundedCents / 100), p_payload: { id: payId, kind: status, revoked_credits: revoke, balance_after: balanceAfter },
@@ -189,7 +181,7 @@ export async function onRequestPost(context) {
 
       const cr = await rpc("add_client_credits", { p_secret: ING, p_email: email, p_credits: credits, p_plan: plan.slice(0, 80) });
       if (!cr.ok) await emitFailure(env, "credit_storage_failed", email, `MP paid R$${(cents / 100).toFixed(2)} → ${credits} cr NOT stored`, { payment: payId });
-      await rpc("ingest_client_event", {
+      await svcRpc(env, "ingest_client_event", {
         p_secret: ING, p_email: email, p_type: "payment", p_channel: "mercadopago",
         p_summary: `Pagamento PIX/MP · R$${(cents / 100).toFixed(2)} → +${credits} créditos${plan ? " · " + plan : ""}`,
         p_amount: cents / 100, p_payload: { payment: payId },

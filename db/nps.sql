@@ -42,7 +42,7 @@ set search_path = public
 as $$
 declare v_email text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   insert into nps_surveys (client_email, surveyed_at)
   values (lower(trim(p_email)), now())
   on conflict (client_email) do update
@@ -62,7 +62,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if p_score is null or p_score < 0 or p_score > 10 then raise exception 'bad score' using errcode = '22023'; end if;
   insert into nps_votes (client_email, quarter, score, voted_at)
   values (lower(trim(p_email)), to_char(now(), 'YYYY"Q"Q'), p_score, now())

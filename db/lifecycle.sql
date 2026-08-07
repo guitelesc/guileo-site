@@ -37,7 +37,7 @@ returns boolean
 language plpgsql security definer set search_path = public as $$
 declare v_email text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   insert into drip_log (email, step)
   values (lower(trim(p_email)), lower(trim(p_step)))
   on conflict (email, step) do nothing
@@ -54,7 +54,7 @@ returns boolean
 language plpgsql security definer set search_path = public as $$
 declare v_col text; v_ok boolean;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select column_name into v_col
     from information_schema.columns
    where table_schema = 'public' and table_name = 'client_credits'
@@ -75,7 +75,7 @@ create or replace function public.lead_ref_lookup(p_secret text, p_contact text)
 returns text
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return (
     select substring(a.details from '👤ref:([^\s·]+)')
       from gui_actions a

@@ -16,7 +16,7 @@ create or replace function public.churn_risk_scan(p_secret text, p_email text, p
 returns json language plpgsql security definer set search_path=public as $$
 declare v_tenant text := lower(trim(coalesce(p_email,'')));
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
 
   -- pontua só quem tem histórico confiável
   update crm_contacts c set churn_risk = sub.score, updated_at = now()
@@ -57,17 +57,19 @@ exception when others then return json_build_object('error',SQLERRM); end $$;
 grant execute on function public.churn_risk_scan(text,text,int) to anon;
 
 -- ── Autonomia: candidatos de reativação por EMAIL (o proactive.js manda a Gui reativar sozinha) ──
--- Refresca os scores do tenant e devolve quem: risco>=55, TEM email válido, e NÃO foi reativado
+-- Refresca os scores do tenant e devolve quem: risco>=70, TEM email válido, e NÃO foi reativado
 -- nos últimos 30d (dedup por client_events type='winback' + payload->>'contact'=email). Email-only,
 -- TCPA-safe (nunca auto-disca — igual proactive). O proactive envia o reengageEmail e loga o winback
 -- (que fecha o dedup da próxima varredura). Phone-only fica pro cockpit 1-clique / SMS quando A2P ligar.
+-- FLOOR AUTÔNOMO=70 (auditoria 2026-07-29): o envio automático só toca cliente CLARAMENTE em risco;
+-- o RADAR do cockpit (churn_risk_scan >=50, o que o dono VÊ) fica intacto. Só o auto-send subiu.
 create or replace function public.churn_reengage_candidates(p_secret text, p_email text, p_limit int default 15)
 returns json language plpgsql security definer set search_path=public as $$
 declare v_tenant text := lower(trim(coalesce(p_email,'')));
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   -- refresca os scores (mesma regra confiante do scan)
-  perform public.churn_risk_scan('glo_ing_7f3da9c2b4e8', v_tenant, 100);
+  perform public.churn_risk_scan('glo_ing_c7f2a9e4b8d16350', v_tenant, 100);
   return coalesce((
     select json_agg(json_build_object(
       'name', coalesce(nullif(full_name,''),email,'Cliente'),
@@ -75,7 +77,7 @@ begin
       'suggested_action', case when churn_risk>=80 then 'call' when churn_risk>=55 then 'sms' else 'watch' end
     ) order by churn_risk desc, ltv_cents desc)
     from crm_contacts c
-    where c.client_email=v_tenant and c.visit_count>=3 and c.churn_risk>=55
+    where c.client_email=v_tenant and c.visit_count>=3 and c.churn_risk>=70
       and c.email is not null and position('@' in c.email)>1
       and coalesce(c.lifecycle,'') not in ('churned','lost','blocked')
       and not exists (

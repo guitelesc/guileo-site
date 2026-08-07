@@ -11,6 +11,7 @@
 // NO admin/owner fallback. A token can never touch another tenant's data.
 import { json, isOwnerEmail } from "../lib/guard.js";
 import { churnAlertEmail } from "../lib/emailTemplates.js";
+import { svcRpc } from "../lib/sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -53,7 +54,7 @@ export async function onRequestPost(context) {
       // see it) and email Luis immediately with a win-back suggestion. Rescue window opens NOW.
       const reason = (b.reason || "unspecified").toString().slice(0, 60);
       const note = (b.note || "").toString().slice(0, 500);
-      const ev = await rpc("ingest_client_event", {
+      const ev = await svcRpc(env, "ingest_client_event", {
         p_secret: ING,
         p_email: email,
         p_type: "churn_risk",

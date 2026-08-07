@@ -21,7 +21,7 @@ const P = {
     dfy: "Done-for-you by the Guileo team",
     resultLabel: "The result",
     pillars: [
-      { badge: "Guileo Brain", icon: "🧠", accent: "#FF8A33", owns: "Your performance", line: "The AI employee that runs the front desk — answers every call & message, books, quotes, closes and collects. 24/7, 20+ languages.", products: ["24/7 Reception", "Speed-to-Lead 60s", "No-show Shield", "Reactivation", "Close & Collect"], result: "+$2k–11k", unit: "/mo recovered", tone: "ai" },
+      { badge: "Guileo Brain", icon: "🧠", accent: "#FF8A33", owns: "Your performance", line: "The AI employee that runs the front desk — answers every call & message, books, quotes, closes and collects. 24/7, 16 languages.", products: ["24/7 Reception", "Speed-to-Lead 60s", "No-show Shield", "Reactivation", "Close & Collect"], result: "+$2k–11k", unit: "/mo recovered", tone: "ai" },
       { badge: "Guileo AD", icon: "📈", accent: "#4C9AFF", owns: "Your growth", line: "Marketing that runs every day so you reach more people, close more deals and waste less ad money.", products: ["Marketing", "Ads", "Content creation", "Media management", "SEO", "Email / CRM"], result: "More leads", unit: "· less wasted ad spend", tone: "hybrid" },
       { badge: "Guileo Build", icon: "🏗️", accent: "#9AA0FF", owns: "Your foundation", line: "The websites, apps, store and software your whole operation runs on — built once, runs forever.", products: ["Websites", "Mobile apps", "Online store", "Custom software"], result: "1× build", unit: "· runs forever", tone: "dfy" },
     ],
@@ -36,7 +36,7 @@ const P = {
     dfy: "Feito pra você pelo time Guileo",
     resultLabel: "O resultado",
     pillars: [
-      { badge: "Guileo Brain", icon: "🧠", accent: "#FF8A33", owns: "Sua performance", line: "O funcionário-IA que cuida da recepção — atende toda ligação e mensagem, agenda, orça, fecha e cobra. 24/7, 20+ idiomas.", products: ["Recepção 24/7", "Resposta ao lead em 60s", "Escudo anti-falta", "Reativação", "Fecha & Cobra"], result: "+R$10k–55k", unit: "/mês recuperado", tone: "ai" },
+      { badge: "Guileo Brain", icon: "🧠", accent: "#FF8A33", owns: "Sua performance", line: "O funcionário-IA que cuida da recepção — atende toda ligação e mensagem, agenda, orça, fecha e cobra. 24/7, 16 idiomas.", products: ["Recepção 24/7", "Resposta ao lead em 60s", "Escudo anti-falta", "Reativação", "Fecha & Cobra"], result: "+R$10k–55k", unit: "/mês recuperado", tone: "ai" },
       { badge: "Guileo AD", icon: "📈", accent: "#4C9AFF", owns: "Seu crescimento", line: "Marketing rodando todo dia pra você alcançar mais gente, fechar mais e desperdiçar menos em anúncio.", products: ["Marketing", "Tráfego pago", "Criação de conteúdo", "Gestão de mídia", "SEO", "E-mail / CRM"], result: "Mais leads", unit: "· menos verba desperdiçada", tone: "hybrid" },
       { badge: "Guileo Build", icon: "🏗️", accent: "#9AA0FF", owns: "Sua fundação", line: "Os sites, apps, loja e software onde toda a operação roda — construído uma vez, roda pra sempre.", products: ["Sites", "Apps", "Loja online", "Software sob medida"], result: "1× build", unit: "· roda pra sempre", tone: "dfy" },
     ],
@@ -51,7 +51,7 @@ const P = {
     dfy: "Hecho para ti por el equipo Guileo",
     resultLabel: "El resultado",
     pillars: [
-      { badge: "Guileo Brain", icon: "🧠", accent: "#FF8A33", owns: "Tu performance", line: "El empleado-IA que atiende la recepción — contesta cada llamada y mensaje, agenda, cotiza, cierra y cobra. 24/7, 20+ idiomas.", products: ["Recepción 24/7", "Respuesta al lead en 60s", "Escudo anti-ausencia", "Reactivación", "Cierra & Cobra"], result: "+$2k–11k", unit: "/mes recuperado", tone: "ai" },
+      { badge: "Guileo Brain", icon: "🧠", accent: "#FF8A33", owns: "Tu performance", line: "El empleado-IA que atiende la recepción — contesta cada llamada y mensaje, agenda, cotiza, cierra y cobra. 24/7, 16 idiomas.", products: ["Recepción 24/7", "Respuesta al lead en 60s", "Escudo anti-ausencia", "Reactivación", "Cierra & Cobra"], result: "+$2k–11k", unit: "/mes recuperado", tone: "ai" },
       { badge: "Guileo AD", icon: "📈", accent: "#4C9AFF", owns: "Tu crecimiento", line: "Marketing corriendo cada día para llegar a más gente, cerrar más y desperdiciar menos en anuncios.", products: ["Marketing", "Anuncios", "Creación de contenido", "Gestión de medios", "SEO", "Email / CRM"], result: "Más leads", unit: "· menos gasto perdido", tone: "hybrid" },
       { badge: "Guileo Build", icon: "🏗️", accent: "#9AA0FF", owns: "Tu base", line: "Las webs, apps, tienda y software donde corre toda tu operación — construido una vez, corre siempre.", products: ["Webs", "Apps", "Tienda online", "Software a medida"], result: "1× build", unit: "· corre siempre", tone: "dfy" },
     ],
@@ -66,7 +66,7 @@ const P = {
     dfy: "Guileo टीम आपके लिए बनाती है",
     resultLabel: "नतीजा",
     pillars: [
-      { badge: "Guileo Brain", icon: "🧠", accent: "#FF8A33", owns: "आपकी परफ़ॉर्मेंस", line: "AI कर्मचारी जो रिसेप्शन संभालता है — हर कॉल और मैसेज का जवाब, बुकिंग, कोटेशन, डील बंद और वसूली। 24/7, 20+ भाषाएँ।", products: ["24/7 रिसेप्शन", "60s में लीड जवाब", "नो-शो शील्ड", "रीएक्टिवेशन", "क्लोज़ & कलेक्ट"], result: "+$2k–11k", unit: "/माह वापस", tone: "ai" },
+      { badge: "Guileo Brain", icon: "🧠", accent: "#FF8A33", owns: "आपकी परफ़ॉर्मेंस", line: "AI कर्मचारी जो रिसेप्शन संभालता है — हर कॉल और मैसेज का जवाब, बुकिंग, कोटेशन, डील बंद और वसूली। 24/7, 16 भाषाएँ।", products: ["24/7 रिसेप्शन", "60s में लीड जवाब", "नो-शो शील्ड", "रीएक्टिवेशन", "क्लोज़ & कलेक्ट"], result: "+$2k–11k", unit: "/माह वापस", tone: "ai" },
       { badge: "Guileo AD", icon: "📈", accent: "#4C9AFF", owns: "आपकी ग्रोथ", line: "मार्केटिंग जो हर दिन चलती है — ज़्यादा लोगों तक पहुँच, ज़्यादा डील, कम विज्ञापन बर्बादी।", products: ["मार्केटिंग", "विज्ञापन", "कंटेंट क्रिएशन", "मीडिया मैनेजमेंट", "SEO", "ईमेल / CRM"], result: "ज़्यादा लीड", unit: "· कम बर्बादी", tone: "hybrid" },
       { badge: "Guileo Build", icon: "🏗️", accent: "#9AA0FF", owns: "आपकी नींव", line: "वेबसाइट, ऐप, स्टोर और सॉफ़्टवेयर जिन पर पूरा ऑपरेशन चलता है — एक बार बनता है, हमेशा चलता है।", products: ["वेबसाइट", "ऐप्स", "ऑनलाइन स्टोर", "कस्टम सॉफ़्टवेयर"], result: "1× बिल्ड", unit: "· हमेशा चलता है", tone: "dfy" },
     ],

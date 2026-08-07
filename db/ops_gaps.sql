@@ -16,9 +16,9 @@
 --      just a code, resolve WHICH seller owns it; and set/rotate a seller's code.
 --
 -- SECURITY (same doors as the rest of the repo):
---   • biz_holds_expire is SCHED-gated by the literal 'gss_7Kx2mQ9vR4tZ8nL' (it touches
+--   • biz_holds_expire is SCHED-gated by the literal 'gss_Kp9mX4vR2tZ7nQ5wL8bc' (it touches
 --     biz_appointments — same gate every biz_* RPC uses via _gui_sched_ok).
---   • recon_costs_window + seller_code_* are INGEST-gated by 'glo_ing_7f3da9c2b4e8'.
+--   • recon_costs_window + seller_code_* are INGEST-gated by 'glo_ing_c7f2a9e4b8d16350'.
 --   • All SECURITY DEFINER; base tables stay RLS-locked with NO anon policy — these
 --     RPCs are the only door. grant execute to anon (the literal gate is the security).
 --   • Every read/mutation is tenant/seller scoped by email or by the code credential.
@@ -51,7 +51,7 @@ declare
 begin
   -- SCHED-gated by the hardcoded literal (Supabase forbids the GUC that _gui_sched_ok reads,
   -- so that gate denies everything — same reason schedule_adapter.sql inlines the literal).
-  if p_secret is distinct from 'gss_7Kx2mQ9vR4tZ8nL' then
+  if p_secret is distinct from 'gss_Kp9mX4vR2tZ7nQ5wL8bc' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
 
@@ -108,7 +108,7 @@ declare
   v_cc_ready    boolean := false;
   v_anomaly     boolean := false;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   v_len        := now() - v_since;
@@ -183,7 +183,7 @@ declare
   v_code text := nullif(trim(coalesce(p_code, '')), '');
   v_row  public.sellers%rowtype;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   if v_code is null then return json_build_object('ok', false); end if;
@@ -210,7 +210,7 @@ declare
   v_code  text := nullif(trim(coalesce(p_code, '')), '');
   v_row   public.sellers%rowtype;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   if v_email = '' or position('@' in v_email) = 0 then
@@ -245,11 +245,11 @@ grant execute on function public.seller_code_set(text, text, text)   to anon;
 
 
 -- ── PROVA (rodar após colar) ──────────────────────────────────────────────────
--- 1) select public.biz_holds_expire('gss_7Kx2mQ9vR4tZ8nL');                       -- {ready:true, released:N, scope:"all"}
---    select public.biz_holds_expire('gss_7Kx2mQ9vR4tZ8nL','natura@guileoai.com'); -- só desse tenant
+-- 1) select public.biz_holds_expire('gss_Kp9mX4vR2tZ7nQ5wL8bc');                       -- {ready:true, released:N, scope:"all"}
+--    select public.biz_holds_expire('gss_Kp9mX4vR2tZ7nQ5wL8bc','natura@guileoai.com'); -- só desse tenant
 --    select public.biz_holds_expire('wrong');                                     -- ERROR 28000 (gate)
--- 2) select public.recon_costs_window('glo_ing_7f3da9c2b4e8', now()-interval '25 hours');
+-- 2) select public.recon_costs_window('glo_ing_c7f2a9e4b8d16350', now()-interval '25 hours');
 --    → { voice:{cost_cents,prior_cost_cents}, close_collect:{cents}, anomaly, monitored_not_reconciled:true }
--- 3) select public.seller_code_set('glo_ing_7f3da9c2b4e8','luis@guileoai.com','GUI-TEST-0001');  -- {ok:true,...}
---    select public.seller_code_check('glo_ing_7f3da9c2b4e8','GUI-TEST-0001');                    -- {ok:true, seller_email:"luis@..."}
---    select public.seller_code_check('glo_ing_7f3da9c2b4e8','NOPE');                             -- {ok:false}
+-- 3) select public.seller_code_set('glo_ing_c7f2a9e4b8d16350','luis@guileoai.com','GUI-TEST-0001');  -- {ok:true,...}
+--    select public.seller_code_check('glo_ing_c7f2a9e4b8d16350','GUI-TEST-0001');                    -- {ok:true, seller_email:"luis@..."}
+--    select public.seller_code_check('glo_ing_c7f2a9e4b8d16350','NOPE');                             -- {ok:false}

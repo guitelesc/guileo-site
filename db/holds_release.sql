@@ -13,7 +13,7 @@
 -- independent of booking traffic. biz_release_expired() itself takes no secret and has
 -- no anon grant (it's an internal helper), so we can't hit it directly from the edge —
 -- this SCHED-gated wrapper is the single anon-reachable door, mirroring how the other
--- agenda (biz_*) RPCs are gated by _gui_sched_ok('gss_7Kx2mQ9vR4tZ8nL').
+-- agenda (biz_*) RPCs are gated by _gui_sched_ok('gss_Kp9mX4vR2tZ7nQ5wL8bc').
 --
 -- Returns the number of holds it cancelled, so the cron run can report a real count.
 -- SECURITY DEFINER + SCHED-gated; the base table stays RLS-locked with no anon policy,

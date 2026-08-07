@@ -9,7 +9,9 @@
 //   5. returns the connection code, agent id and number so Luis hands them over.
 import { json } from "../lib/guard.js";
 import { buildConversationConfig, forwardingInstructions, buildDefaultSchedulePayload } from "../lib/provision.js";
+import { resolveNativeVoices } from "../lib/voiceLibrary.js";
 import { emitFailure } from "../lib/failure.js";
+import { svcRpc } from "../lib/sb.js";
 import { welcomeSelfServeEmail, sellerClientLiveEmail, teamKickoffBriefEmail } from "../lib/emailTemplates.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -82,6 +84,131 @@ async function elevenBindNumber(env, number, agentId, label) {
   } catch (e) { return { ok: false, reason: String(e).slice(0, 120) }; }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SELF-SERVE AUTONOMY HELPERS (#14) — additive, only ever invoked when b.self_serve===true.
+// Two capabilities so a self-serve buyer goes live WITHOUT an admin step:
+//   (1) AUTO-BUILD KB — scrape the buyer's OWN website for REAL business facts (reuses the proven
+//       demo.js scrape approach: SSRF-guarded fetch → text → Claude fact-extract). HONESTY GATE:
+//       a thin scrape is NEVER injected as truth — the client is flagged 'needs KB review' instead.
+//   (2) AUTO-ASSIGN a free POOLED number from the account's OWN live stock (same enumeration as
+//       twilio-numbers.js: Twilio numbers minus ElevenLabs-bound minus reserved), atomically
+//       claimed (pool_claim_number) so two concurrent onboards can never grab the same line.
+// Everything below is best-effort and never throws into the money/birth path.
+// ─────────────────────────────────────────────────────────────────────────────
+const MODEL_CHAIN = ["claude-fable-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"];
+
+// Normalize a raw input into a fetchable https URL, or "" — with the SAME SSRF guard as demo.js
+// (block loopback/link-local/private/metadata so a crafted URL can't probe internal addresses).
+function normalizeUrl(raw) {
+  let v = (raw == null ? "" : raw.toString()).slice(0, 300).trim();
+  if (!v) return "";
+  if (v.startsWith("@")) return "";
+  if (!/^https?:\/\//i.test(v)) { if (/\s/.test(v) || !v.includes(".")) return ""; v = "https://" + v; }
+  try {
+    const u = new URL(v);
+    const h = u.hostname.toLowerCase();
+    if (u.protocol !== "https:" && u.protocol !== "http:") return "";
+    if (h === "localhost" || h.endsWith(".localhost") || h === "0.0.0.0" || h === "[::1]" || h === "::1") return "";
+    if (/^127\./.test(h) || /^10\./.test(h) || /^192\.168\./.test(h) || /^169\.254\./.test(h) || /^172\.(1[6-9]|2\d|3[01])\./.test(h)) return "";
+    if (!h.includes(".")) return "";
+    return u.toString();
+  } catch { return ""; }
+}
+
+// Strip HTML → readable text for the fact-extractor.
+function htmlToText(html) {
+  return (html || "").toString().slice(0, 400000)
+    .replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#\d+;/g, " ")
+    .replace(/\s+/g, " ").trim().slice(0, 12000);
+}
+
+// Fetch the site (hard timeout) and extract a factual kit {name,tagline,facts,services} via Claude.
+// Returns {} on any miss — the caller's completeness gate then decides inject vs needs-review.
+async function scrapeBusinessFacts(env, url, hintName) {
+  if (!env.ANTHROPIC_API_KEY) return {};
+  let html = "";
+  try {
+    const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 6000);
+    try {
+      const resp = await fetch(url, { redirect: "follow", headers: { "User-Agent": "Mozilla/5.0 (compatible; GuileoOnboardBot/1.0; +https://guileoai.com)", Accept: "text/html" }, cf: { cacheTtl: 300 }, signal: ctrl.signal });
+      if (resp.ok) html = await resp.text();
+    } finally { clearTimeout(timer); }
+  } catch { return {}; }
+  const text = htmlToText(html);
+  if (text.length < 80) return {};
+  const system = `You extract a factual brand kit from a business website's text. Reply with ONLY valid JSON, no markdown, no preamble. Shape:
+{"name":"","tagline":"","facts":"","services":[{"name":"","price":""}]}
+RULES: Use ONLY information present in the text. If a field is not found, use "" (or [] for services). NEVER invent a business name, service, or price. "facts" = a compact factual paragraph (hours, location, specialties, what to know) usable as an AI receptionist's brain. "services" = up to 8 real offerings; include "price" only if a price actually appears.`;
+  const deadline = Date.now() + 9000;
+  for (const model of MODEL_CHAIN) {
+    const remaining = deadline - Date.now(); if (remaining <= 500) break;
+    const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), remaining);
+    try {
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST", headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+        body: JSON.stringify({ model, max_tokens: 900, system, messages: [{ role: "user", content: `Website text${hintName ? ` for "${hintName}"` : ""}:\n\n${text}` }] }),
+        signal: ctrl.signal,
+      });
+      if (r.ok) { const d = await r.json().catch(() => ({})); const m = ((d?.content?.[0]?.text || "").trim()).match(/\{[\s\S]*\}/); if (m) { try { return JSON.parse(m[0]); } catch { /* try next */ } } }
+      else if (r.status === 401 || r.status === 402) break;
+    } catch { /* abort/network — next model if budget remains */ }
+    finally { clearTimeout(timer); }
+  }
+  return {};
+}
+
+// Completeness gate: only inject auto-collected facts when they're substantive — else needs-review.
+function assessKbFacts(kit) {
+  const facts = (kit?.facts || "").toString().trim();
+  const services = Array.isArray(kit?.services) ? kit.services.filter((x) => x && x.name).map((x) => ({ name: (x.name || "").toString().slice(0, 120), price: (x.price || "").toString().slice(0, 40) })).slice(0, 8) : [];
+  const name = (kit?.name || "").toString().trim();
+  let score = 0;
+  if (name) score += 1;
+  if (facts.length >= 140) score += 2; else if (facts.length >= 60) score += 1;
+  if (services.length >= 3) score += 2; else if (services.length >= 1) score += 1;
+  if ((kit?.tagline || "").toString().trim()) score += 1;
+  const complete = facts.length >= 140 && services.length >= 1 && score >= 4;
+  return { complete, score, facts, services, name };
+}
+
+// The live "pool": numbers ON the account that are FREE — not the reserved demo line and not already
+// bound to any ElevenLabs agent. If we CAN'T read the ElevenLabs bindings we return [] (never risk
+// handing out a number that's already answering for another tenant). Same truth as twilio-numbers.js.
+async function listFreeAccountNumbers(env) {
+  if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN) return [];
+  const auth = "Basic " + btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
+  let nums = [];
+  try {
+    const tr = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/IncomingPhoneNumbers.json?PageSize=100`, { headers: { Authorization: auth } });
+    if (!tr.ok) return [];
+    const td = await tr.json().catch(() => ({}));
+    nums = (td.incoming_phone_numbers || []).map((n) => ({ number: n.phone_number, sid: n.sid }));
+  } catch { return []; }
+  if (!env.ELEVENLABS_API_KEY) return []; // can't verify bindings → don't risk a double-assign
+  const bound = new Set();
+  try {
+    const er = await fetch("https://api.elevenlabs.io/v1/convai/phone-numbers", { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+    if (!er.ok) return [];
+    const ed = await er.json().catch(() => []);
+    (Array.isArray(ed) ? ed : (ed.phone_numbers || [])).forEach((p) => { if (p && p.phone_number) bound.add(p.phone_number.replace(/[^0-9]/g, "")); });
+  } catch { return []; }
+  return nums.filter((n) => { const d = (n.number || "").replace(/[^0-9]/g, ""); return d && !isReserved(d) && !bound.has(d); });
+}
+
+// Atomically claim the first free pooled number for this tenant. pool_claim_number (db/number_pool.sql)
+// is the mutex: only one concurrent onboard wins a given line. Returns {number,sid} or null.
+// Until the SQL is pasted the RPC 404s → we assign NOTHING (safe: honest fallback to pending).
+async function tryAssignPooledNumber(env, email, ING) {
+  const free = await listFreeAccountNumbers(env);
+  for (const cand of free) {
+    let won = false;
+    try { const cr = await svcRpc(env, "pool_claim_number", { p_secret: ING, p_email: email, p_number: cand.number }); if (cr.ok) won = (await cr.json()) === true; } catch { won = false; }
+    if (won) return cand;
+  }
+  return null;
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
@@ -100,6 +227,11 @@ export async function onRequestPost(context) {
     const lang = ["pt", "es", "en"].includes(b.lang) ? b.lang : "en";
     // agent_name lets a client white-label the voice (e.g. "Sofia"); empty → defaults to the Guileo brand "Gui".
     const agentName = (b.agent_name || "").toString().trim().slice(0, 40) || "Gui";
+    // SELF-SERVE gate (#14): the two autonomous behaviors (auto-KB, auto-assign pooled number) run
+    // ONLY for a self-serve buyer. Admin/seller onboarding never sets this → their path is byte-for-
+    // byte unchanged. bornBrain is the brain the Gui is BORN with — the KB step may augment it below.
+    const selfServe = b.self_serve === true || b.self_serve === "true";
+    let bornBrain = (b.brain || "").toString().slice(0, 4000);
     const result = { ok: true, steps: {} };
 
     // 1) profile — greeting/lang/brand of the Gui. A silent failure here = the agent is born with the
@@ -234,17 +366,64 @@ export async function onRequestPost(context) {
       } catch (e) { result.steps.scheduling = `err: ${String(e).slice(0, 80)}`; await emitFailure(env, "scheduling_seed_failed", email, `scheduling seed threw: ${String(e).slice(0, 120)} — Gui may have no services`); }
     } else { result.steps.scheduling = "skipped (no SCHED_SECRET)"; }
 
+    // 2.8) AUTO-BUILD KB (self-serve only) — a self-serve buyer who never wrote a brain/KB would get a
+    //      confidently-empty Gui. Scrape their OWN website for REAL business facts so Gui can answer on
+    //      call #1. HONESTY GATE: a thin scrape is NEVER injected as truth — the client is flagged
+    //      'needs KB review' so a human enriches it (better silent-honest than confidently-wrong).
+    //      Strictly self-serve-gated + best-effort: never blocks the birth, never touches admin paths.
+    if (selfServe) {
+      try {
+        const ch = (b.channels && typeof b.channels === "object") ? b.channels : {};
+        const siteRaw = (b.website || ch.website?.url || (typeof ch.website === "string" ? ch.website : "") || ch.google_business?.url || "").toString();
+        const siteUrl = normalizeUrl(siteRaw);
+        // does the client ALREADY have real knowledge (owner-typed brain or curated KB)? → don't overwrite.
+        let kbThin = true;
+        try { const kr = await rpc("kb_for_agent", { p_secret: ING, p_email: email }); if (kr.ok) { const kb = ((await kr.json()) || "").toString(); if (kb.trim().length > 200) kbThin = false; } } catch { /* KB RPC missing → treat as thin */ }
+        const brainThin = bornBrain.trim().length < 400;
+        if (!kbThin || !brainThin) {
+          result.steps.kb = "skipped (already has knowledge)";
+        } else if (!siteUrl) {
+          // no site AND no brain/KB → the Gui would be born blind. Flag for review, inject nothing.
+          result.steps.kb = "needs review (no website + thin brain)";
+          await emitFailure(env, "kb_review_needed", email, `${business} self-serve without website/brain — Gui born thin, needs KB review before it's confidently wrong`, {});
+        } else if (!env.ANTHROPIC_API_KEY) {
+          result.steps.kb = "skipped (no ANTHROPIC_API_KEY)";
+        } else {
+          const kit = await scrapeBusinessFacts(env, siteUrl, business);
+          const a = assessKbFacts(kit);
+          if (a.complete) {
+            const svcLines = a.services.length ? `\nSERVICES:\n${a.services.map((x) => `- ${x.name}${x.price ? ` — ${x.price}` : ""}`).join("\n")}` : "";
+            const host = (() => { try { return new URL(siteUrl).host; } catch { return siteUrl; } })();
+            // inject into the brain the Gui is BORN with (step 3 reads bornBrain)
+            bornBrain = `${bornBrain}\n\nBUSINESS FACTS (auto-collected from ${host}; owner should verify):\n${a.facts}${svcLines}`.trim().slice(0, 4000);
+            // persist as tenant KB so future portal brain-syncs re-inject it (kb_for_agent)
+            try { await rpc("kb_upsert", { p_secret: ING, p_email: email, p_id: null, p_question: `About ${business}`.slice(0, 400), p_answer: a.facts.slice(0, 2000), p_category: "general", p_active: true }); } catch { /* KB persist best-effort */ }
+            if (a.services.length) { try { await rpc("kb_upsert", { p_secret: ING, p_email: email, p_id: null, p_question: "What services and prices do you offer?", p_answer: a.services.map((x) => `${x.name}${x.price ? ` — ${x.price}` : ""}`).join("; ").slice(0, 2000), p_category: "services", p_active: true }); } catch { /* best-effort */ } }
+            result.steps.kb = `built from site (${a.services.length} services)`;
+          } else {
+            // thin scrape — DO NOT inject guesses; flag for human review (honesty over autonomy).
+            try { await rpc("store_integration", { p_secret: ING, p_email: email, p_provider: "kb_review", p_tokens: { status: "pending", reason: "thin_scrape", url: siteUrl, score: a.score } }); } catch { /* flag best-effort */ }
+            await emitFailure(env, "kb_review_needed", email, `${business} auto-scrape too thin (score ${a.score}) — Gui NOT given guessed facts; enrich KB in /admin`, { url: siteUrl });
+            result.steps.kb = "needs review (thin scrape — not injected)";
+          }
+        }
+      } catch (e) { result.steps.kb = `err: ${String(e).slice(0, 80)}`; }
+    }
+
     // 3) provision a dedicated sales-first ElevenLabs agent — IDEMPOTENT: if this client already has
     //    one, UPDATE it in place (so re-running onboarding never duplicates the agent or double-bills),
     //    and the update re-applies the current voice + prompt (so existing agents pick up the new voice).
     if (env.ELEVENLABS_API_KEY) {
       try {
-        const brain = (b.brain || "").toString().slice(0, 4000);
+        // bornBrain = the owner brain, augmented by any auto-collected website facts (self-serve KB step).
+        const brain = bornBrain;
         // ONE source of truth: strong LLM (comprehension) + Flash voice + scheduling/booking tool so the
         // Gui actually RECORDS bookings and sends confirmations — not just talks about them.
         // FIX A contract — the Gui must be BORN knowing exact prices so it quotes/closes on call #1.
         const prices = buildPricesText(b);
-        const convCfg = buildConversationConfig(env, { business, industry: b.industry, lang, brain, agentName, email, prices, voiceId: (b.voice_id || "").toString().trim() });
+        // Cliente NOVO já nasce com voz nativa em português/espanhol (mesmo resolvedor do sync).
+        const nativeVoices = await resolveNativeVoices(env).catch(() => ({}));
+        const convCfg = buildConversationConfig(env, { business, industry: b.industry, lang, brain, agentName, email, prices, voiceId: (b.voice_id || "").toString().trim(), nativeVoices });
         // does this client already have a dedicated agent?
         let existingId = "";
         try { const ar = await rpc("client_agent_lookup", { p_secret: ING, p_email: email }); if (ar.ok) existingId = ((await ar.json()) || "").toString(); } catch { /* best-effort */ }
@@ -322,6 +501,27 @@ export async function onRequestPost(context) {
           else { result.steps.number = "buy_failed"; await emitFailure(env, "number_provision_failed", email, `Twilio buy failed for ${pick}`, { number: pick }); }
         } else { result.steps.number = "none_available"; await emitFailure(env, "number_provision_failed", email, `no US number available${area ? ` (area ${area})` : ""} — map one manually`, {}); }
         }
+      } else if (mode === "pool" || (selfServe && (!b.number_mode || mode === "shared"))) {
+        // AUTO-ASSIGN (self-serve, #14) — claim a FREE number from the account's own live stock so a
+        // self-serve buyer gets a working line with NO admin 'Mapear número' step. Reuses the proven
+        // set_client_number path here + the elevenBindNumber/client_agent_upsert bind in step 5. If the
+        // pool is empty (or the claim RPC isn't live yet) we fall back HONESTLY to shared — never fake.
+        const claimed = await tryAssignPooledNumber(env, email, ING);
+        if (claimed && claimed.number) {
+          const snr = await rpc("set_client_number", { p_secret: ING, p_email: email, p_number: claimed.number });
+          result.number = claimed.number;
+          if (snr.ok) {
+            result.steps.number = "auto-assigned from pool";
+            // ensure SMS→twilio-inbound is wired (elevenBindNumber in step 5 handles the voice import).
+            try { if (claimed.sid) await configureTwilioWebhooks(env, claimed.sid); } catch { /* webhook wiring best-effort */ }
+          } else {
+            // claimed the line but couldn't link it → release-and-retry territory; never fake "wired".
+            result.steps.number = `pool ${claimed.number} claimed but NOT persisted ${snr.status}`;
+            await emitFailure(env, "number_orphaned", email, `pool number ${claimed.number} claimed but set_client_number failed — release (pool_release_number) + retry`, { number: claimed.number });
+          }
+        } else {
+          result.steps.number = "shared (nenhum número livre no pool — map/buy later for A2P routing)";
+        }
       } else {
         result.steps.number = "shared (inbound falls to owner; map/buy later for A2P routing)";
       }
@@ -370,7 +570,7 @@ export async function onRequestPost(context) {
     } catch { result.steps.birth_email = "err"; await emitFailure(env, "birth_email_failed", email, "birth email threw — activation key never reached the client, resend manually"); }
 
     // log the onboarding as a real event
-    try { await rpc("ingest_client_event", { p_secret: ING, p_email: email, p_type: "provision", p_channel: "system", p_summary: `🚀 Cliente ativado: ${business}${result.number ? " · " + result.number : ""}`, p_amount: 0, p_payload: { agent_id: result.agent_id || "" } }); } catch { /* */ }
+    try { await svcRpc(env, "ingest_client_event", { p_secret: ING, p_email: email, p_type: "provision", p_channel: "system", p_summary: `🚀 Cliente ativado: ${business}${result.number ? " · " + result.number : ""}`, p_amount: 0, p_payload: { agent_id: result.agent_id || "" } }); } catch { /* */ }
 
     // ONBOARDING NURTURE SEED — admin-onboarded clients do NOT pass through stripe-webhook, so they
     // would never enter the onboarding machine. Stamp access + stash name/lang here too, so the cron

@@ -18,7 +18,7 @@
 -- EXCLUDES cancelled / no-show / voided / refunded on BOTH sides (meta.status / payload.status),
 -- and only positive amounts. Everything summed in integer cents (amount_cents / amount_cents).
 --
--- SECURITY: gated by the INGEST shared literal `glo_ing_7f3da9c2b4e8` (= INGEST_SECRET,
+-- SECURITY: gated by the INGEST shared literal `glo_ing_c7f2a9e4b8d16350` (= INGEST_SECRET,
 -- same door as the other server-side read RPCs), SECURITY DEFINER, granted to anon. The base
 -- tables are RLS-locked with no anon policies, so this gated function is the only door.
 -- DEFENSIVE: each table read is wrapped in EXCEPTION so a missing/renamed table degrades to a
@@ -45,7 +45,7 @@ declare
   v_key    text;
   v_val    bigint;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
 

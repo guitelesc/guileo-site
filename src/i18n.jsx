@@ -92,7 +92,7 @@ T.pt = {
   proof:{ eyebrow:"A prova está nesta página", h2:"Não acredite na nossa palavra — a Gui acabou de te atender", poweredby:"Construído sobre a mesma tecnologia em que os gigantes confiam", compliant:"Padrões de governança independente que seguimos",
     seals:[["🤝","Setup com o fundador","um humano de verdade monta com você"],["🛡️","Garantia de 30 dias","cancele quando quiser, sem amarras"],["🔐","Seus dados continuam seus","exporte e leve com você"]],
     sec_t:"Segurança e consentimento embutidos — verificáveis, não promessas vazias", sec_d:"Isolamento multi-tenant, criptografia em trânsito e em repouso, e um modelo de consentimento em 3 níveis com trilha de auditoria completa — cada ação da Gui é registrada e revisável. Seus clientes e seus dados continuam seus.",
-    ally_t:"Um fundador constrói com você — não um bot, nem uma fila de tickets", ally_d:"Isto não é uma ferramenta self-service que você precisa decifrar sozinho. Uma pessoa de verdade estuda seu negócio, desenha seu sistema e implementa — e continua ao seu lado com um dashboard ao vivo e respostas em horas, não dias. A IA faz o trabalho; humanos respondem por cada parte dele.",
+    ally_t:"Quem constrói com você é um fundador — não um robô, nem uma fila de chamados", ally_d:"Isso aqui não é mais uma ferramenta que você tem que decifrar sozinho. Uma pessoa de verdade entende o seu negócio, monta o sistema e coloca no ar — e continua do seu lado com um painel em tempo real e resposta em horas, não em dias. A IA faz o trabalho; tem gente de verdade respondendo por cada pedaço dele.",
     testimonials:[] },
   pricing:{ eyebrow:"Sob medida, não de prateleira", h2:"Sem planos genéricos. Um sistema feito pro seu negócio.", sub:"Um humano de verdade estuda seu negócio e orça exatamente o que você precisa — um plano mensal simples com créditos que medem o que a Gui faz por você. Garantia de 30 dias.", cap1:"Conecta no seu sistema inteiro", cap2:"Atende 24/7, qualquer idioma", cap3:"No ar em 7 dias", cap4:"Garantia de 30 dias" },
   academy:{ eyebrow:"Guileo Academy · grátis", h2:"Faça crescer o negócio por trás do negócio", sub:"Empreendedorismo, finanças e investimento para todo dono que atendemos — clínicas, restaurantes, salões, lojas e serviços. Guias grátis que te deixam mais afiado.", cta:"Pegar o guia grátis do dono →" },
@@ -227,9 +227,9 @@ const PRICE = {
     { name:"Personalized", tag:"Most popular", price:"Built for you", per:"", feats:["Voice + text + WhatsApp + social","Sales & marketing automation","A human designs it around your business","Live dashboard & priority support"], cta:"Book a discovery call", featured:true },
     { name:"Full Operation", tag:"We run it all", price:"Let's talk", per:"", feats:["Every channel + ads + your data","Custom systems built for you","Deep, hands-on implementation","Dedicated team & strategy"], cta:"Talk to us" } ],
   pt:[
-    { name:"Essential", tag:"Comece simples", price:"Sob medida", per:"", feats:["1 agente de IA (voz ou texto)","Agendamentos & follow-ups","Um humano configura com você","Garantia de 30 dias"], cta:"Quero meu orçamento" },
-    { name:"Personalizado", tag:"Mais popular", price:"Feito pra você", per:"", feats:["Voz + texto + WhatsApp + social","Automação de vendas & marketing","Um humano desenha em torno do seu negócio","Dashboard ao vivo & suporte prioritário"], cta:"Agendar conversa", featured:true },
-    { name:"Operação Completa", tag:"A gente cuida de tudo", price:"Vamos conversar", per:"", feats:["Todos os canais + ads + seus dados","Sistemas sob medida pra você","Implementação profunda, mão na massa","Time dedicado & estratégia"], cta:"Falar conosco" } ],
+    { name:"Essential", tag:"Comece simples", price:"Sob medida", per:"", feats:["1 agente de IA (voz ou texto)","Agenda e follow-up no automático","Um humano da nossa equipe configura junto com você","Garantia de 30 dias"], cta:"Quero meu orçamento" },
+    { name:"Personalizado", tag:"Mais popular", price:"Feito pra você", per:"", feats:["Voz + texto + WhatsApp + social","Vendas e marketing rodando sozinhos","Um humano monta tudo sob medida pro seu negócio","Painel em tempo real e suporte na frente da fila"], cta:"Agendar conversa", featured:true },
+    { name:"Operação Completa", tag:"A gente cuida de tudo", price:"Vamos conversar", per:"", feats:["Todos os canais, anúncios e os seus dados","Sistemas feitos sob medida pra você","Implementação mão na massa, do começo ao fim","Time dedicado e estratégia junto"], cta:"Falar conosco" } ],
   es:[
     { name:"Essential", tag:"Empieza simple", price:"A tu medida", per:"", feats:["1 agente de IA (voz o texto)","Reservas & seguimientos","Un humano lo configura contigo","Garantía de 30 días"], cta:"Quiero mi cotización" },
     { name:"Personalizado", tag:"Más popular", price:"Hecho para ti", per:"", feats:["Voz + texto + WhatsApp + social","Automatización de ventas & marketing","Un humano lo diseña en torno a tu negocio","Dashboard en vivo & soporte prioritario"], cta:"Agendar llamada", featured:true },
@@ -270,7 +270,7 @@ const MORE = {
     comp:{ eyebrow:"The obvious choice", h2:"Guileo vs. the alternatives", sub:"Same problem, very different outcomes. See why businesses pick Guileo.", cta:"Make Guileo my choice →",
       cols:["","Guileo","Human receptionist","Other AI tools","Doing nothing"],
       rows:[
-        ["Answers 24/7 / 20+ languages","✅","❌ (shifts, 1 language)","⚠️ partial","❌"],
+        ["Answers 24/7 / 16 languages","✅","❌ (shifts, 1 language)","⚠️ partial","❌"],
         ["Books, sells, closes & collects","✅","⚠️ limited","⚠️ FAQ only","❌"],
         ["No-show radar · emergency dispatch · storm mode","✅","❌","❌","❌"],
         ["Turns calls into marketing data","✅","❌","❌","❌"],
@@ -310,7 +310,7 @@ const MORE = {
     comp:{ eyebrow:"A escolha óbvia", h2:"Guileo vs. as alternativas", sub:"Mesmo problema, resultados bem diferentes. Veja por que os negócios escolhem a Guileo.", cta:"Quero a Guileo →",
       cols:["","Guileo","Recepcionista humano","Outras IAs","Não fazer nada"],
       rows:[
-        ["Atende 24/7 / 20+ idiomas","✅","❌ (turnos, 1 idioma)","⚠️ parcial","❌"],
+        ["Atende 24/7 / 16 idiomas","✅","❌ (turnos, 1 idioma)","⚠️ parcial","❌"],
         ["Agenda, vende, fecha & cobra","✅","⚠️ limitado","⚠️ só FAQ","❌"],
         ["Radar de no-show · despacho de emergência · modo tempestade","✅","❌","❌","❌"],
         ["Transforma ligações em dados de marketing","✅","❌","❌","❌"],
@@ -350,7 +350,7 @@ const MORE = {
     comp:{ eyebrow:"La elección obvia", h2:"Guileo vs. las alternativas", sub:"Mismo problema, resultados muy distintos. Mira por qué los negocios eligen Guileo.", cta:"Quiero Guileo →",
       cols:["","Guileo","Recepcionista humano","Otras IAs","No hacer nada"],
       rows:[
-        ["Contesta 24/7 / 20+ idiomas","✅","❌ (turnos, 1 idioma)","⚠️ parcial","❌"],
+        ["Contesta 24/7 / 16 idiomas","✅","❌ (turnos, 1 idioma)","⚠️ parcial","❌"],
         ["Agenda, vende, cierra & cobra","✅","⚠️ limitado","⚠️ solo FAQ","❌"],
         ["Radar de ausencias · despacho de emergencias · modo tormenta","✅","❌","❌","❌"],
         ["Convierte llamadas en datos de marketing","✅","❌","❌","❌"],
@@ -390,7 +390,7 @@ const MORE = {
     comp:{ eyebrow:"स्पष्ट विकल्प", h2:"Guileo बनाम विकल्प", sub:"वही समस्या, बहुत अलग परिणाम। देखें क्यों व्यवसाय Guileo चुनते हैं।", cta:"मैं Guileo चुनता हूँ →",
       cols:["","Guileo","मानव रिसेप्शनिस्ट","अन्य AI टूल","कुछ न करना"],
       rows:[
-        ["24/7 / 20+ भाषाओं में उत्तर","✅","❌ (शिफ़्ट, 1 भाषा)","⚠️ आंशिक","❌"],
+        ["24/7 / 16 भाषाओं में उत्तर","✅","❌ (शिफ़्ट, 1 भाषा)","⚠️ आंशिक","❌"],
         ["बुकिंग, बिक्री, डील बंद & वसूली","✅","⚠️ सीमित","⚠️ केवल FAQ","❌"],
         ["नो-शो रडार · इमरजेंसी डिस्पैच · तूफ़ान मोड","✅","❌","❌","❌"],
         ["कॉल को मार्केटिंग डेटा में बदलना","✅","❌","❌","❌"],
@@ -405,9 +405,9 @@ const MORE = {
 // bring pt/es/hi pricing (no-price tiers) and method steps in sync with the updated EN
 const PRICE_SYNC = {
   pt:[
-    { name:"Essential", tag:"Comece simples", price:"Sob medida", per:"", feats:["1 agente de IA (voz ou texto)","Agendamentos & follow-ups","Um humano configura com você","Garantia de 30 dias"], cta:"Quero meu orçamento" },
-    { name:"Personalized", tag:"Mais popular", price:"Feito pra você", per:"", feats:["Voz + texto + WhatsApp + social","Automação de vendas & marketing","Um humano desenha pro seu negócio","Dashboard ao vivo & suporte prioritário"], cta:"Agendar conversa", featured:true },
-    { name:"Operação Completa", tag:"A gente cuida de tudo", price:"Vamos conversar", per:"", feats:["Todos os canais + ads + seus dados","Sistemas sob medida","Implementação profunda e prática","Time dedicado & estratégia"], cta:"Falar conosco" } ],
+    { name:"Essential", tag:"Comece simples", price:"Sob medida", per:"", feats:["1 agente de IA (voz ou texto)","Agenda e follow-up no automático","Um humano da nossa equipe configura junto com você","Garantia de 30 dias"], cta:"Quero meu orçamento" },
+    { name:"Personalized", tag:"Mais popular", price:"Feito pra você", per:"", feats:["Voz + texto + WhatsApp + social","Vendas e marketing rodando sozinhos","Um humano desenha pro seu negócio","Painel em tempo real e suporte na frente da fila"], cta:"Agendar conversa", featured:true },
+    { name:"Operação Completa", tag:"A gente cuida de tudo", price:"Vamos conversar", per:"", feats:["Todos os canais, anúncios e os seus dados","Sistemas sob medida","Implementação profunda e prática","Time dedicado e estratégia junto"], cta:"Falar conosco" } ],
   es:[
     { name:"Essential", tag:"Empieza simple", price:"A medida", per:"", feats:["1 agente de IA (voz o texto)","Reservas & seguimientos","Un humano lo configura contigo","Garantía de 30 días"], cta:"Quiero mi cotización" },
     { name:"Personalized", tag:"Más popular", price:"Hecho para ti", per:"", feats:["Voz + texto + WhatsApp + social","Automatización de ventas & marketing","Un humano lo diseña para tu negocio","Dashboard en vivo & soporte prioritario"], cta:"Agendar llamada", featured:true },

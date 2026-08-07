@@ -8,7 +8,7 @@ create or replace function public.seller_of_client(p_secret text, p_client_email
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare v jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select jsonb_build_object('email', s.email, 'name', coalesce(s.name, split_part(s.email,'@',1)))
     into v
     from onboard_drafts d
@@ -23,7 +23,7 @@ create or replace function public.seller_by_ref(p_secret text, p_ref text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare v jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select jsonb_build_object('email', s.email, 'name', coalesce(s.name, split_part(s.email,'@',1)))
     into v from sellers s
    where s.active and s.ref_slug = lower(trim(coalesce(p_ref,'')))

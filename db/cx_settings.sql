@@ -9,7 +9,7 @@
 -- cron sweep) reads cx_settings, lists cx_survey_candidates, claims each (30-day
 -- window via cx_survey_claim in db/experience.sql), and emails the 1-tap survey.
 --
--- CONTRACT: every RPC INGEST-gated on 'glo_ing_7f3da9c2b4e8', SECURITY DEFINER,
+-- CONTRACT: every RPC INGEST-gated on 'glo_ing_c7f2a9e4b8d16350', SECURITY DEFINER,
 -- search_path=public, tenant-scoped by client_email, idempotent. RLS ON, no anon
 -- policy. Safe to paste twice.
 -- ============================================================================
@@ -28,7 +28,7 @@ create or replace function public.cx_settings_get(p_secret text, p_email text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare v_tenant text := lower(trim(p_email)); v_on boolean;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' then raise exception 'tenant required' using errcode = '22023'; end if;
   select survey_enabled into v_on from cx_settings where client_email = v_tenant;
   return jsonb_build_object('survey_enabled', coalesce(v_on, true));  -- absent = ON by default
@@ -39,7 +39,7 @@ create or replace function public.cx_settings_set(p_secret text, p_email text, p
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare v_tenant text := lower(trim(p_email));
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' then raise exception 'tenant required' using errcode = '22023'; end if;
   insert into cx_settings (client_email, survey_enabled, updated_at)
   values (v_tenant, coalesce(p_enabled, true), now())
@@ -65,7 +65,7 @@ declare
   v_lim    int := greatest(1, least(200, coalesce(p_limit, 50)));
   v_out    jsonb := '[]'::jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' then raise exception 'tenant required' using errcode = '22023'; end if;
   begin
     select coalesce(jsonb_agg(row_to_json(d)), '[]'::jsonb) into v_out
@@ -92,6 +92,6 @@ grant execute on function public.cx_settings_set(text,text,boolean)             
 grant execute on function public.cx_survey_candidates(text,text,int,int,int)      to anon;
 
 -- PROOF:
--- select public.cx_settings_get('glo_ing_7f3da9c2b4e8','natura@guileoai.com');            -- {survey_enabled:true}
--- select public.cx_settings_set('glo_ing_7f3da9c2b4e8','natura@guileoai.com',false);      -- {survey_enabled:false}
--- select public.cx_survey_candidates('glo_ing_7f3da9c2b4e8','natura@guileoai.com',72,720,50);  -- recent emailed customers
+-- select public.cx_settings_get('glo_ing_c7f2a9e4b8d16350','natura@guileoai.com');            -- {survey_enabled:true}
+-- select public.cx_settings_set('glo_ing_c7f2a9e4b8d16350','natura@guileoai.com',false);      -- {survey_enabled:false}
+-- select public.cx_survey_candidates('glo_ing_c7f2a9e4b8d16350','natura@guileoai.com',72,720,50);  -- recent emailed customers

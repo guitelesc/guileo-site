@@ -5,6 +5,7 @@
 import { sameOrigin, rateLimited } from "../lib/guard.js";
 import { leadReceivedEmail, leadAlertEmail } from "../lib/emailTemplates.js";
 import { emitFailure } from "../lib/failure.js";
+import { svcRpc } from "../lib/sb.js";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -72,10 +73,7 @@ export async function onRequestPost(context) {
         const cEmail = lead.email || (/.+@.+\..+/.test(lead.contact) ? lead.contact : "");
         const cPhone = (lead.phone || (/^\+?[0-9][0-9\s()\-]{6,}$/.test(lead.contact) ? lead.contact : "")).replace(/[^0-9+]/g, "");
         if (cEmail || cPhone) {
-          await fetch(`${SB_URL}/rest/v1/rpc/crm_upsert_contact`, {
-            method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ p_secret: env.SCHED_SECRET, p_email: (env.OWNER_EMAIL || "smart@guileoai.com"), p_phone: cPhone, p_contact_email: cEmail, p_name: lead.name || "", p_source: `web:${lead.source || "lead"}`, p_amount_cents: 0 }),
-          });
+          await svcRpc(env, "crm_upsert_contact", { p_secret: env.SCHED_SECRET, p_email: (env.OWNER_EMAIL || "smart@guileoai.com"), p_phone: cPhone, p_contact_email: cEmail, p_name: lead.name || "", p_source: `web:${lead.source || "lead"}`, p_amount_cents: 0 });
         }
       } catch { /* CRM not live yet → never block the capture */ }
     }

@@ -29,6 +29,7 @@
 
 import { guiReply } from "./guiBrain.js";
 import { sendText } from "./twilio.js";
+import { svcRpc } from "./sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -71,7 +72,7 @@ async function crmUpsert(env, email, from, name, channel) {
     const phone = isPhone(from) ? from.replace(/^whatsapp:/, "").trim() : "";
     const contactEmail = from.includes("@") ? from.trim() : "";
     if (!phone && !contactEmail) return; // a webchat session id isn't a contact handle
-    await rpc("crm_upsert_contact", {
+    await svcRpc(env, "crm_upsert_contact", {
       p_secret: env.SCHED_SECRET, p_email: email, p_phone: phone,
       p_contact_email: contactEmail, p_name: name || "", p_source: channel || "message", p_amount_cents: 0,
     });
@@ -83,7 +84,7 @@ async function crmUpsert(env, email, from, name, channel) {
 // additive-only — never blocks or breaks the reply.
 async function ingest(env, email, channelLabel, summary, payload) {
   try {
-    await rpc("ingest_client_event", {
+    await svcRpc(env, "ingest_client_event", {
       p_secret: env.INGEST_SECRET || "", p_email: email, p_type: "message", p_channel: channelLabel,
       p_summary: (summary || "").slice(0, 300), p_amount: 0, p_payload: payload || {},
     });

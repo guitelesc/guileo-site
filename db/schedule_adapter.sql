@@ -36,7 +36,7 @@ declare
   v_id uuid;
 begin
   -- SCHED gate (same literal as _gui_sched_ok / the scheduling engine)
-  if p_secret is distinct from 'gss_7Kx2mQ9vR4tZ8nL' then
+  if p_secret is distinct from 'gss_Kp9mX4vR2tZ7nQ5wL8bc' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   if v_email is null or v_email = '' or p_start is null then

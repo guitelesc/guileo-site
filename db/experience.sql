@@ -16,7 +16,7 @@
 -- open detractors to close-loop).
 --
 -- CONTRACT (same as db/crm.js / db/revenue.js / db/growth_intel.sql):
---   • Every RPC is INGEST-gated on the literal 'glo_ing_7f3da9c2b4e8'
+--   • Every RPC is INGEST-gated on the literal 'glo_ing_c7f2a9e4b8d16350'
 --     (the same secret the ingest/crm/coupons pipeline uses), SECURITY DEFINER,
 --     search_path=public, and granted to anon (the RPC is the ONLY door).
 --   • Every row and every read is scoped by client_email (the TENANT). A UUID
@@ -112,7 +112,7 @@ declare
   v_sentiment text := coalesce(nullif(trim(coalesce(p_sentiment, '')), ''), public._cx_sentiment(greatest(0, least(100, coalesce(p_score, 0)))));
   v_id        uuid;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' or v_tenant is null then raise exception 'tenant required' using errcode = '22023'; end if;
   if p_source not in ('call','review','survey') then raise exception 'bad source' using errcode = '22023'; end if;
 
@@ -144,7 +144,7 @@ declare
   v_win    interval := (greatest(1, coalesce(p_window_hours, 168))::text || ' hours')::interval;
   v_hit    text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' or v_ref is null then return false; end if;
 
   insert into cx_survey_claims (client_email, contact_ref, claimed_at)
@@ -182,7 +182,7 @@ declare
   v_segment text;
   v_sig_ref text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' or v_ref is null then raise exception 'tenant/contact required' using errcode = '22023'; end if;
   if v_metric not in ('nps','csat','ces') then raise exception 'bad metric' using errcode = '22023'; end if;
 
@@ -236,7 +236,7 @@ declare
   v_csat_sat int := 0; v_csat_n int := 0; v_csat numeric;
   v_now30 numeric; v_prev30 numeric;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' then raise exception 'tenant required' using errcode = '22023'; end if;
 
   select count(*), round(avg(score))::int,
@@ -307,7 +307,7 @@ declare
   v_since  timestamptz := coalesce(p_since, now() - interval '90 days');
   v_out    jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' then raise exception 'tenant required' using errcode = '22023'; end if;
 
   select coalesce(jsonb_agg(row_to_json(d) order by d.count desc), '[]'::jsonb)
@@ -344,7 +344,7 @@ declare
   v_lim    int  := greatest(1, least(200, coalesce(p_limit, 25)));
   v_out    jsonb := '[]'::jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' then raise exception 'tenant required' using errcode = '22023'; end if;
 
   begin
@@ -406,7 +406,7 @@ declare
   v_tenant text := lower(trim(p_email));
   v_id     uuid;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' or p_signal_id is null then return false; end if;
 
   update cx_signals
@@ -437,30 +437,30 @@ grant execute on function public.cx_close_loop(text,text,uuid,text)             
 -- select count(*) as anon_policies from pg_policies where tablename in ('cx_signals','cx_survey_claims');  -- expect 0
 --
 -- -- 2) passive ingest is idempotent (2nd call on same ref → false):
--- select public.cx_signal_upsert('glo_ing_7f3da9c2b4e8','demo@guileoai.com',null,'call',90,'positive','positive','staff','Atendimento ótimo','call:conv_TEST1',now());  -- true
--- select public.cx_signal_upsert('glo_ing_7f3da9c2b4e8','demo@guileoai.com',null,'call',90,'positive','positive','staff','Atendimento ótimo','call:conv_TEST1',now());  -- false (dup)
--- select public.cx_signal_upsert('glo_ing_7f3da9c2b4e8','demo@guileoai.com',null,'review',20,'1','negative','wait_time','Esperei demais','review:gbp_TEST1',now()-interval '2 days'); -- true (open detractor)
+-- select public.cx_signal_upsert('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com',null,'call',90,'positive','positive','staff','Atendimento ótimo','call:conv_TEST1',now());  -- true
+-- select public.cx_signal_upsert('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com',null,'call',90,'positive','positive','staff','Atendimento ótimo','call:conv_TEST1',now());  -- false (dup)
+-- select public.cx_signal_upsert('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com',null,'review',20,'1','negative','wait_time','Esperei demais','review:gbp_TEST1',now()-interval '2 days'); -- true (open detractor)
 --
 -- -- 3) survey claim (2nd within window → false) + vote (re-tap revises):
--- select public.cx_survey_claim('glo_ing_7f3da9c2b4e8','demo@guileoai.com','+15551230000',168);  -- true
--- select public.cx_survey_claim('glo_ing_7f3da9c2b4e8','demo@guileoai.com','+15551230000',168);  -- false
--- select public.cx_vote('glo_ing_7f3da9c2b4e8','demo@guileoai.com','+15551230000','nps',10,'Amei','wow');    -- {ok,score:100,segment:promoter}
--- select public.cx_vote('glo_ing_7f3da9c2b4e8','demo@guileoai.com','+15551230000','csat',5,null,null);       -- {ok,score:100,segment:satisfied}
--- select public.cx_vote('glo_ing_7f3da9c2b4e8','demo@guileoai.com','+15551230001','nps',3,'Faltou rapidez','wait_time'); -- detractor
+-- select public.cx_survey_claim('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com','+15551230000',168);  -- true
+-- select public.cx_survey_claim('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com','+15551230000',168);  -- false
+-- select public.cx_vote('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com','+15551230000','nps',10,'Amei','wow');    -- {ok,score:100,segment:promoter}
+-- select public.cx_vote('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com','+15551230000','csat',5,null,null);       -- {ok,score:100,segment:satisfied}
+-- select public.cx_vote('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com','+15551230001','nps',3,'Faltou rapidez','wait_time'); -- detractor
 --
 -- -- 4) metrics:
--- select public.cx_summary('glo_ing_7f3da9c2b4e8','demo@guileoai.com');    -- n>0, nps, csat_pct, cx_score, sentiment, by_source, trend
--- select public.cx_drivers('glo_ing_7f3da9c2b4e8','demo@guileoai.com');    -- [{theme,count,avg_score,polarity}]
--- select public.cx_detractors('glo_ing_7f3da9c2b4e8','demo@guileoai.com'); -- open negatives (review + nps 3), handled:false
+-- select public.cx_summary('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com');    -- n>0, nps, csat_pct, cx_score, sentiment, by_source, trend
+-- select public.cx_drivers('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com');    -- [{theme,count,avg_score,polarity}]
+-- select public.cx_detractors('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com'); -- open negatives (review + nps 3), handled:false
 --
 -- -- 5) close-loop drops it off the queue (and cross-tenant guard returns false):
 -- --    grab an id from cx_detractors above, then:
--- -- select public.cx_close_loop('glo_ing_7f3da9c2b4e8','demo@guileoai.com','<that-id>','Liguei e ofereci retorno');  -- true
--- -- select public.cx_close_loop('glo_ing_7f3da9c2b4e8','OTHER@guileoai.com','<that-id>','x');                        -- false (not their row)
--- -- select public.cx_detractors('glo_ing_7f3da9c2b4e8','demo@guileoai.com');  -- the closed one is gone
+-- -- select public.cx_close_loop('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com','<that-id>','Liguei e ofereci retorno');  -- true
+-- -- select public.cx_close_loop('glo_ing_c7f2a9e4b8d16350','OTHER@guileoai.com','<that-id>','x');                        -- false (not their row)
+-- -- select public.cx_detractors('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com');  -- the closed one is gone
 --
 -- -- 6) tenant isolation: another tenant sees nothing of demo's data:
--- select public.cx_summary('glo_ing_7f3da9c2b4e8','someoneelse@guileoai.com');  -- n:0, everything empty/null
+-- select public.cx_summary('glo_ing_c7f2a9e4b8d16350','someoneelse@guileoai.com');  -- n:0, everything empty/null
 --
 -- -- cleanup (optional):
 -- -- delete from cx_signals where client_email='demo@guileoai.com';

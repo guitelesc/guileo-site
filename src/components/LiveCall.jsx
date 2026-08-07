@@ -4,16 +4,17 @@ import mark from "../assets/guileo-mark.png";
 import { useLang } from "../i18n.jsx";
 import { waLink } from "../data/contact.js";
 import { normalizePhoneWithCc, phonePlaceholder } from "../lib/intl.js";
+import ConsentText from "./ConsentText.jsx";
 
 const DIAL = [["🇺🇸", "+1"], ["🇧🇷", "+55"], ["🇵🇹", "+351"], ["🇪🇸", "+34"], ["🇬🇧", "+44"], ["🇲🇽", "+52"], ["🇦🇷", "+54"], ["🇮🇳", "+91"], ["🇦🇺", "+61"]];
 const INDUSTRIES = [
   { v: "Restaurant", en: "Restaurant", pt: "Restaurante", es: "Restaurante" },
   { v: "Clinic / Dental", en: "Clinic / Dental", pt: "Clínica / Odonto", es: "Clínica / Dental" },
-  { v: "Salon & Spa", en: "Salon & Spa", pt: "Salão & Spa", es: "Salón & Spa" },
+  { v: "Salon & Spa", en: "Salon & Spa", pt: "Salão e Spa", es: "Salón & Spa" },
   { v: "Law Firm", en: "Law Firm", pt: "Advocacia", es: "Bufete de Abogados" },
   { v: "E-Commerce", en: "E-Commerce", pt: "E-Commerce", es: "E-Commerce" },
   { v: "Real Estate", en: "Real Estate", pt: "Imóveis", es: "Inmobiliaria" },
-  { v: "Gym & Fitness", en: "Gym & Fitness", pt: "Academia & Fitness", es: "Gimnasio & Fitness" },
+  { v: "Gym & Fitness", en: "Gym & Fitness", pt: "Academia e Fitness", es: "Gimnasio & Fitness" },
   { v: "Medical", en: "Medical", pt: "Médico", es: "Médico" },
   { v: "Home Services", en: "Home Services", pt: "Serviços Domésticos", es: "Servicios del Hogar" },
   { v: "Auto", en: "Auto", pt: "Automotivo", es: "Automotriz" },
@@ -236,7 +237,7 @@ export default function LiveCall() {
               onChange={(e) => { setConsent(e.target.checked); if (e.target.checked) setErr(false); }}
               aria-invalid={err && !consent} aria-describedby={err && !consent ? "livecall-consent-err" : undefined}
               className="mt-0.5 h-4 w-4 shrink-0 accent-g-green" />
-            <span>{L.consent}</span>
+            <span><ConsentText lang={lang} /></span>
           </label>
           {err && !consent && <p id="livecall-consent-err" role="alert" className="text-center text-[12px] font-semibold text-g-gold">{L.consentErr}</p>}
           <motion.button whileTap={{ scale: 0.98 }} disabled={state === "calling" || !consent} className="btn-bright text-base disabled:opacity-70 disabled:cursor-not-allowed" style={{ boxShadow: "0 0 32px -4px rgba(255,138,51,0.45)" }}>

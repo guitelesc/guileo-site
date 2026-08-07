@@ -7,7 +7,7 @@
 // Twilio config: Phone Numbers → your number → Voice → webhook POST
 //   https://guileoai.com/api/twilio-voice
 import { json, safeEq } from "./../lib/guard.js";
-import { svcRpc } from "./../lib/sb.js";
+import { svcRpc, sbKey } from "./../lib/sb.js";
 import { sendText } from "./../lib/twilio.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -28,11 +28,7 @@ async function validTwilioSig(url, params, sig, token) {
 
 async function ingest(env, email, summary, payload) {
   try {
-    await fetch(`${SB_URL}/rest/v1/rpc/ingest_client_event`, {
-      method: "POST",
-      headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ p_secret: env.INGEST_SECRET || "", p_email: email, p_type: "call", p_channel: "voice", p_summary: summary.slice(0, 300), p_amount: 0, p_payload: payload || {} }),
-    });
+    await svcRpc(env, "ingest_client_event", { p_secret: env.INGEST_SECRET || "", p_email: email, p_type: "call", p_channel: "voice", p_summary: summary.slice(0, 300), p_amount: 0, p_payload: payload || {} });
   } catch { /* never block the TwiML */ }
 }
 
@@ -61,13 +57,22 @@ async function missedCallTextBack(env, email, profile, from) {
   const msg = isPT
     ? `Oi! Vi que você ligou pra ${name || "a gente"} e não conseguimos atender 🌱 Sou o Gui, o assistente — me fala aqui o que você precisa que eu já resolvo!`
     : `Hi! I saw you called ${name || "us"} and we couldn't pick up 🌱 I'm Gui, the assistant — tell me here what you need and I'll get it sorted!`;
-  await ingest(env, email, `📵 Missed call from ${from} — text-back sent`, { from });
-  await sendText(env, from, msg);
+  // Send FIRST, then log what actually happened. Logging "text-back sent" before the send
+  // meant a failed SMS (Twilio unconfigured, A2P not registered, bad number) still showed the
+  // owner a handled lead — so nobody ever called that person back. The lead died silently.
+  const t = await sendText(env, from, msg);
+  await ingest(
+    env, email,
+    t?.sent
+      ? `📵 Missed call from ${from} — text-back sent`
+      : `📵 Missed call from ${from} — ⚠️ TEXT-BACK FALHOU (${t?.reason || `HTTP ${t?.status || "?"}`}) — ligue de volta`,
+    { from, textback: !!t?.sent, reason: t?.reason || null },
+  );
   // CRM SPINE (Company OS) — a missed caller is a real lead: build the contact + a 360° call event.
   // Best-effort + graceful: no-op until crm_spine.sql / crm_phase2.sql are pasted.
   if (env.SCHED_SECRET && from) {
     try {
-      const crm = (fn, body) => fetch(`${SB_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" }, body: JSON.stringify({ p_secret: env.SCHED_SECRET, ...body }) });
+      const crm = (fn, body) => fetch(`${SB_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" }, body: JSON.stringify({ p_secret: env.SCHED_SECRET, ...body }) });
       const ur = await crm("crm_upsert_contact", { p_email: email, p_phone: from, p_contact_email: "", p_name: "", p_source: "missed-call", p_amount_cents: 0 });
       const cid = ur.ok ? (await ur.json().catch(() => null)) : null;
       if (cid) await crm("crm_log_event", { p_email: email, p_contact_id: cid, p_type: "call", p_channel: "Phone", p_summary: "Missed call — text-back sent", p_amount_cents: 0, p_dedupe: null, p_payload: { from } });

@@ -20,7 +20,7 @@ create or replace function public.autonomy_get(p_secret text, p_email text)
 returns text language plpgsql security definer set search_path=public as $$
 declare v text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   select level into v from company_os_autonomy where client_email=lower(trim(p_email));
   return coalesce(v,'safe');
 end $$;
@@ -30,7 +30,7 @@ grant execute on function public.autonomy_get(text,text) to anon;
 create or replace function public.autonomy_set(p_secret text, p_email text, p_level text)
 returns json language plpgsql security definer set search_path=public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   if p_level not in ('off','safe','full') then raise exception 'invalid level'; end if;
   insert into company_os_autonomy(client_email, level, updated_at)
     values (lower(trim(p_email)), p_level, now())
@@ -43,7 +43,7 @@ grant execute on function public.autonomy_set(text,text,text) to anon;
 create or replace function public.autonomy_all(p_secret text)
 returns json language plpgsql security definer set search_path=public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   return coalesce((select json_agg(json_build_object('client_email',client_email,'level',level) order by client_email)
     from company_os_autonomy), '[]'::json);
 exception when others then return json_build_object('error',SQLERRM); end $$;
@@ -54,7 +54,7 @@ create or replace function public.company_agents_health(p_secret text)
 returns json language plpgsql security definer set search_path=public as $$
 declare v_unhealthy json := '[]'::json; v_count bigint := 0;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   if to_regclass('public.gui_pending_onboarding') is null then return json_build_object('ready',false,'count',0,'unhealthy','[]'::json); end if;
   select coalesce(json_agg(json_build_object('email',email,'business',business,
            'reason', case when nullif(agent_name,'') is null then 'sem nome próprio'

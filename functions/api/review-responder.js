@@ -23,6 +23,7 @@
 // sem publicar e sem marcar seen.
 // ─────────────────────────────────────────────────────────────────────────────
 import { json, safeEq } from "../lib/guard.js";
+import { sbKey } from "../lib/sb.js";
 import { guardSystemPrompt, validateOutput } from "../lib/guiConstitution.js";
 // Namespace import → feature-detect (nunca quebra o build se um refactor mudar os exports do connector).
 import * as gbp from "./google-business.js";
@@ -35,7 +36,7 @@ async function rpc(env, fn, args) {
   try {
     const r = await fetch(`${SB}/rest/v1/rpc/${fn}`, {
       method: "POST",
-      headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+      headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" },
       body: JSON.stringify({ p_secret: env.INGEST_SECRET || "", ...args }),
     });
     return r.ok ? await r.json() : null;

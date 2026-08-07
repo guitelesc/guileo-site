@@ -206,7 +206,7 @@ export const CAMPAIGN_BULLETS = {
   "close-collect": {
     icon: "💳",
     en: "Quotes exact prices and closes & collects on the call — money to your own Stripe",
-    pt: "Cota preços exatos e fecha & cobra na ligação — dinheiro no seu próprio Stripe",
+    pt: "Cota preços exatos e fecha e cobra na ligação — dinheiro no seu próprio Stripe",
     es: "Cotiza precios exactos y cierra & cobra en la llamada — dinero a tu propio Stripe",
     hi: "सटीक दाम बताती है और कॉल पर सौदा तय कर भुगतान लेती है — पैसा आपके अपने Stripe में",
   },

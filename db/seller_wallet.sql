@@ -8,7 +8,7 @@
 -- RPC aqui sobrescreve um assigned_seller já gravado.
 --
 -- SEGURANÇA: mesmo padrão dos "33" — SECURITY DEFINER gated pelo literal INGEST
--- ('glo_ing_7f3da9c2b4e8'), RLS on sem policy anon, grant execute to anon.
+-- ('glo_ing_c7f2a9e4b8d16350'), RLS on sem policy anon, grant execute to anon.
 -- Requer db/onboard_completo.sql já colado (tabela onboard_drafts).
 -- ============================================================================
 
@@ -34,7 +34,7 @@ create or replace function public.draft_approve_mark(
 ) returns boolean
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   update onboard_drafts
      set status          = 'live',
          agent_id        = nullif(p_agent_id,''),
@@ -56,7 +56,7 @@ returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare v jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select coalesce(jsonb_agg(r order by r->>'created_at' desc), '[]'::jsonb) into v
   from (
     select jsonb_build_object(
@@ -82,7 +82,7 @@ returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare v jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select coalesce(jsonb_agg(r order by r->>'created_at' desc), '[]'::jsonb) into v
   from (
     select jsonb_build_object(

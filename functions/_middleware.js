@@ -102,9 +102,19 @@ export async function onRequest(context) {
     "academia", "admin", "ai-receptionist", "blog", "calculator", "cola", "colaborador", "compliance",
     "conectar-stripe", "consulting", "consultoria", "contact", "cookies", "cancellation", "deck", "demo",
     "for", "get-paid", "go-live", "grader", "health-compliance", "hipaa", "home-services", "kit",
-    "lead-generation", "leads", "live", "lp", "marketing", "nossa-gente", "parceiro", "partners", "pitch",
+    "lead-generation", "leads", "live", "lp", "marketing", "sms", "nossa-gente", "parceiro", "partners", "pitch",
     "planos", "plans", "portal", "precos", "privacy", "proposta", "prospeccao", "prospects", "quiz",
     "receber", "refunds", "roteiro", "seller", "servicos", "setup-agenda", "sign", "terms", "v2", "vendedor",
+    // hubs internos da equipe (suporte técnico + marketing/performance) — rotas reais, não indexáveis
+    "equipe", "tecnico", "marketing-hub",
+    // site REAL do cliente (produto foundation) — /site/:slug
+    "site", "primeira-semana",
+    // VITRINE (/vitrine/:token) — a demo que o vendedor compartilha com o cliente. Ficou de
+    // fora da lista até 2026-08-05 e o middleware devolvia 404 REAL: o vendedor mandava o
+    // link, o cliente abria e via "página não encontrada". A demo funcionava; a porta é que
+    // estava trancada. Rota nova no App.jsx SEMPRE precisa entrar aqui — este é o segundo
+    // caso, então virou verificação: comparar os path="/x" do App com esta lista.
+    "vitrine",
   ]);
   const meta = ROUTES[path];
   if (meta) {

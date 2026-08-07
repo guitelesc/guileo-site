@@ -40,7 +40,7 @@ declare
   v_pay_count    bigint;
   v_credit_count bigint;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   if v_tenant = '' then
@@ -206,7 +206,7 @@ declare
   v_tenants bigint := 0;
   v_n       bigint;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
 
@@ -294,15 +294,15 @@ $$;
 grant execute on function public.integrity_summary(text) to anon;
 
 -- ── PROVE (round-trip, read-only) ─────────────────────────────────────────────────
---   select integrity_check('glo_ing_7f3da9c2b4e8','eval-sandbox@guileoai.com'); -- [] on clean data
---   select integrity_summary('glo_ing_7f3da9c2b4e8');                           -- {by_kind,total,high,...}
+--   select integrity_check('glo_ing_c7f2a9e4b8d16350','eval-sandbox@guileoai.com'); -- [] on clean data
+--   select integrity_summary('glo_ing_c7f2a9e4b8d16350');                           -- {by_kind,total,high,...}
 -- To force-fire (a) on the sandbox (then roll back), in a transaction:
 --   begin;
 --     insert into crm_contacts (client_email, phone, full_name)
 --       values ('eval-sandbox@guileoai.com','+13475559999','Integrity Canary') returning id; -- note the id
 --     insert into crm_deals (client_email, contact_id, title, value_cents, stage, status)
 --       values ('eval-sandbox@guileoai.com','<that id>','Canary deal', 9900, 'won', 'won');
---     select integrity_check('glo_ing_7f3da9c2b4e8','eval-sandbox@guileoai.com'); -- shows won_deal_without_revenue
+--     select integrity_check('glo_ing_c7f2a9e4b8d16350','eval-sandbox@guileoai.com'); -- shows won_deal_without_revenue
 --   rollback;
 -- ✅ Done. Two read-only auditors: per-tenant violations + platform summary. No new
 --    table, no anon-writable door, safe to paste twice.

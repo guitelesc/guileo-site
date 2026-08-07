@@ -193,7 +193,7 @@ export default function SellerCloser({ lang = "pt", seller, market: marketProp, 
     try { navigator.clipboard?.writeText(txt); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch { /* ignore */ }
   };
 
-  const usUrl = payLink(clientEmail.trim(), seller?.ref || seller?.code || "");
+  const usUrl = payLink(clientEmail.trim(), seller?.ref || "");
   const brUrl = waLink(clientWa, t.brWaMsg(growth.name, planPrice));
 
   const inp = "w-full rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2.5 text-[14px] text-g-word placeholder:text-g-muted/60 focus:outline-none focus:border-g-green/50";

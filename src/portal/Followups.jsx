@@ -4,14 +4,34 @@ import { portalApi, toast } from "../lib/portalApi.js";
 import { waLink } from "../data/contact.js";
 import { genFollowups, logImpact, MiniStats, vnum, Card, tr, Drawer } from "../pages/Portal.jsx";
 
-function Followups({ V }) {
+function Followups({ V, real = null, email = "", dataKey = "" }) {
   const rows = genFollowups(V);
+  const live = !!(real && email && dataKey);
   const [done, setDone] = useState(() => portalApi.loadState(`${V.label}:fups`, []));
   const [sel, setSel] = useState(null);
+  const [nudged, setNudged] = useState({}); // row index → true (optimistic, dedupe)
   useEffect(() => { setDone(portalApi.loadState(`${V.label}:fups`, [])); }, [V.label]);
   const open = rows.map((r, i) => ({ r, i })).filter(({ i }) => !done.includes(i));
   const pipeline = open.reduce((s, { r }) => s + r.value, 0);
   const markWon = (i, name, value) => { setDone((d) => { const n = [...d, i]; portalApi.saveState(`${V.label}:fups`, n); return n; }); logImpact(V.label, `Won back ${name}`, value || 120); setSel(null); toast(`Wonderful — ${name} is won. 🎉 $${value || 120} added to your Guileo Impact.`); };
+  // Nudge — in LIVE mode fire the REAL reengage sender (Gui emails now / queues SMS) and only ever
+  // toast success on a real ok+queued; dedupe via `nudged`. In demo it's a sample interaction. A live
+  // row with no real contact (phone/email) can't be sent → the chip is hidden (never a fake send).
+  const rowContact = (r) => (r.contact || r.phone || r.email || "").toString();
+  const canNudge = (r, i) => !live ? true : (!!rowContact(r) && !nudged[i]);
+  const doNudge = async (r, i, after) => {
+    if (!live) { toast(`Done — I've nudged ${r.name} for you.`); after && after(); return; } // demo sample
+    const contact = rowContact(r);
+    if (!contact || nudged[i]) { after && after(); return; }
+    setNudged((s) => ({ ...s, [i]: true }));                          // optimistic + dedupe
+    after && after();
+    try {
+      const res = await fetch("/api/growth-intel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "reengage", token: dataKey, email, name: r.name || "", contact, suggested: "sms" }) });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok && d?.ok && d?.queued) toast(d.sent ? `Gui reached ${r.name} by email ✓` : `Gui is following up with ${r.name} — queued ✓`);
+      else { setNudged((s) => { const n = { ...s }; delete n[i]; return n; }); toast(tr("Couldn't send that nudge — try again.")); }
+    } catch { setNudged((s) => { const n = { ...s }; delete n[i]; return n; }); toast(tr("Couldn't send that nudge — try again.")); }
+  };
   return (
     <div className="space-y-4 stagger">
       <MiniStats items={[["Active sequences", `${open.length}`], ["Pipeline value", `$${pipeline.toLocaleString()}`], ["Won this week", `${vnum(V.label, "won", 4, 14)}`, "good"], ["Auto-nudged", `${vnum(V.label, "nudge", 18, 44)}`, "good"]]} />
@@ -23,7 +43,11 @@ function Followups({ V }) {
               <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name} <span className="text-g-muted font-normal">· {r.type}</span></div><div className="text-[11px] text-g-muted">via {r.ch} · next: {r.next} · step {r.stage}/3</div></div>
               <span className="text-sm font-extrabold text-g-green">${r.value}</span>
               <div className="flex gap-1.5 shrink-0">
-                <span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); toast(`Done — I've nudged ${r.name} for you.`); }} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); toast(`Done — I've nudged ${r.name} for you.`); } }} className="text-[10px] font-bold rounded-full border border-white/15 px-2.5 py-1 text-g-word hover:border-g-gold/40 transition cursor-pointer">Nudge</span>
+                {nudged[i] ? (
+                  <span className="text-[10px] font-bold rounded-full border border-g-green/40 bg-g-green/10 px-2.5 py-1 text-g-green">{tr("Nudged ✓")}</span>
+                ) : canNudge(r, i) ? (
+                  <span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); doNudge(r, i); }} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); doNudge(r, i); } }} className="text-[10px] font-bold rounded-full border border-white/15 px-2.5 py-1 text-g-word hover:border-g-gold/40 transition cursor-pointer">Nudge</span>
+                ) : null /* live row with no reachable contact → hide rather than fake a send */}
                 <span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); markWon(i, r.name, r.value); }} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); markWon(i, r.name, r.value); } }} className="text-[10px] font-bold rounded-full bg-g-green/15 border border-g-green/40 px-2.5 py-1 text-g-green cursor-pointer">{tr("Won")}</span>
               </div>
             </button>
@@ -38,7 +62,7 @@ function Followups({ V }) {
           badge={<span className="text-sm font-extrabold text-g-green">${sel.r.value}</span>}
           fields={[["Type", sel.r.type], ["Channel", sel.r.ch], ["Next touch", sel.r.next], ["Sequence stage", `${sel.r.stage} of 3`], ["Pipeline value", `$${sel.r.value}`]]}
           note={`The AI is running a ${sel.r.stage}-of-3 follow-up sequence via ${sel.r.ch}. It stops automatically the moment they convert or reply.`}
-          actions={<><button onClick={() => { toast(`Done — I've nudged ${sel.r.name} for you.`); setSel(null); }} className="btn-bright text-sm">{tr("Send nudge now")}</button><button onClick={() => markWon(sel.i, sel.r.name, sel.r.value)} className="btn-ghost text-sm">{tr("🎉 Mark won")}</button><a href={waLink(`Hi ${sel.r.name}, following up…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">{tr("💬 Message")}</a></>}
+          actions={<>{(!live || (canNudge(sel.r, sel.i) && !nudged[sel.i])) && <button onClick={() => doNudge(sel.r, sel.i, () => setSel(null))} className="btn-bright text-sm">{tr("Send nudge now")}</button>}<button onClick={() => markWon(sel.i, sel.r.name, sel.r.value)} className="btn-ghost text-sm">{tr("🎉 Mark won")}</button><a href={waLink(`Hi ${sel.r.name}, following up…`)} target="_blank" rel="noopener" className="btn-ghost text-sm">{tr("💬 Message")}</a></>}
           onClose={() => setSel(null)}
         />
       )}

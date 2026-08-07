@@ -37,7 +37,7 @@ create or replace function public.emergency_claim(
 ) returns uuid language plpgsql security definer set search_path = public as $$
 declare v_id uuid;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   insert into emergency_log (client_email, contact, name, note, dedupe_key)
   values (lower(trim(p_client_email)), nullif(trim(coalesce(p_contact,'')),''),
           nullif(trim(coalesce(p_name,'')),''), left(coalesce(p_note,''), 500),
@@ -54,7 +54,7 @@ drop function if exists public.emergency_mark_called(text, uuid);
 create or replace function public.emergency_mark_called(p_secret text, p_client_email text, p_id uuid)
 returns boolean language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   update emergency_log set called_owner = true
    where id = p_id and client_email = lower(trim(p_client_email));
   return found;
@@ -64,7 +64,7 @@ end $$;
 create or replace function public.emergency_list(p_secret text, p_client_email text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return coalesce((
     select jsonb_agg(jsonb_build_object(
       'id', id, 'contact', contact, 'name', name, 'note', note,

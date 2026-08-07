@@ -224,9 +224,9 @@ export const PROOF_POINTS = [
     },
   },
   {
-    id: "multilingual (20+ languages)",
+    id: "multilingual (16 languages)",
     icon: "🌎",
-    title: { pt: "Trilíngue de verdade", en: "Truly multilingual (20+ languages)", es: "Trilingüe de verdad" },
+    title: { pt: "Trilíngue de verdade", en: "Truly multilingual (16 languages)", es: "Trilingüe de verdad" },
     desc: {
       pt: "Inglês, português e espanhol — e ela troca de idioma no meio da ligação, conforme o cliente.",
       en: "English, Portuguese and Spanish — switching language mid-call to follow the customer.",

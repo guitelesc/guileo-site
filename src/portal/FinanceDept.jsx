@@ -3,6 +3,11 @@ import { useState, useCallback, useEffect } from "react";
 import { fetchCrmInvoices } from "../lib/portalApi.js";
 import { genCustomers, SectionSkeleton, RetryState, DeptTabs, Card, tr, Empty, UI_LANG, Toggle } from "../pages/Portal.jsx";
 
+// Which invoice statuses are open/collectible. crm_invoices_list flags 'overdue' at read
+// time (sent + past due); the /api/collections nudge engine (finance_overdue_list) can only
+// text a reminder for PAST-DUE invoices, so "Collect now" only appears on overdue rows.
+const isOverdue = (iv) => (iv && iv.status === "overdue");
+
 // "💳 A receber" — the overdue book + Gui's polite collection engine (/api/collections).
 // Flow: list overdue → "Prever cobrança" (dryRun, sends NOTHING) → honest confirm → real run.
 function Receivables({ demo, email, dataKey, V, fmtMoney }) {
@@ -190,6 +195,10 @@ function FinanceDept({ V, onNav, email = "", dataKey = "" }) {
   const demo = !dataKey;
   const [invoices, setInvoices] = useState([]);
   const [state, setState] = useState(demo ? "ok" : "loading");
+  // "Collect now" state (declared with the other hooks — must be above the early returns below).
+  const [collectId, setCollectId] = useState(null);     // invoice id awaiting 2nd click
+  const [collectBusy, setCollectBusy] = useState(null);  // invoice id currently sending
+  const [collectToast, setCollectToast] = useState(null); // { kind:"ok"|"err", text }
   const load = useCallback(() => {
     setState("loading");
     fetchCrmInvoices(dataKey, email).then((d) => { setInvoices(d || []); setState("ok"); }).catch(() => setState("err"));
@@ -209,6 +218,32 @@ function FinanceDept({ V, onNav, email = "", dataKey = "" }) {
   const outstanding = invoices.filter((i) => ["sent", "overdue"].includes(i.status)).reduce((s, i) => s + (i.amount_cents || 0), 0);
   const overdue = invoices.filter((i) => i.status === "overdue").reduce((s, i) => s + (i.amount_cents || 0), 0);
   const stColor = (s) => s === "paid" ? "#3E9468" : s === "overdue" ? "#B66" : s === "sent" ? "#D6C29A" : "#9AA0A6";
+
+  // ── "Collect now" — fire the REAL polite reminder (WhatsApp/SMS + pay link) for ONE overdue
+  // invoice through the same per-tenant gated engine Receivables uses (/api/collections nudge,
+  // ids:[id]). Atomic 72h SQL dedup means a double-tap (or Receivables running too) can't double-send.
+  // 1st click arms confirm, 2nd sends. Honest result only: success needs a real sent>=1. Demo = off.
+  const collectNow = async (iv) => {
+    if (demo || collectBusy) return;
+    setCollectBusy(iv.id); setCollectToast(null);
+    try {
+      const r = await fetch("/api/collections", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: dataKey, email: email || "", lang: UI_LANG, action: "nudge", ids: [iv.id] }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (d?.ok && d.sent >= 1) {
+        setCollectToast({ kind: "ok", text: `${tr("Payment reminder sent to")} ${iv.contact_name || tr("customer")}` });
+      } else if (d?.ok && d.claimed_dupe >= 1) {
+        setCollectToast({ kind: "ok", text: tr("Already reminded in the last 72h — staying polite.") });
+      } else {
+        // honest: no phone / no consent / not collectible — never a fake "sent ✓"
+        setCollectToast({ kind: "err", text: tr("Couldn't send a reminder — the customer may have no phone or texting consent on file.") });
+      }
+    } catch { setCollectToast({ kind: "err", text: tr("Couldn't send a reminder — try again.") }); }
+    setCollectBusy(null); setCollectId(null);
+  };
+
   return (
     <div className="space-y-4 stagger">
       <DeptTabs cur="finance" onNav={onNav} items={[["finance", "Finance"], ["payments", "Payments"]]} />
@@ -226,9 +261,38 @@ function FinanceDept({ V, onNav, email = "", dataKey = "" }) {
               <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{iv.contact_name || tr("Unknown")}</div><div className="text-[11px] text-g-muted truncate">{iv.number || ""}{iv.due_at ? ` · ${tr("due")} ${new Date(iv.due_at).toLocaleDateString()}` : ""}</div></div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ background: stColor(iv.status) + "22", color: stColor(iv.status) }}>{tr(iv.status || "draft")}</span>
               <span className="text-sm font-extrabold text-g-green shrink-0">{fmtMoney(iv.amount_cents)}</span>
+              {/* 💳 Collect now — real WhatsApp/SMS reminder + pay link, overdue invoices only, 2-click confirm. Demo = off. */}
+              {!demo && isOverdue(iv) && (
+                collectId === iv.id ? (
+                  <span className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => collectNow(iv)}
+                      disabled={collectBusy === iv.id}
+                      className="rounded-full px-2.5 py-0.5 text-[10.5px] font-black border border-g-green/50 bg-g-green/15 text-g-green hover:bg-g-green/25 transition disabled:opacity-50"
+                      title={`${tr("Send a polite payment reminder to")} ${iv.contact_name || tr("this customer")}?`}
+                    >{collectBusy === iv.id ? "…" : `✓ ${tr("Send reminder")}`}</button>
+                    <button
+                      onClick={() => setCollectId(null)}
+                      disabled={collectBusy === iv.id}
+                      className="rounded-full px-2 py-0.5 text-[10.5px] font-bold border border-white/10 text-g-muted hover:text-g-word transition disabled:opacity-50"
+                    >{tr("Cancel")}</button>
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => { setCollectToast(null); setCollectId(iv.id); }}
+                    title={`${tr("Collect")} ${iv.number || ""}`}
+                    className="rounded-full px-2.5 py-0.5 text-[10.5px] font-bold border shrink-0 border-white/12 text-g-muted hover:border-g-green/40 hover:text-g-green transition"
+                  >💳 {tr("Collect now")}</button>
+                )
+              )}
             </div>
           )) : <Empty icon="🧾" text={demo ? tr("When Gui closes & collects on a call, the invoice lands here — paid, sent or overdue, always reconciled.") : tr("No invoices yet — Gui opens one when it closes a sale and marks it paid on collection.")} />}
         </div>
+        {collectToast && (
+          <div className={`border-t px-5 py-2.5 text-[12px] font-bold ${collectToast.kind === "ok" ? "border-g-green/25 bg-g-green/[0.06] text-g-green" : "border-red-400/25 bg-red-500/[0.06] text-red-300"}`}>
+            {collectToast.kind === "ok" ? "✅ " : "✗ "}{collectToast.text}
+          </div>
+        )}
       </Card>
     </div>
   );

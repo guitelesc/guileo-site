@@ -30,7 +30,7 @@
 --   • RLS ON, NO anon policy — the SECURITY DEFINER RPCs are the only door.
 --   • Gate = the SCHED literal, hardcoded in the function (Supabase forbids the GUC
 --     that _gui_sched_ok reads, so we check the literal directly — same value the
---     scheduling engine uses: 'gss_7Kx2mQ9vR4tZ8nL').
+--     scheduling engine uses: 'gss_Kp9mX4vR2tZ7nQ5wL8bc').
 --   • Graceful: helpers degrade inside EXCEPTION blocks; callers never 500 on a
 --     missing row. Safe to paste this whole file twice (fully idempotent).
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@
 -- law, we check the SCHED literal directly.
 create or replace function public._ops_sched_ok(p_secret text)
 returns boolean language sql immutable as $$
-  select p_secret is not distinct from 'gss_7Kx2mQ9vR4tZ8nL'
+  select p_secret is not distinct from 'gss_Kp9mX4vR2tZ7nQ5wL8bc'
 $$;
 
 -- ── TABLES ───────────────────────────────────────────────────────────────────
@@ -114,7 +114,7 @@ alter table public.ops_reservations     enable row level security;
 --
 -- Signature (positional, as the edge calls it):
 --   rpc_reserve_atomic(
---     p_secret     text,                 -- SCHED literal 'gss_7Kx2mQ9vR4tZ8nL'
+--     p_secret     text,                 -- SCHED literal 'gss_Kp9mX4vR2tZ7nQ5wL8bc'
 --     p_email      text,                 -- tenant (client_email) — scopes EVERYTHING
 --     p_contact_id uuid   default null,  -- crm_contacts.id (audit only; may be null)
 --     p_service_id uuid   default null,  -- biz_services.id (audit only; may be null)
@@ -527,7 +527,7 @@ grant execute on function public.ops_capacity_upsert(text,text,text,timestamptz,
 do $proof$
 declare
   e text := 'proof+ops_atomic@guileoai.com';
-  sec text := 'gss_7Kx2mQ9vR4tZ8nL';
+  sec text := 'gss_Kp9mX4vR2tZ7nQ5wL8bc';
   t0 timestamptz := '2030-01-01 15:00:00+00';
   t1 timestamptz := '2030-01-01 16:00:00+00';
   r1 jsonb; r2 jsonb; r3 jsonb; lst jsonb; due jsonb;

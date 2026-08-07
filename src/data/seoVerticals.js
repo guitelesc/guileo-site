@@ -61,7 +61,7 @@ export const SEO_VERTICALS = [
   },
   {
     slug: "plumbing-hvac", icon: "🔧", lose: 7600,
-    name: { en: "Plumbing & HVAC", pt: "Encanamento & Climatização", es: "Plomería & HVAC", hi: "प्लंबिंग और HVAC" },
+    name: { en: "Plumbing & HVAC", pt: "Encanamento e Climatização", es: "Plomería & HVAC", hi: "प्लंबिंग और HVAC" },
     seoTitle: { en: "AI Receptionist for Plumbing & HVAC | Guileo", pt: "Recepcionista de IA para Encanadores e Climatização | Guileo", es: "Recepcionista de IA para Plomería y Climatización | Guileo", hi: "प्लंबिंग और HVAC के लिए AI रिसेप्शनिस्ट | Guileo" },
     seoDesc: { en: "Never miss an emergency call again. AI answers 24/7, books jobs, and dispatches faster than voicemail. Live in 7 days. 30-day money-back.", pt: "Nunca mais perca uma emergência. A IA atende 24/7, agenda serviços e responde mais rápido que a caixa postal. No ar em 7 dias.", es: "No pierdas ni una urgencia. La IA atiende 24/7, agenda trabajos y responde más rápido que el buzón. Activo en 7 días. Garantía 30 días.", hi: "अब कोई इमरजेंसी कॉल मिस नहीं। AI 24/7 उठाती है, जॉब बुक करती है और वॉइसमेल से तेज़ डिस्पैच करती है। 7 दिनों में लाइव। 30 दिन की मनी-बैक गारंटी।" },
     h1: { en: "Win the job before the competitor calls back.", pt: "Ganhe o serviço antes do concorrente retornar.", es: "Gana el trabajo antes de que el competidor responda.", hi: "कॉम्पिटिटर के कॉल-बैक से पहले ही जॉब पक्की करें।" },
@@ -83,7 +83,7 @@ export const SEO_VERTICALS = [
   },
   {
     slug: "gyms-fitness", icon: "💪", lose: 4200,
-    name: { en: "Gyms & Fitness", pt: "Academias & Fitness", es: "Gimnasios & Fitness", hi: "जिम और फ़िटनेस" },
+    name: { en: "Gyms & Fitness", pt: "Academias e Fitness", es: "Gimnasios & Fitness", hi: "जिम और फ़िटनेस" },
     seoTitle: { en: "AI Receptionist for Gyms & Fitness | Guileo", pt: "Recepcionista de IA para Academias e Fitness | Guileo", es: "Recepcionista de IA para Gimnasios y Fitness | Guileo", hi: "जिम और फ़िटनेस के लिए AI रिसेप्शनिस्ट | Guileo" },
     seoDesc: { en: "Turn every inquiry into a member. AI answers 24/7, books tours and trials, and wins back cancellations. Live in 7 days. 30-day money-back.", pt: "Transforme cada interessado em aluno. A IA atende 24/7, agenda aulas experimentais e recupera cancelamentos. No ar em 7 dias.", es: "Convierte cada interesado en socio. La IA atiende 24/7, agenda clases de prueba y recupera bajas. Activo en 7 días. Garantía 30 días.", hi: "हर पूछताछ को मेंबर में बदलें। AI 24/7 उठाती है, टूर और ट्रायल बुक करती है और कैंसिलेशन वापस जीतती है। 7 दिनों में लाइव। 30 दिन की मनी-बैक गारंटी।" },
     h1: { en: "Turn every inquiry into a member.", pt: "Transforme toda pergunta em um membro.", es: "Convierte cada consulta en un miembro.", hi: "हर पूछताछ को मेंबर बनाइए।" },
@@ -105,7 +105,7 @@ export const SEO_VERTICALS = [
   },
   {
     slug: "salons-spas", icon: "💇", lose: 3800,
-    name: { en: "Salons & Spas", pt: "Salões & Estética", es: "Salones & Spas", hi: "सैलून और स्पा" },
+    name: { en: "Salons & Spas", pt: "Salões e Estética", es: "Salones & Spas", hi: "सैलून और स्पा" },
     seoTitle: { en: "AI Receptionist for Salons & Spas | Guileo", pt: "Recepcionista de IA para Salões e Spas | Guileo", es: "Recepcionista de IA para Salones y Spas | Guileo", hi: "सैलून और स्पा के लिए AI रिसेप्शनिस्ट | Guileo" },
     seoDesc: { en: "Book clients while you work. AI answers 24/7, fills your chairs, and cuts no-shows with reminders. Live in 7 days. 30-day money-back.", pt: "Agende clientes enquanto você atende. A IA responde 24/7, lota a agenda e reduz faltas com lembretes. No ar em 7 dias. Garantia de 30 dias.", es: "Agenda clientes mientras trabajas. La IA atiende 24/7, llena tu agenda y reduce ausencias con recordatorios. Activo en 7 días.", hi: "आप काम करते रहें, बुकिंग होती रहे। AI 24/7 उठाती है, कुर्सियाँ भरती है और रिमाइंडर से नो-शो घटाती है। 7 दिनों में लाइव। 30 दिन की मनी-बैक गारंटी।" },
     h1: { en: "Book every client, even when your hands are full.", pt: "Agende todo cliente, até com as mãos ocupadas.", es: "Agenda a cada cliente, incluso con las manos ocupadas.", hi: "हाथ भरे हों तब भी हर क्लाइंट बुक।" },
@@ -138,7 +138,7 @@ export const SEO_VERTICALS = [
   },
   {
     slug: "home-contractors", icon: "🛠️", lose: 8400,
-    name: { en: "Home Contractors", pt: "Empreiteiros & Reformas", es: "Contratistas", hi: "होम कॉन्ट्रैक्टर" },
+    name: { en: "Home Contractors", pt: "Empreiteiros e Reformas", es: "Contratistas", hi: "होम कॉन्ट्रैक्टर" },
     seoTitle: { en: "AI Receptionist for Home Contractors | Guileo", pt: "Recepcionista de IA para Empreiteiros | Guileo", es: "Recepcionista de IA para Contratistas del Hogar | Guileo", hi: "होम कॉन्ट्रैक्टर के लिए AI रिसेप्शनिस्ट | Guileo" },
     seoDesc: { en: "Win more jobs without leaving the site. AI answers 24/7, books estimates, and follows up in 60 seconds. Live in 7 days. 30-day money-back.", pt: "Feche mais obras sem sair do canteiro. A IA atende 24/7, agenda orçamentos e retorna em 60 segundos. No ar em 7 dias. Garantia de 30 dias.", es: "Gana más obras sin dejar el sitio. La IA atiende 24/7, agenda presupuestos y responde en 60 segundos. Activo en 7 días. Garantía 30 días.", hi: "साइट छोड़े बिना ज़्यादा जॉब जीतें। AI 24/7 उठाती है, एस्टिमेट बुक करती है और 60 सेकंड में फ़ॉलो-अप करती है। 7 दिनों में लाइव। 30 दिन की मनी-बैक गारंटी।" },
     h1: { en: "Book the site visit before the competitor calls back.", pt: "Agende a visita técnica antes do concorrente retornar.", es: "Agenda la visita antes que el competidor responda.", hi: "कॉम्पिटिटर के कॉल-बैक से पहले साइट विज़िट बुक करें।" },
@@ -160,7 +160,7 @@ export const SEO_VERTICALS = [
   },
   {
     slug: "spas", icon: "💆", lose: 4400,
-    name: { en: "Spas & Wellness", pt: "Spas & Bem-Estar", es: "Spas & Bienestar", hi: "स्पा और वेलनेस" },
+    name: { en: "Spas & Wellness", pt: "Spas e Bem-Estar", es: "Spas & Bienestar", hi: "स्पा और वेलनेस" },
     seoTitle: { en: "AI Receptionist for Spas & Wellness | Guileo", pt: "Recepcionista de IA para Spas e Bem-Estar | Guileo", es: "Recepcionista de IA para Spas y Bienestar | Guileo", hi: "स्पा और वेलनेस के लिए AI रिसेप्शनिस्ट | Guileo" },
     seoDesc: { en: "Book clients while you're mid-treatment. AI answers 24/7, cuts no-shows with reminders, rebooks and sells memberships. Live in 7 days. 30-day money-back.", pt: "Agende clientes durante o atendimento. A IA responde 24/7, reduz faltas com lembretes, reagenda e vende planos. No ar em 7 dias. Garantia de 30 dias.", es: "Agenda clientes mientras estás en pleno tratamiento. La IA atiende 24/7, reduce ausencias con recordatorios, reagenda y vende membresías. Activo en 7 días. Garantía 30 días.", hi: "ट्रीटमेंट के बीच में भी क्लाइंट बुक होते रहें। AI 24/7 उठाती है, रिमाइंडर से नो-शो घटाती है, री-बुक करती है और मेंबरशिप बेचती है। 7 दिनों में लाइव। 30 दिन की मनी-बैक गारंटी।" },
     h1: { en: "Never miss a booking call mid-treatment again.", pt: "Nunca mais perca uma ligação durante o tratamento.", es: "Nunca más pierdas una llamada en pleno tratamiento.", hi: "ट्रीटमेंट के बीच में अब कोई बुकिंग कॉल नहीं छूटेगी।" },

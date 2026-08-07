@@ -12,7 +12,7 @@
    Registered by the Portal orchestrator (tab key 'mktleads'). */
 import { useState, useEffect } from "react";
 import { FaBullseye, FaLink, FaBolt, FaEnvelope, FaPlug, FaChevronDown } from "react-icons/fa6";
-import { toast } from "../lib/portalApi.js";
+import { toast, requestGuiCallback } from "../lib/portalApi.js";
 import { tr, Card, Empty, SectionSkeleton, relTime } from "../pages/Portal.jsx";
 
 // ── API seam — never throws to the UI ─────────────────────────────────────────
@@ -85,6 +85,7 @@ function MarketplaceLeads({ V, real = null, email = "", dataKey = "" }) {
   const [err, setErr] = useState(false);
   const [openMkt, setOpenMkt] = useState(null); // which connect card is expanded
   const [statusFor, setStatusFor] = useState(null); // lead id with the status picker open
+  const [redialing, setRedialing] = useState({}); // lead id → true while Gui dials (optimistic)
 
   useEffect(() => {
     let alive = true;
@@ -115,6 +116,26 @@ function MarketplaceLeads({ V, real = null, email = "", dataKey = "" }) {
     if (!live) { toast(tr("Dados de exemplo — conecte sua conta para atualizar leads reais.")); return; }
     const d = await api({ action: "set_status", email, token: dataKey, id: lead.id, status });
     if (!d?.ok) toast(tr("Não consegui salvar o status — tente de novo."));
+  };
+
+  // Re-dial a lead stuck in 'new' — REAL callback through the SAME hardened /api/call gate the
+  // ingest responder uses (DNC + caps + per-destination cooldown enforced THERE). requestGuiCallback
+  // returns {ok} reflecting the actual dial, so we only toast "ligando agora" on a real ok:true, then
+  // flip the status to 'called' (persisted) so the button disappears — no double-dial, no fake success.
+  const redial = async (lead) => {
+    const phone = (lead.phone || "").toString();
+    if (!phone || redialing[lead.id]) return;
+    if (!live) { toast(tr("Dados de exemplo — conecte sua conta para a Gui ligar de verdade.")); return; }
+    setRedialing((s) => ({ ...s, [lead.id]: true }));
+    const res = await requestGuiCallback(dataKey, email, { id: lead.id, phone, name: lead.name || "" });
+    setRedialing((s) => { const n = { ...s }; delete n[lead.id]; return n; });
+    if (res?.ok) {
+      setLeads((ls) => (ls || []).map((x) => (x.id === lead.id ? { ...x, status: "called" } : x))); // reflect
+      api({ action: "set_status", email, token: dataKey, id: lead.id, status: "called" }); // persist after a real dial
+      toast(tr("Gui está ligando agora 📞"));
+    } else {
+      toast(tr("Não consegui iniciar a ligação agora (lista de não-ligar, limite ou já ligada há pouco). Tente de novo."));
+    }
   };
 
   const rows = leads || [];
@@ -267,6 +288,19 @@ function MarketplaceLeads({ V, real = null, email = "", dataKey = "" }) {
                     <div className="text-sm font-bold text-g-word truncate">{r.name || tr("Lead")}{r.service ? <span className="text-g-muted font-normal"> · {r.service}</span> : null}</div>
                     <div className="text-[11px] text-g-muted truncate">{mk.label} · {r.phone || tr("sem telefone")}{r.created_at ? ` · ${relTime(r.created_at)}` : ""}</div>
                   </div>
+                  {/* Re-dial — a lead still in 'new' WITH a phone gets the 1-click callback. In demo it
+                      shows a sample toast; live routes through the hardened /api/call gate (redial() guards). */}
+                  {st === "new" && r.phone && (
+                    redialing[r.id] ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-g-green px-2.5 py-1 shrink-0 whitespace-nowrap">📞 {tr("Ligando…")}</span>
+                    ) : (
+                      <button onClick={() => redial(r)} title={tr("Gui liga este lead agora")}
+                        className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black text-[#161512] shrink-0 whitespace-nowrap transition hover:opacity-90"
+                        style={{ background: "#FF8A33" }}>
+                        📞 {tr("Gui liga agora")}
+                      </button>
+                    )
+                  )}
                   {picking ? (
                     <div className="flex items-center gap-1 shrink-0 flex-wrap">
                       {STATUSES.map((s) => (

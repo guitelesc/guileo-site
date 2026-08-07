@@ -14,7 +14,7 @@
 -- revenue_month for the TOTAL; a daily chart from the authoritative ledger is honest on its own).
 -- Excludes cancelled/no-show/void/refunded, positive cents only — same exclusions as revenue_month.
 --
--- SECURITY: INGEST-gated (`glo_ing_7f3da9c2b4e8` = INGEST_SECRET, same door as revenue_month),
+-- SECURITY: INGEST-gated (`glo_ing_c7f2a9e4b8d16350` = INGEST_SECRET, same door as revenue_month),
 -- SECURITY DEFINER, granted to anon; base table stays RLS-locked with no anon policy. Every read
 -- is wrapped in EXCEPTION so a missing/renamed table degrades to {series:[]} instead of 500.
 -- Idempotent (create or replace).
@@ -31,7 +31,7 @@ declare
   v_since  timestamptz := coalesce(p_since, date_trunc('month', now()));
   v_series jsonb        := '[]'::jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
 

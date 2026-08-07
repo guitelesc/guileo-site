@@ -8,7 +8,7 @@
 -- first — Gui answers first.
 --
 -- SECURITY: every RPC is SECURITY DEFINER, INGEST-gated by the same literal the ingest
--- pipeline uses ('glo_ing_7f3da9c2b4e8' — see db/coupons.sql / db/capture_tools.sql),
+-- pipeline uses ('glo_ing_c7f2a9e4b8d16350' — see db/coupons.sql / db/capture_tools.sql),
 -- granted to anon, and CLIENT-SCOPED by p_email — no tenant can read/write another tenant's
 -- leads. Table has RLS ON with NO anon policies, so only the definer funcs reach it.
 --
@@ -42,7 +42,7 @@ alter table public.marketplace_leads enable row level security;
 
 -- ── GATE helper (same literal as the ingest pipeline) ─────────────────────────
 create or replace function public._mkt_ok(p_secret text) returns boolean
-language sql immutable as $$ select p_secret = 'glo_ing_7f3da9c2b4e8' $$;
+language sql immutable as $$ select p_secret = 'glo_ing_c7f2a9e4b8d16350' $$;
 
 -- ── RECORD (idempotent): insert unless the same lead already arrived in the last hour.
 --    Match key = (tenant, source, normalized phone) or, when no phone, (tenant, source, email).

@@ -425,7 +425,7 @@ export const GUILEO_CLIENT = [
 export const CLIENT_CUSTOMER = [
   {
     code: "CC-HOME", icon: "🔧",
-    name: { pt: "Contrato de Prestação de Serviço (Reformas & Casa)", en: "Home Services Agreement", es: "Contrato de Prestación de Servicios (Reformas y Hogar)" },
+    name: { pt: "Contrato de Prestação de Serviço (Reformas e Casa)", en: "Home Services Agreement", es: "Contrato de Prestación de Servicios (Reformas y Hogar)" },
     summary: {
       pt: "Acordo para serviços residenciais, reformas e manutenção, com escopo, prazo e garantia.",
       en: "Agreement for residential, renovation, and maintenance services, with scope, timeline, and warranty.",

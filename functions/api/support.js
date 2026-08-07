@@ -5,6 +5,7 @@
 import { factsBlock } from "../lib/productFacts.js";
 import { guardSystemPrompt } from "../lib/guiConstitution.js";
 import { json, rateLimited } from "../lib/guard.js";
+import { svcRpc } from "../lib/sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -104,7 +105,7 @@ export async function onRequestPost(context) {
     // default: list tickets — ALWAYS scoped to the caller's own email. The whole cross-tenant
     // queue is admin-only and served by /api/broto (admin-password gated). A client token must
     // never be able to read another tenant's tickets, so `all:true` is intentionally ignored here.
-    const r = await rpc("support_ticket_list", { p_secret: secret, p_email: email, p_limit: Math.min(Math.max(parseInt(b.limit, 10) || 200, 1), 1000) });
+    const r = await svcRpc(env, "support_ticket_list", { p_secret: secret, p_email: email, p_limit: Math.min(Math.max(parseInt(b.limit, 10) || 200, 1), 1000) });
     if (!r.ok) return json({ ok: true, ready: false, note: "Paste db/support.sql to activate support.", tickets: [] });
     const tickets = (await r.json()) || [];
     return json({ ok: true, ready: true, count: tickets.length, tickets });

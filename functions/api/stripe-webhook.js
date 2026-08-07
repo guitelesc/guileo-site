@@ -5,6 +5,7 @@
 import { json, safeEq } from "../lib/guard.js";
 import { welcomeSelfServeEmail, ownerAlertEmail, dunningEmail, sellerCommissionEmail, teamKickoffBriefEmail } from "../lib/emailTemplates.js";
 import { provisionClientAgent, buyAndBindNumber, forwardingInstructions, buildDefaultSchedulePayload } from "../lib/provision.js";
+import { svcRpc } from "../lib/sb.js";
 import { emitFailure } from "../lib/failure.js";
 import { reportPurchase } from "../lib/adsConversions.js";
 
@@ -106,7 +107,7 @@ export async function onRequestPost(context) {
             if (dr.ok) balanceAfter = await dr.json().catch(() => null);
           } catch { /* deduct is best-effort; the negative event below still records it */ }
         }
-        await rpc("ingest_client_event", {
+        await svcRpc(env, "ingest_client_event", {
           p_secret: ING, p_email: email, p_type: "refund", p_channel: "stripe",
           p_summary: `${kind === "dispute" ? "Dispute" : "Refund"} · -$${(refundedCents / 100).toFixed(2)} · −${revoke} cr${email ? " · " + email : ""}`,
           p_amount: -(refundedCents / 100), p_payload: { id: obj.id || "", charge: obj.charge || "", kind, revoked_credits: revoke, balance_after: balanceAfter },
@@ -145,7 +146,7 @@ export async function onRequestPost(context) {
         const cents = obj.amount_due ?? obj.amount_remaining ?? 0; // invoice amounts; a deleted subscription has none
         const failed = type === "invoice.payment_failed";
         const amt = cents > 0 ? `$${(cents / 100).toFixed(2)}` : "";
-        await rpc("ingest_client_event", {
+        await svcRpc(env, "ingest_client_event", {
           p_secret: ING, p_email: email, p_type: "billing", p_channel: "stripe",
           p_summary: failed ? `⚠️ Pagamento falhou${amt ? " · " + amt : ""} — cartão recusado/expirado` : "⚠️ Assinatura cancelada no Stripe",
           p_amount: 0, p_payload: { id: obj.id || "", kind: type, attempt: obj.attempt_count || 0 },
@@ -258,7 +259,7 @@ export async function onRequestPost(context) {
           if (!mayCredit) return json({ received: true, topup: true, already_credited: true });
           const cr = await rpc("add_client_credits", { p_secret: ING, p_email: email, p_credits: topCr, p_plan: "topup" });
           if (!cr.ok) await emitFailure(env, "credit_storage_failed", email, `topup paid $${(cents / 100).toFixed(2)} → ${topCr} cr NOT stored`, { session: obj.id || "" });
-          await rpc("ingest_client_event", { p_secret: ING, p_email: email, p_type: "payment", p_channel: "stripe", p_summary: `🔋 Recarga: +${topCr} créditos`, p_amount: cents / 100, p_payload: { session: obj.id || "", topup: true } });
+          await svcRpc(env, "ingest_client_event", { p_secret: ING, p_email: email, p_type: "payment", p_channel: "stripe", p_summary: `🔋 Recarga: +${topCr} créditos`, p_amount: cents / 100, p_payload: { session: obj.id || "", topup: true } });
         } else if (cents > 0) {
           // money moved but nothing was credited (no customer email on the session / odd amount)
           // — a silent paid-but-nothing is a money-back trigger; surface it in /admin now.
@@ -274,7 +275,7 @@ export async function onRequestPost(context) {
       if (isCheckout && (meta.guileo === "setup" || cents === 19900)) {
         if (email && cents > 0) {
           try {
-            await rpc("ingest_client_event", {
+            await svcRpc(env, "ingest_client_event", {
               p_secret: ING, p_email: email, p_type: "payment", p_channel: "stripe",
               p_summary: `🛠️ Configuração Assistida · $${(cents / 100).toFixed(2)}`,
               p_amount: cents / 100, p_payload: { session: obj.id || "", setup: true },
@@ -321,7 +322,7 @@ export async function onRequestPost(context) {
           if (gmeta.guileo === "package" && tenant && gmeta.id) {
             let sessions = Math.max(0, Math.round(Number(gmeta.sessions) || 0));
             if (!sessions) {
-              const pl = await rpc("package_list", { p_secret: ING, p_client_email: tenant });
+              const pl = await svcRpc(env, "package_list", { p_secret: ING, p_client_email: tenant });
               if (pl.ok) { const arr = await pl.json().catch(() => []); const p = (Array.isArray(arr) ? arr : []).find((x) => x && x.id === gmeta.id); sessions = p ? Number(p.sessions) || 0 : 0; }
             }
             const fr = await rpc("package_purchase_record", { p_secret: ING, p_client_email: tenant, p_package_id: gmeta.id, p_contact: buyer, p_sessions: sessions, p_stripe_session_id: obj.id || null });
@@ -339,7 +340,7 @@ export async function onRequestPost(context) {
           if (tenant && cents > 0 && env.SCHED_SECRET) {
             await rpc("revenue_record", { p_secret: env.SCHED_SECRET, p_email: tenant, p_category: gmeta.guileo, p_amount_cents: cents, p_ref: obj.id || null, p_source: "stripe-link", p_meta: { payer: buyer } });
           }
-          await rpc("ingest_client_event", { p_secret: ING, p_email: tenant, p_type: "payment", p_channel: "stripe", p_summary: `💳 ${gmeta.guileo === "package" ? "Pacote" : gmeta.guileo === "membership" ? "Assinatura" : "Gift card"} · $${(cents / 100).toFixed(2)}`, p_amount: cents / 100, p_payload: { session: obj.id || "", kind: gmeta.guileo } });
+          await svcRpc(env, "ingest_client_event", { p_secret: ING, p_email: tenant, p_type: "payment", p_channel: "stripe", p_summary: `💳 ${gmeta.guileo === "package" ? "Pacote" : gmeta.guileo === "membership" ? "Assinatura" : "Gift card"} · $${(cents / 100).toFixed(2)}`, p_amount: cents / 100, p_payload: { session: obj.id || "", kind: gmeta.guileo } });
         } catch { await emitFailure(env, "recurring_fulfill_failed", tenant, `${gmeta.guileo} paid $${(cents / 100).toFixed(2)} but fulfill failed`, { session: obj.id || "" }); }
         return json({ received: true, recurring: gmeta.guileo });
       }
@@ -373,7 +374,7 @@ export async function onRequestPost(context) {
         try {
           const cr = await rpc("add_client_credits", { p_secret: ING, p_email: email, p_credits: credits, p_plan: plan.slice(0, 80) });
           if (!cr.ok) await emitFailure(env, "credit_storage_failed", email, `paid $${(cents / 100).toFixed(2)} → ${credits} cr NOT stored`, { session: obj.id || "" });
-          await rpc("ingest_client_event", { p_secret: ING, p_email: email, p_type: "payment", p_channel: "stripe", p_summary: `Payment · $${(cents / 100).toFixed(2)} → +${credits} credits${plan ? " · " + plan : ""}`, p_amount: cents / 100, p_payload: { session: obj.id || "" } });
+          await svcRpc(env, "ingest_client_event", { p_secret: ING, p_email: email, p_type: "payment", p_channel: "stripe", p_summary: `Payment · $${(cents / 100).toFixed(2)} → +${credits} credits${plan ? " · " + plan : ""}`, p_amount: cents / 100, p_payload: { session: obj.id || "" } });
         } catch (ce) {
           await emitFailure(env, "credit_storage_failed", email, `paid $${(cents / 100).toFixed(2)} → ${credits} cr threw (${String(ce).slice(0, 80)}) — credit MANUALLY`, { session: obj.id || "" }).catch(() => {});
         }
@@ -410,7 +411,7 @@ export async function onRequestPost(context) {
               const usc = rest.indexOf("_");
               const dToken = usc > 0 ? rest.slice(0, usc) : rest;
               const dProduct = usc > 0 ? rest.slice(usc + 1) : "";
-              await rpc("demo_event", { p_secret: env.INGEST_SECRET || "glo_ing_7f3da9c2b4e8", p_token: dToken, p_kind: "checkout_done", p_product: dProduct, p_contact: { email } });
+              await rpc("demo_event", { p_secret: env.INGEST_SECRET || "", p_token: dToken, p_kind: "checkout_done", p_product: dProduct, p_contact: { email } });
             }
           } catch { /* attribution best-effort */ }
         })());
@@ -466,7 +467,7 @@ export async function onRequestPost(context) {
                 } else if (num.ok && num.number) { provNumber = num.number; fwd = forwardingInstructions(num.number, provLang); }
                 else await emitFailure(env, "number_provision_failed", email, `agent ok but no number — finish in /admin · ${num.reason || ""}`, { agent_id: prov.agent_id });
                 try { await rpc("mark_pending_provisioned", { p_secret: PEND_SECRET, p_email: email, p_agent_id: prov.agent_id }); } catch { /* */ }
-                try { await rpc("ingest_client_event", { p_secret: ING, p_email: email, p_type: "provision", p_channel: "system", p_summary: `🚀 Gui ativada automaticamente no pagamento${provNumber ? " · " + provNumber : " (número pendente)"}${plan ? " · " + plan : ""}`, p_amount: 0, p_payload: { agent_id: prov.agent_id, number: provNumber } }); } catch { /* */ }
+                try { await svcRpc(env, "ingest_client_event", { p_secret: ING, p_email: email, p_type: "provision", p_channel: "system", p_summary: `🚀 Gui ativada automaticamente no pagamento${provNumber ? " · " + provNumber : " (número pendente)"}${plan ? " · " + plan : ""}`, p_amount: 0, p_payload: { agent_id: prov.agent_id, number: provNumber } }); } catch { /* */ }
                 // ONBOARDING MACHINE hook: paid → invoice+access reached. Advance the funnel (idempotent;
                 // wrapped so it can NEVER touch the money path). onboard_advance stamps only once per step.
                 try { await rpc("onboard_advance", { p_secret: ING, p_email: email, p_step: "invoice" }); } catch { /* */ }
@@ -504,7 +505,7 @@ export async function onRequestPost(context) {
                         lang: provLang,
                       }),
                     });
-                    await rpc("ingest_client_event", { p_secret: ING, p_email: email, p_type: cr.ok ? "first_value" : "first_value_failed", p_channel: "voice", p_summary: cr.ok ? `🎁 Primeira ligação de valor disparada pro dono (${ownerPhone})` : `⚠️ Primeira ligação de valor NÃO discada (HTTP ${cr.status})`, p_amount: 0, p_payload: { phone: ownerPhone } });
+                    await svcRpc(env, "ingest_client_event", { p_secret: ING, p_email: email, p_type: cr.ok ? "first_value" : "first_value_failed", p_channel: "voice", p_summary: cr.ok ? `🎁 Primeira ligação de valor disparada pro dono (${ownerPhone})` : `⚠️ Primeira ligação de valor NÃO discada (HTTP ${cr.status})`, p_amount: 0, p_payload: { phone: ownerPhone } });
                   }
                 } catch { /* first-value call is best-effort — never blocks provisioning or money */ }
                 // TEAM KICKOFF BRIEF (self-serve parity with /admin) — the team gets an AI launch plan
@@ -534,7 +535,7 @@ export async function onRequestPost(context) {
                 } catch { /* team brief is best-effort — never blocks provisioning or money */ }
               } else {
                 // surface the failure to the owner so it can be finished by hand — never silently drop it
-                try { await rpc("ingest_client_event", { p_secret: ING, p_email: email, p_type: "provision_failed", p_channel: "system", p_summary: `⚠️ Gui NÃO criada no pagamento (${email}) — finalizar no /admin · ${prov.step}`, p_amount: 0, p_payload: { step: prov.step } }); } catch { /* */ }
+                try { await svcRpc(env, "ingest_client_event", { p_secret: ING, p_email: email, p_type: "provision_failed", p_channel: "system", p_summary: `⚠️ Gui NÃO criada no pagamento (${email}) — finalizar no /admin · ${prov.step}`, p_amount: 0, p_payload: { step: prov.step } }); } catch { /* */ }
               }
             }
           } catch { /* auto-provision is best-effort; credits + welcome already handled */ }
@@ -610,7 +611,7 @@ export async function onRequestPost(context) {
                   for (const who of [refEmail, email]) {
                     const gr = await rpc("add_client_credits", { p_secret: ING, p_email: who, p_credits: reward, p_plan: "referral" });
                     if (!gr.ok) await emitFailure(env, "referral_reward_failed", who, `referral converted but +${reward} bonus credits NOT stored`, { session: obj.id || "", other: who === email ? refEmail : email });
-                    await rpc("ingest_client_event", {
+                    await svcRpc(env, "ingest_client_event", {
                       p_secret: ING, p_email: who, p_type: "referral", p_channel: "system",
                       p_summary: `🎁 Indicação convertida — +${reward} créditos (1 mês grátis)`,
                       p_amount: 0, p_payload: { referred: email, referrer: refEmail, reward, session: obj.id || "", plan },
@@ -619,7 +620,7 @@ export async function onRequestPost(context) {
                 }
               } else {
                 // seller-name / unknown slug → attribution only; the commission engine reads this later.
-                await rpc("ingest_client_event", {
+                await svcRpc(env, "ingest_client_event", {
                   p_secret: ING, p_email: email, p_type: "attribution", p_channel: "system",
                   p_summary: `👤 Atribuição de vendedor · ${refCode.slice(0, 60)}`,
                   p_amount: 0, p_payload: { seller_ref: refCode.slice(0, 200), session: obj.id || "", plan },

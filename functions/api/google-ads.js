@@ -18,6 +18,7 @@
 // em vez de 500. Requer db/ads_requests.sql em Supabase (ynihodbknhjirkdogxby).
 import { json } from "../lib/guard.js";
 import { ownerAlertEmail } from "../lib/emailTemplates.js";
+import { svcRpc } from "../lib/sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -131,7 +132,7 @@ export async function onRequestPost(context) {
       // Best-effort: log it in the tenant's own live feed (unified inbox) so the client
       // sees "Ads request submitted — team is building it". Never faked as active.
       try {
-        await rpc("ingest_client_event", {
+        await svcRpc(env, "ingest_client_event", {
           p_secret: ING, p_email: email,
           p_type: "message", p_channel: "Portal",
           p_summary: `Google Ads requested (${budgetCents ? `$${(budgetCents / 100).toLocaleString("en-US")}/mo` : "budget TBD"}) — the Guileo team is building your campaign.`.slice(0, 300),

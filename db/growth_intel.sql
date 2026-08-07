@@ -7,7 +7,7 @@
 --
 -- LADO DADOS: 2 tabelas (booking_intents + intent_recovery_claims) + RPCs de
 -- inteligência (LTV / atribuição / forecast) que LEEM crm_contacts + biz_appointments.
--- Tudo INGEST-gated (mesmo literal 'glo_ing_7f3da9c2b4e8' que o pipeline de ingest/
+-- Tudo INGEST-gated (mesmo literal 'glo_ing_c7f2a9e4b8d16350' que o pipeline de ingest/
 -- crm/coupons usa), security definer, granted to anon. RLS on, SEM policies para anon
 -- (só as funções SECURITY DEFINER acessam). Client-scoped por p_client_email —
 -- nenhum tenant enxerga dados de outro. As leituras de crm_contacts/biz_appointments
@@ -61,7 +61,7 @@ declare
   v_contact text := nullif(trim(coalesce(p_contact,'')),'');
   v_id      uuid;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' then raise exception 'client_email required'; end if;
 
   if v_contact is not null then
@@ -98,7 +98,7 @@ declare
   v_tenant  text := lower(trim(p_client_email));
   v_contact text := nullif(trim(coalesce(p_contact,'')),'');
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if p_intent_id is not null then
     update public.booking_intents set status = 'completed', completed_at = now()
       where id = p_intent_id and client_email = v_tenant and status <> 'completed';
@@ -123,7 +123,7 @@ create or replace function public.booking_intents_abandoned(
 ) language plpgsql security definer set search_path = public as $$
 declare v_tenant text := lower(trim(p_client_email));
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return query
   select bi.id, bi.contact, bi.name, bi.service, bi.source, bi.created_at,
          floor(extract(epoch from (now() - bi.created_at)) / 60.0)::int as minutes_ago,
@@ -145,7 +145,7 @@ create or replace function public.intent_recovery_claim(
 language plpgsql security definer set search_path = public as $$
 declare v_tenant text := lower(trim(p_client_email)); v_got boolean := false;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   -- só reivindica intents que pertencem ao tenant e ainda estão 'started'
   if not exists (select 1 from public.booking_intents
                    where id = p_intent_id and client_email = v_tenant and status = 'started') then
@@ -169,7 +169,7 @@ returns boolean
 language plpgsql security definer set search_path = public as $$
 declare v_tenant text := lower(trim(p_email)); v_hit boolean := false;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' then return false; end if;
   begin
     select exists(select 1 from public.clients where lower(email) = v_tenant) into v_hit;
@@ -201,7 +201,7 @@ declare
   v_appt_rev bigint := 0;      -- receita de agendamentos realizados (cross-check)
   v_top      jsonb := '[]'::jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
 
   begin
     select coalesce(sum(ltv_cents),0), count(*), count(*) filter (where ltv_cents > 0)
@@ -247,7 +247,7 @@ create or replace function public.crm_lead_sources(
 language plpgsql security definer set search_path = public as $$
 declare v_tenant text := lower(trim(p_client_email)); v_days int := greatest(1, coalesce(p_days,90));
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   begin
     return query
     select coalesce(nullif(trim(lead_source),''), 'direto') as source,
@@ -276,7 +276,7 @@ declare
   v_rev4w    bigint := 0;      -- receita nas últimas 4 semanas
   v_upcoming int := 0;         -- já agendados p/ os próximos 7 dias (piso do forecast)
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
 
   begin
     select count(*),

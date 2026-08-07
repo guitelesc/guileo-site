@@ -2,6 +2,7 @@ import { useState } from "react";
 import { waLink, bookLink } from "../data/contact";
 import { useLang } from "../i18n.jsx";
 import { trackLead } from "../lib/analytics.js";
+import ConsentText from "./ConsentText.jsx";
 
 // LeadCaptureV2 — TEST (/v2) close: "Stop losing customers. Start tonight."
 // Multi-channel contact capture (the form Luis loves). Posts to /api/lead; a real human
@@ -29,13 +30,6 @@ export default function LeadCaptureV2() {
   const [consent, setConsent] = useState(false); // TCPA — UNCHECKED by default; required affirmative opt-in
   const [err, setErr] = useState(false); // a11y: true when submit fails validation
 
-  const consentText = lang === "es"
-    ? "Acepto ser contactado por Gui (Guileo) por llamada/mensaje. Pueden aplicar tarifas. Responde STOP para cancelar."
-    : lang === "pt"
-    ? "Concordo em ser contatado pelo Gui (Guileo) por ligação/mensagem. Posso responder STOP pra sair."
-    : lang === "hi"
-    ? "मैं Gui (Guileo) से कॉल/मैसेज द्वारा संपर्क के लिए सहमत हूँ। मैसेज शुल्क लागू हो सकते हैं; ऑप्ट-आउट के लिए STOP भेजें।"
-    : "I agree to be contacted by Gui (Guileo) by call/text. Msg rates may apply, reply STOP to opt out.";
 
   const errText = lang === "es" ? "Completa tu nombre y contacto, y acepta el consentimiento." : lang === "pt" ? "Preencha seu nome e contato, e aceite o consentimento." : lang === "hi" ? "अपना नाम और संपर्क भरें, और सहमति बॉक्स चेक करें।" : "Please fill in your name and contact, and check the consent box.";
   const LC = {
@@ -103,8 +97,9 @@ export default function LeadCaptureV2() {
               <div className="mb-2 text-[12px] font-bold uppercase tracking-wider text-g-muted">Where should we reach you?</div>
               <div className="flex flex-wrap gap-1.5">
                 {CH.map((c, i) => (
+                  /* Mesmo alvo de 44px do LeadForm: este bloco também é um seletor de contato. */
                   <button type="button" key={c.k} onClick={() => { setCh(i); setVal(""); }}
-                    className={`rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition ${i === ch ? "border-g-green/50 bg-g-green/15 text-g-word" : "border-g-line bg-white/[0.03] text-g-muted hover:text-g-word"}`}>
+                    className={`inline-flex min-h-11 items-center rounded-full border px-3 py-1.5 text-[12.5px] font-semibold transition sm:min-h-0 ${i === ch ? "border-g-green/50 bg-g-green/15 text-g-word" : "border-g-line bg-white/[0.03] text-g-muted hover:text-g-word"}`}>
                     {c.icon} {c.k}
                   </button>
                 ))}
@@ -119,7 +114,7 @@ export default function LeadCaptureV2() {
               <input type="checkbox" required checked={consent} onChange={(e) => setConsent(e.target.checked)}
                 aria-invalid={consentBad} aria-describedby={consentBad ? "lcv2-err" : undefined}
                 className="mt-0.5 h-4 w-4 shrink-0 accent-g-green" />
-              <span>{consentText}</span>
+              <span><ConsentText lang={lang} /></span>
             </label>
 
             {err && <p id="lcv2-err" role="alert" className="text-center text-[12.5px] font-semibold text-g-gold">{errText}</p>}

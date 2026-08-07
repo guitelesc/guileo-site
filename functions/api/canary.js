@@ -35,6 +35,7 @@
 // new SQL. If a same-day re-page is ever wanted, narrow the suffix to the 6h bucket
 // (`_<YYYY-MM-DD>-<0..3>`); the 7-day TTL still auto-expires the stale keys.
 import { json, safeEq, rateLimited } from "../lib/guard.js";
+import { sbKey } from "../lib/sb.js";
 import { SELF_SERVE_PLANS } from "../../src/data/selfServePlans.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -47,7 +48,7 @@ async function rpc(env, fn, args) {
   try {
     const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {
       method: "POST",
-      headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
+      headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" },
       body: JSON.stringify({ p_secret: env.INGEST_SECRET || "", ...args }),
     });
     return r.ok ? await r.json() : null;

@@ -9,6 +9,7 @@
 import { json, safeEq } from "./../lib/guard.js";
 import { sendText } from "./../lib/twilio.js";
 import { emitFailure } from "./../lib/failure.js";
+import { svcRpc } from "./../lib/sb.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -29,11 +30,7 @@ async function validTwilioSig(url, params, sig, token) {
 // Best-effort tenant event — never blocks the TwiML.
 async function ingest(env, email, type, summary, payload) {
   try {
-    await fetch(`${SB_URL}/rest/v1/rpc/ingest_client_event`, {
-      method: "POST",
-      headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ p_secret: env.INGEST_SECRET || "", p_email: email, p_type: type, p_channel: "voice", p_summary: summary.slice(0, 300), p_amount: 0, p_payload: payload || {} }),
-    });
+    await svcRpc(env, "ingest_client_event", { p_secret: env.INGEST_SECRET || "", p_email: email, p_type: type, p_channel: "voice", p_summary: summary.slice(0, 300), p_amount: 0, p_payload: payload || {} });
   } catch { /* never block the TwiML */ }
 }
 

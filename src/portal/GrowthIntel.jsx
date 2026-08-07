@@ -119,13 +119,19 @@ function GrowthIntel({ V, real = null, email = "", dataKey = "" }) {
   const [reengaged, setReengaged] = useState({}); // phone → true (optimistic)
   const doReengage = async (c) => {
     const id = c.phone || c.contact_email || c.name;
-    setReengaged((s) => ({ ...s, [id]: true }));
-    toast(c.suggested_action === "call" ? tr("Gui vai ligar de volta — na fila ✓") : tr("Gui vai mandar SMS de volta — na fila ✓"));
+    setReengaged((s) => ({ ...s, [id]: true }));                       // optimistic row state
     const res = await giPost({ action: "reengage", token: dataKey, email, name: c.name || "", contact: c.phone || c.contact_email || "", suggested: c.suggested_action || "sms", risk: c.risk });
     if (!res || !res.ok || !res.queued) {
       setReengaged((s) => { const n = { ...s }; delete n[id]; return n; });
       toast(tr("Não consegui salvar isso — confira a conexão e tente de novo."));
+      return;
     }
+    // Surface the GENUINE win from the backend (via/sent) — not a generic toast.
+    // res.sent === true only when Gui actually delivered a branded email right now.
+    const who = c.name || tr("cliente");
+    if (res.sent) toast(`${tr("Gui reativou")} ${who} ${tr("por email agora ✓")}`);
+    else if ((res.via || c.suggested_action) === "call") toast(`${tr("Gui vai ligar para")} ${who} — ${tr("na fila ✓")}`);
+    else toast(`${tr("Gui vai mandar SMS para")} ${who} — ${tr("na fila ✓")}`);
   };
 
   // real mode, fetch in flight → skeleton (never a false empty state)

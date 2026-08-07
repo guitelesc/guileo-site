@@ -102,7 +102,7 @@ declare
   v_id     uuid := nullif(p_package->>'id','')::uuid;
   v_name   text := nullif(trim(coalesce(p_package->>'name','')),'');
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_name is null then raise exception 'name required'; end if;
   if v_id is not null then
     update public.packages set
@@ -130,7 +130,7 @@ create or replace function public.package_list(p_secret text, p_client_email tex
 returns jsonb
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return coalesce((
     select jsonb_agg(jsonb_build_object(
       'id', p.id, 'name', p.name, 'service', p.service, 'sessions', p.sessions,
@@ -149,7 +149,7 @@ create or replace function public.package_delete(p_secret text, p_id uuid)
 returns boolean
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   delete from public.packages where id = p_id;
   return found;
 end $$;
@@ -165,7 +165,7 @@ declare
   v_tenant text := lower(trim(p_client_email));
   v_id     uuid;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   -- idempotência: se essa sessão Stripe já virou compra, devolve a existente.
   if p_stripe_session_id is not null and length(trim(p_stripe_session_id)) > 0 then
     select id into v_id from public.package_purchases where stripe_session_id = p_stripe_session_id limit 1;
@@ -186,7 +186,7 @@ create or replace function public.package_purchases_list(p_secret text, p_client
 returns jsonb
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return coalesce((
     select jsonb_agg(jsonb_build_object(
       'id', pp.id, 'package_id', pp.package_id, 'contact', pp.contact,
@@ -207,7 +207,7 @@ returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare v record;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   update public.package_purchases set sessions_used = sessions_used + 1
     where id = p_purchase_id
       and sessions_used < sessions_total
@@ -231,7 +231,7 @@ declare
   v_name   text := nullif(trim(coalesce(p_membership->>'name','')),'');
   v_int    text := lower(coalesce(nullif(trim(p_membership->>'interval'),''),'month'));
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_name is null then raise exception 'name required'; end if;
   if v_int not in ('month','year') then v_int := 'month'; end if;
   if v_id is not null then
@@ -260,7 +260,7 @@ create or replace function public.membership_list(p_secret text, p_client_email 
 returns jsonb
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return coalesce((
     select jsonb_agg(jsonb_build_object(
       'id', m.id, 'name', m.name, 'price_cents', m.price_cents, 'interval', m.interval,
@@ -278,7 +278,7 @@ create or replace function public.membership_delete(p_secret text, p_id uuid)
 returns boolean
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   delete from public.memberships where id = p_id;
   return found;
 end $$;
@@ -294,7 +294,7 @@ declare
   v_tenant text := lower(trim(p_client_email));
   v_id     uuid;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if p_stripe_sub_id is not null and length(trim(p_stripe_sub_id)) > 0 then
     select id into v_id from public.membership_subscribers where stripe_sub_id = p_stripe_sub_id limit 1;
     if v_id is not null then
@@ -326,7 +326,7 @@ declare
   v_id     uuid;
   v_try    int  := 0;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_amt <= 0 then raise exception 'amount_cents required'; end if;
   -- gera código único no tenant se necessário (até 6 tentativas).
   while v_code is null loop
@@ -355,7 +355,7 @@ create or replace function public.giftcard_list(p_secret text, p_client_email te
 returns jsonb
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return coalesce((
     select jsonb_agg(jsonb_build_object(
       'id', id, 'code', code, 'amount_cents', amount_cents, 'balance_cents', balance_cents,
@@ -372,7 +372,7 @@ returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare v record;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select * into v from public.gift_cards
     where client_email = lower(trim(p_client_email))
       and upper(code) = upper(trim(coalesce(p_code,'')))
@@ -392,7 +392,7 @@ declare
   v      record;
   v_amt  int := greatest(coalesce(p_amount_cents, 0), 0);
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_amt <= 0 then return jsonb_build_object('ok', false, 'reason', 'bad_amount'); end if;
   -- atomic gate: só debita quando ativo E o saldo cobre o valor pedido.
   update public.gift_cards set balance_cents = balance_cents - v_amt

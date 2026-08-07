@@ -72,7 +72,7 @@ declare
   v_id     uuid := nullif(p_coupon->>'id','')::uuid;
   v_code   text := nullif(trim(coalesce(p_coupon->>'code','')),'');
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_code is null then raise exception 'code required'; end if;
   if v_id is not null then
     update public.coupons set
@@ -117,7 +117,7 @@ create or replace function public.coupon_list(p_secret text, p_client_email text
 returns jsonb
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return coalesce((
     select jsonb_agg(jsonb_build_object(
       'id', id, 'code', code, 'kind', kind, 'value', value, 'label', label, 'terms', terms,
@@ -132,7 +132,7 @@ create or replace function public.coupon_delete(p_secret text, p_id uuid)
 returns boolean
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   delete from public.coupons where id = p_id;
   return found;
 end $$;
@@ -143,7 +143,7 @@ returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare v record;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select * into v from public.coupons
     where client_email = lower(trim(p_client_email))
       and upper(code) = upper(trim(coalesce(p_code,'')))
@@ -163,7 +163,7 @@ returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare v record;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   -- atomic gate: só incrementa quando ativo, dentro da janela e sob o limite.
   update public.coupons set redeemed = redeemed + 1
     where id = p_id
@@ -195,7 +195,7 @@ declare
   v_tenant text := lower(trim(p_client_email));
   v_id     uuid := nullif(p_campaign->>'id','')::uuid;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_id is not null then
     update public.campaigns set
       name         = coalesce(p_campaign->>'name', name),
@@ -231,7 +231,7 @@ create or replace function public.campaign_list(p_secret text, p_client_email te
 returns jsonb
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return coalesce((
     select jsonb_agg(jsonb_build_object(
       'id', id, 'name', name, 'kind', kind, 'audience', audience, 'template', template,
@@ -246,7 +246,7 @@ create or replace function public.campaign_mark_sent(p_secret text, p_id uuid, p
 returns boolean
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   update public.campaigns
      set status = 'sent', sent_count = coalesce(p_count, 0)
    where id = p_id;
@@ -265,7 +265,7 @@ declare
   v_lim    int  := greatest(1, least(coalesce(p_limit,500), 2000));
   v_out    jsonb := '[]'::jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   begin
     select coalesce(jsonb_agg(jsonb_build_object('name', full_name, 'email', email)), '[]'::jsonb)
       into v_out

@@ -11,25 +11,25 @@ const COPY = {
     ["🛡️", "30-day money-back", "the risk is ours"],
     ["👤", "A real human supervises", "not just a bot"],
     ["⚡", "Live in under 7 days", "we wire it all"],
-    ["🌎", "20+ languages", "every channel, 24/7"],
+    ["🌎", "16 languages", "every channel, 24/7"],
   ],
   pt: [
     ["🛡️", "Garantia de 30 dias", "o risco é nosso"],
     ["👤", "Um humano supervisiona", "não é só um robô"],
     ["⚡", "No ar em até 7 dias", "a gente liga tudo"],
-    ["🌎", "20+ idiomas", "todo canal, 24/7"],
+    ["🌎", "16 idiomas", "todo canal, 24/7"],
   ],
   es: [
     ["🛡️", "Garantía de 30 días", "el riesgo es nuestro"],
     ["👤", "Un humano supervisa", "no es solo un bot"],
     ["⚡", "En vivo en 7 días", "lo conectamos todo"],
-    ["🌎", "20+ idiomas", "cada canal, 24/7"],
+    ["🌎", "16 idiomas", "cada canal, 24/7"],
   ],
   hi: [
     ["🛡️", "30-दिन मनी-बैक", "जोखिम हमारा"],
     ["👤", "एक इंसान निगरानी करता है", "सिर्फ़ बॉट नहीं"],
     ["⚡", "7 दिन में लाइव", "सब हम जोड़ते हैं"],
-    ["🌎", "20+ भाषाएँ", "हर चैनल, 24/7"],
+    ["🌎", "16 भाषाएँ", "हर चैनल, 24/7"],
   ],
 };
 

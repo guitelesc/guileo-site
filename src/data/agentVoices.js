@@ -6,7 +6,7 @@
 // per-client voice cloning or upload is needed (premade voices always exist). All are
 // eleven MULTILINGUAL voices (langs:'all') — VERIFIED: they render through the multilingual TTS
 // models (eleven_flash_v2_5 / turbo), so the SAME voice speaks the entire spoken-language list in
-// LANGS_SPOKEN (functions/lib/provision.js): EN·ES·PT·HI·ZH(Mandarin)·YUE(Cantonese)·RU·KO·HT.
+// LANGS_SPOKEN (functions/lib/provision.js): EN·ES·PT-BR·HI·ZH·RU·KO·FR·AR·VI·TL·DE·IT·PL·JA·UK (16).
 // langs:'all' means exactly that — no per-voice language restriction. DEFAULT_VOICE_KEY is a
 // warm female (Sarah) — the natural fit for a spa/salon/clinic agent like "Lilian".
 export const VOICES = [

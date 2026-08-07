@@ -1020,4 +1020,11 @@ export default {
   "Inactive": "निष्क्रिय",
   "today": "आज",
   "Deactivate": "निष्क्रिय करें",
+  "Add a note": "नोट जोड़ें",
+  "Your note on this lead…": "इस लीड पर आपका नोट…",
+  "Tap to advance: New → Contacted → Won": "आगे: नया → संपर्क → जीता",
+  "Call now": "अभी कॉल करें",
+  "Gui calls back": "Gui वापस कॉल करेगी",
+  "Gui is calling back": "Gui वापस कॉल कर रही है",
+  "Let Gui call this lead back for you": "Gui को आपकी ओर से वापस कॉल करने दें",
 };

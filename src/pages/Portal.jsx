@@ -5,7 +5,7 @@ import {
   FaGaugeHigh, FaComments, FaBullhorn, FaUsers, FaHeadset, FaFileLines, FaListCheck,
   FaArrowLeft, FaArrowTrendUp, FaWhatsapp, FaInstagram, FaPhone, FaFacebook, FaTiktok, FaGoogle,
   FaReceipt, FaUtensils, FaBookOpen, FaBullseye, FaPhoneVolume, FaCommentSms, FaGear, FaChartLine,
-  FaDownload, FaBell, FaMagnifyingGlass, FaStore, FaBrain, FaCreditCard, FaChevronDown, FaShareNodes,
+  FaDownload, FaBell, FaMagnifyingGlass, FaStore, FaBrain, FaCreditCard, FaChevronDown, FaShareNodes, FaGlobe,
   FaArrowsRotate, FaClock, FaStar, FaIdCard, FaTriangleExclamation,
   FaWandMagicSparkles, FaGraduationCap,
   FaTruck, FaLocationDot, FaGift, FaTag, FaBuilding,
@@ -580,6 +580,7 @@ const GoogleHub = lazy(() => import("../portal/GoogleHub.jsx"));
 const SocialHub = lazy(() => import("../portal/SocialHub.jsx"));
 const EmergencyLog = lazy(() => import("../portal/EmergencyLog.jsx"));
 const LeadsToday = lazy(() => import("../portal/LeadsToday.jsx"));
+const MeuSite = lazy(() => import("../portal/MeuSite.jsx")); // o site REAL do cliente (produto foundation)
 const MarketingDates = lazy(() => import("../portal/MarketingDates.jsx"));
 const Coupons = lazy(() => import("../portal/Coupons.jsx"));
 const GrowthIntel = lazy(() => import("../portal/GrowthIntel.jsx"));
@@ -683,6 +684,7 @@ function sectionsFor(vid, V) {
     l = inject(l, "kb", "Cérebro do negócio", "brain"); // per-tenant Knowledge Base the agent reads
     l = inject(l, "leadstoday", "Leads do dia", "leads"); // today's leads-by-source sits next to the daily digest
     l = inject(l, "mktleads", "Leads Marketplace", "leadstoday"); // Yelp/Angi/Thumbtack speed-to-lead responder
+    l = inject(l, "meusite", "Meu site", "mktleads"); // publica o site do negocio (produto foundation)
     l = inject(l, "crm", "CRM 360", "customers");
     l = inject(l, "finance", "Finance", "crm");
     l = inject(l, "marketing", "Marketing", "finance");
@@ -723,7 +725,7 @@ function sectionsFor(vid, V) {
 // Views that render REAL tenant data when connected — ONLY these earn the LIVE badge.
 // Everything else shows an honest "Sample preview" chip even when the account is linked.
 const REAL_VIEWS = new Set(["overview", "impact", "billing", "inbox", "calllogs", "convos", "whatsapp", "sms",
-  "mycompany", "crm", "command", "finance", "leadstoday", "dates", "coupons", "growthintel", "capture", "experience", "timeline", "mktleads", "storm",
+  "mycompany", "crm", "command", "finance", "leadstoday", "dates", "coupons", "growthintel", "capture", "experience", "timeline", "mktleads", "storm", "meusite",
   "riskradar", "emergency", "locations", "recurring", "kb", "brain", "settings", "support", "trainer", "grow", "documents", "schedulesync", "googlehub", "socialhub", "operations"]);
 
 function notifFor(key, V, real = null) {
@@ -757,13 +759,13 @@ const SECTION_ICON = {
   impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock, recurring: FaIdCard, reputation: FaStar, loyalty: FaGift, payments: FaReceipt,
   channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, docs: FaFileLines, settings: FaGear, team: FaUsers, locations: FaLocationDot,
   crm: FaIdCard, command: FaGaugeHigh, finance: FaCreditCard, marketing: FaBullhorn, retention: FaArrowsRotate, documents: FaFileLines,
-  riskradar: FaTriangleExclamation, emergency: FaBell, schedulesync: FaCalendarDays, googlehub: FaGoogle, socialhub: FaShareNodes, leadstoday: FaUsers, dates: FaGift, coupons: FaTag, growthintel: FaChartLine, capture: FaListCheck, experience: FaFaceSmile, timeline: FaChartLine, mktleads: FaBullseye, storm: FaBell,
+  riskradar: FaTriangleExclamation, emergency: FaBell, schedulesync: FaCalendarDays, googlehub: FaGoogle, socialhub: FaShareNodes, leadstoday: FaUsers, dates: FaGift, coupons: FaTag, growthintel: FaChartLine, capture: FaListCheck, experience: FaFaceSmile, timeline: FaChartLine, mktleads: FaBullseye, storm: FaBell, meusite: FaGlobe,
   trainer: FaGraduationCap, kb: FaBrain, mycompany: FaBuilding,
 };
 // Group the (long) nav into scannable categories
 // Order = everyday use first (operations/conversations/customers), then growth/strategy, then account.
 const NAV_GROUPS = [
-  ["", ["overview", "mycompany", "leads", "leadstoday", "mktleads"]],
+  ["", ["overview", "mycompany", "leads", "leadstoday", "mktleads", "meusite"]],
   ["Your AI ✨", ["command", "trainer", "brain", "kb", "analytics", "insights", "grow"]],
   ["Operations", ["liveorders", "kitchen", "menu", "schedule", "riskradar", "storm", "catalog", "deliveries", "operations"]],
   ["Conversations", ["inbox", "calllogs", "dialer", "whatsapp", "sms", "social"]],
@@ -1498,7 +1500,7 @@ export function genRecommendations(V) {
   const iq = SECTOR_IQ[V.label];
   const t = iq ? iq.recs : ["Your quietest weekday runs ~30% below capacity — a targeted promo fills it.", "A dozen happy customers haven't been asked for a review yet — reviews drive new demand.", "Several customers lapsed in the last 30 days — a win-back sequence recovers ~1 in 4."];
   return [
-    { ic: "📣", text: t[0], cta: "Launch promo", view: "campaigns", apply: (onNav) => { pushCreated(V.label, "campaigns", { name: "Slow-day filler promo", channel: "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); toast("Promo launched ✓ — see it in Campaigns"); onNav?.("campaigns"); } },
+    { ic: "📣", text: t[0], cta: "Launch promo", view: "campaigns", apply: (onNav) => { onNav?.("campaigns"); toast("Opening Campaigns — type your offer in ⚡ Flash Campaign, preview who'll get it, then send for real"); } },
     { ic: "⭐", text: t[1], cta: "Request reviews", view: "reputation", apply: (onNav) => { (V.customers || genCustomers(V)).slice(0, 3).forEach((c) => pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel })); toast("Review blast queued ✓"); onNav?.("reputation"); } },
     { ic: "🔁", text: t[2], cta: "Start win-back", view: "followups", apply: (onNav) => { toast("Win-back sequence started ✓"); onNav?.("followups"); } },
   ];
@@ -1859,7 +1861,7 @@ function guiPlan(text, V, ctx = {}) {
   if (/(invoice|charge|bill|cobr|fatur|payment|receb)/.test(s)) return { intent: "invoice", cost: 5, ctx: C(target), reply: L(`Consider it handled — I've sent ${target} the invoice with a payment link, and I'll keep an eye on it until it's paid. It's in Payments.`, `Deixa comigo — enviei a fatura para ${target} com o link de pagamento, e fico de olho até ser paga. Está em Pagamentos.`), next: [{ label: L(`📅 Book ${target} too`, `📅 Agendar ${target} também`), cmd: `book them` }, { label: L("⭐ Request a review", "⭐ Pedir avaliação"), cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: target, amount: vnum(V.label, "guiinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); onNav?.("payments"); return undoer([{ view: "payments", id }], "payments"); } };
   if (/(review|avalia|rating|estrela)/.test(s)) return { cost: 5, ctx: C(who || ctx.customer), reply: L(`With pleasure — I've requested reviews${who ? ` from ${target}` : " from your happiest recent customers"}. It's all tracked in Reputation.`, `Com prazer — pedi as avaliações${who ? ` para ${target}` : " aos seus clientes mais satisfeitos"}. Deixei tudo registrado em Reputação.`), next: [{ label: L("📣 Turn 5★ reviews into ads", "📣 Virar avaliações 5★ em anúncios"), cmd: "launch a promo" }], run: (onNav) => { const rows = (who ? [{ name: target, channel: "WhatsApp" }] : customers.slice(0, 3)).map((c) => ({ view: "reviewreq", id: pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel }) })); onNav?.("reputation"); return undoer(rows, "reputation"); } };
   if (/(deliver|entrega|dispatch|despach)/.test(s)) return { intent: "deliver", cost: 5, ctx: C(who || ctx.customer), reply: L(`Done ✓ — sent${forTxt} to ${deliveryTab(V).toLowerCase()}. I'll text live updates.`, `Pronto ✓ — enviado${forPt} para ${deliveryTab(V).toLowerCase()}. Vou mandar atualizações ao vivo.`), next: [{ label: L("⭐ Ask for a review on arrival", "⭐ Pedir avaliação na entrega"), cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "deliveries", recordFor("deliveries", target, "Gui", V)); onNav?.("deliveries"); return undoer([{ view: "deliveries", id }], "deliveries"); } };
-  if (/(campaign|promo|an[úu]nci|\bad\b|marketing)/.test(s)) return { intent: "campaign", cost: 5, ctx, reply: L("Launched ✓ — a promo is live and the AI will optimize it. It's in Campaigns.", "Lançado ✓ — uma promoção está no ar e a IA vai otimizá-la. Está em Campanhas."), next: [{ label: L("👥 Build an audience for it", "👥 Criar um público pra ela"), cmd: "build an audience from my best customers" }], run: (onNav) => { const id = pushCreated(V.label, "campaigns", { name: "Gui promo", channel: "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); onNav?.("campaigns"); return undoer([{ view: "campaigns", id }], "campaigns"); } };
+  if (/(campaign|promo|an[úu]nci|\bad\b|marketing)/.test(s)) return { cost: 0, ctx, reply: L("Let's launch a real one — I've opened Campaigns. Type your offer in ⚡ Flash Campaign, preview exactly who'll get it, then send for real.", "Vamos lançar de verdade — abri Campanhas. Escreva sua oferta no ⚡ Flash Campaign, veja exatamente quem vai receber e envie de verdade."), next: [{ label: L("👥 Build an audience first", "👥 Criar um público antes"), cmd: "build an audience from my best customers" }], run: (onNav) => onNav?.("campaigns") };
   if (/(order|pedido|book|appointment|agend|marcar|reserv|schedule)/.test(s)) return { cost: 5, ctx: C(target), reply: L(`${act.done}${forTxt} ✓ — it's in the right tab now.`, `${act.done}${forPt} ✓ — já está na aba certa.`), next: [{ label: L("💳 Send the invoice too", "💳 Enviar a fatura também"), cmd: `send an invoice to them` }], run: (onNav) => { const rec = recordFor(act.view, target, "Gui", V); const id = rec ? pushCreated(V.label, act.view, rec) : null; onNav?.(act.view); return id ? undoer([{ view: act.view, id }], act.view) : undefined; } };
   if (/(follow|nudge|win-?back|lapse|reativ)/.test(s)) return { cost: 3, ctx, reply: L("Consider it handled — I've started a warm follow-up sequence to win them back. You'll find it under Follow-ups.", "Deixa comigo — comecei uma sequência de follow-up pra reconquistá-los. Está na aba Follow-ups."), run: (onNav) => onNav?.("followups") };
   if (/(audience|p[úu]blico|segment)/.test(s)) return { cost: 5, ctx, reply: L("Built ✓ — an audience of your most engaged customers is ready in Ad Audiences.", "Pronto ✓ — um público com seus clientes mais engajados está pronto em Públicos de Anúncio."), run: (onNav) => { const id = pushCreated(V.label, "audiences", { name: "Gui · best customers", size: vnum(V.label, "guiaud", 1200, 9000), source: "CRM" }); onNav?.("audiences"); return undoer([{ view: "audiences", id }], "audiences"); } };
@@ -2260,6 +2262,7 @@ export default function Portal() {
     overview: () => <Overview V={V} onNav={setView} sections={sections} period={period} real={real} onRefresh={refreshReal} refreshing={realLoading} autoSpeak={speakWeekly} onAutoSpoke={() => setSpeakWeekly(false)} email={me?.email} dataKey={loadDataKey()} />,
     leads: () => <LeadsDigest V={V} onNav={setView} lang={lang} real={real} />,
     leadstoday: () => <LeadsToday V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    meusite: () => <MeuSite V={V} email={me?.email} dataKey={loadDataKey()} />,
     deliveries: () => <Deliveries V={V} />,
     inbox: () => <Inbox V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
     impact: () => <GuileoImpact V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,

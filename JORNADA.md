@@ -52,4 +52,150 @@ Auditoria de pré-lançamento rodada. Construído+provado: **branch do setup $19
 ### 🛡️ Loop autônomo 2026-07-21 (madrugada) — hardening + auditoria
 Onda contínua provada ciclo-a-ciclo: indicação (money-loop idempotente verificado), **códigos PESSOAIS de vendedor** (login server-verified + guard roster/fail-closed anti-impersonação — provado 403/200), **auditoria adversarial dupla dos caminhos de dinheiro** (revisor JS + revisor SQL): veredito SAFE nos 6 db/*.sql; 6 defeitos reais corrigidos e provados — guard do seller-login (roster síncrono + fail-closed), reserva órfã no throw do bookIdem, voice_pay agora passa pelo spendGuard, colisão de reserveRef com contato-vazio (contact→name→request_id), cx_platform_pulse zera avg abaixo do piso. **totalMonth lê do ledger** (revenue_month) em toda superfície. Regressão final: todos os gates 401/200 OK. Backlog buildável esgotado; ⏳ restantes = **bloqueados em chave externa** (PIX/MercadoPago → chaves MP; reconcile Connect → billing API ElevenLabs).
 
+### 🤐 Onda 2026-08-03 — caça à "falha silenciosa" (promessa dita, entrega não feita)
+Ligar o WhatsApp Cloud da Med Mundo expôs uma **família de bugs que nenhum teste pegava**: o
+sistema declarando sucesso sem verificar o envio. Nada quebrava, nada logava erro — só o produto
+emagrecendo em silêncio. Varredura completa dos conectores de saída: **7 defeitos reais, todos
+corrigidos, provados e no ar** (gates 401/403/200 reconferidos, apex 200, zero downtime).
+
+- ✅ **Nono dígito BR** — `crm_caller_context` casava telefone só no formato cru/sem "+1" (US-centric).
+  WhatsApp entrega `wa_id` SEM o 9, formulário/ligação vêm COM → **a Gui nunca reconhecia cliente
+  brasileiro por WhatsApp**: sem histórico, sem chamar pelo nome. `phone_variants()` + match por
+  últimos 8 dígitos (`db/phone_variants_intl.sql`). Provado nos 2 sentidos + sem vazar entre tenants.
+- ✅ **Resposta fantasma (WhatsApp)** — `await sendWhatsApp()` descartava o retorno e o cérebro já
+  tinha gravado "🤖 Gui replied". Cockpit jurava ter respondido, cliente não recebeu nada.
+  Agora checa `ok` + loga "⚠️ NÃO foi entregue: <motivo da Meta>" + retry no formato BR alternativo.
+- ✅ **Resposta fantasma (Instagram/Messenger)** — bug idêntico em `meta-webhook.js`.
+- ✅ **Missed-call text-back** — logava "text-back sent" ANTES de enviar. SMS falhando (A2P) = lead
+  morto com o dono achando que foi atendido. Agora envia primeiro e loga a verdade.
+- ✅ **Alerta de crédito zerado** — `mark_credit_alerted` (latch de uma vez só) era marcado mesmo com
+  o e-mail falhando/ausente → **o Gui do cliente calava e ele nunca era avisado**. Agora o alerta do
+  dono muda pra 🚨 "cliente NÃO foi avisado — LIGUE". *(Auto-revisão pegou: não marcar criaria
+  tempestade de e-mail a cada 15min no cron — mantive o latch e movi a verdade pro alerta do dono.)*
+- ✅ **`sendApptEmail` mentia na raiz** — devolvia `true` sem olhar `r.ok` da Resend. Corrigido +
+  wrapper `apptEmailOrFlag` nas 4 chamadas (book/cancel/reschedule): falha vira evento no cockpit.
+- ✅ **Oferta de vaga da lista de espera** — envio descartado; vaga liberada + oferta não entregue =
+  horário vazio invisível. Agora sinaliza pro dono ligar.
+
+**Lei nova:** todo `await send*()` da plataforma checa o retorno e loga a falha com o motivo real do
+provedor; log de falha usa `svcRpc` (`ingest_client_event` é service-role — com anon o próprio log
+vira outra falha silenciosa). ⏳ WhatsApp: **entrada provada** (284ms ponta a ponta), **saída
+bloqueada em conta Meta** (app não publicado) — ver memória `project_guileo_whatsapp_cloud`.
+
+### 🇧🇷 Onda 2026-08-03 — PIX: o mercado brasileiro deixa de ser um beco sem saída
+O "pagou-e-nada" que a JORNADA marcava como **próxima build grande** está construído. O caminho
+"fecha e cobra" era **Stripe-only**: cliente brasileiro sempre caía em *"connect Stripe to collect"*
+e a venda morria na conversa. Agora a Gui gera **PIX copia-e-cola de verdade, na conta Mercado Pago
+DO CLIENTE**, e o dinheiro cai direto pra ele.
+
+- ✅ `db/pix_tenant_collect.sql` — `mp_tenant_connect` / `mp_tenant_lookup` / `pix_collect_record`
+  (as 3 SECURITY DEFINER, gated por literal, **negadas a anon E authenticated** — provado).
+  Receita idempotente por `(client_email, ref)`: reentrega do MP com valor diferente **não duplica
+  nem sobrescreve** (provado: R$123,45 gravado, R$999,99 reentregue → 1 linha intacta).
+- ✅ `functions/lib/pix.js` — cria a cobrança em `POST /v1/payments` com o token do tenant,
+  `X-Idempotency-Key` (retry de rede ≠ segundo QR), teto `MAX_CHARGE_BRL`, e texto pronto pro
+  WhatsApp com o copia-e-cola **sozinho na última linha** (caractere colado junto quebra no banco).
+- ✅ `functions/api/pix.js` — `connect`/`status` no portão do TENANT (get_client_data),
+  `charge` no portão do AGENTE. O `connect` **valida o token contra o Mercado Pago antes de guardar**:
+  guardar um token quebrado seria "conectado ✅" na tela e venda não cobrada no mundo real.
+- ✅ `functions/api/pix-webhook.js` — endpoint **separado**, que não importa nenhuma RPC de crédito.
+  Nunca confia no corpo: busca o pagamento com o token do tenant indicado; não está na conta dele → ignora.
+  Um POST forjado apontando pra uma vítima devolve `tenant-not-connected` (provado em prod).
+- ✅ `agent-action.js` — PIX entra **só quando o Stripe não resolve** (zero regressão pra quem já cobra
+  por Stripe); passa pelo mesmo `spendGuard`; falha de emissão vira `pix_mint_failed` visível.
+
+**Bug de dinheiro que a auto-revisão pegou ANTES do deploy:** `cli:spa@x.com` **passa** num teste
+ingênuo de e-mail (o `:` é caractere válido antes do `@`). Sem barreira, um PIX de R$799 de um
+cliente-do-cliente chegando no webhook de PLANOS creditaria **500 créditos Guileo a um tenant
+fantasma**. Blindado por prefixo no topo do `mercadopago-webhook.js`, antes de qualquer olhar no valor.
+
+⏳ Falta só o Luis: colar o **Access Token de produção do Mercado Pago** do cliente (ROTA-PIX).
+
+### 🌐 Onda 2026-08-03 — "Site · Apps · Loja" vira produto de verdade
+O produto **foundation** era vendido no plano Scale e **não tinha máquina de entrega nenhuma**
+no repo. Agora cada cliente tem um site real em `guileoai.com/site/:slug`, montado com o que a
+plataforma JÁ sabe — e com a Gui atendendo nele.
+
+- ✅ `db/` — `client_sites` (RLS on) + `client_site_upsert` / `client_site_public` /
+  `client_site_owner` / `client_site_get`. Só `client_site_public` é anon (é um site público) e
+  ela usa **allowlist explícita** de campos: campo novo no perfil não vaza sozinho.
+- ✅ `functions/api/client-site.js` — GET público (404 em slug inexistente) + POST do dono
+  (get/save) no portão de tenant do cockpit.
+- ✅ `src/pages/ClientSite.jsx` + rota `/site/:slug` + allowlist no `_middleware.js`.
+  Seção sem dado **não aparece** — nada de lorem nem depoimento inventado.
+- ✅ `functions/site/[slug].js` — meta SEO **server-side**. Sem isso, o link do site de um
+  cliente no WhatsApp mostraria o título da GUILEO. Provado no HTML cru:
+  `<title>Natura Spa + Salon · Astoria, NY</title>`.
+- ✅ `src/portal/MeuSite.jsx` — aba no cockpit: endereço, chamada, sobre, cor, publicar/tirar do ar.
+  Preço e serviço **não** se editam lá de propósito: duas verdades fariam a Gui falar um valor e o
+  site mostrar outro.
+- ✅ Formulário → speed-to-lead reusando a máquina endurecida (dedupe + claim + DNC + teto).
+  Autentica por **slug**, nunca pela chave do cliente (que ficaria visível no HTML), e o slug só
+  pode ENTREGAR lead — nunca listar. Provado em prod: `{"ok":true,...,"calling":true}`.
+
+Provas: slug inválido/roubado recusados · rascunho invisível · slug não publicado → 401 · site
+renderizado com preços reais · lead de teste apagado · Natura deixado **despublicado** (publicar
+site de cliente real é decisão do Luis).
+
+### 🔎 Onda 2026-08-03 — teste real da demo (3 defeitos, todos de honestidade)
+Motor de demo testado de ponta a ponta contra um site real (naturaspanyc.com, 8s de resposta).
+Funciona — mas entregava calado o que não devia:
+- ✅ **Logo quebrado** — `extractLogo` devolvia a string `"data:;"` (favicon inline / href ruim).
+  `data:;` é **truthy**, então a vitrine renderizava uma IMAGEM QUEBRADA em cima do pitch em vez
+  de cair no fallback. Agora só `http(s)` vale, e um candidato rejeitado não encerra a cadeia
+  (antes um og:image inline zerava o logo de um site que tinha apple-touch-icon válido logo abaixo).
+- ✅ **Demo sem cor** — só `#rrggbb` era procurado, e site moderno usa hex de 3 dígitos, `rgb()`
+  ou CSS externo. Adicionados os 3 formatos + busca na 1ª folha de estilo (teto de 2,5s e 120KB).
+- ✅ **A demo mentia por omissão (o pior dos três)** — quando o scrape vinha vazio, ela preenchia
+  com o template do setor e respondia `source:"url"` como se tivesse lido o site. Muitos sites
+  (WordPress atrás de proteção, SPA) servem página cheia ao navegador e **casca vazia a IP de
+  datacenter** — exatamente o caso do naturaspanyc.com. O vendedor mostrava ao prospect um
+  "personalizado" que era genérico, e levava o "não é isso que a gente faz" na frente do cliente.
+  Agora a resposta traz `generic: true` + a nota do motivo. O fallback continua (demo nunca fica
+  vazia); o que mudou é que ele **se declara**.
+
+- ✅ **Screenshot ao vivo LIGADO** (era o último inerte da demo). `SCREENSHOT_API` agora aceita
+  **dois** marcadores, porque os provedores discordam: `{url}` (alvo codificado, para quem recebe
+  em query param) e `{raw_url}` (alvo cru no caminho — thum.io e afins dão **400** com URL
+  codificada, e só `{url}` existia). Provedor atual = thum.io, **sem chave e sem custo**.
+  Provado: endpoint devolve `ready:true` → a URL entrega PNG de 993KB com o site real do prospect.
+  Nota: a captura mostra o site COMPLETO enquanto nosso scrape via Worker recebe a casca — é a
+  confirmação visual de que a degradação é anti-bot por IP, não bug nosso.
+
+### 🧪 Onda 2026-08-04 — qualidade da Gui POR VERTICAL, medida sozinha
+O harness de eval existia e era bom — mas tinha **17 casos e ZERO dimensão de vertical**: media
+preço, tom e injeção genericamente. Os riscos reais são de setor, e passar em "segurança
+genérica" não diz nada sobre eles.
+
+- ✅ `src/data/verticalEvalCases.js` — **13 casos, um por vertical**, cada um mirando o dano
+  específico: clínica (dor no peito → 911, não agenda), odonto (dose de remédio), advocacia
+  (mérito/assinar), restaurante (**alergia anafilática — não pode dizer que é seguro**),
+  HVAC (cheiro de gás → evacuar), imobiliária (*fair housing*), contabilidade, academia,
+  salão (queimadura química), auto (freio), limpeza (preço inventado), obra (alvará),
+  e-commerce (reembolso sem alçada). Regra: o `never` descreve **o dano, não a palavra** —
+  proibir frase é fácil de driblar, proibir comportamento é o que o juiz julga.
+- ✅ Ligado em `agent-eval.js` (mesmo juiz, mesma rubrica, mesmo histórico).
+- ✅ **Ligado no `cron-tick`** (00h UTC, 1×/dia). O eval tinha rodado **3 vezes na vida, a
+  última 15 dias antes** — nota que depende de alguém lembrar de rodar não é monitor, é
+  intenção. Agora regressão de qualidade aparece sozinha no histórico.
+
+⚠️ Ainda **não há medição** dos 13 casos — a régua está no ar, o resultado sai no 1º tique de
+00h UTC e se lê em `agent_evals` (sem token: é o cron que tem o segredo).
+
+### 🚀 Onda 2026-08-04 — prontidão pra vender AGORA
+- ✅ **Alerta de saldo** (`health-monitor`): sonda saldo Twilio (<$20) e cota de voz ElevenLabs
+  (≥85%) de hora em hora, dedup 7 dias, isolado. **Sem saldo o telefone do cliente PARA e hoje
+  só se descobre pela reclamação** — a mesma falha silenciosa da onda anterior, agora coberta.
+  Piso em `TWILIO_BALANCE_FLOOR_USD`. Com o saldo atual ($15,37) dispara no próximo tique.
+- ✅ **Motor de depoimento real** (`db` + `/api/testimonial` + FounderProof): cliente escreve →
+  fila → **Luis aprova** → landing mostra. A landing tinha `QUOTES=[]` (honesto, mas condenado a
+  ficar vazio pra sempre). Provado: com 1 na fila, público = `[]`. Nada publica sem aprovação.
+- ✅ **`/primeira-semana`** — material de venda HONESTO: 8 capacidades que já entregam + bloco
+  "ainda não" (SMS/WhatsApp) dito ANTES da venda. Prometer canal que não acendeu ganharia a
+  assinatura e perderia o cliente na 1ª semana.
+- ⏳ **Provisionamento 1-clique**: o mapeamento já existe (`/api/bind-number`, ROTA-NUMERO). O que
+  falta é a COMPRA automática de número — **caminho de dinheiro, não entra sem revisor
+  adversarial**. E não é urgente: a conta tem **5 números e só 2 em uso**; os 3 ociosos atendem
+  os próximos clientes sem gastar nada.
+
 *Atualize os ✅/⏳ a cada onda. Este arquivo + ARQUITETURA.md + IMPLEMENTACAO.md = o cérebro completo do projeto.*

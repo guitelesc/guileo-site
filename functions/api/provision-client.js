@@ -18,6 +18,7 @@
 import { json } from "../lib/guard.js";
 import { buildGuiPrompt } from "../lib/provision.js";
 import { emitFailure } from "../lib/failure.js";
+import { svcRpc } from "../lib/sb.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -212,7 +213,7 @@ export async function onRequestPost(context) {
 
     // log the provisioning run as a real client event (never blocks the response)
     try {
-      await rpc("ingest_client_event", { p_secret: ING, p_email: email, p_type: "provision", p_channel: "system",
+      await svcRpc(env, "ingest_client_event", { p_secret: ING, p_email: email, p_type: "provision", p_channel: "system",
         p_summary: `🚀 Provision run: ${business}${result.number ? " · " + result.number : ""}`, p_amount: 0,
         p_payload: { agent_id: result.agent_id || "", number: result.number || "", steps } });
     } catch { /* */ }

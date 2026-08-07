@@ -15,7 +15,7 @@ export const FACTS = {
     doneForYou: "Done-for-you (sold by a rep, tailored): from $990 one-time setup + $1,497/month.",
     credits: "Usage is metered in credits — roughly one task Gui does (an answered call ≈ 5 credits, a follow-up, a message). Plans renew credits monthly; one-time top-ups exist (500/$49, 1500/$119).",
   },
-  languages: "Gui SPEAKS 20+ languages on the phone (English, Spanish, Portuguese, Mandarin, Cantonese, Russian, Korean, Haitian Creole, Hindi and more — auto-detected per caller). The dashboard UI is in 4: EN·PT·ES·HI.",
+  languages: "Gui SPEAKS 16 languages on the phone (English, Spanish, Brazilian Portuguese, Hindi, Mandarin, Russian, Korean, French, Arabic, Vietnamese, Tagalog, German, Italian, Polish, Japanese, Ukrainian — auto-detected per caller). The dashboard UI is in 4: EN·PT·ES·HI.",
   delivery: "Live in under 7 days for done-for-you; self-serve is live in minutes (pay → connection code by email → portal). A real human supervises everything.",
   coreFeatures: [
     "Answers every call & message 24/7 (unlimited simultaneous calls — no busy signal)",

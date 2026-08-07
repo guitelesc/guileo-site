@@ -1,6 +1,6 @@
 // Cloudflare Pages Function — POST /api/gui-chat
 // The public landing concierge "Gui" — answers prospect questions about Guileo and steers
-// toward the live call / WhatsApp / pricing. Claude Haiku; voice agent speaks 20+ languages.
+// toward the live call / WhatsApp / pricing. Claude Haiku; voice agent speaks 16 languages.
 // Public (no token) but cheap + tightly scoped by the system prompt + small max_tokens.
 import { factsBlock } from "../lib/productFacts.js";
 import { guardSystemPrompt } from "../lib/guiConstitution.js";
@@ -16,7 +16,7 @@ WHAT GUILEO IS: an AI team that runs the front desk for local businesses (restau
 - review collection, and reactivation of past customers,
 - it also closes & collects (sends pay links, takes deposits),
 - PLUS done-for-you websites/apps and marketing/ads.
-It speaks 20+ languages on the phone (English, Spanish, Portuguese, Mandarin, Russian, Korean, Haitian Creole, Hindi and more). A REAL human supervises everything. Most businesses go live in about 7 days, with a 30-day money-back guarantee. Usage is metered in simple credits.
+It speaks 16 languages on the phone (English, Spanish, Brazilian Portuguese, Hindi, Mandarin, Russian, Korean, French, Arabic, Vietnamese, Tagalog, German, Italian, Polish, Japanese, Ukrainian). A REAL human supervises everything. Most businesses go live in about 7 days, with a 30-day money-back guarantee. Usage is metered in simple credits.
 
 PRICING (only if asked — keep it light, then point to the Pricing page /planos): self-serve monthly plans start at $149/mo, and there's a done-for-you track that's quoted by proposal (a specialist sets everything up for you). For exact numbers say "the Pricing page has the current plans" and suggest /planos.
 

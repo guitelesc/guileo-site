@@ -8,7 +8,7 @@
 -- same behavior, same gate, same idempotent dedupe — ONLY the source CASE list grows.
 -- For zillow/streeteasy the endpoint stores the LISTING ADDRESS in the `service` field.
 --
--- SECURITY: unchanged — SECURITY DEFINER, INGEST-gated by the literal 'glo_ing_7f3da9c2b4e8'
+-- SECURITY: unchanged — SECURITY DEFINER, INGEST-gated by the literal 'glo_ing_c7f2a9e4b8d16350'
 -- via _mkt_ok, client-scoped by p_email, table stays RLS-locked with no anon policies.
 -- ============================================================================
 

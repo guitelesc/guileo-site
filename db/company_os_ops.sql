@@ -13,7 +13,7 @@ create or replace function public.company_sales_pipeline(p_secret text)
 returns json language plpgsql security definer set search_path=public as $$
 declare v_stages json; v_deals json;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   if to_regclass('public.crm_deals') is null then return json_build_object('ready', false); end if;
 
   select coalesce(json_agg(row_to_json(s) order by s.ord), '[]'::json) into v_stages from (
@@ -47,7 +47,7 @@ create or replace function public.company_deal_move(p_secret text, p_deal_id uui
 returns json language plpgsql security definer set search_path=public as $$
 declare v_tenant text; v_old text; v_new_status text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   if p_stage not in ('inquiry','quoted','booked','won','lost') then raise exception 'invalid stage'; end if;
   select client_email, stage into v_tenant, v_old from crm_deals where id=p_deal_id;
   if v_tenant is null then raise exception 'deal not found'; end if;
@@ -67,7 +67,7 @@ create or replace function public.company_deal_followup(p_secret text, p_deal_id
 returns json language plpgsql security definer set search_path=public as $$
 declare v_tenant text; v_title text; v_name text; v_email text; v_phone text; v_cid uuid;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   select d.client_email, coalesce(nullif(d.title,''),'oportunidade'), d.contact_id,
          c.full_name, c.email, c.phone
     into v_tenant, v_title, v_cid, v_name, v_email, v_phone
@@ -92,7 +92,7 @@ create or replace function public.company_os_brief(p_secret text)
 returns json language plpgsql security definer set search_path=public as $$
 declare v_stale_n bigint:=0; v_stale_v bigint:=0; v_tickets bigint:=0; v_churn bigint:=0; v_appts bigint:=0; v_leads bigint:=0;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   begin select count(*), coalesce(sum(value_cents),0) into v_stale_n, v_stale_v from crm_deals
         where status='open' and updated_at < now()-interval '5 days'; exception when others then null; end;
   begin select count(*) into v_tickets from support_tickets where status in ('open','resolving','escalated'); exception when others then null; end;
@@ -109,7 +109,7 @@ grant execute on function public.company_os_brief(text) to anon;
 create or replace function public.company_growth_queue(p_secret text, p_limit int default 40)
 returns json language plpgsql security definer set search_path=public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   return coalesce((
     select json_agg(json_build_object(
       'contact_id', id, 'tenant', client_email, 'name', coalesce(nullif(full_name,''),email,'Cliente'),
@@ -132,7 +132,7 @@ create or replace function public.company_growth_reengage(p_secret text, p_conta
 returns json language plpgsql security definer set search_path=public as $$
 declare v_tenant text; v_name text; v_email text; v_risk int;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   select client_email, coalesce(nullif(full_name,''),email,'Cliente'), lower(email), churn_risk
     into v_tenant, v_name, v_email, v_risk from crm_contacts where id=p_contact_id;
   if v_tenant is null then raise exception 'contact not found'; end if;
@@ -144,7 +144,7 @@ grant execute on function public.company_growth_reengage(text,uuid) to anon;
 create or replace function public.company_ops_upcoming(p_secret text, p_hours int default 48, p_limit int default 60)
 returns json language plpgsql security definer set search_path=public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   if to_regclass('public.biz_appointments') is null then return json_build_object('ready',false); end if;
   return json_build_object('ready',true,'appointments', coalesce((
     select json_agg(json_build_object(
@@ -164,7 +164,7 @@ create or replace function public.company_ops_remind(p_secret text, p_appt_id uu
 returns json language plpgsql security definer set search_path=public as $$
 declare v_tenant text; v_cust text; v_contact text; v_when timestamptz;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   select client_email, coalesce(nullif(customer_name,''),'there'), customer_contact, lower(span)
     into v_tenant, v_cust, v_contact, v_when from biz_appointments where id=p_appt_id;
   if v_tenant is null then raise exception 'appointment not found'; end if;
@@ -181,7 +181,7 @@ grant execute on function public.company_ops_remind(text,uuid) to anon;
 create or replace function public.company_marketing_leads(p_secret text, p_limit int default 40)
 returns json language plpgsql security definer set search_path=public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   return coalesce((
     select json_agg(json_build_object(
       'contact_id', id, 'tenant', client_email, 'name', coalesce(nullif(full_name,''),email,'Lead'),
@@ -202,7 +202,7 @@ create or replace function public.company_marketing_nurture(p_secret text, p_con
 returns json language plpgsql security definer set search_path=public as $$
 declare v_tenant text; v_name text; v_email text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   select client_email, coalesce(nullif(full_name,''),email,'Lead'), lower(email) into v_tenant, v_name, v_email from crm_contacts where id=p_contact_id;
   if v_tenant is null then raise exception 'lead not found'; end if;
   return json_build_object('ok',true,'tenant',v_tenant,'contact_name',v_name,'contact_email',v_email);
@@ -213,7 +213,7 @@ grant execute on function public.company_marketing_nurture(text,uuid) to anon;
 create or replace function public.company_crm_vips(p_secret text, p_limit int default 30)
 returns json language plpgsql security definer set search_path=public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   return coalesce((
     select json_agg(json_build_object(
       'contact_id', id, 'tenant', client_email, 'name', coalesce(nullif(full_name,''),email,'Cliente'),
@@ -235,7 +235,7 @@ create or replace function public.company_crm_thank(p_secret text, p_contact_id 
 returns json language plpgsql security definer set search_path=public as $$
 declare v_tenant text; v_name text; v_email text; v_visits int;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   select client_email, coalesce(nullif(full_name,''),email,'Cliente'), lower(email), visit_count into v_tenant, v_name, v_email, v_visits from crm_contacts where id=p_contact_id;
   if v_tenant is null then raise exception 'contact not found'; end if;
   return json_build_object('ok',true,'tenant',v_tenant,'contact_name',v_name,'contact_email',v_email,'visits',v_visits);
@@ -252,7 +252,7 @@ returns json language plpgsql security definer set search_path=public as $$
 declare v_stale_n bigint:=0; v_stale_v bigint:=0; v_tickets bigint:=0; v_churn bigint:=0; v_appts bigint:=0; v_leads bigint:=0;
         v_react bigint:=0; v_nurt bigint:=0; v_thank bigint:=0; v_book bigint:=0; v_since timestamptz := now()-interval '24 hours';
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
   -- precisa de você (needs)
   begin select count(*), coalesce(sum(value_cents),0) into v_stale_n, v_stale_v from crm_deals where status='open' and updated_at < now()-interval '5 days'; exception when others then null; end;
   begin select count(*) into v_tickets from support_tickets where status in ('open','resolving','escalated'); exception when others then null; end;
@@ -279,7 +279,7 @@ create or replace function public.my_company_os(p_secret text, p_email text)
 returns json language plpgsql security definer set search_path=public as $$
 declare v_email text := lower(trim(coalesce(p_email,''))); v_out jsonb := '[]'::jsonb; v_n bigint; v_n2 bigint; v_amt numeric; v_txt text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode='28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode='28000'; end if;
 
   -- 💰 finance — receita coletada nos últimos 30d (client_events.amount em dólares, type payment/order/booking)
   begin

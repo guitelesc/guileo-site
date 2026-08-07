@@ -22,7 +22,7 @@
 --
 -- SECURITY:
 --   • INGEST-gated by the SAME shared literal crm_caller_context / crm_caller_lookup /
---     the ingest pipeline use ('glo_ing_7f3da9c2b4e8'). It returns customer PII, so it
+--     the ingest pipeline use ('glo_ing_c7f2a9e4b8d16350'). It returns customer PII, so it
 --     must never be reachable ungated.
 --   • ALWAYS tenant-scoped by p_email (client_email). A tenant can NEVER read, resolve,
 --     or roll up another tenant's customer — every subquery is filtered by v_tenant.
@@ -54,7 +54,7 @@ declare
   v_channels jsonb := '[]'::jsonb;
 begin
   -- INGEST-gated — returns customer PII, never expose ungated (same literal as crm_caller_context).
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   -- Need at least one identifier to resolve the person.

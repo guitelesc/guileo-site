@@ -32,7 +32,7 @@ declare
   v_summary text := '';
 begin
   -- INGEST-gated (same literal crm_caller_lookup uses) — returns customer PII, never expose ungated.
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   if v_phone is null then return '{}'::jsonb; end if;
@@ -85,7 +85,7 @@ declare
   v_tenant text := lower(trim(p_email));
   v_tz     text := coalesce(nullif(p_tz,''),'America/New_York');
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   return coalesce((
@@ -110,7 +110,7 @@ declare
   v_tenant text := lower(trim(p_email));
   v_days   int  := greatest(1, least(coalesce(p_days,7), 90));
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   return coalesce((

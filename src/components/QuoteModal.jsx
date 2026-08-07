@@ -12,7 +12,7 @@ const T = {
   name: { en: "Your name", pt: "Seu nome", es: "Tu nombre", hi: "आपका नाम" },
   contact: { en: "Email or phone", pt: "Email ou telefone", es: "Correo o teléfono", hi: "ईमेल या फ़ोन" },
   detailsLabel: { en: "Tell us the essentials", pt: "Conte o essencial", es: "Cuéntanos lo esencial", hi: "ज़रूरी बातें बताएँ" },
-  send: { en: "Send & get my quote →", pt: "Enviar & receber orçamento →", es: "Enviar y recibir cotización →", hi: "भेजें और कोट पाएँ →" },
+  send: { en: "Send & get my quote →", pt: "Enviar e receber orçamento →", es: "Enviar y recibir cotización →", hi: "भेजें और कोट पाएँ →" },
   sending: { en: "Sending…", pt: "Enviando…", es: "Enviando…", hi: "भेज रहे हैं…" },
   consent: { en: "I agree to be contacted by Guileo about my request.", pt: "Concordo em ser contatado pela Guileo sobre meu pedido.", es: "Acepto ser contactado por Guileo sobre mi solicitud.", hi: "मैं अपने अनुरोध के बारे में Guileo से संपर्क के लिए सहमत हूँ।" },
   doneT: { en: "Got it! 🌱", pt: "Recebido! 🌱", es: "¡Recibido! 🌱", hi: "मिल गया! 🌱" },

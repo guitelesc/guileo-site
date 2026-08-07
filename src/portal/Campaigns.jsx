@@ -1,8 +1,25 @@
-/* Split out of Portal.jsx (performance): Campaigns tab view — code moved verbatim. */
+/* Split out of Portal.jsx (performance): Campaigns tab view.
+   TRUST FIX: a REAL (signed-in, connected) client now sees ONLY their real campaigns —
+   the real engine is /api/coupons (campaign_list + campaign_send/campaign_mark_sent). No
+   fabricated revenue or open-rate is ever rendered to a real client: the campaign spine has
+   no revenue/opened columns, so those figures are HIDDEN in real mode (not faked). The sample
+   list + demo banner stay ONLY when the tab is not connected (demo/tour). */
 import { useEffect, useState } from "react";
 import { toast, portalApi, loadDataKey } from "../lib/portalApi.js";
 import { waLink } from "../data/contact.js";
-import { loadCreated, genCampaigns, pushCreated, vnum, MiniStats, Card, tr, Empty, Drawer } from "../pages/Portal.jsx";
+import { loadCreated, genCampaigns, pushCreated, vnum, MiniStats, Card, tr, Empty, Drawer, SectionSkeleton } from "../pages/Portal.jsx";
+
+/* Best-effort seam to the real coupons/campaigns engine. Returns null on ANY failure so the UI
+   degrades to an honest state and never throws. */
+async function couponsApi(body) {
+  try {
+    const r = await fetch("/api/coupons", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
 
 /* ⚡ FLASH CAMPAIGN (1-click reactivation blitz) — the owner types a short offer, previews EXACTLY
    who'd get it (POST /api/reactivate dryRun:true), then confirms an honest "this sends REAL messages"
@@ -115,15 +132,148 @@ function FlashCampaign({ V }) {
   );
 }
 
-function Campaigns({ V, onNav }) {
+// ── Real-campaign status badge (spine statuses: draft | scheduled | sent) ──
+const statusMeta = (s) => {
+  const k = (s || "draft").toString().toLowerCase();
+  if (k === "sent") return { label: tr("Sent"), color: "#3E9468" };
+  if (k === "scheduled") return { label: tr("Scheduled"), color: "#D6C29A" };
+  return { label: tr("Draft"), color: "#9a958c" };
+};
+const kindLabel = (c) => (c.template || c.kind || "promo").toString();
+
+// ── REAL campaigns view — reads the client's true campaign spine (/api/coupons campaign_list).
+// Renders ONLY real fields (name · type · status · messages sent). No revenue / open-rate is shown
+// because the spine doesn't carry them — an honest gap beats a fabricated number. ──
+function RealCampaigns({ V, onNav, email, dataKey }) {
+  const [rows, setRows] = useState(null);   // null = fetch in flight
+  const [ready, setReady] = useState(true);
+  const [sel, setSel] = useState(null);
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    couponsApi({ action: "campaign_list", token: dataKey, email }).then((d) => {
+      if (!alive) return;
+      setReady(d?.ready !== false);
+      setRows(Array.isArray(d?.campaigns) ? d.campaigns : []);
+    });
+    return () => { alive = false; };
+  }, [dataKey, email]);
+
+  const sentTotal = (rows || []).reduce((s, c) => s + (Number(c.sent_count) || 0), 0);
+
+  // Send now — real POST; only toasts success on a real ok:true with a real count, else honest.
+  const sendNow = async (c) => {
+    if (!c?.id || sending) return;
+    setSending(true);
+    const d = await couponsApi({ action: "campaign_send", token: dataKey, email, campaign_id: c.id });
+    setSending(false);
+    if (!d?.ok) { toast(tr("I couldn't send that — check your connection and try again.")); return; }
+    if (typeof d.sent === "number" && d.sent > 0) {
+      setRows((cs) => (cs || []).map((x) => (x.id === c.id ? { ...x, status: "sent", sent_count: d.sent } : x)));
+      setSel((s) => (s && s.id === c.id ? { ...s, status: "sent", sent_count: d.sent } : s));
+      const spent = typeof d.credits_spent === "number" ? d.credits_spent : d.sent;
+      toast(`${tr("Campaign sent ✓ — in your brand")} · ${d.sent} ${tr("emails")} · ${spent} ${tr("credits")}`);
+    } else if ((d.audience || 0) === 0) {
+      toast(tr("No customers matched that audience yet — nothing was sent."));
+    } else {
+      toast(d.note ? d.note : tr("Queued — email sending isn't fully connected yet, so nothing went out."));
+    }
+  };
+
+  if (rows === null) {
+    return (
+      <div className="space-y-4 stagger">
+        <FlashCampaign V={V} />
+        <SectionSkeleton rows={4} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 stagger">
+      {/* Real, honest KPIs only — campaigns count + total messages actually sent. */}
+      <MiniStats items={[["Campaigns", `${rows.length}`], ["Messages sent", sentTotal.toLocaleString()]]} />
+      <FlashCampaign V={V} />
+      <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 flex justify-between items-center">
+          <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Campaigns")}</span>
+          <button onClick={() => onNav?.("coupons")} className="text-[11px] font-bold text-g-gold hover:underline">{tr("New campaign →")}</button>
+        </div>
+        <div className="divide-y divide-white/[0.06]">
+          {rows.map((c, i) => {
+            const st = statusMeta(c.status);
+            return (
+              <button key={c.id || i} onClick={() => setSel(c)} className="w-full text-left flex items-center gap-4 px-5 py-3.5 hover:bg-white/[0.04] transition">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-g-word truncate">{c.name || c.subject || tr("Untitled campaign")}</div>
+                  <div className="text-[11px] text-g-muted truncate">{kindLabel(c)}{c.audience ? ` · ${c.audience}` : ""} · {(Number(c.sent_count) || 0).toLocaleString()} {tr("sent")}</div>
+                </div>
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: st.color + "22", color: st.color }}>{st.label}</span>
+              </button>
+            );
+          })}
+          {rows.length === 0 && (
+            <Empty icon="📣" text={ready
+              ? tr("No campaigns yet — build one in Coupons & Campaigns and it'll show up here, in your brand.")
+              : tr("Campaigns aren't switched on yet — once activated, every promo you send appears here.")} />
+          )}
+        </div>
+      </Card>
+      {sel && (() => {
+        const st = statusMeta(sel.status);
+        const isSent = (sel.status || "").toString().toLowerCase() === "sent";
+        return (
+          <Drawer
+            title={sel.name || sel.subject || tr("Campaign")}
+            subtitle={`${kindLabel(sel)}${sel.audience ? ` · ${sel.audience}` : ""}`}
+            badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: st.color + "22", color: st.color }}>{st.label}</span>}
+            fields={[["Type", kindLabel(sel)], ["Audience", sel.audience || tr("All customers")], ["Status", st.label], ["Messages sent", (Number(sel.sent_count) || 0).toLocaleString()]]}
+            note={tr("Sent in YOUR brand — your logo, your color, your name — with a discreet “powered by Guileo”.")}
+            actions={<>
+              {!isSent && <button onClick={() => sendNow(sel)} disabled={sending} className="btn-bright text-sm">{sending ? tr("Sending…") : `📣 ${tr("Send now")}`}</button>}
+              <button onClick={() => { setSel(null); onNav?.("coupons"); }} className="btn-ghost text-sm">✏️ {tr("Open composer")}</button>
+            </>}
+            onClose={() => setSel(null)}
+          />
+        );
+      })()}
+    </div>
+  );
+}
+
+function Campaigns({ V, onNav, real = null, email: emailProp = "", dataKey: dataKeyProp = "" }) {
+  // Real-mode credentials — prefer props (sibling-tab contract); fall back to session + saved key
+  // so a connected client never gets fabricated data even if this tab isn't wired with props.
+  const [sessEmail, setSessEmail] = useState("");
+  const [sessDone, setSessDone] = useState(false);
+  const key = dataKeyProp || loadDataKey();
+  useEffect(() => {
+    if (emailProp) return;
+    let alive = true;
+    portalApi.session().then((s) => { if (!alive) return; if (s?.email && s?.demo !== true) setSessEmail(s.email); setSessDone(true); });
+    return () => { alive = false; };
+  }, [emailProp]);
+  const email = emailProp || sessEmail;
+  const live = !!(key && email);
+  const resolving = !!key && !email && !emailProp && !sessDone;   // connected but session not resolved yet → avoid sample flash
+
+  if (live) return <RealCampaigns V={V} onNav={onNav} email={email} dataKey={key} />;
+  if (resolving) return <div className="space-y-4 stagger"><FlashCampaign V={V} /><SectionSkeleton rows={4} /></div>;
+  return <DemoCampaigns V={V} onNav={onNav} />;
+}
+
+// ── DEMO / not-connected: the sample tour, clearly labelled as sample data. ──
+function DemoCampaigns({ V, onNav }) {
+  const [sel, setSel] = useState(null);
   const rows = [...loadCreated(V.label, "campaigns"), ...(V.campaigns || genCampaigns(V))];
   const buildAudience = (c) => { pushCreated(V.label, "audiences", { name: `${c.name} · engagers`, size: vnum(V.label, c.name, 1200, 9000), source: "CRM" }); setSel(null); toast(`Audience built from "${c.name}" ✓ — see it in Ad Audiences`); onNav?.("audiences"); };
   const sent = rows.reduce((s, c) => s + c.sent, 0);
   const rev = rows.reduce((s, c) => s + c.revenue, 0);
   const open = Math.round(rows.reduce((s, c) => s + c.opened, 0) / rows.length);
-  const [sel, setSel] = useState(null);
   return (
     <div className="space-y-4 stagger">
+      <div className="rounded-xl border border-g-gold/25 bg-g-gold/[0.06] px-4 py-2.5 text-[11px] font-bold text-g-muted">{tr("Demo — sample data. Connect your account in Settings to see your real campaigns here.")}</div>
       <MiniStats items={[["Campaigns", `${rows.length}`], ["Messages sent", sent.toLocaleString()], ["Avg. open rate", `${open}%`, "good"], ["Revenue", `$${rev.toLocaleString()}`, "good"]]} />
       <FlashCampaign V={V} />
       <Card className="p-0 overflow-hidden">

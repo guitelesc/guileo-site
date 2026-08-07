@@ -48,7 +48,7 @@ declare
   v_existing storm_modes;
   v_id uuid; v_note text; v_days int; v_affected int; d date;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if p_starts_on is null or p_reopen_on is null then return jsonb_build_object('ok',false,'reason','bad_dates'); end if;
   if p_reopen_on <= p_starts_on then return jsonb_build_object('ok',false,'reason','bad_dates'); end if;
   if p_reopen_on - p_starts_on > 30 then return jsonb_build_object('ok',false,'reason','window_too_long'); end if;
@@ -98,7 +98,7 @@ declare
   v_email text := lower(trim(p_email));
   v_active storm_modes; v_affected int := 0; v_history jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select * into v_active from storm_modes
     where client_email = v_email and status = 'active'
     order by created_at desc limit 1;
@@ -135,7 +135,7 @@ declare
   v_email text := lower(trim(p_email));
   v storm_modes; v_cleared int; v_blast boolean := false;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select * into v from storm_modes
     where client_email = v_email and status = 'active'
     order by created_at desc limit 1;
@@ -166,7 +166,7 @@ declare
   v_email text := lower(trim(p_email));
   v storm_modes; v_appts jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select * into v from storm_modes
     where client_email = v_email
     order by (status = 'active') desc, created_at desc limit 1;
@@ -193,7 +193,7 @@ end $$;
 create or replace function public.storm_mark_notified(p_secret text, p_email text, p_id uuid, p_count int)
 returns boolean language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   update storm_modes set notified = greatest(notified, coalesce(p_count,0))
     where id = p_id and client_email = lower(trim(p_email));
   return found;
@@ -206,8 +206,8 @@ grant execute on function public.storm_affected_appointments(text,text) to anon;
 grant execute on function public.storm_mark_notified(text,text,uuid,int) to anon;
 
 -- ✅ Pronto. Teste rápido (troque o email):
---   select storm_activate('glo_ing_7f3da9c2b4e8','dono@negocio.com', current_date, current_date + 3, 'Fechados pelo furacão — reabrimos quinta.');
---   select storm_status('glo_ing_7f3da9c2b4e8','dono@negocio.com');
---   select storm_affected_appointments('glo_ing_7f3da9c2b4e8','dono@negocio.com');
+--   select storm_activate('glo_ing_c7f2a9e4b8d16350','dono@negocio.com', current_date, current_date + 3, 'Fechados pelo furacão — reabrimos quinta.');
+--   select storm_status('glo_ing_c7f2a9e4b8d16350','dono@negocio.com');
+--   select storm_affected_appointments('glo_ing_c7f2a9e4b8d16350','dono@negocio.com');
 --   -- biz_availability não devolve slots na janela; biz_book → reason='closed_date' + a nota 🌀 (o Gui fala).
---   select storm_reopen('glo_ing_7f3da9c2b4e8','dono@negocio.com');   -- blast=true só na 1ª vez
+--   select storm_reopen('glo_ing_c7f2a9e4b8d16350','dono@negocio.com');   -- blast=true só na 1ª vez

@@ -52,7 +52,7 @@ declare
   v_email text;
   v_tokens jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   if p_page_id is null or trim(p_page_id) = '' then return null; end if;
@@ -94,7 +94,7 @@ declare
   v_email text := lower(trim(p_email));
   v_ins   integer;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   if v_email = '' or p_mid is null or trim(p_mid) = '' then return true; end if;
@@ -115,7 +115,7 @@ grant execute on function public.meta_mark_seen(text, text, text) to anon;
 -- meta_tenant_for_page resolves immediately. Same INGEST gate. Idempotent.
 --   tokens shape: { page_id, ig_id, page_access_token, refresh_token, business_name }
 -- Example:
---   select public.meta_creds_store('glo_ing_7f3da9c2b4e8', 'natura@guileoai.com',
+--   select public.meta_creds_store('glo_ing_c7f2a9e4b8d16350', 'natura@guileoai.com',
 --     jsonb_build_object(
 --       'page_id','1122334455', 'ig_id','1789900011',
 --       'page_access_token','EAAG…', 'business_name','Natura Spa'
@@ -129,7 +129,7 @@ declare
   v_page  text;
   v_ig    text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then
     raise exception 'unauthorized' using errcode = '28000';
   end if;
   if v_email = '' then return false; end if;

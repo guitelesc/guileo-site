@@ -12,6 +12,7 @@ import ActivationRunbook from "../components/ActivationRunbook.jsx";
 import SellerProspect from "../components/SellerProspect.jsx";
 import SellerDashboard from "../components/SellerDashboard.jsx";
 import SellerFollowup from "../components/SellerFollowup.jsx";
+import SellerSupport from "../components/SellerSupport.jsx";
 import SellerCloser from "../components/SellerCloser.jsx";
 import SellerIdeas from "../components/SellerIdeas.jsx";
 import SellerContract from "../components/SellerContract.jsx";
@@ -233,13 +234,28 @@ function loadSeller() {
   try { return JSON.parse(localStorage.getItem(SELLER_KEY) || "null"); } catch { return null; }
 }
 
+// CRACHÁ do vendedor — assinado no /api/seller-login e guardado junto com o perfil.
+// As ferramentas de IA (/api/pitch-ai) exigem ele: antes, qualquer visitante do site
+// conseguia rodá-las pelo console, gastando modelo pago pela Guileo.
+function sellerSid() {
+  try { return (JSON.parse(localStorage.getItem(SELLER_KEY) || "null") || {}).sid || ""; } catch { return ""; }
+}
+
+// Quem já estava logado ANTES deste crachá existir não tem `sid` — a IA responderia 401 e o
+// botão pareceria quebrado. Aqui a sessão velha é limpa e o vendedor só refaz o login uma vez.
+function sidExpired(d) {
+  if (!d || d.error !== "auth_required") return false;
+  try { localStorage.removeItem(SELLER_KEY); } catch { /* ignore */ }
+  return true;
+}
+
 // Fire-and-forget activity log → /api/seller-stats (powers the seller's own numbers + Luis's
 // central panel). Never blocks or breaks the UI.
 function logSellerEvent(seller, kind) {
   if (!seller?.email) return;
   try {
     fetch("/api/seller-stats", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "log", kind, email: seller.email, seller: { name: seller.name, ref: seller.ref } }) }).catch(() => {});
+      body: JSON.stringify({ action: "log", kind, email: seller.email, seller: { name: seller.name, ref: seller.ref, code: seller.code || "" } }) }).catch(() => {});
   } catch { /* analytics must never break the hub */ }
 }
 
@@ -321,9 +337,10 @@ function PitchCards({ t, lang, seller }) {
     if (!obj.trim()) return;
     setObjState("go"); setObjText("");
     try {
-      const r = await fetch("/api/pitch-ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "objection", objection: obj, niche: nicheName, lang }) });
+      const r = await fetch("/api/pitch-ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sid: sellerSid(), mode: "objection", objection: obj, niche: nicheName, lang }) });
       const d = await r.json().catch(() => ({}));
-      if (d?.ok && d.text) { setObjText(d.text); setObjState("done"); if (seller) logSellerEvent(seller, "pitch"); } else { setObjState("err"); }
+      if (sidExpired(d)) { setObjText("Sua sessão expirou — entre de novo pra usar a IA."); setObjState("err"); }
+      else if (d?.ok && d.text) { setObjText(d.text); setObjState("done"); if (seller) logSellerEvent(seller, "pitch"); } else { setObjState("err"); }
     } catch { setObjState("err"); }
   };
   const nicheName = useMemo(() => pick((PITCH_NICHES.find((n) => n.id === niche) || {}).name), [niche, lang]);
@@ -331,9 +348,10 @@ function PitchCards({ t, lang, seller }) {
   const runAi = async () => {
     setAiState("go"); setAiText("");
     try {
-      const r = await fetch("/api/pitch-ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ niche: nicheName, business: biz, city, notes, lang }) });
+      const r = await fetch("/api/pitch-ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sid: sellerSid(), niche: nicheName, business: biz, city, notes, lang }) });
       const d = await r.json().catch(() => ({}));
-      if (d?.ok && d.text) { setAiText(d.text); setAiState("done"); if (seller) logSellerEvent(seller, "pitch"); } else { setAiState("err"); }
+      if (sidExpired(d)) { setAiText("Sua sessão expirou — entre de novo pra usar a IA."); setAiState("err"); }
+      else if (d?.ok && d.text) { setAiText(d.text); setAiState("done"); if (seller) logSellerEvent(seller, "pitch"); } else { setAiState("err"); }
     } catch { setAiState("err"); }
   };
 
@@ -584,14 +602,14 @@ function Metas({ t, seller }) {
   };
 
   useEffect(() => {
-    fetch("/api/seller-stats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "me", email: seller.email, ref: seller.ref }) })
+    fetch("/api/seller-stats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "me", email: seller.email, ref: seller.ref, seller_code: seller.code || "" }) })
       .then((r) => r.json()).then((d) => { setAct(d.act || {}); setLeads(typeof d.attributedLeads === "number" ? d.attributedLeads : null); setComm(d.commissions || null); if (d.goals) setGoals((g) => ({ ...g, ...d.goals })); }).catch(() => setAct({}));
   }, [seller.email]);
 
   const saveGoals = async () => {
     setSaved(false);
     try {
-      await fetch("/api/seller-stats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "goals", email: seller.email, goals }) });
+      await fetch("/api/seller-stats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "goals", email: seller.email, goals, seller_code: seller.code || "" }) });
       setSaved(true); setTimeout(() => setSaved(false), 1600);
     } catch { /* ignore */ }
   };
@@ -709,9 +727,10 @@ function Treino({ t, lang, seller, handoff }) {
     if (fbState === "go" || !sellerTurns) return;
     setFbState("go"); setFb("");
     try {
-      const r = await fetch("/api/pitch-ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "feedback", history: msgs, lang }) });
+      const r = await fetch("/api/pitch-ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sid: sellerSid(), mode: "feedback", history: msgs, lang }) });
       const d = await r.json().catch(() => ({}));
-      if (d?.ok && d.text) { setFb(d.text); setFbState("done"); } else setFbState("err");
+      if (sidExpired(d)) { setFb("Sua sessão expirou — entre de novo pra usar a IA."); setFbState("err"); }
+      else if (d?.ok && d.text) { setFb(d.text); setFbState("done"); } else setFbState("err");
     } catch { setFbState("err"); }
   };
 
@@ -721,9 +740,9 @@ function Treino({ t, lang, seller, handoff }) {
     const history = msgs.slice();
     setMsgs((m) => [...m, { role: "seller", text }]); setInput(""); setTyping(true);
     try {
-      const r = await fetch("/api/pitch-ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "roleplay", niche: nicheName, message: text, history, lang }) });
+      const r = await fetch("/api/pitch-ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sid: sellerSid(), mode: "roleplay", niche: nicheName, message: text, history, lang }) });
       const d = await r.json().catch(() => ({}));
-      setMsgs((m) => [...m, { role: "client", text: d?.reply || "…" }]);
+      setMsgs((m) => [...m, { role: "client", text: sidExpired(d) ? "Sua sessão expirou — entre de novo pra treinar." : (d?.reply || "…") }]);
     } catch { setMsgs((m) => [...m, { role: "client", text: "…" }]); }
     setTyping(false);
   };
@@ -1008,7 +1027,9 @@ export default function Vendedor() {
   if (!seller) return <Login t={t} lang={lang} setLang={setLang} onIn={setSeller} />;
 
   const logout = () => { try { localStorage.removeItem(SELLER_KEY); } catch { /* ignore */ } setSeller(null); };
-  const NAV = [["start", t.nav.start], ["painel", t.nav.painel], ["alvos", t.nav.alvos], ["followup", t.nav.followup], ["fechar", t.nav.fechar], ["demo", t.nav.demo || "🎬 Demo"], ["cards", t.nav.cards], ["quote", t.nav.quote], ["contrato", t.nav.contrato], ["financeiro", t.nav.financeiro], ["cadastro", t.nav.cadastro], ["treino", t.nav.treino], ["ativ", t.nav.ativ], ["metas", t.nav.metas], ["jogadas", t.nav.jogadas], ["academy", t.nav.academy], ["support", t.nav.support]];
+  // 🚨 "suporte" fica logo depois de Alvos e renderiza em VERMELHO: é a prioridade nº1 do
+  // vendedor — cliente esperando resposta vem antes de prospectar (regra do Luis).
+  const NAV = [["start", t.nav.start], ["painel", t.nav.painel], ["alvos", t.nav.alvos], ["suporte", "🚨 SUPORTE"], ["followup", t.nav.followup], ["fechar", t.nav.fechar], ["demo", t.nav.demo || "🎬 Demo"], ["cards", t.nav.cards], ["quote", t.nav.quote], ["contrato", t.nav.contrato], ["financeiro", t.nav.financeiro], ["cadastro", t.nav.cadastro], ["treino", t.nav.treino], ["ativ", t.nav.ativ], ["metas", t.nav.metas], ["jogadas", t.nav.jogadas], ["academy", t.nav.academy], ["support", t.nav.support]];
 
   return (
     <div className="surface-real min-h-screen text-g-ink">
@@ -1034,7 +1055,12 @@ export default function Vendedor() {
         </div>
         <nav className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-3 pb-2">
           {NAV.map(([k, label]) => (
-            <button key={k} onClick={() => nav(k)} aria-current={tab === k ? "page" : undefined} className={`whitespace-nowrap rounded-full px-4 py-1.5 text-[12.5px] font-bold transition ${tab === k ? "bg-g-green/15 text-g-word ring-1 ring-g-green/40" : "text-g-muted hover:text-g-word"}`}>{label}</button>
+            <button key={k} onClick={() => nav(k)} aria-current={tab === k ? "page" : undefined}
+              className={`whitespace-nowrap rounded-full px-4 py-1.5 text-[12.5px] font-bold transition ${
+                k === "suporte"
+                  ? (tab === k ? "bg-[#E5484D]/20 text-[#FF7A7E] ring-1 ring-[#E5484D]/60" : "text-[#E5484D] ring-1 ring-[#E5484D]/35 hover:bg-[#E5484D]/10")
+                  : (tab === k ? "bg-g-green/15 text-g-word ring-1 ring-g-green/40" : "text-g-muted hover:text-g-word")
+              }`}>{label}</button>
           ))}
         </nav>
       </header>
@@ -1046,6 +1072,7 @@ export default function Vendedor() {
           {tab === "start" && <Start t={t} go={nav} />}
           {tab === "painel" && <SellerDashboard lang={lang} seller={seller} market={market} nav={nav} />}
           {tab === "alvos" && <SellerProspect lang={lang} seller={seller} market={market} nav={nav} />}
+          {tab === "suporte" && <SellerSupport lang={lang} seller={seller} />}
           {tab === "followup" && <SellerFollowup lang={lang} seller={seller} market={market} nav={nav} handoff={handoff} />}
           {tab === "fechar" && <SellerCloser lang={lang} seller={seller} market={market} nav={nav} handoff={handoff} />}
           {tab === "demo" && <DemoEngine surface="seller" />}

@@ -5,6 +5,7 @@ import { useLang } from "../i18n.jsx";
 import { waLink } from "../data/contact.js";
 import { trackLead } from "../lib/analytics.js";
 import { normalizePhone, phonePlaceholder } from "../lib/intl.js";
+import ConsentText from "./ConsentText.jsx";
 
 const CHANNELS = [
   [FaWhatsapp, "WhatsApp", "whatsapp", "#25D366"],
@@ -58,13 +59,6 @@ export default function LeadForm({ source = "website" }) {
     ? "30-दिन मनी-बैक · एक असली इंसान निगरानी करता है · ~7 दिनों में लाइव"
     : "30-day money-back · a real human supervises · live in ~7 days";
 
-  const consentText = lang === "es"
-    ? "Acepto ser contactado por Gui (Guileo) por llamada/mensaje. Pueden aplicar tarifas. Responde STOP para cancelar."
-    : lang === "pt"
-    ? "Concordo em ser contatado pelo Gui (Guileo) por ligação/mensagem. Posso responder STOP pra sair."
-    : lang === "hi"
-    ? "मैं Gui (Guileo) से कॉल/संदेश द्वारा संपर्क के लिए सहमत हूँ। संदेश दरें लागू हो सकती हैं; रोकने के लिए STOP भेजें।"
-    : "I agree to be contacted by Gui (Guileo) by call/text. Msg rates may apply, reply STOP to opt out.";
 
   // reassurance microline — right under the submit button (honest: humans reply in business hours)
   const replyText = lang === "es"
@@ -125,7 +119,7 @@ export default function LeadForm({ source = "website" }) {
           const on = ch === key;
           return (
             <button type="button" key={key} onClick={() => setCh(key)} aria-pressed={on}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold transition-all ${on ? "scale-105 shadow-glow" : "hover:text-g-word"}`}
+              className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold transition-all sm:min-h-0 ${on ? "scale-105 shadow-glow" : "hover:text-g-word"}`}
               style={on
                 ? { background: color + "22", border: `1px solid ${color}`, color }
                 : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.15)", color: "#9a958c" }}>
@@ -151,7 +145,7 @@ export default function LeadForm({ source = "website" }) {
         <input type="checkbox" required checked={consent} onChange={(e) => setConsent(e.target.checked)}
           aria-invalid={consentBad} aria-describedby={consentBad ? "leadform-err" : undefined}
           className="mt-0.5 h-4 w-4 shrink-0 accent-g-green" />
-        <span>{consentText}</span>
+        <span><ConsentText lang={lang} /></span>
       </label>
 
       {err && <p id="leadform-err" role="alert" className="text-center text-[12px] font-semibold text-g-gold">{errText}</p>}

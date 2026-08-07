@@ -39,9 +39,9 @@ export async function onRequestGet(context) {
     } : { en: "", pt: "", es: "" };
 
     const desc = {
-      en: `Guileo's AI answers, books and follows up 24/7 for ${vName.toLowerCase()} in ${c.city} — voice, WhatsApp & SMS in 20+ languages. ${result} Live in 7 days.${tail.en}`,
-      pt: `A IA da Guileo atende, agenda e faz follow-up 24/7 para ${vName.toLowerCase()} em ${c.city} — voz, WhatsApp e SMS em 20+ idiomas. ${result} No ar em 7 dias.${tail.pt}`,
-      es: `La IA de Guileo atiende, agenda y da seguimiento 24/7 para ${vName.toLowerCase()} en ${c.city} — voz, WhatsApp y SMS en 20+ idiomas. ${result} Activo en 7 días.${tail.es}`,
+      en: `Guileo's AI answers, books and follows up 24/7 for ${vName.toLowerCase()} in ${c.city} — voice, WhatsApp & SMS in 16 languages. ${result} Live in 7 days.${tail.en}`,
+      pt: `A IA da Guileo atende, agenda e faz follow-up 24/7 para ${vName.toLowerCase()} em ${c.city} — voz, WhatsApp e SMS em 16 idiomas. ${result} No ar em 7 dias.${tail.pt}`,
+      es: `La IA de Guileo atiende, agenda y da seguimiento 24/7 para ${vName.toLowerCase()} en ${c.city} — voz, WhatsApp y SMS en 16 idiomas. ${result} Activo en 7 días.${tail.es}`,
     };
 
     return rewriteOg(context, {

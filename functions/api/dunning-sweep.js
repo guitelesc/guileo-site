@@ -28,6 +28,7 @@
 import { json, safeEq } from "../lib/guard.js";
 import { emitFailure } from "../lib/failure.js";
 import { dunningEmail } from "../lib/emailTemplates.js";
+import { sbKey } from "../lib/sb.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -39,7 +40,7 @@ async function rpc(env, fn, args) {
   try {
     const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {
       method: "POST",
-      headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
+      headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" },
       body: JSON.stringify({ p_secret: env.INGEST_SECRET || "", ...args }),
     });
     return r.ok ? await r.json() : null;

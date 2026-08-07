@@ -60,7 +60,7 @@ declare
   v_rev_ready boolean := false;
   v_tbl text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
 
   -- client_events payment side (plans, topups, package/membership/giftcard fulfills).
   -- amount is stored in DOLLARS (webhook writes p_amount = cents/100) → back to cents.
@@ -116,7 +116,7 @@ declare
   v_id bigint;
   v_prev_ok boolean;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
 
   select ok into v_prev_ok from public.money_reconcile_runs
    where window_start = p_window_start and window_end = p_window_end;

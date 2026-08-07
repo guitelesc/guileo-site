@@ -75,7 +75,7 @@ returns json
 language plpgsql stable security definer set search_path = public as $func$
 declare result json;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select coalesce(json_agg(t order by t.last_at desc), '[]'::json) into result
   from (
     select
@@ -121,7 +121,7 @@ returns json
 language plpgsql stable security definer set search_path = public as $func$
 declare msgs json; ph text; hum boolean; chan text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select coalesce(json_agg(m order by m.created_at), '[]'::json) into msgs
   from (
     select e.dir as direction, e.body, e.created_at, e.channel

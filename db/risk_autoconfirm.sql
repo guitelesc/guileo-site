@@ -18,7 +18,7 @@ create or replace function public.risk_confirm_claim(p_secret text, p_email text
 returns boolean language plpgsql security definer set search_path = public as $$
 declare v_id uuid;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   update biz_appointments a
      set risk_nudged_at = now()
    where a.id = p_appointment_id
@@ -35,7 +35,7 @@ end $$;
 create or replace function public.risk_clients(p_secret text)
 returns table(client_email text) language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return query
     select distinct a.client_email
     from biz_appointments a

@@ -34,7 +34,7 @@ declare
   v_ready boolean := false;
   v_tbl text;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
 
   -- Tenant revenue ledger — the close&collect direct-charge sources. Sum amount_cents
   -- as-is so refund rows (negative) net out, mirroring the Stripe net (succeeded − refunded).

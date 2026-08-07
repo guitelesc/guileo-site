@@ -20,7 +20,7 @@ const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
 
 // Same fallback literal as revenue.js so a missing env var never silently 401s the RPC.
-export const INGEST_LITERAL = "glo_ing_7f3da9c2b4e8";
+export const INGEST_LITERAL = "";
 
 // Cheap-first model chain — the same ids the rest of the repo uses (guiBrain / review-responder),
 // haiku FIRST because theme extraction is a tiny, high-volume, low-stakes classification.

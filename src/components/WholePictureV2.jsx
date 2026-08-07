@@ -22,7 +22,7 @@ const T = {
     runsOn: "Runs 24/7 on the foundation we build you",
     buildTitle: "We build it", buildTag: "once",
     build: [["🌐", "Website"], ["📱", "iOS & Android apps"], ["🧩", "Custom software"], ["🛒", "Online store"], ["📈", "Growth Cockpit"]],
-    foot: "Gui speaks 20+ languages · dashboard in 4 · live in 7 days · 30-day money-back.",
+    foot: "Gui speaks 16 languages · dashboard in 4 · live in 7 days · 30-day money-back.",
     cta1: "See everything →",
   },
   pt: {
@@ -39,7 +39,7 @@ const T = {
     runsOn: "Roda 24/7 sobre a fundação que a gente constrói",
     buildTitle: "A gente constrói", buildTag: "uma vez",
     build: [["🌐", "Site"], ["📱", "Apps iOS e Android"], ["🧩", "Software sob medida"], ["🛒", "Loja online"], ["📈", "Growth Cockpit"]],
-    foot: "A Gui fala 20+ idiomas · painel em 4 · no ar em 7 dias · 30 dias de garantia.",
+    foot: "A Gui fala 16 idiomas · painel em 4 · no ar em 7 dias · 30 dias de garantia.",
     cta1: "Ver tudo →",
   },
   es: {
@@ -56,7 +56,7 @@ const T = {
     runsOn: "Funciona 24/7 sobre la base que te construimos",
     buildTitle: "Lo construimos", buildTag: "una vez",
     build: [["🌐", "Web"], ["📱", "Apps iOS y Android"], ["🧩", "Software a medida"], ["🛒", "Tienda online"], ["📈", "Growth Cockpit"]],
-    foot: "Gui habla 20+ idiomas · panel en 4 · en marcha en 7 días · 30 días de garantía.",
+    foot: "Gui habla 16 idiomas · panel en 4 · en marcha en 7 días · 30 días de garantía.",
     cta1: "Ver todo →",
   },
   hi: {
@@ -73,7 +73,7 @@ const T = {
     runsOn: "उस नींव पर 24/7 चलता है जो हम आपके लिए बनाते हैं",
     buildTitle: "हम इसे बनाते हैं", buildTag: "एक बार",
     build: [["🌐", "वेबसाइट"], ["📱", "iOS और Android ऐप"], ["🧩", "कस्टम सॉफ़्टवेयर"], ["🛒", "ऑनलाइन स्टोर"], ["📈", "Growth Cockpit"]],
-    foot: "Gui 20+ भाषाएँ बोलती है · डैशबोर्ड 4 में · 7 दिनों में लाइव · 30-दिन मनी-बैक।",
+    foot: "Gui 16 भाषाएँ बोलती है · डैशबोर्ड 4 में · 7 दिनों में लाइव · 30-दिन मनी-बैक।",
     cta1: "सब कुछ देखें →",
   },
 };

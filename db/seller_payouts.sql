@@ -22,7 +22,7 @@
 --   refund-net NÃO é reimplementada: chamamos seller_commission_ledger por dentro.
 --
 -- SEGURANÇA: mesmo padrão dos irmãos — SECURITY DEFINER gated pelo literal INGEST
--- ('glo_ing_7f3da9c2b4e8' = env INGEST_SECRET), RLS on SEM policy anon, grant
+-- ('glo_ing_c7f2a9e4b8d16350' = env INGEST_SECRET), RLS on SEM policy anon, grant
 -- execute to anon (as RPCs são o ÚNICO acesso). O escopo é SEMPRE por
 -- seller_email — nunca devolve repasse de outro vendedor. Requer db/seller_finance.sql.
 -- ============================================================================
@@ -69,7 +69,7 @@ declare
   v_row   public.seller_payouts%rowtype;
   v_dup   boolean := false;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_email = '' or position('@' in v_email) = 0 then raise exception 'bad email' using errcode = '22023'; end if;
   if v_amt <= 0 then raise exception 'amount_cents must be a positive integer' using errcode = '22023'; end if;
 
@@ -108,7 +108,7 @@ returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare v_email text := lower(trim(coalesce(p_seller_email, '')));
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return coalesce((
     select jsonb_agg(jsonb_build_object(
       'id', id, 'amount_cents', amount_cents, 'note', note,
@@ -132,7 +132,7 @@ declare
   v_comm_cents bigint := 0;
   v_paid_cents bigint := 0;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_email = '' or position('@' in v_email) = 0 then
     return jsonb_build_object('commission_cents', 0, 'paid_out_cents', 0, 'due_cents', 0);
   end if;

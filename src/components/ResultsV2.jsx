@@ -37,7 +37,7 @@ const BIZ = [
     gain: { en: "+ chair time", pt: "+ cadeira ocupada", es: "+ sillón ocupado", hi: "+ चेयर टाइम" },
     acts: { en: ["📅 Cleanings booked", "🔁 Recalls", "📞 Calls back", "💳 Deposits"], pt: ["📅 Limpezas agendadas", "🔁 Retornos", "📞 Retorna ligações", "💳 Sinal"], es: ["📅 Limpiezas agendadas", "🔁 Recitas", "📞 Devuelve llamadas", "💳 Depósitos"], hi: ["📅 क्लीनिंग बुक", "🔁 रीकॉल", "📞 कॉल-बैक", "💳 डिपॉज़िट"] } },
   { icon: "🔧", loseN: 7600,
-    name: { en: "Plumbing & HVAC", pt: "Encanador & HVAC", es: "Fontanería & HVAC", hi: "प्लंबिंग & HVAC" },
+    name: { en: "Plumbing & HVAC", pt: "Encanador e HVAC", es: "Fontanería & HVAC", hi: "प्लंबिंग & HVAC" },
     why: { en: "emergency calls hitting voicemail", pt: "emergências caindo na caixa postal", es: "llamadas de emergencia que van al buzón", hi: "इमरजेंसी कॉल वॉइसमेल में जातीं" },
     does: { en: "Catches emergency calls, quotes & dispatches.", pt: "Pega a emergência na hora, orça e despacha a equipe.", es: "Atiende la emergencia, cotiza y despacha.", hi: "इमरजेंसी कॉल पकड़ती है, कोट देती है और टीम भेजती है।" },
     result: { en: "You win the job before the competitor calls back.", pt: "Você fecha o serviço antes do concorrente retornar.", es: "Ganas el trabajo antes de que el competidor devuelva la llamada.", hi: "प्रतिस्पर्धी के कॉल-बैक से पहले काम आपका।" },

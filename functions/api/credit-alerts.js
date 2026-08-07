@@ -38,7 +38,7 @@ export async function onRequest(context) {
     if (!Array.isArray(due) || due.length === 0) return json({ ok: true, alerted: 0 });
 
     const OWNER = (env.OWNER_EMAIL && isOwnerEmail(env.OWNER_EMAIL, env)) ? env.OWNER_EMAIL : "smart@guileoai.com";
-    let sent = 0;
+    let sent = 0, failed = 0;
     for (const c of due) {
       const email = (c.client_email || "").toString();
       if (!email.includes("@")) { await rpc("mark_credit_alerted", { p_secret: ING, p_email: email }); continue; }
@@ -50,6 +50,13 @@ export async function onRequest(context) {
         if (pr.ok) { const p = await pr.json(); if (p && typeof p === "object") { business = p.business_name || business; lang = ["pt", "es", "en"].includes(p.lang) ? p.lang : "pt"; name = p.owner || (lang === "en" ? "there" : "tudo bem"); } }
       } catch { /* defaults */ }
 
+      // Only a DELIVERED alert may mark the client as alerted. mark_credit_alerted is a
+      // one-shot latch: once set, this client is never warned again. Marking it after a
+      // failed (or skipped, when RESEND_API_KEY is absent) send meant the client's Gui went
+      // quiet — no calls, no follow-ups — and they were never told why. Leaving it unmarked
+      // costs nothing: the next cron run simply retries.
+      let clientAlerted = false;
+
       if (env.RESEND_API_KEY) {
         // Conversion path: the alert carries the DIRECT upgrade link of the next plan up
         // (live Stripe payment link → webhook adds the credits instantly). Not inferable /
@@ -58,14 +65,28 @@ export async function onRequest(context) {
         const tpl = up
           ? creditDepletedUpgradeEmail({ name, business, lang, upgradeName: up.name, upgradePrice: up.price, upgradeCredits: up.credits, upgradeUrl: up.url || "https://guileoai.com/planos" })
           : creditDepletedEmail({ name, business, lang });
-        await send(env, email, tpl.subject, tpl.html);                                  // client (branded)
-        await send(env, OWNER, `⚡ ${business} (${email}) zerou os créditos do Gui`,     // owner heads-up (internal)
-          `<div style="font-family:system-ui,sans-serif;max-width:520px"><b>${business}</b> (${email}) ficou sem créditos — o Gui pausou as tarefas pagas (ligações, mensagens, follow-ups). O cliente recebeu o aviso pra recarregar${up ? ` com o link direto do upgrade pro <b>${up.name}</b> ($${up.price}/mês)` : ""}. Plano: ${c.plan || "—"}. Vale dar um toque.</div>`);
+        const r = await send(env, email, tpl.subject, tpl.html);                        // client (branded)
+        clientAlerted = !!(r && r.ok);
+        // The owner heads-up now states whether the CLIENT was actually reached. When it wasn't,
+        // this email IS the safety net — it's the only way anyone learns the client's Gui went
+        // quiet without them being told.
+        await send(env, OWNER,
+          clientAlerted
+            ? `⚡ ${business} (${email}) zerou os créditos do Gui`
+            : `🚨 ${business} (${email}) zerou os créditos E NÃO recebeu o aviso — LIGUE`,
+          `<div style="font-family:system-ui,sans-serif;max-width:520px"><b>${business}</b> (${email}) ficou sem créditos — o Gui pausou as tarefas pagas (ligações, mensagens, follow-ups). ${
+            clientAlerted
+              ? `O cliente recebeu o aviso pra recarregar${up ? ` com o link direto do upgrade pro <b>${up.name}</b> ($${up.price}/mês)` : ""}.`
+              : `<b style="color:#b91c1c">O e-mail pro cliente FALHOU</b> — ele não sabe que o Gui parou. Fale com ele antes que ache que o produto quebrou.`
+          } Plano: ${c.plan || "—"}. Vale dar um toque.</div>`);
       }
+      // Always latch, even on failure. Leaving it unmarked would make the */15 cron reprocess
+      // this client forever — and the owner heads-up above would fire every 15 minutes. The
+      // failure isn't swallowed: the owner got the 🚨 version of the email instead.
       await rpc("mark_credit_alerted", { p_secret: ING, p_email: email });
-      sent++;
+      if (clientAlerted) sent++; else failed++;
     }
-    return json({ ok: true, alerted: sent });
+    return json({ ok: true, alerted: sent, failed });
   } catch (e) {
     return json({ ok: false, error: String(e).slice(0, 120) }, 500);
   }

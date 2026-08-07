@@ -6,7 +6,7 @@ import { useSeo } from "../lib/seo.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // /partners — the Growth Partner RECRUITING page. Method: dor → solução → ganho.
-// The opportunity: sell AI that answers/books/sells 24/7 in 20+ languages to local
+// The opportunity: sell AI that answers/books/sells 24/7 in 16 languages to local
 // businesses. THE differentiator: a PERMANENT PORTFOLIO — every client you sign is
 // yours, and you earn recurring commission every month for as long as they pay.
 // HONESTY: we never state a fixed % here — the rate is agreed at entry. CTA = enter
@@ -22,7 +22,7 @@ const C = {
   pt: {
     docTitle: "Guileo · Programa Growth Partner — carteira permanente",
     seoTitle: "Programa Growth Partner Guileo — carteira permanente de comissão recorrente",
-    seoDesc: "Venda IA que atende, agenda e vende 24/7 em 20+ idiomas para negócios locais. Cada cliente vira sua carteira permanente: comissão recorrente todo mês enquanto ele pagar. Ferramentas prontas e hub do vendedor.",
+    seoDesc: "Venda IA que atende, agenda e vende 24/7 em 16 idiomas para negócios locais. Cada cliente vira sua carteira permanente: comissão recorrente todo mês enquanto ele pagar. Ferramentas prontas e hub do vendedor.",
     kicker: "Programa Growth Partner",
     h1a: "A venda acaba. ",
     h1b: "A carteira fica.",
@@ -39,9 +39,9 @@ const C = {
     // SOLUÇÃO
     solEyebrow: "A solução",
     solH: "Um produto que o mercado inteiro precisa — e que a gente entrega por você.",
-    solP: "Todo negócio local perde ligação, lead e venda por não responder a tempo. Você oferece a Guileo: uma IA que atende, agenda e vende 24/7 em 20+ idiomas. ",
+    solP: "Todo negócio local perde ligação, lead e venda por não responder a tempo. Você oferece a Guileo: uma IA que atende, agenda e vende 24/7 em 16 idiomas. ",
     solStrong: "Você traz o cliente — nosso time entrega em 7 dias.",
-    solChips: ["🎙️ Atende ligações", "💬 WhatsApp & SMS", "📅 Agenda & confirma", "💰 Fecha vendas", "🌐 20+ idiomas", "🛠️ No ar em 7 dias"],
+    solChips: ["🎙️ Atende ligações", "💬 WhatsApp & SMS", "📅 Agenda & confirma", "💰 Fecha vendas", "🌐 16 idiomas", "🛠️ No ar em 7 dias"],
     demoH: "A demo vende sozinha",
     demoP: "Você não precisa convencer ninguém: a própria Gui liga pro celular do dono na hora, atende como se fosse o negócio dele e agenda. Quem ouve, entende.",
     // GANHO — o diferencial
@@ -82,11 +82,11 @@ const C = {
   en: {
     docTitle: "Guileo · Growth Partner Program — permanent portfolio",
     seoTitle: "Guileo Growth Partner Program — a permanent portfolio of recurring commission",
-    seoDesc: "Sell AI that answers, books and sells 24/7 in 20+ languages to local businesses. Every client you sign becomes your permanent portfolio: recurring commission every month for as long as they pay. Ready-made tools and a seller hub.",
+    seoDesc: "Sell AI that answers, books and sells 24/7 in 16 languages to local businesses. Every client you sign becomes your permanent portfolio: recurring commission every month for as long as they pay. Ready-made tools and a seller hub.",
     kicker: "Growth Partner Program",
     h1a: "The sale ends. ",
     h1b: "The portfolio stays.",
-    sub: "Sell an AI that answers, books and sells 24/7 in 20+ languages for local businesses. Every client you sign becomes ",
+    sub: "Sell an AI that answers, books and sells 24/7 in 16 languages for local businesses. Every client you sign becomes ",
     subStrong: "your permanent portfolio — recurring commission every month for as long as they pay.",
     painEyebrow: "The seller's pain",
     painH: "You've felt this.",
@@ -97,9 +97,9 @@ const C = {
     ],
     solEyebrow: "The solution",
     solH: "A product the whole market needs — and that we deliver for you.",
-    solP: "Every local business loses calls, leads and sales by failing to respond in time. You offer Guileo: an AI that answers, books and sells 24/7 in 20+ languages. ",
+    solP: "Every local business loses calls, leads and sales by failing to respond in time. You offer Guileo: an AI that answers, books and sells 24/7 in 16 languages. ",
     solStrong: "You bring the client — our team delivers in 7 days.",
-    solChips: ["🎙️ Answers calls", "💬 WhatsApp & SMS", "📅 Books & confirms", "💰 Closes sales", "🌐 20+ languages", "🛠️ Live in 7 days"],
+    solChips: ["🎙️ Answers calls", "💬 WhatsApp & SMS", "📅 Books & confirms", "💰 Closes sales", "🌐 16 languages", "🛠️ Live in 7 days"],
     demoH: "The demo sells itself",
     demoP: "You don't have to convince anyone: Gui herself calls the owner's phone live, answers as if she were their business, and books. Whoever hears it, gets it.",
     gainEyebrow: "The differentiator",
@@ -152,9 +152,9 @@ const C = {
     ],
     solEyebrow: "La solución",
     solH: "Un producto que todo el mercado necesita — y que entregamos por ti.",
-    solP: "Todo negocio local pierde llamadas, leads y ventas por no responder a tiempo. Tú ofreces Guileo: una IA que atiende, agenda y vende 24/7 en 20+ idiomas. ",
+    solP: "Todo negocio local pierde llamadas, leads y ventas por no responder a tiempo. Tú ofreces Guileo: una IA que atiende, agenda y vende 24/7 en 16 idiomas. ",
     solStrong: "Tú traes al cliente — nuestro equipo entrega en 7 días.",
-    solChips: ["🎙️ Atiende llamadas", "💬 WhatsApp & SMS", "📅 Agenda & confirma", "💰 Cierra ventas", "🌐 20+ idiomas", "🛠️ En vivo en 7 días"],
+    solChips: ["🎙️ Atiende llamadas", "💬 WhatsApp & SMS", "📅 Agenda & confirma", "💰 Cierra ventas", "🌐 16 idiomas", "🛠️ En vivo en 7 días"],
     demoH: "La demo se vende sola",
     demoP: "No tienes que convencer a nadie: la propia Gui llama al celular del dueño en vivo, atiende como si fuera su negocio y agenda. Quien la oye, lo entiende.",
     gainEyebrow: "El diferencial",

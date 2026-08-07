@@ -4,6 +4,7 @@
 // Luis an alert so he can reach out BEFORE the client thinks of cancelling (3x more
 // effective than waiting). Driven by the weekly cron.
 import { json, isOwnerEmail, safeEq } from "../lib/guard.js";
+import { sbKey } from "../lib/sb.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -13,7 +14,7 @@ const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
 async function rpc(env, fn, args) {
   const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {
     method: "POST",
-    headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
+    headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" },
     body: JSON.stringify({ p_secret: env.INGEST_SECRET || "", ...args }),
   });
   return r.ok ? await r.json() : null;
@@ -115,8 +116,8 @@ async function silentSweep(env) {
 // exact mechanism (health_claim 7d dedup + ingest_client_event to the owner). A 404/PGRST202 only
 // means the SQL isn't pasted yet — an honest "not ready", NOT a crash — so it's bucketed apart and
 // never pages Luis. Read-only RPCs only (*_list / *_status / *_risk): probing has zero side effects.
-const SEC_SCHED = "SCHED"; // gated by env.SCHED_SECRET (gss_7Kx2mQ9vR4tZ8nL)
-const SEC_ING = "INGEST";  // gated by env.INGEST_SECRET (glo_ing_7f3da9c2b4e8)
+const SEC_SCHED = "SCHED"; // gated by env.SCHED_SECRET (REDACTED)
+const SEC_ING = "INGEST";  // gated by env.INGEST_SECRET (REDACTED)
 export const RPC_PROBES = [
   { name: "noshow_risk",          secret: SEC_SCHED, args: (e) => ({ p_email: e, p_days: 2 }) },
   { name: "storm_status",         secret: SEC_ING,   args: (e) => ({ p_email: e }) },
@@ -141,7 +142,7 @@ async function runRpcProbes(env) {
     try {
       const r = await fetch(`${SB_URL}/rest/v1/rpc/${p.name}`, {
         method: "POST",
-        headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
+        headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" },
         body: JSON.stringify({ p_secret: secret, ...p.args(email) }),
         signal: ctrl.signal,
       });
@@ -182,6 +183,73 @@ async function runRpcProbes(env) {
   return out;
 }
 
+// ── SALDO DOS PROVEDORES ──────────────────────────────────────────────────────
+// POR QUE EXISTE: sem saldo na Twilio o telefone do cliente simplesmente PARA de
+// atender — e hoje só se descobre quando o cliente reclama. É a mesma família de
+// falha silenciosa do resto da plataforma: nada quebra, nada loga, o produto só
+// emagrece. Aqui o dono é avisado ANTES de acabar, com dias de antecedência.
+// Honesto-inerte: sem a chave, marca "notReady" e não inventa número.
+async function runBalanceChecks(env) {
+  const out = { ok: [], low: [], notReady: [] };
+  const OWNER = (env.OWNER_EMAIL && isOwnerEmail(env.OWNER_EMAIL, env)) ? env.OWNER_EMAIL : "smart@guileoai.com";
+  // Piso configurável: abaixo disso o dono é avisado. $20 dá ~2 dias de folga numa
+  // operação pequena — tempo de recarregar sem ninguém perder ligação.
+  const FLOOR = Number(env.TWILIO_BALANCE_FLOOR_USD) || 20;
+
+  const alert = async (kind, summary, payload) => {
+    const claimed = await rpc(env, "health_claim", { p_email: OWNER, p_kind: kind });
+    if (claimed !== true) return false;                       // já avisou nos últimos 7 dias
+    const ir = await rpc(env, "ingest_client_event", {
+      p_email: OWNER, p_type: "ops_alert", p_channel: "system",
+      p_summary: summary.slice(0, 300), p_amount: 0, p_payload: payload,
+    });
+    return ir !== null;
+  };
+
+  // Twilio: saldo em dólares da conta.
+  if (env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN) {
+    try {
+      const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Balance.json`, {
+        headers: { Authorization: `Basic ${btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`)}` },
+        signal: AbortSignal.timeout(6000),
+      });
+      const d = await r.json().catch(() => ({}));
+      const bal = Number(d?.balance);
+      if (!r.ok || !Number.isFinite(bal)) out.notReady.push({ provider: "twilio", why: `HTTP ${r.status}` });
+      else if (bal < FLOOR) {
+        const alerted = await alert("balance_twilio_low",
+          `🔴 SALDO TWILIO BAIXO: $${bal.toFixed(2)} (piso $${FLOOR}). Sem saldo o telefone dos clientes PARA de atender — recarregue em console.twilio.com → Billing.`,
+          { provider: "twilio", balance: bal, floor: FLOOR });
+        out.low.push({ provider: "twilio", balance: bal, alerted });
+      } else out.ok.push({ provider: "twilio", balance: bal });
+    } catch (e) { out.notReady.push({ provider: "twilio", why: String(e).slice(0, 80) }); }
+  } else out.notReady.push({ provider: "twilio", why: "sem credencial" });
+
+  // ElevenLabs: cota de caracteres da assinatura (a voz para quando estoura).
+  if (env.ELEVENLABS_API_KEY) {
+    try {
+      const r = await fetch("https://api.elevenlabs.io/v1/user/subscription", {
+        headers: { "xi-api-key": env.ELEVENLABS_API_KEY }, signal: AbortSignal.timeout(6000),
+      });
+      const d = await r.json().catch(() => ({}));
+      const used = Number(d?.character_count), limit = Number(d?.character_limit);
+      if (!r.ok || !Number.isFinite(used) || !Number.isFinite(limit) || limit <= 0) {
+        out.notReady.push({ provider: "elevenlabs", why: `HTTP ${r.status}` });
+      } else {
+        const pct = Math.round((used / limit) * 100);
+        if (pct >= 85) {
+          const alerted = await alert("balance_elevenlabs_low",
+            `🔴 COTA DE VOZ EM ${pct}% (${used.toLocaleString()}/${limit.toLocaleString()} caracteres). Ao estourar, a Gui para de falar nas ligações.`,
+            { provider: "elevenlabs", used, limit, pct });
+          out.low.push({ provider: "elevenlabs", pct, alerted });
+        } else out.ok.push({ provider: "elevenlabs", pct });
+      }
+    } catch (e) { out.notReady.push({ provider: "elevenlabs", why: String(e).slice(0, 80) }); }
+  } else out.notReady.push({ provider: "elevenlabs", why: "sem credencial" });
+
+  return out;
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   try {
@@ -195,7 +263,11 @@ export async function onRequest(context) {
     let probes = { ok: [], failed: [], notReady: [], claimReady: true };
     try { probes = await runRpcProbes(env); } catch (e) { probes = { ok: [], failed: [], notReady: [], claimReady: true, error: String(e).slice(0, 120) }; }
     const rpcProbes = { ok: probes.ok, failed: probes.failed, notReady: probes.notReady, claimReady: probes.claimReady, ...(probes.skipped ? { skipped: probes.skipped } : {}), ...(probes.error ? { error: probes.error } : {}) };
-    const silentOut = { silent: sweep.silent, silentReady: sweep.ready, silentClaimReady: sweep.claimReady, silentDays: sweep.days, config: sweep.config, configClaimReady: sweep.configClaimReady, rpcProbes };
+    // Saldo dos provedores — isolado como os outros: uma API fora do ar não pode
+    // derrubar o monitor inteiro (senão o monitor vira a próxima falha silenciosa).
+    let balances = { ok: [], low: [], notReady: [] };
+    try { balances = await runBalanceChecks(env); } catch (e) { balances = { ok: [], low: [], notReady: [{ provider: "all", why: String(e).slice(0, 80) }] }; }
+    const silentOut = { silent: sweep.silent, silentReady: sweep.ready, silentClaimReady: sweep.claimReady, silentDays: sweep.days, config: sweep.config, configClaimReady: sweep.configClaimReady, rpcProbes, balances };
 
     const hr = await fetch(`${SB_URL}/rest/v1/rpc/client_health`, {
       method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },

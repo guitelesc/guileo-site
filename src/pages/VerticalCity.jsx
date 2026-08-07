@@ -46,7 +46,7 @@ export default function VerticalCity() {
     };
   })();
   const seoDesc = v && c && {
-    en: `Guileo's AI answers, books and follows up 24/7 for ${L(v.name).toLowerCase()} in ${c.city} — voice, WhatsApp & SMS in 20+ languages. ${L(v.result)} Live in 7 days.${descTail?.en || ""}`,
+    en: `Guileo's AI answers, books and follows up 24/7 for ${L(v.name).toLowerCase()} in ${c.city} — voice, WhatsApp & SMS in 16 languages. ${L(v.result)} Live in 7 days.${descTail?.en || ""}`,
     pt: `A IA da Guileo atende, agenda e faz follow-up 24/7 para ${L(v.name).toLowerCase()} em ${c.city} — voz, WhatsApp e SMS, trilíngue. ${L(v.result)} No ar em 7 dias.${descTail?.pt || ""}`,
     es: `La IA de Guileo atiende, agenda y da seguimiento 24/7 para ${L(v.name).toLowerCase()} en ${c.city} — voz, WhatsApp y SMS, trilingüe. ${L(v.result)} Activo en 7 días.${descTail?.es || ""}`,
   };

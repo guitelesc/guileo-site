@@ -9,7 +9,7 @@
 -- exclusivamente pelo /api/seller-transfer atrás do gate admin (blitz_stats).
 --
 -- SEGURANÇA: mesmo padrão dos "33" — SECURITY DEFINER gated pelo literal INGEST
--- ('glo_ing_7f3da9c2b4e8' = env INGEST_SECRET), RLS on SEM policy anon, grant
+-- ('glo_ing_c7f2a9e4b8d16350' = env INGEST_SECRET), RLS on SEM policy anon, grant
 -- execute to anon (as RPCs são o ÚNICO acesso). TENANT-bound: a troca é SEMPRE
 -- por client_email — um id/uuid solto NUNCA autoriza mexer no dono.
 -- Requer db/onboard_completo.sql + db/seller_wallet.sql (onboard_drafts com
@@ -46,7 +46,7 @@ declare
   v_rows   int;
 begin
   -- gate INGEST (loud) — a segurança real; o /api/seller-transfer já é admin-gated.
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_client = '' or position('@' in v_client) = 0 then raise exception 'bad client_email' using errcode = '22023'; end if;
   if v_to = '' or position('@' in v_to) = 0 then raise exception 'bad to_seller' using errcode = '22023'; end if;
   -- MOTIVO obrigatório — a troca NUNCA acontece sem justificativa (trilha auditável).
@@ -101,7 +101,7 @@ returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare v jsonb; v_client text := lower(trim(coalesce(p_client_email,'')));
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select coalesce(jsonb_agg(jsonb_build_object(
            'from', from_seller, 'to', to_seller, 'reason', reason, 'at', created_at
          ) order by created_at desc), '[]'::jsonb) into v

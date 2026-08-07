@@ -8,7 +8,7 @@
 -- dá à luz o agente dedicado do cliente.
 --
 -- SEGURANÇA: mesmo padrão dos "33" — funções SECURITY DEFINER com o MESMO literal
--- de gate INGEST ('glo_ing_7f3da9c2b4e8' = env INGEST_SECRET). RLS ligado, SEM
+-- de gate INGEST ('glo_ing_c7f2a9e4b8d16350' = env INGEST_SECRET). RLS ligado, SEM
 -- policies anon: as RPCs são o ÚNICO acesso. `grant execute ... to anon`.
 -- ============================================================================
 
@@ -47,7 +47,7 @@ create or replace function public.profile_extras_set(p_secret text, p_email text
 returns boolean
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   insert into client_profile_extras (client_email, extras, updated_at)
   values (lower(trim(p_email)), coalesce(p_extras, '{}'::jsonb), now())
   on conflict (client_email) do update
@@ -60,7 +60,7 @@ create or replace function public.profile_extras_get(p_secret text, p_email text
 returns jsonb
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return (select extras from client_profile_extras where client_email = lower(trim(p_email)) limit 1);
 end $$;
 
@@ -73,7 +73,7 @@ create or replace function public.draft_save(
 language plpgsql security definer set search_path = public as $$
 declare v_id uuid;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   insert into onboard_drafts (seller_email, client_email, business, payload, status)
   values (lower(trim(p_seller_email)), lower(trim(coalesce(p_client_email,''))), p_business, coalesce(p_payload,'{}'::jsonb), 'draft')
   returning id into v_id;
@@ -87,7 +87,7 @@ returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare v jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select coalesce(jsonb_agg(r order by r->>'created_at' desc), '[]'::jsonb) into v
   from (
     select jsonb_build_object(
@@ -109,7 +109,7 @@ returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare v jsonb;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select jsonb_build_object(
     'id', id, 'seller_email', seller_email, 'client_email', client_email,
     'business', business, 'payload', payload, 'status', status,
@@ -127,7 +127,7 @@ create or replace function public.draft_approve_mark(p_secret text, p_id uuid, p
 returns boolean
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   update onboard_drafts
      set status = 'live', agent_id = nullif(p_agent_id,''), number = nullif(p_number,''), updated_at = now()
    where id = p_id;
@@ -139,7 +139,7 @@ create or replace function public.draft_delete(p_secret text, p_id uuid, p_selle
 returns boolean
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   update onboard_drafts
      set status = 'deleted', updated_at = now()
    where id = p_id

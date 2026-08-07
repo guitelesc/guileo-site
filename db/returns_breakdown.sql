@@ -15,7 +15,7 @@ declare
   v_dis_cents bigint := 0; v_dis_count int := 0;
   v_since timestamptz := coalesce(p_since, now() - interval '30 days');
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if p_email is null or p_email = '' then raise exception 'email required' using errcode = '22023'; end if;
   begin
     select

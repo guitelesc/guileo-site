@@ -88,29 +88,29 @@ const QUESTIONS = [
 // what you want Guileo to handle → recommended products/services (covers the full catalog)
 // recs stay canonical EN strings (deduped via Set + sent to the API); REC_LABELS localizes the chips.
 const NEEDS = [
-  { label: { en: "📞 Answer every call & message", pt: "📞 Atender toda ligação & mensagem", es: "📞 Contestar cada llamada y mensaje", hi: "📞 हर कॉल और मैसेज का जवाब" }, recs: ["🎙️ Voice AI", "💬 Text & WhatsApp AI"] },
+  { label: { en: "📞 Answer every call & message", pt: "📞 Atender toda ligação e mensagem", es: "📞 Contestar cada llamada y mensaje", hi: "📞 हर कॉल और मैसेज का जवाब" }, recs: ["🎙️ Voice AI", "💬 Text & WhatsApp AI"] },
   { label: { en: "📅 Booking & scheduling", pt: "📅 Agendamentos", es: "📅 Reservas y citas", hi: "📅 बुकिंग और शेड्यूलिंग" }, recs: ["📅 Booking system"] },
   { label: { en: "🔄 Never lose a lead (follow-up)", pt: "🔄 Nunca perder um lead (follow-up)", es: "🔄 No perder ningún lead (seguimiento)", hi: "🔄 कोई लीड न छूटे (फ़ॉलो-अप)" }, recs: ["🔄 Automations", "📊 Dashboards & CRM"] },
   { label: { en: "🌐 Website / app / software", pt: "🌐 Site / app / software", es: "🌐 Web / app / software", hi: "🌐 वेबसाइट / ऐप / सॉफ़्टवेयर" }, recs: ["🌐 Website", "📱 App", "⚙️ Custom software"] },
   { label: { en: "🛒 Sell online", pt: "🛒 Vender online", es: "🛒 Vender en línea", hi: "🛒 ऑनलाइन बेचना" }, recs: ["🛒 E-commerce / Shopify"] },
-  { label: { en: "📣 More leads & marketing", pt: "📣 Mais leads & marketing", es: "📣 Más leads y marketing", hi: "📣 ज़्यादा लीड और मार्केटिंग" }, recs: ["📣 Ads & marketing", "📈 Growth & analytics"] },
-  { label: { en: "⭐ Reviews & reputation", pt: "⭐ Avaliações & reputação", es: "⭐ Reseñas y reputación", hi: "⭐ रिव्यू और साख" }, recs: ["⭐ Reviews & reputation"] },
+  { label: { en: "📣 More leads & marketing", pt: "📣 Mais leads e marketing", es: "📣 Más leads y marketing", hi: "📣 ज़्यादा लीड और मार्केटिंग" }, recs: ["📣 Ads & marketing", "📈 Growth & analytics"] },
+  { label: { en: "⭐ Reviews & reputation", pt: "⭐ Avaliações e reputação", es: "⭐ Reseñas y reputación", hi: "⭐ रिव्यू और साख" }, recs: ["⭐ Reviews & reputation"] },
   { label: { en: "🚀 Everything — run my whole operation", pt: "🚀 Tudo — cuidar da operação inteira", es: "🚀 Todo — manejar toda mi operación", hi: "🚀 सब कुछ — पूरा ऑपरेशन संभालो" }, recs: ["🎙️ Voice AI", "🌐 Website", "📣 Ads & marketing", "🔄 Automations", "📊 Dashboards & CRM", "⭐ Reviews & reputation"] },
 ];
 
 const REC_LABELS = {
   "🎙️ Voice AI": { pt: "🎙️ IA de voz", es: "🎙️ IA de voz", hi: "🎙️ वॉइस AI" },
-  "💬 Text & WhatsApp AI": { pt: "💬 IA de texto & WhatsApp", es: "💬 IA de texto y WhatsApp", hi: "💬 टेक्स्ट & WhatsApp AI" },
+  "💬 Text & WhatsApp AI": { pt: "💬 IA de texto e WhatsApp", es: "💬 IA de texto y WhatsApp", hi: "💬 टेक्स्ट & WhatsApp AI" },
   "📅 Booking system": { pt: "📅 Sistema de agendamento", es: "📅 Sistema de reservas", hi: "📅 बुकिंग सिस्टम" },
   "🔄 Automations": { pt: "🔄 Automações", es: "🔄 Automatizaciones", hi: "🔄 ऑटोमेशन" },
-  "📊 Dashboards & CRM": { pt: "📊 Dashboards & CRM", es: "📊 Dashboards y CRM", hi: "📊 डैशबोर्ड & CRM" },
+  "📊 Dashboards & CRM": { pt: "📊 Dashboards e CRM", es: "📊 Dashboards y CRM", hi: "📊 डैशबोर्ड & CRM" },
   "🌐 Website": { pt: "🌐 Site", es: "🌐 Web", hi: "🌐 वेबसाइट" },
   "📱 App": { pt: "📱 App", es: "📱 App", hi: "📱 ऐप" },
   "⚙️ Custom software": { pt: "⚙️ Software sob medida", es: "⚙️ Software a medida", hi: "⚙️ कस्टम सॉफ़्टवेयर" },
   "🛒 E-commerce / Shopify": { pt: "🛒 E-commerce / Shopify", es: "🛒 E-commerce / Shopify", hi: "🛒 ई-कॉमर्स / Shopify" },
-  "📣 Ads & marketing": { pt: "📣 Anúncios & marketing", es: "📣 Anuncios y marketing", hi: "📣 विज्ञापन & मार्केटिंग" },
-  "📈 Growth & analytics": { pt: "📈 Crescimento & analytics", es: "📈 Crecimiento y analítica", hi: "📈 ग्रोथ & एनालिटिक्स" },
-  "⭐ Reviews & reputation": { pt: "⭐ Avaliações & reputação", es: "⭐ Reseñas y reputación", hi: "⭐ रिव्यू & साख" },
+  "📣 Ads & marketing": { pt: "📣 Anúncios e marketing", es: "📣 Anuncios y marketing", hi: "📣 विज्ञापन & मार्केटिंग" },
+  "📈 Growth & analytics": { pt: "📈 Crescimento e analytics", es: "📈 Crecimiento y analítica", hi: "📈 ग्रोथ & एनालिटिक्स" },
+  "⭐ Reviews & reputation": { pt: "⭐ Avaliações e reputação", es: "⭐ Reseñas y reputación", hi: "⭐ रिव्यू & साख" },
 };
 
 // UI chrome — quadrilingual, per-key { en, pt, es, hi }

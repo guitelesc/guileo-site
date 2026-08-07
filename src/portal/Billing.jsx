@@ -16,6 +16,11 @@ export function inferPlanIndex(planLabel, planCredits) {
   return i;
 }
 
+// Referral slug = the client's email base64url-encoded (raw email never appears in the URL);
+// server-side reverse (db/referrals.sql _ref_decode_email) attributes the free month back to
+// this exact tenant. SAME contract as src/portal/Grow.jsx b64url() — keep them identical.
+const b64url = (s) => { try { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); } catch { return ""; } };
+
 // Plan tiers — the upgrade ladder (display + entitlement basis; real charge = Stripe at launch).
 const PLANS = [
   { key: "starter", name: "Essential", price: 149, credits: 500, current: false, features: ["AI on 1 channel", "Bookings & reviews", "500 Gui credits / mo", "Email support"], featuresPt: ["IA em 1 canal", "Agendamentos e avaliações", "500 créditos do Gui / mês", "Suporte por e-mail"], featuresEs: ["IA en 1 canal", "Reservas y reseñas", "500 créditos de Gui / mes", "Soporte por correo"] },
@@ -86,6 +91,31 @@ function Billing({ V, real = null, onNav = () => {}, email = "" }) {
   const [credits, setCredits] = useState(() => portalApi.loadState("gui_credits", 250));
   const [payg, setPayg] = useState(() => portalApi.loadState("gui_payg", true));
   useEffect(() => { const h = () => setCredits(portalApi.loadState("gui_credits", 250)); window.addEventListener("gui:credits", h); return () => window.removeEventListener("gui:credits", h); }, []);
+  // REAL value Gui recovered this month — same /api/growth-intel money_proof the Overview hero reads.
+  // Powers the honest "return on credits" multiplier below, and doubles as the real usage signal for
+  // the upsell when the plan label can't be inferred. Real mode ONLY (demo/no-key never fetches, so
+  // it stays zeroed → no multiplier, no fabricated value). Best-effort: any 401/error → stays empty.
+  const [mp, setMp] = useState({ collectedUsd: 0, estimatedUsd: 0, bookings: 0, ready: false });
+  useEffect(() => {
+    const key = loadDataKey();
+    const mail = (email || "").toString().trim().toLowerCase();
+    if (!mail || !mail.includes("@") || !key) { setMp({ collectedUsd: 0, estimatedUsd: 0, bookings: 0, ready: false }); return; } // demo / not a real client → never fetch, stays empty
+    let alive = true;
+    fetch("/api/growth-intel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "money_proof", email: mail, token: key }) })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!alive || !d || d.ok !== true) return; // 401/error → stay empty, never fabricate
+        const p = d.proof || {}, rl = d.real || {};
+        setMp({
+          collectedUsd: rl.collected_cents ? Math.max(0, Math.round((p.collected_cents || 0) / 100)) : 0,
+          estimatedUsd: rl.estimated ? Math.max(0, Math.round((p.estimated_value_cents || 0) / 100)) : 0,
+          bookings: rl.bookings ? (p.bookings || 0) : 0,
+          ready: !!d.ready,
+        });
+      })
+      .catch(() => { /* transient error → stays empty, never fabricated */ });
+    return () => { alive = false; };
+  }, [email]);
   const setC = (n) => { setCredits(n); portalApi.saveState("gui_credits", n); window.dispatchEvent(new Event("gui:credits")); };
   const topUp = (n) => { setC(credits + n); toast(`${n} credits added ✓ — ${payg ? "billed to your account (pay-as-you-go)" : "added to your plan"}`); };
   const usedThisMonth = vnum(V.label, "guiused", 60, 320);
@@ -109,6 +139,20 @@ function Billing({ V, real = null, onNav = () => {}, email = "" }) {
     : pct;
   // Which plan tier is the client actually on (real) — drives the "Current" badge honestly.
   const currentPlanId = real ? (planIdx >= 0 ? SELF_SERVE_PLANS[planIdx].id : null) : "growth";
+  // ── #18 Return on your Gui credits — a REAL multiplier, or nothing at all (never a fake "—").
+  // value = money Gui actually collected this month (preferred) or its benchmarked estimate; both
+  // come from money_proof (real). spend = credits consumed × the client's own plan rate — which
+  // needs a KNOWN plan size (planIdx ≥ 0), else spend is unknowable and the card hides honestly.
+  const moneyValueUsd = mp.collectedUsd || mp.estimatedUsd || 0;
+  const moneyIsEstimate = !mp.collectedUsd && mp.estimatedUsd > 0;
+  const strongRealValue = !!real && moneyValueUsd > 0; // real usage signal that survives an un-inferable plan
+  const creditsUsed = real && planIdx >= 0 && shownPlanCredits ? Math.max(0, shownPlanCredits - shownCredits) : null;
+  const costPerCredit = planIdx >= 0 ? SELF_SERVE_PLANS[planIdx].price / SELF_SERVE_PLANS[planIdx].credits : null;
+  const spendUsd = creditsUsed != null && costPerCredit != null ? creditsUsed * costPerCredit : null;
+  // Show only on real, meaningful spend (≥25 credits, ≥$1) AND real recovered value — else null → hidden.
+  const roi = real && spendUsd != null && spendUsd >= 1 && creditsUsed >= 25 && moneyValueUsd > 0
+    ? Math.round((moneyValueUsd / spendUsd) * 10) / 10
+    : null;
   return (
     <div className="space-y-4 stagger">
       <div className="grid lg:grid-cols-3 gap-4">
@@ -156,7 +200,7 @@ function Billing({ V, real = null, onNav = () => {}, email = "" }) {
             </button>
           ))}
         </div>
-        {real && <a href={waLink("I'd like to top up my Gui credits")} target="_blank" rel="noopener" className="mt-3 inline-flex btn-bright text-sm">{tr("I'll recharge my meter →")}</a>}
+        {real && TOPUPS[0]?.url && <a href={TOPUPS[0].url} target="_blank" rel="noopener" className="mt-3 inline-flex btn-bright text-sm">{tr("I'll recharge my meter →")}</a>}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px]">
           {!real && <div className="flex items-center gap-2"><Toggle on={payg} onClick={() => { const v = !payg; setPayg(v); portalApi.saveState("gui_payg", v); toast(v ? "Pay-as-you-go on — auto-top-up when low" : "Pay-as-you-go off — Gui pauses when out of credits"); }} /><span className="text-g-muted">{tr("Auto top-up (pay-as-you-go)")}</span></div>}
           {!real && <span className="text-g-muted">{usedThisMonth} {tr("credits used this month")}</span>}
@@ -164,25 +208,61 @@ function Billing({ V, real = null, onNav = () => {}, email = "" }) {
         <p className="mt-2 text-[10px] text-g-muted">{tr("Top-ups are billed securely to your account on file — we never ask for card details in chat.")}</p>
       </Card>
 
+      {/* 📈 Return on your Gui credits — REAL multiplier only (money_proof value ÷ what the used
+          credits cost at the client's own plan rate). Hidden entirely when any input is missing —
+          never a fabricated "—" or a guessed number. Real mode only. */}
+      {roi != null && (
+        <Card className="border-g-green/25 bg-gradient-to-br from-g-green/[0.08] to-transparent">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2">{tr("Return on your Gui credits")}<span className="inline-flex items-center gap-1 text-[9px] font-black text-g-green normal-case"><span className="h-1 w-1 rounded-full bg-g-green live-dot animate-pulse" />{tr("LIVE — real data")}</span></div>
+              <div className="text-sm text-g-word mt-1">{tr("Every $1 in Gui credits you spent brought back about")} <span className="text-g-green font-bold num">${roi.toFixed(2)}</span>{moneyIsEstimate && <span className="text-[10px] uppercase tracking-wide text-g-muted"> · {tr("estimated")}</span>}.</div>
+            </div>
+            <div className="text-right shrink-0"><div className="text-3xl font-black text-g-green money-glow num">{roi.toFixed(1)}×</div><div className="text-[10px] uppercase tracking-wide text-g-muted">{tr("return on credits")}</div></div>
+          </div>
+        </Card>
+      )}
+
       {/* ⚡ One-click plan upgrade — the NEXT plan up with its LIVE Stripe payment link.
           Always visible (subtle); turns loud when usage is high (≥80%). Payment auto-provisions
           via the webhook, so the link IS the upgrade. Demo mode: link goes to /planos. */}
       {(() => {
         const curIdx = planIdx;
         const nextPlan = curIdx >= 0 ? SELF_SERVE_PLANS[curIdx + 1] || null : null;
-        const options = curIdx < 0 ? SELF_SERVE_PLANS : nextPlan ? [nextPlan] : [];
+        // #17 — un-inferable custom plan (curIdx < 0): DON'T dump every plan. Essential ($149) would
+        // be a downgrade dressed up as an "upgrade", and the usage-based framing would silently
+        // vanish. Instead default the path to the tier above the entry plan (Personalized) and up.
+        // We still NEVER claim the client's current plan (currentPlanId stays null → no fake badge).
+        const fallbackOptions = SELF_SERVE_PLANS.slice(1); // Personalized + Full Operation
+        const options = curIdx >= 0 ? (nextPlan ? [nextPlan] : []) : fallbackOptions;
         if (options.length === 0) return null; // already on the top plan — nothing to upsell
+        // The plan the "you're growing" framing points at: the real next plan, or (un-inferable) the
+        // sensible entry-up default. Never presented AS the client's current plan.
+        const upsellTarget = nextPlan || (curIdx < 0 ? fallbackOptions[0] : null);
         // "hot" from REAL usage in real mode (never a fabricated %); low balance is itself hot.
         const hot = (usedPct != null && usedPct >= 80) || (real && low);
-        const linkFor = (p) => (real && p.url ? p.url : "/planos");
+        // WINNING trigger — the client is clearly getting value (not distress). Honest real signals
+        // only: when the plan IS inferable, heavy use of ANY plan (≥50%) or an entry (starter) client
+        // already active (≥30%); when the plan CAN'T be inferred (usedPct null), fall back to the real
+        // money_proof value Gui recovered this month (strongRealValue) — still 100% real, never a
+        // guessed plan/%. Distress ("hot") always wins the framing.
+        const winning = real && !hot && !!upsellTarget && (
+          (usedPct != null && (usedPct >= 50 || (currentPlanId === "starter" && usedPct >= 30))) ||
+          (usedPct == null && strongRealValue)
+        );
+        // Carry the SAME prefilled_email param the other upgrade CTAs use (PricingTiers.jsx /
+        // Planos.jsx) so Stripe checkout is pre-filled to THIS client → the webhook credits the
+        // right tenant. Only when a real session email exists; never mutate the /planos fallback.
+        const withEmail = (u) => { const em = (email || "").toString().trim(); return em ? `${u}${u.includes("?") ? "&" : "?"}prefilled_email=${encodeURIComponent(em)}` : u; };
+        const linkFor = (p) => (real && p.url ? withEmail(p.url) : "/planos");
         return (
-          <Card className={hot ? "border-g-gold/50 bg-g-gold/[0.08]" : "border-white/10"}>
+          <Card className={hot ? "border-g-gold/50 bg-g-gold/[0.08]" : winning ? "border-g-green/40 bg-g-green/[0.06]" : "border-white/10"}>
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-xs font-bold uppercase tracking-wide text-g-gold">⚡ {tr("Upgrade")}</div>
-                <div className="text-sm font-extrabold text-g-word mt-1">{hot ? tr("You're close to your plan limit — upgrade in one click") : tr("Need more volume? The next plan up is one click away")}</div>
+                <div className={`text-xs font-bold uppercase tracking-wide ${winning ? "text-g-green" : "text-g-gold"}`}>{winning ? "📈" : "⚡"} {tr("Upgrade")}</div>
+                <div className="text-sm font-extrabold text-g-word mt-1">{hot ? tr("You're close to your plan limit — upgrade in one click") : winning ? <>{tr("You're growing — move to")} {upsellTarget.name} {tr("for more Gui")}</> : tr("Need more volume? The next plan up is one click away")}</div>
               </div>
-              {hot && usedPct != null && <span className="text-[10px] font-black uppercase tracking-wide bg-g-gold text-black rounded-full px-2 py-0.5 shrink-0">{usedPct}%</span>}
+              {(hot || winning) && usedPct != null && <span className={`text-[10px] font-black uppercase tracking-wide rounded-full px-2 py-0.5 shrink-0 ${hot ? "bg-g-gold text-black" : "bg-g-green text-black"}`}>{usedPct}%</span>}
             </div>
             <div className={`mt-3 grid gap-2 ${options.length > 1 ? "sm:grid-cols-3" : ""}`}>
               {options.map((p) => (
@@ -191,7 +271,7 @@ function Billing({ V, real = null, onNav = () => {}, email = "" }) {
                     <div className="text-sm font-extrabold text-g-word">{p.name}</div>
                     <div className="text-[11px] text-g-muted"><span className="text-g-gold font-bold num">${p.price}</span>/{tr("mo")} · {p.credits.toLocaleString()} {tr("credits / month")}</div>
                     {/* annual option — only when its Payment Link actually exists (no fake promises) */}
-                    {p.annualUrl && <a href={real ? p.annualUrl : "/planos"} target={real ? "_blank" : "_self"} rel="noopener" className="text-[10px] font-bold text-g-gold underline decoration-g-gold/40 underline-offset-2 hover:text-g-word transition">{tr("annual (2 months free)")}</a>}
+                    {p.annualUrl && <a href={real ? withEmail(p.annualUrl) : "/planos"} target={real ? "_blank" : "_self"} rel="noopener" className="text-[10px] font-bold text-g-gold underline decoration-g-gold/40 underline-offset-2 hover:text-g-word transition">{tr("annual (2 months free)")}</a>}
                   </div>
                   <a href={linkFor(p)} target={real && p.url ? "_blank" : "_self"} rel="noopener" className="btn-bright text-sm shrink-0">{tr("Upgrade now →")}</a>
                 </div>
@@ -298,20 +378,37 @@ function Billing({ V, real = null, onNav = () => {}, email = "" }) {
         const refs = portalApi.loadState("gui_referrals", 0);
         const grant = () => { setC(credits + 250); portalApi.saveState("gui_referrals", refs + 1); toast("250 credits added ✓ — referral reward"); };
         const copy = () => { try { navigator.clipboard.writeText(link); } catch { /* */ } toast("Invite link copied ✓"); };
+        // REAL referral link — the client's own ?ref=<b64url(email)>. This is a LIVE loop, not a
+        // promise: lead.js captures the ref on any friend's form, App.jsx remembers it 90 days, and
+        // stripe-webhook.js converts it (referrer must be an existing tenant → both sides a month
+        // free). Same link Grow.jsx already ships. No email on session → honest WhatsApp fallback.
+        const refLink = email ? `https://guileoai.com?ref=${b64url(email)}` : "";
+        const waRefMsg = `Conhece a Gui? É uma IA que atende meu telefone 24/7… usa meu link e a gente ganha um mês grátis: ${refLink}`;
+        const copyReal = () => { try { navigator.clipboard.writeText(refLink); } catch { /* clipboard blocked → the link is visible + select-all */ } toast(tr("Invite link copied ✓")); };
         return (
           <Card className="border-g-gold/25 bg-g-gold/[0.05]">
             <div className="flex items-center gap-3">
               <span className="grid place-items-center h-10 w-10 rounded-xl bg-g-gold/15 text-g-gold"><FaGift /></span>
-              <div className="flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word">{real ? tr("Referral program") : tr("Give 250, get 250 credits")}</div><div className="text-xs text-g-muted mt-0.5">{real ? tr("Rewards for inviting another business — details land here soon.") : <>{tr("Invite another business — you both get")} <span className="text-g-gold font-bold">{tr("250 free credits")}</span> {tr("when they join.")} {refs > 0 && <span className="text-g-green font-bold">{refs} {tr("joined so far.")}</span>}</>}</div></div>
+              <div className="flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word">{real ? tr("Invite a business — you both get a month free") : tr("Give 250, get 250 credits")}</div><div className="text-xs text-g-muted mt-0.5">{real ? tr("Share your personal link — when a friend's business joins Guileo through it, you both get one month free.") : <>{tr("Invite another business — you both get")} <span className="text-g-gold font-bold">{tr("250 free credits")}</span> {tr("when they join.")} {refs > 0 && <span className="text-g-green font-bold">{refs} {tr("joined so far.")}</span>}</>}</div></div>
             </div>
             {real
               ? (
-                // Real: no personal referral code/ledger exists yet on the backend — showing a
-                // GUI-XXXX code or a "simulate" button would be fake. Keep it honest: coming soon.
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] font-bold text-g-muted rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5">{tr("Referral program — coming soon")}</span>
-                  <a href={waLink("I'd like to refer another business to Guileo")} target="_blank" rel="noopener" className="btn-ghost text-sm">{tr("Refer a business →")}</a>
-                </div>
+                // Real: the personal ?ref= link is LIVE (b64url of this client's email; converted by
+                // stripe-webhook.js when a referred business subscribes). Hand the client THEIR link —
+                // copy + WhatsApp share. No session email → honest WhatsApp "refer a business" path.
+                refLink
+                  ? (
+                    <div className="mt-3 flex flex-col sm:flex-row items-stretch gap-2">
+                      <div className="flex-1 rounded-full border border-white/15 bg-black/25 px-4 py-2.5 text-xs text-g-light font-mono truncate select-all" title={refLink}>{refLink}</div>
+                      <button onClick={copyReal} className="btn-ghost text-sm shrink-0 whitespace-nowrap">{tr("Copy link")}</button>
+                      <a href={`https://wa.me/?text=${encodeURIComponent(waRefMsg)}`} target="_blank" rel="noopener" className="btn-bright text-sm shrink-0 inline-flex items-center justify-center whitespace-nowrap">📲 WhatsApp →</a>
+                    </div>
+                  )
+                  : (
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <a href={waLink("I'd like to refer another business to Guileo")} target="_blank" rel="noopener" className="btn-bright text-sm">{tr("Refer a business →")}</a>
+                    </div>
+                  )
               )
               : (
                 <div className="mt-3 flex flex-wrap items-center gap-2">

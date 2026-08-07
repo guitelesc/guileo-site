@@ -8,7 +8,7 @@
 -- cliente COMPLETA na carteira). O team-code segue como fallback mascarado.
 --
 -- SEGURANÇA: mesmo padrão dos "33" — SECURITY DEFINER gated pelo literal INGEST
--- ('glo_ing_7f3da9c2b4e8' = env INGEST_SECRET), RLS on SEM policy anon, grant
+-- ('glo_ing_c7f2a9e4b8d16350' = env INGEST_SECRET), RLS on SEM policy anon, grant
 -- execute to anon (as RPCs são o ÚNICO acesso). seller_list devolve TUDO (só o
 -- admin chama pelo /api/seller-admin, atrás do gate blitz_stats). seller_upsert
 -- devolve SÓ a linha do vendedor mexido — NUNCA códigos de outros.
@@ -62,7 +62,7 @@ declare
   v_row      public.sellers%rowtype;
   i          int;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_email = '' or position('@' in v_email) = 0 then raise exception 'bad email' using errcode = '22023'; end if;
 
   -- derive the ref slug from the email local-part when none was supplied
@@ -110,7 +110,7 @@ create or replace function public.seller_list(p_secret text)
 returns json
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   return coalesce((
     select json_agg(json_build_object(
       'email', email, 'name', name, 'ref', ref_slug, 'personal_code', personal_code,
@@ -130,7 +130,7 @@ create or replace function public.seller_disable(
 ) returns boolean
 language plpgsql security definer set search_path = public as $$
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   update sellers set active = coalesce(p_active, false) where email = lower(trim(coalesce(p_email,'')));
   return found;
 end $$;
@@ -143,7 +143,7 @@ create or replace function public.seller_auth_check(
 language plpgsql security definer set search_path = public as $$
 declare v_row public.sellers%rowtype;
 begin
-  if p_secret is distinct from 'glo_ing_7f3da9c2b4e8' then raise exception 'unauthorized' using errcode = '28000'; end if;
+  if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   select * into v_row from sellers
    where email = lower(trim(coalesce(p_email,'')))
      and personal_code = trim(coalesce(p_code,''))

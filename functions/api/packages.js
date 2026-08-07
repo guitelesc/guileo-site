@@ -15,6 +15,7 @@
 //   Memberships: membership_list | membership_upsert{membership} | membership_delete{id}
 //   Sell link:   buy{kind:'package'|'membership', id}  ->  { ok, url }   (Stripe Checkout)
 import { json } from "../lib/guard.js";
+import { sbKey } from "../lib/sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -39,7 +40,7 @@ export async function onRequestPost(context) {
 
     const secret = env.INGEST_SECRET || "";
     const rpc = (name, body) => fetch(`${SB}/rest/v1/rpc/${name}`, {
-      method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+      method: "POST", headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     const NOTE = "Paste db/recurring_revenue.sql in Supabase to activate recurring revenue.";
