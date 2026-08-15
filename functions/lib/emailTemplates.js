@@ -33,6 +33,164 @@ const B = {
 // interpolated into the email HTML or subject — prevents script/markup injection into branded mail.
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+// ── A OFERTA INTEIRA DA GUILEO — FONTE ÚNICA ─────────────────────────────────────────────────
+// As 8 frentes moravam SÓ dentro do proposalEmail (e o drip é desligado no instante em que o lead
+// vira cliente — functions/api/lifecycle.js). Resultado: quem PAGA nunca via a lista, só quem não
+// comprou. Agora a lista vive aqui, uma vez, e os e-mails de boas-vindas e o relatório semanal
+// leem DESTA constante. Mexeu numa frente → muda em todos os e-mails no mesmo commit.
+//
+// HONESTIDADE (não negociável, auditável):
+//  · Site/app/software NÃO são produto de plataforma — não existe código disso no repo. São
+//    PROJETOS que a equipe constrói sob medida, com escopo e contrato à parte. O texto diz isso
+//    com todas as letras; nunca insinue que vêm no plano mensal.
+//  · Anúncios são planejados e conduzidos por GENTE do time (functions/api/google-ads.js), não por
+//    uma API automática. Nada de "automático".
+//  · Nenhum preço e nenhum prazo aqui. Preço é conversa, não e-mail padrão.
+//
+// Idiomas: pt/es/en — o mesmo conjunto dos templates vizinhos (os e-mails não têm hi; qualquer
+// outro idioma cai em EN, igual ao resto do arquivo).
+export const OFERTA_GUILEO = [
+  {
+    key: "atendimento", icon: "📞",
+    pt: { title: "Atendimento com IA 24/7", desc: "Nenhuma ligação ou lead se perde — a IA acolhe, qualifica e agenda sozinha." },
+    es: { title: "Recepción con IA 24/7", desc: "Ninguna llamada ni lead se pierde — recibe, califica y agenda por sí sola." },
+    en: { title: "24/7 AI front desk", desc: "No call or lead is ever lost — it welcomes, qualifies and books on its own." },
+  },
+  {
+    key: "mensagens", icon: "💬",
+    // ⚠️ CANAL QUE DEPENDE DE APROVAÇÃO DE TERCEIRO. Este item entrou nos e-mails de BOAS-VINDAS
+    // nesta onda — ou seja, chega no minuto seguinte ao pagamento. E hoje o SMS americano está
+    // BLOQUEADO (erro 30034, campanha A2P 10DLC reprovada — ver ATIVACOES.md) e o WhatsApp está
+    // 🟡 em MOTORES.md. Prometer "atendidos" a quem acabou de pagar é a única linha desta lista
+    // que o código não sustenta hoje. O texto abaixo diz o que É verdade: a Gui atende nesses
+    // canais assim que a liberação da operadora/Meta sai, e a equipe conduz o processo.
+    // Quando SMS e WhatsApp estiverem verdes em MOTORES.md, esta ressalva pode cair.
+    pt: { title: "WhatsApp & SMS", desc: "A Gui atende, vende e faz follow-up por mensagem — a equipe cuida da liberação junto à operadora e à Meta, e avisamos quando seu número estiver no ar." },
+    es: { title: "WhatsApp y SMS", desc: "Gui responde, vende y da seguimiento por mensaje — el equipo gestiona la habilitación con la operadora y Meta, y te avisamos cuando tu número esté activo." },
+    en: { title: "WhatsApp & SMS", desc: "Gui replies, sells and follows up by message — our team handles carrier and Meta approval, and tells you the day your number goes live." },
+  },
+  {
+    key: "anuncios", icon: "📣",
+    // Conduzido por gente do time — não prometemos campanha automática.
+    pt: { title: "Anúncios & marketing", desc: "Campanhas planejadas e conduzidas pela equipe Guileo — gente cuidando do seu investimento." },
+    es: { title: "Anuncios y marketing", desc: "Campañas planificadas y conducidas por el equipo Guileo — personas cuidando su inversión." },
+    en: { title: "Ads & marketing", desc: "Campaigns planned and run by the Guileo team — real people minding your spend." },
+  },
+  {
+    key: "video", icon: "🎬",
+    pt: { title: "Vídeo & conteúdo", desc: "Produção que encanta e posiciona sua marca." },
+    es: { title: "Video y contenido", desc: "Producción que encanta y posiciona su marca." },
+    en: { title: "Video & content", desc: "Production that delights and positions your brand." },
+  },
+  {
+    key: "social", icon: "📱",
+    pt: { title: "Gestão de redes sociais", desc: "Uma presença que cresce com naturalidade, no seu tom." },
+    es: { title: "Gestión de redes sociales", desc: "Una presencia que crece con naturalidad, en su tono." },
+    en: { title: "Social media management", desc: "A presence that grows gracefully, in your voice." },
+  },
+  {
+    key: "build", icon: "🌐",
+    // ⚠️ Frase auditada: projeto sob medida, escopo e contrato à parte. NUNCA "incluído no plano".
+    pt: { title: "Site, app & software", desc: "Projetos sob medida, construídos pela equipe Guileo com escopo e contrato à parte — não fazem parte do plano mensal." },
+    es: { title: "Sitio web, app y software", desc: "Proyectos a la medida, construidos por el equipo Guileo con alcance y contrato aparte — no vienen incluidos en el plan mensual." },
+    en: { title: "Website, app & software", desc: "Bespoke projects built by the Guileo team under a separate scope and contract — not part of the monthly plan." },
+  },
+  {
+    key: "automacao", icon: "🤖",
+    pt: { title: "Automação com IA", desc: "O trabalho repetitivo conduzido em silêncio, por nós." },
+    es: { title: "Automatización con IA", desc: "El trabajo repetitivo, conducido en silencio, por nosotros." },
+    en: { title: "AI automation", desc: "The repetitive work quietly handled, by us." },
+  },
+  {
+    key: "reviews", icon: "⭐",
+    pt: { title: "Reviews & reputação", desc: "Mais 5 estrelas, mais confiança, mais vendas." },
+    es: { title: "Reseñas y reputación", desc: "Más 5 estrellas, más confianza, más ventas." },
+    en: { title: "Reviews & reputation", desc: "More 5-stars, more trust, more sales." },
+  },
+];
+
+// Rótulos dos blocos que consomem a constante (boas-vindas + relatório semanal).
+const OFERTA_UI = {
+  pt: {
+    moreTitle: "O que mais a Guileo faz por você",
+    moreNote: "Além do que você já ativou, estas são as frentes que a equipe Guileo conduz. Quer alguma delas? Responda este e-mail e montamos o escopo junto com você.",
+    weekTitle: "Lembrete da semana",
+    weekLead: "Uma frente que a Guileo também conduz para você:",
+    weekCta: "Falar sobre isso no meu painel →",
+  },
+  es: {
+    moreTitle: "Qué más hace Guileo por usted",
+    moreNote: "Además de lo que ya activó, estas son las frentes que conduce el equipo Guileo. ¿Le interesa alguna? Responda este correo y armamos el alcance junto con usted.",
+    weekTitle: "Recordatorio de la semana",
+    weekLead: "Una frente que Guileo también conduce por usted:",
+    weekCta: "Hablar de esto en mi panel →",
+  },
+  en: {
+    moreTitle: "What else Guileo does for you",
+    moreNote: "Beyond what you've already switched on, these are the fronts the Guileo team runs. Want one of them? Reply to this email and we'll shape the scope with you.",
+    weekTitle: "This week's reminder",
+    weekLead: "One more front Guileo runs for you:",
+    weekCta: "Talk about this in my dashboard →",
+  },
+};
+const ofertaUI = (lang) => OFERTA_UI[lang] || OFERTA_UI.en;
+
+// A oferta no formato [ícone, título, descrição] no idioma pedido (idioma desconhecido → EN).
+export function ofertaFrentes(lang = "en") {
+  return OFERTA_GUILEO.map((f) => {
+    const c = f[lang] || f.en;
+    return [f.icon, c.title, c.desc];
+  });
+}
+
+// Linha visual de uma frente — o mesmo desenho que a proposta já usava (ícone em quadro + título + linha).
+function ofertaRow([ic, title, desc]) {
+  return `<tr><td style="padding:7px 0;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td width="46" valign="top">
+        <div style="width:36px;height:36px;border-radius:10px;background:${B.panel2};border:1px solid ${B.line};box-shadow:inset 0 1px 0 ${B.edge};font-size:18px;text-align:center;line-height:36px;">${ic}</div>
+      </td>
+      <td valign="top" style="font-family:'Segoe UI',Arial,sans-serif;padding-left:6px;">
+        <div style="font-size:14.5px;font-weight:700;color:${B.ink};letter-spacing:.1px;">${esc(title)}</div>
+        <div style="font-size:12.5px;color:${B.muted};line-height:1.55;margin-top:2px;">${esc(desc)}</div>
+      </td></tr></table></td></tr>`;
+}
+
+// Bloco "o que mais está incluído / o que mais podemos fazer" — vai DEPOIS do conteúdo essencial
+// do e-mail de boas-vindas (código de conexão e primeiros passos continuam sendo o assunto).
+function ofertaBlock(lang) {
+  const u = ofertaUI(lang);
+  return panel(`
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};font-family:'Segoe UI',Arial,sans-serif;margin-bottom:8px;">${esc(u.moreTitle)}</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${ofertaFrentes(lang).map(ofertaRow).join("")}</table>
+    <div style="font-size:12px;color:${B.muted};line-height:1.6;margin-top:12px;font-family:'Segoe UI',Arial,sans-serif;">${esc(u.moreNote)}</div>`);
+}
+
+// Índice determinístico (djb2) — mesma semente, mesma frente, sempre. Nada de Date.now()/Math.random():
+// o relatório precisa ser reproduzível (reenvio, teste, snapshot) e escalonado por cliente.
+function ofertaIndex(seed) {
+  const s = String(seed == null ? "" : seed);
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h % OFERTA_GUILEO.length;
+}
+
+// UM lembrete curto no relatório semanal: gira uma frente por semana. A semente é
+// `weekLabel + business` — o weekLabel é o intervalo de datas da semana (functions/api/client-report.js),
+// então muda sozinho a cada envio, e o business escalona os clientes (nem todos recebem a mesma
+// frente na mesma semana). Reenviar o mesmo relatório repete a MESMA frente, de propósito.
+function ofertaLembrete(lang, seed) {
+  const u = ofertaUI(lang);
+  const f = OFERTA_GUILEO[ofertaIndex(seed)];
+  const c = f[lang] || f.en;
+  return `${panel(`
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};font-family:'Segoe UI',Arial,sans-serif;margin-bottom:6px;">${esc(u.weekTitle)}</div>
+    <div style="font-size:12.5px;color:${B.muted};line-height:1.55;font-family:'Segoe UI',Arial,sans-serif;">${esc(u.weekLead)}</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${ofertaRow([f.icon, c.title, c.desc])}</table>`)}
+  <div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta2(esc(u.weekCta), B.portal)}</div>`;
+}
+
 // 1-tap action: the relationship CTAs open the customer's mail composer pre-addressed to the BUSINESS
 // (bizEmail) with a ready message — so a customer can act in one tap. Falls back to the site if the
 // business email isn't known. Pre-written messages per action × language.
@@ -84,7 +242,7 @@ const HEAD_STYLE = `
 // rodapé como "powered by". Sem isso, o cliente do Natura Spa recebia um e-mail com o logo da
 // Guileo confirmando o horário dele: parece que outra empresa marcou, e o dono paga pra ter a
 // marca DELE na frente do cliente. `null` mantém o e-mail Guileo (avisos do dono, vendas, etc).
-function shell({ preheader = "", eyebrow = "", body = "", lang = "en", brand = null }) {
+function shell({ preheader = "", eyebrow = "", body = "", lang = "en", brand = null, unsub = "", address = "" }) {
   const bz = brand && brand.business ? esc(String(brand.business).slice(0, 80)) : "";
   // Só aceitamos http(s) na logo: uma URL `javascript:`/`data:` vinda do perfil do cliente não pode
   // virar conteúdo do e-mail. Sem logo válida, cai no monograma com a inicial do negócio.
@@ -105,6 +263,19 @@ function shell({ preheader = "", eyebrow = "", body = "", lang = "en", brand = n
     en: { desc: "AI Systems for Business", tag: "Work smart. Grow faster. Sleep better.", recv: "You're receiving this because you started with Guileo." },
   };
   const f = F[lang] || F.en;
+  // CAN-SPAM (auditoria A4, 2026-08-11): estes templates vão para o CLIENTE DO CLIENTE (aniversário,
+  // promoção, win-back…) e não tinham NENHUM link de descadastro nem endereço postal — só o rodapé
+  // "you started with Guileo", que para o cliente do Natura Spa é simplesmente falso. `unsub` e
+  // `address` são opcionais: quem não passa continua com o rodapé de sempre (zero regressão nos
+  // e-mails internos/da própria Guileo), quem passa ganha o rodapé em conformidade.
+  const _u = String(unsub || "");
+  const _uTxt = lang === "pt" ? "Descadastrar" : lang === "es" ? "Darse de baja" : "Unsubscribe";
+  const _recv = brand && brand.business
+    ? (lang === "pt" ? `Você recebe este email de ${esc(String(brand.business).slice(0, 80))}.`
+      : lang === "es" ? `Recibe este correo de ${esc(String(brand.business).slice(0, 80))}.`
+      : `You're receiving this from ${esc(String(brand.business).slice(0, 80))}.`)
+    : f.recv;
+  const _addr = esc(String(address || "").slice(0, 200));
   const htmlLang = lang === "pt" ? "pt-BR" : lang === "es" ? "es" : "en";
   // UNIFORM dark surfaces (one tone everywhere) → if Gmail dark-mode inverts, it inverts CONSISTENTLY,
   // so the text always stays readable (the old mix of darker header/footer + lighter card was what made
@@ -115,15 +286,12 @@ function shell({ preheader = "", eyebrow = "", body = "", lang = "en", brand = n
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="g-shell" style="background:${B.bg};padding:40px 16px;">
 <tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="g-card" style="max-width:600px;width:100%;background:${B.card};border:1px solid ${B.line};border-radius:22px;overflow:hidden;box-shadow:0 40px 100px -45px rgba(0,0,0,0.92),0 2px 0 rgba(255,255,255,0.02);">
-<!-- glass top edge + champagne hairline (fine inset light lines) -->
 <tr><td style="height:1px;background:${B.edge};font-size:0;line-height:0;">&nbsp;</td></tr>
 <tr><td style="height:2px;background:linear-gradient(90deg,transparent,${B.goldDim} 34%,${B.gold} 50%,${B.goldDim} 66%,transparent);font-size:0;line-height:0;">&nbsp;</td></tr>
-<!-- HEADER — EN keeps the animated banner; PT/ES get a clean header (sprout + Guileo + localized
-     tagline) so the email stays 100% in one language. -->
 ${bz ? `<tr><td style="padding:28px 40px 6px 40px;background:${B.card};" align="center">
   ${bLogo
     ? `<img src="${bLogo}" width="46" height="46" alt="${bz}" style="display:block;margin:0 auto;border:0;border-radius:12px;" />`
-    : `<div style="width:46px;height:46px;margin:0 auto;border-radius:12px;background:${bAcc || B.gold};font-family:'Inter',Helvetica,Arial,sans-serif;font-size:22px;font-weight:800;color:#ffffff;line-height:46px;text-align:center;">${bz.slice(0, 1).toUpperCase()}</div>`}
+    : `<div style="width:46px;height:46px;margin:0 auto;border-radius:12px;background:${bAcc || B.gold};font-family:'Inter',Helvetica,Arial,sans-serif;font-size:22px;font-weight:800;color:${_textOn(bAcc || B.gold)};line-height:46px;text-align:center;">${bz.slice(0, 1).toUpperCase()}</div>`}
   <div style="margin-top:11px;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:800;letter-spacing:-.3px;color:${B.ink2};">${bz}</div>
 </td></tr>` : lang === "en" ? `<tr><td style="font-size:0;line-height:0;background:${B.card};" align="center">
   <a href="${B.site}" style="text-decoration:none;display:block;"><img src="${B.anim}" width="600" alt="Guileo" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;" /></a>
@@ -135,10 +303,9 @@ ${bz ? `<tr><td style="padding:28px 40px 6px 40px;background:${B.card};" align="
   <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:${B.goldDim};margin-top:7px;">${f.desc}</div>
 </td></tr>`}
 ${eyebrow ? `<tr><td class="g-pad-head" style="padding:20px 40px 0 40px;background:${B.card};" align="center">
-  <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:10.5px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${bAcc || B.gold};">${eyebrow}</div>
+  <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:10.5px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${bAcc ? _textAccent(bAcc) : B.gold};">${eyebrow}</div>
 </td></tr>` : ""}
 <tr><td class="g-pad" style="padding:14px 40px 36px 40px;background:${B.card};font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;">${body}</td></tr>
-<!-- footer (same dark tone as the card — uniform surface) -->
 <tr><td class="g-pad" style="padding:22px 40px 30px 40px;border-top:1px solid ${B.line};background:${B.card};" align="center">
   ${bz ? `<div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};line-height:1.85;">
     <span style="color:${B.ink2};font-weight:600;">${bz}</span><br/>
@@ -151,7 +318,7 @@ ${eyebrow ? `<tr><td class="g-pad-head" style="padding:20px 40px 0 40px;backgrou
   </div>`}
 </td></tr>
 </table>
-<div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;color:${B.faint};margin-top:18px;">${f.recv}</div>
+<div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:11.5px;color:${_u || _addr ? B.muted : B.faint};margin-top:18px;line-height:1.7;">${_recv}${_u ? ` &nbsp;·&nbsp; <a href="${_u}" style="color:${B.muted};text-decoration:underline;">${_uTxt}</a>` : ""}${_addr ? `<br/>${_addr}` : ""}</div>
 </td></tr>
 </table>
 </body></html>`;
@@ -198,7 +365,7 @@ function h1img(key, lang, alt, sub = "") {
 }
 // 0) LEAD RECEIVED — instant reply to the PROSPECT the moment they submit a form on the site.
 // Speed-to-lead: be the first touch. If Gui is also calling them now (callNow), the copy says so.
-export function leadReceivedEmail({ name = "there", business = "", lang = "en", callNow = false, leak = "", industry = "" } = {}) {
+export function leadReceivedEmail({ name = "there", business = "", lang = "en", callNow = false, leak = "", industry = "", unsub = "" } = {}) {
   const rawName = String(name == null ? "" : name).slice(0, 120); // plain-text subject (no HTML escaping)
   name = esc(rawName); business = esc(business);
   const biz = business ? ` <span style="color:${B.ink};font-weight:600;">${business}</span>` : "";
@@ -277,11 +444,11 @@ export function leadReceivedEmail({ name = "there", business = "", lang = "en", 
     <p style="margin:0 0 10px 0;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:${B.ink2};">${t.ps}</p>
     <p style="margin:0;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:${B.muted};">${t.foot}</p>
   `;
-  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang, unsub }) };
 }
 
 // 1) WELCOME EMAIL — new business owner just signed up.
-export function welcomeEmail({ name = "there", business = "your business", lang = "en" } = {}) {
+export function welcomeEmail({ name = "there", business = "your business", lang = "en", unsub = "" } = {}) {
   name = esc(name); business = esc(business);
   const t = lang === "pt" ? {
     subject: `Seja bem-vindo à Guileo, ${name} 🌱`,
@@ -351,8 +518,10 @@ export function welcomeEmail({ name = "there", business = "your business", lang 
   <div align="center">${cta(t.cta, B.portal)}</div>
   <div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div>
   <div align="center">${cta2(t.cta2, B.portal)}</div>
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  ${ofertaBlock(lang)}
   <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
-  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang, unsub }) };
 }
 
 // 2) DAILY LEAD DIGEST — owner's morning brief of qualified leads.
@@ -508,7 +677,7 @@ export function teamKickoffBriefEmail({ business = "the client", brief = "", lan
   return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
 }
 
-export function proposalEmail({ name = "there", business = "your business", lang = "en" } = {}) {
+export function proposalEmail({ name = "there", business = "your business", lang = "en", unsub = "" } = {}) {
   name = esc(name); business = esc(business);
   const t = lang === "pt" ? {
     subject: `${name}, o que a Guileo pode cuidar por ${business} 🌱`,
@@ -517,16 +686,6 @@ export function proposalEmail({ name = "there", business = "your business", lang
     h1: `Ideias pra crescer ${business}`,
     intro: `Olá, ${name} — a Guileo é o sistema de IA que cuida, com discrição, do <span style="color:${B.ink};font-weight:600;">atendimento, do marketing e do operacional</span> do seu negócio. Permita-nos mostrar o que fazemos e algumas ideias para começarmos.`,
     servicesTitle: "O que cuidamos por você",
-    services: [
-      ["📞", "Atendimento com IA 24/7", "Nenhuma ligação ou lead se perde — ele acolhe, qualifica e agenda sozinho."],
-      ["💬", "WhatsApp & SMS atendidos", "Responde, vende e faz follow-up sem que você precise levantar um dedo."],
-      ["📣", "Anúncios & marketing", "Tráfego que vira cliente — campanhas conduzidas para você."],
-      ["🎬", "Vídeo & conteúdo", "Produção que encanta e posiciona sua marca."],
-      ["📱", "Gestão de redes sociais", "Uma presença que cresce com naturalidade, no seu tom."],
-      ["🌐", "Site, app & software", "Feitos sob medida, do zero — com rapidez e bom gosto."],
-      ["🤖", "Automação com IA", "O trabalho repetitivo conduzido em silêncio, por nós."],
-      ["⭐", "Reviews & reputação", "Mais 5 estrelas, mais confiança, mais vendas."],
-    ],
     ideasTitle: "3 ideias para começarmos já",
     ideas: [
       "Recuperar ligações perdidas → cada chamada não atendida vira agendamento.",
@@ -543,16 +702,6 @@ export function proposalEmail({ name = "there", business = "your business", lang
     h1: `Ideas para hacer crecer ${business}`,
     intro: `Hola, ${name} — Guileo es el sistema de IA que atiende, con discreción, <span style="color:${B.ink};font-weight:600;">la recepción, el marketing y la operación</span> de su negocio. Permítanos mostrarle lo que hacemos y algunas ideas para comenzar.`,
     servicesTitle: "Lo que atendemos por usted",
-    services: [
-      ["📞", "Recepción con IA 24/7", "Ninguna llamada ni lead se pierde — recibe, califica y agenda por sí sola."],
-      ["💬", "WhatsApp y SMS atendidos", "Responde, vende y hace seguimiento sin que usted mueva un dedo."],
-      ["📣", "Anuncios y marketing", "Tráfico que se vuelve cliente — campañas conducidas por nosotros."],
-      ["🎬", "Video y contenido", "Producción que encanta y posiciona su marca."],
-      ["📱", "Gestión de redes sociales", "Una presencia que crece con naturalidad, en su tono."],
-      ["🌐", "Sitio web, app y software", "Hechos a la medida, desde cero — con rapidez y buen gusto."],
-      ["🤖", "Automatización con IA", "El trabajo repetitivo, conducido en silencio, por nosotros."],
-      ["⭐", "Reseñas y reputación", "Más 5 estrellas, más confianza, más ventas."],
-    ],
     ideasTitle: "3 ideas para comenzar ya",
     ideas: [
       "Recuperar llamadas perdidas → cada llamada sin contestar se vuelve una cita.",
@@ -569,16 +718,6 @@ export function proposalEmail({ name = "there", business = "your business", lang
     h1: `Ideas to grow ${business}`,
     intro: `Hello, ${name} — Guileo is the AI system that quietly tends to your <span style="color:${B.ink};font-weight:600;">front desk, marketing and operations</span>. Allow us to show you what we do, and a few ideas to begin with.`,
     servicesTitle: "What we tend to for you",
-    services: [
-      ["📞", "24/7 AI front desk", "No call or lead is ever lost — it welcomes, qualifies and books on its own."],
-      ["💬", "WhatsApp & SMS, attended", "Replies, sells and follows up without you lifting a finger."],
-      ["📣", "Ads & marketing", "Traffic that becomes customers — campaigns conducted for you."],
-      ["🎬", "Video & content", "Production that delights and positions your brand."],
-      ["📱", "Social media management", "A presence that grows gracefully, in your voice."],
-      ["🌐", "Website, app & software", "Crafted bespoke, from scratch — swift and beautiful."],
-      ["🤖", "AI automation", "The repetitive work quietly handled, by us."],
-      ["⭐", "Reviews & reputation", "More 5-stars, more trust, more sales."],
-    ],
     ideasTitle: "3 ideas to begin now",
     ideas: [
       "Recover missed calls → every unanswered call becomes a booking.",
@@ -589,15 +728,9 @@ export function proposalEmail({ name = "there", business = "your business", lang
     cta2: "See all we tend to →",
     foot: "Reply to this email and tell us about your business — we'll prepare a proposal tailored to you, with pleasure.",
   };
-  const svc = ([ic, title, desc]) => `<tr><td style="padding:7px 0;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-      <td width="46" valign="top">
-        <div style="width:36px;height:36px;border-radius:10px;background:${B.panel2};border:1px solid ${B.line};box-shadow:inset 0 1px 0 ${B.edge};font-size:18px;text-align:center;line-height:36px;">${ic}</div>
-      </td>
-      <td valign="top" style="font-family:'Segoe UI',Arial,sans-serif;padding-left:6px;">
-        <div style="font-size:14.5px;font-weight:700;color:${B.ink};letter-spacing:.1px;">${title}</div>
-        <div style="font-size:12.5px;color:${B.muted};line-height:1.55;margin-top:2px;">${desc}</div>
-      </td></tr></table></td></tr>`;
+  // As 8 frentes vêm da FONTE ÚNICA (OFERTA_GUILEO) — a proposta não tem mais lista própria, senão
+  // ela e os e-mails pós-venda divergem em um mês.
+  const services = ofertaFrentes(lang);
   const idea = (x) => `<tr><td style="padding:5px 0;font-family:'Segoe UI',Arial,sans-serif;font-size:13.5px;color:${B.ink2};line-height:1.55;">
     <span style="color:${B.gold};font-weight:800;">→</span> ${x}</td></tr>`;
   const body = `
@@ -606,7 +739,7 @@ export function proposalEmail({ name = "there", business = "your business", lang
   <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
   ${panel(`
     <div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};font-family:'Segoe UI',Arial,sans-serif;margin-bottom:8px;">${t.servicesTitle}</div>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${t.services.map(svc).join("")}</table>`)}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${services.map(ofertaRow).join("")}</table>`)}
   <div style="height:16px;line-height:16px;font-size:0;">&nbsp;</div>
   ${panel(`
     <div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};font-family:'Segoe UI',Arial,sans-serif;margin-bottom:6px;">${t.ideasTitle}</div>
@@ -616,11 +749,11 @@ export function proposalEmail({ name = "there", business = "your business", lang
   <div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div>
   <div align="center">${cta2(t.cta2, B.site)}</div>
   <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
-  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang, unsub }) };
 }
 
 // 4) PROOF EMAIL (drip day ~2) — "what Gui already does for businesses like yours".
-export function proofEmail({ name = "there", business = "your business", lang = "en" } = {}) {
+export function proofEmail({ name = "there", business = "your business", lang = "en", unsub = "" } = {}) {
   name = esc(name); business = esc(business);
   const t = lang === "pt" ? {
     subject: `${name}, veja o que o Gui já cuida por negócios como o seu`,
@@ -686,11 +819,11 @@ export function proofEmail({ name = "there", business = "your business", lang = 
   <div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div>
   <div align="center">${cta2(t.cta2, B.site + "/marketing")}</div>
   <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
-  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang, unsub }) };
 }
 
 // 5) RE-ENGAGE EMAIL (drip day ~7) — bring a cold lead back to the quiz.
-export function reengageEmail({ name = "there", business = "your business", lang = "en" } = {}) {
+export function reengageEmail({ name = "there", business = "your business", lang = "en", unsub = "" } = {}) {
   name = esc(name); business = esc(business);
   const t = lang === "pt" ? {
     subject: `${name}, seu AI Growth Score aguarda você`,
@@ -728,7 +861,7 @@ export function reengageEmail({ name = "there", business = "your business", lang
   <div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div>
   <div align="center">${cta2(t.cta2, B.site + "/#try")}</div>
   <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
-  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang, unsub }) };
 }
 
 // 5b) CREDIT DEPLETED — branded client alert: Gui ran out of credits, top up to resume.
@@ -813,6 +946,8 @@ export function welcomeSelfServeEmail({ name = "there", business = "your busines
   <table style="width:100%;border-collapse:collapse;">${stepsHtml}</table>
   <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
   <div align="center">${cta(t.cta, rawCode ? B.site + "/portal?code=" + encodeURIComponent(rawCode) : B.site + "/portal")}</div>
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  ${ofertaBlock(lang)}
   <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
   return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
 }
@@ -1145,7 +1280,64 @@ export function sellerWelcomeEmail({ name = "vendedor(a)", email = "", code = ""
 }
 
 // 9) WEEKLY CLIENT REPORT — owner-facing "Your Gui this week": the week's numbers + highlights.
-export function weeklyReportEmail({ name = "there", business = "your business", lang = "en", weekLabel = "", stats = {}, highlights = [], sentiment = null } = {}) {
+// ── ANÚNCIOS DENTRO DO RELATÓRIO SEMANAL ─────────────────────────────────────────────────────
+// O relatório é a prova que o cliente recebe sem precisar abrir nada — e ele não falava UMA
+// palavra sobre o dinheiro que o cliente investe em anúncio, que é metade do que ele paga.
+//
+// SÓ APARECE QUANDO HÁ LASTRO: sem gasto lançado a seção some inteira, em vez de mostrar $0 —
+// um zero aqui seria lido como "o anúncio não deu nada" e faria cortar a campanha certa.
+function blocoAnuncios(ads, L) {
+  if (!ads || !Number(ads.gasto_cents)) return "";
+  const cash = (c) => `$${(Number(c || 0) / 100).toFixed(2)}`;
+  const T = {
+    pt: { titulo: "Seus anúncios", investido: "investido", clientes: "agendamentos",
+          receita: "em serviços agendados", cada: "cada $1 investido virou" },
+    es: { titulo: "Tus anuncios", investido: "invertido", clientes: "reservas",
+          receita: "en servicios reservados", cada: "cada $1 invertido se convirtió en" },
+    en: { titulo: "Your ads", investido: "spent", clientes: "bookings",
+          receita: "in booked services", cada: "each $1 spent turned into" },
+  }[L] || null;
+  const t = T || { titulo: "Your ads", investido: "spent", clientes: "new customers", receita: "in booked services", cada: "each $1 spent turned into" };
+  const retorno = Number(ads.gasto_cents) > 0 ? (Number(ads.receita_cents || 0) / Number(ads.gasto_cents)) : null;
+
+  // ── DUAS MENTIRAS QUE MORAVAM AQUI (corrigidas 2026-08-11, revisão adversarial) ─────────────
+  // 1. O ZERO MENTIROSO. A guarda de cima protege o zero do GASTO; o perigoso é o do RETORNO.
+  //    Cliente com agendamento sem valor lançado lia "cada $1 investido virou $0.00" e cortava a
+  //    campanha CERTA. O ads_roi já devolve `agendamentos_sem_valor` justamente para isso — e
+  //    este template descartava. Agora: com agendamento sem valor e receita zero, some o retorno
+  //    e entra a frase que diz o que destrava a medição.
+  // 2. ESTIMATIVA VENDIDA COMO CAIXA. `receita_base` = 'tabela'/'misto' significa que o número
+  //    veio (todo ou em parte) do preço de tabela do serviço, não de dinheiro recebido. Sair em
+  //    negrito sem ressalva é apresentar estimativa como certeza.
+  const semValor = Number(ads.agendamentos_sem_valor || 0);
+  const cego = semValor > 0 && Number(ads.receita_cents || 0) === 0;
+  const estimado = ads.receita_base === "tabela" || ads.receita_base === "misto";
+  const AVISO = {
+    pt: { cego: (n) => `${n} agendamento${n > 1 ? "s" : ""} ainda sem valor lançado — cadastre o preço do serviço para medir o retorno`,
+          est: "valor estimado pelo preço de tabela — ainda não é dinheiro confirmado" },
+    es: { cego: (n) => `${n} reserva${n > 1 ? "s" : ""} aún sin valor registrado — carga el precio del servicio para medir el retorno`,
+          est: "valor estimado por el precio de lista — todavía no es dinero confirmado" },
+    en: { cego: (n) => `${n} booking${n > 1 ? "s" : ""} with no value recorded yet — add the service price to measure the return`,
+          est: "value estimated from your list price — not confirmed money yet" },
+  }[L] || { cego: (n) => `${n} booking(s) with no value recorded yet — add the service price to measure the return`,
+            est: "value estimated from your list price — not confirmed money yet" };
+  const nota = cego ? AVISO.cego(semValor) : (estimado ? AVISO.est : "");
+  const mostraRetorno = retorno != null && !cego;
+
+  return `
+  <div style="margin:26px 0 0;padding:16px 18px;border:1px solid ${B.line};border-radius:12px;background:${B.panel};">
+    <div style="font:700 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:${B.gold};">${esc(t.titulo)}</div>
+    <div style="font:700 22px/1.25 -apple-system,Segoe UI,Roboto,sans-serif;color:${B.ink};margin-top:8px;">
+      ${cash(ads.gasto_cents)} ${esc(t.investido)} → <span style="color:#6FD39B;">${Number(ads.agendamentos || 0)} ${esc(t.clientes)}</span>
+    </div>
+    <div style="font:400 13px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:${B.ink2};margin-top:4px;">
+      ${cash(ads.receita_cents)} ${esc(t.receita)}${mostraRetorno ? ` · ${esc(t.cada)} <strong style="color:${B.ink};">$${retorno.toFixed(2)}</strong>` : ""}
+    </div>
+    ${nota ? `<div style="font:400 12px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:${B.gold};margin-top:8px;">≈ ${esc(nota)}</div>` : ""}
+  </div>`;
+}
+
+export function weeklyReportEmail({ name = "there", business = "your business", lang = "en", weekLabel = "", stats = {}, highlights = [], sentiment = null, ads = null } = {}) {
   name = esc(name); business = esc(business); weekLabel = esc(weekLabel);
   const s = {
     conversations: Number(stats.conversations || 0),
@@ -1232,10 +1424,13 @@ export function weeklyReportEmail({ name = "there", business = "your business", 
       <td align="center" width="33%"><div style="font-size:20px;font-weight:800;color:${B.ink};font-family:'Segoe UI',Arial,sans-serif;">😞 ${Number(sentiment.negative) || 0}</div><div style="font-size:9.5px;color:${B.muted};text-transform:uppercase;letter-spacing:1px;font-family:'Segoe UI',Arial,sans-serif;margin-top:2px;">${t.sentNeg}</div></td>
     </tr></table>
     ${sentiment.avgSecs ? `<div style="font-size:12px;color:${B.muted};text-align:center;font-family:'Segoe UI',Arial,sans-serif;margin-top:10px;">${t.sentAvg}: <span style="color:${B.ink2};font-weight:600;">${sentiment.avgSecs >= 60 ? `${Math.floor(sentiment.avgSecs / 60)}m ${sentiment.avgSecs % 60}s` : `${sentiment.avgSecs}s`}</span></div>` : ""}`)}` : ""}
+  ${blocoAnuncios(ads, lang)}
   <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
   <div style="font-size:13.5px;color:${B.gold};text-align:center;font-family:'Segoe UI',Arial,sans-serif;font-weight:600;"><span style="color:${B.green};">●</span> ${t.autopilot}</div>
   <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
   <div align="center">${cta(t.cta, B.portal)}</div>
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  ${ofertaLembrete(lang, `${weekLabel}|${business}`)}
   <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
   return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
 }
@@ -1329,7 +1524,7 @@ export function appointmentEmail({ kind = "book", name = "there", business = "",
 // APPOINTMENT REMINDER — a gentle concierge nudge before an upcoming appointment (EMAIL channel).
 // Sent to the CUSTOMER when their contact is an email; this makes reminders actually fire today,
 // without waiting for SMS/A2P. Same branded shell + concierge voice as the confirmation.
-export function appointmentReminderEmail({ name = "there", business = "", service = "", whenLabel = "", ref = "", lang = "en", bizEmail = "" } = {}) {
+export function appointmentReminderEmail({ name = "there", business = "", service = "", whenLabel = "", ref = "", lang = "en", bizEmail = "", brand = null, unsub = "", address = "" } = {}) {
   name = esc(name); business = esc(business); service = esc(service); whenLabel = esc(whenLabel); ref = esc(ref);
   const L = ({
     pt: { subj: `Um lembrete gentil${business ? " · " + business : ""}: ${whenLabel}`, pre: "Seu horário está chegando — estamos à sua espera.", eyebrow: business || "Guileo", h: `Até já, ${name} 🌱`, lead: "Passando só para lembrar, com carinho, do seu horário:", rows: ["Serviço", "Quando", "Referência"], foot: "Precisa remarcar? É só responder este email — cuido disso na hora." },
@@ -1347,12 +1542,12 @@ export function appointmentReminderEmail({ name = "there", business = "", servic
     <div style="height:18px;font-size:0;">&nbsp;</div>
     <div align="center">${cta(reLabel, bizMailto(bizEmail, L.subj, MB.remind[lang] || MB.remind.en))}</div>
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${L.foot}</div>`;
-  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang }) };
+  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand, unsub, address }) };
 }
 
 // BIRTHDAY — a warm concierge note on the customer's birthday, with a gentle invitation back.
 // The retention magic: the business never forgets, automatically. Sent to the CUSTOMER (email).
-export function birthdayEmail({ name = "there", business = "", lang = "en" } = {}) {
+export function birthdayEmail({ name = "there", business = "", lang = "en", brand = null, unsub = "", address = "" } = {}) {
   name = esc(name); business = esc(business);
   const L = ({
     pt: { subj: `Feliz aniversário, ${name}! 🎉`, pre: "Um carinho da nossa parte no seu dia.", eyebrow: business || "Guileo", h: `Feliz aniversário, ${name}! 🎂`, lead: `Hoje é o seu dia — e a gente${business ? ` da ${business}` : ""} faz questão de comemorar com você. Que seja um ano lindo, cheio de coisas boas. 🌱`, gift: "Tem um mimo te esperando: passa pra comemorar com a gente esse mês. É só responder este email que eu cuido de tudo.", foot: "Com carinho — o Gui, sempre por aqui." },
@@ -1367,12 +1562,12 @@ export function birthdayEmail({ name = "there", business = "", lang = "en" } = {
     ${panel(`<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;color:${B.ink2};line-height:1.6;text-align:center;">🎁 ${L.gift}</div>`)}
     <div style="height:16px;font-size:0;">&nbsp;</div>
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;">${L.foot}</div>`;
-  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang }) };
+  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand, unsub, address }) };
 }
 
 // CLIENT ANNIVERSARY — "X years since your first visit, thank you." A milestone the business never
 // tracks by hand; Gui does. Sent to the CUSTOMER (email).
-export function anniversaryEmail({ name = "there", business = "", years = 1, lang = "en" } = {}) {
+export function anniversaryEmail({ name = "there", business = "", years = 1, lang = "en", brand = null, unsub = "", address = "" } = {}) {
   name = esc(name); business = esc(business); const y = Math.max(1, parseInt(years, 10) || 1);
   const L = ({
     pt: { subj: `${y} ${y === 1 ? "ano" : "anos"} juntos, ${name} 💚`, pre: "Obrigado por fazer parte da nossa história.", eyebrow: business || "Guileo", h: `${y} ${y === 1 ? "ano" : "anos"} com você, ${name} 💚`, lead: `Faz ${y} ${y === 1 ? "ano" : "anos"} que você é parte${business ? ` da ${business}` : " da nossa casa"} — e a gente tem muito a agradecer. Clientes como você são o motivo de tudo isso existir.`, gift: "Pra comemorar, preparei um agrado especial pra sua próxima visita. Quando quiser vir, é só me chamar.", foot: "Com gratidão — o Gui." },
@@ -1387,12 +1582,12 @@ export function anniversaryEmail({ name = "there", business = "", years = 1, lan
     ${panel(`<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;color:${B.ink2};line-height:1.6;text-align:center;">💚 ${L.gift}</div>`)}
     <div style="height:16px;font-size:0;">&nbsp;</div>
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;">${L.foot}</div>`;
-  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang }) };
+  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand, unsub, address }) };
 }
 
 // RECALL — gentle return-by-cadence nudge (e.g. dental cleaning every ~6 months). Pure profit for
 // the business; the owner never tracks it by hand. Sent to the CUSTOMER (email).
-export function recallEmail({ name = "there", business = "", lang = "en", bizEmail = "" } = {}) {
+export function recallEmail({ name = "there", business = "", lang = "en", bizEmail = "", brand = null, unsub = "", address = "" } = {}) {
   name = esc(name); business = esc(business);
   const L = ({
     pt: { subj: `Tá na hora do seu retorno${business ? " · " + business : ""} 🌱`, pre: "Cuidar de você no tempo certo faz toda a diferença.", eyebrow: business || "Guileo", h: `${name}, já faz um tempinho 🌱`, lead: `Reparei que faz um tempo desde sua última visita${business ? ` à ${business}` : ""} — e cuidar disso na hora certa faz toda a diferença. Que tal agendar seu retorno essa semana?`, cta: "Quero agendar meu retorno →", foot: "É só responder este email que eu já cuido do horário pra você." },
@@ -1406,12 +1601,12 @@ export function recallEmail({ name = "there", business = "", lang = "en", bizEma
     <div style="height:18px;font-size:0;">&nbsp;</div>
     <div align="center">${cta(L.cta, bizMailto(bizEmail, L.subj, MB.recall[lang] || MB.recall.en))}</div>
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${L.foot}</div>`;
-  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang }) };
+  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand, unsub, address }) };
 }
 
 // LOYALTY MILESTONE — celebrate a visit milestone with a reward. Turns frequency into love + repeat
 // revenue. Sent to the CUSTOMER (email).
-export function loyaltyMilestoneEmail({ name = "there", business = "", milestone = 10, lang = "en" } = {}) {
+export function loyaltyMilestoneEmail({ name = "there", business = "", milestone = 10, lang = "en", brand = null, unsub = "", address = "" } = {}) {
   name = esc(name); business = esc(business); const m = Math.max(1, parseInt(milestone, 10) || 10);
   const L = ({
     pt: { subj: `${name}, você chegou a ${m} visitas! 🏆`, pre: "Um agrado pela sua fidelidade.", eyebrow: business || "Guileo", h: `${m} visitas, ${name}! 🏆`, lead: `Que honra ter você de volta tantas vezes${business ? ` na ${business}` : ""}. Clientes fiéis como você merecem um carinho especial — e preparei um pra você.`, gift: "Seu mimo de fidelidade está reservado pra próxima visita. Quando vier, é só me lembrar. 💚", foot: "Obrigado por confiar na gente — o Gui." },
@@ -1426,11 +1621,11 @@ export function loyaltyMilestoneEmail({ name = "there", business = "", milestone
     ${panel(`<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;color:${B.ink2};line-height:1.6;text-align:center;">🎁 ${L.gift}</div>`)}
     <div style="height:16px;font-size:0;">&nbsp;</div>
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;">${L.foot}</div>`;
-  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang }) };
+  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand, unsub, address }) };
 }
 
 // FIRST-VISIT WELCOME — a warm welcome after a customer's first visit (email). Opens the relationship.
-export function welcomeFirstVisitEmail({ name = "there", business = "", lang = "en" } = {}) {
+export function welcomeFirstVisitEmail({ name = "there", business = "", lang = "en", brand = null, unsub = "", address = "" } = {}) {
   name = esc(name); business = esc(business);
   const L = ({
     pt: { subj: `Que bom te receber${business ? " na " + business : ""}, ${name} 🌱`, pre: "Seja muito bem-vindo(a) — é o começo de algo bom.", eyebrow: business || "Guileo", h: `Bem-vindo(a), ${name} 🌱`, lead: `Foi um prazer te receber${business ? ` na ${business}` : ""} pela primeira vez. Espero que tenha se sentido em casa — e quero cuidar de você sempre que precisar.`, gift: "Qualquer coisa, é só me chamar por aqui — agendar, tirar dúvida, o que for. Estou de prontidão. 💚", foot: "Até breve — o Gui." },
@@ -1445,11 +1640,11 @@ export function welcomeFirstVisitEmail({ name = "there", business = "", lang = "
     ${panel(`<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;color:${B.ink2};line-height:1.6;text-align:center;">🌱 ${L.gift}</div>`)}
     <div style="height:16px;font-size:0;">&nbsp;</div>
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;">${L.foot}</div>`;
-  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang }) };
+  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand, unsub, address }) };
 }
 
 // REBOOK — follow up with a customer who asked to reschedule, to actually lock a new time (email).
-export function rebookEmail({ name = "there", business = "", service = "", lang = "en", bizEmail = "" } = {}) {
+export function rebookEmail({ name = "there", business = "", service = "", lang = "en", bizEmail = "", brand = null, unsub = "", address = "" } = {}) {
   name = esc(name); business = esc(business); service = esc(service);
   const L = ({
     pt: { subj: `Vamos achar um novo horário, ${name}? 🌱`, pre: "Deixa que eu remarco pra você, sem complicação.", eyebrow: business || "Guileo", h: `${name}, vamos remarcar 🌱`, lead: `Você pediu pra remarcar${service ? ` ${service}` : " seu horário"} — e tá tudo certo, deixa comigo. Me diz um dia bom que eu já encaixo o melhor horário pra você.`, cta: "Escolher novo horário →", foot: "É só responder este email — eu cuido do resto." },
@@ -1463,13 +1658,13 @@ export function rebookEmail({ name = "there", business = "", service = "", lang 
     <div style="height:18px;font-size:0;">&nbsp;</div>
     <div align="center">${cta(L.cta, bizMailto(bizEmail, L.subj, MB.rebook[lang] || MB.rebook.en))}</div>
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${L.foot}</div>`;
-  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang }) };
+  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand, unsub, address }) };
 }
 
 // MARKETING DATE / FLASH PROMO — a per-business commemorative-date or slow-day nudge to the CUSTOMER
 // (email). Copy is business-authored (headline/message/offer come from biz_marketing_dates or the
 // slow-day sweep); falls back to a warm generic invite when a field is blank. One-tap CTA to the biz.
-export function promoEmail({ name = "there", business = "", headline = "", message = "", offer = "", lang = "en", bizEmail = "" } = {}) {
+export function promoEmail({ name = "there", business = "", headline = "", message = "", offer = "", lang = "en", bizEmail = "", brand = null, unsub = "", address = "" } = {}) {
   name = esc(name); business = esc(business); headline = esc(headline); message = esc(message); offer = esc(offer);
   const L = ({
     pt: { subj: headline || `Uma novidade pra você${business ? " · " + business : ""} 🌱`, pre: "Um convite especial, feito com carinho pra você.", eyebrow: business || "Guileo", h: headline || `${name}, tenho algo pra você 🌱`, lead: message || `Passei aqui só pra te fazer um convite${business ? ` da ${business}` : ""} — adoraríamos te receber. Que tal marcar um horário essa semana?`, gift: "Seu presente:", cta: "Quero aproveitar →", foot: "É só responder este email que eu já cuido do seu horário." },
@@ -1484,12 +1679,40 @@ export function promoEmail({ name = "there", business = "", headline = "", messa
     <div style="height:18px;font-size:0;">&nbsp;</div>
     <div align="center">${cta(L.cta, bizMailto(bizEmail, L.subj, MB.rebook[lang] || MB.rebook.en))}</div>
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${L.foot}</div>`;
-  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang }) };
+  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand, unsub, address }) };
+}
+
+// WIN-BACK DO CLIENTE DO CLIENTE — "sentimos sua falta, volta pra gente".
+//
+// POR QUE ESTE TEMPLATE EXISTE (auditoria A4, 2026-08-11): os motores de reativação
+// (proactive.js dormentes + churn, growth-intel.js reengage 1-clique) mandavam `reengageEmail`,
+// que é uma PEÇA DE VENDA DA GUILEO — "your AI Growth Score awaits you", CTA para guileoai.com/quiz,
+// "60 segundos pra ver quanto SEU NEGÓCIO deixa passar". Ou seja: a cliente do spa que sumiu há 60
+// dias recebia um convite B2B pra fazer um quiz sobre a empresa dela, com a marca da Guileo no topo.
+// Três estragos de uma vez: a mensagem não faz sentido pro destinatário, o dono do negócio aparece
+// mandando propaganda de OUTRA empresa pra base dele, e a Guileo faz marketing pra lista do cliente.
+// Ainda por cima os chamadores passavam business:"" — a frase saía com buraco ("quanto  deixa passar").
+// `reengageEmail` continua existindo e correto para o que ele É: o drip de leads DA GUILEO (lifecycle.js).
+export function winbackCustomerEmail({ name = "there", business = "", lang = "en", bizEmail = "", brand = null, unsub = "", address = "" } = {}) {
+  name = esc(name); business = esc(business || (brand && brand.business) || "");
+  const L = ({
+    pt: { subj: `Sentimos sua falta, ${name} 🌱`, pre: "Faz um tempo que a gente não te vê por aqui.", eyebrow: business || "Guileo", h: `${name}, que saudade 🌱`, lead: `Faz um tempinho desde sua última visita${business ? ` à ${business}` : ""} — e a gente lembrou de você. Se quiser voltar, é só dizer um dia bom que eu encaixo o melhor horário.`, cta: "Quero marcar minha volta →", foot: "É só responder este email que eu cuido do resto." },
+    es: { subj: `Te extrañamos, ${name} 🌱`, pre: "Hace un tiempo que no te vemos por aquí.", eyebrow: business || "Guileo", h: `${name}, te extrañamos 🌱`, lead: `Pasó un tiempo desde tu última visita${business ? ` a ${business}` : ""} — y nos acordamos de ti. Si quieres volver, dime un buen día y te busco el mejor horario.`, cta: "Quiero agendar mi regreso →", foot: "Responde este correo y yo me encargo del resto." },
+    en: { subj: `We've missed you, ${name} 🌱`, pre: "It's been a while since we last saw you.", eyebrow: business || "Guileo", h: `${name}, we've missed you 🌱`, lead: `It's been a while since your last visit${business ? ` to ${business}` : ""} — and you came to mind. If you'd like to come back, just tell me a good day and I'll find you the best time.`, cta: "Book my visit →", foot: "Just reply to this email and I'll take care of the rest." },
+  })[lang === "pt" ? "pt" : lang === "es" ? "es" : "en"];
+  const body = `
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:900;color:${B.ink};text-align:center;">${L.h}</div>
+    <div style="height:10px;font-size:0;">&nbsp;</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;color:${B.ink};text-align:center;line-height:1.7;">${L.lead}</div>
+    <div style="height:18px;font-size:0;">&nbsp;</div>
+    <div align="center">${cta(L.cta, bizMailto(bizEmail, L.subj, MB.recall[lang] || MB.recall.en))}</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${L.foot}</div>`;
+  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand, unsub, address }) };
 }
 
 // WAITLIST OPENING — a slot the customer was waiting for just freed up. Sent to the CUSTOMER (email)
 // the instant an appointment is cancelled, so the freed time gets filled. One-tap reply to grab it.
-export function waitlistOfferEmail({ name = "there", business = "", service = "", lang = "en", bizEmail = "" } = {}) {
+export function waitlistOfferEmail({ name = "there", business = "", service = "", lang = "en", bizEmail = "", brand = null, unsub = "", address = "" } = {}) {
   name = esc(name); business = esc(business); service = esc(service);
   const L = ({
     pt: { subj: `Abriu uma vaga${service ? " pra " + service : ""}! 🌱`, pre: "Aquele horário que você queria acabou de abrir.", eyebrow: business || "Guileo", h: `${name}, abriu uma vaga! 🌱`, lead: `Boa notícia — acabou de abrir um horário${service ? ` pra ${service}` : ""}${business ? ` na ${business}` : ""}. Você estava na lista de espera, então quis te avisar primeiro. Quer que eu reserve pra você?`, cta: "Quero essa vaga →", foot: "É só responder este email — quem responder primeiro garante o horário." },
@@ -1503,7 +1726,7 @@ export function waitlistOfferEmail({ name = "there", business = "", service = ""
     <div style="height:18px;font-size:0;">&nbsp;</div>
     <div align="center">${cta(L.cta, bizMailto(bizEmail, L.subj, MB.rebook[lang] || MB.rebook.en))}</div>
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${L.foot}</div>`;
-  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang }) };
+  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand, unsub, address }) };
 }
 
 // UNHAPPY-CALL ALERT — owner-facing. Fires the moment a call is classified negative so the
@@ -1993,6 +2216,29 @@ function _textOn(hex) {
 }
 const _isHex = (s) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(s || "").trim());
 
+// ── A COR DA MARCA DO CLIENTE COMO **TEXTO** ────────────────────────────────────────────────
+// A casca é escura (#161512). A cor de acento vem do SITE do cliente (clientBrand.js extrai
+// sozinho) — e site de negócio real costuma ser azul-marinho, vinho, verde-escuro, preto.
+// Essas cores são ótimas como FUNDO de botão e ILEGÍVEIS como texto no escuro:
+//   Natura Spa, acento REAL extraído do site = #0063a8 → 2,91:1 contra a casca.
+//   Abaixo até do piso de 3:1 para texto grande. O "20% OFF" de 30px do cupom, o eyebrow e o
+//   valor do vale-presente saíam apagados — exatamente o defeito de contraste que já mordeu
+//   esta base uma vez. Ninguém tinha visto porque o padrão (#FF8A33) dá 7,77:1 e passa longe.
+// Clareamos o acento até ele cruzar 4,5:1, preservando o matiz — continua sendo a cor DELE,
+// só legível. Fundo de botão/borda continua usando o acento cru (lá o texto é escolhido por _textOn).
+const _lumRel = (hex) => {
+  const { r, g, b } = _rgb(hex);
+  const f = (v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+};
+const _contraste = (a, b) => { const [x, y] = [_lumRel(a), _lumRel(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+function _textAccent(hex, fundo = B.card) {
+  let c = _isHex(hex) ? String(hex).trim() : "#FF8A33";
+  // até 12 passos de 8% em direção ao branco: sempre converge, e o matiz se mantém.
+  for (let i = 0; i < 12 && _contraste(c, fundo) < 4.5; i++) c = _shade(c, 0.08);
+  return c;
+}
+
 // Accent CTA pill (client's color). Mirrors cta() but themed; safe text color auto-chosen.
 function ctaBrand(label, href, accent) {
   const top = _shade(accent, 0.18), bot = _shade(accent, -0.16), fg = _textOn(accent);
@@ -2007,6 +2253,9 @@ function ctaBrand(label, href, accent) {
 // bodyHtml is trusted, pre-assembled markup from the builders below (they escape their own inputs).
 export function clientEmailShell({ brand = {}, title = "", preheader = "", eyebrow = "", bodyHtml = "", ctaText = "", ctaUrl = "", footerNote = "", unsubscribeUrl = "", lang } = {}) {
   const accent = _isHex(brand.accent) ? String(brand.accent).trim() : "#FF8A33";
+  // accent  = fundo de botão / filete (cru, é a cor da marca)
+  // accentT = a MESMA cor usada como TEXTO, clareada até ser legível na casca escura.
+  const accentT = _textAccent(accent);
   const business = esc(brand.business || "Guileo");
   // CAN-SPAM footer bits — a working opt-out + the sender's physical address (if the client provided one).
   const _unsubTxt = (brand.lang || lang) === "pt" ? "Descadastrar" : (brand.lang || lang) === "es" ? "Darse de baja" : "Unsubscribe";
@@ -2026,12 +2275,10 @@ export function clientEmailShell({ brand = {}, title = "", preheader = "", eyebr
 <tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="g-card" style="max-width:600px;width:100%;background:${B.card};border:1px solid ${B.line};border-radius:22px;overflow:hidden;box-shadow:0 40px 100px -45px rgba(0,0,0,0.92),0 2px 0 rgba(255,255,255,0.02);">
 <tr><td style="height:1px;background:${B.edge};font-size:0;line-height:0;">&nbsp;</td></tr>
-<!-- accent hairline (client's color) -->
 <tr><td style="height:2px;background:linear-gradient(90deg,transparent,${accent} 34%,${_shade(accent, 0.25)} 50%,${accent} 66%,transparent);font-size:0;line-height:0;">&nbsp;</td></tr>
-<!-- HEADER — client logo (fallback: business name text) -->
 <tr><td style="padding:26px 40px 4px 40px;background:${B.card};" align="center">${header}</td></tr>
 ${eyebrow ? `<tr><td class="g-pad-head" style="padding:18px 40px 0 40px;background:${B.card};" align="center">
-  <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:10.5px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${accent};">${esc(eyebrow)}</div>
+  <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:10.5px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${accentT};">${esc(eyebrow)}</div>
 </td></tr>` : ""}
 ${title ? `<tr><td class="g-pad" style="padding:12px 40px 0 40px;background:${B.card};" align="center">
   <h1 class="g-h1" style="margin:0;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:26px;line-height:1.18;font-weight:900;color:${B.ink};letter-spacing:-0.5px;">${esc(title)}</h1>
@@ -2041,17 +2288,16 @@ ${title ? `<tr><td class="g-pad" style="padding:12px 40px 0 40px;background:${B.
   ${ctaText && ctaUrl ? `<div style="height:24px;line-height:24px;font-size:0;">&nbsp;</div><div align="center">${ctaBrand(ctaText, ctaUrl, accent)}</div>` : ""}
   ${footerNote ? `<div style="font-size:12.5px;color:${B.muted};text-align:center;line-height:1.7;margin-top:18px;">${esc(footerNote)}</div>` : ""}
 </td></tr>
-<!-- footer — client identity + small "powered by Guileo" -->
 <tr><td class="g-pad" style="padding:22px 40px 30px 40px;border-top:1px solid ${B.line};background:${B.card};" align="center">
   <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};line-height:1.85;">
-    <span style="color:${accent};font-size:9px;vertical-align:middle;">●</span>&nbsp; <span style="color:${B.ink2};font-weight:600;">${business}</span><br/>
+    <span style="color:${accentT};font-size:9px;vertical-align:middle;">●</span>&nbsp; <span style="color:${B.ink2};font-weight:600;">${business}</span><br/>
     <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.faint};margin-top:6px;">
       <a href="${B.site}" style="color:${B.faint};text-decoration:none;">${powered}</a>
     </div>
   </div>
 </td></tr>
 </table>
-<div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;color:${B.faint};margin-top:18px;line-height:1.7;">${recv}${unsubscribeUrl ? ` &nbsp;·&nbsp; <a href="${unsubscribeUrl}" style="color:${B.faint};text-decoration:underline;">${_unsubTxt}</a>` : ""}${_addr ? `<br/>${_addr}` : ""}</div>
+<div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:11.5px;color:${B.muted};margin-top:18px;line-height:1.7;">${recv}${unsubscribeUrl ? ` &nbsp;·&nbsp; <a href="${unsubscribeUrl}" style="color:${B.muted};text-decoration:underline;">${_unsubTxt}</a>` : ""}${_addr ? `<br/>${_addr}` : ""}</div>
 </td></tr>
 </table>
 </body></html>`;
@@ -2064,16 +2310,20 @@ ${title ? `<tr><td class="g-pad" style="padding:12px 40px 0 40px;background:${B.
 // endpoint. voteBaseUrl MUST be the signed base from functions/api/cx-survey.js.
 export function cxSurveyEmail({ name = "", business = "", brand = {}, lang = "en", voteBaseUrl = "" } = {}) {
   const lg = lang === "pt" ? "pt" : lang === "es" ? "es" : "en";
-  const biz = business || brand.business || "";
+  // `biz` vinha do perfil do cliente e entrava CRU no corpo e no preheader — um nome de negocio
+  // com markup virava HTML dentro do e-mail (achado da varredura A4, 2026-08-11). bizRaw fica so
+  // para o ASSUNTO (texto puro, sem entidades); bizS e o unico que toca o HTML.
+  const bizRaw = String(business || brand.business || "");
+  const biz = esc(bizRaw);
   const accent = _isHex(brand.accent) ? String(brand.accent).trim() : "#FF8A33";
   const T = {
-    pt: { subject: `Como foi sua experiência${biz ? ` na ${biz}` : ""}?`, eyebrow: "Sua opinião", title: name ? `${esc(name)}, como foi?` : "Como foi sua experiência?",
+    pt: { subject: `Como foi sua experiência${bizRaw ? ` na ${bizRaw}` : ""}?`, eyebrow: "Sua opinião", title: name ? `${esc(name)}, como foi?` : "Como foi sua experiência?",
       lead: `Adoraríamos saber como foi seu atendimento${biz ? ` na ${biz}` : ""}. Leva 5 segundos — é só tocar.`,
       npsQ: "De 0 a 10, o quanto você nos recomendaria?", csatQ: "E no geral, sua satisfação:", lo: "Nada provável", hi: "Muito provável", foot: "Se preferir não receber, é só ignorar este email — não enviaremos de novo tão cedo." },
-    es: { subject: `¿Cómo fue tu experiencia${biz ? ` en ${biz}` : ""}?`, eyebrow: "Tu opinión", title: name ? `${esc(name)}, ¿cómo fue?` : "¿Cómo fue tu experiencia?",
+    es: { subject: `¿Cómo fue tu experiencia${bizRaw ? ` en ${bizRaw}` : ""}?`, eyebrow: "Tu opinión", title: name ? `${esc(name)}, ¿cómo fue?` : "¿Cómo fue tu experiencia?",
       lead: `Nos encantaría saber cómo fue tu atención${biz ? ` en ${biz}` : ""}. Toma 5 segundos — solo toca.`,
       npsQ: "Del 0 al 10, ¿cuánto nos recomendarías?", csatQ: "Y en general, tu satisfacción:", lo: "Nada probable", hi: "Muy probable", foot: "Si prefieres no recibir, ignora este correo — no lo enviaremos de nuevo pronto." },
-    en: { subject: `How was your visit${biz ? ` at ${biz}` : ""}?`, eyebrow: "Your feedback", title: name ? `${esc(name)}, how did we do?` : "How was your visit?",
+    en: { subject: `How was your visit${bizRaw ? ` at ${bizRaw}` : ""}?`, eyebrow: "Your feedback", title: name ? `${esc(name)}, how did we do?` : "How was your visit?",
       lead: `We'd love to know how your visit${biz ? ` at ${biz}` : ""} went. Takes 5 seconds — just tap.`,
       npsQ: "From 0 to 10, how likely are you to recommend us?", csatQ: "And overall, your satisfaction:", lo: "Not likely", hi: "Very likely", foot: "Prefer not to get these? Just ignore this email — we won't send again soon." },
   };
@@ -2123,7 +2373,7 @@ function couponBlock(coupon = {}, accent = "#FF8A33", lang = "en") {
     else if (val != null && val !== "") offer = esc(val);
   }
   const inner = `
-    ${offer ? `<div align="center" style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:30px;line-height:1.1;font-weight:900;color:${accent};letter-spacing:-.5px;">${offer}</div>` : ""}
+    ${offer ? `<div align="center" style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:30px;line-height:1.1;font-weight:900;color:${_textAccent(accent, B.panel)};letter-spacing:-.5px;">${offer}</div>` : ""}
     ${code ? `<div align="center" style="margin-top:14px;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>
         <td style="border:1.5px dashed ${accent};border-radius:12px;padding:12px 26px;background:rgba(255,255,255,0.02);">
@@ -2225,7 +2475,7 @@ function giftBlock(amount, code, accent = "#FF8A33", lang = "en") {
   const amt = esc(_money(amount));
   const cd = esc(String(code || ""));
   const inner = `
-    ${amt ? `<div align="center" style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:34px;line-height:1.1;font-weight:900;color:${accent};letter-spacing:-.5px;">${amt}</div>` : ""}
+    ${amt ? `<div align="center" style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:34px;line-height:1.1;font-weight:900;color:${_textAccent(accent, B.panel)};letter-spacing:-.5px;">${amt}</div>` : ""}
     ${cd ? `<div align="center" style="margin-top:14px;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>
         <td style="border:1.5px dashed ${accent};border-radius:12px;padding:12px 26px;background:rgba(255,255,255,0.02);">
@@ -2272,9 +2522,9 @@ export function membershipWelcomeEmail({ brand = {}, name = "", membership = {} 
     : lg === "es"
     ? { subject: `Bienvenido(a) a ${membership.name || "el club"} 🌟`, pre: "Su suscripción está activa — disfrute los beneficios.", eyebrow: "Suscripción activa", title: who ? `Bienvenido(a), ${who} 🌟` : "Suscripción activa 🌟", intro: `Su suscripción${planName ? ` <b style="color:${B.ink};">${planName}</b>` : ""} está activa. Desde ahora disfruta todo lo que incluye.`, per: interval === "year" ? "/año" : "/mes", perksTitle: "Sus beneficios", cta: "Ver mi cuenta", foot: `Gracias por ser parte, ${business}.` }
     : { subject: `Welcome to ${membership.name || "the club"} 🌟`, pre: "Your membership is active — enjoy the perks.", eyebrow: "Membership active", title: who ? `Welcome, ${who} 🌟` : "Membership active 🌟", intro: `Your${planName ? ` <b style="color:${B.ink};">${planName}</b>` : ""} membership is active. From now on you enjoy everything it includes.`, per: interval === "year" ? "/yr" : "/mo", perksTitle: "Your perks", cta: "View my account", foot: `Thank you for joining, ${business}.` };
-  const priceLine = price ? `<div align="center" style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:30px;line-height:1.1;font-weight:900;color:${accent};letter-spacing:-.5px;">${esc(price)}<span style="font-size:14px;color:${B.muted};font-weight:700;"> ${T.per}</span></div>` : "";
+  const priceLine = price ? `<div align="center" style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:30px;line-height:1.1;font-weight:900;color:${_textAccent(accent, B.panel)};letter-spacing:-.5px;">${esc(price)}<span style="font-size:14px;color:${B.muted};font-weight:700;"> ${T.per}</span></div>` : "";
   const perksBlock = perks
-    ? panel(`<div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${accent};font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;margin-bottom:8px;">${esc(T.perksTitle)}</div>
+    ? panel(`<div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${_textAccent(accent, B.panel)};font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;margin-bottom:8px;">${esc(T.perksTitle)}</div>
         <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:1.7;color:${B.ink2};white-space:pre-line;">${esc(perks)}</div>`)
     : "";
   const bodyHtml = `${_bp(T.intro)}${priceLine ? `<div style="height:8px;font-size:0;line-height:0;">&nbsp;</div>${priceLine}<div style="height:16px;font-size:0;line-height:0;">&nbsp;</div>` : ""}${perksBlock}`;
@@ -2300,7 +2550,7 @@ export function packagePurchaseEmail({ brand = {}, name = "", package: pkg = {},
     : lg === "es"
     ? { subject: `Su paquete${pkg.name ? ` ${pkg.name}` : ""} está listo 🎟️`, pre: "Compra confirmada — sus sesiones están listas.", eyebrow: "Compra confirmada", title: who ? `¡Gracias, ${who}! 🎟️` : "Compra confirmada 🎟️", intro: `Su paquete${packName ? ` <b style="color:${B.ink};">${packName}</b>` : ""} está confirmado${service ? ` (${service})` : ""}. Solo venga — nosotros nos encargamos del resto.`, sess: "sesiones restantes", cta: "Agendar mi sesión", foot: `Hasta pronto, ${business}.` }
     : { subject: `Your${pkg.name ? ` ${pkg.name}` : ""} package is ready 🎟️`, pre: "Purchase confirmed — your sessions are ready.", eyebrow: "Purchase confirmed", title: who ? `Thank you, ${who}! 🎟️` : "Purchase confirmed 🎟️", intro: `Your${packName ? ` <b style="color:${B.ink};">${packName}</b>` : ""} package is confirmed${service ? ` (${service})` : ""}. Just come in — we'll take care of the rest.`, sess: "sessions remaining", cta: "Book my session", foot: `See you soon, ${business}.` };
-  const counter = panel(`<div align="center" style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:44px;line-height:1;font-weight:900;color:${accent};letter-spacing:-1px;">${esc(String(left))}</div>
+  const counter = panel(`<div align="center" style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:44px;line-height:1;font-weight:900;color:${_textAccent(accent, B.panel)};letter-spacing:-1px;">${esc(String(left))}</div>
     <div align="center" style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.muted};margin-top:6px;">${esc(T.sess)}</div>`, "24px 20px");
   const bodyHtml = `${_bp(T.intro)}${counter}`;
   return {
@@ -2369,7 +2619,7 @@ export function moneyRecoveredEmail({ business = "", logo = "", brandColor = "",
     <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:9.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${B.muted};margin-top:5px;line-height:1.35;">${esc(label)}</div></td>`;
   const hero = panel(`
     <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:${B.muted};">${esc(T.bigLabel)}</div>
-    <div style="margin-top:6px;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:44px;line-height:1.02;font-weight:900;letter-spacing:-1px;color:${accent};">~${usd(estimated)}</div>`, "22px 22px");
+    <div style="margin-top:6px;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:44px;line-height:1.02;font-weight:900;letter-spacing:-1px;color:${_textAccent(accent, B.panel)};">~${usd(estimated)}</div>`, "22px 22px");
   const stats = panel(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
     ${statCell(String(calls), T.st.calls, B.ink)}
     ${statCell(String(books), T.st.books, B.ink)}
@@ -2637,5 +2887,144 @@ export function onboardingCheckinEmail({ name = "there", business = "your busine
   ${pill(t.luke, u("lukewarm"), B.gold)}
   ${pill(t.cold, u("cold"), "#c2603a")}
   <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:18px;">${t.foot}</div>`;
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+}
+
+// ── ALERTA DE ANÚNCIO — a mensagem que separa agência de painel ───────────────────────────────
+// O painel espera você abrir. A agência te avisa. Este e-mail é o produto: chega ANTES do
+// prejuízo virar mês fechado, e diz O QUE FAZER — não "seu ROAS caiu 12%", que não é acionável
+// para quem tem um salão para tocar.
+//
+// REGRAS DESTE TEMPLATE:
+// · nunca chega sem motivo E sem ação (o vigia já garante amostra suficiente);
+// · oportunidade vem JUNTO do problema — agência que só avisa de prejuízo deixa dinheiro na mesa;
+// · valores sempre em dinheiro de verdade, nunca em índice que o dono precise traduzir.
+export function adsAlertEmail({ business = "", urgentes = [], oportunidades = [], lang = "pt", brand = null } = {}) {
+  const L = (lang || "pt").toString().slice(0, 2);
+  const T = {
+    pt: { eyebrow: "Seus anúncios", olá: "Olhei suas campanhas hoje",
+          urg: "Precisa de atenção", opo: "Vale investir mais",
+          gasto: "investido", trouxe: "trouxe", ag1: "agendamento", agN: "agendamentos", cta: "Ver no painel",
+          rodape: "Cada número aqui vem do que foi realmente gasto e do que foi realmente agendado." },
+    en: { eyebrow: "Your ads", olá: "I looked at your campaigns today",
+          urg: "Needs attention", opo: "Worth investing more",
+          gasto: "spent", trouxe: "brought", ag1: "booking", agN: "bookings", cta: "See the dashboard",
+          rodape: "Every number here comes from real spend and real bookings." },
+    es: { eyebrow: "Tus anuncios", olá: "Revisé tus campañas hoy",
+          urg: "Necesita atención", opo: "Vale invertir más",
+          gasto: "invertido", trouxe: "trajo", ag1: "reserva", agN: "reservas", cta: "Ver el panel",
+          rodape: "Cada número viene del gasto real y de las reservas reales." },
+  }[L] || null;
+  const t = T || {
+    eyebrow: "Your ads", olá: "I looked at your campaigns today", urg: "Needs attention",
+    opo: "Worth investing more", gasto: "spent", trouxe: "brought", ag1: "booking", agN: "bookings", cta: "See the dashboard",
+    rodape: "Every number here comes from real spend and real bookings.",
+  };
+  const cash = (c) => `$${(Number(c || 0) / 100).toFixed(2)}`;
+
+  const bloco = (titulo, itens, cor) => {
+    if (!itens.length) return "";
+    const linhas = itens.map((a) => `
+      <tr><td style="padding:10px 0;border-bottom:1px solid ${B.line};">
+        <div style="font:700 14px/1.35 -apple-system,Segoe UI,Roboto,sans-serif;color:${B.ink};">
+          ${esc(a.campanha)} <span style="font-weight:400;color:${B.muted};">· ${esc(a.canal)}</span>
+        </div>
+        <div style="font:400 13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:${B.ink2};margin-top:2px;">
+          ${t.gasto} ${cash(a.gasto_cents)} · ${t.trouxe} ${Number(a.agendamentos || 0)} ${Number(a.agendamentos) === 1 ? t.ag1 : t.agN}${Number(a.receita_cents) ? ` (${cash(a.receita_cents)})` : ""}
+        </div>
+        <div style="font:600 13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:${cor};margin-top:4px;">
+          ${esc(a.o_que_fazer || "")}
+        </div>
+      </td></tr>`).join("");
+    return `<div style="font:700 12px/1 -apple-system,Segoe UI,Roboto,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:${cor};margin:22px 0 6px;">${esc(titulo)}</div>
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation">${linhas}</table>`;
+  };
+
+  // CORES DA PALETA, nunca literais de tema claro. Este corpo usava #1B1A17 no título e #8A8177
+  // no rodapé — sobre B.card (#161512) isso dá contraste de ~1,05:1, ou seja PRETO NO PRETO. O
+  // cliente abria o alerta e não via nem o nome da campanha nem os valores: justamente o e-mail
+  // que o cabeçalho deste arquivo descreve como "o que separa agência de painel". Achado por
+  // revisão adversarial 2026-08-11. Regra: o e-mail desta casa é ESCURO (o shell usa B.card);
+  // cor escrita à mão aqui dentro vira texto invisível.
+  // E este comentário é `//`, não `<!-- -->`: comentário HTML viaja dentro da mensagem, engorda o
+  // e-mail e entrega nota interna ao cliente. Descoberto porque meu próprio teste o detectou como
+  // se fosse a cor errada ainda presente.
+  const corpo = `
+    <div style="font:700 20px/1.3 -apple-system,Segoe UI,Roboto,sans-serif;color:${B.ink};">${esc(t.olá)}${business ? `, ${esc(business)}` : ""}.</div>
+    ${bloco(t.urg, urgentes, "#FF7A6B")}
+    ${bloco(t.opo, oportunidades, "#6FD39B")}
+    <div style="font:400 12px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;color:${B.muted};margin-top:22px;">${esc(t.rodape)}</div>
+    ${cta(t.cta, "https://guileoai.com/portal")}`;
+
+  const qtd = urgentes.length + oportunidades.length;
+  return {
+    subject: L === "pt" ? `${urgentes.length ? "⚠️ " : "📈 "}Seus anúncios: ${qtd} ponto${qtd === 1 ? "" : "s"} para decidir`
+      : L === "es" ? `${urgentes.length ? "⚠️ " : "📈 "}Tus anuncios: ${qtd} punto${qtd === 1 ? "" : "s"} para decidir`
+      : `${urgentes.length ? "⚠️ " : "📈 "}Your ads: ${qtd} thing${qtd === 1 ? "" : "s"} to decide`,
+    html: shell({ preheader: t.olá, eyebrow: t.eyebrow, body: corpo, lang: L, brand }),
+  };
+}
+
+// ── ENCAMINHAMENTO: o último metro do go-live ────────────────────────────────────────────────
+// Existe porque o Natura (2026-08-14) tinha agente ok, número ok e pipeline ok — e ZERO ligação
+// de cliente, por um motivo que nenhum monitor pega: a linha que o mundo disca nunca foi
+// encaminhada. É o único passo do go-live que não é código, e é o que decide se o cliente
+// recebe algo pelo que já está pagando.
+//
+// ⚠️ O TOM É PARTE DO PRODUTO. Quem recebe é um cliente PAGANTE que não recebeu nada ainda —
+// e a leitura natural dele é "então eu paguei e não funciona". Duas regras no texto:
+//   1. Nunca insinuar erro dele ("você não configurou"). O passo depende da operadora, não
+//      dele, e ninguém explicou antes. A culpa, se existe, é nossa por não ter mandado isto no
+//      primeiro dia.
+//   2. Nunca dizer "você está há N dias sem ligação". É verdade e é humilhante — soa a cobrança
+//      e a vigilância. O e-mail fala do que falta, não do que ele deixou de fazer.
+// O e-mail é curto de propósito: o passo-a-passo mora no link, que é gerado por tenant.
+export function forwardingSetupEmail({ name = "there", business = "your business", agentName = "Gui", number = "", lines = [], link = "", lang = "en" } = {}) {
+  name = esc(name); business = esc(business);
+  const A = esc(agentName); const N = esc(number);
+  const many = lines.length > 1;
+  const linhas = lines.length
+    ? `<div style="background:${B.panel};border:1px solid ${B.line};border-radius:10px;padding:14px 16px;margin-top:18px;">
+         ${lines.map((l) => `<div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;color:${B.ink};padding:3px 0;">${esc(l)}</div>`).join("")}
+       </div>` : "";
+  const t = lang === "pt" ? {
+    subject: `${business}: falta 1 passo para a ${A} atender de verdade`,
+    pre: `5 minutos no aparelho — e as ligações perdidas viram agendamento.`,
+    eyebrow: "Último passo do go-live",
+    h1: `Falta um passo, ${name}`,
+    intro: `A <strong style="color:${B.ink};">${A}</strong> já está pronta e atendendo — mas no número novo dela, <span style="font-family:ui-monospace,Menlo,monospace;color:${B.gold};">${N}</span>. Enquanto a linha que vocês divulgam não apontar pra lá, ela atende um telefone que ninguém disca.`,
+    linhasT: many ? `As linhas de vocês (são ${lines.length} — todas precisam ser encaminhadas):` : "A linha de vocês:",
+    meio: `São <strong style="color:${B.ink};">5 minutos no aparelho</strong>. O passo-a-passo abaixo tem o código exato da operadora, a armadilha que faz parecer que não funcionou, e o teste de 3 ligações que prova que ficou certo.`,
+    cta: "Ver o passo-a-passo →",
+    foot: `Qualquer dúvida, é só responder este e-mail — a gente faz junto por telefone se preferir.`,
+  } : lang === "es" ? {
+    subject: `${business}: falta 1 paso para que ${A} atienda de verdad`,
+    pre: `5 minutos en el teléfono — y las llamadas perdidas se vuelven citas.`,
+    eyebrow: "Último paso del go-live",
+    h1: `Falta un paso, ${name}`,
+    intro: `<strong style="color:${B.ink};">${A}</strong> ya está lista y atendiendo — pero en su número nuevo, <span style="font-family:ui-monospace,Menlo,monospace;color:${B.gold};">${N}</span>. Mientras la línea que ustedes anuncian no apunte allí, ella atiende un teléfono que nadie marca.`,
+    linhasT: many ? `Sus líneas (son ${lines.length} — todas deben reenviarse):` : "Su línea:",
+    meio: `Son <strong style="color:${B.ink};">5 minutos en el teléfono</strong>. La guía abajo trae el código exacto, la trampa que hace parecer que no funcionó, y la prueba de 3 llamadas.`,
+    cta: "Ver la guía →",
+    foot: `Cualquier duda, responda este correo — lo hacemos juntos por teléfono si prefiere.`,
+  } : {
+    subject: `${business}: one step left before ${A} really answers`,
+    pre: `5 minutes on the handset — and missed calls turn into bookings.`,
+    eyebrow: "Last step of go-live",
+    h1: `One step left, ${name}`,
+    intro: `<strong style="color:${B.ink};">${A}</strong> is live and answering — but on her own new number, <span style="font-family:ui-monospace,Menlo,monospace;color:${B.gold};">${N}</span>. Until the line you advertise points there, she's answering a phone nobody dials.`,
+    linhasT: many ? `Your lines (there are ${lines.length} — all of them need forwarding):` : "Your line:",
+    meio: `It's <strong style="color:${B.ink};">5 minutes on the handset</strong>. The guide below has the exact carrier code, the trap that makes it look broken, and the 3-call test that proves it's right.`,
+    cta: "Open the guide →",
+    foot: `Any questions, just reply to this email — happy to walk through it on the phone with you.`,
+  };
+  const body = `
+  <div style="font-size:26px;line-height:1.2;color:${B.ink2};font-weight:700;">${t.h1}</div>
+  <div class="g-intro" style="font-size:16px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
+  ${lines.length ? `<div style="font-size:13px;color:${B.muted};margin-top:20px;font-weight:600;">${t.linhasT}</div>${linhas}` : ""}
+  <div class="g-intro" style="font-size:15px;color:${B.ink2};line-height:1.72;margin-top:20px;">${t.meio}</div>
+  <div style="height:24px;line-height:24px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(t.cta, link)}</div>
+  <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
   return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
 }

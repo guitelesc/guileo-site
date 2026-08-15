@@ -1,12 +1,15 @@
 // Cloudflare Pages Function — POST /api/proactive?token=DIGEST_TOKEN  (called by the cron worker)
 // The AUTONOMOUS engine (H2): Gui acts without being asked. TCPA-safe — reactivation goes by EMAIL
-// (branded reengageEmail) to dormant customers who have an email; it never auto-dials. Reminders for
+// (winbackCustomerEmail, na marca DO CLIENTE) to dormant customers who have an email; it never auto-dials.
+// TODO e-mail de marketing daqui respeita email_suppressions (fail-closed) e leva link de descadastro
+// + endereço postal do negócio (CAN-SPAM). Lembrete de horário é transacional e é a única exceção. Reminders for
 // upcoming appointments are collected (biz_due_reminders) and emailed where an email exists (SMS lights
 // up at A2P). Per-business; iterates the configured client list (PROACTIVE_EMAILS) or the demo set.
 import { json, safeEq } from "../lib/guard.js";
-import { sbKey } from "../lib/sb.js";
-import { reengageEmail, appointmentReminderEmail, birthdayEmail, anniversaryEmail, recallEmail, loyaltyMilestoneEmail, welcomeFirstVisitEmail, rebookEmail, promoEmail, proposalEmail, moneyRecoveredEmail } from "../lib/emailTemplates.js";
+import { sbKey, svcJson } from "../lib/sb.js";
+import { winbackCustomerEmail, appointmentReminderEmail, birthdayEmail, anniversaryEmail, recallEmail, loyaltyMilestoneEmail, welcomeFirstVisitEmail, rebookEmail, promoEmail, moneyRecoveredEmail } from "../lib/emailTemplates.js";
 import { brandFor } from "../lib/clientBrand.js";
+import { unsubUrl } from "../lib/unsub.js";
 
 // Friendly date label from an ISO timestamp (UTC) — "Sex 20/06 · 14:30".
 const DOW = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -34,14 +37,19 @@ const ingRpc = (env, fn, body) => fetch(`${SCHED_SB}/rest/v1/rpc/${fn}`, {
   body: JSON.stringify({ ...body, p_secret: env.INGEST_SECRET || "" }),
 }).then((r) => r.json()).catch(() => ({}));
 
+// "CHECAR RETORNO DE ENVIO" (auditoria A4, 2026-08-11): esta função disparava o fetch e devolvia
+// `true` SEM olhar a resposta do Resend. Consequência real: um 4xx/5xx (quota, domínio, destinatário
+// inválido) contava como enviado — o relatório do cron dizia "reminded: 12" com zero e-mail entregue,
+// E, pior, o motor a montante já tinha marcado o lembrete como enviado / queimado o claim do
+// aniversário. O cliente nunca recebia e o sistema jurava que sim. Agora só é sucesso com 2xx.
 async function sendEmail(env, to, subject, html) {
   if (!env.RESEND_API_KEY || !isEmail(to)) return false;
   try {
-    await fetch("https://api.resend.com/emails", {
+    const r = await fetch("https://api.resend.com/emails", {
       method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to, subject, html }),
     });
-    return true;
+    return r.ok;
   } catch { return false; }
 }
 
@@ -97,6 +105,34 @@ export async function onRequestPost(context) {
     const profile = (await ingRpc(env, "get_client_profile", { p_email: email })) || {};
     const L = langNorm(profile.lang);
 
+    // ── CONFORMIDADE + MARCA (auditoria A4, 2026-08-11) ─────────────────────────────────────
+    // Tudo daqui pra baixo é e-mail para o CLIENTE DO CLIENTE. Faltavam três coisas, e as três
+    // batem no mesmo lugar: a reputação de envio COMPARTILHADA (um remetente para todos os tenants).
+    //  1. SUPRESSÃO: quem clicou "descadastrar" numa campanha continuava recebendo aniversário,
+    //     promoção de data comemorativa, recall e win-back — porque só coupons.js consultava a
+    //     lista. Um opt-out que não vale para todos os motores não é opt-out; é spam com botão.
+    //  2. LINK DE DESCADASTRO: nenhum destes e-mails tinha um. CAN-SPAM exige um mecanismo claro.
+    //  3. MARCA: iam com a casca da GUILEO e rodapé "you started with Guileo" — falso para quem
+    //     nunca ouviu falar da Guileo, e some com a marca pela qual o dono paga. Agora vão com
+    //     logo/cor/nome do negócio e o endereço postal dele.
+    const brand = await brandFor(env, email).catch(() => null);
+    let address = "";
+    try {
+      const a = await svcJson(env, "client_postal_address", { p_secret: env.INGEST_SECRET || "", p_client_email: email });
+      if (typeof a === "string" && a.trim()) address = a.trim().slice(0, 200);
+    } catch { /* endereço ausente nunca bloqueia o sweep */ }
+    // Lista de supressão do tenant. FAIL-CLOSED: se a leitura falhar, NÃO mandamos marketing nesta
+    // volta — reenviar para quem pediu descadastro custa mais caro que atrasar um aniversário.
+    let supressos = null;
+    try {
+      const sup = await svcJson(env, "email_suppressed_list", { p_secret: env.INGEST_SECRET || "", p_client_email: email });
+      if (Array.isArray(sup)) supressos = new Set(sup.map((x) => String(x).toLowerCase()));
+    } catch { /* supressos fica null → marketing pula este tenant nesta volta */ }
+    // podeMkt = destinatário válido E não suprimido. Lembrete de horário é TRANSACIONAL (a pessoa
+    // marcou; não é marketing) → usa isEmail direto, exceção legítima e explícita.
+    const podeMkt = (to) => isEmail(to) && supressos instanceof Set && !supressos.has(String(to).trim().toLowerCase());
+    const unsubDe = (to) => unsubUrl(env, "https://guileoai.com", email, String(to || "").toLowerCase()).catch(() => "");
+
     // ── MONTHLY VALUE EMAIL (owner) — the branded "here's what Gui recovered for you" proof that
     // justifies the subscription. Sent ONCE per calendar month to the tenant OWNER (client_email —
     // the only owner address we hold), in their brand (logo/accent) + language. REAL numbers only:
@@ -137,8 +173,8 @@ export async function onRequestPost(context) {
     // TCPA-safe: NEVER auto-dials; email only.
     const dorm = await rpc(env, "biz_dormant_customers", { p_email: email, p_days: 60, p_limit: 25 });
     for (const c of (dorm?.dormant || [])) {
-      if (!isEmail(c.contact)) continue;
-      const { subject, html } = reengageEmail({ name: c.name || "there", business: "", lang: L });
+      if (!podeMkt(c.contact)) continue;
+      const { subject, html } = winbackCustomerEmail({ name: c.name || "there", business: (brand && brand.business) || "", lang: L, bizEmail: email, brand, unsub: await unsubDe(c.contact), address });
       if (await capSend(c.contact, subject, html)) {
         reactivated++;
         // FIX (audit HIGH): log a winback event so (a) the churn block below dedups against it in the
@@ -156,8 +192,8 @@ export async function onRequestPost(context) {
     // high-risk NOT reengaged in 30d (deduped vs the winback event we log below). Same cap/rotation.
     const churn = await ingRpc(env, "churn_reengage_candidates", { p_email: email, p_limit: 15 });
     for (const c of (Array.isArray(churn) ? churn : [])) {
-      if (!isEmail(c.email)) continue;
-      const { subject, html } = reengageEmail({ name: c.name || "there", business: "", lang: L });
+      if (!podeMkt(c.email)) continue;
+      const { subject, html } = winbackCustomerEmail({ name: c.name || "there", business: (brand && brand.business) || "", lang: L, bizEmail: email, brand, unsub: await unsubDe(c.email), address });
       if (await capSend(c.email, subject, html)) {
         reactivated++;
         // log the winback so the next sweep dedupes this contact for 30d (payload.contact = email)
@@ -171,40 +207,40 @@ export async function onRequestPost(context) {
     // for customers whose contact is an email. biz_due_reminders marks them reminded so it fires once.
     const rem = await rpc(env, "biz_due_reminders", { p_email: email, p_hours: 24, p_limit: 50 });
     for (const a of (rem?.due || [])) {
-      if (!isEmail(a.contact)) continue;
-      const { subject, html } = appointmentReminderEmail({ name: a.name || "there", service: a.service || "", whenLabel: fmtWhen(a.when), ref: a.ref || "", lang: L, bizEmail: email });
+      if (!isEmail(a.contact)) continue; // transacional: a pessoa marcou este horário
+      const { subject, html } = appointmentReminderEmail({ name: a.name || "there", business: (brand && brand.business) || "", service: a.service || "", whenLabel: fmtWhen(a.when), ref: a.ref || "", lang: L, bizEmail: email, brand, address });
       if (await capSend(a.contact, subject, html)) reminded++;
     }
 
     // BIRTHDAY — Gui never forgets. Celebrate every customer whose birthday is today (email).
     const bd = await rpc(env, "biz_birthdays", { p_email: email, p_within: 0, p_limit: 100 });
     for (const c of (bd?.birthdays || [])) {
-      if (!isEmail(c.contact)) continue;
-      const { subject, html } = birthdayEmail({ name: c.name || "there", business: "", lang: L });
+      if (!podeMkt(c.contact)) continue;
+      const { subject, html } = birthdayEmail({ name: c.name || "there", business: (brand && brand.business) || "", lang: L, brand, unsub: await unsubDe(c.contact), address });
       if (await capSend(c.contact, subject, html)) birthdays++;
     }
 
     // CLIENT ANNIVERSARY — "X years since your first visit, thank you" (email).
     const anv = await rpc(env, "biz_anniversaries", { p_email: email, p_limit: 100 });
     for (const c of (anv?.anniversaries || [])) {
-      if (!isEmail(c.contact)) continue;
-      const { subject, html } = anniversaryEmail({ name: c.name || "there", business: "", years: c.years || 1, lang: L });
+      if (!podeMkt(c.contact)) continue;
+      const { subject, html } = anniversaryEmail({ name: c.name || "there", business: (brand && brand.business) || "", years: c.years || 1, lang: L, brand, unsub: await unsubDe(c.contact), address });
       if (await capSend(c.contact, subject, html)) anniversaries++;
     }
 
     // RECALL — return-by-cadence (e.g. ~6-month routine). Fires once per visit cycle (RPC dedups).
     const rc = await rpc(env, "biz_recall_due", { p_email: email, p_days: 180, p_limit: 100 });
     for (const c of (rc?.recall || [])) {
-      if (!isEmail(c.contact)) continue;
-      const { subject, html } = recallEmail({ name: c.name || "there", business: "", lang: L, bizEmail: email });
+      if (!podeMkt(c.contact)) continue;
+      const { subject, html } = recallEmail({ name: c.name || "there", business: (brand && brand.business) || "", lang: L, bizEmail: email, brand, unsub: await unsubDe(c.contact), address });
       if (await capSend(c.contact, subject, html)) recalls++;
     }
 
     // LOYALTY MILESTONE — reward every 10th visit (RPC dedups per milestone).
     const ly = await rpc(env, "biz_loyalty_due", { p_email: email, p_step: 10, p_limit: 100 });
     for (const c of (ly?.loyalty || [])) {
-      if (!isEmail(c.contact)) continue;
-      const { subject, html } = loyaltyMilestoneEmail({ name: c.name || "there", business: "", milestone: c.milestone || 10, lang: L });
+      if (!podeMkt(c.contact)) continue;
+      const { subject, html } = loyaltyMilestoneEmail({ name: c.name || "there", business: (brand && brand.business) || "", milestone: c.milestone || 10, lang: L, brand, unsub: await unsubDe(c.contact), address });
       if (await capSend(c.contact, subject, html)) {
         loyalty++;
         // log a 'loyalty' event so the autonomous VIP-thank below (company_crm_vips) dedups against this
@@ -218,16 +254,16 @@ export async function onRequestPost(context) {
     // WELCOME — warm welcome after a customer's first visit (fires once).
     const wc = await rpc(env, "biz_welcome_due", { p_email: email, p_limit: 100 });
     for (const c of (wc?.welcome || [])) {
-      if (!isEmail(c.contact)) continue;
-      const { subject, html } = welcomeFirstVisitEmail({ name: c.name || "there", business: "", lang: L });
+      if (!podeMkt(c.contact)) continue;
+      const { subject, html } = welcomeFirstVisitEmail({ name: c.name || "there", business: (brand && brand.business) || "", lang: L, brand, unsub: await unsubDe(c.contact), address });
       if (await capSend(c.contact, subject, html)) welcomes++;
     }
 
     // REBOOK — follow up customers who asked to reschedule, to lock a new time (fires once).
     const rb = await rpc(env, "biz_rebook_due", { p_email: email, p_limit: 100 });
     for (const c of (rb?.rebook || [])) {
-      if (!isEmail(c.contact)) continue;
-      const { subject, html } = rebookEmail({ name: c.name || "there", business: "", service: c.service || "", lang: L, bizEmail: email });
+      if (!podeMkt(c.contact)) continue;
+      const { subject, html } = rebookEmail({ name: c.name || "there", business: (brand && brand.business) || "", service: c.service || "", lang: L, bizEmail: email, brand, unsub: await unsubDe(c.contact), address });
       if (await capSend(c.contact, subject, html)) rebooks++;
     }
 
@@ -235,10 +271,10 @@ export async function onRequestPost(context) {
     // BIRTHDAY (by crm_contacts.birth_date): Gui never forgets. One email/customer/year (claim dedup).
     const bd2 = await ingRpc(env, "crm_birthday_contacts", { p_client_email: email, p_limit: 200 });
     for (const c of (bd2?.contacts || [])) {
-      if (!isEmail(c.email)) continue;
+      if (!podeMkt(c.email)) continue;
       const claimed = await ingRpc(env, "marketing_date_claim", { p_client_email: email, p_kind: "birthday", p_ref: (c.id || c.email).toString(), p_period: yr });
       if (claimed !== true) continue; // already wished this year (or racing run owns it)
-      const { subject, html } = birthdayEmail({ name: c.name || "there", business: "", lang: L });
+      const { subject, html } = birthdayEmail({ name: c.name || "there", business: (brand && brand.business) || "", lang: L, brand, unsub: await unsubDe(c.email), address });
       if (await capSend(c.email, subject, html)) crmBirthdays++;
     }
 
@@ -251,10 +287,10 @@ export async function onRequestPost(context) {
       const recipients = rcp?.contacts || [];
       for (const dt of dates) {
         for (const c of recipients) {
-          if (!isEmail(c.email)) continue;
+          if (!podeMkt(c.email)) continue;
           const claimed = await ingRpc(env, "marketing_date_claim", { p_client_email: email, p_kind: (dt.kind || "holiday").toString(), p_ref: (dt.id || "").toString(), p_period: `${yr}:${(c.id || c.email).toString()}` });
           if (claimed !== true) continue;
-          const { subject, html } = promoEmail({ name: c.name || "there", business: "", headline: dt.label || "", message: dt.message || "", offer: dt.offer || "", lang: L, bizEmail: email });
+          const { subject, html } = promoEmail({ name: c.name || "there", business: (brand && brand.business) || "", headline: dt.label || "", message: dt.message || "", offer: dt.offer || "", lang: L, bizEmail: email, brand, unsub: await unsubDe(c.email), address });
           if (await capSend(c.email, subject, html)) marketingDates++;
         }
       }
@@ -264,10 +300,10 @@ export async function onRequestPost(context) {
     // crm_rebook_due is SCHED-gated (touches biz_appointments) → rpc(); claim is INGEST-gated → ingRpc().
     const rbk = await rpc(env, "crm_rebook_due", { p_client_email: email, p_default_days: 28, p_limit: 100 });
     for (const a of (rbk?.due || [])) {
-      if (!isEmail(a.contact)) continue;
+      if (!podeMkt(a.contact)) continue;
       const claimed = await ingRpc(env, "marketing_date_claim", { p_client_email: email, p_kind: "rebook", p_ref: (a.appointment_id || "").toString(), p_period: "-" });
       if (claimed !== true) continue;
-      const { subject, html } = rebookEmail({ name: a.name || "there", business: "", service: a.service || "", lang: L, bizEmail: email });
+      const { subject, html } = rebookEmail({ name: a.name || "there", business: (brand && brand.business) || "", service: a.service || "", lang: L, bizEmail: email, brand, unsub: await unsubDe(a.contact), address });
       if (await capSend(a.contact, subject, html)) rebookNudges++;
     }
   }
@@ -278,11 +314,31 @@ export async function onRequestPost(context) {
   // rodaram ANTES e já marcaram winback/loyalty; a RPC exclui quem já foi tocado). Só o que o resto NÃO fez.
   let vipThanks = 0, leadNurtures = 0;
   if (env.INGEST_SECRET) {
+    // Estes dois laços são CROSS-TENANT (cada linha traz o seu `tenant`), então a supressão/marca/
+    // endereço não podem vir do laço por-tenant acima — resolvemos por tenant, com cache, e o mesmo
+    // fail-closed: sem lista de supressão confirmada, não mandamos marketing pra aquele tenant.
+    const cacheTenant = new Map();
+    const ctx = async (t) => {
+      const k = String(t || "").toLowerCase();
+      if (!k.includes("@")) return null;
+      if (cacheTenant.has(k)) return cacheTenant.get(k);
+      const br = await brandFor(env, k).catch(() => null);
+      let ad = "", sup = null;
+      try { const a = await svcJson(env, "client_postal_address", { p_secret: env.INGEST_SECRET || "", p_client_email: k }); if (typeof a === "string" && a.trim()) ad = a.trim().slice(0, 200); } catch { /* sem endereço */ }
+      try { const s2 = await svcJson(env, "email_suppressed_list", { p_secret: env.INGEST_SECRET || "", p_client_email: k }); if (Array.isArray(s2)) sup = new Set(s2.map((x) => String(x).toLowerCase())); } catch { /* sup null → pula */ }
+      const v = { brand: br, address: ad, sup, lang: langNorm(br && br.lang) };
+      cacheTenant.set(k, v);
+      return v;
+    };
+    const podeCross = (c, to) => c && c.sup instanceof Set && isEmail(to) && !c.sup.has(String(to).trim().toLowerCase());
+
     // 🗂️ CRM — agradece os VIPs (maior LTV, saudáveis, não agradecidos em 60d)
     const vips = await ingRpc(env, "company_crm_vips", { p_limit: 40 });
     for (const c of (Array.isArray(vips) ? vips : [])) {
       if (sends >= 40 || !isEmail(c.email) || offSet.has((c.tenant || "").toLowerCase())) continue;
-      const { subject, html } = loyaltyMilestoneEmail({ name: c.name || "there", business: "", milestone: c.visits || 10, lang: "en" });
+      const cx = await ctx(c.tenant);
+      if (!podeCross(cx, c.email)) continue;
+      const { subject, html } = loyaltyMilestoneEmail({ name: c.name || "there", business: (cx.brand && cx.brand.business) || "", milestone: c.visits || 10, lang: cx.lang, brand: cx.brand, unsub: await unsubUrl(env, "https://guileoai.com", String(c.tenant).toLowerCase(), String(c.email).toLowerCase()).catch(() => ""), address: cx.address });
       if (await capSend(c.email, subject, html)) {
         vipThanks++;
         await ingRpc(env, "ingest_client_event", { p_email: c.tenant, p_type: "loyalty", p_channel: "email",
@@ -290,11 +346,17 @@ export async function onRequestPost(context) {
           p_payload: { contact: (c.email || "").toLowerCase(), kind: "loyalty" } });
       }
     }
-    // 📣 MARKETING — nutre os leads (não nutridos em 14d) que o drip por-idade não pegou
+    // 📣 MARKETING — nutre os leads (não nutridos em 14d) que o drip por-idade não pegou.
+    // ⚠️ ERA proposalEmail (auditoria A4, 2026-08-11): a PROPOSTA COMERCIAL DA GUILEO, com o bloco
+    // das 8 frentes ("site, app & software", "gestão de redes sociais"…). Esses leads são leads DO
+    // CLIENTE — gente que ligou pro salão. Recebiam um deck B2B da Guileo assinado pelo salão.
+    // Agora recebem o que faz sentido: um convite da PRÓPRIA casa pra marcar um horário.
     const leads = await ingRpc(env, "company_marketing_leads", { p_limit: 40 });
     for (const l of (Array.isArray(leads) ? leads : [])) {
       if (sends >= 40 || !isEmail(l.email) || offSet.has((l.tenant || "").toLowerCase())) continue;
-      const { subject, html } = proposalEmail({ name: l.name || "there", business: "", lang: "en" });
+      const cx = await ctx(l.tenant);
+      if (!podeCross(cx, l.email)) continue;
+      const { subject, html } = promoEmail({ name: l.name || "there", business: (cx.brand && cx.brand.business) || "", lang: cx.lang, bizEmail: l.tenant, brand: cx.brand, unsub: await unsubUrl(env, "https://guileoai.com", String(l.tenant).toLowerCase(), String(l.email).toLowerCase()).catch(() => ""), address: cx.address });
       if (await capSend(l.email, subject, html)) {
         leadNurtures++;
         await ingRpc(env, "ingest_client_event", { p_email: l.tenant, p_type: "nurture", p_channel: "email",

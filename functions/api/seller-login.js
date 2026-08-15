@@ -12,7 +12,10 @@ import { signSession } from "../lib/sellerSession.js";
 // best-effort BEFORE the env/bootstrap flow: an RPC 404/error just falls through, NEVER breaks login.
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
-async function sellerAuthDB(env, email, code) {
+// EXPORTADA para /api/criativo poder autorizar o vendedor sem COPIAR a verificação (2026-08-12).
+// Duplicar um portão de autenticação é o pior lugar possível para uma cópia sem vínculo: o dia em
+// que a regra apertar de um lado e não do outro, a porta frouxa continua aberta e ninguém percebe.
+export async function sellerAuthDB(env, email, code) {
   const ING = env && env.INGEST_SECRET;
   if (!ING || !email || !code) return null;
   try {

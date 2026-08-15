@@ -12,23 +12,46 @@
 // returns null on a mismatch, so one tenant's key can NEVER read another tenant's data.
 // No OWNER_EMAIL fallback. Graceful { ready:false } note until db/growth_intel.sql is pasted.
 import { json } from "../lib/guard.js";
-import { reengageEmail } from "../lib/emailTemplates.js";
-import { sbKey } from "../lib/sb.js";
+import { winbackCustomerEmail } from "../lib/emailTemplates.js";
+import { sbKey, svcJson } from "../lib/sb.js";
+import { brandFor } from "../lib/clientBrand.js";
+import { unsubUrl } from "../lib/unsub.js";
 
 const isEmailAddr = (s) => /.+@.+\..+/.test((s || "").toString());
 // After-hours heuristic on a captured event timestamp: a call landing before 08:00, at/after
 // 18:00, or on a weekend (UTC). This is an APPROXIMATION (we don't hold the tenant's timezone/
 // business-hours) → the figures it feeds are always labeled as an estimate, never as cash.
 const isAfterHours = (iso) => { try { const d = new Date(iso); const h = d.getUTCHours(); const wd = d.getUTCDay(); return wd === 0 || wd === 6 || h < 8 || h >= 18; } catch { return false; } };
-async function sendReengageEmail(env, to, name) {
+// WIN-BACK 1-CLIQUE — três defeitos corrigidos de uma vez (auditoria A4, 2026-08-11):
+//  (a) mandava `reengageEmail`, que é a PEÇA DE VENDA DA GUILEO ("your AI Growth Score awaits you",
+//      CTA pro quiz do guileoai.com). O destinatário aqui é o CLIENTE DO CLIENTE — uma pessoa que
+//      fez uma massagem, não um dono de negócio. Agora vai winbackCustomerEmail, na marca do cliente.
+//  (b) devolvia `true` sem olhar a resposta do Resend → o cockpit escrevia "Gui reativou por email"
+//      e gravava o client_event de winback mesmo quando o envio falhou. Agora só com 2xx.
+//  (c) idioma fixo "en" e sem supressão: quem pediu descadastro voltava a receber por este botão.
+async function sendReengageEmail(env, tenant, to, name) {
   if (!env.RESEND_API_KEY || !isEmailAddr(to)) return false;
+  const alvo = String(to).trim().toLowerCase();
   try {
-    const { subject, html } = reengageEmail({ name: name || "there", business: "", lang: "en" });
-    await fetch("https://api.resend.com/emails", {
+    // SUPRESSÃO fail-closed: sem lista confirmada, não mandamos.
+    const sup = await svcJson(env, "email_suppressed_list", { p_secret: env.INGEST_SECRET || "", p_client_email: tenant });
+    if (!Array.isArray(sup)) return false;
+    if (sup.map((x) => String(x).toLowerCase()).includes(alvo)) return false;
+
+    const brand = await brandFor(env, tenant).catch(() => null);
+    let address = "";
+    try { const a = await svcJson(env, "client_postal_address", { p_secret: env.INGEST_SECRET || "", p_client_email: tenant }); if (typeof a === "string" && a.trim()) address = a.trim().slice(0, 200); } catch { /* sem endereço */ }
+    const unsub = await unsubUrl(env, "https://guileoai.com", tenant, alvo).catch(() => "");
+    const lang = (brand && brand.lang) || "en";
+    const { subject, html } = winbackCustomerEmail({ name: name || "there", business: (brand && brand.business) || "", lang, bizEmail: tenant, brand, unsub, address });
+    const r = await fetch("https://api.resend.com/emails", {
       method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to, subject, html }),
+      body: JSON.stringify({
+        from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to, subject, html,
+        headers: unsub ? { "List-Unsubscribe": `<${unsub}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } : undefined,
+      }),
     });
-    return true;
+    return r.ok;
   } catch { return false; }
 }
 
@@ -122,7 +145,7 @@ export async function onRequestPost(context) {
       const suggested = ["call", "sms", "watch"].includes((b.suggested || "").toString()) ? b.suggested : "sms";
       // If the contact is an EMAIL, Gui reactivates RIGHT NOW (branded reengageEmail, works today).
       // Phone-only routes to SMS/call when A2P/opt-in is live — logged either way so it's in the feed.
-      const emailed = isEmailAddr(contact) ? await sendReengageEmail(env, contact, who) : false;
+      const emailed = isEmailAddr(contact) ? await sendReengageEmail(env, email, contact, who) : false;
       const via = emailed ? "email" : suggested;
       await rpc("ingest_client_event", {
         p_secret: secret, p_email: email, p_type: emailed ? "winback" : (suggested === "call" ? "call" : "message"),

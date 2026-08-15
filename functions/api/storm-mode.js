@@ -21,7 +21,7 @@
 import { json } from "../lib/guard.js";
 import { brandFor, GUILEO_BRAND } from "../lib/clientBrand.js";
 import { newsEmail, brandPromoEmail, ownerAlertEmail } from "../lib/emailTemplates.js";
-import { sendText } from "../lib/twilio.js";
+import { sendText, sendOrFlag } from "../lib/twilio.js";
 import { emitFailure } from "../lib/failure.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -132,7 +132,7 @@ export async function onRequestPost(context) {
         try {
           const pr = await rpc("client_notify_phone_lookup", { p_secret: env.INGEST_SECRET, p_email: email });
           const ph = pr.ok ? ((await pr.json()) || "").toString() : "";
-          if (/^[0-9+]{8,}$/.test(ph)) await sendText(env, ph, `🌀 Guileo: modo tempestade ATIVO (${starts_on} → ${reopen_on}). ${appts.length} agendamento(s) na janela — o Gui avisa e reagenda todo mundo. guileoai.com/portal`.slice(0, 300), { channel: "whatsapp" });
+          if (/^[0-9+]{8,}$/.test(ph)) await sendOrFlag(env, { tenant: email, motivo: "aviso de modo tempestade", opts: { channel: "whatsapp" }, to: ph, body: `🌀 Guileo: modo tempestade ATIVO (${starts_on} → ${reopen_on}). ${appts.length} agendamento(s) na janela — o Gui avisa e reagenda todo mundo. guileoai.com/portal`.slice(0, 300) });
         } catch { /* text best-effort */ }
       }
 

@@ -24,7 +24,12 @@ const FEATURE_FACTS = `GUILEO COCKPIT — what the owner actually has (answer fr
 
 // Model fallback chain (same discipline as pitch-ai.js/widget-chat.js): a transient failure on one
 // model must NOT drop the owner to a naked error. Try each in order; auth/billing stops early.
-const MODEL_CHAIN = ["claude-fable-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"];
+// MODEL_CHAIN vem de ../lib/guiBrain.js — NÃO declare outra aqui (2026-08-12).
+// Eram DEZ cópias idênticas da mesma lista de modelos, uma por arquivo. Idênticas HOJE: conferi as
+// dez antes de mexer, e é exatamente por estarem iguais que a hora de unificar é agora — depois que
+// uma diverge, alguém já foi atendido pelo modelo errado e ninguém sabe qual superfície foi.
+// É o padrão que esta sessão inteira perseguiu: cópia sem vínculo com a fonte.
+import { MODEL_CHAIN } from "../lib/guiBrain.js";
 
 // AI answer — Gui answers a Guileo support/training question warmly + flags if it needs a human.
 // context: "support" (default) or "trainer" (the in-cockpit Treinadora teaching the owner to use it).

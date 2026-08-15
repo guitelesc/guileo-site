@@ -16,7 +16,7 @@ import { json } from "../lib/guard.js";
 import { brandFor, GUILEO_BRAND } from "../lib/clientBrand.js";
 import * as tpl from "../lib/emailTemplates.js";
 import { unsubUrl } from "../lib/unsub.js";
-import { svcRpc } from "../lib/sb.js";
+import { svcRpc, svcJson } from "../lib/sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -156,11 +156,27 @@ export async function onRequestPost(context) {
       // The client's own identity (logo/accent/agent_name/business/lang) — Natura's, not Guileo's.
       const brand = await brandFor(env, email).catch(() => ({ ...GUILEO_BRAND }));
 
+      // CAN-SPAM §7704(a)(5)(A)(iii) — todo e-mail de MARKETING precisa do endereço postal do
+      // remetente. clientEmailShell já sabe imprimir `brand.address`, mas brandFor() nunca devolveu
+      // esse campo → NENHUMA campanha jamais saiu com endereço. Buscamos da unidade ativa do tenant
+      // (db/campanhas_canspam.sql). Sem endereço cadastrado NÃO mentimos: o envio segue, mas a
+      // resposta devolve canspam_address:false pra o dono saber que precisa cadastrar a unidade.
+      let addressOk = false;
+      try {
+        const addr = await svcJson(env, "client_postal_address", { p_secret: env.INGEST_SECRET || "", p_client_email: email });
+        if (typeof addr === "string" && addr.trim()) { brand.address = addr.trim().slice(0, 200); addressOk = true; }
+      } catch { /* leitura de endereço nunca derruba a campanha */ }
+
       // Attach the linked coupon (if any) so the email can print the code + terms.
       let coupon = null;
       const couponId = (campaign.coupon_id || "").toString();
       if (/^[0-9a-f-]{36}$/i.test(couponId)) {
-        const cl = await rpc("coupon_list", { p_secret: secret, p_client_email: email });
+        // BUG CORRIGIDO (auditoria A4, 2026-08-11): faltava p_key aqui. A RPC viva é
+        // coupon_list(p_secret, p_client_email, p_key) — sem p_key o PostgREST devolve 404
+        // (PGRST202), `coupons` virava [] e o cupom NUNCA era anexado: a campanha "Cupom"
+        // saía com o texto do desconto e SEM o código. O cliente lia "seu presente" e não
+        // tinha o que resgatar. Silencioso porque a leitura é best-effort.
+        const cl = await rpc("coupon_list", { p_secret: secret, p_client_email: email, p_key: key });
         const coupons = cl.ok ? ((await cl.json().catch(() => [])) || []) : [];
         coupon = (Array.isArray(coupons) ? coupons : []).find((c) => c && c.id === couponId) || null;
       }
@@ -231,48 +247,78 @@ export async function onRequestPost(context) {
           return sr.ok ? rcp.email : "";
         } catch { return ""; }
       };
-      // Send in parallel CHUNKS (adversarial review 2026-07-30): 300 sequential fetches (~45s) risked a
-      // Pages Functions wall-time/subrequest timeout MID-LOOP → partial send with no metering. Chunking
-      // cuts wall-time ~10× so the whole batch reliably completes (then we meter + mark once).
+      // Send in parallel CHUNKS: 300 sequential fetches (~45s) risked a Pages Functions wall-time /
+      // subrequest timeout MID-LOOP. Chunking cuts wall-time ~10×.
+      //
+      // ⚠️ DINHEIRO — o que mudou aqui (auditoria A4, 2026-08-11):
+      //   ANTES: (a) o livro de destinatários só era gravado DEPOIS do último chunk e (b) o ref de
+      //   cobrança era `camp:<id>:<Date.now()>:<n>`. Um timeout no meio do laço (o exato risco que
+      //   motivou o chunking) deixava ZERO destinatários gravados → o retry reenviava TUDO e, como o
+      //   ref carregava o relógio, o crédito era debitado DE NOVO. E-mail duplicado + débito duplo.
+      //   Isso contraria a lei de dinheiro do ARQUITETURA.md: "dedupe key de retry deriva do BODY,
+      //   nunca de timestamp".
+      //   AGORA: cada chunk (1) grava quem recebeu ANTES de cobrar e (2) cobra com um ref derivado do
+      //   CONTEÚDO (hash dos e-mails realmente entregues). Retry do mesmo conjunto = mesmo ref =
+      //   deduct_client_credits reconhece e não cobra. Conjunto novo = ref novo = cobra. Os dois
+      //   requisitos ("ref único por envio" e "idempotente por ref") deixam de ser contraditórios
+      //   quando o ref é função do QUE saiu, e não de QUANDO saiu.
       const sentEmails = [];
+      let naoCobrados = 0;   // e-mails que saíram e o banco não confirmou a cobrança
       const CHUNK = 10;
       for (let i = 0; i < recipients.length; i += CHUNK) {
         const results = await Promise.all(recipients.slice(i, i + CHUNK).map(sendOne));
-        for (const e of results) if (e) sentEmails.push(e);
+        const got = results.filter(Boolean);
+        if (!got.length) continue;
+        sentEmails.push(...got);
+        // 1) LIVRO PRIMEIRO — quem recebeu fica gravado agora, não no fim. Um timeout no próximo
+        //    chunk não pode mais fazer o retry reenviar quem já recebeu.
+        if (campaignId) {
+          try { await svcRpc(env, "campaign_recipients_mark", { p_secret: env.INGEST_SECRET || "", p_campaign_id: campaignId, p_emails: got }); } catch { /* best-effort */ }
+        }
+        // 2) COBRANÇA com ref derivado do conteúdo entregue (nunca do relógio).
+        const meterRef = `camp:${(campaignId || "inline").toString().slice(0, 40)}:${await refDoLote(got)}`;
+        // CHECAR O RETORNO. `rpc` devolve a Response, e **fetch não lança em erro HTTP** — o
+        // try/catch anterior não pegava nada: um 500 do banco significava 300 e-mails enviados, a
+        // Guileo sem cobrar, e ZERO registro de que isso aconteceu. É a lição que esta casa já
+        // pagou duas vezes ("checar retorno de envio"). Não interrompe o envio (o e-mail já saiu,
+        // reverter é impossível) — mas a falha volta na resposta e vira número visível.
+        try {
+          const dr = await rpc("deduct_client_credits", { p_secret: secret, p_email: email, p_credits: got.length, p_reason: "email-campaign", p_ref: meterRef });
+          if (!dr || !dr.ok) naoCobrados += got.length;
+        } catch { naoCobrados += got.length; }
       }
       const sent = sentEmails.length;
-      // Idempotency ledger — record who received THIS campaign so a re-send/retry skips them (no dupes,
-      // no double-charge). Best-effort; saved campaigns only (inline has no stable id).
-      if (campaignId && sentEmails.length) {
-        try { await svcRpc(env, "campaign_recipients_mark", { p_secret: env.INGEST_SECRET || "", p_campaign_id: campaignId, p_emails: sentEmails }); } catch { /* best-effort */ }
+
+      // Mark the campaign sent (tenant-bound; db/campanhas_canspam.sql ACUMULA o total em vez de
+      // sobrescrever — um retry parcial não pode apagar o que já tinha sido enviado). 404 = SQL nova
+      // ainda não aplicada → cai na assinatura antiga (id-only), mesmo comportamento de antes.
+      if (campaignId && /^[0-9a-f-]{36}$/i.test(campaignId) && sent > 0) {
+        let mr = await rpc("campaign_mark_sent", { p_secret: secret, p_client_email: email, p_id: campaignId, p_count: sent }).catch(() => ({ status: 0, ok: false }));
+        if (mr && mr.status === 404) await rpc("campaign_mark_sent", { p_secret: secret, p_id: campaignId, p_count: sent }).catch(() => {});
       }
 
-      // Mark the campaign sent (only for a saved campaign).
-      if (campaignId && /^[0-9a-f-]{36}$/i.test(campaignId)) {
-        await rpc("campaign_mark_sent", { p_secret: secret, p_id: campaignId, p_count: sent }).catch(() => {});
-      }
-
-      // CREDIT METERING — the email-marketing motor consumes credits (MOTORES.md: every Gui action
-      // costs credits). Charge 1 credit per email that ACTUALLY went out (never per attempt), AFTER
-      // the send, best-effort: metering must never block or fail a broadcast that already happened,
-      // and we never charge for mail that didn't send. deduct_client_credits is INGEST-gated + tenant-
-      // scoped by p_email (the authenticated tenant), so this can't touch another client's balance.
-      if (sent > 0) {
-        // CRITICAL FIX (adversarial review 2026-07-30): deduct_client_credits is IDEMPOTENT by p_ref
-        // (global PK credit_deduct_idem.ref) — reusing the campaign id (or the constant "campaign" for
-        // inline sends) made EVERY re-send free after the first. Usage metering must charge EVERY send,
-        // so the ref MUST be unique per send. Date.now()+counter is unique in a Worker (not a workflow).
-        const meterRef = `camp:${(campaignId || "inline").toString().slice(0, 40)}:${Date.now()}:${sent}`;
-        try { await rpc("deduct_client_credits", { p_secret: secret, p_email: email, p_credits: sent, p_reason: "email-campaign", p_ref: meterRef }); }
-        catch { /* metering is best-effort — the emails already went out */ }
-      }
-      return json({ ok: true, ready: true, audience: recipients.length, sent, credits_spent: sent });
+      return json({
+        ok: true, ready: true, audience: recipients.length, sent, credits_spent: sent - naoCobrados,
+        canspam_address: addressOk,
+        // A cobrança que o banco NÃO confirmou aparece. Silêncio aqui = a Guileo trabalha de graça
+        // sem saber; e "credits_spent" tem que ser o que foi cobrado, não o que foi enviado.
+        ...(naoCobrados ? { nao_cobrados: naoCobrados, alerta_cobranca: `${naoCobrados} e-mail(s) saíram mas o banco não confirmou a cobrança — verifique o saldo/ledger deste cliente.` } : {}),
+      });
     }
 
     return json({ error: "unknown action" }, 400);
   } catch (e) {
     return json({ error: String(e).slice(0, 160) }, 400);
   }
+}
+
+// REF DE COBRANÇA DERIVADO DO CONTEÚDO — hash estável do conjunto de e-mails REALMENTE entregues
+// num lote. Ordenado antes do hash para que a mesma gente, em qualquer ordem, dê o mesmo ref: é
+// isso que faz um retry ser reconhecido como repetição em vez de virar cobrança nova.
+async function refDoLote(emails) {
+  const chave = [...emails].map((e) => String(e).toLowerCase()).sort().join(",");
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(chave));
+  return [...new Uint8Array(buf)].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 // Deterministic-per-request short code (no Math.random at module scope; fine inside the handler).

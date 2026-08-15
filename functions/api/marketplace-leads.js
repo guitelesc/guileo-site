@@ -30,6 +30,7 @@
 import { json, rateLimited } from "../lib/guard.js";
 import { ownerAlertEmail } from "../lib/emailTemplates.js";
 import { emitFailure } from "../lib/failure.js";
+import { atribuicaoDoPedido, gravarAtribuicao } from "../lib/atribuicao.js";
 import { svcRpc } from "../lib/sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -196,6 +197,18 @@ export async function onRequestPost(context) {
     if (env.SCHED_SECRET && !duplicate) {
       try {
         await svcRpc(env, "crm_upsert_contact", { p_secret: env.SCHED_SECRET, p_email: email, p_phone: lead.phone, p_contact_email: lead.email, p_name: lead.name || "", p_source: `marketplace:${source}`, p_amount_cents: 0 });
+
+        // A MESMA ATRIBUIÇÃO, PARA O LEAD DO SITE DO CLIENTE. Quando o formulário mora no site
+        // dele, o cookie não existe — então aceitamos os campos utm no CORPO do webhook. É o
+        // único caminho em que a origem precisa ser enviada à mão, e está documentado na ROTA.
+        const attrMkt = atribuicaoDoPedido(request) || (
+          (b.utm_source || b.utm_campaign || b.gclid || b.fbclid)
+            ? { source: b.utm_source || null, campaign: b.utm_campaign || null, medium: b.utm_medium || null, gclid: b.gclid || null, fbclid: b.fbclid || null }
+            : null);
+        if (attrMkt) {
+          const g = await gravarAtribuicao(env, { tenant: email, phone: lead.phone, contactEmail: lead.email, attr: attrMkt, landing: (b.page || source || "").toString().slice(0, 200) });
+          if (!g.ok) await emitFailure(env, "atribuicao_perdida", email, `lead de ${source} entrou mas a origem do anuncio NAO foi gravada — ${g.reason}`, { source: attrMkt.source, campaign: attrMkt.campaign });
+        }
       } catch { /* CRM is additive — never block the ingest */ }
     }
 

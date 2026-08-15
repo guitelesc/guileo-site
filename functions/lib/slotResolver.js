@@ -175,3 +175,23 @@ export function resolveSlot(when, slots, tz = "America/New_York") {
   // num horário que ela nunca escolheu.
   return dia ? cand[0] : null;
 }
+
+/**
+ * A PESSOA CHEGOU A DIZER UM DIA OU UMA HORA?
+ *
+ * Existe para a agente parar de dar o motivo ERRADO na recusa. Quando alguém diz só "quero
+ * marcar", o resolveSlot devolve null — certíssimo — mas quem chamava respondia "esse horário não
+ * está mais livre". Ninguém tinha falado horário nenhum: a Gui inventava um fato para justificar
+ * uma recusa correta. Motivo errado destrói a confiança mais rápido que a recusa em si, porque a
+ * pessoa sabe que não disse hora e conclui que o sistema não a escutou.
+ *
+ * @returns {{ disse_dia: boolean, disse_hora: boolean }}
+ */
+export function oQueAPessoaDisse(when, tz = "America/New_York", slots = []) {
+  const txt = String(when || "").trim();
+  if (!txt) return { disse_dia: false, disse_hora: false };
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(txt)) return { disse_dia: true, disse_hora: true };
+  const t = semAcento(txt);
+  const lista = Array.isArray(slots) ? slots.filter((x) => x && x.start) : [];
+  return { disse_dia: !!extrairDia(t, tz, lista), disse_hora: !!extrairHora(t) };
+}

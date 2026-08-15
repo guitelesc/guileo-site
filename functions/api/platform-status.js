@@ -32,11 +32,24 @@
 //   it never breaks. (Optional: add a cron target in cron-tick.js if you want it swept, but it's
 //   designed to be pulled on-demand by /admin, not pushed.)
 import { json, safeEq } from "../lib/guard.js";
+import { sbKey } from "../lib/sb.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
-const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
+// (a chave anon foi REMOVIDA daqui de propósito: sbKey() já a tem como fallback. Deixar a
+//  constante solta neste arquivo é o convite para o próximo `apikey: SB_ANON` nascer.)
 
-const PROBE_TIMEOUT_MS = 9000; // canary self-fetch runs 4 sub-probes, give it room
+// ── O RELÓGIO DE QUEM CHAMA TEM QUE SER MAIOR QUE O DE QUEM É CHAMADO (2026-08-12) ─────────────
+// Estava 9s. Horas antes eu aumentei, DENTRO do canary, o orçamento das sondas de IA de 8s para
+// 20s — porque uma resposta de modelo leva ~6s e 8s era um sorteio. Consertei o relógio da sonda
+// e ESQUECI o relógio de quem a chama: o canary passou a poder demorar 20s, e este arquivo
+// continuava desistindo aos 9. Resultado: `widget_chat=failed` no semáforo enquanto o widget
+// respondia 200 em 5,5s, verificado na mão.
+//
+// É o mesmo defeito que persegui o dia inteiro — o observador com o relógio errado — só que uma
+// camada acima, e desta vez eu é que o criei. A regra que fica: mudou o teto de tempo de alguma
+// coisa, procure QUEM ESPERA por ela. Um timeout nunca é uma decisão local.
+// 26s = os 20s da pior sonda de IA + margem para o salto de rede e as outras três em paralelo.
+const PROBE_TIMEOUT_MS = 26000;
 const RPC_TIMEOUT_MS = 6000;
 const FAIL_LOOKBACK_DAYS = 7;
 const FAIL_RED_THRESHOLD = 5; // ≥ this many real failures in an area's channels in 7d ⇒ red
@@ -70,11 +83,27 @@ async function timedFetch(url, opts = {}, ms = RPC_TIMEOUT_MS) {
 }
 
 // INGEST-gated RPC helper (same shape as canary/health-monitor). Returns {ok,status,body}.
+//
+// ── POR QUE service_role E NÃO anon (2026-08-11) ────────────────────────────────────
+// A sonda tem que percorrer o MESMO caminho que a produção percorre. Quem chama estas RPCs de
+// verdade — packages.js, noshow-radar.js — é servidor nosso e usa `sbKey(env)`. Este arquivo era
+// o último que ainda batia com a chave `anon`, então media um caminho que ninguém usa.
+// O estrago: a onda de revogação tirou o `anon` de noshow_risk e package_list (segurança correta,
+// produção intacta) e o semáforo pintou "agenda" e "dinheiro" de amarelo — a sonda sem permissão
+// virando diagnóstico de motor doente. Confirmado no banco vivo: essas duas são exatamente as
+// únicas com anon=false, service_role=true; as quatro verdes ainda têm anon=true. O semáforo
+// estava desenhando o progresso da revogação, não a saúde da plataforma.
+// O health-monitor.js já tinha sido corrigido; este ficou para trás porque tem a própria CÓPIA do
+// helper — que é precisamente o que o comentário lá em cima deste arquivo avisou que aconteceria.
+// Nota: com service_role a sonda deixa de detectar "o anon foi reaberto sem querer". Isso é
+// certo — reabrir permissão é pergunta de SEGURANÇA (auditoria has_function_privilege), não de
+// SAÚDE. Misturar as duas foi o que produziu o alarme falso.
 async function rpcRaw(env, fn, args, secret) {
+  const k = sbKey(env);
   try {
     const r = await timedFetch(`${SB_URL}/rest/v1/rpc/${fn}`, {
       method: "POST",
-      headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
+      headers: { apikey: k, Authorization: `Bearer ${k}`, "Content-Type": "application/json" },
       body: JSON.stringify({ p_secret: secret ?? (env.INGEST_SECRET || ""), ...args }),
     });
     const body = await r.text().catch(() => "");
@@ -128,6 +157,10 @@ async function rpcHealth(env) {
     if (r.ok) return { name: p.name, status: "ok" };
     let code = ""; try { code = (JSON.parse(r.body) || {}).code || ""; } catch { /* non-JSON */ }
     if (r.status === 404 || code === "PGRST202") return { name: p.name, status: "notReady" };
+    // 42501 = a SONDA não tem permissão; o motor não foi testado. Ver o comentário longo em
+    // health-monitor.js. Este arquivo tem a própria cópia do mapeamento — consertar só um lado
+    // deixaria o semáforo vermelho mesmo com o monitor já correto.
+    if (r.status === 401 || r.status === 403 || code === "42501") return { name: p.name, status: "noAccess", httpStatus: r.status };
     return { name: p.name, status: "failed", httpStatus: r.status };
   }));
   return { source: "health-monitor.RPC_PROBES", reusable: true, results };
@@ -141,7 +174,7 @@ async function recentFailures(env) {
   try {
     const r = await timedFetch(`${SB_URL}/rest/v1/rpc/admin_all_events`, {
       method: "POST",
-      headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
+      headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" },
       body: JSON.stringify({ p_token: env.ADMIN_TOKEN }),
     });
     if (!r.ok) return { source: "admin_all_events", ready: false, note: `HTTP ${r.status}`, days: FAIL_LOOKBACK_DAYS, total: 0, byChannel: {}, byArea: {} };
@@ -164,18 +197,58 @@ async function recentFailures(env) {
   } catch (e) { return { source: "admin_all_events", ready: false, note: String(e).slice(0, 120), days: FAIL_LOOKBACK_DAYS, total: 0, byChannel: {}, byArea: {} }; }
 }
 
-// ── (D) AGENT QUALITY — placeholder for the eval harness (Fundação de evals) ────────
-// The agent_evals table/RPC doesn't exist yet; we probe for it so this lights up automatically the
-// day it ships. PGRST202/404 → notReady placeholder (attributed to the "agentes" area). Never fails.
+// ── (D) QUALIDADE DOS AGENTES — o harness de evals, LIGADO (2026-08-11) ────────────
+// Este bloco era um "placeholder" que sondava `agent_evals_latest` — nome que NUNCA existiu no
+// banco. As funções reais sempre se chamaram `agent_evals_summary` / `agent_evals_recent`, vivas
+// desde 2026-07-20. Resultado: o semáforo anunciou "harness de evals ainda não implantado"
+// durante três semanas de harness implantado, e escondeu o que já havia para ver — a rodada de
+// voz de hoje tirou 74 e reprovou 1 de 2 casos.
+// É a TERCEIRA vez no mesmo dia que o observador descreve a si mesmo em vez do sistema (sonda com
+// chave anon; sonda com relógio curto; agora sonda com nome inventado). O padrão: uma sonda que
+// nunca teve sucesso não parece quebrada — parece um recurso que ainda não chegou.
+//
+// AS CORES, e por que são estas:
+//   • segurança < 100 ou adversarial_failed > 0 → VERMELHO. Segurança não tem meio-termo: um
+//     agente que falha um caso de segurança está falando com cliente agora.
+//   • failed > 0 → AMARELO. Qualidade caiu; ninguém corre risco. É informação, não emergência.
+//   • medição velha (> EVAL_VELHO_DIAS) → AMARELO "não medido recentemente" — mesma lógica do
+//     noAccess: sem prova recente, verde seria afirmar o que ninguém verificou.
+// O limite é generoso DE PROPÓSITO: o harness ainda é disparado à mão, então um número apertado
+// deixaria esta área amarela para sempre — e amarelo permanente é o mesmo alarme falso que passei
+// o dia consertando. O conserto de raiz é pôr o eval no cron; até lá, o painel diz a idade.
+const EVAL_VELHO_DIAS = 30;
+
 async function agentQuality(env) {
-  const r = await rpcRaw(env, "agent_evals_latest", {}, env.INGEST_SECRET || "");
-  if (r.ok) {
-    let data = null; try { data = JSON.parse(r.body); } catch { /* */ }
-    return { source: "agent_evals_latest", ready: true, latest: data };
+  const r = await rpcRaw(env, "agent_evals_summary", {}, env.INGEST_SECRET || "");
+  if (!r.ok) {
+    let code = ""; try { code = (JSON.parse(r.body) || {}).code || ""; } catch { /* não-JSON */ }
+    if (r.status === 404 || code === "PGRST202") return { source: "agent_evals_summary", ready: false, note: "harness de evals não instalado (db/agent_evals.sql)" };
+    return { source: "agent_evals_summary", ready: false, note: `HTTP ${r.status}` };
   }
-  let code = ""; try { code = (JSON.parse(r.body) || {}).code || ""; } catch { /* */ }
-  if (r.status === 404 || code === "PGRST202") return { source: "agent_evals_latest", ready: false, note: "eval harness not deployed yet (placeholder)" };
-  return { source: "agent_evals_latest", ready: false, note: `HTTP ${r.status}` };
+  let linhas = null; try { linhas = JSON.parse(r.body); } catch { /* não-JSON */ }
+  if (!Array.isArray(linhas) || !linhas.length) return { source: "agent_evals_summary", ready: false, note: "harness instalado, nenhuma rodada registrada" };
+
+  const agora = Date.now();
+  const agentes = linhas.map((l) => {
+    const seg = Number(l.avg_safety);
+    const reprov = Number(l.failed) || 0;
+    const advReprov = Number(l.adversarial_failed) || 0;
+    const quando = Date.parse(l.run_at || "");
+    // Number(null) é 0, não NaN — um avg_safety ausente viraria "0 de segurança" e pintaria
+    // vermelho por dado FALTANDO. Só julgo a segurança quando ela realmente veio um número.
+    const segConhecida = Number.isFinite(seg);
+    const dias = Number.isFinite(quando) ? Math.floor((agora - quando) / 864e5) : null;
+    let cor = "green";
+    if ((segConhecida && seg < 100) || advReprov > 0) cor = "red";
+    else if (reprov > 0) cor = "yellow";
+    else if (dias === null || dias > EVAL_VELHO_DIAS) cor = "yellow";
+    return {
+      agent: (l.agent || "?").toString(), cor, cases: Number(l.cases) || 0,
+      score: Number(l.avg_score), safety: segConhecida ? seg : null,
+      passed: Number(l.passed) || 0, failed: reprov, adversarial_failed: advReprov, dias,
+    };
+  });
+  return { source: "agent_evals_summary", ready: true, agentes };
 }
 
 // ── SLO ROLL-UP — the ONE new thing: fold every signal into red/yellow/green per area ──
@@ -187,6 +260,15 @@ const COLOR = ["green", "yellow", "red"];
 function statusToColor(s) {
   if (s === "ok") return "green";
   if (s === "failed") return "red";
+  // noAccess = "não deu para provar". Amarelo de propósito: verde seria mentira (ninguém testou)
+  // e vermelho seria alarme falso (o motor pode estar ótimo). É o mesmo cinza do /api/simular.
+  if (s === "noAccess") return "yellow";
+  // "slow" = a sonda de IA respondeu, só passou do limite de conforto (canary.js, LENTO_IA_MS).
+  // Amarelo é a resposta certa e a razão importa: verde apagaria a degradação que está começando,
+  // vermelho dispararia alerta por algo que ainda ATENDE o cliente. O mapa abaixo já jogaria
+  // qualquer status novo em amarelo pelo `return` final — está escrito aqui porque acerto por
+  // acidente não sobrevive à próxima edição de quem não souber que era de propósito.
+  if (s === "slow") return "yellow";
   if (s === "notReady" || s === "unknown" || s === "degraded") return "yellow";
   return "yellow";
 }
@@ -216,7 +298,18 @@ function computeSlo(funnel, rpc, failures, agents) {
     }
   }
   // agent quality → agentes
-  bump("agentes", agents.ready ? "green" : "yellow", `agent_evals:${agents.ready ? "ok" : "placeholder"}`);
+  // Cada agente medido entra como SEU PRÓPRIO sinal. Um único "agent_evals=ok" achataria três
+  // agentes numa palavra e esconderia exatamente o que o eval existe para mostrar — hoje a voz
+  // reprovou 1 de 2 casos enquanto suporte e review passaram limpo. Achatar seria repetir, no
+  // painel, o mesmo erro que o horário "das 9 às 2" cometeu no site do cliente.
+  if (agents.ready && Array.isArray(agents.agentes)) {
+    for (const a of agents.agentes) {
+      const idade = a.dias === null ? "sem data" : `${a.dias}d`;
+      bump("agentes", a.cor, `eval:${a.agent}=${a.failed ? `${a.failed}/${a.cases} reprovado` : "passou"} score ${a.score} seg ${a.safety === null ? "?" : a.safety} (${idade})`);
+    }
+  } else {
+    bump("agentes", "yellow", `agent_evals:${agents.note || "sem medição"}`);
+  }
 
   const areas = {};
   let worst = 0, anyKnown = false;
@@ -241,7 +334,7 @@ export async function onRequest(context) {
     let authed = !!env.DIGEST_TOKEN && safeEq(tok, env.DIGEST_TOKEN);
     if (!authed && tok) {
       const av = await fetch(`${SB_URL}/rest/v1/rpc/blitz_stats`, {
-        method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
+        method: "POST", headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" },
         body: JSON.stringify({ p_token: tok, p_email: "" }),
       }).then((r) => r.ok).catch(() => false);
       authed = av;
@@ -255,7 +348,7 @@ export async function onRequest(context) {
       funnelUptime(env, origin).catch((e) => ({ source: "canary", ok: false, reachable: false, detail: String(e).slice(0, 120), probes: {} })),
       rpcHealth(env).catch((e) => ({ source: "health-monitor.RPC_PROBES", reusable: false, note: String(e).slice(0, 120), results: [] })),
       recentFailures(env).catch((e) => ({ source: "admin_all_events", ready: false, note: String(e).slice(0, 120), total: 0, byChannel: {}, byArea: {} })),
-      agentQuality(env).catch((e) => ({ source: "agent_evals_latest", ready: false, note: String(e).slice(0, 120) })),
+      agentQuality(env).catch((e) => ({ source: "agent_evals_summary", ready: false, note: String(e).slice(0, 120) })),
     ]);
 
     const slo = computeSlo(funnel, rpc, failures, agents);
@@ -268,13 +361,13 @@ export async function onRequest(context) {
         funnel,                   // (A) reused canary uptime
         rpc,                      // (B) reused health-monitor RPC_PROBES
         failures,                 // (C) reused admin_all_events, 7d, by channel + area
-        agents,                   // (D) agent_evals placeholder
+        agents,                   // (D) qualidade dos agentes (agent_evals_summary, real)
       },
       reuse: {                    // proof-of-non-duplication: what each section leans on
         funnel: "GET /api/canary (read-only, self-deduped)",
         rpc: "import { RPC_PROBES } from ./health-monitor.js",
         failures: "rpc admin_all_events (same feed /api/backup uses)",
-        agents: "rpc agent_evals_latest (future eval harness)",
+        agents: "rpc agent_evals_summary (harness de evals, ligado 2026-08-11)",
       },
     });
   } catch (e) {

@@ -51,7 +51,7 @@ export async function onRequest(context) {
   const tok = new URL(request.url).searchParams.get("token") || request.headers.get("x-guileo-secret") || "";
   if (!env.DIGEST_TOKEN || !safeEq(tok, env.DIGEST_TOKEN)) return json({ error: "unauthorized" }, 401);
 
-  const out = { scanned: 0, sent: 0, skipped: 0, claimed_dupe: 0, send_failed: 0 };
+  const out = { scanned: 0, sent: 0, skipped: 0, claimed_dupe: 0, send_failed: 0, unsubscribed: 0 };
   try {
     // READY PROBE — one throwaway claim proves the db/lifecycle.sql RPCs exist. The probe row
     // ("_probe@lifecycle.internal") is claimed once, forever a dupe after — never emailed.
@@ -122,7 +122,9 @@ export async function onRequest(context) {
         if (!claimed) { out.claimed_dupe++; continue; } // already sent (this run or a past one)
         // lang parsed from the 🌐lang details tag (pt/es render fully; hi/"" → EN in sendNurtureStep).
         const sr = await sendNurtureStep(env, { to: lead.email, name: lead.name, business: lead.business, lang: lead.lang, step: d.step });
-        if (sr.ok) out.sent++; else out.send_failed++;
+        // "descadastrado" NAO e "falha de envio" — misturar os dois faz o painel acusar o mailer
+        // por um opt-out respeitado. O degrau ja foi reivindicado, entao o lead nunca reentra.
+        if (sr.ok) out.sent++; else if (sr.suppressed) out.unsubscribed++; else out.send_failed++;
         break; // one step per email per run — the next rung goes out on a later run
       }
     }

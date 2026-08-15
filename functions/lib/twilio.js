@@ -30,3 +30,29 @@ export async function sendText(env, to, body, opts = {}) {
     return { sent: false, reason: String(e).slice(0, 120) };
   }
 }
+
+// sendOrFlag — ENVIAR E SABER SE CHEGOU. Uma função, uma regra, todos os lugares.
+//
+// POR QUE EXISTE: em 2026-08-07 encontrei QUATRO chamadas `await sendText(...)` cujo retorno era
+// jogado fora. `sendText` nunca lança: ele devolve {sent:false}. Então um envio recusado pela
+// Twilio (hoje é o caso — campanha A2P reprovada) passava como se tivesse dado certo. O pior deles
+// era o text-back de ligação perdida: a promessa principal do produto, falhando em silêncio e
+// levando o lead junto.
+//
+// Corrigir os quatro na mão garante que o quinto nasça errado. Aqui a regra vive num lugar só:
+// envia → confere → se falhou, o DONO fica sabendo, com motivo.
+//
+// `motivo` deve dizer o que a pessoa não recebeu, em linguagem de negócio — quem lê o alerta é o
+// dono do salão, não um programador.
+export async function sendOrFlag(env, { to, body, opts = {}, tenant = "", motivo = "mensagem" }) {
+  let r = null;
+  try { r = await sendText(env, to, body, opts); } catch (e) { r = { sent: false, reason: String(e).slice(0, 100) }; }
+  if (r && r.sent) return r;
+  try {
+    const { emitFailure } = await import("./failure.js");
+    await emitFailure(env, "mensagem_nao_entregue", tenant,
+      `${motivo} NÃO chegou em ${to} — motivo: ${(r && (r.reason || `status ${r.status}`)) || "desconhecido"}`.slice(0, 200),
+      { to, canal: opts.channel || "sms" });
+  } catch { /* alertar é bônus; nunca derruba quem chamou */ }
+  return r || { sent: false, reason: "unknown" };
+}

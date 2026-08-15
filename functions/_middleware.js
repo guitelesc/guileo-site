@@ -9,6 +9,10 @@ import { rewriteOg, langFromUrl, pick, SITE } from "./lib/ogMeta.js";
 // Route → { title, description } — trilingual where the page is a funnel page (?lang=pt|es),
 // plain strings elsewhere. Keep in sync with each page's useSeo().
 const ROUTES = {
+  "/pulse": {
+    title: { en: "Guileo Pulse — know how your customers really feel, $49/mo", pt: "Guileo Pulse — saiba como seus clientes realmente se sentem, US$49/mês", es: "Guileo Pulse — sabe cómo se sienten tus clientes, US$49/mes" },
+    description: { en: "Customer satisfaction measured from the calls you already get. CX score, 1-5 star ratings and surveys — every location included, no per-location bill.", pt: "Satisfação medida a partir das ligações que você já recebe. Nota de satisfação, avaliação de 1 a 5 estrelas e pesquisas — todas as unidades incluídas.", es: "Satisfacción medida desde las llamadas que ya recibes. Nota, calificación de 1 a 5 estrellas y encuestas — todas las sucursales incluidas." },
+  },
   "/planos": {
     title: { en: "Guileo Plans — start your AI from $149/mo", pt: "Planos Guileo — ative sua IA a partir de $149/mês", es: "Planes Guileo — activa tu IA desde $149/mes" },
     description: { en: "Guileo self-service plans: Essential $149, Personalized $449, Full Operation $999/mo. AI that answers, books and sells 24/7. Live in minutes, 30-day money-back.", pt: "Planos de auto-serviço da Guileo: Essential $149, Personalized $449, Full Operation $999/mês. IA que atende, agenda e vende 24/7. No ar em minutos, 30 dias de garantia.", es: "Planes de autoservicio de Guileo: Essential $149, Personalized $449, Full Operation $999/mes. IA que atiende, agenda y vende 24/7. En marcha en minutos, 30 días de garantía." },
@@ -103,18 +107,30 @@ export async function onRequest(context) {
     "conectar-stripe", "consulting", "consultoria", "contact", "cookies", "cancellation", "deck", "demo",
     "for", "get-paid", "go-live", "grader", "health-compliance", "hipaa", "home-services", "kit",
     "lead-generation", "leads", "live", "lp", "marketing", "sms", "nossa-gente", "parceiro", "partners", "pitch",
-    "planos", "plans", "portal", "precos", "privacy", "proposta", "prospeccao", "prospects", "quiz",
+    "planos", "plans",
+    // /pulse — página do produto de $49. A 4ª vez que uma rota nova quase nasceu 404: o teste
+    // functions/lib/rotas.test.mjs compara App.jsx com esta lista, então ele pegaria — mas entrar
+    // aqui no MESMO commit é o que faz o teste nunca precisar falhar.
+    "pulse", "portal", "precos", "privacy", "proposta", "prospeccao", "prospects", "quiz",
     "receber", "refunds", "roteiro", "seller", "servicos", "setup-agenda", "sign", "terms", "v2", "vendedor",
     // hubs internos da equipe (suporte técnico + marketing/performance) — rotas reais, não indexáveis
     "equipe", "tecnico", "marketing-hub",
     // site REAL do cliente (produto foundation) — /site/:slug
     "site", "primeira-semana",
+    // /voz/:slug — a Gui atendendo por VOZ no navegador (2026-08-11). Sem operadora, sem A2P,
+    // sem saldo de telefonia: é o servidor e o microfone do visitante.
+    "voz",
     // VITRINE (/vitrine/:token) — a demo que o vendedor compartilha com o cliente. Ficou de
     // fora da lista até 2026-08-05 e o middleware devolvia 404 REAL: o vendedor mandava o
     // link, o cliente abria e via "página não encontrada". A demo funcionava; a porta é que
     // estava trancada. Rota nova no App.jsx SEMPRE precisa entrar aqui — este é o segundo
     // caso, então virou verificação: comparar os path="/x" do App com esta lista.
     "vitrine",
+    // /heroi — página de decisão do herói (duas direções com a logo 3D real). TERCEIRO caso
+    // do mesmo esquecimento: rota criada no App.jsx, ausente aqui, 404 real. A verificação
+    // deixou de ser "lembrar" e virou teste: functions/lib/rotas.test.mjs compara os
+    // path="/x" do App.jsx com esta lista e falha se alguma sobrar de fora.
+    "heroi",
   ]);
   const meta = ROUTES[path];
   if (meta) {

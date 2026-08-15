@@ -5,6 +5,7 @@
 import { sameOrigin, rateLimited } from "../lib/guard.js";
 import { leadReceivedEmail, leadAlertEmail } from "../lib/emailTemplates.js";
 import { emitFailure } from "../lib/failure.js";
+import { atribuicaoDoPedido, gravarAtribuicao } from "../lib/atribuicao.js";
 import { svcRpc } from "../lib/sb.js";
 
 export async function onRequestPost(context) {
@@ -73,7 +74,18 @@ export async function onRequestPost(context) {
         const cEmail = lead.email || (/.+@.+\..+/.test(lead.contact) ? lead.contact : "");
         const cPhone = (lead.phone || (/^\+?[0-9][0-9\s()\-]{6,}$/.test(lead.contact) ? lead.contact : "")).replace(/[^0-9+]/g, "");
         if (cEmail || cPhone) {
-          await svcRpc(env, "crm_upsert_contact", { p_secret: env.SCHED_SECRET, p_email: (env.OWNER_EMAIL || "smart@guileoai.com"), p_phone: cPhone, p_contact_email: cEmail, p_name: lead.name || "", p_source: `web:${lead.source || "lead"}`, p_amount_cents: 0 });
+          const tenantDoLead = (env.OWNER_EMAIL || "smart@guileoai.com");
+          await svcRpc(env, "crm_upsert_contact", { p_secret: env.SCHED_SECRET, p_email: tenantDoLead, p_phone: cPhone, p_contact_email: cEmail, p_name: lead.name || "", p_source: `web:${lead.source || "lead"}`, p_amount_cents: 0 });
+
+          // DE QUAL ANÚNCIO VEIO. A origem chega sozinha no cookie primário `gui_attr` (gravado no
+          // primeiro clique) — nenhum dos ~10 formulários precisou ser alterado. Sem isto o lead
+          // entra normal e chega ÓRFÃO: dá para contar leads, mas nunca para dizer qual campanha
+          // pagou por ele, que é a única pergunta que importa em anúncio.
+          const attr = atribuicaoDoPedido(request);
+          if (attr) {
+            const g = await gravarAtribuicao(env, { tenant: tenantDoLead, phone: cPhone, contactEmail: cEmail, attr, landing: (body.page || "").toString().slice(0, 200) });
+            if (!g.ok) await emitFailure(env, "atribuicao_perdida", tenantDoLead, `lead entrou mas a origem do anuncio NAO foi gravada — ${g.reason}`, { source: attr.source, campaign: attr.campaign });
+          }
         }
       } catch { /* CRM not live yet → never block the capture */ }
     }

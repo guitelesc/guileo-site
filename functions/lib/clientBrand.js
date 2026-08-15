@@ -31,6 +31,54 @@ const temLogoInicial = (u) => /^https?:\/\//i.test(u) && !/\.svg(\?|#|$)/i.test(
 
 const isHex = (s) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(s || "").trim());
 
+// ── LEGIBILIDADE DA COR DA MARCA ────────────────────────────────────────────────────────────────
+// A cor do cliente não é só enfeite: emailTemplates.js a usa como COR DE TEXTO (`color:${accent}`)
+// no eyebrow, no preço, no valor do vale-presente e no marcador do rodapé — tudo sobre o cartão
+// escuro #161512. Uma marca de site escuro (theme-color "#1B1A17", "#111", "#0f0f0f") atravessa o
+// isHex sem problema e some: texto invisível no e-mail que o cliente do cliente recebe. Aconteceu
+// hoje, de verdade — #1B1A17 sobre #161512, contraste ~1.05:1.
+// A saída NÃO é trocar pela laranja da casa na primeira dificuldade (a cor É dele): clareamos a
+// MESMA cor — mesmo matiz, mesma saturação — até passar de 4.5:1. Só quando a cor é acinzentada
+// demais para clarear sem virar outra coisa é que caímos no padrão da casa.
+const FUNDO_EMAIL = "#161512";   // B.card em functions/lib/emailTemplates.js (cartão do e-mail)
+
+function _rgb(hex) {
+  let h = String(hex).trim().replace("#", "");
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
+}
+const _lum = (hex) => {
+  const { r, g, b } = _rgb(hex);
+  const f = (v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+};
+export function contraste(a, b) {
+  const l1 = _lum(a), l2 = _lum(b);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+// Clareia mantendo matiz/saturação: puxa cada canal na direção do branco em passos pequenos.
+const _clarear = (hex, p) => {
+  const { r, g, b } = _rgb(hex);
+  const m = (v) => Math.round(v + (255 - v) * p).toString(16).padStart(2, "0");
+  return `#${m(r)}${m(g)}${m(b)}`;
+};
+
+// corLegivel(hex) → { accent, ajustada } · a cor do cliente, garantidamente visível no e-mail.
+export function corLegivel(hex, fundo = FUNDO_EMAIL) {
+  if (!isHex(hex)) return { accent: GUILEO_BRAND.accent, ajustada: false, motivo: "sem-cor" };
+  const base = String(hex).trim().toLowerCase();
+  if (contraste(base, fundo) >= 4.5) return { accent: base, ajustada: false, motivo: "" };
+  const { r, g, b } = _rgb(base);
+  // Acinzentada (quase sem cor)? Clarear só produziria um cinza qualquer, que não é a marca de
+  // ninguém — melhor assumir a cor da casa do que fingir que aquele cinza é a identidade dele.
+  if (Math.max(r, g, b) - Math.min(r, g, b) < 25) return { accent: GUILEO_BRAND.accent, ajustada: true, motivo: "cor-escura-sem-matiz" };
+  for (let p = 0.1; p <= 0.9; p += 0.1) {
+    const c = _clarear(base, p);
+    if (contraste(c, fundo) >= 4.5) return { accent: c, ajustada: true, motivo: "clareada-para-legibilidade" };
+  }
+  return { accent: GUILEO_BRAND.accent, ajustada: true, motivo: "impossivel-clarear" };
+}
+
 // brandFor(env, clientEmail) → { business, logo_url, accent, agent_name, lang }
 // Graceful: any missing piece falls back to the Guileo default; never throws.
 export async function brandFor(env, clientEmail) {
@@ -74,6 +122,11 @@ export async function brandFor(env, clientEmail) {
     }
   }
   if (!accent) accent = GUILEO_BRAND.accent;
+  // A cor guardada pode ser escura demais para virar TEXTO no cartão escuro do e-mail. Ajusta aqui,
+  // no ÚNICO ponto por onde toda cor de cliente passa antes de virar e-mail — em vez de esperar que
+  // cada um dos ~12 lugares que fazem `color:${accent}` se lembre de conferir contraste.
+  const leg = corLegivel(accent);
+  accent = leg.accent;
   const business = String(x.business || p.business_name || "").trim() || GUILEO_BRAND.business;
   const langRaw = String(p.lang || "").toLowerCase().slice(0, 2);
   const lang = langRaw === "pt" ? "pt" : langRaw === "es" ? "es" : (langRaw === "en" ? "en" : GUILEO_BRAND.lang);
@@ -88,5 +141,8 @@ export async function brandFor(env, clientEmail) {
     lang,
     // DE ONDE VEIO A LOGO. Sem isto, "o e-mail está com a marca errada" vira adivinhação.
     origem_logo: origem || "padrao-guileo",
+    // E DE ONDE VEIO A COR. Se ela foi mexida para caber no e-mail, o registro diz por quê —
+    // "essa não é exatamente a minha cor" precisa ter resposta, não desconfiança.
+    accent_ajustada: leg.ajustada, accent_motivo: leg.motivo || "",
   };
 }

@@ -15,6 +15,26 @@ const SB_ANON_DEFAULT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 // Overridable per-deploy with SPEND_GUARD_FAILOPEN_FLOOR_CENTS. Default $50.
 const DEFAULT_FAILOPEN_FLOOR_CENTS = 5000;
 
+// ── O VALOR AMBÍGUO (achado por revisão adversarial 2026-08-11) ──────────────────────────────
+// A leitura do valor aqui era `parseFloat(String(x).replace(/[^0-9.]/g, ""))`. Ela nunca falha —
+// ela mente calada. A vírgula some, e o que era separador DECIMAL vira nada:
+//
+//     "45,00"   →  "4500"   →  US$ 4.500,00   em vez de US$ 45,00   (100× A MAIS)
+//     "9,50"    →  "950"    →  US$ 950,00     em vez de US$ 9,50    (100× A MAIS)
+//     "1.240"   →  1.24     →  US$ 1,24       em vez de US$ 1.240   (1000× a menos)
+//
+// A Gui atende em português e espanhol, e "45,00" é COMO O PREÇO É DITO nesses idiomas — não é
+// entrada malformada, é entrada normal. Pior: o teto padrão da política (db/spend_policy.sql)
+// só exige aprovação humana acima de US$ 1.000, então um serviço de R$ 9,50 vira um link de
+// cobrança de US$ 950 que passa por TODAS as travas sem acender nenhuma luz.
+//
+// A guarda não pode "escolher" a leitura certa em nome do cliente: quando o texto pode significar
+// dois valores diferentes, a resposta honesta é PARAR E PERGUNTAR. `valorParaCobranca` devolve a
+// leitura correta (formato descoberto antes de limpar) e a ingênua (a que o caminho de cobrança
+// ainda usa em functions/api/agent-action.js); divergiram, é ambíguo → needsHuman, sem cobrar.
+// Isso vale mesmo em valor pequeno: o erro de 100× nasce justamente nos valores pequenos.
+import { valorParaCobranca } from "./dinheiro.js";
+
 // guardCharge(env, { email, amountDollars }) → { allow, needsHuman, reason, amountCents, ...diag }
 // Integrator semantics:
 //   needsHuman === true            → do NOT auto-charge; escalate to the owner with the amount for approval.
@@ -22,13 +42,25 @@ const DEFAULT_FAILOPEN_FLOOR_CENTS = 5000;
 //   allow === true  && !needsHuman → proceed to charge.
 export async function guardCharge(env, { email, amountDollars } = {}) {
   const tenant = (email || "").toString().trim().toLowerCase();
-  const dollars = parseFloat(String(amountDollars).replace(/[^0-9.]/g, ""));
-  const cents = Number.isFinite(dollars) ? Math.round(dollars * 100) : 0;
+  const lido = valorParaCobranca(amountDollars);
+  // O valor gasto é o MAIOR entre as duas leituras. A guarda tem que julgar o pior caso: se o
+  // texto pode ser US$ 4.500, é US$ 4.500 que ela leva à política, não US$ 45.
+  const cents = Math.max(Number(lido.cents) || 0, Number(lido.ingenuo) || 0);
   const floor = Number(env && env.SPEND_GUARD_FAILOPEN_FLOOR_CENTS) || DEFAULT_FAILOPEN_FLOOR_CENTS;
 
   // nothing chargeable / invalid amount → let the normal path handle it (no charge to gate)
   if (!tenant || cents <= 0) {
     return { allow: true, needsHuman: false, reason: "no_amount", amountCents: cents };
+  }
+
+  // TEXTO AMBÍGUO → HUMANO, sempre, antes de qualquer consulta de política. Não é falha de
+  // sistema (nada caiu), é dúvida sobre QUANTO cobrar — e adivinhar aqui é a diferença entre
+  // R$ 9,50 e US$ 950 na fatura de um cliente do cliente.
+  if (lido.ambiguo) {
+    return {
+      allow: false, needsHuman: true, reason: "valor_ambiguo", amountCents: cents,
+      leituraCorreta: lido.cents, leituraIngenua: lido.ingenuo, detalhe: lido.motivo,
+    };
   }
 
   // no secret configured → treat as guard-down (fail per the floor rule)

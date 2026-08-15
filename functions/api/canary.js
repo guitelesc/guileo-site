@@ -41,7 +41,27 @@ import { SELF_SERVE_PLANS } from "../../src/data/selfServePlans.js";
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
 
-const PROBE_TIMEOUT_MS = 8000;
+const PROBE_TIMEOUT_MS = 8000; // sondas de HTTP puro (pay-links, call-gate): rápidas por natureza
+
+// ── ORÇAMENTO DE TEMPO DAS SONDAS DE IA (2026-08-11) ────────────────────────────────
+// Medido em produção com a pergunta EXATA da sonda: 6.5s / 6.0s / 5.9s. O teto era 8s.
+// Uma margem de 1.5s num caminho que atravessa um modelo de linguagem não é margem — é um
+// SORTEIO, refeito a cada tique. Foi isso que produziu os dois "defeitos" que persegui hoje:
+// widget_chat vermelho de manhã, gui_chat vermelho à tarde, motor 200 nas duas vezes. A sonda
+// não estava medindo a saúde do chat; estava medindo quem ganhou a corrida contra o relógio.
+//
+// Pior que o painel errado: quando uma sonda "falha", o canary MANDA ALERTA PRO DONO. Alarme
+// falso semanal é como se desaprende a olhar o alarme — e aí o vermelho de verdade não chega.
+//
+// A pergunta certa não é "quanto tempo é aceitável pra mim", é QUANDO O VISITANTE DESISTE.
+// Num chat, quem espera mais de ~20s já fechou a aba: passou disso, está quebrado de fato,
+// mesmo que uma resposta chegue depois. Daí os dois limites — e são limites DIFERENTES:
+//   ≤ LENTO_IA_MS ....... verde  (normal)
+//   entre os dois ....... "slow" → AMARELO, sem alerta: respondeu, só devagar. É informação
+//                         de verdade (degradação começando), não emergência.
+//   > IA_TIMEOUT_MS ..... failed → VERMELHO + alerta. Aqui o cliente foi embora.
+const IA_TIMEOUT_MS = 20000; // o ponto em que um visitante real já desistiu
+const LENTO_IA_MS = 10000;   // acima disso está degradando, mas ainda responde
 
 // INGEST-gated RPC helper (same shape as health-monitor.js). null on any non-2xx / config gap.
 async function rpc(env, fn, args) {
@@ -56,9 +76,9 @@ async function rpc(env, fn, args) {
 }
 
 // fetch with a per-probe abort so one hung dependency can't stall the whole canary.
-async function timedFetch(url, opts = {}) {
+async function timedFetch(url, opts = {}, ms = PROBE_TIMEOUT_MS) {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), PROBE_TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), ms);
   try { return await fetch(url, { ...opts, signal: ctrl.signal }); }
   finally { clearTimeout(timer); }
 }
@@ -82,22 +102,34 @@ async function alertFail(env, out, probe, summary, payload = {}) {
   return { alerted: ir !== null, claimed: true };
 }
 
+// Classifica uma sonda de IA que RESPONDEU 200, pelo tempo que levou. Separado das sondas porque
+// as duas (gui-chat público e widget do cliente) têm que responder a MESMA pergunta do mesmo jeito
+// — foi justamente por medirem diferente que uma ficou vermelha de manhã e a outra à tarde.
+function classificarIA(ms, base) {
+  if (ms > LENTO_IA_MS) return { ...base, status: "slow", ms, detail: `respondeu em ${(ms / 1000).toFixed(1)}s (acima de ${LENTO_IA_MS / 1000}s) — degradando, ainda não quebrado` };
+  return { ...base, status: "ok", ms };
+}
+
 // ── (a) gui-chat — the public landing concierge ────────────────────────────────
 // sameOrigin gate on gui-chat needs an on-site Origin header; we send our own origin (which is
 // guileoai.com / *.pages.dev — both pass okOrigin). 200 + non-empty answer = healthy.
 async function probeGuiChat(env, origin) {
+  const t0 = Date.now();
   try {
     const r = await timedFetch(`${origin}/api/gui-chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Origin: origin },
       body: JSON.stringify({ message: "What is Guileo, in one line?", lang: "en" }),
-    });
-    if (!r.ok) return { status: "failed", httpStatus: r.status, detail: (await r.text().catch(() => "")).slice(0, 160) };
+    }, IA_TIMEOUT_MS);
+    if (!r.ok) return { status: "failed", httpStatus: r.status, ms: Date.now() - t0, detail: (await r.text().catch(() => "")).slice(0, 160) };
     const d = await r.json().catch(() => ({}));
     const answer = (d && (d.answer || "")).toString().trim();
-    if (!answer) return { status: "failed", httpStatus: r.status, detail: "empty answer" };
-    return { status: "ok", httpStatus: r.status, sample: answer.slice(0, 80) };
-  } catch (e) { return { status: "failed", httpStatus: 0, detail: String(e).slice(0, 160) }; }
+    if (!answer) return { status: "failed", httpStatus: r.status, ms: Date.now() - t0, detail: "empty answer" };
+    return classificarIA(Date.now() - t0, { httpStatus: r.status, sample: answer.slice(0, 80) });
+  } catch (e) {
+    // Estourou IA_TIMEOUT_MS (ou a rede caiu): aqui é falha DE VERDADE — o visitante já foi embora.
+    return { status: "failed", httpStatus: 0, ms: Date.now() - t0, detail: String(e).slice(0, 160) };
+  }
 }
 
 // ── (b) pay-links — the three self-serve Stripe checkout links ──────────────────
@@ -148,24 +180,39 @@ async function probeWidgetChat(env, origin) {
   if (!Array.isArray(clients) || !clients.length) return { status: "notReady", detail: "no tenants" };
   const client = ((clients[0] && clients[0].client_email) || "").toString().trim().toLowerCase();
   if (!client.includes("@")) return { status: "notReady", detail: "no tenant email" };
+  // ── SESSÃO ÚNICA POR RODADA, NÃO POR DIA (2026-08-12) ──────────────────────────────────────
+  // Era `canary-${day}`: um sessionId FIXO o dia inteiro, escolhido para não poluir os eventos do
+  // cliente. Mas o widget limita 40 mensagens POR SESSÃO (widget-chat.js), para um visitante não
+  // drenar o crédito do dono. O cron roda a cada 15 min → 96 chamadas/dia na MESMA sessão: a sonda
+  // estoura o próprio teto por volta das 10h UTC e passa o resto do dia gritando que o widget caiu.
+  // Foi exatamente o que aconteceu — verde de manhã, vermelho à tarde, e o widget respondendo 200
+  // em 5,5s o tempo todo. Duas proteções corretas que ninguém tinha posto uma ao lado da outra.
+  //
+  // Trocar por sessão única NÃO polui nada: a sonda já manda `history` não-vazio de propósito, o
+  // que faz `isStart:false` e impede QUALQUER ingestão de evento. O custo de uma sessão nova é
+  // zero; o custo da sessão fixa era um alarme falso permanente meio dia por dia.
+  // (A dedup do alerta continua por dia — ela vive no health_claim, não aqui.)
   const day = new Date().toISOString().slice(0, 10);
+  const agora = new Date();
+  const sess = `canary-${day}-${String(agora.getUTCHours()).padStart(2, "0")}${String(agora.getUTCMinutes()).padStart(2, "0")}`;
+  const t0 = Date.now();
   try {
     const r = await timedFetch(`${origin}/api/widget-chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Origin: origin },
       body: JSON.stringify({
-        client, sessionId: `canary-${day}`, message: "ping",
+        client, sessionId: sess, message: "ping",
         // non-empty history ⇒ isStart:false ⇒ no ingest; no phone/email ⇒ no CRM/lead.
         history: [{ role: "user", text: "hi" }, { role: "assistant", text: "hello" }],
       }),
-    });
+    }, IA_TIMEOUT_MS);
     if (r.status === 404) return { status: "failed", httpStatus: 404, detail: `tenant ${client} rejected as unknown` };
     if (!r.ok) return { status: "failed", httpStatus: r.status, detail: (await r.text().catch(() => "")).slice(0, 160) };
     const d = await r.json().catch(() => ({}));
     const answer = (d && (d.answer || d.reply || "")).toString().trim();
     if (!answer) return { status: "failed", httpStatus: r.status, detail: "empty answer" };
-    return { status: "ok", httpStatus: r.status, tenant: client, sample: answer.slice(0, 80) };
-  } catch (e) { return { status: "failed", httpStatus: 0, detail: String(e).slice(0, 160) }; }
+    return classificarIA(Date.now() - t0, { httpStatus: r.status, tenant: client, sample: answer.slice(0, 80) });
+  } catch (e) { return { status: "failed", httpStatus: 0, ms: Date.now() - t0, detail: String(e).slice(0, 160) }; }
 }
 
 export async function onRequest(context) {

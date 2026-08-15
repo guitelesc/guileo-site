@@ -80,9 +80,26 @@ export async function onRequestGet(context) {
       }
     } catch { /* discovery optional — refresh_token already captured */ }
 
+    // GRAVAR E CONFERIR. `fetch` NÃO lança em erro HTTP: com só o try/catch, um 404/500 do
+    // PostgREST (RPC ausente, gate errado, banco fora) passava batido e a tela dizia
+    // "google=connected" com ZERO credencial guardada — o dono acreditava que estava conectado e
+    // nenhuma avaliação seria respondida, sem erro em lugar nenhum. É a mesma armadilha que já
+    // abriu quatro travas de provisionamento de uma vez. Conectado = gravado, provado pela leitura.
+    let guardou = false;
     try {
-      await rpc("store_integration", { p_secret: env.INGEST_SECRET || "", p_email: email, p_provider: "google_business", p_tokens: { account_id, location_id, refresh_token } });
-    } catch { return back("error", "store_failed"); }
+      const sr = await rpc("store_integration", { p_secret: env.INGEST_SECRET || "", p_email: email, p_provider: "google_business", p_tokens: { account_id, location_id, refresh_token } });
+      guardou = sr.ok;
+    } catch { guardou = false; }
+    if (guardou) {
+      // Leitura de volta: a RPC pode responder 200 e não ter gravado nada. Sem external proof,
+      // "ok" é intenção, não fato. Só chamamos de conectado o que dá para ler de volta.
+      try {
+        const vr = await rpc("gb_creds_lookup", { p_secret: env.INGEST_SECRET || "", p_email: email });
+        const v = vr.ok ? await vr.json().catch(() => null) : null;
+        if (!(v && typeof v === "object" && String(v.refresh_token || "").length > 0)) guardou = false;
+      } catch { guardou = false; }
+    }
+    if (!guardou) return back("error", "store_failed");
 
     return back("connected", location_id ? "" : "needs_location");
   } catch (e) { return back("error", s(e, 60).replace(/[^a-z0-9_]/gi, "")); }

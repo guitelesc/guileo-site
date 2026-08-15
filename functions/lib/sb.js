@@ -26,3 +26,21 @@ export function svcRpc(env, name, body) {
 }
 
 export { SB_URL };
+
+// ── A ARMADILHA QUE ESTE HELPER REMOVE ───────────────────────────────────────────────────────
+// `svcRpc` devolve a RESPOSTA HTTP, não o JSON. Quem escreve `const r = await svcRpc(...)` e olha
+// `r.ok` está lendo o "deu 200?" do HTTP — não o `{ok:true}` da função do banco. Em 2026-08-08 isso
+// me deu os DOIS erros opostos no mesmo dia:
+//   · no motor de anúncios → falso FRACASSO: o gasto gravou, e a rota disse que não gravou;
+//   · na atribuição        → falso SUCESSO: teria confirmado sem nunca ler a resposta.
+// A correção não é "lembrar de parsear": é fazer o caminho fácil ser o certo. `svcJson` devolve o
+// que a função do banco realmente respondeu, e distingue erro de transporte de resposta vazia.
+export async function svcJson(env, name, body) {
+  try {
+    const r = await svcRpc(env, name, body);
+    const texto = await r.text();
+    if (!r.ok) return { ok: false, erro_http: r.status, detalhe: texto.slice(0, 200) };
+    if (!texto) return { ok: false, erro_http: r.status, detalhe: "resposta vazia" };
+    try { return JSON.parse(texto); } catch { return { ok: false, detalhe: `resposta nao-JSON: ${texto.slice(0, 120)}` }; }
+  } catch (e) { return { ok: false, detalhe: String(e).slice(0, 160) }; }
+}

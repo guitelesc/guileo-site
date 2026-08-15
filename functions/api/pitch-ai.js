@@ -5,6 +5,7 @@
 import { factsBlock } from "../lib/productFacts.js";
 import { guardSystemPrompt } from "../lib/guiConstitution.js";
 import { json, sameOrigin, rateLimited } from "../lib/guard.js";
+import { gerarCriativoAds } from "../lib/criativoAds.js";
 import { verifySession } from "../lib/sellerSession.js";
 
 // One hardened Claude call for every mode. Fixes two field-reported failure classes:
@@ -13,7 +14,12 @@ import { verifySession } from "../lib/sellerSession.js";
 // (2) A model the key can't reach (or a transient upstream error) used to surface as a naked 502
 //     the seller saw as "…" — now we fall back down the model chain and, if everything fails,
 //     return the upstream status so the UI (and we) can see WHY instead of a masked edge page.
-const MODEL_CHAIN = ["claude-fable-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"];
+// MODEL_CHAIN vem de ../lib/guiBrain.js — NÃO declare outra aqui (2026-08-12).
+// Eram DEZ cópias idênticas da mesma lista de modelos, uma por arquivo. Idênticas HOJE: conferi as
+// dez antes de mexer, e é exatamente por estarem iguais que a hora de unificar é agora — depois que
+// uma diverge, alguém já foi atendido pelo modelo errado e ninguém sabe qual superfície foi.
+// É o padrão que esta sessão inteira perseguiu: cópia sem vínculo com a fonte.
+import { MODEL_CHAIN } from "../lib/guiBrain.js";
 async function askClaude(env, { system, messages, max_tokens = 300 }) {
   let msgs = Array.isArray(messages) ? messages.slice() : [];
   while (msgs.length && msgs[0].role !== "user") msgs.shift();
@@ -70,6 +76,30 @@ export async function onRequestPost(context) {
     const who = await verifySession(env, (b.sid || "").toString());
     if (!who) return json({ error: "auth_required", message: "Entre de novo no /vendedor pra usar as ferramentas de IA." }, 401);
     const mode = (b.mode || "pitch").toString();
+
+    // ── CRIATIVO DE ANÚNCIO PARA O PROSPECT — o momento que fecha venda ──────────────────────
+    // O vendedor está na frente do dono do negócio. Em vez de descrever o que a Guileo faria, ele
+    // MOSTRA: o anúncio real, escrito para aquele negócio, naquela cidade, ali na hora. É a
+    // diferença entre "a gente cuida do seu marketing" e ver o próprio negócio anunciado.
+    //
+    // SEM PREÇO. O prospect não tem cardápio cadastrado, então o gerador é proibido de citar
+    // valor — anúncio de prospect com preço inventado é promessa que a Guileo não cumpre, e quem
+    // leva a culpa na frente do cliente é o vendedor.
+    if (mode === "criativo") {
+      const contexto = {
+        business: (b.business || "").toString().slice(0, 160).trim(),
+        industry: (b.niche || b.industry || "").toString().slice(0, 80).trim(),
+        lang: (b.lang || "pt").toString().slice(0, 2),
+        notas: [(b.city ? `City: ${b.city}` : ""), (b.notes || "")].filter(Boolean).join("\n").slice(0, 800),
+      };
+      if (!contexto.business) return json({ ok: false, error: "diga o nome do negócio" }, 400);
+      const r = await gerarCriativoAds(env, "", {
+        plataforma: b.plataforma || "google", objetivo: b.objetivo, lang: contexto.lang, contexto,
+      });
+      if (!r) return json({ ok: false, error: "IA não configurada" }, 501);
+      if (r.erro) return json({ ok: false, error: r.erro }, 502);
+      return json({ ok: true, ...r });
+    }
 
     // ── OBJECTION-BUSTER mode: seller types what the client said → calm, non-aggressive reframe ──
     if (mode === "objection") {

@@ -3,13 +3,14 @@
 // ElevenLabs voice agent's prompt — so "Train your AI" actually trains the real agent.
 //   POST { email, key, brain, business?, industry?, lang? }
 // Auth: the connection code (key) must match the client (verified via get_client_data).
-import { json, isOwnerEmail } from "../lib/guard.js";
-import { buildConversationConfig, fetchTenantPrices } from "../lib/provision.js";
+import { json, isOwnerEmail, safeEq } from "../lib/guard.js";
+import { buildConversationConfig, fetchTenantPrices, CEREBRO_VERSAO } from "../lib/provision.js";
 import { appointmentEmail } from "../lib/emailTemplates.js";
 import { brandFor } from "../lib/clientBrand.js";
 import { isReserved } from "../lib/reserved.js";
 import { resolveNativeVoices } from "../lib/voiceLibrary.js";
-import { svcRpc } from "../lib/sb.js";
+import { svcRpc, svcJson } from "../lib/sb.js";
+import { faladoComoGente } from "../lib/faladoComoGente.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -19,16 +20,32 @@ const rpc = (name, body) => fetch(`${SB_URL}/rest/v1/rpc/${name}`, {
 
 export async function onRequestPost(context) {
   const { request, env } = context;
+  // MARCOS DE TEMPO — um sync que estoura o tempo sem dizer ONDE só permite adivinhar. Custa ~0 e
+  // transforma "demorou" em "demorou no passo X".
+  const t0 = Date.now(); const marcos = []; const marco = (n) => marcos.push(`${n}:${Date.now() - t0}ms`);
   try {
     if (!env.ELEVENLABS_API_KEY) return json({ ready: false, error: "elevenlabs not configured" }, 501);
     const b = await request.json();
     const email = (b.email || "").toString().trim().toLowerCase();
     const key = (b.key || "").toString().trim();
-    if (!email.includes("@") || !key) return json({ error: "email + key required" }, 400);
+    // PORTA DE SERVIÇO — só para o motor de evolução (/api/agent-evolve), que precisa atualizar o
+    // agente de N clientes e não tem (nem deve ter) a chave de conexão de ninguém. O segredo é de
+    // servidor: nunca sai para o navegador, então quem o apresenta é a nossa própria infraestrutura.
+    // FAIL-CLOSED em duas camadas. O `!!env.INGEST_SECRET` é cinto E suspensório: o `safeEq` do
+    // guard.js JÁ recusa vazio na primeira linha (`if (!a || !b ...) return false`), então a porta
+    // nunca abriria só por falta de segredo. Mantido porque diz a INTENÇÃO no ponto de uso —
+    // quem ler aqui não precisa ir conferir a implementação do safeEq para saber que é seguro.
+    // (Correção 2026-08-10: a versão anterior deste comentário afirmava que `safeEq("","")`
+    // passaria. Não passa. Comentário errado envelhece pior que código errado — o código alguém
+    // testa, o comentário todo mundo acredita.)
+    const interno = !!env.INGEST_SECRET && safeEq((request.headers.get("x-guileo-secret") || "").trim(), env.INGEST_SECRET);
+    if (!email.includes("@") || (!key && !interno)) return json({ error: "email + key required" }, 400);
 
     // AUTH — the connection code must belong to this client (get_client_data rejects a mismatch).
-    const gr = await rpc("get_client_data", { p_email: email, p_key: key });
-    if (!gr.ok) return json({ error: "unauthorized" }, 401);
+    if (!interno) {
+      const gr = await rpc("get_client_data", { p_email: email, p_key: key });
+      if (!gr.ok) return json({ error: "unauthorized" }, 401);
+    }
 
     // find this client's dedicated agent (server-side, ingest-secret gated)
     const ar = await rpc("client_agent_lookup", { p_secret: env.INGEST_SECRET || "", p_email: email });
@@ -57,7 +74,9 @@ export async function onRequestPost(context) {
 
     // PRICES — inject the tenant's REAL live menu so editing the brain never strips the prices the Gui
     // quotes on a call (biz_lookup, SCHED_SECRET; best-effort "" on any miss).
+    marco("kb");
     const prices = await fetchTenantPrices(env, email, lang);
+    marco("precos");
 
     // Preserve whatever VOICE + NAME the agent currently uses — read them off the live agent so a brain
     // sync never reverts the voice OR resets the white-label name to the brand-default "Gui" (the root
@@ -95,6 +114,7 @@ export async function onRequestPost(context) {
     // conta, para que a agente não leia português com sotaque americano. Idempotente e fail-soft:
     // se a biblioteca não responder, o mapa vem vazio e o agente sincroniza com a voz de sempre.
     const nativeVoices = await resolveNativeVoices(env).catch(() => ({}));
+    marco("vozes");
     const convCfg = buildConversationConfig(env, { business, industry, lang, brain: kbBrain, agentName, email, prices, voiceId, nativeVoices });
     const pr = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agentId}`, {
       method: "PATCH",
@@ -106,11 +126,22 @@ export async function onRequestPost(context) {
     // diagnóstico: o console.log some se ninguém estiver com o tail aberto no segundo exato. A
     // mensagem da ElevenLabs é validação de schema (nunca segredo), e quem chama esta rota já
     // provou a chave de conexão do cliente.
+    marco("elevenlabs");
     if (!pr.ok) {
       const detail = await pr.text().catch(() => "");
       console.log("sync-agent error", detail.slice(0, 300));
       return json({ error: "agent update failed", status: pr.status, detail: detail.slice(0, 400) }, 502);
     }
+
+    // O CARIMBO DA VERSÃO — aqui, e em nenhum outro lugar. Este é o único ponto do sistema que sabe
+    // que a ElevenLabs ACEITOU o cérebro novo (o 502 acima já saiu). Carimbar antes disto faria o
+    // banco dizer "atualizado" enquanto o agente segue falando errado — e, pior, ele nunca mais
+    // apareceria como atrasado para a varredura, então o defeito ficaria congelado para sempre.
+    let cerebro_versao = null;
+    try {
+      const cr = await svcJson(env, "agente_carimbar", { p_secret: env.INGEST_SECRET || "", p_email: email, p_versao: CEREBRO_VERSAO });
+      cerebro_versao = cr?.ok ? CEREBRO_VERSAO : null;
+    } catch { /* carimbo é registro, não pode derrubar um sync que já deu certo */ }
 
     // log the retrain as a (free) event for the client's timeline
     try { await svcRpc(env, "ingest_client_event", { p_secret: env.INGEST_SECRET || "", p_email: email, p_type: "train", p_channel: "system", p_summary: "AI brain synced to your live voice agent", p_amount: 0, p_payload: { agent_id: agentId } }); } catch { /* */ }
@@ -246,13 +277,14 @@ export async function onRequestPost(context) {
       // exercitado de verdade, e o resultado esperado é sempre conhecido.
       const primeiro = (disp.body.slots || [])[0]?.start || null;
       let falado = (b.selftest_when || "").toString();
-      if (!falado && primeiro) {
-        const p = new Intl.DateTimeFormat("en-CA", { timeZone: bizTzSelftest, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date(primeiro));
-        const g = (t) => (p.find((x) => x.type === t) || {}).value;
-        const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: bizTzSelftest, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-        const dia = `${g("year")}-${g("month")}-${g("day")}`;
-        falado = `${dia === hoje ? "hoje" : "amanha"} as ${Number(g("hour"))}:${g("minute")}`;
-      }
+      // A PERGUNTA VEM DO DADO VIVO. Fixar "amanhã às 10" faz o teste depender do relógio: passa
+      // num horário e falha noutro, sem nada ter quebrado. Pegamos o PRIMEIRO horário realmente
+      // livre e perguntamos por ele em linguagem falada — assim o caminho de linguagem natural é
+      // exercitado de verdade, e o resultado esperado é sempre conhecido.
+      // A frase sai de faladoComoGente (biblioteca): esta lógica já nasceu errada uma vez por só
+      // saber dizer "hoje"/"amanhã", e uma segunda cópia garantiria que a próxima correção
+      // chegasse só numa delas. Ida e volta provada em faladoComoGente.test.mjs.
+      if (!falado && primeiro) falado = faladoComoGente(primeiro, bizTzSelftest);
       const marca = falado
         ? await chamar({ op: "book", when: falado, name: "PROVA", contact: "prova@guileoai.com", dry_run: true })
         : { status: 0, body: {} };
@@ -339,6 +371,7 @@ export async function onRequestPost(context) {
         email_test = { enviado: mr.ok, para: email, assunto: tpl.subject, status: mr.status, ...(detail ? { detail } : {}) };
       }
     }
-    return json({ ok: true, agent_id: agentId, languages, brand, ...(numeros_soltos.length ? { numeros_soltos } : {}), ...(selftest ? { selftest } : {}), ...(typeof ciclo !== "undefined" && ciclo ? { ciclo } : {}), ...(email_test ? { email_test } : {}) });
+    marco("fim");
+    return json({ ok: true, agent_id: agentId, cerebro_versao, marcos, languages, brand, ...(numeros_soltos.length ? { numeros_soltos } : {}), ...(selftest ? { selftest } : {}), ...(typeof ciclo !== "undefined" && ciclo ? { ciclo } : {}), ...(email_test ? { email_test } : {}) });
   } catch (e) { return json({ error: String(e).slice(0, 140) }, 400); }
 }

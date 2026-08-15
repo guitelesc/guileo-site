@@ -8,13 +8,13 @@
 import { safeEq } from "../lib/guard.js";
 import { emitFailure } from "../lib/failure.js";
 import { appointmentEmail, ownerAlertEmail, waitlistOfferEmail } from "../lib/emailTemplates.js";
-import { sendText } from "../lib/twilio.js";
+import { sendText, sendOrFlag } from "../lib/twilio.js";
 // THE UNIFIED SCHEDULING BRAIN — routes availability/book to a connected external calendar
 // (MindBody/Square/…) when the tenant has one ready, else to the internal biz_* engine. See
 // functions/lib/scheduleAdapter.js. Falls back to internal on ANY external error → zero regression.
 import { resolveScheduler, getAvailability as adapterAvailability, book as adapterBook } from "../lib/scheduleAdapter.js";
 import { brandFor } from "../lib/clientBrand.js";
-import { resolveSlot } from "../lib/slotResolver.js";
+import { resolveSlot, oQueAPessoaDisse } from "../lib/slotResolver.js";
 import { svcRpc } from "../lib/sb.js";
 
 // Send a branded confirmation to the CUSTOMER (email now; SMS lights up when A2P clears). Best-effort.
@@ -152,6 +152,20 @@ async function rpc(env, fn, body) {
 // e não deu pra saber se ela chamou op='book' e falhou, ou se nunca chamou: as chamadas de
 // ferramenta não eram registradas em lugar nenhum. Sem essa trilha, todo diagnóstico de
 // "por que a IA não fez X" vira adivinhação. Best-effort e nunca bloqueia a ligação.
+// TODA RECUSA DEIXA RASTRO — com o MOTIVO.
+//
+// Em 2026-08-08 uma ligação real de 154 segundos chamou `availability` e depois `book`, e não
+// marcou nada. O log tinha "book → chamada" e mais nada: o sucesso escrevia "OK", a recusa não
+// escrevia coisa alguma. Levou uma hora de escavação em três sistemas para concluir que o motivo
+// era irrecuperável — ele nunca foi gravado.
+//
+// Um motor que só registra o que deu certo produz exatamente a evidência que não serve: mostra os
+// casos que já sabemos que funcionam e apaga os que precisamos entender. Daqui pra frente, a
+// recusa é gravada com a razão e com o que a pessoa pediu — que é o par mínimo para reproduzir.
+async function logRecusa(env, email, op, motivo, pedido) {
+  await logTool(env, email, op, `RECUSA:${motivo}`, `pediu: ${String(pedido || "—").slice(0, 100)}`);
+}
+
 async function logTool(env, email, op, outcome, detail) {
   try {
     await svcRpc(env, "ingest_client_event", {
@@ -191,7 +205,7 @@ export async function onRequestPost(context) {
     await logTool(env, email, op, "chamada");
 
     const menu = await rpc(env, "biz_lookup", { p_email: email });
-    if (menu?.error) return json({ message: "I couldn't reach the schedule just now." }, 200);
+    if (menu?.error) return json({ message: diz("agenda_fora_do_ar", b.lang) }, 200);
     const services = menu.services || [], locations = menu.locations || [], pros = menu.professionals || [];
     // 2.12 — speak times in the BUSINESS's timezone (not hardcoded NY) so a Lisbon/São Paulo client
     // hears correct hours. Passed explicitly to fmt() to stay concurrency-safe under volume.
@@ -222,7 +236,7 @@ export async function onRequestPost(context) {
     if (op === "price") {
       const only = pick(services, b.service);
       const rows = (only ? [only] : services).map((s) => ({ name: s.name, price: money(s.price_cents), price_cents: s.price_cents ?? null }));
-      if (!rows.length) return json({ prices: [], message: "I don't have prices listed yet — I'll confirm that and get right back to you." });
+      if (!rows.length) return json({ prices: [], message: diz("sem_precos", b.lang) });
       const spoken = rows.map((s) => (s.price ? `${s.name} is ${s.price}` : `${s.name} is priced on request`)).join("; ");
       return json({ prices: rows, message: `${spoken}.` });
     }
@@ -243,13 +257,13 @@ export async function onRequestPost(context) {
 
     if (op === "points") {
       const r = await rpc(env, "biz_customer_points", { p_email: email, p_contact: (b.contact || "").toString() });
-      return json({ points: r.points || 0, visits: r.visits || 0, message: `You have ${r.points || 0} loyalty points${r.visits ? ` from ${r.visits} visit${r.visits === 1 ? "" : "s"}` : ""}.` });
+      return json({ points: r.points || 0, visits: r.visits || 0, message: pontosMsg(b.lang, r.points || 0, r.visits || 0) });
     }
     if (op === "find") {
       const f = await rpc(env, "biz_find_appointments", { p_email: email, p_contact: (b.contact || "").toString() });
       const appts = f.appointments || [];
-      if (!appts.length) return json({ appointments: [], message: "I don't see any upcoming appointments under that number." });
-      return json({ appointments: appts, message: `I found: ${appts.slice(0, 3).map((a) => `${a.service} on ${fmt(a.start, bizTz)}${a.pro ? ` with ${a.pro}` : ""}`).join("; ")}.` });
+      if (!appts.length) return json({ appointments: [], message: diz("sem_agendamentos", b.lang) });
+      return json({ appointments: appts, message: encontreiMsg(b.lang, appts.slice(0, 3).map((a) => `${a.service} — ${fmt(a.start, bizTz, b.lang)}${comQuem(b.lang, a.pro)}`).join("; ")) });
     }
 
     // ops on an existing appointment (by id from this call, or looked up by the caller's contact)
@@ -259,7 +273,7 @@ export async function onRequestPost(context) {
     }
     if (op === "cancel") {
       const id = await findApptId();
-      if (!id) return json({ message: "What's the phone number the appointment is under?" });
+      if (!id) return json({ message: diz("qual_telefone", b.lang) });
       const r = await rpc(env, "biz_cancel", { p_email: email, p_appointment_id: id });
       // Give reserved stock/capacity back to the shelf (no-op unless this booking consumed inventory).
       if (r.ok) { try { await rpc(env, "rpc_reserve_release_by_appt", { p_email: email, p_appointment_id: id }); } catch { /* best-effort */ } }
@@ -295,12 +309,12 @@ export async function onRequestPost(context) {
           }
         } catch { /* waitlist fill is a bonus — the cancel already succeeded */ }
       }
-      return json({ ok: !!r.ok, message: r.ok ? "Done — that's cancelled. Anything else?" : "I couldn't find that appointment to cancel." });
+      return json({ ok: !!r.ok, message: diz(r.ok ? "cancelado" : "nao_achei_cancelar", b.lang) });
     }
     if (op === "reschedule") {
       const when = (b.when || b.start || "").toString();
       const id = await findApptId();
-      if (!id || !when) return json({ message: "What's the phone number it's under, and the new day and time?" });
+      if (!id || !when) return json({ message: diz("telefone_e_horario", b.lang) });
 
       // MESMO DEFEITO DO BOOK, e aqui era pior: a frase falada ("amanhã às 3") ia CRUA para o
       // banco como se fosse um carimbo de data. Ou o Postgres recusava, ou — se o texto por acaso
@@ -315,25 +329,25 @@ export async function onRequestPost(context) {
         const av = await rpc(env, "biz_availability", { p_email: email, p_service_id: svcAtual.id, p_limit: 30 });
         const m = resolveSlot(when, av.slots || [], bizTz);
         if (!m) {
-          const alts = (av.slots || []).slice(0, 3).map((s2) => fmt(s2.start, bizTz)).join("; ");
+          const alts = (av.slots || []).slice(0, 3).map((s2) => fmt(s2.start, bizTz, b.lang)).join("; ");
           return json({ ok: false, slots: av.slots || [], message: alts ? `That time isn't open — I have ${alts}. Which works?` : `I couldn't find that time — want me to check another day?` });
         }
         novoIso = m.start;
       } else if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(when)) {
         // sem saber o serviço não dá pra resolver a fala — melhor perguntar que mover às cegas
-        return json({ ok: false, message: "Which service is it for? I'll find the next opening." });
+        return json({ ok: false, message: (await logRecusa(env, email, op, "servico_nao_identificado", b.service || ""), diz("qual_servico", b.lang)) });
       }
       const r = await rpc(env, "biz_reschedule", { p_email: email, p_appointment_id: id, p_new_start: novoIso });
       if (r.ok) if (!testMode) await apptEmailOrFlag(env, email, "reschedule", { contact: (b.contact || "").toString(), name: (b.name || "").toString(), whenLabel: fmt(novoIso, bizTz), lang: b.lang });
       if (!r.ok && r.reason === "closed_date") return json({ ok: false, reason: "closed_date", message: closedMsg(b.lang, fmtDay(novoIso, bizTz, b.lang), r.note, "") });
-      return json({ ok: !!r.ok, message: r.ok ? `Moved to ${fmt(novoIso, bizTz)}. You'll get a new confirmation.` : (r.reason === "slot_taken" ? "That new time's taken — want another?" : "I couldn't move that one.") });
+      return json({ ok: !!r.ok, message: r.ok ? movidoMsg(b.lang, fmt(novoIso, bizTz, b.lang)) : diz(r.reason === "slot_taken" ? "novo_horario_ocupado" : "nao_movi", b.lang) });
     }
 
     // resolve names → records
     const svc = pick(services, b.service);
     const loc = pick(locations, b.location);
     const pro = pick(pros, b.professional || b.pro);
-    if (!svc) return json({ message: `I didn't catch which service — we have ${services.map((s) => s.name).join(", ")}. Which one?` });
+    if (!svc) return json({ message: servicoIndefinidoMsg(b.lang, services.map((s) => s.name).join(", ")) });
 
     if (op === "availability") {
       // EXTERNAL FIRST (golden rule): if the tenant has a connected+ready external calendar, its
@@ -344,18 +358,18 @@ export async function onRequestPost(context) {
         const ext = await adapterAvailability(env, email, sc, { origin, service: svc.name, location_id: loc?.id || null, professional_id: pro?.id || null });
         if (ext.handled) {
           const slots = ext.slots || [];
-          if (!slots.length) return json({ message: `I don't see openings for ${svc.name}${loc ? ` at ${loc.name}` : ""} in the next two weeks — want me to check another location or have someone call you?`, slots: [], source: sc.provider });
-          const human = slots.slice(0, 4).map((s) => `${fmt(s.start, bizTz)}${s.pro ? ` with ${s.pro}` : ""}`).join("; ");
-          return json({ slots, source: sc.provider, message: `For ${svc.name}${loc ? ` at ${loc.name}` : ""}, I have: ${human}. Which works?` });
+          if (!slots.length) return json({ message: semVagaMsg(b.lang, svc.name, loc ? emOnde(b.lang, loc.name) : ""), slots: [], source: sc.provider });
+          const human = slots.slice(0, 4).map((s) => `${fmt(s.start, bizTz, b.lang)}${comQuem(b.lang, s.pro)}`).join("; ");
+          return json({ slots, source: sc.provider, message: opcoesMsg(b.lang, svc.name, loc ? emOnde(b.lang, loc.name) : "", human) });
         }
       }
       const av = await rpc(env, "biz_availability", {
         p_email: email, p_service_id: svc.id, p_location_id: loc?.id || null, p_pro_id: pro?.id || null, p_limit: 6,
       });
       const slots = (av.slots || []).map((s) => ({ start: s.start, pro: s.pro, location: s.location }));
-      if (!slots.length) return json({ message: `I don't see openings for ${svc.name}${loc ? ` at ${loc.name}` : ""} in the next two weeks — want me to check another location or have someone call you?`, slots: [] });
-      const human = slots.slice(0, 4).map((s) => `${fmt(s.start, bizTz)} with ${s.pro}${loc ? "" : ` at ${s.location}`}`).join("; ");
-      return json({ slots, message: `For ${svc.name}${loc ? ` at ${loc.name}` : ""}, I have: ${human}. Which works?` });
+      if (!slots.length) return json({ message: semVagaMsg(b.lang, svc.name, loc ? emOnde(b.lang, loc.name) : ""), slots: [] });
+      const human = slots.slice(0, 4).map((s) => `${fmt(s.start, bizTz, b.lang)}${comQuem(b.lang, s.pro)}${loc ? "" : emOnde(b.lang, s.location)}`).join("; ");
+      return json({ slots, message: opcoesMsg(b.lang, svc.name, loc ? emOnde(b.lang, loc.name) : "", human) });
     }
 
     if (op === "book") {
@@ -367,7 +381,7 @@ export async function onRequestPost(context) {
       const scB = await scheduler();
       if (scB.provider !== "internal") {
         const startX = (b.when || b.start || "").toString();
-        if (!startX) return json({ message: "What day and time would you like?" });
+        if (!startX) return json({ message: (await logRecusa(env, email, op, "sem_dia_nem_hora", b.when || b.start || ""), diz("qual_dia_e_hora", b.lang)) });
         const ext = await adapterBook(env, email, scB, {
           origin, service: svc.name, start: startX,
           name: (b.name || "").toString(), contact: (b.contact || "").toString(),
@@ -377,7 +391,7 @@ export async function onRequestPost(context) {
           mirror: { pro: pro?.name || "", location: loc?.name || "" },
         });
         if (ext.handled && ext.ok) {
-          const refTxt = ext.external_ref ? ` Your confirmation number is ${ext.external_ref}.` : "";
+          const refTxt = refMsg(b.lang, ext.external_ref);
           if (!testMode) {
             // Same customer-facing confirmation + owner alert + CRM as the internal path. No gcalPush:
             // the external calendar IS the tenant's system of record, so there's nothing to mirror to Google.
@@ -399,7 +413,7 @@ export async function onRequestPost(context) {
               }
             } catch { /* CRM best-effort */ }
           }
-          return json({ ok: true, source: scB.provider, ref: ext.external_ref, external_ref: ext.external_ref, message: `Done — ${svc.name} booked for ${fmt(startX, bizTz)}.${refTxt} You'll get a confirmation. Anything else?` });
+          return json({ ok: true, source: scB.provider, ref: ext.external_ref, external_ref: ext.external_ref, message: confirmadoMsg(b.lang, { servico: svc.name, quando: fmt(startX, bizTz, b.lang), segurado: false, refTxt }) });
         }
         if (ext.handled && ext.ok === false) {
           // External is the truth — we do NOT internal-book on top of it. Two honest cases:
@@ -407,15 +421,15 @@ export async function onRequestPost(context) {
           //    (NEVER book blind — that's the double-book the audit caught).
           //  • otherwise: the external rejected the slot (taken) → offer the next opening.
           if (ext.needsFrontdesk) {
-            return json({ ok: false, source: scB.provider, captured: true, message: `Got it — I've noted your request for ${svc.name} at ${fmt(startX, bizTz)} and our front desk will confirm the exact spot with you shortly. Anything else I can help with?` });
+            return json({ ok: false, source: scB.provider, captured: true, message: anotadoMsg(b.lang, svc.name, fmt(startX, bizTz, b.lang)) });
           }
-          return json({ ok: false, source: scB.provider, message: `That time was just taken — want me to check the next opening?` });
+          return json({ ok: false, source: scB.provider, message: (await logRecusa(env, email, op, "horario_tomado_na_hora", b.when || b.start || ""), diz("acabou_de_sair", b.lang)) });
         }
         // ext.handled === false → external unreachable/unmappable → internal engine takes over below.
       }
       // resolve the pro: explicit, else the one free at that time from a fresh availability check
       let proId = pro?.id || null, locId = loc?.id || null, startIso = (b.when || b.start || "").toString();
-      if (!startIso) return json({ message: "What day and time would you like?" });
+      if (!startIso) return json({ message: (await logRecusa(env, email, op, "sem_dia_nem_hora", b.when || b.start || ""), diz("qual_dia_e_hora", b.lang)) });
       // O HORÁRIO SEMPRE PRECISA SER RESOLVIDO. Antes isto só rodava quando o profissional era
       // desconhecido — e no dia em que o profissional passou a ser escolhido sozinho (negócio com
       // um profissional só), a resolução foi PULADA e a frase falada ("amanhã às 10") seguiria
@@ -432,11 +446,26 @@ export async function onRequestPost(context) {
         // agente oferece as opções reais. Ver functions/lib/slotResolver.test.mjs.
         const match = resolveSlot(startIso, av.slots || [], bizTz);
         if (!match) {
-          const alts = (av.slots || []).slice(0, 3).map((s) => `${fmt(s.start, bizTz)} with ${s.pro}`).join("; ");
+          const alts = (av.slots || []).slice(0, 3).map((s) => `${fmt(s.start, bizTz, b.lang)}${comQuem(b.lang, s.pro)}`).join("; ");
           // SPECIAL DATES: if the requested day is closed (vacation/holiday), say WHY — not just "taken".
           const sp = await specialFor(env, email, startIso, bizTz);
           if (sp) return json({ ok: false, reason: "closed_date", slots: av.slots || [], message: closedMsg(b.lang, fmtDay(startIso, bizTz, b.lang), sp.note, alts) });
-          return json({ ok: false, slots: av.slots || [], message: alts ? `That time isn't open anymore — I have ${alts}. Want one of those?` : `That time isn't available — want me to check another day?` });
+          // O MOTIVO DA RECUSA TEM QUE SER VERDADE. Antes, QUALQUER falha em resolver o horário
+          // respondia "esse horário não está mais livre" — inclusive quando a pessoa não tinha
+          // dito horário nenhum ("quero marcar"). A Gui inventava um fato para justificar uma
+          // recusa correta, e quem ligou percebe na hora que não foi escutado. Agora: se ela não
+          // disse dia nem hora, perguntamos; se disse e não dá, aí sim oferecemos alternativas.
+          const disse = oQueAPessoaDisse(startIso, bizTz, av.slots || []);
+          if (!disse.disse_dia && !disse.disse_hora) {
+            await logRecusa(env, email, "book", "sem_dia_nem_hora", startIso);
+            return json({ ok: false, reason: "sem_horario_pedido", slots: av.slots || [],
+              message: semHorarioMsg(b.lang, alts) });
+          }
+          // Distinguir os dois é o que transforma o log em diagnóstico: "pediu horário que não
+          // existe na agenda" e "pediu horário que existe mas está ocupado" pedem consertos
+          // diferentes — um é expediente/serviço mal cadastrado, o outro é agenda cheia.
+          await logRecusa(env, email, "book", (av.slots || []).length ? "horario_pedido_indisponivel" : "sem_vaga_nenhuma", startIso);
+          return json({ ok: false, slots: av.slots || [], message: ocupadoMsg(b.lang, alts) });
         }
         // o profissional/local explícito continua valendo; o horário vem sempre do slot real
         proId = proId || match.pro_id; locId = locId || match.location_id; startIso = match.start;
@@ -515,6 +544,26 @@ export async function onRequestPost(context) {
       if (needsReserve && res?.ok && res.appointment_id) {
         try { await rpc(env, "ops_reservation_link", { p_email: email, p_ref: reserveRef, p_appointment_id: res.appointment_id }); } catch { /* best-effort */ }
       }
+
+      // ── O ELO EXATO LIGAÇÃO → AGENDAMENTO (2026-08-12) ───────────────────────────────────────
+      // Fecha o último item aberto do motor de agente (JORNADA.md): «não existe elo exato
+      // ligação→agendamento… enquanto não houver, 'resultado confirmado' só afirma dinheiro».
+      // Amarrar por telefone + janela de tempo foi recusado com razão — no dia em que duas ligações
+      // do mesmo número acontecem perto, casa a pessoa errada, e num negócio movimentado isso é
+      // terça-feira. O elo verdadeiro é o id da conversa, que só o provedor sabe.
+      //
+      // DEPOIS do book, best-effort e fail-soft, EXATAMENTE como o ops_reservation_link acima: se
+      // esta escrita falhar, o cliente segue agendado e só o relatório fica sem o elo. A falha cai
+      // no lado barato — nunca no lado do dinheiro.
+      // O `call_booking_link` RECUSA id fora do formato `conv_…`: se a ElevenLabs não substituir o
+      // placeholder, chega a string literal e a RPC devolve `ligado:false`. Elo falso é pior que
+      // elo nenhum — ele afirma com confiança que aquela ligação gerou aquele agendamento.
+      const convId = (request.headers.get("x-guileo-conv") || b.conversation_id || "").toString().trim();
+      if (res?.ok && res.appointment_id && convId) {
+        try {
+          await rpc(env, "call_booking_link", { p_email: email, p_conv: convId, p_appointment: res.appointment_id });
+        } catch { /* best-effort — o agendamento já está feito */ }
+      }
       // ── NUNCA DIZER "AGENDADO" SEM AGENDAMENTO ───────────────────────────────────────────────
       // Em 2026-08-07 a prova de ciclo capturou a resposta crua:
       //   {"ok":true,"appointment_id":null,"ref":null,"message":"Done — booked for Fri, Aug 7…"}
@@ -529,8 +578,8 @@ export async function onRequestPost(context) {
             : "I couldn't confirm that booking just now — I'd rather not promise you a time that didn't hold. Can I have someone from the team confirm it with you in a few minutes?" });
       }
       if (res?.ok) {
-        const held = res.status === "hold" ? ` (held for 5 min while we confirm)` : "";
-        const refTxt = res.ref ? ` Your confirmation number is ${res.ref}.` : "";
+        const held = res.status === "hold" ? seguradoMsg(b.lang) : "";
+        const refTxt = refMsg(b.lang, res.ref);
         // send the branded confirmation (email now if they gave an email; SMS lights up once A2P clears)
         if (res.status !== "hold") {
           if (!testMode) await apptEmailOrFlag(env, email, "book", { contact: (b.contact || "").toString(), name: (b.name || "").toString(), service: svc.name, whenLabel: fmt(startIso, bizTz), pro: pro?.name || "", location: loc?.name || "", address: loc?.address || "", locPhone: loc?.phone || "", ref: res.ref, lang: b.lang });
@@ -554,7 +603,7 @@ export async function onRequestPost(context) {
                 body: JSON.stringify({ p_secret: env.INGEST_SECRET, p_email: email }),
               });
               const ph = pr.ok ? ((await pr.json()) || "").toString() : "";
-              if (/^[0-9+]{8,}$/.test(ph)) await sendText(env, ph, `🔔 Guileo: nova reserva — ${(b.name || "cliente").toString()} · ${svc.name} · ${fmt(startIso, bizTz)}. guileoai.com/portal`.slice(0, 300), { channel: "whatsapp" });
+              if (/^[0-9+]{8,}$/.test(ph)) await sendOrFlag(env, { to: ph, body: `🔔 Guileo: nova reserva — ${(b.name || "cliente").toString()} · ${svc.name} · ${fmt(startIso, bizTz)}. guileoai.com/portal`.slice(0, 300), opts: { channel: "whatsapp" }, tenant: email, motivo: "aviso de nova reserva ao dono" });
             } catch { /* text best-effort */ }
           }
           // GOOGLE CALENDAR — drop the booking into the owner's Google Calendar if they connected it
@@ -582,20 +631,20 @@ export async function onRequestPost(context) {
         // desfecho REAL da reserva na trilha — é o registro que faltava pra saber se a
         // ligação virou agendamento ou morreu no caminho.
         await logTool(env, email, "book", "OK", `${svc.name} · ${fmt(startIso, bizTz)} · ref ${res.ref || "—"}`);
-        return json({ ok: true, appointment_id: res.appointment_id, ref: res.ref, status: res.status, message: `Done — ${svc.name} ${res.status === "hold" ? "held" : "booked"} for ${fmt(startIso, bizTz)}${held}.${refTxt} You'll get a confirmation. Anything else?` });
+        return json({ ok: true, appointment_id: res.appointment_id, ref: res.ref, status: res.status, message: confirmadoMsg(b.lang, { servico: svc.name, quando: fmt(startIso, bizTz, b.lang), segurado: res.status === "hold", refTxt, extra: held }) });
       }
-      if (res?.reason === "slot_taken") return json({ ok: false, message: `That time was just taken — want the next opening instead?` });
+      if (res?.reason === "slot_taken") return json({ ok: false, message: (await logRecusa(env, email, op, "horario_tomado_na_hora", b.when || b.start || ""), diz("acabou_de_sair", b.lang)) });
       // SPECIAL DATES: the DB guard (db/special_dates.sql) rejected a closed/reduced day —
       // tell the caller warmly WHY + the nearest open slot (one cheap availability call).
       if (res?.reason === "closed_date") {
         let alts = "";
         try {
           const av2 = await rpc(env, "biz_availability", { p_email: email, p_service_id: svc.id, p_location_id: locId, p_limit: 3 });
-          alts = (av2.slots || []).slice(0, 3).map((s) => `${fmt(s.start, bizTz)} with ${s.pro}`).join("; ");
+          alts = (av2.slots || []).slice(0, 3).map((s) => `${fmt(s.start, bizTz, b.lang)}${comQuem(b.lang, s.pro)}`).join("; ");
         } catch { /* alts are a bonus — the closed message stands alone */ }
         return json({ ok: false, reason: "closed_date", message: closedMsg(b.lang, fmtDay(startIso, bizTz, b.lang), res.note, alts) });
       }
-      return json({ ok: false, message: `I couldn't lock that in — let me grab you another time.` });
+      return json({ ok: false, message: (await logRecusa(env, email, op, "reserva_nao_travou", b.when || b.start || ""), diz("nao_consegui_travar", b.lang)) });
     }
 
     // #10 — add to the waitlist (auto-offered when a slot frees up)
@@ -608,7 +657,7 @@ export async function onRequestPost(context) {
     if (op === "recurring") {
       const weeks = Math.min(Math.max(parseInt(b.weeks || "4", 10) || 4, 1), 12);
       let startIso = (b.when || b.start || "").toString();
-      if (!startIso) return json({ message: "What day and time should the recurring appointment start?" });
+      if (!startIso) return json({ message: diz("inicio_recorrente", b.lang) });
       // resolve a pro for the first slot
       let proId = pro?.id || null, locId = loc?.id || null;
       if (!proId) {
@@ -619,7 +668,7 @@ export async function onRequestPost(context) {
         // Marcar errado calado é pior que não marcar: agora recusa e oferece as opções reais.
         const m = resolveSlot(startIso, av.slots || [], bizTz);
         if (!m) {
-          const alts = (av.slots || []).slice(0, 3).map((s2) => fmt(s2.start, bizTz)).join("; ");
+          const alts = (av.slots || []).slice(0, 3).map((s2) => fmt(s2.start, bizTz, b.lang)).join("; ");
           return json({ ok: false, slots: av.slots || [], message: alts ? `I couldn't find that exact time — I have ${alts}. Which works?` : `I couldn't find that time — want me to check another day?` });
         }
         proId = m.pro_id; locId = m.location_id; startIso = m.start;
@@ -627,7 +676,7 @@ export async function onRequestPost(context) {
       const base = new Date(startIso);
       // Cinto de segurança: startIso aqui SEMPRE vem de um slot real do motor. Se algum dia
       // deixar de vir, `new Date` daria Invalid Date e a série inteira sairia como NaN.
-      if (Number.isNaN(base.getTime())) return json({ ok: false, message: "I couldn't pin that start time — which day and time would you like?" });
+      if (Number.isNaN(base.getTime())) return json({ ok: false, message: diz("nao_entendi_inicio", b.lang) });
       const booked = [];
       for (let i = 0; i < weeks; i++) {
         const when = new Date(base.getTime() + i * 7 * 86400000).toISOString();
@@ -640,7 +689,7 @@ export async function onRequestPost(context) {
 
     return json({ message: "Unknown scheduling request." });
   } catch {
-    return json({ message: "Sorry, the schedule hiccuped — could you say that again?" }, 200);
+    return json({ message: diz("soluco", b.lang) }, 200);
   }
 }
 
@@ -751,6 +800,151 @@ function closedMsg(lang, dateLabel, note, alts) {
   return `We're closed on ${dateLabel}${n}.${alts ? ` The nearest open slot is ${alts}. Would one of those work?` : " What other day works for you?"}`;
 }
 
+// Conectores da fala. Sem eles a frase fica "9:30 AM with Ana" dentro de um português perfeito.
+const L2 = (lang) => (lang || "en").toString().slice(0, 2);
+const comQuem = (lang, pro) => (!pro ? "" : ({ pt: ` com ${pro}`, es: ` con ${pro}`, hi: ` ${pro} के साथ` }[L2(lang)] || ` with ${pro}`));
+const emOnde = (lang, loc) => (!loc ? "" : ({ pt: ` em ${loc}`, es: ` en ${loc}`, hi: ` ${loc} में` }[L2(lang)] || ` at ${loc}`));
+
+// A CONFIRMAÇÃO — a frase mais importante da ligação inteira. É o que a pessoa leva embora.
+function confirmadoMsg(lang, { servico, quando, segurado, refTxt, extra }) {
+  const L = L2(lang);
+  const r = refTxt || "", ex = extra || "";
+  if (L === "pt") return `Pronto — ${servico} ${segurado ? "reservado" : "agendado"} para ${quando}${ex}.${r} Você vai receber a confirmação. Mais alguma coisa?`;
+  if (L === "es") return `Listo — ${servico} ${segurado ? "reservado" : "agendado"} para ${quando}${ex}.${r} Le llegará la confirmación. ¿Algo más?`;
+  if (L === "hi") return `हो गया — ${servico} ${quando} के लिए ${segurado ? "रोक दिया" : "बुक कर दिया"}${ex}।${r} आपको पुष्टि मिल जाएगी। और कुछ?`;
+  return `Done — ${servico} ${segurado ? "held" : "booked"} for ${quando}${ex}.${r} You'll get a confirmation. Anything else?`;
+}
+
+// Os dois PEDAÇOS que continuavam em inglês no meio da confirmação já traduzida: o número de
+// confirmação e o aviso de reserva temporária. A sonda de idioma só olhava a disponibilidade e
+// deu verde com "Pronto — ... agendado para sáb., 8 de ago. Your confirmation number is GUI-B0B6."
+// Verde estreito engana igual a verde falso: a sonda passou a cobrir a confirmação também.
+function refMsg(lang, ref) {
+  if (!ref) return "";
+  const L = L2(lang);
+  if (L === "pt") return ` Seu número de confirmação é ${ref}.`;
+  if (L === "es") return ` Su número de confirmación es ${ref}.`;
+  if (L === "hi") return ` आपका पुष्टि नंबर ${ref} है।`;
+  return ` Your confirmation number is ${ref}.`;
+}
+
+function seguradoMsg(lang) {
+  const L = L2(lang);
+  if (L === "pt") return " (reservado por 5 min enquanto confirmamos)";
+  if (L === "es") return " (reservado 5 min mientras confirmamos)";
+  if (L === "hi") return " (पुष्टि होने तक 5 मिनट के लिए रोका गया)";
+  return " (held for 5 min while we confirm)";
+}
+
+function movidoMsg(lang, quando) {
+  const L = L2(lang);
+  if (L === "pt") return `Movido para ${quando}. Você vai receber a nova confirmação.`;
+  if (L === "es") return `Movido a ${quando}. Le llegará la nueva confirmación.`;
+  if (L === "hi") return `${quando} पर बदल दिया। आपको नई पुष्टि मिल जाएगी।`;
+  return `Moved to ${quando}. You'll get a new confirmation.`;
+}
+
+function opcoesMsg(lang, servico, ondeTxt, human) {
+  const L = L2(lang);
+  if (L === "pt") return `Para ${servico}${ondeTxt}, tenho: ${human}. Qual funciona melhor pra você?`;
+  if (L === "es") return `Para ${servico}${ondeTxt}, tengo: ${human}. ¿Cuál le viene mejor?`;
+  if (L === "hi") return `${servico}${ondeTxt} के लिए मेरे पास: ${human}। कौन सा ठीक रहेगा?`;
+  return `For ${servico}${ondeTxt}, I have: ${human}. Which works?`;
+}
+
+// SEM VAGA é uma resposta que o cliente ouve inteira — e era a única em inglês fixo no caminho de
+// disponibilidade. Oferece saída em vez de fechar a porta: outro local, ou alguém liga de volta.
+function semVagaMsg(lang, servico, ondeTxt) {
+  const L = L2(lang);
+  if (L === "pt") return `Não estou vendo horário para ${servico}${ondeTxt} nas próximas duas semanas — quer que eu veja outro local, ou prefere que alguém te ligue?`;
+  if (L === "es") return `No veo horarios para ${servico}${ondeTxt} en las próximas dos semanas — ¿reviso otra sede, o prefiere que le llamen?`;
+  if (L === "hi") return `अगले दो हफ़्तों में ${servico}${ondeTxt} के लिए जगह नहीं दिख रही — क्या मैं दूसरी जगह देखूँ, या कोई आपको कॉल करे?`;
+  return `I don't see openings for ${servico}${ondeTxt} in the next two weeks — want me to check another location or have someone call you?`;
+}
+
+// ── O QUE A AGENTE FALA, EM CADA IDIOMA ──────────────────────────────────────────────────────
+// Um dicionário, não dezoito funções. Quando a varredura de 2026-08-08 achou 18 frases fixas em
+// inglês, ficou claro que o padrão "uma função por frase" não escala: a décima nona nasce em
+// inglês de novo porque escrever a função dá mais trabalho que escrever a string. Com a tabela,
+// o caminho preguiçoso passa a ser o certo — e o que falta aparece na hora, olhando as colunas.
+// Sem entrada no idioma pedido, cai no inglês: melhor uma frase entendível que um buraco.
+const FALA = {
+  agenda_fora_do_ar:  { en: "I couldn't reach the schedule just now.", pt: "Não consegui acessar a agenda agora.", es: "No pude acceder a la agenda ahora.", hi: "अभी शेड्यूल तक नहीं पहुँच पाया।" },
+  sem_precos:         { en: "I don't have prices listed yet — I'll confirm that and get right back to you.", pt: "Ainda não tenho os preços aqui — vou confirmar e já te retorno.", es: "Todavía no tengo los precios — lo confirmo y le aviso enseguida.", hi: "अभी कीमतें नहीं हैं — पुष्टि करके तुरंत बताता हूँ।" },
+  sem_agendamentos:   { en: "I don't see any upcoming appointments under that number.", pt: "Não estou vendo nenhum agendamento nesse número.", es: "No veo ninguna cita con ese número.", hi: "इस नंबर पर कोई अपॉइंटमेंट नहीं दिख रहा।" },
+  qual_telefone:      { en: "What's the phone number the appointment is under?", pt: "Qual é o telefone que está no agendamento?", es: "¿Con qué teléfono está la cita?", hi: "अपॉइंटमेंट किस नंबर पर है?" },
+  telefone_e_horario: { en: "What's the phone number it's under, and the new day and time?", pt: "Qual é o telefone do agendamento, e o novo dia e horário?", es: "¿Con qué teléfono está, y qué nuevo día y hora?", hi: "किस नंबर पर है, और नया दिन और समय क्या?" },
+  qual_servico:       { en: "Which service is it for? I'll find the next opening.", pt: "Para qual serviço? Já procuro o próximo horário.", es: "¿Para qué servicio? Busco el próximo hueco.", hi: "किस सेवा के लिए? मैं अगला समय देखता हूँ।" },
+  qual_dia_e_hora:    { en: "What day and time would you like?", pt: "Que dia e horário você prefere?", es: "¿Qué día y hora prefiere?", hi: "कौन सा दिन और समय चाहेंगे?" },
+  acabou_de_sair:     { en: "That time was just taken — want me to check the next opening?", pt: "Esse horário acabou de ser preenchido — quer que eu veja o próximo?", es: "Ese horario acaba de ocuparse — ¿reviso el siguiente?", hi: "वह समय अभी भर गया — क्या अगला देखूँ?" },
+  nao_consegui_travar:{ en: "I couldn't lock that in — let me grab you another time.", pt: "Não consegui garantir esse horário — deixa eu pegar outro pra você.", es: "No pude asegurar ese horario — le busco otro.", hi: "वह समय पक्का नहीं कर पाया — दूसरा देखता हूँ।" },
+  inicio_recorrente:  { en: "What day and time should the recurring appointment start?", pt: "Em que dia e horário o agendamento recorrente deve começar?", es: "¿Qué día y hora empieza la cita recurrente?", hi: "नियमित अपॉइंटमेंट कब से शुरू हो?" },
+  nao_entendi_inicio: { en: "I couldn't pin that start time — which day and time would you like?", pt: "Não consegui entender esse horário de início — que dia e hora você prefere?", es: "No entendí esa hora de inicio — ¿qué día y hora prefiere?", hi: "शुरू का समय समझ नहीं आया — कौन सा दिन और समय?" },
+  soluco:             { en: "Sorry, the schedule hiccuped — could you say that again?", pt: "Desculpa, a agenda travou aqui — pode repetir?", es: "Perdón, la agenda falló — ¿me lo repite?", hi: "माफ़ कीजिए, शेड्यूल अटक गया — फिर से बताएँगे?" },
+  nao_achei_cancelar: { en: "I couldn't find that appointment to cancel.", pt: "Não encontrei esse agendamento para cancelar.", es: "No encontré esa cita para cancelar.", hi: "रद्द करने के लिए वह अपॉइंटमेंट नहीं मिला।" },
+  cancelado:          { en: "Done — that's cancelled. Anything else?", pt: "Pronto — cancelado. Mais alguma coisa?", es: "Listo — cancelado. ¿Algo más?", hi: "हो गया — रद्द कर दिया। और कुछ?" },
+  novo_horario_ocupado:{ en: "That new time's taken — want another?", pt: "Esse novo horário está ocupado — quer outro?", es: "Ese nuevo horario está ocupado — ¿otro?", hi: "वह नया समय भरा है — कोई और?" },
+  nao_movi:           { en: "I couldn't move that one.", pt: "Não consegui mudar esse agendamento.", es: "No pude mover esa cita.", hi: "उसे बदल नहीं पाया।" },
+};
+const diz = (id, lang) => (FALA[id] || {})[L2(lang)] || (FALA[id] || {}).en || "";
+
+// "Encontrei: X, Y" — precisa da lista montada, então não cabe na tabela.
+function encontreiMsg(lang, lista) {
+  const L = L2(lang);
+  if (L === "pt") return `Encontrei: ${lista}.`;
+  if (L === "es") return `Encontré: ${lista}.`;
+  if (L === "hi") return `मुझे मिला: ${lista}।`;
+  return `I found: ${lista}.`;
+}
+
+// Pontos de fidelidade — número no meio da frase.
+function pontosMsg(lang, pontos, visitas) {
+  const L = L2(lang);
+  const v = visitas ? (L === "pt" ? ` de ${visitas} visita${visitas === 1 ? "" : "s"}` : L === "es" ? ` de ${visitas} visita${visitas === 1 ? "" : "s"}` : L === "hi" ? ` ${visitas} विज़िट से` : ` from ${visitas} visit${visitas === 1 ? "" : "s"}`) : "";
+  if (L === "pt") return `Você tem ${pontos} pontos de fidelidade${v}.`;
+  if (L === "es") return `Tiene ${pontos} puntos de fidelidad${v}.`;
+  if (L === "hi") return `आपके ${pontos} लॉयल्टी पॉइंट हैं${v}।`;
+  return `You have ${pontos} loyalty points${v}.`;
+}
+
+// "Não entendi qual serviço" — lista o cardápio real em vez de pedir de novo no vazio.
+function servicoIndefinidoMsg(lang, lista) {
+  const L = L2(lang);
+  if (L === "pt") return `Não peguei qual serviço — temos ${lista}. Qual deles?`;
+  if (L === "es") return `No entendí qué servicio — tenemos ${lista}. ¿Cuál?`;
+  if (L === "hi") return `कौन सी सेवा समझ नहीं आई — हमारे पास ${lista} है। कौन सी?`;
+  return `I didn't catch which service — we have ${lista}. Which one?`;
+}
+
+// A agenda externa aceitou o pedido mas não garantiu o encaixe. Dizer "agendado" aqui seria a
+// mesma promessa sem lastro que já custou caro: o certo é anotar e avisar que alguém confirma.
+function anotadoMsg(lang, servico, quando) {
+  const L = L2(lang);
+  if (L === "pt") return `Anotei seu pedido de ${servico} para ${quando} — a recepção confirma o horário exato com você em seguida. Mais alguma coisa?`;
+  if (L === "es") return `Anoté su solicitud de ${servico} para ${quando} — recepción le confirma el horario exacto enseguida. ¿Algo más?`;
+  if (L === "hi") return `${quando} के लिए ${servico} का अनुरोध नोट कर लिया — रिसेप्शन सही समय की पुष्टि कर देगा। और कुछ?`;
+  return `Got it — I've noted your request for ${servico} at ${quando} and our front desk will confirm the exact spot with you shortly. Anything else I can help with?`;
+}
+
+// A PESSOA NÃO DISSE QUANDO. Perguntar, e já adiantar as opções reais — assim a ligação anda em
+// vez de virar um ping-pong de "quando você quer?" / "quando tem?".
+function semHorarioMsg(lang, alts) {
+  const L = (lang || "en").toString().slice(0, 2);
+  if (L === "pt") return `Claro! Pra qual dia e horário você quer?${alts ? ` Tenho ${alts}.` : ""}`;
+  if (L === "es") return `¡Claro! ¿Para qué día y hora lo quiere?${alts ? ` Tengo ${alts}.` : ""}`;
+  if (L === "hi") return `ज़रूर! किस दिन और समय के लिए चाहिए?${alts ? ` मेरे पास ${alts} है।` : ""}`;
+  return `Of course — what day and time works for you?${alts ? ` I have ${alts}.` : ""}`;
+}
+
+// A PESSOA DISSE QUANDO, E AQUELE HORÁRIO NÃO DÁ. Aqui "não está livre" é verdade.
+function ocupadoMsg(lang, alts) {
+  const L = (lang || "en").toString().slice(0, 2);
+  if (L === "pt") return alts ? `Esse horário não está livre — tenho ${alts}. Algum desses serve?` : `Esse horário não está livre. Quer que eu veja outro dia?`;
+  if (L === "es") return alts ? `Ese horario no está libre — tengo ${alts}. ¿Le sirve alguno?` : `Ese horario no está libre. ¿Reviso otro día?`;
+  if (L === "hi") return alts ? `वह समय उपलब्ध नहीं है — मेरे पास ${alts} है। क्या इनमें से कोई ठीक रहेगा?` : `वह समय उपलब्ध नहीं है। क्या मैं कोई और दिन देखूँ?`;
+  return alts ? `That time isn't open — I have ${alts}. Want one of those?` : `That time isn't available — want me to check another day?`;
+}
+
 // date-only label ("Thu, Nov 26") in the business's timezone, localized so the agent can SAY it
 function fmtDay(iso, tz = "America/New_York", lang = "en") {
   const loc = { pt: "pt-BR", es: "es", hi: "hi-IN" }[(lang || "en").toString().slice(0, 2)] || "en-US";
@@ -769,10 +963,16 @@ async function bookIdem(env, params, reqId) {
   return r;
 }
 
-function fmt(iso, tz = "America/New_York") {
+// O HORÁRIO FALADO, NO IDIOMA DE QUEM LIGOU. Isto era "en-US" fixo — então um cliente brasileiro
+// ouvia "Sat, Aug 8, 9:30 AM" no meio de uma frase em português. A simulação de 2026-08-08 expôs
+// a costura: "Esse horário não está livre — tenho Sat, Aug 8, 9:30 AM with Ana". Metade da frase
+// em cada língua soa a sistema improvisado, e é a primeira coisa que o cliente do cliente percebe.
+// O padrão continua "en" de propósito: nenhuma chamada existente muda de comportamento.
+function fmt(iso, tz = "America/New_York", lang = "en") {
+  const loc = { pt: "pt-BR", es: "es-ES", hi: "hi-IN" }[(lang || "en").toString().slice(0, 2)] || "en-US";
   try {
     const d = new Date(iso);
-    return d.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: tz || "America/New_York" });
+    return d.toLocaleString(loc, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: tz || "America/New_York" });
   } catch { return iso; }
 }
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store" } });

@@ -11,7 +11,12 @@ import { json, sameOrigin, rateLimited } from "../lib/guard.js";
 // (1) drop any leading non-user turns (Anthropic requires the first message to be role:"user");
 // (2) walk the model chain on transient/upstream errors and, if all fail, surface the real status
 //     instead of a masked 502 so the UI (and we) can see WHY.
-const MODEL_CHAIN = ["claude-fable-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"];
+// MODEL_CHAIN vem de ../lib/guiBrain.js — NÃO declare outra aqui (2026-08-12).
+// Eram DEZ cópias idênticas da mesma lista de modelos, uma por arquivo. Idênticas HOJE: conferi as
+// dez antes de mexer, e é exatamente por estarem iguais que a hora de unificar é agora — depois que
+// uma diverge, alguém já foi atendido pelo modelo errado e ninguém sabe qual superfície foi.
+// É o padrão que esta sessão inteira perseguiu: cópia sem vínculo com a fonte.
+import { MODEL_CHAIN } from "../lib/guiBrain.js";
 async function askClaude(env, { system, messages, max_tokens = 700 }) {
   let msgs = Array.isArray(messages) ? messages.slice() : [];
   while (msgs.length && msgs[0].role !== "user") msgs.shift();

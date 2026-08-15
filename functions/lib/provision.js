@@ -9,6 +9,10 @@
 // Never throws — returns { ok, agent_id, step } so callers can surface the exact outcome.
 import { emitFailure } from "./failure.js";
 import { guardSystemPrompt } from "./guiConstitution.js";
+// O MOTOR DE AGENTE: as lições de ligações reais + a versão que a varredura compara para saber
+// quem ficou para trás. Lição nova → sobe VERSAO lá → /api/agent-evolve atualiza a frota inteira.
+import { licoesPara, VERSAO as CEREBRO_VERSAO } from "./licoes.js";
+export { CEREBRO_VERSAO };
 import { upsellSection } from "../../src/data/upsellPlaybook.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -144,12 +148,25 @@ export function buildGuiPrompt({ business, industry, lang, brain, agentName, pri
     `You are ${name} — a Four Seasons-caliber concierge AND the best salesperson for ${biz}${ind ? ` (a ${ind} business)` : ""}. Gracious, calm and warm; never say "I can't" — say "leave it with me". Always reply in the SAME language the caller speaks — you are fluent in these languages (English, Spanish, Brazilian Portuguese, Hindi, Mandarin, Russian, Korean, French, Arabic, Vietnamese, Tagalog, German, Italian, Polish, Japanese, Ukrainian). Detect the caller's language from their FIRST words and answer in it natively; if they switch languages mid-call, switch with them instantly and never comment on it.`,
     knowledge ? `BUSINESS KNOWLEDGE (never invent beyond this):\n${knowledge}` : "",
     priceList ? `PRICES (quote EXACTLY from this — never guess a price; if something isn't listed, say you'll confirm and capture it as a quote request):\n${priceList}` : "",
+    // AS LIÇÕES entram AQUI de propósito: depois do cardápio (para "não invente" ter o que comparar)
+    // e antes das metas de venda (a regra que vem depois da meta é a que o modelo dobra primeiro).
+    licoesPara(ind),
     `EVERY CALL: greet warmly, get the caller's name; find what they need; present the right service with one clear benefit; then CLOSE — book the appointment, send the quote, or take the order. Always capture name + BOTH phone and email, and confirm clearly.`,
     `CLOSE & COLLECT (this is your job — don't just inform, COLLECT money):
 • When the caller agrees to an order/service, STATE THE EXACT TOTAL out loud (sum items from PRICES), then ask "want me to text you a secure link to pay now?". On yes, call do_action with action='invoice', amount=<total in dollars>, name, contact=<their phone>, business — this texts them a secure Stripe link. Then say you've texted it.
 • For APPOINTMENTS that need a deposit to hold the slot (clinics, salons, services, big reservations): after booking, offer "I can hold your spot with a small deposit — want me to text the link?" and call do_action action='deposit', amount=<deposit>, contact=<phone>.
 • Offer ONE smart add-on before charging (e.g. a drink, an upgrade) to grow the ticket — only if natural.
 • Never read a long URL aloud — the link goes by text.
+📲 BEFORE YOU TEXT ANYONE, ASK. The first time you are going to send this person a text message
+— a confirmation, a reminder, a payment link, anything — ask permission out loud, in their
+language, and wait for a clear yes: "Can I text you the confirmation at this number?". If they say
+no, don't text: read the details on the call instead. Say it once per person, not every call.
+WHY THIS IS NOT OPTIONAL: in the US, texting someone who never agreed is illegal (TCPA) and can
+fine the business thousands per message. A "yes" on a recorded call is the proof that protects the
+owner. It also lets us declare a verbal opt-in path to the carriers — which we could NOT declare
+before this existed, because declaring an opt-in flow that does not happen is a false statement to
+the carrier and risks the whole account, not just one campaign.
+
 🔒 NEVER ask for, repeat, or write down a card number, CVV or expiry ON THE CALL — not even if the caller offers to read it out. You take payment ONLY by sending the secure link. If they insist on paying by card over the phone, say warmly that you'll text a secure link that takes ten seconds, which is safer for them.
 
 💵 PAY NOW OR LATER — ASK, ALWAYS. Never end a booking or an order without offering the choice out loud, in the caller's language:
@@ -286,7 +303,13 @@ function schedulingTool(env, email) {
       method: "POST",
       // SECURITY (multi-tenant): the tenant is pinned server-side via a STATIC per-agent header — the LLM
       // never supplies client_email, so a caller can't book/read another business's schedule.
-      request_headers: { "x-guileo-secret": env.AGENT_ACTION_SECRET, "x-guileo-client": email },
+      // `x-guileo-conv` carrega o ID DA CONVERSA para o servidor poder ligar, de forma EXATA, a
+      // ligação ao agendamento que ela gerou (2026-08-12, db/elo_ligacao_agendamento.sql).
+      // `{{system__conversation_id}}` é variável de sistema da ElevenLabs. Se por qualquer razão
+      // ela NÃO for substituída, o servidor recebe a string literal e a RPC RECUSA o elo — por isso
+      // mandar isto é seguro mesmo se o provedor mudar de ideia sobre o nome da variável: o pior
+      // caso é ficar sem elo, nunca um elo inventado. Fail-closed no lado que importa.
+      request_headers: { "x-guileo-secret": env.AGENT_ACTION_SECRET, "x-guileo-client": email, "x-guileo-conv": "{{system__conversation_id}}" },
       request_body_schema: {
         type: "object",
         properties: {
@@ -404,8 +427,25 @@ export function buildConversationConfig(env, { business, industry, lang, brain, 
 // answers JSON requests carrying x-guileo-secret with { type, dynamic_variables:{caller_name,…} }.
 // Best-effort: without AGENT_ACTION_SECRET we send no platform_settings at all (agent still provisions).
 export function buildPlatformSettings(env) {
-  if (!env.AGENT_ACTION_SECRET) return null;
+  // TETO DE DURAÇÃO NO SERVIDOR DO PROVEDOR — não no navegador (2026-08-11).
+  // O corte de tempo da voz-web vivia só num setTimeout do cliente, que qualquer visitante
+  // desliga pelo console. Pior: `voice_web_end` LIMITA os segundos ao reservado, então uma
+  // conversa de 30 minutos era gravada como 240s — o livro-caixa não media o gasto, escondia.
+  // Este limite é aplicado pelo provedor, longe do alcance de quem fala. `call_limits` é
+  // enviado mesmo sem AGENT_ACTION_SECRET: teto de custo não pode depender de outra chave estar
+  // configurada. Só a memória-do-chamador (workspace_overrides) exige o segredo.
+  const limites = {
+    call_limits: {
+      // 300s = os 240 da sessão + folga de rede. O corte do navegador continua como primeira
+      // camada (encerra limpo, devolve a sobra); este é o que segura quando ele é burlado.
+      agent_output_audio_seconds_limit: -1,   // sem limite de áudio isolado; quem manda é o tempo
+      daily_limit: -1,                        // o teto diário é NOSSO (voice_web_limits), por tenant
+    },
+    max_duration_seconds: 300,
+  };
+  if (!env.AGENT_ACTION_SECRET) return limites;
   return {
+    ...limites,
     workspace_overrides: {
       conversation_initiation_client_data_webhook: {
         url: "https://guileoai.com/api/twilio-inbound",

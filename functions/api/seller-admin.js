@@ -9,6 +9,7 @@
 // through INGEST-gated SECURITY DEFINER RPCs; the browser never sees a secret.
 import { json, sameOrigin, rateLimited } from "../lib/guard.js";
 import { sellerWelcomeEmail } from "../lib/emailTemplates.js";
+import { svcRpc } from "../lib/sb.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -161,7 +162,33 @@ export async function onRequestPost(context) {
         headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: [email], subject: tpl.subject, html: tpl.html }),
       });
-      if (!mr.ok) return json({ error: `email send failed (${mr.status})` }, 502);
+      // O CONVITE PRECISA DEIXAR RASTRO — nos DOIS desfechos.
+      //
+      // Em 2026-08-08 o Luis perguntou "cadê o e-mail do Darwin?" e a resposta honesta era: não dá
+      // para saber. O convite mandava e esquecia. Sem registro, "ele recebeu?" vira palavra contra
+      // palavra, e o vendedor fica parado esperando um acesso que talvez nunca tenha saído.
+      // É a mesma família do defeito das recusas de agenda: só o caminho feliz escrevia.
+      // Gravamos a FALHA também — é justamente o caso em que alguém vai perguntar.
+      const registrar = async (resultado, detalhe) => {
+        try {
+          // svcRpc (service-role), NÃO o `rpc` anon: `ingest_client_event` está REVOGADA do anon.
+          // Com a chave anon isto devolveria 401 e o catch engoliria — o convite sairia e o rastro
+          // nunca seria escrito. Um registro que falha calado é pior que nenhum: dá a sensação de
+          // rastreabilidade sem a rastreabilidade. Conferido no banco antes de subir.
+          await svcRpc(env, "ingest_client_event", {
+            p_secret: ING, p_email: (env.OWNER_EMAIL || "smart@guileoai.com"),
+            p_type: "ops_alert", p_channel: "email",
+            p_summary: `👤 convite de vendedor · ${email} · ${resultado}${detalhe ? ` · ${detalhe}` : ""}`.slice(0, 300),
+            p_amount: 0, p_payload: { seller: email, resultado, lang },
+          });
+        } catch { /* o registro não pode derrubar o envio que já aconteceu */ }
+      };
+      if (!mr.ok) {
+        const porque = await mr.text().catch(() => "");
+        await registrar("FALHOU", `HTTP ${mr.status} ${porque.slice(0, 80)}`);
+        return json({ error: `email send failed (${mr.status})` }, 502);
+      }
+      await registrar("enviado");
       // redacted confirmation — never echo the personal code back to the browser
       return json({ ok: true, sent: true, to: email, name: s.name || null, had_code: !!s.personal_code, lang });
     }

@@ -22,7 +22,12 @@ const rpc = (fn, body) => fetch(`${SB}/rest/v1/rpc/${fn}`, { method: "POST", hea
 const s = (v, n = 400) => (v == null ? "" : v.toString().slice(0, n));
 const INGEST = (env) => env.INGEST_SECRET || "";
 
-const MODEL_CHAIN = ["claude-fable-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"];
+// MODEL_CHAIN vem de ../lib/guiBrain.js — NÃO declare outra aqui (2026-08-12).
+// Eram DEZ cópias idênticas da mesma lista de modelos, uma por arquivo. Idênticas HOJE: conferi as
+// dez antes de mexer, e é exatamente por estarem iguais que a hora de unificar é agora — depois que
+// uma diverge, alguém já foi atendido pelo modelo errado e ninguém sabe qual superfície foi.
+// É o padrão que esta sessão inteira perseguiu: cópia sem vínculo com a fonte.
+import { MODEL_CHAIN } from "../lib/guiBrain.js";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

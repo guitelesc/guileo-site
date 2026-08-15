@@ -129,7 +129,38 @@ export async function onRequest(context) {
       // here would need a new read RPC — out of scope by design; they're visible in the owner
       // email + /admin feed already.
 
-      const { subject, html } = weeklyReportEmail({ name, business, lang, weekLabel, stats, highlights, sentiment });
+      // 📣 ANÚNCIOS DA SEMANA — o relatório não falava UMA palavra sobre o dinheiro que o cliente
+      // investe em anúncio, que é metade do que ele paga. Agrega os últimos 7 dias do motor
+      // (ads_roi). Best-effort: se a leitura falhar, `ads` fica null e a seção simplesmente não
+      // aparece — nunca um zero, que ele leria como "o anúncio não deu nada".
+      let ads = null;
+      try {
+        const roi = await rpc("ads_roi", { p_secret: env.INGEST_SECRET || "", p_email: email, p_days: 7 });
+        const camps = (roi && Array.isArray(roi.campanhas)) ? roi.campanhas : [];
+        const gasto = Number(roi?.total_gasto_cents || 0);
+        if (gasto > 0) {
+          // O `ads_roi` classifica CADA campanha em recebido / tabela / sem_valor de propósito, e
+          // esta função jogava essa classificação fora — somava só `receita_cents` e o e-mail
+          // imprimia o retorno em negrito como se fosse caixa realizado. Dois estragos:
+          //   · estimativa (preço de tabela) apresentada como dinheiro que entrou;
+          //   · agendamento SEM valor lançado somando zero → "cada $1 virou $0.00" → o dono corta
+          //     a campanha certa por causa de um preço que ele não cadastrou.
+          // Agora as três coisas viajam, e o template decide o que dizer. Corrigido 2026-08-11.
+          const semValor = camps.reduce((n, c) => n + Number(c.agendamentos_sem_valor || 0), 0);
+          const bases = new Set(camps.filter((c) => Number(c.gasto_cents) > 0).map((c) => c.receita_base).filter(Boolean));
+          ads = {
+            gasto_cents: gasto,
+            receita_cents: camps.reduce((n, c) => n + Number(c.receita_cents || 0), 0),
+            agendamentos: camps.reduce((n, c) => n + Number(c.agendamentos || 0), 0),
+            agendamentos_sem_valor: semValor,
+            // 'recebido' só quando TODA campanha com gasto foi paga de verdade; qualquer mistura
+            // vira 'misto' e o e-mail avisa que parte é estimativa. Na dúvida, o rótulo mais fraco.
+            receita_base: bases.size === 1 ? [...bases][0] : (bases.size > 1 ? "misto" : null),
+          };
+        }
+      } catch { /* motor de anúncios ausente → relatório sai igual ao de antes */ }
+
+      const { subject, html } = weeklyReportEmail({ name, business, lang, weekLabel, stats, highlights, sentiment, ads });
 
       // NOTE (owner goal): the "Meta do mês" booking goal lives client-side (portal localStorage +
       // the AUTH project's user_metadata kv mirror) — this function only has RPC access to the data

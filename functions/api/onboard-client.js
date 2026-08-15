@@ -95,7 +95,12 @@ async function elevenBindNumber(env, number, agentId, label) {
 //       claimed (pool_claim_number) so two concurrent onboards can never grab the same line.
 // Everything below is best-effort and never throws into the money/birth path.
 // ─────────────────────────────────────────────────────────────────────────────
-const MODEL_CHAIN = ["claude-fable-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"];
+// MODEL_CHAIN vem de ../lib/guiBrain.js — NÃO declare outra aqui (2026-08-12).
+// Eram DEZ cópias idênticas da mesma lista de modelos, uma por arquivo. Idênticas HOJE: conferi as
+// dez antes de mexer, e é exatamente por estarem iguais que a hora de unificar é agora — depois que
+// uma diverge, alguém já foi atendido pelo modelo errado e ninguém sabe qual superfície foi.
+// É o padrão que esta sessão inteira perseguiu: cópia sem vínculo com a fonte.
+import { MODEL_CHAIN } from "../lib/guiBrain.js";
 
 // Normalize a raw input into a fetchable https URL, or "" — with the SAME SSRF guard as demo.js
 // (block loopback/link-local/private/metadata so a crafted URL can't probe internal addresses).

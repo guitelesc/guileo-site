@@ -98,6 +98,11 @@ export async function onRequest(context) {
     if (await rateLimited(request, env, "cron-tick", 4)) return json({ error: "too many requests" }, 429);
     if (!env.DIGEST_TOKEN) return json({ ok: false, note: "DIGEST_TOKEN not configured" }, 501);
 
+    // `?semaforo=1` força a leitura AGORA, fora do tique da hora. Existe porque a pergunta
+    // "está tudo funcionando?" se faz na hora em que se decide receber cliente — não na hora
+    // em que o relógio permite. É leitura pura, e o rate-limit de 4/h por IP já segura abuso.
+    const url = new URL(request.url);
+    const forcarSemaforo = url.searchParams.get("semaforo") === "1";
     const base = "https://guileoai.com";
     const t = encodeURIComponent(env.DIGEST_TOKEN);
     const hourUTC = new Date().getUTCHours();
@@ -105,8 +110,20 @@ export async function onRequest(context) {
 
     // every tick (15 min): operational engines (all claim-protected)
     const targets = [
+    // VARREDURA SOCIAL — TODO TIQUE (15 min), não de hora em hora.
+    // Publica o post agendado que venceu e o que o dono aprovou enquanto a Meta estava inerte.
+    // Sem ela o motor social era decorativo: `social_posts_claim_due` existia, ninguém chamava, e
+    // o cockpit dizia "Agendado" para um post que nunca sairia.
+    // POR QUE TODO TIQUE: post agendado tem HORA. No bloco horário, um post marcado para 14:30 só
+    // sairia às 15:00 — até 60 min atrasado, e o dono veria "Agendado" o tempo todo sem entender.
+    // A 15 min o atraso máximo é 15. Rodar mais vezes é barato: sem nada pendente, é uma consulta
+    // que volta vazia.
+    // SÓ PÔDE SER LIGADA depois que a reserva virou porta única dentro de publishRow(): antes,
+    // ligar a varredura republicaria o post que o cockpit estava publicando naquele instante.
+    // Reserva ANTES de enviar → re-rodar nunca publica duas vezes. Inerte e honesta sem META_APP_*.
       { name: "automations", url: `${base}/api/automations?token=${t}` },
       { name: "lifecycle", url: `${base}/api/lifecycle?token=${t}` },
+      { name: "social-sweep", url: `${base}/api/social-publish?sweep=1&token=${t}` },
     ];
     // hourly (first tick of the hour): health + collections opt-in + dunning grace sweep
     if (minute < 15) {
@@ -126,7 +143,14 @@ export async function onRequest(context) {
       // sandbox. Nada de ligar, cobrar ou gravar no cliente.
       // Existe porque a nota só valia se alguém rodasse à mão — e ninguém roda à mão. Agora a
       // regressão de qualidade aparece sozinha no histórico, como qualquer outro monitor.
-      if (hourUTC === 0) targets.push({ name: "agent-eval", url: `${base}/api/agent-eval?token=${t}` });
+      // `cadeia=1` = o lote chama o próximo até o conjunto acabar. SEM isto, o cron rodava só o
+      // 1º lote (2 casos de 40) e ia embora — os 13 verticais e as travas de dinheiro nunca foram
+      // medidos por cron uma única vez. Ver o comentário longo em agent-eval.js.
+      // DUAS CHANCES (00h E 01h), pelo mesmo motivo já escrito no bloco das 13h/14h: o eval tinha
+      // UMA janela por dia, e um tick perdido custava a noite inteira — foi o que aconteceu em
+      // 07/08, 13/08 e 14/08. A 2ª chance é grátis: `ops_run_claim` (janela de 20h) devolve
+      // "ja_rodou_hoje" e sai sem chamar modelo se a 1ª tiver dado certo.
+      if (hourUTC === 0 || hourUTC === 1) targets.push({ name: "agent-eval", url: `${base}/api/agent-eval?cadeia=1&token=${t}` });
     }
     // daily ~13:00 UTC (9am ET): dates/birthdays/rebooking + NPS + money reconcile
     // two chances (13h AND 14h): a single failed tick must not skip the whole day/week —
@@ -156,6 +180,21 @@ export async function onRequest(context) {
       if (new Date().getUTCDay() === 1) targets.push({ name: "client-report", url: `${base}/api/client-report?token=${t}` });
       // Monday: the SELLER's weekly mirror — wallet, commission, balance due, play of the week.
       if (new Date().getUTCDay() === 1) targets.push({ name: "seller-report", url: `${base}/api/seller-report?token=${t}` });
+      // VIGIA DE ANÚNCIOS (segundas): varre as campanhas de todos os clientes e avisa quem tem
+      // decisão a tomar — dinheiro queimando ou campanha que merece mais orçamento. É o que
+      // separa agência de painel: chega antes do prejuízo virar mês fechado. Silencioso quando
+      // não há nada a decidir, de propósito.
+      if (new Date().getUTCDay() === 1) targets.push({ name: "ads-vigia", url: `${base}/api/ads-vigia?token=${t}` });
+      // MOTOR DE AGENTE (diário, 13h) — encontra os agentes que ficaram numa versão de cérebro
+      // antiga e os atualiza. É o que transforma "consertei uma lição" em "a frota inteira
+      // aprendeu", sem ninguém lembrar de nada.
+      // DIÁRIO e não semanal de propósito: uma lição nasce de um cliente perdido: esperar sete
+      // dias para o resto da frota parar de cometer o mesmo erro é aceitar perder os próximos.
+      // Só às 13h (não na repetição das 14h): não é claim-dedupado, e re-sincronizar a frota
+      // duas vezes seguidas gasta chamada de terceiro à toa. Se falhar, o dia seguinte pega —
+      // quem não sincroniza não recebe carimbo, então continua aparecendo como atrasado.
+      // No-op barato quando não há atrasados: a rota devolve na hora sem tocar em agente nenhum.
+      if (hourUTC === 13) targets.push({ name: "agent-evolve", url: `${base}/api/agent-evolve?token=${t}` });
       // Company OS owner brief — "sua empresa se operou hoje". 13h ONLY (not the 14h retry) so the
       // owner gets exactly ONE daily brief (it isn't claim-deduped; a missed day is harmless).
       if (hourUTC === 13) targets.push({ name: "company-os-brief", url: `${base}/api/company-os-brief?token=${t}` });
@@ -169,6 +208,24 @@ export async function onRequest(context) {
         results[tg.name] = r2 ? r2.status : 0;
       } catch { results[tg.name] = 0; }
     }
+    // ── O SEMÁFORO, EXPOSTO ──────────────────────────────────────────────────────────────────
+    // `/api/platform-status` já responde "está tudo funcionando?" num semáforo por área
+    // (voz · dinheiro · agenda · agentes). Mas é DIGEST-gated: só o cron enxergava, e verificação
+    // que o dono não consegue abrir não serve para decidir se pode receber cliente.
+    // Aqui o cron — que TEM o token do lado do servidor — chama a rota e devolve só o VEREDITO
+    // (cores, sem detalhe sensível). Assim `POST /api/cron-tick` vira a pergunta única, pública e
+    // sem segredo: uma chamada, e você vê se alguma máquina caiu.
+    // Só no tique da hora: é agregação de sondas, não precisa rodar de 15 em 15 minutos.
+    let semaforo = null;
+    if (minute < 15 || forcarSemaforo) {
+      try {
+        const pr = await fetch(`${base}/api/platform-status?token=${t}`, { method: "POST" });
+        // fetch não lança em erro HTTP — sem esta leitura, uma falha viraria "sem semáforo" calado
+        if (pr.ok) { const pj = await pr.json().catch(() => null); semaforo = pj?.slo || null; }
+        else semaforo = { overall: "unknown", nota: `platform-status http ${pr.status}` };
+      } catch (e) { semaforo = { overall: "unknown", nota: String(e).slice(0, 80) }; }
+    }
+
     // PHONE RE-ENGAGEMENT EXECUTOR (#19) — once per hour, dial the queued phone-contact
     // churn/booking-recovery intents (claim-deduped + TCPA-windowed inside the sweep).
     let reengage = null;
@@ -176,7 +233,7 @@ export async function onRequest(context) {
       try { reengage = await phoneReengageSweep(env, base, hourUTC); }
       catch (e) { reengage = { error: String(e).slice(0, 80) }; }
     }
-    return json({ ok: true, ran: results, reengage, hourUTC, minute });
+    return json({ ok: true, semaforo, ran: results, reengage, hourUTC, minute });
   } catch (e) {
     return json({ error: String(e).slice(0, 140) }, 500);
   }

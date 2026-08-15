@@ -70,6 +70,38 @@ async function schedRpc(env, fn, args) {
   return r.ok ? await r.json() : null;
 }
 
+
+// ── MOTORES MORTOS TÊM QUE APARECER (2026-08-12) ────────────────────────────────────────────────
+// Auditoria completa "toda RPC que o código chama × pg_proc" (198 nomes) revelou que TRÊS motores
+// deste arquivo chamam funções que NÃO EXISTEM neste banco: `due_reminders`, `due_review_requests`
+// e `due_winback` (mais `mark_booking`). São nomes da geração ANTERIOR do schema — o projeto de
+// dados antigo. Quando a plataforma migrou, o motor de agenda foi reescrito com o prefixo `biz_`
+// (`biz_due_reminders` etc.) e ESTE arquivo ficou para trás.
+//
+// O QUE ISSO FAZIA: `(await rpc(...)) || []` transforma "a função não existe" em ZERO LINHAS, que
+// se lê como "nada vencendo hoje". O cron chama isto a cada 15 minutos — 96 vezes por dia
+// reportando sucesso sem fazer nada. É o `fallback esconde erro` na forma mais cara: um motor
+// morto que parece um dia tranquilo.
+//
+// ⚠️ E O MAIS REVELADOR: quatro linhas ACIMA, o `biz_holds_expire` já era tratado do jeito certo —
+// `else out.holdsReady = false; // reported, not silent`. O padrão honesto e o silencioso convivem
+// no MESMO arquivo. Quem escreveu aquele else conhecia o risco; faltou a varredura.
+//
+// POR QUE NÃO MIGREI PARA `biz_*`: o `proactive.js` JÁ manda esses lembretes usando as funções
+// certas, e ele TAMBÉM está no cron. Apontar este arquivo para as mesmas RPCs faria o cliente
+// receber o lembrete DUAS VEZES. Consertar um motor morto criando spam seria trocar um problema
+// invisível por um visível na caixa de entrada de quem paga.
+// Então: o silêncio vira RUÍDO. Cada motor sem RPC se declara `notReady` na resposta, o vigia vê,
+// e a decisão de aposentar este arquivo (ou reescrevê-lo) passa a ser tomada com o fato à vista.
+async function motorOuNotReady(env, rpcFn, nome, args, out) {
+  const r = await rpcFn(env, nome, args);
+  if (Array.isArray(r)) return r;
+  // null/undefined = RPC inexistente, sem permissão, ou fora do ar. NUNCA "zero vencendo".
+  out.motoresMortos = out.motoresMortos || [];
+  if (!out.motoresMortos.includes(nome)) out.motoresMortos.push(nome);
+  return [];
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   if (request.method !== "GET" && request.method !== "POST") return json({ error: "method" }, 405);
@@ -95,7 +127,7 @@ export async function onRequest(context) {
   // ENGINE 1 — booking reminders (24h then 2h before starts_at)
   for (const kind of ["24", "2"]) {
     try {
-      const rows = (await rpc(env, "due_reminders", { p_kind: kind })) || [];
+      const rows = await motorOuNotReady(env, rpc, "due_reminders", { p_kind: kind }, out);
       for (const b of rows) {
         if (!budget()) break;
         const p = await profileFor(env, profiles, b.client_email);
@@ -128,7 +160,7 @@ export async function onRequest(context) {
 
   // ENGINE 2 — post-visit review requests
   try {
-    const rows = (await rpc(env, "due_review_requests")) || [];
+    const rows = await motorOuNotReady(env, rpc, "due_review_requests", undefined, out);
     for (const b of rows) {
       if (!budget()) break;
       const p = await profileFor(env, profiles, b.client_email);
@@ -153,7 +185,7 @@ export async function onRequest(context) {
 
   // ENGINE 3 — win-back lapsed customers
   try {
-    const rows = (await rpc(env, "due_winback")) || [];
+    const rows = await motorOuNotReady(env, rpc, "due_winback", undefined, out);
     for (const c of rows) {
       if (!budget()) break;
       const p = await profileFor(env, profiles, c.client_email);

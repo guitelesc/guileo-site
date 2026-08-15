@@ -86,16 +86,24 @@ async function gbpAccessToken(env, creds) {
 }
 
 // dedup helpers — the set of review ids this tenant already handled, and a mark-seen writer.
+// AMBOS devolvem se DEU CERTO. Antes, uma falha de leitura virava `new Set()` — "nenhum review foi
+// tratado ainda" — e o auto-reply passaria a responder DE NOVO todas as avaliações antigas do
+// cliente, publicamente, no perfil dele. Erro de rede virando "zero" é a armadilha da casa; aqui
+// ela não custa um número errado num painel, custa dez respostas repetidas no Google do cliente.
 async function gbpSeenIds(env, email) {
   try {
     const r = await rpc("gbp_seen_ids", { p_secret: env.INGEST_SECRET || "", p_email: (email || "").toString().trim().toLowerCase() });
-    if (!r.ok) return new Set();
-    const a = await r.json();
-    return new Set(Array.isArray(a) ? a.map(String) : []);
-  } catch { return new Set(); }
+    if (!r.ok) return { ok: false, set: new Set(), note: `gbp_seen_ids http ${r.status}` };
+    const a = await r.json().catch(() => null);
+    if (!Array.isArray(a)) return { ok: false, set: new Set(), note: "gbp_seen_ids devolveu formato inesperado" };
+    return { ok: true, set: new Set(a.map(String)) };
+  } catch (e) { return { ok: false, set: new Set(), note: String(e).slice(0, 80) }; }
 }
 async function gbpMarkSeen(env, email, reviewId, replied, replyText) {
-  try { await rpc("gbp_mark_seen", { p_secret: env.INGEST_SECRET || "", p_email: (email || "").toString().trim().toLowerCase(), p_review_id: String(reviewId), p_replied: !!replied, p_reply_text: replyText ? String(replyText).slice(0, 4000) : null }); } catch { /* non-fatal */ }
+  try {
+    const r = await rpc("gbp_mark_seen", { p_secret: env.INGEST_SECRET || "", p_email: (email || "").toString().trim().toLowerCase(), p_review_id: String(reviewId), p_replied: !!replied, p_reply_text: replyText ? String(replyText).slice(0, 4000) : null });
+    return !!r.ok;
+  } catch { return false; }
 }
 
 // ── PURE: connection status. Proves the refresh_token still authenticates. ──
@@ -124,7 +132,10 @@ export async function gbpListReviews(env, creds, args = {}) {
     let reviews = Array.isArray(d.reviews) ? d.reviews : [];
     if (args.unseenOnly) {
       const seen = await gbpSeenIds(env, creds.client_email);
-      reviews = reviews.filter((rv) => !seen.has(reviewShortId(rv)));
+      // FECHA em vez de abrir: sem a lista do que já foi respondido, "não respondido" é um chute, e
+      // o chute aqui publica de novo no perfil público do cliente. Devolve vazio + o motivo real.
+      if (!seen.ok) return { ready: true, ok: false, reviews: [], dedupe_ready: false, note: `Dedup indisponível (${seen.note}) — não vou arriscar responder a mesma avaliação duas vezes.` };
+      reviews = reviews.filter((rv) => !seen.set.has(reviewShortId(rv)));
     }
     return { ready: true, ok: true, reviews, averageRating: d.averageRating ?? null, totalReviewCount: d.totalReviewCount ?? null, nextPageToken: d.nextPageToken || null };
   } catch (e) { return { ready: true, ok: false, reviews: [], note: String(e).slice(0, 140) }; }
@@ -147,8 +158,11 @@ export async function gbpReplyReview(env, creds, reviewId, text) {
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) return { ready: true, ok: false, posted: false, note: "Google recusou a resposta.", raw: d };
-    await gbpMarkSeen(env, creds.client_email, rid, true, comment);
-    return { ready: true, ok: true, posted: true, reply: d, note: "Resposta publicada no Google ✓" };
+    // Publicou. Se a marcação de dedup NÃO gravou, quem chama precisa SABER: a próxima varredura
+    // veria esta avaliação como não tratada. (A trava de reserva é o `reviewReply` que o próprio
+    // Google passa a devolver — mas isso é a segunda linha de defesa, não um motivo para calar.)
+    const marked = await gbpMarkSeen(env, creds.client_email, rid, true, comment);
+    return { ready: true, ok: true, posted: true, marked, reply: d, note: marked ? "Resposta publicada no Google ✓" : "Resposta publicada no Google ✓ (⚠️ não consegui marcar como respondida — dedup depende do próprio Google nesta avaliação)" };
   } catch (e) { return { ready: true, ok: false, posted: false, note: String(e).slice(0, 140) }; }
 }
 

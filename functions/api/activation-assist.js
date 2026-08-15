@@ -7,7 +7,12 @@
 import { factsBlock } from "../lib/productFacts.js";
 import { json, sameOrigin, rateLimited } from "../lib/guard.js";
 
-const MODEL_CHAIN = ["claude-fable-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"];
+// MODEL_CHAIN vem de ../lib/guiBrain.js — NÃO declare outra aqui (2026-08-12).
+// Eram DEZ cópias idênticas da mesma lista de modelos, uma por arquivo. Idênticas HOJE: conferi as
+// dez antes de mexer, e é exatamente por estarem iguais que a hora de unificar é agora — depois que
+// uma diverge, alguém já foi atendido pelo modelo errado e ninguém sabe qual superfície foi.
+// É o padrão que esta sessão inteira perseguiu: cópia sem vínculo com a fonte.
+import { MODEL_CHAIN } from "../lib/guiBrain.js";
 async function askClaude(env, { system, messages, max_tokens = 500 }) {
   let msgs = Array.isArray(messages) ? messages.slice() : [];
   while (msgs.length && msgs[0].role !== "user") msgs.shift(); // Anthropic requires first msg = user

@@ -56,6 +56,12 @@ async function silentSweep(env) {
   for (const c of clients.slice(0, SILENT_MAX_CLIENTS)) {
     const email = ((c && c.client_email) || "").toString().trim().toLowerCase();
     if (!email.includes("@")) continue;
+    // CONTA INTERNA NÃO É CLIENTE (2026-08-14). `luistelesc@`, `e2e-test@`, `sim@` são nossas —
+    // gritar "📵 tem agente mas nenhum número" sobre a conta de teste é ruído diário sobre uma
+    // conta que nunca deveria ter número. E ruído diário treina a gente a ignorar o painel, que é
+    // como um alerta verdadeiro passa batido no meio. A marca já existia em client_credits.internal
+    // (do trabalho de métrica honesta); só não chegava aqui porque clients_list não a devolvia.
+    if (c && c.internal === true) { out.config.push({ email, kind: "interno", alerted: false }); continue; }
     const agent = await rpc(env, "client_agent_lookup", { p_email: email });
     const number = await rpc(env, "client_number_lookup", { p_email: email });
     // HALF-PROVISIONED — an agent nobody can call, or a number nobody answers. Both are a
@@ -151,6 +157,18 @@ async function runRpcProbes(env) {
       let code = ""; try { code = (JSON.parse(body) || {}).code || ""; } catch { /* non-JSON body */ }
       // function simply not deployed → honest "not ready", NOT a silent crash
       if (r.status === 404 || code === "PGRST202") return { name: p.name, status: "notReady" };
+      // 42501 = "permission denied for function". O MOTOR NÃO ESTÁ QUEBRADO — a SONDA é que não
+      // tem permissão. Aconteceu em 2026-08-10: a onda que revogou o `anon` de centenas de RPCs
+      // (segurança correta) tirou o acesso de noshow_risk e package_list, e o monitor passou a
+      // pintar "dinheiro" e "agenda" de VERMELHO PERMANENTE. Duas semanas assim e todo mundo
+      // aprende a ignorar o semáforo — aí o vermelho de verdade não significa mais nada.
+      // Nem verde (seria mentir), nem vermelho (alarme falso): é o CINZA — "não deu para provar".
+      // Mesmo terceiro estado do /api/simular. E fica RUIDOSO no motivo, para ser consertado e
+      // não virar paisagem: quem lê sabe que existe um motor sem cobertura de teste.
+      if (r.status === 401 || r.status === 403 || code === "42501") {
+        return { name: p.name, status: "noAccess", httpStatus: r.status,
+                 error: "sonda sem permissão — motor NÃO testado (revise o grant ou a chave do monitor)" };
+      }
       return { name: p.name, status: "failed", httpStatus: r.status, error: body.slice(0, 200) };
     } catch (e) {
       // abort/timeout or network — treat as failed so a hung RPC also surfaces

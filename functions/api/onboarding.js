@@ -70,7 +70,12 @@ async function clientFacts(env, email) {
 // Compose the one-page AI KICKOFF BRIEF from the intake (captured at start) + the site/profile facts.
 // Uses ANTHROPIC_API_KEY with the platform's hardened model-fallback chain. Falls back to a clean
 // deterministic brief if AI is unavailable — the machine never blocks on the model.
-const MODEL_CHAIN = ["claude-fable-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"];
+// MODEL_CHAIN vem de ../lib/guiBrain.js — NÃO declare outra aqui (2026-08-12).
+// Eram DEZ cópias idênticas da mesma lista de modelos, uma por arquivo. Idênticas HOJE: conferi as
+// dez antes de mexer, e é exatamente por estarem iguais que a hora de unificar é agora — depois que
+// uma diverge, alguém já foi atendido pelo modelo errado e ninguém sabe qual superfície foi.
+// É o padrão que esta sessão inteira perseguiu: cópia sem vínculo com a fonte.
+import { MODEL_CHAIN } from "../lib/guiBrain.js";
 async function writeBrief(env, { email, business, industry, lang, intake, prices }) {
   const langName = { pt: "Portuguese", es: "Spanish", en: "English" }[lang] || "English";
   const facts = [

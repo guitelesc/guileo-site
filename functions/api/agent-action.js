@@ -5,10 +5,11 @@
 // their Google Sheet / CRM) and returns a short, natural confirmation the agent reads back.
 // Add it in ElevenLabs → Tools → Add tool → Webhook (POST) → URL = https://<your-domain>/api/agent-action
 import { safeEq } from "../lib/guard.js";
+import { valorParaCobranca } from "../lib/dinheiro.js";
 import { actionConfirmEmail, ownerAlertEmail } from "../lib/emailTemplates.js";
 import { emitFailure } from "../lib/failure.js";
 import { tenantMp, mintPix } from "../lib/pix.js";
-import { sendText } from "../lib/twilio.js";
+import { sendText, sendOrFlag } from "../lib/twilio.js";
 import { isEmergency, callOwnerEmergency } from "../lib/emergencyCall.js";
 import { guardCharge } from "../lib/spendGuard.js";
 import { sbKey, svcRpc } from "../lib/sb.js";
@@ -160,7 +161,10 @@ export async function onRequestPost(context) {
             // estável dentro de um atendimento (mesma lógica do reserveRef da agenda).
             const ref = (b.request_id || `${rec.contact || rec.name || "anon"}:${rec.amount}`).toString().slice(0, 120);
             const px = await mintPix(env, tenant, {
-              amountCents: Math.round(Number(rec.amount) * 100),
+              // FONTE ÚNICA: Number("45,00") é NaN e Number("$45.00") também. O valor certo já
+              // passou pela guarda; reaproveitar a mesma leitura evita duas verdades sobre o
+              // mesmo dinheiro dentro da mesma requisição.
+              amountCents: valorParaCobranca(rec.amount).cents,
               description: rec.details || rec.business || "Pagamento",
               payerEmail: rec.contact && rec.contact.includes("@") ? rec.contact : "",
               payerName: rec.name || "", ref,
@@ -269,7 +273,12 @@ async function sideEffects({ env, b, rec, action, interval, tenant, testMode, co
   const webhookWillLedger = !!payLink && !connAcct;
   if (["sale", "order", "invoice", "deposit"].includes(action) && rec.amount && env.SCHED_SECRET && !webhookWillLedger) {
     try {
-      const cents = Math.round(parseFloat(String(rec.amount).replace(/[^0-9.]/g, "")) * 100);
+      // ⚠️ ESTE ERA O DEFEITO DE 100×. A guarda de cobrança cobre só invoice/deposit, mas o razão
+      // grava também `sale` e `order` — que chegavam aqui com a leitura ingênua:
+      //     "45,00" → $4.500,00   ·   "9,50" → $950,00   ·   "R$ 1.234,56" → $1,23
+      // Contaminava revenue_record, o CRM, client_events E o retorno de anúncio (o ROI lê receita
+      // real). A Gui vende em pt/es: esse formato não é entrada malformada, é o normal.
+      const cents = valorParaCobranca(rec.amount).cents ?? 0;
       if (isFinite(cents) && cents > 0) {
         const RSB = SB_URL_DEFAULT;
         const RANON = SB_ANON_DEFAULT;
@@ -296,7 +305,8 @@ async function sideEffects({ env, b, rec, action, interval, tenant, testMode, co
   //      revenue surfaces in the weekly report + portal Inbox. Amount in DOLLARS. Best-effort.
   if (["sale", "order", "invoice", "deposit"].includes(action) && rec.amount && env.INGEST_SECRET) {
     try {
-      const dollars = parseFloat(String(rec.amount).replace(/[^0-9.]/g, ""));
+      // mesma leitura única (ver a nota do razão acima), em dólares para quem espera dólar
+      const dollars = (valorParaCobranca(rec.amount).cents ?? 0) / 100;
       if (isFinite(dollars) && dollars > 0) {
         await svcRpc(env, "ingest_client_event", {
             p_secret: env.INGEST_SECRET,
@@ -315,7 +325,7 @@ async function sideEffects({ env, b, rec, action, interval, tenant, testMode, co
   if (env.SCHED_SECRET && rec.contact) {
     try {
       const isEmail = isEmailAddr(rec.contact);
-      const cents = rec.amount ? Math.round((parseFloat(String(rec.amount).replace(/[^0-9.]/g, "")) || 0) * 100) : 0;
+      const cents = rec.amount ? (valorParaCobranca(rec.amount).cents ?? 0) : 0;
       const isMoney = ["sale", "order", "invoice", "deposit"].includes(action);
       const crmRpc = (fn, body) => fetch(`${SB_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" }, body: JSON.stringify({ p_secret: env.SCHED_SECRET, ...body }) });
       const ur = await crmRpc("crm_upsert_contact", { p_email: tenant, p_phone: isEmail ? "" : rec.contact, p_contact_email: isEmail ? rec.contact : "", p_name: rec.name || "", p_source: `gui:${action}`, p_amount_cents: isMoney ? cents : 0 });
@@ -370,7 +380,7 @@ async function sideEffects({ env, b, rec, action, interval, tenant, testMode, co
     try {
       const pr = await fetch(`${SB_URL}/rest/v1/rpc/client_notify_phone_lookup`, { method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" }, body: JSON.stringify({ p_secret: env.INGEST_SECRET, p_email: tenant }) });
       const ph = pr.ok ? ((await pr.json()) || "").toString() : "";
-      if (ph) await sendText(env, ph, `🔔 Guileo${rec.business ? ` · ${rec.business}` : ""}: novo ${action}${rec.name ? ` — ${rec.name}` : ""}${rec.amount ? ` ($${rec.amount})` : ""}${rec.when ? ` · ${rec.when}` : ""}. guileoai.com/portal`.slice(0, 300), { channel: "whatsapp" });
+      if (ph) await sendOrFlag(env, { tenant, motivo: "aviso ao dono", opts: { channel: "whatsapp" }, to: ph, body: `🔔 Guileo${rec.business ? ` · ${rec.business}` : ""}: novo ${action}${rec.name ? ` — ${rec.name}` : ""}${rec.amount ? ` ($${rec.amount})` : ""}${rec.when ? ` · ${rec.when}` : ""}. guileoai.com/portal`.slice(0, 300) });
     } catch { /* text best-effort */ }
   }
 
@@ -407,7 +417,42 @@ async function sideEffects({ env, b, rec, action, interval, tenant, testMode, co
       : es ? `🌱 ${rec.business || "Guileo"}: tu enlace seguro para pagar${amt ? ` ${amt}` : ""}: ${payLink}`
         : `🌱 ${rec.business || "Guileo"}: your secure link to pay${amt ? ` ${amt}` : ""}: ${payLink}`;
     if (testMode) { texted = true; }
-    else { try { await sendText(env, rec.contact, smsMsg); texted = true; } catch { /* spoken reply still works */ } }
+    else {
+      // MESMA REGRA DO AGENDAMENTO: sucesso sem comprovante não é sucesso.
+      // Antes: `await sendText(...); texted = true;` — marcava enviado SEM olhar o retorno.
+      // `sendText` devolve {sent:false} quando a Twilio recusa, e ela recusa HOJE (campanha A2P
+      // reprovada). Ou seja: a agente dizia "já te mandei o link" e nada saía. O cliente desliga
+      // esperando um SMS que nunca chega — e a venda morre em silêncio, que é o pior jeito.
+      let r = null;
+      try { r = await sendText(env, rec.contact, smsMsg); } catch (e) { r = { sent: false, reason: String(e).slice(0, 80) }; }
+      texted = !!(r && r.sent);
+      if (!texted) {
+        // SEGUNDA VIA: se a mensagem não sai, o link não pode evaporar. Vai por e-mail quando
+        // conhecemos um do cliente — o dinheiro não pode depender de um único canal.
+        let alt = "";
+        try {
+          const er = await fetch(`${SB_URL}/rest/v1/rpc/crm_contact_email`, {
+            method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ p_secret: env.SCHED_SECRET || "", p_email: tenant, p_phone: rec.contact }),
+          });
+          if (er.ok) { const v = await er.json().catch(() => ""); if (/.+@.+\..+/.test(String(v || ""))) alt = String(v); }
+        } catch { /* sem e-mail alternativo */ }
+        if (alt && env.RESEND_API_KEY) {
+          const mr = await fetch("https://api.resend.com/emails", {
+            method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: [alt],
+              subject: `${rec.business || "Guileo"} — seu link de pagamento`, html: `<p>${smsMsg}</p>` }),
+          }).catch(() => null);
+          texted = !!(mr && mr.ok);
+        }
+        // Falhou nos dois → o DONO precisa saber AGORA: tem uma venda pendurada.
+        if (!texted) {
+          try { await emitFailure(env, "paylink_nao_entregue", tenant,
+            `Link de pagamento NÃO chegou ao cliente${rec.amount ? ` ($${rec.amount})` : ""} — ${rec.name || "cliente"} · ${rec.contact} · motivo: ${(r && r.reason) || `status ${(r && r.status) || "?"}`}`,
+            { amount: rec.amount || "", contact: rec.contact }); } catch { /* */ }
+        }
+      }
+    }
   }
 
   // VOICE-PAY HANDOFF: stash {amount, tenant} keyed by the caller's number so the secure pay line
@@ -487,9 +532,14 @@ function honestNoLink(lang, action, amt, interval, who) {
 // Card data never touches us. Returns "" on any failure so the call never breaks.
 async function stripePaymentLink(env, amountStr, business, interval, connectedAccount = "", tenant = "") {
   try {
-    const dollars = parseFloat(String(amountStr).replace(/[^0-9.]/g, ""));
-    if (!isFinite(dollars) || dollars <= 0) return "";
-    const cents = Math.round(dollars * 100);
+    // ÚLTIMA leitura ingênua da casa, fechada em 2026-08-11. Este é o link de pagamento REAL que
+    // vai para o celular do cliente do cliente: "45,00" virava $4.500 e "R$ 1.234,56" virava $1,23.
+    // `valorParaCobranca` devolve `ambiguo` para o único caso que o texto não decide ("1.500" —
+    // pode ser mil e quinhentos ou um e meio). Aí não se escolhe no chute: não gera link.
+    const leitura = valorParaCobranca(amountStr);
+    if (leitura.ambiguo) return "";
+    const cents = leitura.cents;
+    if (cents == null || cents <= 0) return "";
     // AMOUNT INTEGRITY: the amount comes from the agent (caller-side) — bound it server-side so a
     // misheard "$5,000,000" never becomes a real charge link. Default cap is a SENSIBLE $5,000 (F10):
     // a mis-heard price should be rejected, not charged. Raise per-tenant with MAX_CHARGE_USD env.
