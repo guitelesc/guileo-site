@@ -71,10 +71,26 @@ function AIAnalytics({ V, onNav, sections = [], real = null, email = "", dataKey
   })();
 
   // #2 — opportunities: real calls that ended unhappy or unresolved → what to recover / add.
+  // QUEM QUERIA COMPRAR E NÃO FECHOU também é oportunidade — e é a que mais dói perder.
+  // Antes esta lista só olhava sentimento negativo ou `success` de falha, e por isso ESCONDIA o caso
+  // pior: a ligação do Kashif (Natura, 2026-08-10) — cliente pronto, humor neutro, marcada "success"
+  // pelo modelo, foi embora sem marcar nada. Ficou invisível justo a que precisava de resgate.
+  // Isto NÃO é um palpite sobre a ligação ter falhado: é o cruzamento de dois fatos — a pessoa DISSE
+  // que queria marcar/orçar (`intent` é o que ela falou) e NADA foi confirmado (nenhum valor entrou).
+  // Não afirma perda; afirma "vale olhar" — que é o propósito desta lista.
+  const QUER_FECHAR = /book|appoint|schedul|reserv|quote|price|agend|orç|preç|cita|precio/i;
+  const semDesfecho = (c) => QUER_FECHAR.test(c.intent || "") && !(Number(c.amount) > 0);
   const opportunities = hasReal ? calls
-    .filter((c) => (c.sentiment || "").toLowerCase() === "negative" || (c.success && c.success !== "success"))
+    .filter((c) => (c.sentiment || "").toLowerCase() === "negative" || (c.success && c.success !== "success") || semDesfecho(c))
     .slice(0, 4)
-    .map((c) => ({ intent: c.intent || tr("AI call"), note: c.note || c.summary || "", neg: (c.sentiment || "").toLowerCase() === "negative" })) : [];
+    .map((c) => ({
+      intent: c.intent || tr("AI call"), note: c.note || c.summary || "",
+      neg: (c.sentiment || "").toLowerCase() === "negative",
+      // `checar` = entrou porque quis marcar e nada foi confirmado. NÃO é o mesmo que uma ligação
+      // ruim, e não pode aparecer com a mesma cara: se marcou e não cobrou depósito, cair aqui é
+      // ruído — e ruído mata a confiança na lista tão rápido quanto número falso.
+      checar: !((c.sentiment || "").toLowerCase() === "negative") && !(c.success && c.success !== "success"),
+    })) : [];
 
   // "O que o Gui reparou" — a few sharp, concierge-voiced observations derived from the
   // client's REAL calls only (busiest weekday+hour, sentiment trend, top intent, calls to
@@ -198,16 +214,16 @@ function AIAnalytics({ V, onNav, sections = [], real = null, email = "", dataKey
           )}
           {opportunities.length > 0 && (
             <Card>
-              <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("⚡ Opportunities to recover")}</div>
+              <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("⚡ Worth your attention")}</div>
               <div className="space-y-2.5">
                 {opportunities.map((o, i) => (
                   <div key={i} className="flex items-start gap-2.5">
-                    <span className="text-base shrink-0 leading-none mt-0.5">{o.neg ? "😞" : "💡"}</span>
-                    <div className="min-w-0"><div className="text-xs font-bold text-g-word">{o.intent}</div>{o.note && <div className="text-[11px] text-g-muted leading-snug">{o.note}</div>}</div>
+                    <span className="text-base shrink-0 leading-none mt-0.5">{o.neg ? "😞" : o.checar ? "🔎" : "💡"}</span>
+                    <div className="min-w-0"><div className="text-xs font-bold text-g-word">{o.intent}{o.checar && <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide text-g-muted">{tr("did it close?")}</span>}</div>{o.note && <div className="text-[11px] text-g-muted leading-snug">{o.note}</div>}</div>
                   </div>
                 ))}
               </div>
-              <div className="mt-3 text-[11px] text-g-muted">{tr("A quick callback usually turns these around.")}</div>
+              <div className="mt-3 text-[11px] text-g-muted">{tr("🔎 = someone wanted to book and we can't confirm it closed. A quick callback usually turns these around.")}</div>
             </Card>
           )}
         </div>

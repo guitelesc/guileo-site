@@ -76,12 +76,21 @@ function MarketingDates({ V, onNav, email = "", dataKey = "" }) {
     if (res.ready === false) { setReady(false); toast(res.note || tr("Couldn't save — try again.")); return; }
     if (res.ok) { toast(tr("Saved ✓")); load(); } else toast(tr("Couldn't save — try again."));
   };
+  // O interruptor decide se a Gui manda mensagem de aniversário para os clientes do cliente.
+  // Antes, quando o servidor recusava, ele apenas mostrava um toast e FICAVA na posição nova:
+  // a tela dizia "desligado" com o motor ainda ligado (ou o contrário). Um estado que o
+  // servidor não aceitou tem que voltar ao que era — senão a tela vira a única fonte de uma
+  // verdade que não existe. Corrigido 2026-08-11.
   const toggleBirthday = async (next) => {
+    const prev = bday.active;
     setBday((b) => ({ ...b, active: next }));
-    if (demo) return;
+    if (demo) { toast(tr("Sample data — connect your account to save.")); setBday((b) => ({ ...b, active: prev })); return; }
     const res = await saveMarketingDate(dataKey, email, { kind: "birthday", label: "Birthday", active: next, message: bday.message });
-    if (res.ready === false) { setReady(false); toast(res.note || tr("Couldn't save — try again.")); }
-    else if (!res.ok) toast(tr("Couldn't save — try again."));
+    if (res.ready === false || !res.ok) {
+      setBday((b) => ({ ...b, active: prev }));          // volta: nada foi gravado
+      if (res.ready === false) setReady(false);
+      toast(res.note || tr("Couldn't save — try again."));
+    }
   };
 
   // ── Commemorative dates (add / edit / remove) ──
@@ -98,7 +107,7 @@ function MarketingDates({ V, onNav, email = "", dataKey = "" }) {
   };
   const toggleDate = async (r, next) => {
     setRows((cur) => (cur || []).map((x) => (x.id === r.id ? { ...x, active: next } : x)));
-    if (demo) return;
+    if (demo) { setRows((cur) => (cur || []).map((x) => (x.id === r.id ? { ...x, active: r.active } : x))); toast(tr("Sample data — connect your account to save.")); return; }
     const res = await saveMarketingDate(dataKey, email, { id: r.id, kind: "date", label: r.label, month: r.month, day: r.day, message: r.message, offer: r.offer, active: next });
     if (res.ready === false) { setReady(false); toast(res.note || tr("Couldn't save — try again.")); }
     else if (!res.ok) { toast(tr("Couldn't save — try again.")); load(); }

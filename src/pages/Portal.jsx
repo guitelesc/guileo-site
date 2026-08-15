@@ -52,17 +52,59 @@ export function GuiMark({ size = 36, progress = null, celebrate = false }) {
    The color tells the owner what each play IS, at a glance. Neon-realista tones. */
 export const PLAY_COLOR = { payments: "#E2533F", waitlist: "#FFC23D", followups: "#3FB4FF" };
 
-/* Upsell channel — services a client can request from inside the portal (revenue engine) */
-export const ADDONS = [
-  ["💬", "Add a Telegram / Messenger agent", "One more channel your AI answers 24/7."],
-  ["📣", "Launch Meta & Google Ads", "We run and optimize your paid growth."],
-  ["🌐", "New website or landing page", "Built to convert — live in days."],
-  ["🔎", "SEO & Google Business", "Show up first when people search nearby."],
-  ["🎁", "Loyalty & win-back program", "Bring customers back automatically."],
-  ["📍", "Add another location", "Same system, brand-new store."],
-  ["🛒", "Online ordering / store", "Sell direct — keep the commissions."],
-  ["📧", "Email & SMS automation", "Follow-ups that recover revenue."],
-  ["🤖", "Custom automation", "Connect your tools, automate a workflow."],
+/* ─────────────────── "Everything you have with Guileo" (the `grow` tab) ───────────────────
+   The ONE screen that answers the owner's question: what do I actually get here — website,
+   app, automations, software, ads, marketing, creative, AI? Three HONEST blocks:
+
+     on       JÁ ESTÁ LIGADO      — ships with every account and works today
+     included INCLUÍDO, É SÓ PEDIR — exists in the platform, we switch it on for you
+     project  PROJETO SOB MEDIDA   — the team BUILDS it: own scope, own budget, NOT in the monthly
+
+   Verdicts are PRODUCT-level (what the platform provably does today), never a per-tenant
+   claim we cannot prove from data — a tenant-level "it's on for you" would be a lie for any
+   piece that depends on an external key (Meta/A2P/Google) we cannot see from here.
+   `note` = the honest caveat (what is automatic vs what a HUMAN on the team does by hand).
+   `view` = an existing cockpit tab key; the CTA only links there if that tab is in this
+   client's nav, otherwise it falls back to the WhatsApp ask (Grow.jsx decides). */
+export const CATALOG = [
+  ["on", [
+    { ic: "🤖", name: "Your AI answering 24/7", desc: "Its own name, voice and phone number. It answers, quotes, books and follows up — day and night.", view: "brain" },
+    { ic: "🌐", name: "Your website", desc: "A ready site with your services, hours, prices and booking link — yours to edit and publish.", view: "meusite" },
+    { ic: "⚙️", name: "Automations running on our servers", desc: "Reminders, review requests, win-backs and no-show shields run on their own, 24/7.", note: "The list below is what actually runs on the server — no switch needed." },
+    { ic: "📧", name: "Email marketing", desc: "Campaigns, coupons and special-date emails going out in YOUR brand, not ours.", view: "marketing" },
+  ]],
+  ["included", [
+    { ic: "💬", name: "More channels (WhatsApp, Instagram, Messenger, SMS)", desc: "The same AI answering wherever your customer writes.", note: "Each channel waits on an outside approval (Meta / carrier). We connect it the moment it clears — we never pretend it's live before that.", view: "socialhub" },
+    { ic: "📣", name: "Ads on Meta & Google", desc: "Paid campaigns to bring in new customers, tracked down to the booking.", note: "Measurement is automatic. Creating and managing the campaigns is done by hand, by our team.", view: "ads" },
+    { ic: "🔎", name: "SEO & Google Business", desc: "Show up when people search nearby, with reviews answered for you.", view: "googlehub" },
+    { ic: "🎁", name: "Loyalty & win-back", desc: "Customers who stopped coming get invited back, automatically.", view: "retention" },
+    { ic: "🏷️", name: "Coupons & promotions", desc: "Build an offer in one minute and send it to the right people.", view: "coupons" },
+    { ic: "💳", name: "Payment links & collections", desc: "Charge on the call, and chase what's overdue without you having to ask.", view: "finance" },
+    { ic: "📝", name: "Forms & photo quotes", desc: "Capture leads on your site and quote from a photo.", view: "capture" },
+    { ic: "🔌", name: "Connect the tools you already use", desc: "Calendar, POS, booking system — the AI works across them.", view: "integrations" },
+    { ic: "📍", name: "Another location", desc: "Same system, new store — its own agenda and numbers.", view: "locations" },
+  ]],
+  ["project", [
+    { ic: "🎨", name: "Custom website or landing page", desc: "Beyond the included site: bespoke design, pages and copy built for you.", note: "Scoped and quoted separately — it is not part of the monthly." },
+    { ic: "📱", name: "Mobile app (iOS / Android)", desc: "Your own app for your customers.", note: "Honest: there is NOTHING pre-built here. It's a from-scratch project with its own contract and timeline." },
+    { ic: "🧩", name: "Custom software & internal systems", desc: "The system your operation needs and no off-the-shelf tool does.", note: "We build these case by case — each one gets its own scope, price and deadline." },
+    { ic: "🎬", name: "Creative, video & design", desc: "Ads, posts and video made to look like your business.", note: "The AI writes the TEXT. Images, video and design are made by hand by our team — scoped separately." },
+    { ic: "🛒", name: "Online ordering / store", desc: "Sell direct and keep the commissions.", note: "A build project, not a switch we flip." },
+  ]],
+];
+
+/* The automations that REALLY run — on our servers, on a schedule, with or without the
+   cockpit open (functions/api/automations.js + collections.js + proactive.js, fired by
+   /api/cron-tick). Shown READ-ONLY: there is no per-tenant on/off endpoint for these, so a
+   switch here would be a promise we cannot keep. The two opt-in ones say so explicitly. */
+export const SERVER_AUTOMATIONS = [
+  { ic: "⏰", name: "Booking reminders (24h and 2h before)", desc: "Cuts no-shows without anyone remembering to send anything." },
+  { ic: "⭐", name: "Review request after the visit", desc: "Sent once per visit, with your review link." },
+  { ic: "♻️", name: "Win-back for customers who disappeared", desc: "A warm nudge to people who stopped coming." },
+  { ic: "🛡️", name: "Extra confirmation for risky appointments", desc: "Bookings likely to be missed get one more confirmation." },
+  { ic: "🎂", name: "Birthdays & special dates", desc: "The right message on the day that matters.", view: "dates" },
+  { ic: "🌤️", name: "Slow-day promo", desc: "Fills quiet days with a last-minute offer.", optin: "Off by default — ask us to turn it on." },
+  { ic: "💸", name: "Auto-collections for overdue invoices", desc: "Chases what customers still owe you.", optin: "You switch this one on yourself, under Finance.", view: "finance" },
 ];
 
 /* Generic builders — give EVERY sector the Guileo AI screens (voice/calls, chats, customers…) from its own data */
@@ -604,12 +646,10 @@ export const CHANNELS = [
   { Icon: FaGoogle, name: "Google", color: "#4285F4", convos: 140, won: 92, note: "92 reviews requested" },
 ];
 
-export const CAMPAIGNS = [
-  { name: "Meta · Weekend Promo", spend: 480, leads: 96, cpl: 5.0, roas: 4.2, up: true },
-  { name: "Google · 'pizza near me'", spend: 360, leads: 72, cpl: 5.0, roas: 3.8, up: true },
-  { name: "TikTok · Brand Awareness", spend: 220, leads: 28, cpl: 7.9, roas: 2.1, up: false },
-  { name: "Instagram · Retargeting", spend: 180, leads: 51, cpl: 3.5, roas: 5.6, up: true },
-];
+// CAMPAIGNS (campanhas de demonstração) foi REMOVIDA em 2026-08-09. Ela alimentava a aba
+// Anúncios com campanhas inventadas e um "ROAS 4.1×" fixo — um cliente pagante via desempenho
+// de anúncios que nunca existiram. A aba agora lê /api/ads (dado real, NULL quando não há
+// lastro). Dado falso órfão no código é armadilha para quem vier depois: some junto.
 
 export const LEADS = [
   { name: "Marcos A.", ch: "WhatsApp", when: "2 min ago", status: "Booked", color: "#3E9468" },
@@ -690,7 +730,11 @@ function sectionsFor(vid, V) {
     l = inject(l, "marketing", "Marketing", "finance");
     l = inject(l, "dates", "Datas & Aniversários", "marketing"); // birthday + commemorative-date config
     l = inject(l, "coupons", "Cupons & Campanhas", "dates"); // per-client branded coupons + campaigns
-    l = inject(l, "growthintel", "Inteligência", "coupons"); // LTV + lead sources + forecast + abandoned bookings
+    // ANÚNCIOS ficava INALCANÇÁVEL: a view existia no roteador e nenhum item de menu apontava
+    // para ela. Com "resultado de anúncio" sendo metade do produto, a tela mais importante para
+    // o cliente era a única sem porta. Fica ao lado de Cupons & Campanhas, dentro de Marketing.
+    l = inject(l, "ads", "Anúncios · Resultado", "coupons");
+    l = inject(l, "growthintel", "Inteligência", "ads"); // LTV + lead sources + forecast + abandoned bookings
     l = inject(l, "capture", "Captura", "growthintel"); // intake forms + photo-quote + Google Business
     l = inject(l, "experience", "Experience", "capture"); // XM — how THIS business's own customers feel (NPS/CSAT/sentiment/drivers/detractors)
     l = inject(l, "timeline", "Linha do tempo", "experience"); // Do fornecedor ao cliente — custo→lucro→risco numa timeline só
@@ -702,6 +746,15 @@ function sectionsFor(vid, V) {
     l = inject(l, "socialhub", "Redes sociais", "googlehub"); // Meta DMs + publishing A+B
     l = inject(l, "storm", "Modo Tempestade", "riskradar"); // 1-click hurricane close+notify+reopen blast
     l = inject(l, "emergency", "Emergências", "storm"); // owner-visible log of urgent escalations (Gui rang the phone)
+    l = inject(l, "grow", "Everything you have", "overview"); // the discovery screen — see below
+    // The discovery tab has ONE job: answer "what do I actually have with Guileo?". It used to
+    // sit inside "Your AI ✨" (an owner shopping for a website never clicks that) and the
+    // restaurant's bespoke nav still ships the old "Grow with Guileo" label from verticals.js —
+    // so pin BOTH the label and the position here, right under Overview, for every sector.
+    l = l.map((s) => (s[0] === "grow" ? ["grow", "Everything you have"] : s));
+    const gi = l.findIndex((s) => s[0] === "grow");
+    const oi = l.findIndex((s) => s[0] === "overview");
+    if (gi > -1 && oi > -1 && gi !== oi + 1) { const [g] = l.splice(gi, 1); l.splice(gi < oi ? oi : oi + 1, 0, g); }
     return l;
   };
   if (V.sections) { // restaurant has a bespoke nav from its reference tool — still inject Leads after Overview
@@ -718,7 +771,7 @@ function sectionsFor(vid, V) {
     // into the Finance/Marketing/Growth dept views (DeptTabs) — reachable there, off the sidebar.
     ["customers", "Customers"], ["crm", "CRM 360"],
     ["inbox", "Inbox"], ["calllogs", "Call Logs"], ["dialer", "Call Dialer"], ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"],
-    ["grow", "Grow with Guileo"], ["locations", "Locations"], ["team", "Team"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
+    ["grow", "Everything you have"], ["locations", "Locations"], ["team", "Team"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
   ]);
 }
 // Red notification counts per menu item — drives urgency badges in the sidebar
@@ -765,8 +818,11 @@ const SECTION_ICON = {
 // Group the (long) nav into scannable categories
 // Order = everyday use first (operations/conversations/customers), then growth/strategy, then account.
 const NAV_GROUPS = [
-  ["", ["overview", "mycompany", "leads", "leadstoday", "mktleads", "meusite"]],
-  ["Your AI ✨", ["command", "trainer", "brain", "kb", "analytics", "insights", "grow"]],
+  // "grow" = "Everything you have" — the discovery screen. Second item of the top group, right
+  // under Overview: it answers the question every owner asks (website? app? ads? software?), so
+  // it can NOT live buried inside "Your AI ✨" where nobody shopping for a website would look.
+  ["", ["overview", "grow", "mycompany", "leads", "leadstoday", "mktleads", "meusite"]],
+  ["Your AI ✨", ["command", "trainer", "brain", "kb", "analytics", "insights"]],
   ["Operations", ["liveorders", "kitchen", "menu", "schedule", "riskradar", "storm", "catalog", "deliveries", "operations"]],
   ["Conversations", ["inbox", "calllogs", "dialer", "whatsapp", "sms", "social"]],
   ["Customers", ["crm"]],
@@ -785,9 +841,120 @@ const DICT_LOADERS = {
   es: () => import("../portal/dict-es.js"),
   hi: () => import("../portal/dict-hi.js"),
 };
+/* Strings introduced by the "Everything you have" screen (CATALOG / SERVER_AUTOMATIONS above)
+   and by the automations-honesty copy. They live HERE, next to the English source strings,
+   instead of inside src/portal/dict-*.js: the feature ships self-contained and the copy can
+   never drift from its translation. loadDict() merges them ON TOP of the lazy dict chunk, so
+   tr() resolves them exactly like every other portal string — and they still translate even
+   if the chunk fails to load. Order: [en, pt, es, hi] — the 4 UI languages of the cockpit. */
+const EXTRA_ROWS = [
+  // ── screen chrome ────────────────────────────────────────────────────────────────────────
+  ["Everything you have", "Tudo que você tem", "Todo lo que tienes", "आपके पास जो कुछ है"],
+  ["Everything you have with Guileo", "Tudo que você tem com a Guileo", "Todo lo que tienes con Guileo", "Guileo के साथ आपके पास जो कुछ है"],
+  ["Website, app, automations, software, ads, marketing, creative and AI — what is already yours, what we switch on for you, and what our team builds.",
+    "Site, app, automações, software, anúncios, marketing, criativos e IA — o que já é seu, o que a gente liga pra você e o que a nossa equipe constrói.",
+    "Sitio web, app, automatizaciones, software, anuncios, marketing, creativos e IA — lo que ya es tuyo, lo que activamos para ti y lo que construye nuestro equipo.",
+    "वेबसाइट, ऐप, ऑटोमेशन, सॉफ़्टवेयर, विज्ञापन, मार्केटिंग, क्रिएटिव और AI — क्या पहले से आपका है, क्या हम चालू कर देते हैं, और क्या हमारी टीम बनाती है।"],
+  ["Already on", "Já está ligado", "Ya está activo", "पहले से चालू"],
+  ["Working in your account today.", "Funcionando na sua conta hoje.", "Funcionando en tu cuenta hoy.", "आज आपके खाते में चालू है।"],
+  ["Included — just ask", "Incluído, é só pedir", "Incluido — solo pídelo", "शामिल है — बस कहिए"],
+  ["Already in the platform. We switch it on for you.", "Já existe na plataforma. A gente liga pra você.", "Ya existe en la plataforma. Lo activamos para ti.", "प्लेटफ़ॉर्म में पहले से है। हम आपके लिए चालू कर देते हैं।"],
+  ["Custom project", "Projeto sob medida", "Proyecto a medida", "कस्टम प्रोजेक्ट"],
+  ["Our team builds it. Own scope and budget — not part of your monthly plan.", "A equipe constrói. Tem escopo e orçamento próprios — não vem no mensal.", "Nuestro equipo lo construye. Con alcance y presupuesto propios — no entra en el mensual.", "हमारी टीम इसे बनाती है। अलग स्कोप और बजट — मासिक प्लान में शामिल नहीं।"],
+  ["On", "Ligado", "Activo", "चालू"],
+  ["Included", "Incluído", "Incluido", "शामिल"],
+  ["Project", "Sob medida", "A medida", "प्रोजेक्ट"],
+  ["Open →", "Abrir →", "Abrir →", "खोलें →"],
+  ["Ask my team →", "Falar com meu time →", "Hablar con mi equipo →", "मेरी टीम से बात करें →"],
+  // ── already on ───────────────────────────────────────────────────────────────────────────
+  ["Your AI answering 24/7", "Sua IA atendendo 24/7", "Tu IA atendiendo 24/7", "आपकी AI 24/7 जवाब देती है"],
+  ["Its own name, voice and phone number. It answers, quotes, books and follows up — day and night.", "Com nome, voz e número próprios. Ela atende, passa preço, agenda e faz o retorno — dia e noite.", "Con nombre, voz y número propios. Atiende, cotiza, agenda y hace el seguimiento — día y noche.", "अपना नाम, आवाज़ और नंबर। यह जवाब देती है, दाम बताती है, बुकिंग करती है और फ़ॉलो-अप करती है — दिन-रात।"],
+  ["Your website", "Seu site", "Tu sitio web", "आपकी वेबसाइट"],
+  ["A ready site with your services, hours, prices and booking link — yours to edit and publish.", "Um site pronto com seus serviços, horários, preços e link de agendamento — seu para editar e publicar.", "Un sitio listo con tus servicios, horarios, precios y enlace de reserva — tuyo para editar y publicar.", "आपकी सेवाओं, समय, कीमतों और बुकिंग लिंक के साथ तैयार साइट — संपादित करें और प्रकाशित करें।"],
+  ["Automations running on our servers", "Automações rodando nos nossos servidores", "Automatizaciones corriendo en nuestros servidores", "हमारे सर्वर पर चलने वाले ऑटोमेशन"],
+  ["Reminders, review requests, win-backs and no-show shields run on their own, 24/7.", "Lembretes, pedidos de avaliação, reconquista e proteção contra faltas rodam sozinhos, 24/7.", "Recordatorios, solicitudes de reseña, recuperación y protección contra ausencias corren solos, 24/7.", "रिमाइंडर, रिव्यू अनुरोध, वापसी संदेश और नो-शो सुरक्षा अपने आप चलते हैं, 24/7।"],
+  ["The list below is what actually runs on the server — no switch needed.", "A lista abaixo é o que roda de verdade no servidor — não precisa ligar nada.", "La lista de abajo es lo que realmente corre en el servidor — no hay que activar nada.", "नीचे दी गई सूची वही है जो सर्वर पर वास्तव में चलती है — कुछ चालू करने की ज़रूरत नहीं।"],
+  ["Email marketing", "Marketing por e-mail", "Marketing por email", "ईमेल मार्केटिंग"],
+  ["Campaigns, coupons and special-date emails going out in YOUR brand, not ours.", "Campanhas, cupons e e-mails de datas especiais saindo com a SUA marca, não a nossa.", "Campañas, cupones y correos de fechas especiales con TU marca, no la nuestra.", "अभियान, कूपन और विशेष-तिथि ईमेल — आपकी ब्रांडिंग के साथ, हमारी नहीं।"],
+  // ── included ─────────────────────────────────────────────────────────────────────────────
+  ["More channels (WhatsApp, Instagram, Messenger, SMS)", "Mais canais (WhatsApp, Instagram, Messenger, SMS)", "Más canales (WhatsApp, Instagram, Messenger, SMS)", "और चैनल (WhatsApp, Instagram, Messenger, SMS)"],
+  ["The same AI answering wherever your customer writes.", "A mesma IA atendendo onde o seu cliente escrever.", "La misma IA atendiendo donde te escriba tu cliente.", "वही AI, जहाँ भी आपका ग्राहक लिखे।"],
+  ["Each channel waits on an outside approval (Meta / carrier). We connect it the moment it clears — we never pretend it's live before that.", "Cada canal depende de uma aprovação externa (Meta / operadora). A gente conecta assim que sai — e nunca finge que já está no ar antes disso.", "Cada canal depende de una aprobación externa (Meta / operadora). Lo conectamos apenas se aprueba — nunca fingimos que ya está activo antes.", "हर चैनल बाहरी मंज़ूरी (Meta / कैरियर) पर निर्भर है। मंज़ूरी मिलते ही हम जोड़ देते हैं — उससे पहले हम कभी नहीं कहते कि यह चालू है।"],
+  ["Ads on Meta & Google", "Anúncios no Meta e Google", "Anuncios en Meta y Google", "Meta और Google पर विज्ञापन"],
+  ["Paid campaigns to bring in new customers, tracked down to the booking.", "Campanhas pagas para trazer cliente novo, medidas até o agendamento.", "Campañas pagas para traer clientes nuevos, medidas hasta la reserva.", "नए ग्राहक लाने के लिए पेड कैंपेन, बुकिंग तक मापे गए।"],
+  ["Measurement is automatic. Creating and managing the campaigns is done by hand, by our team.", "A medição é automática. Criar e gerenciar a campanha é feito na mão, por gente do nosso time.", "La medición es automática. Crear y gestionar la campaña lo hace a mano nuestro equipo.", "मापन स्वचालित है। कैंपेन बनाना और चलाना हमारी टीम हाथ से करती है।"],
+  ["SEO & Google Business", "SEO e Google Meu Negócio", "SEO y Google Business", "SEO और Google Business"],
+  ["Show up when people search nearby, with reviews answered for you.", "Aparecer quando procuram perto de você, com as avaliações respondidas.", "Aparecer cuando buscan cerca de ti, con las reseñas respondidas.", "जब लोग पास में खोजें तो दिखें, समीक्षाओं के उत्तर के साथ।"],
+  ["Loyalty & win-back", "Fidelidade e reconquista", "Fidelidad y recuperación", "लॉयल्टी और वापसी"],
+  ["Customers who stopped coming get invited back, automatically.", "Quem parou de vir recebe um convite de volta, automaticamente.", "Quien dejó de venir recibe una invitación de vuelta, automáticamente.", "जो ग्राहक आना बंद कर चुके हैं, उन्हें अपने आप वापस बुलाया जाता है।"],
+  ["Coupons & promotions", "Cupons e promoções", "Cupones y promociones", "कूपन और प्रोमोशन"],
+  ["Build an offer in one minute and send it to the right people.", "Monte uma oferta em um minuto e mande para as pessoas certas.", "Crea una oferta en un minuto y envíala a las personas correctas.", "एक मिनट में ऑफ़र बनाएँ और सही लोगों को भेजें।"],
+  ["Payment links & collections", "Links de pagamento e cobrança", "Enlaces de pago y cobranza", "पेमेंट लिंक और वसूली"],
+  ["Charge on the call, and chase what's overdue without you having to ask.", "Cobre na própria ligação e persiga o que está vencido sem você precisar pedir.", "Cobra en la propia llamada y persigue lo vencido sin que tengas que pedirlo.", "कॉल पर ही भुगतान लें, और बकाया अपने आप वसूला जाए।"],
+  ["Forms & photo quotes", "Formulários e orçamento por foto", "Formularios y presupuesto por foto", "फ़ॉर्म और फ़ोटो से अनुमान"],
+  ["Capture leads on your site and quote from a photo.", "Capture contatos no seu site e faça orçamento a partir de uma foto.", "Captura contactos en tu sitio y cotiza desde una foto.", "अपनी साइट पर लीड लें और फ़ोटो से कीमत बताएँ।"],
+  ["Connect the tools you already use", "Conecte as ferramentas que você já usa", "Conecta las herramientas que ya usas", "आप जो टूल पहले से उपयोग करते हैं उन्हें जोड़ें"],
+  ["Calendar, POS, booking system — the AI works across them.", "Agenda, PDV, sistema de reservas — a IA trabalha em todos.", "Agenda, PDV, sistema de reservas — la IA trabaja en todos.", "कैलेंडर, POS, बुकिंग सिस्टम — AI सब पर काम करती है।"],
+  ["Another location", "Mais uma unidade", "Otra sucursal", "एक और लोकेशन"],
+  ["Same system, new store — its own agenda and numbers.", "Mesmo sistema, loja nova — com agenda e números próprios.", "Mismo sistema, tienda nueva — con agenda y números propios.", "वही सिस्टम, नई शाखा — अपनी एजेंडा और अपने आँकड़े।"],
+  // ── custom project ───────────────────────────────────────────────────────────────────────
+  ["Custom website or landing page", "Site ou landing page sob medida", "Sitio o landing page a medida", "कस्टम वेबसाइट या लैंडिंग पेज"],
+  ["Beyond the included site: bespoke design, pages and copy built for you.", "Além do site incluído: design, páginas e textos feitos sob medida para você.", "Más allá del sitio incluido: diseño, páginas y textos hechos a tu medida.", "शामिल साइट से आगे: आपके लिए बनाया गया डिज़ाइन, पेज और कॉपी।"],
+  ["Scoped and quoted separately — it is not part of the monthly.", "Tem escopo e orçamento à parte — não entra no mensal.", "Tiene alcance y presupuesto aparte — no entra en el mensual.", "अलग स्कोप और अलग कीमत — मासिक में शामिल नहीं।"],
+  ["Mobile app (iOS / Android)", "Aplicativo (iOS / Android)", "App móvil (iOS / Android)", "मोबाइल ऐप (iOS / Android)"],
+  ["Your own app for your customers.", "Um app seu, para os seus clientes.", "Una app tuya, para tus clientes.", "आपके ग्राहकों के लिए आपका अपना ऐप।"],
+  ["Honest: there is NOTHING pre-built here. It's a from-scratch project with its own contract and timeline.", "Sendo honesto: aqui NÃO existe nada pronto. É um projeto do zero, com contrato e prazo próprios.", "Siendo honestos: aquí NO hay nada ya construido. Es un proyecto desde cero, con contrato y plazo propios.", "ईमानदारी से: यहाँ कुछ भी पहले से बना नहीं है। यह शून्य से बनने वाला प्रोजेक्ट है, अपने अनुबंध और समय-सीमा के साथ।"],
+  ["Custom software & internal systems", "Software e sistemas sob medida", "Software y sistemas a medida", "कस्टम सॉफ़्टवेयर और आंतरिक सिस्टम"],
+  ["The system your operation needs and no off-the-shelf tool does.", "O sistema que a sua operação precisa e nenhuma ferramenta de prateleira resolve.", "El sistema que tu operación necesita y ninguna herramienta de estante resuelve.", "वह सिस्टम जिसकी आपके संचालन को ज़रूरत है और कोई तैयार टूल नहीं देता।"],
+  ["We build these case by case — each one gets its own scope, price and deadline.", "A gente constrói caso a caso — cada um com escopo, preço e prazo próprios.", "Los construimos caso por caso — cada uno con alcance, precio y plazo propios.", "हम इन्हें मामला-दर-मामला बनाते हैं — हर एक का अपना स्कोप, कीमत और समय-सीमा।"],
+  ["Creative, video & design", "Criativos, vídeo e design", "Creativos, video y diseño", "क्रिएटिव, वीडियो और डिज़ाइन"],
+  ["Ads, posts and video made to look like your business.", "Anúncios, posts e vídeo com a cara do seu negócio.", "Anuncios, publicaciones y video con la cara de tu negocio.", "आपके व्यवसाय जैसा दिखने वाला विज्ञापन, पोस्ट और वीडियो।"],
+  ["The AI writes the TEXT. Images, video and design are made by hand by our team — scoped separately.", "A IA escreve o TEXTO. Imagem, vídeo e design são feitos na mão pela equipe — com escopo à parte.", "La IA escribe el TEXTO. Imagen, video y diseño los hace a mano el equipo — con alcance aparte.", "AI केवल टेक्स्ट लिखती है। छवि, वीडियो और डिज़ाइन हमारी टीम हाथ से बनाती है — अलग स्कोप के साथ।"],
+  ["Online ordering / store", "Pedido online / loja", "Pedidos online / tienda", "ऑनलाइन ऑर्डर / स्टोर"],
+  ["Sell direct and keep the commissions.", "Venda direto e fique com a comissão.", "Vende directo y quédate con la comisión.", "सीधे बेचें और कमीशन अपने पास रखें।"],
+  ["A build project, not a switch we flip.", "É um projeto de construção, não um botão que a gente liga.", "Es un proyecto de construcción, no un botón que encendemos.", "यह बनाने का प्रोजेक्ट है, कोई स्विच नहीं।"],
+  // ── server automations (read-only list) ──────────────────────────────────────────────────
+  ["What actually runs on our servers", "O que roda de verdade nos nossos servidores", "Lo que realmente corre en nuestros servidores", "हमारे सर्वर पर वास्तव में क्या चलता है"],
+  ["These run 24/7, whether or not you are logged in. Shown read-only — the two opt-in ones are marked.", "Isso roda 24/7, com você logado ou não. Aqui é só leitura — os dois opcionais estão marcados.", "Esto corre 24/7, estés conectado o no. Aquí es solo lectura — los dos opcionales están marcados.", "ये 24/7 चलते हैं, चाहे आप लॉग इन हों या नहीं। यहाँ केवल पढ़ने के लिए — दो वैकल्पिक चिह्नित हैं।"],
+  ["Read-only", "Somente leitura", "Solo lectura", "केवल पढ़ने के लिए"],
+  ["Opt-in", "Opcional", "Opcional", "वैकल्पिक"],
+  ["The “Automations” list on your Overview is your own plan inside this cockpit: it organizes and records what you ran here — it does not send anything by itself. The real sending is the list above.",
+    "A lista “Automações” do seu Overview é o seu plano dentro deste painel: ela organiza e registra o que você rodou aqui — ela não envia nada sozinha. Quem envia de verdade é a lista acima.",
+    "La lista “Automatizaciones” de tu Overview es tu propio plan dentro de este panel: organiza y registra lo que ejecutaste aquí — no envía nada por sí sola. Quien envía de verdad es la lista de arriba.",
+    "आपके Overview की “Automations” सूची इस कॉकपिट के भीतर आपकी अपनी योजना है: यह व्यवस्थित करती है और रिकॉर्ड रखती है — यह स्वयं कुछ नहीं भेजती। असली भेजना ऊपर की सूची करती है।"],
+  ["Booking reminders (24h and 2h before)", "Lembretes de horário (24h e 2h antes)", "Recordatorios de cita (24h y 2h antes)", "बुकिंग रिमाइंडर (24 घंटे और 2 घंटे पहले)"],
+  ["Cuts no-shows without anyone remembering to send anything.", "Corta as faltas sem ninguém precisar lembrar de mandar nada.", "Reduce las ausencias sin que nadie tenga que acordarse de enviar nada.", "बिना किसी को याद दिलाए नो-शो घटाता है।"],
+  ["Review request after the visit", "Pedido de avaliação depois do atendimento", "Solicitud de reseña después de la visita", "विज़िट के बाद समीक्षा अनुरोध"],
+  ["Sent once per visit, with your review link.", "Enviado uma vez por atendimento, com o seu link de avaliação.", "Enviado una vez por visita, con tu enlace de reseña.", "प्रति विज़िट एक बार, आपके रिव्यू लिंक के साथ।"],
+  ["Win-back for customers who disappeared", "Reconquista de quem sumiu", "Recuperación de quienes desaparecieron", "गायब हो चुके ग्राहकों की वापसी"],
+  ["A warm nudge to people who stopped coming.", "Um empurrãozinho carinhoso para quem parou de vir.", "Un empujoncito cálido para quienes dejaron de venir.", "जो आना बंद कर चुके हैं उन्हें एक गर्मजोशी भरा संदेश।"],
+  ["Extra confirmation for risky appointments", "Confirmação extra nos horários de risco", "Confirmación extra en las citas de riesgo", "जोखिम वाली अपॉइंटमेंट के लिए अतिरिक्त पुष्टि"],
+  ["Bookings likely to be missed get one more confirmation.", "Os horários com cara de que vão furar recebem mais uma confirmação.", "Las citas con pinta de ausencia reciben una confirmación más.", "जिन बुकिंग के छूटने की संभावना है उन्हें एक और पुष्टि मिलती है।"],
+  ["Birthdays & special dates", "Aniversários e datas especiais", "Cumpleaños y fechas especiales", "जन्मदिन और विशेष तिथियाँ"],
+  ["The right message on the day that matters.", "A mensagem certa no dia que importa.", "El mensaje correcto en el día que importa.", "जिस दिन मायने रखता है, उस दिन सही संदेश।"],
+  ["Slow-day promo", "Promoção de dia parado", "Promo de día flojo", "सुस्त दिन का प्रोमो"],
+  ["Fills quiet days with a last-minute offer.", "Enche os dias parados com uma oferta de última hora.", "Llena los días flojos con una oferta de última hora.", "खाली दिनों को अंतिम-समय के ऑफ़र से भरता है।"],
+  ["Off by default — ask us to turn it on.", "Desligada por padrão — peça pra gente ligar.", "Apagada por defecto — pídenos activarla.", "डिफ़ॉल्ट रूप से बंद — चालू करने के लिए हमें कहें।"],
+  ["Auto-collections for overdue invoices", "Cobrança automática do que está vencido", "Cobranza automática de lo vencido", "बकाया चालानों की स्वचालित वसूली"],
+  ["Chases what customers still owe you.", "Persegue o que os clientes ainda te devem.", "Persigue lo que los clientes aún te deben.", "जो ग्राहक अब भी देना है, उसका पीछा करता है।"],
+  ["You switch this one on yourself, under Finance.", "Essa você mesmo liga, dentro de Finance.", "Esta la activas tú mismo, dentro de Finance.", "इसे आप स्वयं Finance में चालू करते हैं।"],
+  // Used by the Overview "Automations" card once it is renamed to what it really is (the patch
+  // is in this wave's report — Overview.jsx belongs to another owner). Pre-translated so the
+  // rename lands in all 4 languages the moment it is applied.
+  ["🗓️ My plan (inside this cockpit)", "🗓️ Meu plano (dentro deste painel)", "🗓️ Mi plan (dentro de este panel)", "🗓️ मेरी योजना (इस कॉकपिट में)"],
+  ["Reminders you set here: Gui prepares and records them in this cockpit — they do not send anything on their own.", "Lembretes que você definiu aqui: a Gui prepara e registra neste painel — eles não enviam nada sozinhos.", "Recordatorios que definiste aquí: Gui los prepara y registra en este panel — no envían nada por sí solos.", "यहाँ आपके द्वारा तय किए गए रिमाइंडर: Gui इन्हें इस कॉकपिट में तैयार और दर्ज करती है — ये स्वयं कुछ नहीं भेजते।"],
+  ["See what runs on the server →", "Ver o que roda no servidor →", "Ver lo que corre en el servidor →", "देखें सर्वर पर क्या चलता है →"],
+  ["▶ Prepare now", "▶ Preparar agora", "▶ Preparar ahora", "▶ अभी तैयार करें"],
+];
+const EXTRA_DICTS = { pt: {}, es: {}, hi: {} };
+EXTRA_ROWS.forEach(([en, pt, es, hi]) => { EXTRA_DICTS.pt[en] = pt; EXTRA_DICTS.es[en] = es; EXTRA_DICTS.hi[en] = hi; });
+const DICT_FAILED = new Set(); // chunk didn't load (offline) → retry on the next call, don't cache the gap
 export async function loadDict(lang) {
-  if (!DICT_LOADERS[lang] || UI_DICTS[lang]) return; // en (no dict needed) or already cached
-  try { UI_DICTS[lang] = (await DICT_LOADERS[lang]()).default; } catch { /* offline → EN fallback: tr() returns the key */ }
+  if (!DICT_LOADERS[lang] || (UI_DICTS[lang] && !DICT_FAILED.has(lang))) return; // en, or already cached
+  let base = null;
+  try { base = (await DICT_LOADERS[lang]()).default || null; } catch { /* offline → EXTRA_DICTS still translate */ }
+  UI_DICTS[lang] = { ...(base || {}), ...(EXTRA_DICTS[lang] || {}) };
+  if (base) DICT_FAILED.delete(lang); else DICT_FAILED.add(lang);
 }
 // Warm the persisted language's dict the moment this module loads, so the boot
 // gate's `await loadDict(...)` usually resolves instantly — zero added boot time.
@@ -1062,16 +1229,20 @@ function addAutomation(L, rec) { const cur = loadAutomations(L); portalApi.saveS
 export function toggleAutomation(L, id) { const cur = loadAutomations(L); portalApi.saveState(autoKey(L), cur.map((a) => (a._id === id ? { ...a, on: !a.on } : a))); }
 export function removeAutomation(L, id) { portalApi.saveState(autoKey(L), loadAutomations(L).filter((a) => a._id !== id)); }
 function setAutoLastRun(L, id) { const cur = loadAutomations(L); portalApi.saveState(autoKey(L), cur.map((a) => (a._id === id ? { ...a, lastRun: Date.now() } : a))); }
-// Execute one automation: map its "what" to the real stitch (records + Impact ledger).
+// Run one PLAN entry: prepare the work inside the cockpit (records + Impact ledger).
+// HONESTY (2026-08): this touches LOCAL state only — it drafts and logs, it does not send a
+// single message. Every verb below therefore says "prepared/drafted", never "sent/chased":
+// the real sending engines are server-side (SERVER_AUTOMATIONS / functions/api/automations.js)
+// and have no on/off switch in this UI. The toast that shows these strings reads "Gui <msg>".
 export function runAutomation(V, a) {
   const s = (a.what || "").toLowerCase(); const L = V.label;
   let msg;
-  if (/overdue|chase|cobr|invoice|fatur/.test(s)) { const open = genPayments(V).filter((p) => p.status !== "Paid"); logImpact(L, `Auto · chased ${open.length} overdue invoice${open.length !== 1 ? "s" : ""}`, 0); msg = `chased ${open.length} overdue invoice${open.length !== 1 ? "s" : ""}`; }
-  else if (/review|avali/.test(s)) { (V.customers || genCustomers(V)).slice(0, 3).forEach((c) => pushCreated(L, "reviewreq", { name: c.name, ch: c.channel })); logImpact(L, "Auto · requested 3 reviews", 0); msg = "requested 3 reviews"; }
-  else if (/promo|campaign/.test(s)) { pushCreated(L, "campaigns", { name: "Auto promo", channel: "Email", sent: 0, opened: 0, revenue: 0, status: "Active" }); logImpact(L, "Auto · launched a promo", 0); msg = "launched a promo"; }
-  else if (/follow|nudge/.test(s)) { logImpact(L, "Auto · nudged warm leads", 0); msg = "nudged warm leads"; }
-  else if (/post|instagram|social/.test(s)) { logImpact(L, "Auto · scheduled a social post", 0); msg = "scheduled a social post"; }
-  else { msg = "sent you a recap"; }
+  if (/overdue|chase|cobr|invoice|fatur/.test(s)) { const open = genPayments(V).filter((p) => p.status !== "Paid"); logImpact(L, `Plan · collection list prepared (${open.length})`, 0); msg = `prepared the list of ${open.length} overdue invoice${open.length !== 1 ? "s" : ""} — nothing was sent`; }
+  else if (/review|avali/.test(s)) { (V.customers || genCustomers(V)).slice(0, 3).forEach((c) => pushCreated(L, "reviewreq", { name: c.name, ch: c.channel })); logImpact(L, "Plan · 3 review requests drafted", 0); msg = "drafted 3 review requests for you to send"; }
+  else if (/promo|campaign/.test(s)) { pushCreated(L, "campaigns", { name: "Planned promo", channel: "Email", sent: 0, opened: 0, revenue: 0, status: "Draft" }); logImpact(L, "Plan · promo drafted", 0); msg = "drafted a promo — review it before it goes out"; }
+  else if (/follow|nudge/.test(s)) { logImpact(L, "Plan · warm-lead follow-up listed", 0); msg = "listed the warm leads to follow up"; }
+  else if (/post|instagram|social/.test(s)) { logImpact(L, "Plan · social post drafted", 0); msg = "drafted a social post"; }
+  else { msg = "put together your recap"; }
   setAutoLastRun(L, a._id);
   logUsage(2, `Automation · ${a.what}`);
   return msg;
@@ -1855,7 +2026,10 @@ function guiPlan(text, V, ctx = {}) {
     else if (/(post|instagram|social)/.test(s)) { what = L("post to Instagram & Facebook", "postar no Instagram e Facebook"); ic = "📸"; }
     else { what = L("send you a recap", "te mandar um resumo"); ic = "📊"; }
     const when = day.charAt(0).toUpperCase() + day.slice(1);
-    return { cost: 3, ctx, reply: L(`Set ✓ — from now on I'll ${what} ${day}, automatically. It's on your Overview under Automations, where you can pause it anytime.`, `Pronto ✓ — de agora em diante eu vou ${what} ${day}, automaticamente. Está no seu Overview em Automações, onde você pausa quando quiser.`), next: [{ label: L("⚙️ See automations", "⚙️ Ver automações"), cmd: "open overview" }], run: (onNav) => { addAutomation(V.label, { what: what.charAt(0).toUpperCase() + what.slice(1), when, ic }); onNav?.("overview"); } };
+    // HONESTY: this creates a PLAN inside the cockpit, not a server job. It prepares the work and
+    // records it here; the sending engines that run on our servers 24/7 are a separate, read-only
+    // list ("Everything you have" tab). Promising "automatically, from now on" was the old lie.
+    return { cost: 3, ctx, reply: L(`Saved ✓ — I put "${what} ${day}" on your plan, on the Overview under Automations. Heads up, so there's no confusion: this is your plan inside this cockpit — I prepare it and log it here, I don't send it out on my own. What our servers DO send by themselves (reminders, review requests, win-backs) is listed under "Everything you have".`, `Anotado ✓ — coloquei "${what} ${day}" no seu plano, lá no Overview em Automações. Só pra não ter confusão: isso é o seu plano dentro deste painel — eu preparo e registro aqui, eu não disparo sozinha. O que os nossos servidores mandam sozinhos (lembretes, avaliações, reconquista) está na aba "Tudo que você tem".`), next: [{ label: L("⚙️ See automations", "⚙️ Ver automações"), cmd: "open overview" }], run: (onNav) => { addAutomation(V.label, { what: what.charAt(0).toUpperCase() + what.slice(1), when, ic }); onNav?.("overview"); } };
   }
   if (/(remind|chase|collect all|chase all|overdue|atrasad|cobrar todos|all unpaid)/.test(s)) { const open = genPayments(V).filter((p) => p.status !== "Paid"); return { intent: "chaseall", cost: 5, ctx, reply: L(`Done ✓ — I sent payment reminders to ${open.length} customer${open.length !== 1 ? "s" : ""} with open invoices. They're in Payments.`, `Pronto ✓ — enviei lembretes de pagamento para ${open.length} cliente${open.length !== 1 ? "s" : ""} com faturas em aberto. Estão em Pagamentos.`), next: [{ label: L("⭐ Ask them for reviews too", "⭐ Pedir avaliações também"), cmd: "request reviews from my recent customers" }], run: (onNav) => onNav?.("payments") }; }
   if (/(invoice|charge|bill|cobr|fatur|payment|receb)/.test(s)) return { intent: "invoice", cost: 5, ctx: C(target), reply: L(`Consider it handled — I've sent ${target} the invoice with a payment link, and I'll keep an eye on it until it's paid. It's in Payments.`, `Deixa comigo — enviei a fatura para ${target} com o link de pagamento, e fico de olho até ser paga. Está em Pagamentos.`), next: [{ label: L(`📅 Book ${target} too`, `📅 Agendar ${target} também`), cmd: `book them` }, { label: L("⭐ Request a review", "⭐ Pedir avaliação"), cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: target, amount: vnum(V.label, "guiinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); onNav?.("payments"); return undoer([{ view: "payments", id }], "payments"); } };
@@ -2312,12 +2486,12 @@ export default function Portal() {
     whatsapp: () => <Convos V={V} title="WhatsApp" real={real} />,
     sms: () => <Convos V={V} title="SMS" real={real} />,
     channels: () => <Channels />,
-    ads: () => <Ads />,
+    ads: () => <Ads email={me?.email} dataKey={loadDataKey()} />,
     support: () => <Support onNav={setView} email={me?.email} dataKey={loadDataKey()} />,
     trainer: () => <Trainer V={V} onNav={setView} email={me?.email} dataKey={loadDataKey()} lang={lang} />,
     kb: () => <KnowledgeBase V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     docs: () => <Docs real={real} />,
-    grow: () => <Grow />,
+    grow: () => <Grow onNav={setView} sections={sections} />,
     brain: () => <AIBrain V={V} me={me} />,
     billing: () => <Billing V={V} real={real} onNav={setView} email={me?.email} />,
     settings: () => <SettingsView V={V} real={real} me={me} />,

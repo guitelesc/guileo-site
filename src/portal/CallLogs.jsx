@@ -85,7 +85,21 @@ function CallLogs({ V, onNav, real = null, email = "", dataKey = "" }) {
             fmtDur(p.duration_secs) && [tr("Duration"), fmtDur(p.duration_secs)],
             [tr("When"), relTime(sel.created_at)],
             [tr("Channel"), sel.channel || "Phone · AI"],
-            p.success && [tr("Outcome"), p.success === "success" ? tr("Successful ✓") : p.success],
+            // ⚠️ NÃO volte a escrever "Successful ✓" aqui. Este campo vem da AUTO-AVALIAÇÃO do modelo
+            // e significa "a ligação rodou até o fim" — NÃO "o cliente conseguiu o que queria". Em
+            // 2026-08-10 medimos a frota: 13 ligações marcadas "success", 1 agendamento real. Uma
+            // delas (Kashif, Natura) era um cliente pronto que foi embora sem marcar nada — e o dono
+            // veria um ✓ verde. Métrica que mente é pior que métrica ausente: a ausente você vai
+            // atrás, a que mente você acredita.
+            p.success && [tr("Call ran to the end"), p.success === "success" ? tr("Yes") : tr("No")],
+            // O ÚNICO desfecho que sabemos com certeza hoje é dinheiro: se entrou valor, entrou.
+            // Agendamento ainda não dá para amarrar a ESTA ligação (call_logs não guarda o telefone
+            // e a ferramenta de agenda não recebe o id da conversa) — e afirmar por janela de tempo
+            // seria trocar um palpite por outro. Enquanto não houver o elo, esta linha diz a verdade:
+            // não sabemos. Ver ⏳ em MOTORES.md.
+            [tr("Confirmed result"), Number(sel.amount) > 0
+              ? `${tr("collected")} $${Number(sel.amount).toFixed(2)}`
+              : tr("not confirmed — read the summary")],
             p.end_reason && [tr("How it ended"), p.end_reason],
           ].filter(Boolean);
           return (

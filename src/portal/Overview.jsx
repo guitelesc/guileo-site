@@ -715,16 +715,29 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
         </div>
       </Card>
 
-      {/* R3 — STANDING AUTOMATIONS Gui set up */}
+      {/* R3 — O PLANO DO DONO, dentro do painel. NÃO é a automação do servidor.
+          Este bloco dizia "⚙️ Automations on autopilot" com um botão "▶ Run now" — as duas coisas
+          afirmavam que o servidor executava. Não executava: `addAutomation`/`runAutomation` gravam
+          estado local e agem sobre dados do painel; as automações DE VERDADE (lembrete 24h/2h,
+          avaliação, reconquista, cobrança…) rodam no cron, por outro caminho, e ninguém aqui as
+          liga ou desliga. Dois mundos com o mesmo nome — e um cliente pagante que desligasse aqui
+          não desligava nada lá. Auditoria 2026-08-11.
+          O conserto é de NOME e de VERBO, não de motor: aqui é PLANO, lá é execução. O link manda
+          para a aba onde as automações reais estão listadas. */}
       {automations.length > 0 && (
         <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("⚙️ Automations on autopilot")}</span><span className="text-[10px] text-g-muted">{automations.filter((a) => a.on).length} {tr("active")}</span></div>
+          <div className="px-5 py-3 border-b border-white/10 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("🗓️ My plan (inside this cockpit)")}</span>
+            <span className="text-[10px] text-g-muted">{automations.filter((a) => a.on).length} {tr("active")}</span>
+            {onNav && <button onClick={() => onNav("grow")} className="ml-auto text-[10px] font-bold text-g-green hover:text-g-light">{tr("See what runs on the server →")}</button>}
+          </div>
+          <div className="px-5 py-2 text-[11px] leading-snug text-g-muted border-b border-white/[0.06]">{tr("Reminders you set here: Gui prepares and records them in this cockpit — they do not send anything on their own.")}</div>
           <div className="divide-y divide-white/[0.05]">
             {automations.map((a) => (
               <div key={a._id} className="flex items-center gap-3 px-5 py-3">
                 <span className="text-base shrink-0">{a.ic || "⚡"}</span>
                 <div className="flex-1 min-w-0"><div className={`text-xs font-bold truncate ${a.on ? "text-g-word" : "text-g-muted line-through"}`}>{a.what}</div><div className="text-[10px] text-g-muted">{a.when}{a.lastRun ? ` ${tr("· last run")} ${new Date(a.lastRun).toLocaleDateString(UI_LANG === "pt" ? "pt-BR" : "en-US", { month: "short", day: "numeric" })}` : ` ${tr("· not run yet")}`}</div></div>
-                {a.on && <button onClick={() => runAutoNow(a)} className="text-[10px] font-bold text-g-green hover:text-g-light shrink-0 whitespace-nowrap">{tr("▶ Run now")}</button>}
+                {a.on && <button onClick={() => runAutoNow(a)} className="text-[10px] font-bold text-g-green hover:text-g-light shrink-0 whitespace-nowrap">{tr("▶ Prepare now")}</button>}
                 <Toggle on={!!a.on} onClick={() => { toggleAutomation(V.label, a._id); setAutoTick((t) => t + 1); }} />
                 <button onClick={() => { removeAutomation(V.label, a._id); setAutoTick((t) => t + 1); toast("Automation removed"); }} aria-label={tr("Remove")} className="text-g-muted hover:text-red-400 transition shrink-0"><FaTrash size={11} /></button>
               </div>

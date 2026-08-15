@@ -10,6 +10,9 @@ import OnboardWizard from "../components/OnboardWizard.jsx";
 import SellerClients from "../components/SellerClients.jsx";
 import ActivationRunbook from "../components/ActivationRunbook.jsx";
 import SellerProspect from "../components/SellerProspect.jsx";
+// A lista de NY já classificada (serviço + pitch). Motor em data/leadClassifier.js — existir sem
+// tela é o mesmo que não existir, que foi a lição da página órfã de hoje mais cedo.
+import SellerLeadsNYC from "../components/SellerLeadsNYC.jsx";
 import SellerDashboard from "../components/SellerDashboard.jsx";
 import SellerFollowup from "../components/SellerFollowup.jsx";
 import SellerSupport from "../components/SellerSupport.jsx";
@@ -1029,7 +1032,7 @@ export default function Vendedor() {
   const logout = () => { try { localStorage.removeItem(SELLER_KEY); } catch { /* ignore */ } setSeller(null); };
   // 🚨 "suporte" fica logo depois de Alvos e renderiza em VERMELHO: é a prioridade nº1 do
   // vendedor — cliente esperando resposta vem antes de prospectar (regra do Luis).
-  const NAV = [["start", t.nav.start], ["painel", t.nav.painel], ["alvos", t.nav.alvos], ["suporte", "🚨 SUPORTE"], ["followup", t.nav.followup], ["fechar", t.nav.fechar], ["demo", t.nav.demo || "🎬 Demo"], ["cards", t.nav.cards], ["quote", t.nav.quote], ["contrato", t.nav.contrato], ["financeiro", t.nav.financeiro], ["cadastro", t.nav.cadastro], ["treino", t.nav.treino], ["ativ", t.nav.ativ], ["metas", t.nav.metas], ["jogadas", t.nav.jogadas], ["academy", t.nav.academy], ["support", t.nav.support]];
+  const NAV = [["start", t.nav.start], ["painel", t.nav.painel], ["alvos", t.nav.alvos], ["nyc", "🗽 NYC"], ["suporte", "🚨 SUPORTE"], ["followup", t.nav.followup], ["fechar", t.nav.fechar], ["demo", t.nav.demo || "🎬 Demo"], ["cards", t.nav.cards], ["quote", t.nav.quote], ["contrato", t.nav.contrato], ["financeiro", t.nav.financeiro], ["cadastro", t.nav.cadastro], ["treino", t.nav.treino], ["ativ", t.nav.ativ], ["metas", t.nav.metas], ["jogadas", t.nav.jogadas], ["academy", t.nav.academy], ["support", t.nav.support]];
 
   return (
     <div className="surface-real min-h-screen text-g-ink">
@@ -1072,6 +1075,7 @@ export default function Vendedor() {
           {tab === "start" && <Start t={t} go={nav} />}
           {tab === "painel" && <SellerDashboard lang={lang} seller={seller} market={market} nav={nav} />}
           {tab === "alvos" && <SellerProspect lang={lang} seller={seller} market={market} nav={nav} />}
+          {tab === "nyc" && <SellerLeadsNYC lang={lang} />}
           {tab === "suporte" && <SellerSupport lang={lang} seller={seller} />}
           {tab === "followup" && <SellerFollowup lang={lang} seller={seller} market={market} nav={nav} handoff={handoff} />}
           {tab === "fechar" && <SellerCloser lang={lang} seller={seller} market={market} nav={nav} handoff={handoff} />}

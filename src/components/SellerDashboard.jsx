@@ -64,7 +64,16 @@ const GOAL_KEY = (email) => `guileo_seller_goal:${(email || "").toString().trim(
 function loadGoal(email) {
   try { return Math.max(0, parseInt(localStorage.getItem(GOAL_KEY(email)), 10) || 0); } catch { return 0; }
 }
-const money = (n) => `$${(Number(n) || 0).toLocaleString("en-US")}`;
+// ── "US$", NÃO "$" — a última milha de uma decisão que já estava certa (2026-08-12) ────────────
+// A decisão de NÃO converter para real já estava tomada e documentada logo abaixo: pagamento é em
+// USD, e pôr `R$` num número em dólar erraria o ganho do vendedor em ~5×. Certíssimo — é a mesma
+// regra que impede a Gui de chutar preço no telefone.
+// O que faltava era a última milha: o número saía com CIFRÃO NU. Um vendedor brasileiro lendo
+// "$1,240" não sabe se é dólar, e em português a vírgula é DECIMAL — pode ler "um e vinte e
+// quatro". Errar moeda numa landing custa uma venda; errar no CONTRACHEQUE de quem vende pra você
+// custa a confiança dele. Dizer a moeda não converte nada e mata a ambiguidade.
+const money = (n, lang = "en") =>
+  `${lang === "en" ? "$" : "US$ "}${(Number(n) || 0).toLocaleString("en-US")}`;
 
 // Big KPI tile with a colored signal dot (matches the LOCKED signal palette).
 // When `onClick` is provided (nav wired) the tile becomes an accessible button that
@@ -118,7 +127,7 @@ export default function SellerDashboard({ lang = "pt", seller, market = "us", na
   // would misprice the seller's earnings ~5×. Honesty first: one currency, the real one. (market
   // prop is still accepted for signature parity but never fakes a conversion here.)
   void market;
-  const moneyM = (n) => money(n);
+  const moneyM = (n) => money(n, lang);
   const convNote = "";
   // nav() is optional — when the orchestrator wires it, tiles become buttons; go() no-ops otherwise.
   const go = typeof nav === "function" ? (tab, payload) => nav(tab, payload) : null;

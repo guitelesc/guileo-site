@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 export const T = {
   en: {
     nav: { solutions:"Solutions", engine:"Engine", industries:"Industries", results:"Results", academy:"Academy", pricing:"Pricing", services:"Services", cta:"Get Started", cockpit:"Growth Cockpit", exp:"Experience" },
-    hero: { eyebrow:"✨ Guileo · intelligent solutions that solve whatever your business needs", h1a:"Work Smart.", h1b:"Grow Faster.", h1c:"Sleep Better.",
+    hero: { eyebrow:"✨ Guileo · intelligent solutions that solve whatever your business needs", h1a:"We bring the customers.", h1b:"The AI answers, books & sells.", h1c:"You grow.",
       sub_a:"Guileo is intelligent solutions for your business — whatever you need, we solve it: answering, booking, selling, collecting, automating and growing, across every channel, 24/7. It starts with Gui, your AI. ", sub_b:"Enter your number and Gui calls you", sub_c:" — hear it live, right now.",
       cta1:"Meet Gui — try it live →", cta2:"Talk to Gui now", b1:"📞 Gui, live now", b2:"📅 Books for you",
       method:["Performance","Sales","Growth"],
@@ -58,7 +58,7 @@ export const T = {
 // ---- Portuguese ----
 T.pt = {
   nav:{ solutions:"Soluções", engine:"Motor", industries:"Setores", results:"Resultados", academy:"Academy", pricing:"Preços", services:"Serviços", cta:"Começar", cockpit:"Growth Cockpit", exp:"Experience" },
-  hero:{ eyebrow:"✨ Guileo · soluções inteligentes que resolvem o que seu negócio precisar", h1a:"Trabalhe com Inteligência.", h1b:"Cresça Mais Rápido.", h1c:"Durma Melhor.",
+  hero:{ eyebrow:"✨ Guileo · soluções inteligentes que resolvem o que seu negócio precisar", h1a:"A gente traz os clientes.", h1b:"A AI atende, agenda e vende.", h1c:"Você cresce.",
     sub_a:"A Guileo é soluções inteligentes para o seu negócio — o que você precisar, a gente resolve: atende, agenda, vende, cobra, automatiza e faz crescer, em todos os canais, 24/7. Começa com a Gui, sua IA. ", sub_b:"Coloque seu número e a Gui te liga", sub_c:" — ouça ao vivo, agora.",
     cta1:"Conheça a Gui — teste ao vivo →", cta2:"Fale com a Gui agora", b1:"📞 Gui, ao vivo", b2:"📅 Agenda por você",
     method:["Performance","Vendas","Crescimento"],
@@ -111,7 +111,7 @@ T.pt = {
 // ---- Spanish ----
 T.es = {
   nav:{ solutions:"Soluciones", engine:"Motor", industries:"Industrias", results:"Resultados", academy:"Academy", pricing:"Precios", services:"Servicios", cta:"Empezar", cockpit:"Growth Cockpit", exp:"Experience" },
-  hero:{ eyebrow:"✨ Guileo · soluciones inteligentes que resuelven lo que tu negocio necesite", h1a:"Trabaja Inteligente.", h1b:"Crece Más Rápido.", h1c:"Duerme Mejor.",
+  hero:{ eyebrow:"✨ Guileo · soluciones inteligentes que resuelven lo que tu negocio necesite", h1a:"Nosotros traemos los clientes.", h1b:"La IA contesta, agenda y vende.", h1c:"Tú creces.",
     sub_a:"Guileo es soluciones inteligentes para tu negocio — lo que necesites, lo resolvemos: contesta, agenda, vende, cobra, automatiza y hace crecer, en cada canal, 24/7. Empieza con Gui, tu IA. ", sub_b:"Pon tu número y Gui te llama", sub_c:" — escúchalo en vivo, ahora.",
     cta1:"Conoce a Gui — pruébalo en vivo →", cta2:"Habla con Gui ahora", b1:"📞 Gui, en vivo", b2:"📅 Agenda por ti",
     method:["Rendimiento","Ventas","Crecimiento"],
@@ -164,7 +164,7 @@ T.es = {
 // ---- Hindi ----
 T.hi = {
   nav:{ solutions:"समाधान", engine:"इंजन", industries:"उद्योग", results:"परिणाम", academy:"Academy", pricing:"मूल्य", services:"सेवाएँ", cta:"शुरू करें", cockpit:"Growth Cockpit", exp:"Experience" },
-  hero:{ eyebrow:"✨ Guileo · बुद्धिमान समाधान जो आपके व्यवसाय की हर ज़रूरत हल करें", h1a:"स्मार्ट काम करें.", h1b:"तेज़ी से बढ़ें.", h1c:"चैन की नींद लें.",
+  hero:{ eyebrow:"✨ Guileo · बुद्धिमान समाधान जो आपके व्यवसाय की हर ज़रूरत हल करें", h1a:"ग्राहक हम लाते हैं।", h1b:"AI जवाब देती, बुक करती और बेचती है।", h1c:"आप बढ़ते हैं।",
     sub_a:"Guileo आपके व्यवसाय के लिए बुद्धिमान समाधान है — आपको जो भी चाहिए, हम हल करते हैं: जवाब देना, बुकिंग, बिक्री, वसूली, ऑटोमेशन और ग्रोथ, हर चैनल पर, 24/7। शुरुआत Gui से, आपकी AI। ", sub_b:"अपना नंबर डालें और Gui आपको कॉल करेगी", sub_c:" — अभी लाइव सुनिए।",
     cta1:"Gui को लाइव आज़माएँ →", cta2:"अभी Gui से बात करें", b1:"📞 Gui, लाइव", b2:"📅 आपके लिए बुकिंग",
     method:["Performance","Sales","Growth"],
@@ -315,7 +315,7 @@ const MORE = {
         ["Radar de no-show · despacho de emergência · modo tempestade","✅","❌","❌","❌"],
         ["Transforma ligações em dados de marketing","✅","❌","❌","❌"],
         ["Também cuida dos seus anúncios & conteúdo","✅","❌","❌","❌"],
-        ["Custo mensal","Fixo, baixo","$3–6k/mês","Varia","Receita perdida"],
+        ["Custo mensal","Fixo, baixo","US$3–6k/mês","Varia","Receita perdida"],
         ["No ar em","< 7 dias","Semanas pra contratar","Você que monta","—"],
         ["Fica mais inteligente todo dia","✅","❌","❌","❌"],
         ["Um parceiro pra tudo","✅","❌","❌","❌"],
@@ -355,7 +355,7 @@ const MORE = {
         ["Radar de ausencias · despacho de emergencias · modo tormenta","✅","❌","❌","❌"],
         ["Convierte llamadas en datos de marketing","✅","❌","❌","❌"],
         ["También maneja tus anuncios & contenido","✅","❌","❌","❌"],
-        ["Costo mensual","Fijo, bajo","$3–6k/mes","Varía","Ingreso perdido"],
+        ["Costo mensual","Fijo, bajo","US$3–6k/mes","Varía","Ingreso perdido"],
         ["En vivo en","< 7 días","Semanas para contratar","Lo montas tú","—"],
         ["Mejora cada día","✅","❌","❌","❌"],
         ["Un socio para todo","✅","❌","❌","❌"],
@@ -395,7 +395,7 @@ const MORE = {
         ["नो-शो रडार · इमरजेंसी डिस्पैच · तूफ़ान मोड","✅","❌","❌","❌"],
         ["कॉल को मार्केटिंग डेटा में बदलना","✅","❌","❌","❌"],
         ["आपके विज्ञापन & कंटेंट भी चलाना","✅","❌","❌","❌"],
-        ["मासिक लागत","निश्चित, कम","$3–6k/माह","अलग-अलग","खोया राजस्व"],
+        ["मासिक लागत","निश्चित, कम","US$3–6k/माह","अलग-अलग","खोया राजस्व"],
         ["लाइव","< 7 दिन","भर्ती में हफ़्ते","खुद सेटअप","—"],
         ["हर दिन और स्मार्ट","✅","❌","❌","❌"],
         ["सब कुछ के लिए एक पार्टनर","✅","❌","❌","❌"],

@@ -22,15 +22,22 @@ import { portalApi, toast } from "../lib/portalApi.js";
 import { tr, Card, Empty, SectionSkeleton, Toggle, defProfile, UI_LANG } from "../pages/Portal.jsx";
 
 // ── API seam ────────────────────────────────────────────────────────────────
+// Cada resposta carrega o PRÓPRIO veredito (`_ok`). Antes esta função devolvia `null` em
+// qualquer falha e a tela caía em lista vazia: um 401 (sessão caída) virava "Nenhum cupom
+// ainda" — a mesma família de defeito que já produziu diagnóstico falso nesta base.
 async function couponsApi(body) {
   try {
     const r = await fetch("/api/coupons", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch { return null; }
+    const d = await r.json().catch(() => ({}));
+    return { ...(d && typeof d === "object" ? d : {}), _ok: r.ok && d?.ok !== false, _status: r.status };
+  } catch (e) { return { _ok: false, _status: 0, error: String(e).slice(0, 120) }; }
 }
+
+// Dicionário local (padrão de AIAnalytics/SocialHub) — as frases novas desta revisão não
+// existem nos dicts globais, que são arquivos de outro dono.
+const t = (o) => o[UI_LANG] || o.en;
 
 // ── Coupon kinds — one place maps a kind to its short badge label + how its value reads.
 const KINDS = {
@@ -88,6 +95,7 @@ function Coupons({ V, real = null, email = "", dataKey = "" }) {
   const [coupons, setCoupons] = useState(live ? null : demoCoupons());   // null = fetch in flight
   const [form, setForm] = useState(null);            // null = form closed; object = drafting/editing
   const [saving, setSaving] = useState(false);
+  const [loadErr, setLoadErr] = useState("");        // falha de leitura ≠ lista vazia
 
   useEffect(() => {
     let alive = true;
@@ -96,7 +104,10 @@ function Coupons({ V, real = null, email = "", dataKey = "" }) {
     if (live) {
       couponsApi({ action: "list", token: dataKey, email }).then((d) => {
         if (!alive) return;
-        setCoupons(Array.isArray(d?.coupons) ? d.coupons : []);
+        if (!d._ok) { setLoadErr(t({ en: "Couldn't load your coupons — this is a connection problem, not an empty list.", pt: "Não consegui carregar seus cupons — isso é falha de conexão, não lista vazia.", es: "No pude cargar tus cupones — problema de conexión, no una lista vacía.", hi: "कूपन लोड नहीं हो सके — कनेक्शन की समस्या, खाली सूची नहीं।" })); setCoupons([]); return; }
+        // `ready:false` = SQL de cupons ainda não aplicado. Também não é "você não tem cupons".
+        if (d.ready === false) setLoadErr(d.note || t({ en: "Coupons aren't switched on for your account yet.", pt: "Os cupons ainda não foram ativados na sua conta.", es: "Los cupones aún no están activados en tu cuenta.", hi: "आपके खाते पर कूपन अभी सक्रिय नहीं हैं।" }));
+        setCoupons(Array.isArray(d.coupons) ? d.coupons : []);
       });
     }
     return () => { alive = false; };
@@ -108,11 +119,9 @@ function Coupons({ V, real = null, email = "", dataKey = "" }) {
     // Fuller/nicer copy comes back from label() when present.
     draft.label = p.label ? p.label() : p.title();
     setForm(draft);
-    if (live) {
-      // Let the backend enrich (e.g. guarantee a unique code / suggested copy) — best-effort.
-      const d = await couponsApi({ action: "quickgen", token: dataKey, email, preset: p.key });
-      if (d?.coupon) setForm((f) => (f ? { ...f, ...d.coupon, id: null } : f));
-    }
+    // (A chamada `quickgen` ao servidor foi removida: o endpoint devolve `{presets:[…]}`,
+    //  nunca um campo `coupon`, então o `if (d?.coupon)` nunca era verdadeiro — era uma ida
+    //  ao servidor que não podia mudar nada. O rascunho é local e continua idêntico.)
     toast(tr("Coupon drafted ✓ — review and save"));
   };
 
@@ -126,24 +135,34 @@ function Coupons({ V, real = null, email = "", dataKey = "" }) {
     if (live) {
       const d = await couponsApi({ action: "upsert", token: dataKey, email, coupon: rec });
       setSaving(false);
-      if (!d?.ok) { toast(tr("I couldn't save that — check your connection and try again.")); return; }
-      const saved = d.coupon || { ...rec, id: rec.id || `c-${Date.now()}`, redemptions: rec.redemptions || 0 };
+      // SUCESSO SÓ COM IDENTIFICADOR. O endpoint devolve `{ok,id}` — nunca um objeto `coupon`.
+      // A versão anterior lia `d.coupon` (sempre undefined) e caía num id LOCAL inventado
+      // (`c-1754…`). Esse id não é UUID: o `delete` do endpoint recusa com 400 "invalid id" e
+      // toda edição posterior daquele cupom criava uma linha nova no banco em vez de atualizar.
+      // O cupom parecia salvo, e o botão de apagar nunca apagava.
+      if (!d._ok || !d.id) { toast(d.note || tr("I couldn't save that — check your connection and try again.")); return; }
+      const saved = { ...rec, id: d.id, redemptions: rec.redemptions || 0 };
       setCoupons((cs) => upsertLocal(cs || [], saved));
+      setLoadErr("");
     } else {
       const saved = { ...rec, id: rec.id || `c-${Date.now()}`, redemptions: rec.redemptions || 0 };
       setCoupons((cs) => upsertLocal(cs || [], saved));
       setSaving(false);
     }
-    toast(tr("Coupon saved ✓"));
+    toast(live ? tr("Coupon saved ✓") : t({ en: "Saved in this sample screen only — connect your account to create real coupons.", pt: "Salvo só nesta tela de exemplo — conecte sua conta para criar cupons reais.", es: "Guardado solo en esta pantalla de ejemplo — conecta tu cuenta para cupones reales.", hi: "केवल इस नमूना स्क्रीन में सहेजा — असली कूपन के लिए खाता कनेक्ट करें।" }));
     setForm(null);
   };
 
+  // PAUSAR/ATIVAR: o endpoint NÃO tem uma ação `toggle` (as ações são list · upsert · delete ·
+  // validate · redeem · campaign_*). O botão mandava `action:"toggle"`, recebia 400 "unknown
+  // action" e revertia — ou seja, pausar um cupom era impossível e a única pista era um toast
+  // de erro genérico. O estado ativo faz parte do próprio cupom, então quem persiste é `upsert`.
   const toggle = async (c) => {
     const next = { ...c, active: !c.active };
     setCoupons((cs) => (cs || []).map((x) => (x.id === c.id ? next : x)));   // optimistic
     if (live) {
-      const d = await couponsApi({ action: "toggle", token: dataKey, email, id: c.id, active: next.active });
-      if (!d?.ok) { setCoupons((cs) => (cs || []).map((x) => (x.id === c.id ? c : x))); toast(tr("I couldn't save that — check your connection and try again.")); return; }
+      const d = await couponsApi({ action: "upsert", token: dataKey, email, coupon: next });
+      if (!d._ok || !d.id) { setCoupons((cs) => (cs || []).map((x) => (x.id === c.id ? c : x))); toast(d.note || tr("I couldn't save that — check your connection and try again.")); return; }
     }
     toast(next.active ? tr("Coupon activated ✓") : tr("Coupon paused"));
   };
@@ -153,7 +172,9 @@ function Coupons({ V, real = null, email = "", dataKey = "" }) {
     setCoupons((cs) => (cs || []).filter((x) => x.id !== c.id));   // optimistic
     if (live) {
       const d = await couponsApi({ action: "delete", token: dataKey, email, id: c.id });
-      if (!d?.ok) { setCoupons(prev); toast(tr("I couldn't delete that — try again.")); return; }
+      // `ok:true, deleted:false` = o banco não achou a linha DESTE tenant. Some da tela seria
+      // mentira: na próxima recarga o cupom volta. Restaura e diz.
+      if (!d._ok || d.deleted === false) { setCoupons(prev); toast(tr("I couldn't delete that — try again.")); return; }
     }
     toast(tr("Coupon deleted"));
   };
@@ -170,6 +191,26 @@ function Coupons({ V, real = null, email = "", dataKey = "" }) {
         <div className="mt-1 text-xl font-black text-g-word">{tr("Your personalized growth motor")}</div>
         <p className="mt-1 text-xs text-g-muted max-w-xl">{tr("Create coupons and promos in one click — every email goes out in YOUR brand: your logo, your color, your name.")}</p>
       </div>
+
+      {/* SELO. Sem conta conectada os cupons abaixo são exemplo e nada sai daqui: sem ele,
+          a tela ficava indistinguível da real e o compositor dizia "campanha enviada ✓". */}
+      {!live && (
+        <div className="rounded-xl2 border border-g-gold/40 bg-g-gold/10 px-4 py-3">
+          <div className="text-[11px] font-black uppercase tracking-widest text-g-gold">
+            {t({ en: "Example · not your data", pt: "Exemplo · não são seus dados", es: "Ejemplo · no son tus datos", hi: "उदाहरण · यह आपका डेटा नहीं" })}
+          </div>
+          <div className="mt-0.5 text-sm text-g-word">
+            {t({ en: "These coupons are a sample and nothing is sent from this screen. Connect your account in Settings to create real coupons and send real campaigns.", pt: "Estes cupons são exemplo e nada é enviado desta tela. Conecte sua conta em Configurações para criar cupons reais e enviar campanhas de verdade.", es: "Estos cupones son un ejemplo y nada se envía desde esta pantalla. Conecta tu cuenta en Configuración para cupones y campañas reales.", hi: "ये कूपन नमूना हैं और इस स्क्रीन से कुछ नहीं भेजा जाता। असली कूपन/अभियान के लिए सेटिंग्स में खाता कनेक्ट करें।" })}
+          </div>
+        </div>
+      )}
+
+      {/* Falha de leitura NUNCA vira "nenhum cupom". */}
+      {live && loadErr && (
+        <div className="rounded-xl2 px-4 py-3 text-[11.5px] leading-snug" style={{ color: "#E2533F", background: "#E2533F12", border: "1px solid #E2533F40" }}>
+          {loadErr}
+        </div>
+      )}
 
       {/* ── QUICK-GENERATE row ── */}
       <Card className="p-0 overflow-hidden">
@@ -313,27 +354,61 @@ function CampaignComposer({ live, dataKey, email, brandName, logoUrl, accent, br
   const [couponId, setCouponId] = useState("");
   const [audience, setAudience] = useState("todos");
   const [busy, setBusy] = useState(false);
+  const [confirm, setConfirm] = useState(false);   // segundo passo do envio real
+  const [result, setResult] = useState(null);      // recibo do último envio
 
   const attached = coupons.find((c) => c.id === couponId) || null;
   const hl = headline || tr("A little something for you");
   const bd = body || tr("We prepared an exclusive offer for our customers. Come enjoy it!");
 
+  /* ── O ENVIO ────────────────────────────────────────────────────────────────
+     TRÊS DEFEITOS CORRIGIDOS AQUI (2026-08-11):
+
+     1. "Campanha enviada ✓" SEM ENVIO. Fora do modo live o código pulava a chamada e
+        dava o mesmo toast de sucesso — um visitante (ou um cliente com a sessão caída)
+        era informado de que sua base recebeu um e-mail que nunca existiu.
+
+     2. `ok:true` NÃO É "ENVIADO". O endpoint responde `{ok:true, ready:false, sent:0}`
+        quando o gerador de e-mail branded não está no ar, `{ok:false, paused:true}` para
+        conta com pagamento pendente, e `{ok:true, audience:0, sent:0}` quando o segmento
+        não tem ninguém. A tela dizia "enviado ✓" nos três. Agora o recibo é o número:
+        quantos destinatários e quantos e-mails saíram — sem número não houve envio.
+
+     3. UM CLIQUE DISPARAVA ATÉ 500 E-MAILS, sem confirmação e sem dizer para quantos.
+        É irreversível e gasta crédito. Agora pede confirmação explícita, como o
+        ⚡ Flash Campaign já fazia na aba Campanhas. */
   const send = async (schedule) => {
-    setBusy(true);
-    const payload = {
+    if (!live) {
+      // Demonstração: diz o que é. Nunca "enviado".
+      setResult({ demo: true });
+      toast(t({ en: "Sample screen — nothing was sent. Connect your account to send for real.", pt: "Tela de exemplo — nada foi enviado. Conecte sua conta para enviar de verdade.", es: "Pantalla de ejemplo — no se envió nada. Conecta tu cuenta para enviar de verdad.", hi: "नमूना स्क्रीन — कुछ नहीं भेजा गया। असली भेजने के लिए खाता कनेक्ट करें।" }));
+      return;
+    }
+    setBusy(true); setResult(null);
+    const d = await couponsApi({
       action: schedule ? "campaign_upsert" : "campaign_send",
       token: dataKey, email,
       campaign: { kind, headline: hl, body: bd, coupon_id: couponId || null, audience },
-    };
-    if (live) {
-      const d = await couponsApi(payload);
-      setBusy(false);
-      if (!d?.ok) { toast(tr("I couldn't send that — check your connection and try again.")); return; }
-    } else {
-      setBusy(false);
+    });
+    setBusy(false); setConfirm(false);
+    if (!d._ok) {
+      toast(d.note || d.error || tr("I couldn't send that — check your connection and try again."));
+      setResult({ err: d.note || d.error || tr("I couldn't send that — check your connection and try again.") });
+      return;
     }
-    toast(schedule ? tr("Campaign scheduled ✓") : tr("Campaign sent ✓ — in your brand"));
-    setHeadline(""); setBody("");
+    if (schedule) {
+      // Honestidade: `campaign_upsert` GRAVA a campanha; ele não agenda horário nenhum
+      // (a tela não coleta data). Dizer "agendada ✓" prometeria um disparo que ninguém marcou.
+      toast(t({ en: "Saved as a draft campaign — it won't go out until you send it.", pt: "Salva como rascunho de campanha — não sai até você enviar.", es: "Guardada como borrador — no sale hasta que la envíes.", hi: "ड्राफ़्ट के रूप में सहेजी — भेजने तक बाहर नहीं जाएगी।" }));
+      setResult({ draft: true });
+      return;
+    }
+    const sent = Number(d.sent) || 0;
+    const aud = Number(d.audience) || 0;
+    setResult({ sent, audience: aud, note: d.note || "", ready: d.ready !== false });
+    if (sent > 0) { toast(`${tr("Campaign sent ✓ — in your brand")} · ${sent}`); setHeadline(""); setBody(""); }
+    else if (aud === 0) toast(t({ en: "Nobody matched that audience — nothing was sent.", pt: "Ninguém corresponde a esse público — nada foi enviado.", es: "Nadie coincide con ese público — no se envió nada.", hi: "उस ऑडियंस में कोई नहीं मिला — कुछ नहीं भेजा गया।" }));
+    else toast(d.note || t({ en: "Nothing went out — sending isn't fully switched on yet.", pt: "Nada saiu — o envio ainda não está totalmente ligado.", es: "Nada salió — el envío aún no está activado del todo.", hi: "कुछ नहीं गया — भेजना अभी पूरी तरह चालू नहीं है।" }));
   };
 
   return (
@@ -375,15 +450,50 @@ function CampaignComposer({ live, dataKey, email, brandName, logoUrl, accent, br
             </Field>
           </div>
           <div className="flex items-center gap-2 pt-1">
-            <button onClick={() => send(false)} disabled={busy}
+            <button onClick={() => (live ? setConfirm(true) : send(false))} disabled={busy}
               className="rounded-full bg-[#FF8A33] px-4 py-2 text-[12px] font-black text-[#161512] hover:brightness-110 transition disabled:opacity-50 inline-flex items-center gap-1.5">
               <FaPaperPlane size={11} /> {tr("Send now")}
             </button>
             <button onClick={() => send(true)} disabled={busy}
               className="rounded-full border border-white/15 px-4 py-2 text-[12px] font-bold text-g-muted hover:text-g-word transition inline-flex items-center gap-1.5">
-              <FaRegClock size={11} /> {tr("Schedule")}
+              <FaRegClock size={11} /> {live ? t({ en: "Save as draft", pt: "Salvar rascunho", es: "Guardar borrador", hi: "ड्राफ़्ट सहेजें" }) : tr("Schedule")}
             </button>
           </div>
+
+          {/* CONFIRMAÇÃO: e-mail em massa é irreversível e gasta crédito. */}
+          {confirm && (
+            <div className="rounded-lg p-3 space-y-2" style={{ background: "#E2533F14", border: "1px solid #E2533F44" }}>
+              <div className="text-[12px] font-bold" style={{ color: "#E2533F" }}>
+                ⚠️ {t({ en: "This sends a REAL email, in your brand, to everyone in", pt: "Isto envia um e-mail REAL, na sua marca, para todo mundo em", es: "Esto envía un correo REAL, en tu marca, a todos en", hi: "यह आपकी ब्रांडिंग में एक असली ईमेल भेजता है —" })} “{(AUDIENCES.find((a) => a.key === audience) || AUDIENCES[0]).title()}”. {t({ en: "It can't be undone and it spends credits.", pt: "Não dá para desfazer e gasta créditos.", es: "No se puede deshacer y gasta créditos.", hi: "इसे पूर्ववत नहीं किया जा सकता और क्रेडिट खर्च होते हैं।" })}
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => send(false)} disabled={busy}
+                  className="rounded-full bg-[#FF8A33] px-4 py-2 text-[12px] font-black text-[#161512] disabled:opacity-50">
+                  {busy ? tr("Sending…") : t({ en: "Yes — send it now", pt: "Sim — enviar agora", es: "Sí — enviar ahora", hi: "हाँ — अभी भेजें" })}
+                </button>
+                <button onClick={() => setConfirm(false)} className="rounded-full border border-white/15 px-4 py-2 text-[12px] font-bold text-g-muted">{tr("Cancel")}</button>
+              </div>
+            </div>
+          )}
+
+          {/* O RECIBO: quantos receberam. "Enviado" sem número é promessa sem lastro. */}
+          {result && !result.demo && (
+            <div className="rounded-lg px-3 py-2 text-[11.5px] leading-snug"
+              style={result.err || result.sent === 0
+                ? { background: "#C8A24A14", border: "1px solid #C8A24A44", color: "#C8A24A" }
+                : { background: "#3E946814", border: "1px solid #3E946844", color: "#3E9468" }}>
+              {result.err ? result.err
+                : result.draft ? t({ en: "Saved as a draft — nothing has been sent.", pt: "Salva como rascunho — nada foi enviado.", es: "Guardada como borrador — no se envió nada.", hi: "ड्राफ़्ट सहेजा — कुछ नहीं भेजा गया।" })
+                : result.sent > 0 ? `✓ ${result.sent} / ${result.audience} ${t({ en: "emails sent", pt: "e-mails enviados", es: "correos enviados", hi: "ईमेल भेजे गए" })}`
+                : result.audience === 0 ? t({ en: "0 recipients matched — nothing was sent.", pt: "0 destinatários no público — nada foi enviado.", es: "0 destinatarios — no se envió nada.", hi: "0 प्राप्तकर्ता — कुछ नहीं भेजा गया।" })
+                : (result.note || t({ en: "Nothing went out.", pt: "Nada saiu.", es: "Nada salió.", hi: "कुछ नहीं गया।" }))}
+            </div>
+          )}
+          {result?.demo && (
+            <div className="rounded-lg px-3 py-2 text-[11.5px]" style={{ background: "#C8A24A14", border: "1px solid #C8A24A44", color: "#C8A24A" }}>
+              {t({ en: "Sample screen — no email left this device.", pt: "Tela de exemplo — nenhum e-mail saiu daqui.", es: "Pantalla de ejemplo — ningún correo salió.", hi: "नमूना स्क्रीन — कोई ईमेल नहीं गया।" })}
+            </div>
+          )}
         </div>
 
         {/* right: LIVE branded email preview — the client's OWN identity */}

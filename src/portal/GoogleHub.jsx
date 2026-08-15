@@ -17,12 +17,14 @@ import { genReviews, Card, Empty, SectionSkeleton, UI_LANG } from "../pages/Port
 // ── local 4-language copy (self-contained; keeps dict files untouched) ──
 const t = (o) => o[UI_LANG] || o.en;
 
+// Cada resposta traz o próprio veredito (`_ok`): um 401/500 NUNCA pode virar
+// "não conectado", que é uma afirmação sobre a conta do cliente que não foi verificada.
 async function apiPost(url, body) {
   try {
     const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch { return null; }
+    const d = await r.json().catch(() => ({}));
+    return { ...(d && typeof d === "object" ? d : {}), _ok: r.ok && d?.ok !== false };
+  } catch { return { _ok: false }; }
 }
 
 // Chip: connected / pending-API / disconnected — honest signal colors.
@@ -31,6 +33,9 @@ function StatusChip({ state }) {
     live: ["#3E9468", t({ en: "Connected · Gui is answering", pt: "Conectado · a Gui responde", es: "Conectado · Gui responde", hi: "कनेक्टेड · Gui जवाब देती है" })],
     pending: ["#FFC23D", t({ en: "Connected · waiting for Google API approval", pt: "Conectado · aguardando aprovação da API do Google", es: "Conectado · esperando aprobación de la API de Google", hi: "कनेक्टेड · Google API स्वीकृति का इंतज़ार" })],
     off: ["#9A8F82", t({ en: "Not connected yet", pt: "Ainda não conectado", es: "Aún no conectado", hi: "अभी कनेक्ट नहीं" })],
+    // O terceiro estado. Sem ele, "não consegui perguntar" era exibido como "não conectado" —
+    // e um problema nosso virava uma afirmação sobre a conta do cliente.
+    unknown: ["#E2533F", t({ en: "Couldn't check right now", pt: "Não deu para verificar agora", es: "No se pudo verificar ahora", hi: "अभी जाँच नहीं हो सकी" })],
   };
   const [c, label] = map[state] || map.off;
   return (
@@ -61,15 +66,16 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
         apiPost("/api/google-ads", { action: "status", email, token: dataKey }),
       ]);
       if (!alive) return;
-      const connected = !!st?.connected;
-      const apiReady = !!st?.ready;
+      const statusErr = !st._ok;
+      const connected = !statusErr && !!st.connected;
+      const apiReady = !statusErr && !!st.ready;
       let reviews = [];
       if (connected && apiReady) {
         const rv = await apiPost("/api/google-business", { action: "list_reviews", email, token: dataKey });
         if (Array.isArray(rv?.reviews)) reviews = rv.reviews;
       }
       if (!alive) return;
-      setGb({ connected, apiReady, reviews });
+      setGb({ connected, apiReady, reviews, statusErr });
       // Hydrate the real ad request (if the team already has one on file) — honest server truth.
       const rows = Array.isArray(adSt?.requests) ? adSt.requests : [];
       if (rows.length) {
@@ -96,18 +102,33 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
     }
   };
 
+  /* ── O PEDIDO DE ANÚNCIOS ───────────────────────────────────────────────────
+     O DEFEITO (corrigido 2026-08-11): o pedido era marcado como `status:"requested"`
+     e gravado ANTES do POST. Se o POST falhasse, o toast dizia "Salvo — vamos reenviar
+     em instantes" — e NÃO EXISTE reenvio nenhum: o registro morava no localStorage do
+     navegador e nunca mais era tentado. Pior: com `adReq` preenchido, o cartão passava a
+     exibir em verde "Pedido recebido — a equipe Guileo está cuidando" e o botão "Quero
+     anúncios" sumia PARA SEMPRE. O cliente que quer gastar dinheiro conosco acreditava
+     ter pedido, a equipe nunca soube, e ele não tinha como tentar de novo.
+     Agora o estado tem três valores: enviado ao servidor · não enviado (com botão de
+     tentar de novo) · demonstração. */
   const submitAd = async () => {
-    const rec = { ...form, at: Date.now(), status: "requested" };
-    setAdReq(rec); portalApi.saveState(key, rec); setShowForm(false);
-    // HONESTY: only claim "Request sent ✓" after the backend confirms in real mode; the intent is saved
-    // locally either way, but we don't tell the owner it reached us if the POST failed.
-    if (real && email && dataKey) {
-      const d = await apiPost("/api/google-ads", { action: "request", email, token: dataKey, ...form });
-      toast(d?.ok
-        ? t({ en: "Request sent ✓ — the Guileo team takes it from here.", pt: "Pedido enviado ✓ — a equipe Guileo assume daqui.", es: "Solicitud enviada ✓ — el equipo Guileo se encarga.", hi: "अनुरोध भेजा ✓ — Guileo टीम संभालेगी।" })
-        : t({ en: "Saved — we'll retry sending it shortly.", pt: "Salvo — vamos reenviar em instantes.", es: "Guardado — lo reenviaremos en breve.", hi: "सहेजा — हम इसे शीघ्र पुनः भेजेंगे।" }));
-    } else {
+    if (!(real && email && dataKey)) {
+      setAdReq({ ...form, at: Date.now(), status: "demo" }); setShowForm(false);
+      toast(t({ en: "Sample screen — this request wasn't sent. Connect your account to reach the team.", pt: "Tela de exemplo — este pedido não foi enviado. Conecte sua conta para falar com a equipe.", es: "Pantalla de ejemplo — esta solicitud no se envió. Conecta tu cuenta para llegar al equipo.", hi: "नमूना स्क्रीन — यह अनुरोध नहीं भेजा गया। टीम तक पहुँचने के लिए खाता कनेक्ट करें।" }));
+      return;
+    }
+    setShowForm(false);
+    const d = await apiPost("/api/google-ads", { action: "request", email, token: dataKey, ...form });
+    if (d._ok) {
+      const rec = { ...form, at: Date.now(), status: "requested" };
+      setAdReq(rec); portalApi.saveState(key, rec);
       toast(t({ en: "Request sent ✓ — the Guileo team takes it from here.", pt: "Pedido enviado ✓ — a equipe Guileo assume daqui.", es: "Solicitud enviada ✓ — el equipo Guileo se encarga.", hi: "अनुरोध भेजा ✓ — Guileo टीम संभालेगी।" }));
+    } else {
+      // NÃO grava como "recebido". Guarda o rascunho para o cliente não redigitar e mostra
+      // exatamente o que aconteceu, com um caminho de volta.
+      setAdReq({ ...form, at: Date.now(), status: "unsent" });
+      toast(t({ en: "It didn't reach us — nothing was requested. Tap “Try again”.", pt: "Não chegou até nós — nenhum pedido foi feito. Toque em “Tentar de novo”.", es: "No nos llegó — no se hizo ninguna solicitud. Toca “Intentar de nuevo”.", hi: "यह हम तक नहीं पहुँचा — कोई अनुरोध दर्ज नहीं हुआ। “फिर आज़माएँ” दबाएँ।" }));
     }
   };
 
@@ -116,7 +137,8 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
 
   const connected = demo ? true : gb.connected;
   const apiReady = demo ? true : gb.apiReady;
-  const state = connected ? (apiReady ? "live" : "pending") : "off";
+  const unverified = !demo && !!gb.statusErr;
+  const state = unverified ? "unknown" : connected ? (apiReady ? "live" : "pending") : "off";
   const bizName = t({ en: "Your business", pt: "Seu negócio", es: "Tu negocio", hi: "आपका व्यवसाय" });
 
   // Reviews: demo = rich per-sector sample; real = only what the API returned (honest empty otherwise).
@@ -124,12 +146,16 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
   const reviews = demo ? demoReviews.map((r) => ({ name: r.name, stars: r.stars, text: r.text, replied: r.stars >= 4 })) : (gb.reviews || []);
 
   // SEO checklist — the three levers that actually rank a local profile.
+  // TRÊS ESTADOS por item: feito · não feito · NÃO DEU PARA VERIFICAR. "Posts novos toda
+  // semana" nunca teve fonte de dado — em modo real ficava eternamente com ○, dizendo ao
+  // cliente que ele não posta quando a verdade é que a plataforma não consegue olhar.
   const seo = [
-    { k: "profile", label: t({ en: "Complete profile (hours, photos, services)", pt: "Perfil completo (horário, fotos, serviços)", es: "Perfil completo (horario, fotos, servicios)", hi: "पूरी प्रोफ़ाइल (समय, फ़ोटो, सेवाएँ)" }), done: connected, weight: t({ en: "Foundation", pt: "Base", es: "Base", hi: "आधार" }) },
-    { k: "reviews", label: t({ en: "Reviews answered (Gui replies for you)", pt: "Avaliações respondidas (a Gui responde por você)", es: "Reseñas respondidas (Gui responde por ti)", hi: "समीक्षाओं के जवाब (Gui देती है)" }), done: connected && apiReady, weight: t({ en: "Biggest lever", pt: "Maior alavanca", es: "Mayor palanca", hi: "सबसे बड़ा" }) },
-    { k: "posts", label: t({ en: "Fresh posts every week", pt: "Posts novos toda semana", es: "Publicaciones nuevas cada semana", hi: "हर हफ़्ते नई पोस्ट" }), done: demo, weight: t({ en: "Keeps you visible", pt: "Mantém você visível", es: "Te mantiene visible", hi: "दृश्यता बनाए रखे" }) },
+    { k: "profile", label: t({ en: "Complete profile (hours, photos, services)", pt: "Perfil completo (horário, fotos, serviços)", es: "Perfil completo (horario, fotos, servicios)", hi: "पूरी प्रोफ़ाइल (समय, फ़ोटो, सेवाएँ)" }), done: connected, unknown: unverified, weight: t({ en: "Foundation", pt: "Base", es: "Base", hi: "आधार" }) },
+    { k: "reviews", label: t({ en: "Reviews answered (Gui replies for you)", pt: "Avaliações respondidas (a Gui responde por você)", es: "Reseñas respondidas (Gui responde por ti)", hi: "समीक्षाओं के जवाब (Gui देती है)" }), done: connected && apiReady, unknown: unverified, weight: t({ en: "Biggest lever", pt: "Maior alavanca", es: "Mayor palanca", hi: "सबसे बड़ा" }) },
+    { k: "posts", label: t({ en: "Fresh posts every week", pt: "Posts novos toda semana", es: "Publicaciones nuevas cada semana", hi: "हर हफ़्ते नई पोस्ट" }), done: demo, unknown: !demo, weight: t({ en: "Keeps you visible", pt: "Mantém você visível", es: "Te mantiene visible", hi: "दृश्यता बनाए रखे" }) },
   ];
-  const seoDone = seo.filter((s) => s.done).length;
+  const seoKnown = seo.filter((s) => !s.unknown);
+  const seoDone = seoKnown.filter((s) => s.done).length;
 
   return (
     <div className="space-y-4 stagger">
@@ -148,6 +174,15 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
       {demo && (
         <div className="rounded-xl2 border border-g-gold/30 bg-g-gold/[0.07] px-4 py-2.5 text-[11px] font-bold text-g-gold">
           {t({ en: "Sample preview — connect your account to manage your real Google profile.", pt: "Prévia de exemplo — conecte sua conta para gerir seu Perfil do Google real.", es: "Vista previa — conecta tu cuenta para gestionar tu Perfil de Google real.", hi: "नमूना पूर्वावलोकन — असली प्रोफ़ाइल के लिए खाता कनेक्ट करें।" })}
+        </div>
+      )}
+
+      {/* A verificação não respondeu. Isso é problema NOSSO — e é dito assim, em vez de
+          virar "você não conectou seu Google", que seria uma acusação sem prova. */}
+      {unverified && (
+        <div className="rounded-xl2 px-4 py-3 text-[11.5px] leading-snug" style={{ color: "#E2533F", background: "#E2533F12", border: "1px solid #E2533F40" }}>
+          <span className="font-black">{t({ en: "Couldn't check your Google connection.", pt: "Não consegui verificar sua conexão com o Google.", es: "No pude verificar tu conexión con Google.", hi: "आपका Google कनेक्शन जाँच नहीं सका।" })}</span>{" "}
+          {t({ en: "This is a connection problem on our side — nothing below states anything about your account. Reload in a moment.", pt: "Isso é falha de conexão do nosso lado — nada abaixo afirma nada sobre sua conta. Recarregue em instantes.", es: "Es un problema de conexión de nuestro lado — nada de abajo afirma nada sobre tu cuenta. Recarga en un momento.", hi: "यह हमारी ओर की समस्या है — नीचे कुछ भी आपके खाते के बारे में दावा नहीं करता। थोड़ी देर में फिर लोड करें।" })}
         </div>
       )}
 
@@ -211,14 +246,20 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
       <Card>
         <div className="flex items-center justify-between gap-2 mb-3">
           <span className="text-xs font-bold uppercase tracking-wide flex items-center gap-2" style={{ color: "#3E9468" }}><FaChartLine size={11} /> {t({ en: "Local SEO", pt: "SEO local", es: "SEO local", hi: "लोकल SEO" })}</span>
-          <span className="text-[11px] font-black num text-g-muted">{seoDone}/{seo.length}</span>
+          <span className="text-[11px] font-black num text-g-muted">{seoDone}/{seoKnown.length}</span>
         </div>
         <p className="text-[11px] text-g-muted mb-3 leading-snug">{t({ en: "What lifts you in \"near me\" searches:", pt: "O que te faz subir nas buscas \"perto de mim\":", es: "Lo que te sube en búsquedas \"cerca de mí\":", hi: "\"मेरे पास\" खोज में ऊपर आने के लिए:" })}</p>
         <div className="space-y-2">
           {seo.map((s) => (
             <div key={s.k} className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-black/15 px-3 py-2.5">
-              <span className="grid place-items-center h-6 w-6 rounded-full shrink-0 text-[11px]" style={{ background: s.done ? "#3E946822" : "#9A8F8218", color: s.done ? "#3E9468" : "#9A8F82" }}>{s.done ? "✓" : "○"}</span>
-              <div className="flex-1 min-w-0"><div className={`text-xs font-bold ${s.done ? "text-g-word" : "text-g-light"}`}>{s.label}</div></div>
+              <span className="grid place-items-center h-6 w-6 rounded-full shrink-0 text-[11px]"
+                style={s.unknown ? { background: "#C8A24A1F", color: "#C8A24A" } : { background: s.done ? "#3E946822" : "#9A8F8218", color: s.done ? "#3E9468" : "#9A8F82" }}>
+                {s.unknown ? "?" : s.done ? "✓" : "○"}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className={`text-xs font-bold ${s.done && !s.unknown ? "text-g-word" : "text-g-light"}`}>{s.label}</div>
+                {s.unknown && <div className="text-[10px] mt-0.5" style={{ color: "#C8A24A" }}>{t({ en: "we can't check this one yet — not counted either way", pt: "ainda não conseguimos verificar este — não conta nem a favor nem contra", es: "aún no podemos verificar este — no cuenta en ningún sentido", hi: "इसे अभी जाँच नहीं सकते — किसी भी ओर नहीं गिना गया" })}</div>}
+              </div>
               <span className="text-[9px] font-black uppercase tracking-wide text-g-muted shrink-0">{s.weight}</span>
             </div>
           ))}
@@ -238,12 +279,30 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
               <div className="text-[11px] text-g-muted leading-snug mt-0.5 max-w-md">{t({ en: "Show up at the top when someone searches for your service nearby. Done-for-you — managed by the Guileo team, no dashboards to learn.", pt: "Apareça no topo quando alguém buscar seu serviço por perto. Feito pra você — gestão pela equipe Guileo, sem painel pra aprender.", es: "Aparece arriba cuando buscan tu servicio cerca. Hecho por ti — gestión del equipo Guileo, sin paneles.", hi: "जब कोई पास में आपकी सेवा खोजे, ऊपर दिखें। पूरी तरह किया-कराया — Guileo टीम द्वारा प्रबंधित।" })}</div>
             </div>
           </div>
-          {!adReq && !showForm && (
-            <button onClick={() => setShowForm(true)} className="btn-bright text-sm shrink-0">{t({ en: "I want ads", pt: "Quero anúncios", es: "Quiero anuncios", hi: "मुझे विज्ञापन चाहिए" })}</button>
+          {(!adReq || adReq.status === "unsent") && !showForm && (
+            <button onClick={() => { setForm({ goal: adReq?.goal || "calls", budget: adReq?.budget || "", area: adReq?.area || "" }); setShowForm(true); }} className="btn-bright text-sm shrink-0">
+              {adReq?.status === "unsent"
+                ? t({ en: "Try again", pt: "Tentar de novo", es: "Intentar de nuevo", hi: "फिर आज़माएँ" })
+                : t({ en: "I want ads", pt: "Quero anúncios", es: "Quiero anuncios", hi: "मुझे विज्ञापन चाहिए" })}
+            </button>
           )}
         </div>
 
-        {adReq && (
+        {/* Pedido que NÃO chegou não pode aparecer em verde como "recebido". */}
+        {adReq?.status === "unsent" && (
+          <div className="mt-3 rounded-xl px-3 py-2.5 text-[11.5px] leading-snug" style={{ color: "#E2533F", background: "#E2533F12", border: "1px solid #E2533F40" }}>
+            <span className="font-black">{t({ en: "Not sent.", pt: "Não enviado.", es: "No enviado.", hi: "नहीं भेजा गया।" })}</span>{" "}
+            {t({ en: "Your answers are kept here so you don't retype them, but the team has NOT received this request. Tap “Try again”.", pt: "Suas respostas ficaram salvas aqui para você não redigitar, mas a equipe NÃO recebeu este pedido. Toque em “Tentar de novo”.", es: "Tus respuestas quedaron guardadas aquí, pero el equipo NO recibió esta solicitud. Toca “Intentar de nuevo”.", hi: "आपके उत्तर यहाँ सहेजे हैं, पर टीम को यह अनुरोध नहीं मिला। “फिर आज़माएँ” दबाएँ।" })}
+          </div>
+        )}
+
+        {adReq?.status === "demo" && (
+          <div className="mt-3 rounded-xl px-3 py-2.5 text-[11.5px] leading-snug" style={{ color: "#C8A24A", background: "#C8A24A12", border: "1px solid #C8A24A40" }}>
+            {t({ en: "Sample screen — this request wasn't sent to anyone.", pt: "Tela de exemplo — este pedido não foi enviado a ninguém.", es: "Pantalla de ejemplo — esta solicitud no se envió a nadie.", hi: "नमूना स्क्रीन — यह अनुरोध किसी को नहीं भेजा गया।" })}
+          </div>
+        )}
+
+        {adReq?.status === "requested" && (
           <div className="mt-3 rounded-xl border border-g-green/25 bg-g-green/[0.06] px-3 py-2.5">
             <div className="flex items-center gap-2 text-[11px] font-black text-g-green"><FaArrowRotateRight size={10} /> {t({ en: "Request received — the Guileo team is on it", pt: "Pedido recebido — a equipe Guileo está cuidando", es: "Solicitud recibida — el equipo Guileo se encarga", hi: "अनुरोध मिला — Guileo टीम काम पर है" })}</div>
             <div className="mt-1 text-[10.5px] text-g-muted leading-snug">
@@ -255,7 +314,7 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
           </div>
         )}
 
-        {showForm && !adReq && (
+        {showForm && adReq?.status !== "requested" && (
           <div className="mt-3 space-y-2.5 rounded-xl border border-white/10 bg-black/20 p-3">
             <label className="block text-[10px] font-black uppercase tracking-wide text-g-muted">{t({ en: "What do you want more of?", pt: "Você quer mais o quê?", es: "¿Qué quieres más?", hi: "आपको क्या ज़्यादा चाहिए?" })}
               <select value={form.goal} onChange={(e) => setForm({ ...form, goal: e.target.value })} className="mt-1 w-full rounded-lg bg-white/[0.04] border border-white/10 px-2.5 py-2 text-sm text-g-word">

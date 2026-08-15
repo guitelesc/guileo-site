@@ -127,6 +127,31 @@ export default function MeuSite({ V, email, dataKey }) {
             Quem preencher o formulário do site vira lead na hora, e a Gui liga de volta em ~1 minuto.
           </p>
         )}
+
+        {/* O DONO PRECISA SABER QUE GANHOU UM APP. O site publicado é instalável na tela inicial
+            do celular do cliente final — ícone e nome DELE, sem loja de aplicativos. Sem este
+            bloco, o recurso existe e ninguém usa: é a mesma classe de "motor sem chamador" que
+            esta onda passou a noite caçando. O ícone mostrado é o mesmo que o celular instala,
+            servido por /site/icon/<slug>-192.png — se aparecer aqui, é porque funciona. */}
+        {published ? (
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,.08)", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <img src={`/site/icon/${slugify(form.slug)}-192.png`} alt="" width="44" height="44" style={{ borderRadius: 10, flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontWeight: 600, marginBottom: 2 }}>Seu site também é um app</div>
+              <p style={{ color: V?.dim || "#9a958a", fontSize: ".85rem", margin: 0 }}>
+                Seus clientes instalam esse endereço na tela inicial do celular — com o seu ícone e o seu nome, sem loja de aplicativos. Mande o link que o convite aparece sozinho.
+              </p>
+            </div>
+            <button
+              type="button"
+              style={L.btnGhost || L.btn2 || { padding: "8px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,.14)", background: "transparent", color: "inherit", cursor: "pointer" }}
+              onClick={() => {
+                if (navigator.share) navigator.share({ title: form.headline || "Nosso app", url }).catch(() => {});
+                else navigator.clipboard?.writeText(url);
+              }}
+            >Compartilhar</button>
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -21,6 +21,11 @@ const stageOf = (status) => {
   return hit ? hit.key : "outros";
 };
 
+// Moeda SEMPRE explícita neste painel (2026-08-12). Ver a nota longa em SellerDashboard.jsx: o
+// valor é USD de verdade e NÃO se converte; o que estava faltando era dizer isso. Aqui o público é
+// o dono e o admin — quem decide quanto pagar a quem — então a ambiguidade custa ainda mais caro.
+const usd = (n) => `US$ ${(Number(n) || 0).toLocaleString("en-US")}`;
+
 export default function SellerManager({ token }) {
   const [rows, setRows] = useState(null); // null=loading, []=empty
   const [err, setErr] = useState("");
@@ -244,7 +249,7 @@ export default function SellerManager({ token }) {
                     </td>
                     <td className="px-1.5 py-1.5 text-right text-g-ink">{v.wallet}</td>
                     <td className="px-1.5 py-1.5 text-right text-g-ink">{v.paying}</td>
-                    <td className="px-1.5 py-1.5 text-right font-black" style={{ color: i === 0 ? GUI : OK }}>${Number(v.commission).toLocaleString("en-US")}</td>
+                    <td className="px-1.5 py-1.5 text-right font-black" style={{ color: i === 0 ? GUI : OK }}>{usd(v.commission)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -376,7 +381,7 @@ export default function SellerManager({ token }) {
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-g-ink">
                   {s.personal_code && <span className="inline-flex items-center gap-1">🔑 <CodePill code={s.personal_code} tag={s.email} /></span>}
                   <span className="text-g-muted">🎯 {conv ? conv.converted : 0} conv.</span>
-                  {conv && Number(conv.paid) > 0 && <span style={{ color: OK }}>💰 ${(Number(conv.paid)).toLocaleString("en-US")}</span>}
+                  {conv && Number(conv.paid) > 0 && <span style={{ color: OK }}>💰 {usd(conv.paid)}</span>}
                   <a href={waLink(s)} target="_blank" rel="noopener" className="text-g-muted hover:text-g-word">💬 boas-vindas</a>
                   {(() => {
                     const st = invited[s.email] || "";
@@ -402,8 +407,8 @@ export default function SellerManager({ token }) {
                       <>
                         <div className="flex flex-wrap gap-2">
                           {[
-                            ["💸 A pagar (comissão)", `$${Number(pass.ledger?.totals?.commission || 0).toLocaleString("en-US")}`, GUI],
-                            ["💰 Clientes pagaram", `$${Number(pass.ledger?.totals?.paid || 0).toLocaleString("en-US")}`, OK],
+                            ["💸 A pagar (comissão)", usd(pass.ledger?.totals?.commission || 0), GUI],
+                            ["💰 Clientes pagaram", usd(pass.ledger?.totals?.paid || 0), OK],
                             ["🤝 Pagantes", String(pass.ledger?.totals?.clients || 0), "#5B9BD5"],
                           ].map(([l, v, c]) => (
                             <div key={l} className="min-w-0 flex-1 rounded-lg border border-g-line bg-white/[0.03] px-2.5 py-1.5">
@@ -417,8 +422,8 @@ export default function SellerManager({ token }) {
                             {pass.ledger.ledger.slice(0, 8).map((l, i) => (
                               <div key={i} className="flex flex-wrap items-center gap-x-2.5 rounded-lg border border-g-line bg-white/[0.02] px-2.5 py-1.5 text-[11.5px]">
                                 <span className="min-w-0 flex-1 truncate font-semibold text-g-word">{l.business || l.client_email}</span>
-                                <span className="text-g-muted">${Number(l.paid).toLocaleString("en-US")}</span>
-                                <span className="font-black" style={{ color: GUI }}>→ ${Number(l.commission).toLocaleString("en-US")}</span>
+                                <span className="text-g-muted">{usd(l.paid)}</span>
+                                <span className="font-black" style={{ color: GUI }}>→ {usd(l.commission)}</span>
                               </div>
                             ))}
                           </div>
