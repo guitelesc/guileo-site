@@ -20,12 +20,14 @@ import { Card, Empty, SectionSkeleton, UI_LANG, genInbox } from "../pages/Portal
 // ── local 4-language copy (self-contained; leaves the shared dicts untouched) ──
 const t = (o) => o[UI_LANG] || o.en;
 
+// Every network answer carries its OWN verdict (_ok/_status): an HTTP error must NEVER be able to
+// look like "zero drafts". Callers read _ok before treating the payload as data.
 async function apiPost(url, body) {
   try {
     const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch { return null; }
+    const d = await r.json().catch(() => ({}));
+    return { ...(d && typeof d === "object" ? d : {}), _ok: r.ok && d?.ok !== false, _status: r.status };
+  } catch (e) { return { _ok: false, _status: 0, error: String(e).slice(0, 120) }; }
 }
 
 // The three Meta surfaces the one Gui works across. Brand colors are the networks' own.
@@ -42,6 +44,9 @@ function StatusChip({ state }) {
     live: ["#3E9468", t({ en: "Connected · Gui is replying", pt: "Conectado · a Gui responde", es: "Conectado · Gui responde", hi: "कनेक्टेड · Gui जवाब देती है" })],
     pending: ["#FFC23D", t({ en: "Linked · waiting for Meta app approval", pt: "Conectado · aguardando aprovação do app Meta", es: "Conectado · esperando aprobación de la app de Meta", hi: "कनेक्टेड · Meta ऐप स्वीकृति का इंतज़ार" })],
     off: ["#9A8F82", t({ en: "Not connected yet", pt: "Ainda não conectado", es: "Aún no conectado", hi: "अभी कनेक्ट नहीं" })],
+    // We genuinely can't see this one from here (WhatsApp lives in the WhatsApp Cloud engine).
+    // Claiming "not connected" would be a guess — so the chip says exactly that.
+    unknown: ["#9A8F82", t({ en: "Checked by our team", pt: "Verificado pela nossa equipe", es: "Verificado por nuestro equipo", hi: "हमारी टीम द्वारा जाँचा जाता है" })],
   };
   const [c, label] = map[state] || map.off;
   return (
@@ -74,10 +79,12 @@ function SocialHub({ V, real = null, email = "", dataKey = "" }) {
         apiPost("/api/inbox", { action: "threads", email, token: dataKey, limit: 60 }),
       ]);
       if (!alive) return;
-      const netState = (st && st.nets) || {};
-      const appReady = !!(st && st.ready);
+      // The status call either ANSWERED or FAILED — a failure is an error state, never an empty one.
+      const stOk = !!st?._ok;
+      const netState = (stOk && st.nets) || {};
+      const appReady = stOk && !!st.ready;
       // Social messages = the inbox threads whose channel is a Meta surface (untrusted content, rendered as data).
-      const threads = Array.isArray(inbox?.threads) ? inbox.threads : [];
+      const threads = inbox?._ok && Array.isArray(inbox.threads) ? inbox.threads : [];
       const msgs = threads
         .map((th) => {
           const channel = th.channel || th.chan || "";
@@ -93,39 +100,79 @@ function SocialHub({ V, real = null, email = "", dataKey = "" }) {
         })
         .filter(Boolean)
         .slice(0, 12);
-      const drafts = Array.isArray(st?.drafts) ? st.drafts : [];
-      setS({ appReady, nets: netState, mode: st?.mode || mode, msgs, drafts });
-      if (st?.mode && st.mode !== mode) { setMode(st.mode); portalApi.saveState(modeKey, st.mode); }
+      // Server rows are {id, channel, content}; the card renders {id, net, text}. Normalize HERE so
+      // a real draft never renders blank (and demo rows, already in card shape, pass through).
+      const drafts = (stOk && Array.isArray(st.drafts) ? st.drafts : []).map((d) => ({
+        id: d.id, net: d.net || d.channel || "instagram", text: d.text || d.content || "", status: d.status,
+      }));
+      // `store_ready:false` = a tabela de posts não existe ainda. A lista de rascunhos vem
+      // vazia por ISSO, não porque não haja rascunhos — e o cartão dizia "Nenhum rascunho
+      // agora — a Gui vai colocar novos posts aqui pro seu ✓", que é uma promessa falsa
+      // enquanto o motor não está instalado. Agora esse estado é carregado até a tela.
+      const storeReady = stOk ? st.store_ready !== false : false;
+      setS({ appReady, nets: netState, mode: (stOk && st.mode) || mode, msgs, drafts, note: stOk ? st.note || "" : "", error: !stOk, msgsError: !inbox?._ok, storeReady });
+      if (stOk && st.mode && st.mode !== mode) { setMode(st.mode); portalApi.saveState(modeKey, st.mode); }
     })();
     return () => { alive = false; };
   }, [real, email, dataKey]); // eslint-disable-line
 
-  // Connect: kick the Meta OAuth/connect flow. Self-serve OAuth lights up with META_APP_ID/SECRET +
-  // verify token; until the app is approved we honestly capture intent and tell the owner the truth.
+  // Connect: ask the server for the REAL connection state of this network and show the REAL blocker.
+  // There is no self-serve Meta OAuth yet (it needs an approved Meta app + reviewed redirect flow),
+  // so this button never pretends to connect anything — it tells the owner exactly what's missing
+  // and refreshes the chip from server truth if the account IS already linked.
   const connect = async (netKey) => {
     setConnecting(netKey);
-    toast(t({ en: "Linking your Meta account…", pt: "Conectando sua conta Meta…", es: "Conectando tu cuenta de Meta…", hi: "आपका Meta खाता जोड़ा जा रहा है…" }));
     const r = await apiPost("/api/social-publish", { action: "connect", email, token: dataKey, network: netKey });
     setConnecting(null);
-    if (r?.connected) {
-      setS((s) => ({ ...(s || {}), appReady: !!r.ready, nets: { ...((s && s.nets) || {}), [netKey]: r.ready ? "live" : "pending" } }));
-      toast(r.ready
-        ? t({ en: "Connected ✓ — Gui is now on it", pt: "Conectado ✓ — a Gui já está nele", es: "Conectado ✓ — Gui ya está en ello", hi: "कनेक्टेड ✓ — Gui अब इस पर है" })
-        : t({ en: "Saved ✓ — DMs turn on the moment Meta approves the app", pt: "Salvo ✓ — as DMs ligam assim que o Meta aprovar o app", es: "Guardado ✓ — los DMs se activan cuando Meta apruebe la app", hi: "सहेजा ✓ — Meta ऐप स्वीकृति मिलते ही DM चालू" }));
-    } else {
-      // Honest: no live self-serve OAuth until the Meta app is approved → route to the team.
-      toast(t({ en: "Almost there — our team finishes the secure Meta connection with you.", pt: "Quase lá — nossa equipe conclui a conexão segura com o Meta com você.", es: "Casi listo — nuestro equipo completa la conexión segura con Meta.", hi: "लगभग तैयार — हमारी टीम Meta कनेक्शन पूरा करेगी।" }));
+    if (!r?._ok) {
+      toast(t({ en: "Couldn't reach the social engine — try again", pt: "Não consegui falar com o motor social — tente de novo", es: "No pude conectar con el motor social — intenta de nuevo", hi: "सोशल इंजन तक नहीं पहुँच सका — फिर से आज़माएँ" }));
+      return;
     }
+    if (r.nets) setS((s) => ({ ...(s || {}), appReady: !!r.ready || !!(s && s.appReady), nets: { ...((s && s.nets) || {}), ...r.nets } }));
+    // The SERVER decides the blocker (Meta app · this tenant's tokens · nothing); the UI only
+    // translates it. Unknown blocker → show the server's own note rather than inventing one.
+    const said = {
+      meta_app: t({ en: "Waiting on Meta app approval — nothing publishes until then. We'll link your account the moment it's live.", pt: "Aguardando aprovação do app Meta — nada publica até lá. Vinculamos sua conta assim que estiver no ar.", es: "Esperando la aprobación de la app de Meta — nada se publica hasta entonces. Enlazamos tu cuenta en cuanto esté activa.", hi: "Meta ऐप स्वीकृति का इंतज़ार — तब तक कुछ प्रकाशित नहीं होता। लाइव होते ही आपका खाता जोड़ देंगे।" }),
+      tenant_tokens: t({ en: "Almost there — our team finishes the secure Meta connection with you.", pt: "Quase lá — nossa equipe conclui a conexão segura com o Meta com você.", es: "Casi listo — nuestro equipo completa la conexión segura con Meta.", hi: "लगभग तैयार — हमारी टीम Meta कनेक्शन पूरा करेगी।" }),
+      outside_this_panel: t({ en: "WhatsApp is linked through the WhatsApp Cloud engine — our team confirms that connection with you.", pt: "O WhatsApp é ligado pelo motor WhatsApp Cloud — nossa equipe confirma essa conexão com você.", es: "WhatsApp se enlaza por el motor de WhatsApp Cloud — nuestro equipo confirma esa conexión contigo.", hi: "WhatsApp, WhatsApp Cloud इंजन से जुड़ता है — हमारी टीम वह कनेक्शन पुष्ट करती है।" }),
+    }[r.blocked_by];
+    toast(said || (r.blocked_by === null || r.blocked_by === undefined
+      ? t({ en: "Connected ✓ — Gui is on it", pt: "Conectado ✓ — a Gui já está nele", es: "Conectado ✓ — Gui ya está en ello", hi: "कनेक्टेड ✓ — Gui अब इस पर है" })
+      : r.note || ""));
   };
 
   // A+B: switch AUTO ⇄ APPROVE-first. Local intent is the source of truth for the UI; server is best-effort.
   const setPublishMode = async (m) => {
+    const prev = mode;
     setMode(m); portalApi.saveState(modeKey, m);
     setS((s) => (s ? { ...s, mode: m } : s));
-    toast(m === "auto"
-      ? t({ en: "Auto — Gui posts on its own", pt: "Automático — a Gui posta sozinha", es: "Automático — Gui publica sola", hi: "स्वतः — Gui खुद पोस्ट करती है" })
-      : t({ en: "Approve first — nothing goes public until you say so", pt: "Aprovar antes — nada vai ao ar sem seu ok", es: "Aprobar antes — nada se publica sin tu ok", hi: "पहले मंज़ूरी — आपकी अनुमति बिना कुछ सार्वजनिक नहीं" }));
-    if (real && email && dataKey) await apiPost("/api/social-publish", { action: "set_mode", email, token: dataKey, mode: m });
+    if (!(real && email && dataKey)) {
+      toast(m === "auto"
+        ? t({ en: "Auto — Gui posts on its own", pt: "Automático — a Gui posta sozinha", es: "Automático — Gui publica sola", hi: "स्वतः — Gui खुद पोस्ट करती है" })
+        : t({ en: "Approve first — nothing goes public until you say so", pt: "Aprovar antes — nada vai ao ar sem seu ok", es: "Aprobar antes — nada se publica sin tu ok", hi: "पहले मंज़ूरी — आपकी अनुमति बिना कुछ सार्वजनिक नहीं" }));
+      return;
+    }
+    const r = await apiPost("/api/social-publish", { action: "set_mode", email, token: dataKey, mode: m });
+    // ⚠️ `ok:true` NÃO BASTA AQUI. Quando o motor social não está instalado no banco, o
+    // endpoint responde `{ok:true, ready:false, note:"Paste db/social_posts.sql…"}` — sem o
+    // campo `mode`. A guarda antiga (`if (!r._ok)`) lia isso como sucesso e o dono ficava
+    // acreditando que "Aprovar antes" o protegia, quando o servidor nunca gravou preferência
+    // nenhuma. A prova de que a escolha pegou é o servidor DEVOLVER o modo que ele gravou.
+    if (r._ok && r.mode === m) {
+      toast(m === "auto"
+        ? t({ en: "Auto — Gui posts on its own", pt: "Automático — a Gui posta sozinha", es: "Automático — Gui publica sola", hi: "स्वतः — Gui खुद पोस्ट करती है" })
+        : t({ en: "Approve first — nothing goes public until you say so", pt: "Aprovar antes — nada vai ao ar sem seu ok", es: "Aprobar antes — nada se publica sin tu ok", hi: "पहले मंज़ूरी — आपकी अनुमति बिना कुछ सार्वजनिक नहीं" }));
+      return;
+    }
+    // Não gravou → volta ao que era e diz a verdade. Preferência que o servidor não aceitou
+    // não é preferência, e esta em particular decide se algo vai a público sem o dono ver.
+    setMode(prev); portalApi.saveState(modeKey, prev);
+    setS((s) => (s ? { ...s, mode: prev } : s));
+    toast(r.note || t({
+      en: "The server didn't record that choice — it's unchanged. Nothing publishes automatically while publishing isn't switched on.",
+      pt: "O servidor não registrou essa escolha — ela continua como estava. Nada publica sozinho enquanto a publicação não estiver ligada.",
+      es: "El servidor no registró esa elección — sigue como estaba. Nada se publica solo mientras la publicación no esté activada.",
+      hi: "सर्वर ने वह चुनाव दर्ज नहीं किया — यह पहले जैसा ही है। प्रकाशन चालू न होने तक कुछ अपने-आप प्रकाशित नहीं होता।" }));
   };
 
   // Draft decisions — approve / refuse / save-edit. Optimistic UI; server best-effort (degrades honestly).
@@ -139,10 +186,14 @@ function SocialHub({ V, real = null, email = "", dataKey = "" }) {
     // draft if it failed so we never tell the owner a post will publish when nothing was persisted.
     if (real && email && dataKey) {
       const r = await apiPost("/api/social-publish", { action: decision, email, token: dataKey, id, text: text || null });
-      if (r && r.ok) {
-        toast(decision === "approve"
-          ? t({ en: "Approved ✓ — Gui will publish it", pt: "Aprovado ✓ — a Gui publica", es: "Aprobado ✓ — Gui lo publica", hi: "स्वीकृत ✓ — Gui इसे पोस्ट करेगी" })
-          : t({ en: "Declined — Gui won't post it", pt: "Recusado — a Gui não posta", es: "Rechazado — Gui no lo publica", hi: "अस्वीकृत — Gui इसे पोस्ट नहीं करेगी" }));
+      if (r?._ok) {
+        toast(decision !== "approve"
+          ? t({ en: "Declined — Gui won't post it", pt: "Recusado — a Gui não posta", es: "Rechazado — Gui no lo publica", hi: "अस्वीकृत — Gui इसे पोस्ट नहीं करेगी" })
+          : r.published
+            ? t({ en: "Approved ✓ — published", pt: "Aprovado ✓ — publicado", es: "Aprobado ✓ — publicado", hi: "स्वीकृत ✓ — प्रकाशित" })
+            // Approved but NOT public yet (Meta app / account still pending). Say the truth and
+            // pass along the server's reason instead of promising a post that can't go out.
+            : t({ en: "Approved ✓ — it goes out the moment Meta is live.", pt: "Aprovado ✓ — sai no instante em que o Meta estiver no ar.", es: "Aprobado ✓ — sale en cuanto Meta esté activo.", hi: "स्वीकृत ✓ — Meta लाइव होते ही यह जाएगा।" }) + (r.note ? ` (${r.note})` : ""));
       } else {
         setS(prev); // restore — the action didn't go through
         toast(t({ en: "Couldn't reach the social engine — try again", pt: "Não consegui falar com o motor social — tente de novo", es: "No pude conectar con el motor social — intenta de nuevo", hi: "सोशल इंजन तक नहीं पहुँच सका — फिर से आज़माएँ" }));
@@ -158,10 +209,12 @@ function SocialHub({ V, real = null, email = "", dataKey = "" }) {
   if (real && S === null) return <SectionSkeleton rows={6} />;
 
   // Per-network connection state. Demo = all live; real = server truth (default off → honest).
-  const netStateOf = (k) => (demo ? "live" : (S.nets?.[k] === "live" ? "live" : S.nets?.[k] === "pending" ? "pending" : "off"));
-  const anyConnected = NETS.some((n) => netStateOf(n.k) !== "off");
+  const netStateOf = (k) => (demo ? "live" : (["live", "pending", "unknown"].includes(S.nets?.[k]) ? S.nets[k] : "off"));
+  const anyConnected = NETS.some((n) => ["live", "pending"].includes(netStateOf(n.k)));
   const appReady = demo ? true : !!S.appReady;
-  const inert = !demo && !appReady; // Meta app not approved yet → honest amber banner
+  // Inert = the motor is genuinely not live yet. If the status call FAILED we don't know that, so we
+  // show a connection error instead of blaming Meta for something we couldn't verify.
+  const inert = !demo && !appReady && !S.error;
 
   // Messages: demo = rich per-sector sample; real = only the social threads the inbox returned (honest empty otherwise).
   const demoMsgs = (() => {
@@ -203,11 +256,21 @@ function SocialHub({ V, real = null, email = "", dataKey = "" }) {
         </div>
       )}
 
+      {/* The status call didn't answer — say THAT, don't dress a failure up as an empty account. */}
+      {!demo && S.error && (
+        <div className="rounded-xl2 border border-[#E2533F]/30 bg-[#E2533F]/[0.07] px-4 py-3 text-[11.5px] text-[#E2533F] leading-snug">
+          <span className="font-black">{t({ en: "Couldn't read your social status.", pt: "Não consegui ler o estado das suas redes.", es: "No pude leer el estado de tus redes.", hi: "आपकी सोशल स्थिति नहीं पढ़ सका।" })}</span>{" "}
+          {t({ en: "This is a connection problem on our side — nothing below is a statement about your accounts. Reload in a moment.", pt: "Isso é uma falha de conexão do nosso lado — nada abaixo afirma nada sobre suas contas. Recarregue em instantes.", es: "Es un problema de conexión de nuestro lado — nada de abajo afirma nada sobre tus cuentas. Recarga en un momento.", hi: "यह हमारी ओर की कनेक्शन समस्या है — नीचे कुछ भी आपके खातों के बारे में दावा नहीं करता। थोड़ी देर में फिर लोड करें।" })}
+        </div>
+      )}
+
       {/* Honest inert banner — Meta app not approved yet. Nothing here fakes a connection or a post. */}
       {inert && (
         <div className="rounded-xl2 border border-g-gold/30 bg-g-gold/[0.07] px-4 py-3 text-[11.5px] text-g-gold leading-snug">
           <span className="font-black">{t({ en: "Waiting on Meta app approval.", pt: "Aguardando aprovação do app Meta.", es: "Esperando la aprobación de la app de Meta.", hi: "Meta ऐप स्वीकृति का इंतज़ार।" })}</span>{" "}
           {t({ en: "You can link your accounts now — Gui starts replying to DMs and publishing the second Meta approves us. Nothing here pretends to be live until then.", pt: "Você já pode conectar suas contas — a Gui começa a responder DMs e publicar no instante em que o Meta nos aprovar. Nada aqui finge estar no ar até lá.", es: "Ya puedes enlazar tus cuentas — Gui empieza a responder DMs y publicar en cuanto Meta nos apruebe. Nada aquí finge estar activo hasta entonces.", hi: "आप अभी अपने खाते जोड़ सकते हैं — Meta की स्वीकृति मिलते ही Gui DM का जवाब देना और पोस्ट करना शुरू कर देगी। तब तक यहाँ कुछ भी लाइव होने का दिखावा नहीं करता।" })}
+          {/* The server's own reason (Meta app · account not linked · store not installed), verbatim. */}
+          {!demo && S.note && <div className="mt-1 opacity-80">{S.note}</div>}
         </div>
       )}
 
@@ -227,7 +290,7 @@ function SocialHub({ V, real = null, email = "", dataKey = "" }) {
                   <div className="text-sm font-bold text-g-word">{label}</div>
                   <div className="mt-1"><StatusChip state={st} /></div>
                 </div>
-                {st === "off" ? (
+                {st === "off" || st === "unknown" ? (
                   <button onClick={() => connect(k)} disabled={connecting === k} className="btn-bright text-[12px] px-3 py-1.5 shrink-0 disabled:opacity-60">
                     {connecting === k ? "…" : t({ en: "Connect", pt: "Conectar", es: "Conectar", hi: "जोड़ें" })}
                   </button>
@@ -249,7 +312,9 @@ function SocialHub({ V, real = null, email = "", dataKey = "" }) {
           )}
         </div>
         {msgs.length === 0 ? (
-          <Empty icon="💬" text={inert
+          <Empty icon={!demo && S.msgsError ? "⚠️" : "💬"} text={!demo && S.msgsError
+            ? t({ en: "Couldn't load your messages just now — this is a connection problem, not an empty inbox. Reload in a moment.", pt: "Não consegui carregar suas mensagens agora — isso é falha de conexão, não caixa vazia. Recarregue em instantes.", es: "No pude cargar tus mensajes ahora — es un problema de conexión, no una bandeja vacía. Recarga en un momento.", hi: "अभी आपके संदेश लोड नहीं हो सके — यह कनेक्शन की समस्या है, खाली इनबॉक्स नहीं। थोड़ी देर में फिर लोड करें।" })
+            : inert
             ? t({ en: "No social DMs yet — the moment Meta approves the app, every Instagram, Messenger & WhatsApp message lands here and Gui replies for you.", pt: "Nenhuma DM ainda — assim que o Meta aprovar o app, cada mensagem do Instagram, Messenger e WhatsApp cai aqui e a Gui responde por você.", es: "Aún no hay DMs — en cuanto Meta apruebe la app, cada mensaje de Instagram, Messenger y WhatsApp llega aquí y Gui responde por ti.", hi: "अभी कोई DM नहीं — Meta ऐप स्वीकृति मिलते ही हर Instagram, Messenger और WhatsApp संदेश यहाँ आएगा और Gui जवाब देगी।" })
             : anyConnected
               ? t({ en: "No social DMs yet — I'm watching Instagram, Messenger & WhatsApp and I'll reply the moment one arrives.", pt: "Nenhuma DM ainda — estou de olho no Instagram, Messenger e WhatsApp e respondo assim que uma chegar.", es: "Aún no hay DMs — estoy atenta a Instagram, Messenger y WhatsApp y respondo en cuanto llegue una.", hi: "अभी कोई DM नहीं — मैं Instagram, Messenger और WhatsApp देख रही हूँ और आते ही जवाब दूँगी।" })
@@ -313,7 +378,11 @@ function SocialHub({ V, real = null, email = "", dataKey = "" }) {
           <div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">{t({ en: "Drafts waiting for you", pt: "Rascunhos esperando você", es: "Borradores esperándote", hi: "आपके इंतज़ार में ड्राफ़्ट" })}</div>
           {drafts.length === 0 ? (
             <div className="rounded-xl border border-white/[0.07] bg-black/15 px-3 py-4 text-center text-[11px] text-g-muted leading-snug">
-              {inert
+              {!demo && S.error
+                ? t({ en: "⚠️ Couldn't load your drafts — connection problem, not an empty list. Reload in a moment.", pt: "⚠️ Não consegui carregar seus rascunhos — falha de conexão, não lista vazia. Recarregue em instantes.", es: "⚠️ No pude cargar tus borradores — problema de conexión, no una lista vacía. Recarga en un momento.", hi: "⚠️ ड्राफ़्ट लोड नहीं हो सके — कनेक्शन की समस्या, खाली सूची नहीं। थोड़ी देर में फिर लोड करें।" })
+                : !demo && !S.storeReady
+                ? t({ en: "⚠️ Post drafting isn't switched on for your account yet — that's why this list is empty. Gui isn't writing posts for you today; our team activates it.", pt: "⚠️ A criação de posts ainda não foi ativada na sua conta — é por isso que esta lista está vazia. A Gui não está escrevendo posts para você hoje; nossa equipe ativa isso.", es: "⚠️ La creación de publicaciones aún no está activada en tu cuenta — por eso esta lista está vacía. Gui no está escribiendo publicaciones hoy; nuestro equipo lo activa.", hi: "⚠️ आपके खाते पर पोस्ट बनाना अभी सक्रिय नहीं — इसीलिए यह सूची खाली है। आज Gui आपके लिए पोस्ट नहीं लिख रही; हमारी टीम इसे चालू करती है।" })
+                : inert
                 ? t({ en: "Gui starts drafting posts for you the moment your Meta account is live.", pt: "A Gui começa a criar posts para você assim que sua conta Meta estiver no ar.", es: "Gui empieza a crear publicaciones para ti en cuanto tu cuenta de Meta esté activa.", hi: "आपका Meta खाता लाइव होते ही Gui आपके लिए पोस्ट बनाना शुरू कर देगी।" })
                 : mode === "auto"
                   ? t({ en: "Nothing waiting — in Automatic mode Gui publishes as it creates. Switch to Approve first to review each one.", pt: "Nada esperando — no modo Automático a Gui publica conforme cria. Mude para Aprovar antes para revisar cada um.", es: "Nada esperando — en modo Automático Gui publica al crear. Cambia a Aprobar antes para revisar cada uno.", hi: "कुछ इंतज़ार में नहीं — स्वतः मोड में Gui बनाते ही पोस्ट करती है। हर एक देखने के लिए पहले मंज़ूरी चुनें।" })

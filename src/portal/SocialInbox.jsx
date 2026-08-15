@@ -23,15 +23,18 @@ const netMeta = (n) => NET_META[n] || [FaInstagram, "#E4405F"];
 const SOCIAL = ["Instagram", "Facebook", "TikTok"];
 
 // POST /api/inbox — always resolves ({} on any failure) so the UI never throws.
+// A resposta carrega o próprio veredito (`_ok`). Antes devolvia `{}` em qualquer falha e a
+// lista caía em vazio: um 401 ou uma queda de rede virava "Nenhuma DM ainda" — o dono lia
+// que ninguém falou com ele, quando a verdade é que não conseguimos perguntar.
 async function inboxApi(action, email, key, extra = {}) {
   try {
     const r = await fetch("/api/inbox", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, email, token: key, ...extra }),
     });
-    if (!r.ok) return {};
-    return (await r.json()) || {};
-  } catch { return {}; }
+    const d = await r.json().catch(() => ({}));
+    return { ...(d && typeof d === "object" ? d : {}), _ok: r.ok && d?.ok !== false };
+  } catch { return { _ok: false }; }
 }
 
 function SocialInbox({ V, onNav, real: realProp = null, email: emailProp = "", dataKey: dataKeyProp = "" }) {
@@ -58,11 +61,11 @@ function SocialInbox({ V, onNav, real: realProp = null, email: emailProp = "", d
   }, [onNav]);
 
   // ── REAL: live social threads from the unified inbox read model ─────────────
-  const [rows, setRows] = useState({ list: [], key: "", loaded: false });
+  const [rows, setRows] = useState({ list: [], key: "", loaded: false, err: false });
   const loadReal = useCallback(async () => {
     const d = await inboxApi("threads", email, dataKey, { limit: 80 });
     const all = Array.isArray(d.threads) ? d.threads : [];
-    setRows({ list: all.filter((c) => SOCIAL.includes(c.channel)), key: dataKey, loaded: true });
+    setRows({ list: all.filter((c) => SOCIAL.includes(c.channel)), key: dataKey, loaded: true, err: !d._ok });
   }, [email, dataKey]);
   useEffect(() => {
     if (!isReal) return;
@@ -144,7 +147,9 @@ function SocialInbox({ V, onNav, real: realProp = null, email: emailProp = "", d
                 </button>
               );
             })}
-            {realList.length === 0 && <Empty icon="💬" text={tr("No social DMs yet. Connect Instagram & Facebook on the Social Hub and they'll land here the moment one arrives.")} />}
+            {realList.length === 0 && <Empty icon={rows.err ? "⚠️" : "💬"} text={rows.err
+              ? tr("I couldn't load your messages just now — this is a connection problem, not an empty inbox. Reload in a moment.")
+              : tr("No social DMs yet. Connect Instagram & Facebook on the Social Hub and they'll land here the moment one arrives.")} />}
           </div>
         </Card>
         {sel && (
@@ -181,6 +186,11 @@ function SocialInbox({ V, onNav, real: realProp = null, email: emailProp = "", d
   // ─────────────────────────────── DEMO MODE ────────────────────────────────
   return (
     <div className="space-y-4 stagger">
+      {/* SELO: os contadores e as conversas abaixo são exemplo. Sem ele a tela de demonstração
+          era indistinguível da real — "18 respostas hoje" parecia número da conta do cliente. */}
+      <div className="rounded-xl2 border border-g-gold/40 bg-g-gold/10 px-4 py-2.5 text-[11px] font-bold text-g-gold">
+        {tr("Demo — sample data. Connect your account in Settings to see your real campaigns here.")}
+      </div>
       <div className="flex flex-wrap gap-2">
         {[["Instagram", "#E4405F", 18], ["Facebook", "#1877F2", 9], ["TikTok", "#e7e7e7", 6]].map(([n, c, v]) => (
           <span key={n} className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word"><span className="h-2 w-2 rounded-full" style={{ background: c }} />{n} <span className="text-g-muted">{v} replies today</span></span>

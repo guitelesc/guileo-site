@@ -45,7 +45,12 @@ async function rpc(env, fn, args) {
 
 // Model fallback chain — mesma disciplina de support.js/pitch-ai.js: falha transitória num modelo NUNCA
 // derruba a resposta pra um erro nu. Tenta em ordem; auth/billing para cedo.
-const MODEL_CHAIN = ["claude-fable-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"];
+// MODEL_CHAIN vem de ../lib/guiBrain.js — NÃO declare outra aqui (2026-08-12).
+// Eram DEZ cópias idênticas da mesma lista de modelos, uma por arquivo. Idênticas HOJE: conferi as
+// dez antes de mexer, e é exatamente por estarem iguais que a hora de unificar é agora — depois que
+// uma diverge, alguém já foi atendido pelo modelo errado e ninguém sabe qual superfície foi.
+// É o padrão que esta sessão inteira perseguiu: cópia sem vínculo com a fonte.
+import { MODEL_CHAIN } from "../lib/guiBrain.js";
 
 // Google devolve starRating como enum ("ONE".."FIVE") — normaliza pra 1..5 (aceita número também).
 const STAR = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
@@ -158,6 +163,14 @@ export async function onRequest(context) {
     // Só as avaliações AINDA NÃO tratadas (unseenOnly ⇒ o connector filtra pelo gbp_seen_ids dele).
     let list = null;
     try { list = await gbp.gbpListReviews(env, creds, { unseenOnly: true, orderBy: "updateTime desc", pageSize: 50 }); } catch { list = null; }
+    // Leitura que FALHOU não é "nenhuma avaliação nova" — e a diferença aparece na conta do dono
+    // como "o motor está quieto porque não há review" em vez de "o motor está cego". Terceiro
+    // estado explícito: não deu para verificar.
+    if (list && list.ok === false) {
+      out.skipped++;
+      if (out.samples.length < 12) out.samples.push({ email, business, nao_verificado: true, motivo: String(list.note || "leitura recusada").slice(0, 160) });
+      continue;
+    }
     const reviews = (list && Array.isArray(list.reviews)) ? list.reviews : [];
     if (!reviews.length) continue;
 
@@ -198,11 +211,12 @@ export async function onRequest(context) {
       }
 
       // Publica via o connector — que MARCA seen no sucesso (dedup do próprio google-business.js).
-      let posted = false;
-      try { const pr = await gbp.gbpReplyReview(env, creds, reviewId, reply); posted = !!(pr && pr.posted); } catch { posted = false; }
+      let posted = false, marked = null;
+      try { const pr = await gbp.gbpReplyReview(env, creds, reviewId, reply); posted = !!(pr && pr.posted); marked = pr ? pr.marked !== false : null; } catch { posted = false; }
       if (posted) {
         out.replied++;
-        if (out.samples.length < 12) out.samples.push({ email, business, review_id: reviewId, rating, reply });
+        if (marked === false) out.dedupe_warnings = (out.dedupe_warnings || 0) + 1; // publicou mas não marcou
+        if (out.samples.length < 12) out.samples.push({ email, business, review_id: reviewId, rating, reply, ...(marked === false ? { dedup_nao_gravado: true } : {}) });
         // Espelha no stream do cliente (aparece no inbox/timeline do cockpit).
         try { await rpc(env, "ingest_client_event", { p_email: email, p_type: "review_reply", p_channel: "google", p_summary: `⭐ Gui respondeu uma avaliação ${rating || "?"}★ no Google`, p_amount: 0, p_payload: { review_id: reviewId, rating } }); } catch { /* best-effort */ }
       } else {

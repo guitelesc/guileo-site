@@ -97,6 +97,37 @@ export async function onRequestPost(context) {
     if (!page_id && !ig_id) return json({ error: "informe o ID da Página (page_id) ou do Instagram (ig_id)" }, 400);
     if (!page_access_token) return json({ error: "cole o Page Access Token" }, 400);
 
+    // ── CONFERIR O TOKEN COM A META ANTES DE GUARDAR ────────────────────────────────────────
+    // O token que o explorador da Meta entrega POR PADRÃO dura 1 a 2 horas. Sem esta checagem o
+    // dono conectava, via funcionar, e no dia seguinte a página ficava MUDA — sem erro em lugar
+    // nenhum, com o painel ainda dizendo "conectado". É a mesma doença do "sucesso" falso: o
+    // sistema afirmando um estado que não é mais verdade.
+    // Perguntamos à própria Meta (debug_token, autenticado com o token do APP) três coisas:
+    // é válido? expira quando? Se expira em menos de 30 dias, RECUSAMOS — melhor não conectar
+    // do que conectar por uma tarde. Token de Página derivado de um token longo não expira
+    // (expires_at = 0), que é exatamente o que queremos guardar.
+    if (env.META_APP_ID && env.META_APP_SECRET) {
+      try {
+        const app = `${env.META_APP_ID}|${env.META_APP_SECRET}`;
+        const dbg = await fetch(`${GRAPH}/debug_token?input_token=${encodeURIComponent(page_access_token)}&access_token=${encodeURIComponent(app)}`);
+        const dj = await dbg.json().catch(() => null);
+        const info = dj && dj.data;
+        if (!info || info.is_valid !== true) {
+          return json({ error: "a Meta recusou este token (inválido ou de outro app). Gere de novo em Ferramentas → Graph API Explorer com o app Guileo selecionado.",
+                        detalhe: s((dj && dj.error && dj.error.message) || (info && info.error && info.error.message) || "", 200) }, 400);
+        }
+        const exp = Number(info.expires_at || 0);           // 0 = não expira, que é o alvo
+        if (exp > 0) {
+          const horas = Math.round((exp * 1000 - Date.now()) / 3600000);
+          return json({
+            error: `este token EXPIRA em ~${horas}h — se eu guardar, a página fica muda amanhã e ninguém percebe.`,
+            como_resolver: "No Graph API Explorer, troque por um token LONGO antes de colar: pegue o User Token, troque por long-lived, e só então leia me/accounts — o token de Página que vem daí não expira.",
+            expira_em_horas: horas,
+          }, 400);
+        }
+      } catch { /* a Meta fora do ar não pode impedir uma conexão legítima — segue e guarda */ }
+    }
+
     const tokens = { page_id, ig_id, page_access_token, business_name: business };
     const r = await rpc("meta_creds_store", { p_secret: ING, p_email: email, p_tokens: tokens });
     if (!r.ok) return json({ error: "falha ao guardar (aplique db/meta_integration.sql?)" }, 500);
