@@ -199,3 +199,66 @@ genérica" não diz nada sobre eles.
   os próximos clientes sem gastar nada.
 
 *Atualize os ✅/⏳ a cada onda. Este arquivo + ARQUITETURA.md + IMPLEMENTACAO.md = o cérebro completo do projeto.*
+
+---
+
+## 🚀 Onda 2026-08-09/10 — a segunda perna: MARKETING + CRIATIVO
+
+**Mudança de identidade (Luis):** de "IA que atende" para **agência de IA + marketing + criativo**.
+A pesquisa de mercado do mesmo dia explica por que isso não é só posicionamento:
+
+| serviço | mercado 2026 |
+|---|---|
+| recepcionista IA sozinha | **$25–160/mês** — commodity em guerra de preço |
+| gestão de anúncios | **$500–5.000/mês** |
+| retainer especializado | **$2–10k/mês**, margem 60–80% |
+| verticais que mais pagam | odonto, medicina, jurídico, financeiro ($2–5k) |
+
+→ **A IA vira a PROVA, não o produto.** O dinheiro está no retainer de anúncios — que só a Guileo
+consegue provar, porque atende o telefone. O $49 é porta de entrada.
+
+### ✅ Entregue e provado
+- Medição gasto→receita por campanha · atribuição por **cookie** e por **ligação** (número por campanha)
+- Importador de relatório colado (Google/Meta) — reimportar não duplica (provado: 2 importações → 2 linhas)
+- **O vigia**: varre toda segunda e avisa o que precisa de decisão — inclusive a OPORTUNIDADE
+- Anúncios no relatório semanal do cliente
+- Criativo de post (idioma consertado) + **criativo de anúncio** com autocorreção de limite
+- Aba Anúncios do cockpit: dado real; exemplo em demonstração com selo em CADA número
+- Pitch card `ads` (PT/EN/ES) no /vendedor
+
+### 🔴 Bloqueado em clique do Luis (não é código)
+- **SMS/A2P** — campanha rejeitada; causa achada: apontava para a home em vez de `/sms`. Texto pronto em `db/campanha-a2p.txt`
+- **Google Agenda** — app OAuth em "Testing"
+- **Publicação social** — META_APP_SECRET
+
+### ⏳ Aberto (próxima onda)
+- Criativo integrado nos hubs de **vendedor** e **admin** (hoje só no cockpit do cliente)
+- Envio real do e-mail do vigia (precisa do DIGEST_TOKEN — rodar `?seco=1` antes)
+- ✅ **As 10 cópias de `MODEL_CHAIN` viraram 1** (2026-08-12): as 9 declarações locais agora
+  importam de `lib/guiBrain.js`. Estavam TODAS idênticas — conferi antes de mexer, e é justamente
+  por isso que a hora de unificar era agora: depois que uma diverge, alguém já foi atendido pelo
+  modelo errado e ninguém sabe qual superfície foi.
+
+### 2026-08-10 · Motor de agente + o fim do "sucesso" falso
+- **Motor de agente** (`licoes.js` + carimbo + `/api/agent-evolve`): lição nova → sobe `VERSAO` →
+  a frota inteira sobe sozinha. Provado subindo a versão 3 vezes (v3→v4→v5) com 4 agentes acompanhando.
+  ✅ **A VARREDURA JÁ ESTÁ NO CRON** (verificado 2026-08-12): `cron-tick` dispara `agent-evolve` às
+  13 UTC. Provado no banco — os 4 agentes subiram de v5 para v6 entre 09:01:24 e 09:01:35 (NY),
+  11 segundos para a frota inteira, `total_atrasados: 0`. Esta linha estava DESATUALIZADA e pedia
+  ao Luis algo que já existia — nota de manutenção do próprio JORNADA vale tanto quanto o código.
+- **A ligação do Kashif** virou 4 lições: anunciou-faz, não abra assunto novo, feche o que abriu,
+  cada pergunta custa um pedaço da venda.
+- **Cockpit honesto**: "Successful ✓" (auto-avaliação do modelo) saiu de todas as telas e dos 4
+  idiomas; ficha agora separa "ligação foi até o fim" de "resultado confirmado". A lista de
+  oportunidades passou a incluir quem quis marcar e não deu para confirmar (8 casos que estavam
+  invisíveis, incluindo o Kashif) com marcação própria 🔎, para não virar ruído.
+- ✅ **FECHADO 2026-08-12 — o elo exato existe** (`db/elo_ligacao_agendamento.sql`). A recusa de
+  amarrar por telefone+janela estava certa: no dia em que duas ligações do mesmo número acontecem
+  perto, casa a pessoa errada. O elo verdadeiro é o `conversation_id`, que só o provedor sabe —
+  agora ele viaja no cabeçalho `x-guileo-conv` da ferramenta de agenda e é gravado DEPOIS do book
+  já ter dado certo, em tabela própria (`call_bookings`), best-effort: se a escrita falhar, o
+  cliente segue agendado e só o relatório fica sem elo. **A falha cai no lado barato, nunca no
+  dinheiro.** FAIL-CLOSED: um `conversation_id` fora do formato `conv_…` (ex.: o placeholder não
+  substituído pelo provedor) é RECUSADO — elo falso é pior que elo nenhum, porque afirma com
+  confiança que aquela ligação gerou aquele agendamento. Provado: placeholder→não liga, vazio→não
+  liga, id real→liga com id, repetido→mesmo id sem duplicar.

@@ -49,3 +49,59 @@ do vendedor. Motores **done-for-you** (Ads, posts aprovados) = serviço premium 
 
 ---
 *Novo motor? Adicione a linha aqui + a chave externa + como gasta crédito. É o índice de produto por canal.*
+
+---
+
+## 📣 MOTOR DE ANÚNCIOS + CRIATIVO (2026-08-09/10) — a segunda perna do negócio
+
+Guileo passou a se posicionar como **agência de IA + marketing + criativo**. Estes são os motores
+dessa perna. Todos LIVE e provados por execução.
+
+| peça | o que faz | estado | arquivo |
+|---|---|---|---|
+| **Medição** | gasto → lead → ligação → agendamento → receita, por campanha | 🟢 LIVE | `db/ads_engine.sql` · `api/ads.js` |
+| **Atribuição web** | cookie primário `gui_attr` no 1º clique → viaja sozinho para toda rota | 🟢 LIVE | `lib/atribuicao.js` |
+| **Atribuição por LIGAÇÃO** | um número por campanha; quem liga chega identificado | 🟢 LIVE | `ads_number_map` · webhook lê `agent_number` |
+| **Importador** | cola o relatório do Google/Meta; upsert por dia+campanha (não duplica) | 🟢 LIVE | `api/ads.js {action:"importar"}` |
+| **O vigia** | varre toda segunda e avisa o que precisa de decisão | 🟢 LIVE | `api/ads-vigia.js` + cron |
+| **Criativo de post** | escreve no tom da marca, com preço real; gera SEM a Meta | 🟢 LIVE | `api/social-publish.js` |
+| **Criativo de ANÚNCIO** | títulos/descrições por plataforma, com autocorreção de limite | 🟢 LIVE | `lib/criativoAds.js` |
+| **Publicação social** | postar no IG/FB | 🔴 aguarda META_APP_SECRET | `publishToMeta` |
+| **API do Google/Meta Ads** | importar gasto sozinho | 🔴 developer token (semanas) | — |
+
+**A vantagem estrutural, em uma frase:** Google e Meta sabem cliques, o dono sabe faturamento, e o
+elo do meio é o TELEFONE — que nenhuma plataforma de anúncio enxerga e a Gui atende.
+
+### ⚠️ DÍVIDA CONHECIDA (não é defeito hoje — é risco de amanhã)
+`MODEL_CHAIN` está copiado em **10 arquivos**, todos com a MESMA lista hoje. No dia em que um
+modelo for aposentado, dez lugares precisam mudar e um vai ficar para trás — falhando em silêncio,
+porque `askClaude` cai para o próximo modelo sem reclamar.
+**Remédio:** todos importarem `askClaude`/`MODEL_CHAIN` de `functions/lib/guiBrain.js` (o arquivo
+já diz isso no cabeçalho). Não foi feito em 2026-08-10 por ser véspera de lançamento: mexer em dez
+arquivos troca risco futuro por risco imediato.
+
+## Motor de agente (o cérebro de todos os agentes) — LIVE 2026-08-10
+| peça | arquivo | o que faz |
+|---|---|---|
+| lições | `functions/lib/licoes.js` | as regras vindas de ligações reais + `VERSAO` |
+| injeção | `functions/lib/provision.js` | entra depois do cardápio, antes das metas de venda |
+| carimbo | `db/motor_agente.sql` + `sync-agent.js` | `client_agents.brain_version`, só após a ElevenLabs aceitar |
+| varredura | `functions/api/agent-evolve.js` | acha os atrasados e sobe (cron semanal, `?seco=1` primeiro) |
+
+Regra do produto: **agente novo ⊇ agente antigo, sempre.** Lição nova → sobe `VERSAO` → a frota
+inteira sobe sozinha. Ver ROTA-CEREBRO na IMPLEMENTACAO.md.
+
+✅ NO CRON (2026-08-10): `cron-tick.js` chama `/api/agent-evolve` todo dia às **13h UTC**. Diário e
+não semanal porque uma lição nasce de um cliente perdido — esperar sete dias para o resto da frota
+parar de repetir o erro é aceitar perder os próximos. Só às 13h (não na repetição das 14h): não é
+claim-dedupado. Se falhar, o dia seguinte pega, porque quem não sincroniza não recebe carimbo e
+continua aparecendo como atrasado.
+
+## Semáforo da plataforma — uma pergunta, sem segredo (2026-08-10)
+`POST /api/cron-tick?semaforo=1` → devolve `semaforo: { overall, areas }` com voz · dinheiro ·
+agenda · agentes. O agregador (`platform-status`) é DIGEST-gated e só o cron enxergava; agora o
+cron — que tem o token do lado do servidor — devolve **só o veredito** (cores, sem detalhe
+sensível). A pergunta "posso receber cliente?" se faz na hora da decisão, não na hora do relógio.
+
+**Três estados, de propósito:** 🟢 provado · 🔴 quebrado · 🟡 **não deu para provar**.
+O amarelo cobre `notReady` (SQL não aplicado) e `noAccess` (sonda sem permissão).

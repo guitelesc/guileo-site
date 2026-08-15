@@ -57,6 +57,34 @@
 ## ROTA-CANAL · ligar um canal pendente (WhatsApp/IG/…)
 **Quando:** a API/aprovação do canal libera. **Passos:** setar a env/creds do canal no Cloudflare → o código já wired acende sozinho (padrão scaffold-inerte). WhatsApp: aprovar sender Twilio. IG/FB/TikTok/LinkedIn/Google Business/Ads: OAuth/API key. **Prova:** o canal muda de âmbar "aguardando" pra verde "ativo" no cockpit.
 
+## ROTA-ENCAMINHA · fazer o telefone REAL do cliente cair na Gui
+**Quando:** o cliente tem agente + número nosso e mesmo assim recebe ZERO ligação. Foi o caso do Natura (2026-08-14): agente ok, número ok, pipeline ok, 15 ligações no banco — **todas nossas, de teste**. Um número provisionado por nós é um número que ninguém disca: quem o mundo liga é a linha publicada do cliente (Google, porta, Instagram, cartão). Sem encaminhamento, a Gui atende um telefone que não toca.
+
+**A escolha que importa (não é técnica, é de negócio):**
+- **Condicional** — encaminha só quando OCUPADO e quando NÃO ATENDE. *É o padrão que a gente recomenda:* a recepção continua sendo humana, e a Gui pega só o que ia virar caixa postal. Zero risco de "a máquina roubou meu cliente".
+- **Total (24/7)** — tudo cai na Gui. Só para linha nova, horário fechado, ou cliente que já decidiu não ter recepção.
+
+**A pegadinha nº 1 (é ela que faz "não funcionou"):** a caixa postal da operadora também atende por tempo. Se ela pega em 20s e o encaminhamento está em 25s, **a caixa postal ganha sempre** e parece que o encaminhamento falhou. O encaminhamento tem que disparar ANTES — 4 toques (~20s) com a caixa postal em 30s.
+
+**Os códigos (celular/fixa comum nos EUA):** `*72`+número = tudo · `*90`+número = ocupado · `*92`+número = não atende · cancelar: `*73` / `*91` / `*93`. Em VoIP/PBX (RingCentral, Google Voice, Ooma, Vonage, Spectrum Business) NÃO use código: é regra no painel ("Call Handling / Forwarding").
+
+**Prova (3 ligações, dessa ordem — a 3ª é a que garante que não sequestrou a linha):**
+1. Liga e deixa tocar além de 4 toques → **a Gui atende**.
+2. Com alguém na linha, liga de novo → **a Gui atende na hora**.
+3. Liga e um humano atende no 2º toque → **o humano atende**.
+Depois: as 3 aparecem em `call_logs` do tenant (`select … from call_logs where client_email=…`) e no cockpit. Ligação que não aparece = encaminhou pro número errado.
+
+**Documento pro cliente — GERADO, não escrito à mão:**
+1. **Gerar o link** (admin/digest): `GET /api/encaminhar?email=<tenant>&token=<senha admin>` → devolve `{link, business, agente, numero_guileo, idioma, linhas_a_encaminhar[]}`. **Confira o `linhas_a_encaminhar` antes de mandar** — é a lista que o cliente vai digitar.
+2. **Mandar o link** pro dono. Ele é HMAC do e-mail (mesmo crachá do vendedor): inadivinhável, expira em 30d, e só abre esta página.
+`&lang=pt|en|es` força o idioma; sem isso usa o do cadastro.
+
+**Por que gerado:** escrevi a versão do Natura à mão primeiro e o cadastro desmentiu duas suposições minhas — o idioma dele é `en` (eu tinha escrito em PT) e ele tem **3 unidades / 2 linhas**, não uma. Metade das ligações continuaria caindo no vazio com o documento "certo" seguido à risca. **Documento à mão é foto do que quem escreveu imaginou; este lê o cadastro.**
+**Falha fechada:** sem número da Guileo → 409, o documento NÃO nasce (um passo-a-passo com o número em branco faz o cliente encaminhar pra lugar nenhum). Sem nome de negócio → 409 também.
+**Dedup:** duas unidades na mesma linha viram UMA instrução; o número da Guileo nunca entra na lista (encaminhar ele pra ele mesmo = laço).
+**Prova:** token forjado → 401 · sem token na porta fechada → 401 · link assinado → 200 com o documento no idioma e na marca do tenant.
+**Arquivos:** `functions/api/encaminhar.js`, `functions/lib/sellerSession.js` (assinatura), RPCs `get_client_profile` / `draft_payload_for` / `client_number_lookup`. Referência visual do original à mão: `docs/encaminhamento-natura.html`.
+
 ## ROTA-MARKETPLACE · conectar Yelp/Angi/Thumbtack/Zillow/StreetEasy
 **Quando:** cliente de serviços/imóveis vive de marketplace. **Passos:** no cockpit `Leads Marketplace` copia a URL pessoal (`/api/marketplace-leads?email=…&key=…&source=…`) → cliente cria um Zap (novo lead por e-mail → POST nessa URL) OU encaminha os e-mails de lead. Lead chega → CRM → **Gui liga em 60s**. **Prova:** `mkt_lead_record(...)` → `mkt_leads_list` mostra o lead; segundo envio deduplica.
 
@@ -179,3 +207,404 @@ curl -s -X POST https://guileoai.com/api/sync-agent -H 'Content-Type: applicatio
 O campo `languages.voice_by_lang` mostra NOME e SOTAQUE de cada voz — `pt-br → … · brazilian` é a prova. Id sozinho não prova nada.
 
 **Limite honesto:** a ElevenLabs só aceita 34 idiomas de conversa. Cantonês, crioulo haitiano, bengali e punjabi NÃO existem lá — pedir um deles derruba a config inteira do agente. Lista real: `LANGS_SPOKEN` (16).
+
+## ROTA-PROVA — "está tudo funcionando?" respondido por execução
+
+**Quando:** antes de anunciar, depois de qualquer onda, ou sempre que alguém disser "não deu".
+
+**Por que existe:** ler configuração diz que a chave existe; não diz que o motor gira. Em 2026-08-07
+o agendamento estava "configurado" e **nunca** tinha funcionado — o defeito só apareceu executando.
+
+**Comando:**
+```bash
+curl -s -X POST https://guileoai.com/api/prontidao \
+  -H 'Content-Type: application/json' -H 'Origin: https://guileoai.com' -H 'Referer: https://guileoai.com/' \
+  -d '{"email":"<dono>","key":"<chave de conexão>","testar":true}' | python3 -m json.tool
+```
+
+**O que ele EXECUTA (não lê):**
+- `marcar_falando` — ciclo real de disponibilidade + marcação em linguagem natural (dry-run, não grava)
+- `reconhece_quem_liga` — busca de identidade pelo telefone (é o que faz a agente chamar pelo nome)
+- `email_chega` — envia de verdade, destino travado no próprio dono
+
+**Como ler:** `veredito` verde = provado por execução. `configurado` sozinho é amarelo, nunca verde.
+Sem `testar:true` a rota só lê estado externo (Stripe/Twilio/ElevenLabs/Resend) e não executa nada.
+
+**Cuidado que já custou caro:** sonda errada acusa motor bom. A 1ª versão passou serviço nulo para
+`biz_availability` e pintou de vermelho um motor perfeito. Toda sonda precisa ser validada contra um
+caso sabidamente bom antes de virar semáforo.
+
+---
+
+## ROTA-SIMULAR — a jornada inteira, provada em 1 comando
+
+**Quando:** antes de anunciar, depois de mexer na agenda/cobrança/idiomas, e sempre que alguém
+disser "está tudo funcionando?". Substitui a leitura de código pela jornada real.
+
+**O que faz:** um cliente inventado liga no negócio de mentira `sim@guileoai.com`
+(`db/sim_tenant.sql`) e percorre 15 passos batendo nos MESMOS endpoints da agente real:
+cardápio → vaga → marcar falando → conferir que a vaga sumiu → tentar furar fila → recusar fora
+do expediente → recusar frase vaga → remarcar falando → idioma do cliente → inglês não regrediu →
+cobrança → trava de gasto → tenant não vaza → e-mail com a marca do cliente → cancelar devolve a vaga.
+
+**Rodar:**
+```bash
+curl -s -X POST https://guileoai.com/api/simular \
+  -H 'Content-Type: application/json' -H 'Origin: https://guileoai.com' \
+  -d '{"email":"<dono>","key":"<chave de conexão>"}' | python3 -m json.tool
+```
+
+**Como ler o resultado — TRÊS estados, não dois:**
+| | significa |
+|---|---|
+| ✅ `ok:true` | provado pelo EFEITO (id criado, vaga sumiu, vaga voltou) |
+| ❌ `ok:false` | quebrado agora, em produção |
+| ⬜ `ok:null` | **não deu para provar aqui** — o ambiente não permite o teste |
+
+O cinza existe porque sem ele a sonda que não consegue concluir escolhe verde. Foi o que
+aconteceu com a trava de gasto: o tenant de teste não tem Stripe, recusa QUALQUER valor, e
+"recusou" virou verde sem a trava ter sido exercitada. Os 2 cinzas de hoje (`cobranca_decide`,
+`trava_de_gasto`) só viram verde com Stripe conectado num tenant de teste.
+
+**Segurança (não afrouxar):**
+- o tenant é CONSTANTE no arquivo, nunca vem do corpo — senão a rota escreve na agenda de cliente pagante;
+- porta do dono (`isOwnerEmail` + chave conferida no banco), mesma do `/api/prontidao`;
+- `x-guileo-test:1` impede e-mail real; dinheiro só em `dry_run`; limpeza no `finally`.
+
+**A armadilha que já custou 4 falsos diagnósticos:** ler o campo errado da resposta. `op:lookup`
+devolve serviços como TEXTO (não objeto com `.name`), e `brandFor` devolve `business` (não
+`name`). Sonda que lê o campo errado acusa motor bom — e verde pelo motivo errado é pior que
+vermelho, porque manda seguir em frente. **Toda sonda nova: conferir o campo na resposta real
+antes de confiar na cor.**
+
+---
+
+## ROTA-LIGACOES — "eu liguei, cadê os dados?"
+
+**Quando:** alguém ligou e o painel está vazio; ou uma ligação real não virou agendamento.
+
+**Por que existe:** banco vazio tem DUAS explicações opostas — a ligação não chegou, ou chegou e
+não foi gravada — e o banco sozinho não distingue (ele é a coisa sob suspeita). `/api/ligacoes`
+confronta TRÊS fontes independentes e mostra o degrau que falta:
+
+| degrau | fonte | responde |
+|---|---|---|
+| 1 | Twilio | o telefone tocou? |
+| 2 | ElevenLabs | a agente atendeu e conversou? |
+| 3 | nosso banco | ficou registrado? |
+
+```bash
+curl -s -X POST https://guileoai.com/api/ligacoes \
+  -H 'Content-Type: application/json' -H 'Origin: https://guileoai.com' \
+  -d '{"email":"<dono>","key":"<chave>","horas":24}' | python3 -m json.tool
+```
+
+Detalhe de uma conversa (motivo do encerramento, quem falou, ferramentas chamadas — **nunca
+transcrição**): `{"detalhe":"conv_..."}`.
+
+**REGRA DE OURO deste arquivo:** fonte NÃO LIDA nunca vira acusação. Na primeira execução o banco
+devolveu 401 e o veredito acusou "o webhook não está entregando" — o webhook estava perfeito.
+Confundir "não consegui ler" com "não tem dado" acusa o inocente com a mesma confiança.
+
+**Recusas agora deixam rastro** (`agent-schedule.js` → `logRecusa`): `book → RECUSA:<motivo> ·
+pediu: <fala>`. Motivos: `sem_dia_nem_hora`, `horario_pedido_indisponivel`, `sem_vaga_nenhuma`,
+`horario_tomado_na_hora`, `reserva_nao_travou`, `servico_nao_identificado`. Antes, só o SUCESSO
+escrevia no log — a evidência que sobrava era justamente a dos casos que já funcionavam.
+
+⚠️ **Consultar `biz_availability` por SQL exige o segredo SCHED correto.** Um segredo errado
+devolve `{"error":"unauthorized"}`, e `coalesce(...->'slots','[]')` transforma isso em "zero
+vagas" — diagnóstico de agenda quebrada num cliente saudável. **Sempre olhe a resposta CRUA antes
+do comprimento da lista.**
+
+---
+
+## ROTA-ADS — o motor de anúncios: gastou X, voltou quanto?
+
+**A vantagem estrutural:** Google e Meta sabem CLIQUES. O dono do negócio sabe FATURAMENTO.
+Ninguém liga os dois porque o elo do meio é o TELEFONE — que nenhuma plataforma de anúncio
+enxerga. A Guileo é dona desse elo (atende, marca, cobra). Fechar
+`gasto → lead → ligação → agendamento → receita` é conta que o Google não faz sozinho.
+
+**Como a origem chega:** capturada no PRIMEIRO clique (`src/lib/analytics.js`) e gravada num
+cookie primário `gui_attr`. O cookie viaja sozinho para o nosso domínio, então `/api/lead`, o
+widget e qualquer rota futura recebem de graça — **nenhum dos ~10 formulários precisou mudar**.
+Lead do site DO CLIENTE (webhook `marketplace-leads`) manda `utm_source/utm_campaign/gclid/fbclid`
+no corpo, único caminho manual.
+
+**Lançar gasto e ler o retorno:**
+```bash
+curl -s -X POST https://guileoai.com/api/ads -H 'Content-Type: application/json' \
+  -H 'Origin: https://guileoai.com' \
+  -d '{"email":"<cliente>","key":"<chave>","action":"gasto","dia":"2026-08-09","canal":"google","campanha":"verao","valor":"$450,00","cliques":210}'
+```
+`action:"roi"` devolve por campanha: gasto, leads, agendamentos, receita, custo por lead, custo
+por cliente, retorno e **veredito**.
+
+**AS DUAS REGRAS QUE NÃO SE AFROUXAM:**
+
+1. **NULL, nunca zero de mentira.** Sem gasto lançado o retorno é `null` + `porque_sem_retorno`.
+   "ROAS 0" e "não sei o gasto" são opostos; mostrar o primeiro faz o cliente cortar a campanha
+   que estava funcionando.
+2. **VEREDITO EXIGE AMOSTRA.** Matemática não é conselho. Uma campanha de ontem tem receita 0 →
+   retorno 0 → "corta". Mandar cortar antes de dar chance é o erro mais caro de uma agência —
+   e foi o que a primeira versão fez ($450 às 9h, "corta" às 9h01). Agora:
+   `cedo_demais` (<50 cliques ou <3 leads) · `sem_lead_apesar_do_trafego` (tráfego chegou e
+   ninguém converteu → é a PÁGINA, não o anúncio) · `mantem` · `escalar` · `corta`.
+
+**Armadilha que custou uma rodada:** `svcRpc` devolve a **Response**, não o JSON. `r.ok` é o 200 do
+HTTP, não o `{ok:true}` do banco. Use **`svcJson`** (`functions/lib/sb.js`) — criado justamente
+para o caminho fácil ser o certo. O mesmo engano deu falso FRACASSO no gasto e falso SUCESSO na
+atribuição, no mesmo dia.
+
+SQL: `db/ads_engine.sql` (aplicado). Arquivos: `functions/api/ads.js`, `functions/lib/atribuicao.js`.
+
+### ROTA-ADS · complementos (2026-08-09)
+
+**Importar relatório** — `action:"importar"` com `{canal, texto}`. Cole o export do Google Ads
+(TAB) ou Meta (CSV/;). O cabeçalho é lido por NOME (pt+en), nunca por posição — layout muda e
+posição fixa quebra em silêncio, gravando gasto na coluna errada. Linhas com data ambígua
+(`05/08`) ou campanha vazia são RECUSADAS com o motivo, e voltam na resposta: importador que só
+diz "42 importadas" esconde as 3 que ficaram de fora. **Reimportar o mesmo período SUBSTITUI**
+(provado: 2 importações → 2 linhas, $218,50, não $437).
+
+**Por que não a API oficial:** Google Ads exige *developer token* (aprovação em semanas) e Meta
+exige App Review para `ads_read`. Nenhuma sai em 3 dias, e não depende de código. Como
+`ads_spend_set` é upsert por (dia, canal, campanha), o importador oficial um dia escreve na MESMA
+tabela — zero retrabalho.
+
+**Número por campanha (a ligação vira atribuição)** — `action:"numero"` com
+`{numero, canal, campanha}`. O motor media o lead de FORMULÁRIO e era cego para o de TELEFONE,
+que é o caminho principal num negócio local e o diferencial da Guileo. Agora cada campanha
+anuncia a sua linha; o webhook pós-ligação lê `metadata.phone_call.agent_number` (campo real,
+confirmado em ligação de verdade) e credita quem ligou. Casa por CHAVE CANÔNICA, então
+`+1 (929) 828-8170` e `+19298288170` são o mesmo número. **Linha que não é de campanha não gera
+atribuição** — senão "(sem campanha)" viraria um canal fantasma dominando o relatório.
+SQL: `ad_numbers` + `ads_number_map` + `ads_attr_from_call`.
+
+### ROTA-ADS · o vigia (2026-08-09) — o que separa AGÊNCIA de PAINEL
+
+Painel espera você abrir; agência avisa. `/api/ads-vigia?token=DIGEST_TOKEN` roda **toda segunda**
+pelo cron, varre as campanhas de TODOS os clientes e manda, para cada um que tem decisão a tomar,
+um e-mail (`adsAlertEmail`) dizendo **o que fazer** — não "seu ROAS caiu 12%", que não é acionável
+para quem tem um salão para tocar.
+
+| motivo | gatilho | o que o cliente lê |
+|---|---|---|
+| `trafego_sem_lead` | ≥80 cliques, 0 lead | **é a PÁGINA, não o anúncio** — o caso mais caro e o mais consertável |
+| `gastando_mais_do_que_traz` | ≥5 leads e receita < gasto | revisar público ou pausar |
+| `vale_investir_mais` | ≥5 leads e retorno ≥3× | **aumentar orçamento** |
+
+**Três regras que não se afrouxam:**
+1. **Silêncio quando não há nada.** E-mail semanal dizendo "tudo bem" treina o cliente a não abrir,
+   e no dia em que a mensagem importa ela vai para a lixeira junto. Não mandar é parte do produto.
+2. **Alarme exige amostra.** Campanha sem gasto lançado nunca vira alerta; "corta" nunca sai com
+   1–2 leads. No terceiro alarme falso ninguém mais lê.
+3. **Oportunidade vai junto do problema.** Agência que só avisa de prejuízo deixa dinheiro na mesa.
+
+`?seco=1` varre e mostra QUEM seria avisado **sem mandar nada** — disparo em massa se testa assim,
+não mandando de verdade e pedindo desculpa depois. As falhas de envio voltam na resposta: varredura
+que só conta sucesso esconde o cliente que ficou sem aviso, e é ele quem cobra no fim do mês.
+
+**Um só lugar dispara.** A consulta vive em `/api/ads {action:"alertas"}`; o ENVIO só em
+`ads-vigia.js`. Duas rotas capazes de mandar o mesmo e-mail em massa = duas verdades, e a que
+ninguém lembra de manter é a que manda errado.
+
+**Vendedor:** pitch card `ads` em `src/data/pitchCards.js` (PT/EN/ES) — dor "já gastei e não sei se
+voltou", vantagem estrutural (o telefone é o elo que Google/Meta não veem) e a objeção REAL, que
+não é preço: *"já me prometeram isso e o relatório era enfeitado"*.
+
+### ROTA-ADS · anúncios no relatório semanal (2026-08-09) — FECHADO
+
+O relatório que o cliente recebe toda segunda não falava **uma palavra** sobre o dinheiro que ele
+investe em anúncio — metade do que ele paga. Agora `client-report.js` lê `ads_roi` dos últimos 7
+dias e o template mostra:
+
+> **$240,00 investido → 6 clientes novos** · $1.080,00 em serviços agendados · cada $1 virou **$4,50**
+
+**Sem gasto lançado a seção SOME inteira** (não mostra $0). Um zero ali seria lido como "o anúncio
+não deu nada" e faria cortar a campanha certa — a mesma regra do painel e do vigia, agora nos três
+lugares onde o número aparece. Falha de leitura → `ads = null` → relatório sai igual ao de antes.
+
+Provado nos dois estados: sem gasto a seção não aparece; com gasto mostra resultado + retorno.
+
+### ROTA-CRIATIVO — a peça do anúncio (2026-08-10)
+
+`POST /api/ads {action:"criativo", plataforma:"google"|"meta", objetivo?, publico?}`
+→ títulos/descrições no idioma e no tom do negócio, a partir dos **fatos reais** dele.
+
+**Por que é peça separada do post de rede social:** post é para quem já segue e rola o feed;
+anúncio interrompe um estranho, tem limite duro (30 no título do Google, 90 na descrição, 125 no
+texto da Meta) e precisa da promessa na primeira linha. Entregar post como "criativo de anúncio"
+é o tipo de coisa que faz o cliente pagar retainer e não crescer.
+
+**Três travas:**
+1. **Só fato real** — serviço que existe, preço cadastrado. Nada de superlativo ("o melhor", "o
+   mais barato"): plataforma reprova e quem responde é o cliente, não nós.
+2. **O motor se corrige.** Mede o excesso, e se estourou reescreve UMA vez dizendo exatamente o
+   que passou e por quanto. Só aceita a reescrita se ficou melhor — "conserto" que piora é
+   regressão. Provado: 1ª tentativa 100/90 → reescrita 73/90.
+3. **Idioma vem do negócio.** Anúncio em inglês para salão brasileiro queima orçamento em clique
+   que não converte.
+
+**Duas lições de arquitetura que custaram tempo aqui:**
+- `askClaude` (guiBrain.js) é o ÚNICO executor da cadeia de modelos — o arquivo diz isso e eu
+  ignorei, fixei um modelo, ele não respondeu e o criativo voltou vazio. Já existiam TRÊS cópias
+  da lista de modelos; a minha seria a quarta.
+- **Nunca confie no formato da resposta da IA.** Pedir "só JSON" e fazer `JSON.parse` direto
+  quebra: às vezes vem com ```json, às vezes com uma linha antes. Extrair do primeiro `{` ao
+  último `}` sobrevive aos três casos — e no erro, devolver o texto CRU, senão o próximo fica
+  adivinhando o que veio.
+
+**Idioma do gerador de POSTS estava quebrado** (mesmo dia): `brandContext` lia nome/setor/tom e
+**não lia `lang`** — todo post saía em inglês, inclusive para negócio com perfil em pt. Uma linha.
+Mesma família do `fmt()` com "en-US" fixo.
+
+---
+
+## ROTA-CEREBRO — ensinar TODOS os agentes de uma vez (o motor de agente)
+
+**Quando:** descobriu, numa ligação real, que o agente faz algo errado. Nunca conserte um cliente só.
+
+**Passos**
+1. Abra `functions/lib/licoes.js`.
+2. Só entra o que ACONTECEU. Palpite incha o cérebro e empurra para trás a regra que salva a venda.
+3. Escreva o COMPORTAMENTO ("não diga que agendou antes da ferramenta responder"), não a proibição
+   vaga ("seja preciso"). E registre o incidente no comentário `// ←` acima — é o que defende a
+   regra daqui a um ano, quando alguém achar que ela é óbvia e quiser removê-la.
+4. **SUBA `VERSAO`.** Sem isso a lição fica no código e não chega a NENHUM agente já nascido.
+5. `npm run build && npx wrangler pages deploy dist --project-name=guileoai --branch=main`
+6. Pronto. O cron das 13h UTC atualiza a frota sozinho (`cron-tick.js`).
+7. Para não esperar: `GET /api/agent-evolve?seco=1&token=<DIGEST_TOKEN>` mostra quem está atrasado
+   sem tocar em nada; sem `seco=1` atualiza na hora (teto de 25/rodada; `&teto=N` para mudar).
+
+**Prova:** `select client_email, brain_version from client_agents;` — todos na versão nova.
+Ou `select agentes_atrasados('<INGEST_SECRET>', <VERSAO>, 50);` → `total_atrasados: 0`.
+
+**Leis desta rota**
+- O carimbo mora em `sync-agent.js`, DEPOIS do 502 da ElevenLabs. É o único ponto que sabe que o
+  cérebro novo foi aceito. Carimbar antes = o banco mente E o agente some da varredura para sempre.
+- A varredura NUNCA esconde falha: cliente que não subiu volta com o motivo. Um motor que engole
+  erro recria exatamente a doença que veio curar.
+- Sync que estoura o tempo não carimba — então a rodada seguinte tenta de novo. É por isso que
+  "falhou" nesta rota é seguro, e "carimbou sem sincronizar" seria fatal.
+
+---
+
+## ROTA-INSTAGRAM — ligar uma conta Meta (Página + Instagram) a um tenant
+
+**Quando:** o cliente (ou a própria Guileo, no @guileo.ad) quer que a Gui **poste** e **responda DM**.
+O motor (`social-publish.js` + `meta-webhook.js`) já está pronto — falta só a autorização.
+
+**Os três valores que o dono pega no Meta (Claude nunca digita segredo):**
+
+1. `developers.facebook.com/tools/explorer` → selecionar o app **Guileo**
+2. Permissões: `pages_show_list`, `pages_manage_metadata`, `pages_messaging`,
+   `pages_read_engagement`, `instagram_basic`, `instagram_manage_messages`, `instagram_content_publish`
+3. **TROCAR POR TOKEN LONGO ANTES DE LER AS PÁGINAS** — o token padrão do explorador dura 1–2h
+4. `GET me/accounts` → devolve `id` (= **page_id**) e `access_token` (= **page_access_token**)
+5. `GET {page_id}?fields=instagram_business_account` → devolve o **ig_id**
+
+**Colar:**
+```
+POST /api/meta-connect
+{ "action":"connect", "token":"<admin>", "email":"<tenant>",
+  "page_id":"...", "page_access_token":"...", "ig_id":"...", "business":"..." }
+```
+
+**A trava que existe desde 2026-08-10 (e por quê):** antes de guardar, o endpoint pergunta à Meta
+(`debug_token`, autenticado com `META_APP_ID|META_APP_SECRET`) se o token é válido e quando expira.
+**Token que expira é RECUSADO.** Sem isso, o dono conectava, via funcionar, e no dia seguinte a
+página ficava MUDA — sem erro em lugar nenhum, com o painel ainda dizendo "conectado". Token de
+Página derivado de um token longo tem `expires_at = 0` (não expira): é esse que entra.
+
+**Prova:** a resposta traz `subscribed: true` (a Meta passa a entregar as DMs no nosso webhook).
+Depois: `{ "action":"status", ... }` → `connected: true`.
+
+⚠️ **Uma página por tenant.** Em 2026-08-10 achei `naturaspaadm` e `dr@medmundobr` apontando para a
+MESMA `page_id`. Inofensivo enquanto não há token; com token, mensagem de uma página cairia em dois
+donos — a mesma família do bug dos números compartilhados. Confira antes de conectar.
+
+---
+
+## ROTA-PERFIL — o cliente nasce montado a partir do site dele
+
+**Quando:** cadastrar cliente novo. Em vez de digitar campo por campo, cola-se a URL.
+
+```
+POST /api/perfil-do-site   { site, token }        (crachá de vendedor ou token de admin)
+→ { lido:true, perfil:{ nome, telefone, endereco, horarios, idioma, servicos[], logo_url, accent }, faltando:[…] }
+→ { lido:false, motivo:"…" }   quando não dá para ler (o MOTIVO em português, não só "falhou")
+```
+
+**A entrega não é só o que veio — é `faltando`.** É o roteiro do que perguntar ao dono, e é o que
+transforma "me manda tudo" em "só me confirma três coisas". Sem essa lista o vendedor não sabe o
+que pedir; com ela, o cliente sente que já trabalhamos por ele antes de assinar.
+
+**Leis desta rota**
+- NUNCA INVENTA (lição v1 dos agentes). Preço plausível não é preço; horário "provável" põe cliente
+  na porta fechada. Só entra par "nome — valor" que aparece JUNTO no texto: número solto pode ser
+  telefone, CEP ou ano.
+- **Uma porta só para ler site de terceiro.** `buscarHtml` (brandExtract.js) concentra SSRF,
+  redirect, tipo, tamanho e captcha. Provado recusando `localhost` e `169.254.169.254` (metadados
+  da nuvem). Precisa ler site noutro lugar? Use essa função — nunca escreva um segundo buscador.
+- Nome do NEGÓCIO, não título da página: a frase de efeito é cortada em toda origem, e as entidades
+  HTML são decodificadas — senão a agente FALA "amp" na saudação (achado na própria prova).
+
+**Prova:** guileoai.com → "Guileo", logo, #161512, en · naturaspanyc.com → "Natura Spa New York",
+logo, #0063a8 · localhost e 169.254.169.254 → recusados.
+
+---
+
+## ROTA-REINVESTIR — o motor decide para onde vai o próximo dólar
+
+**Quando usar:** o cliente gastou em anúncio e pergunta "aumento, mantenho ou corto?". Também é o
+passo que transforma o motor de anúncios de linha reta em ciclo: o dinheiro que voltou vira o
+orçamento da próxima rodada, e quem comprou vira semente para achar parecidos.
+
+```
+POST /api/ads   { email, key, action:"reinvestir", dias:30 }
+→ { decisoes:[ { campanha, gasto, receita, receita_base, leads, retorno,
+                 acao, orcamento_dia_atual, orcamento_dia_novo, porque } ],
+    semente:{ pessoas, hashes[], nota }, como_usar }
+```
+
+**As regras, e por que cada uma é assim**
+
+| retorno | ação | a razão que vai no `porque` |
+|---|---|---|
+| ≥ 3 | subir **+50%** | nunca dobrar: mudança grande joga a campanha de volta no aprendizado da plataforma |
+| ≥ 1 | manter | paga, mas não o bastante para escalar |
+| < 1 | reduzir **à metade** | metade, não zero: matar em seco joga fora o aprendizado da conta |
+| — | não mexer | menos de 3 leads é amostra pequena demais para mexer no dinheiro dele |
+| — | sem_dados | gasto não foi lançado |
+
+**`receita_base` é obrigatório de ler.** Diz DE ONDE veio o número:
+- `recebido` — dinheiro lançado contra aquela pessoa (`crm_timeline_events` via `crm_contacts.phone_key`)
+- `tabela` — sem lançamento, caiu no preço de tabela do serviço → **é estimativa**
+- `misto` — parte de cada
+- `sem_valor` — agendou e não há nem lançamento nem preço
+
+Decidir orçamento com estimativa é legítimo; decidir **sem saber que é estimativa**, não. O rótulo
+é a diferença entre um número e um número honesto.
+
+**Leis desta rota**
+- **Cego não é ruim.** Receita 0 COM agendamentos sem valor → `nao_mexer`, nunca `reduzir`. Zero por
+  falta de medição não é zero por falta de resultado, e cortar aí tira orçamento de campanha que
+  está trazendo cliente. A resposta diz o que destrava: cadastrar o preço ou cobrar pela Gui.
+- **Valor por PESSOA, nunca por agendamento.** Quem marcou duas vezes contaria a receita em dobro —
+  e campanha superestimada é pior que subestimada, porque faz o dono colocar MAIS dinheiro em cima.
+- **A semente sai em SHA-256**, feito na borda (`crypto.subtle.digest`). Lista de cliente em texto
+  puro nunca sai da plataforma, e é exatamente o formato que Meta e Google esperam.
+
+**A armadilha que esta rota já cobrou duas vezes (2026-08-11)**
+1. `lead_attribution.phone_key` gravado com `+` por INSERT cru: o join nunca casou, receita leu 0 e
+   o motor mandou REDUZIR uma campanha de 5-para-1. Hoje há CHECK que recusa formato não-canônico
+   (`db/lead_attribution_chave_canonica.sql`) — mas a lição é outra: **semente que fura o caminho de
+   produção não prova nada, produz acusação falsa contra código correto.**
+2. Na verificação, `campanha-cega` deu o veredito CERTO pelo motivo ERRADO (caiu na regra de amostra
+   pequena, não no ramo novo). **Resultado certo pelo motivo errado não é prova** — só com 3 leads o
+   ramo apareceu de fato.
+
+**Prova:** `sim@guileoai.com` (tenant `internal`, fora das métricas reais) carrega o fixture:
+boa `$300→$2100 [misto] SUBIR` · ruim `$300→$0 REDUZIR` · cega `$50→$0 [sem_valor] NAO_MEXER` ·
+mesma pessoa 2 agendamentos → receita NÃO dobra.

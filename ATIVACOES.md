@@ -113,3 +113,34 @@ com o app, um DM de teste chega no CRM e a Gui responde.
 **PASSO A (copiar):** Supabase → projeto `ynihodbknhjirkdogxby` → ⚙️ Project Settings → **API** → "Project API keys" → linha **`service_role` (secret)** → Reveal → Copy.
 **PASSO B (colar):** Cloudflare → Workers & Pages → guileoai → Settings → Variables and Secrets → **Production** → Add → nome **`SUPABASE_SERVICE_ROLE`**, valor = a chave, marcar **Secret** → Save.
 **Depois (Claude faz):** troca os Workers dual-uso pra chamar com a service_role (server-only, nunca vai pro bundle) → `revoke execute ... from anon` nessas RPCs → o literal commitado + a anon JWT viram inúteis. Deploy + prova (curl direto com o literal → agora 401/permission denied).
+
+---
+
+## 10. 💵 GUILEO_FEE_PCT = 0 — DECISÃO, não esquecimento (2026-08-10)
+
+**Luis decidiu: a Guileo NÃO tira porcentagem das cobranças do cliente.** A receita vem da
+mensalidade. Mais simples de vender e nada a explicar na hora do fechamento.
+
+⚠️ **NÃO "conserte" isto pondo um número.** O valor está gravado como `0` de propósito. Ausente e
+zero se comportam igual hoje, mas significam o oposto: ausente é "ninguém decidiu", zero é "foi
+decidido". Se um dia mudar, muda com o Luis — nunca por dedução de quem achou o campo vazio.
+
+Onde age: `functions/api/agent-action.js` → `application_fee_percent` / `application_fee_amount`
+no link de pagamento, só em cliente CONECTADO (nunca na conta-dona).
+
+## 11. 🛡️ MAX_CHARGE_USD = 10000 — teto de segurança (2026-08-10, aplicado pelo Claude)
+
+**Vale $5.000.** Uma variável, três caminhos, e os padrões eram DIFERENTES:
+
+| caminho | quem dispara | padrão se ausente |
+|---|---|---|
+| `agent-action.js` invoice/deposit | a AGENTE, na ligação | **5.000** |
+| `packages.js` | humano comprando pacote | 100.000 |
+| `twilio-pay.js` | cartão no telefone | 100.000 |
+
+Na primeira tentativa pus $10.000 achando que subia o piso de segurança dos três. Baixou dois e
+**DOBROU o mais perigoso** — justo o que a AI opera, cujo comentário no código diz por que o limite
+é apertado: *"um preço mal ouvido deve ser recusado, não cobrado"*.
+
+$5.000 restaura o valor projetado do caminho da agente e ainda derruba os outros dois de 100k.
+Só sobe com decisão do Luis, e sabendo que sobe para os TRÊS.
