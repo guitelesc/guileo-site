@@ -1,5 +1,6 @@
 import { useLang } from "../i18n.jsx";
 import { Reveal, Stagger, Item } from "../lib/ui.jsx";
+import { productsForPilar } from "../data/productSystem.js";
 
 // PillarsProducts — the aligned product spine (Luis, 2026-07-24): the landing must MIRROR the real
 // platform's three pillars, and the products must CORRESPOND to what the client actually buys, each
@@ -9,6 +10,57 @@ import { Reveal, Stagger, Item } from "../lib/ui.jsx";
 //   🏗️ Guileo Build — the foundation, built once (done-for-you by the team)
 // Honesty (CLAUDE.md law): AD is explicitly HYBRID (AI + human team) — never "fully automated".
 // Locked cement + neon-realista signal system; landing-scoped; Faena restraint (no loud motion).
+
+
+// ── A LANDING VOLTOU A LER O SISTEMA (2026-08-11) ───────────────────────────────────────────────
+// Antes, cada pilar trazia um `products: [...]` escrito à mão — e repetido nos QUATRO idiomas.
+// Doze listas mantidas a dedo, contra dez produtos que já vivem traduzidos em productSystem.js.
+// Elas já haviam divergido: o AD anunciava "Marketing · Ads · Content creation · Media management ·
+// SEO · Email / CRM", seis nomes que não existem como produto em lugar nenhum da plataforma.
+// Pior: `ProductResultsV2` — o componente que LÊ a fonte e faz do RESULTADO o herói — nem estava
+// mais na Home. O sistema estava certo e o cliente via outra coisa.
+// Agora o nome do produto vem de `productsForPilar(pilar)`; mudar um produto muda a landing
+// sozinha, nos quatro idiomas, sem ninguém traduzir nada.
+//
+// ── E A RESERVA FOI EMBORA (mesma sessão, 2026-08-11) ──────────────────────────────────────────
+// Numa primeira versão eu mantive as listas à mão como RESERVA, argumentando que "o pior caso é a
+// lista antiga, não um vazio". Estava errado, e uma varredura no site inteiro mostrou por quê: a
+// reserva guardava justamente "Gestão de mídia", "SEO" e "E-mail/CRM" — os três nomes que NÃO
+// existem em produto nenhum. Ou seja, o pior caso não era "a lista antiga": era **a mentira
+// voltando sozinha** no dia em que a fonte falhasse, sem ninguém notar.
+// Reserva plausível é a mesma armadilha do coalesce que transforma erro em zero: some com o
+// sintoma e preserva a causa. Agora um pilar sem produto na fonte renderiza VAZIO — alto e óbvio,
+// como o preço que quebra o build em vez de publicar um valor fantasma.
+// ── A ETIQUETA TEM QUE DIZER O QUE ELE FAZ, NÃO COMO SE CHAMA (2026-08-12) ─────────────────────
+// Luis: «os produtos e serviços precisam ficar melhor na landing, está um pouco confuso».
+// Estava — e a causa era concreta: sete etiquetas em fila com NOMES INTERNOS e zero significado.
+// "Escudo Anti-falta" é um nome que existe para NÓS; o dono de salão não sabe o que é. Sete deles
+// viram uma parede: acrescentam comprimento sem acrescentar entendimento, que é a definição de
+// confuso. E os três cards ficavam 7 · 4 · 2, fazendo parecer que um pilar importa e dois sobram.
+//
+// A informação que faltava JÁ ESTAVA na fonte: todo produto carrega um `resultMetric`
+// (+$2k–11k /mês recuperado · 21× mais conversões · −10–20% faltas). A landing mostrava só o nome
+// e escondia o número — mostrando a parte que não vende e escondendo a que vende.
+//
+// TETO DE 4: acima disso o olho para de ler item e passa a ver "lista". O "+N" mantém a promessa
+// honesta (o resto existe) sem transformar o card num inventário — e equilibra os três visualmente,
+// que era metade da confusão.
+const MAX_CHIPS = 4;
+const produtosDoPilar = (pilar, lang) => {
+  const todos = productsForPilar(pilar);
+  const itens = todos.slice(0, MAX_CHIPS).map((p) => {
+    const rm = p.resultMetric || {};
+    const unidade = (rm.unit && (rm.unit[lang] || rm.unit.en)) || "";
+    return {
+      nome: (p.name && (p.name[lang] || p.name.en)) || "",
+      valor: rm.value || "",
+      // a unidade completa vira `title` — quem quiser o detalhe passa o mouse; quem só passa o
+      // olho leva o número. Informação em camadas, não tudo gritando junto.
+      detalhe: [rm.value, unidade].filter(Boolean).join(" "),
+    };
+  }).filter((x) => x.nome);
+  return { itens, resto: Math.max(0, todos.length - itens.length) };
+};
 
 const P = {
   en: {
@@ -21,9 +73,9 @@ const P = {
     dfy: "Done-for-you by the Guileo team",
     resultLabel: "The result",
     pillars: [
-      { badge: "Guileo Brain", icon: "🧠", accent: "#FF8A33", owns: "Your performance", line: "The AI employee that runs the front desk — answers every call & message, books, quotes, closes and collects. 24/7, 16 languages.", products: ["24/7 Reception", "Speed-to-Lead 60s", "No-show Shield", "Reactivation", "Close & Collect"], result: "+$2k–11k", unit: "/mo recovered", tone: "ai" },
-      { badge: "Guileo AD", icon: "📈", accent: "#4C9AFF", owns: "Your growth", line: "Marketing that runs every day so you reach more people, close more deals and waste less ad money.", products: ["Marketing", "Ads", "Content creation", "Media management", "SEO", "Email / CRM"], result: "More leads", unit: "· less wasted ad spend", tone: "hybrid" },
-      { badge: "Guileo Build", icon: "🏗️", accent: "#9AA0FF", owns: "Your foundation", line: "The websites, apps, store and software your whole operation runs on — built once, runs forever.", products: ["Websites", "Mobile apps", "Online store", "Custom software"], result: "1× build", unit: "· runs forever", tone: "dfy" },
+      { pilar: "brain", badge: "Guileo Brain", icon: "🧠", accent: "#FF8A33", owns: "Your performance", line: "The AI employee that runs the front desk — answers every call & message, books, quotes, closes and collects. 24/7, 16 languages.", result: "+$2k–11k", unit: "/mo recovered", tone: "ai" },
+      { pilar: "ad", badge: "Guileo AD", icon: "📈", accent: "#4C9AFF", owns: "Your growth", line: "Marketing that runs every day so you reach more people, close more deals and waste less ad money.", result: "More leads", unit: "· less wasted ad spend", tone: "hybrid" },
+      { pilar: "build", badge: "Guileo Build", icon: "🏗️", accent: "#9AA0FF", owns: "Your foundation", line: "The websites, apps, store and software your whole operation runs on — built once, runs forever.", result: "1× build", unit: "· runs forever", tone: "dfy" },
     ],
   },
   pt: {
@@ -36,9 +88,9 @@ const P = {
     dfy: "Feito pra você pelo time Guileo",
     resultLabel: "O resultado",
     pillars: [
-      { badge: "Guileo Brain", icon: "🧠", accent: "#FF8A33", owns: "Sua performance", line: "O funcionário-IA que cuida da recepção — atende toda ligação e mensagem, agenda, orça, fecha e cobra. 24/7, 16 idiomas.", products: ["Recepção 24/7", "Resposta ao lead em 60s", "Escudo anti-falta", "Reativação", "Fecha & Cobra"], result: "+R$10k–55k", unit: "/mês recuperado", tone: "ai" },
-      { badge: "Guileo AD", icon: "📈", accent: "#4C9AFF", owns: "Seu crescimento", line: "Marketing rodando todo dia pra você alcançar mais gente, fechar mais e desperdiçar menos em anúncio.", products: ["Marketing", "Tráfego pago", "Criação de conteúdo", "Gestão de mídia", "SEO", "E-mail / CRM"], result: "Mais leads", unit: "· menos verba desperdiçada", tone: "hybrid" },
-      { badge: "Guileo Build", icon: "🏗️", accent: "#9AA0FF", owns: "Sua fundação", line: "Os sites, apps, loja e software onde toda a operação roda — construído uma vez, roda pra sempre.", products: ["Sites", "Apps", "Loja online", "Software sob medida"], result: "1× build", unit: "· roda pra sempre", tone: "dfy" },
+      { pilar: "brain", badge: "Guileo Brain", icon: "🧠", accent: "#FF8A33", owns: "Sua performance", line: "O funcionário-IA que cuida da recepção — atende toda ligação e mensagem, agenda, orça, fecha e cobra. 24/7, 16 idiomas.", result: "+R$10k–55k", unit: "/mês recuperado", tone: "ai" },
+      { pilar: "ad", badge: "Guileo AD", icon: "📈", accent: "#4C9AFF", owns: "Seu crescimento", line: "Marketing rodando todo dia pra você alcançar mais gente, fechar mais e desperdiçar menos em anúncio.", result: "Mais leads", unit: "· menos verba desperdiçada", tone: "hybrid" },
+      { pilar: "build", badge: "Guileo Build", icon: "🏗️", accent: "#9AA0FF", owns: "Sua fundação", line: "Os sites, apps, loja e software onde toda a operação roda — construído uma vez, roda pra sempre.", result: "1× build", unit: "· roda pra sempre", tone: "dfy" },
     ],
   },
   es: {
@@ -51,9 +103,9 @@ const P = {
     dfy: "Hecho para ti por el equipo Guileo",
     resultLabel: "El resultado",
     pillars: [
-      { badge: "Guileo Brain", icon: "🧠", accent: "#FF8A33", owns: "Tu performance", line: "El empleado-IA que atiende la recepción — contesta cada llamada y mensaje, agenda, cotiza, cierra y cobra. 24/7, 16 idiomas.", products: ["Recepción 24/7", "Respuesta al lead en 60s", "Escudo anti-ausencia", "Reactivación", "Cierra & Cobra"], result: "+$2k–11k", unit: "/mes recuperado", tone: "ai" },
-      { badge: "Guileo AD", icon: "📈", accent: "#4C9AFF", owns: "Tu crecimiento", line: "Marketing corriendo cada día para llegar a más gente, cerrar más y desperdiciar menos en anuncios.", products: ["Marketing", "Anuncios", "Creación de contenido", "Gestión de medios", "SEO", "Email / CRM"], result: "Más leads", unit: "· menos gasto perdido", tone: "hybrid" },
-      { badge: "Guileo Build", icon: "🏗️", accent: "#9AA0FF", owns: "Tu base", line: "Las webs, apps, tienda y software donde corre toda tu operación — construido una vez, corre siempre.", products: ["Webs", "Apps", "Tienda online", "Software a medida"], result: "1× build", unit: "· corre siempre", tone: "dfy" },
+      { pilar: "brain", badge: "Guileo Brain", icon: "🧠", accent: "#FF8A33", owns: "Tu performance", line: "El empleado-IA que atiende la recepción — contesta cada llamada y mensaje, agenda, cotiza, cierra y cobra. 24/7, 16 idiomas.", result: "+$2k–11k", unit: "/mes recuperado", tone: "ai" },
+      { pilar: "ad", badge: "Guileo AD", icon: "📈", accent: "#4C9AFF", owns: "Tu crecimiento", line: "Marketing corriendo cada día para llegar a más gente, cerrar más y desperdiciar menos en anuncios.", result: "Más leads", unit: "· menos gasto perdido", tone: "hybrid" },
+      { pilar: "build", badge: "Guileo Build", icon: "🏗️", accent: "#9AA0FF", owns: "Tu base", line: "Las webs, apps, tienda y software donde corre toda tu operación — construido una vez, corre siempre.", result: "1× build", unit: "· corre siempre", tone: "dfy" },
     ],
   },
   hi: {
@@ -66,9 +118,9 @@ const P = {
     dfy: "Guileo टीम आपके लिए बनाती है",
     resultLabel: "नतीजा",
     pillars: [
-      { badge: "Guileo Brain", icon: "🧠", accent: "#FF8A33", owns: "आपकी परफ़ॉर्मेंस", line: "AI कर्मचारी जो रिसेप्शन संभालता है — हर कॉल और मैसेज का जवाब, बुकिंग, कोटेशन, डील बंद और वसूली। 24/7, 16 भाषाएँ।", products: ["24/7 रिसेप्शन", "60s में लीड जवाब", "नो-शो शील्ड", "रीएक्टिवेशन", "क्लोज़ & कलेक्ट"], result: "+$2k–11k", unit: "/माह वापस", tone: "ai" },
-      { badge: "Guileo AD", icon: "📈", accent: "#4C9AFF", owns: "आपकी ग्रोथ", line: "मार्केटिंग जो हर दिन चलती है — ज़्यादा लोगों तक पहुँच, ज़्यादा डील, कम विज्ञापन बर्बादी।", products: ["मार्केटिंग", "विज्ञापन", "कंटेंट क्रिएशन", "मीडिया मैनेजमेंट", "SEO", "ईमेल / CRM"], result: "ज़्यादा लीड", unit: "· कम बर्बादी", tone: "hybrid" },
-      { badge: "Guileo Build", icon: "🏗️", accent: "#9AA0FF", owns: "आपकी नींव", line: "वेबसाइट, ऐप, स्टोर और सॉफ़्टवेयर जिन पर पूरा ऑपरेशन चलता है — एक बार बनता है, हमेशा चलता है।", products: ["वेबसाइट", "ऐप्स", "ऑनलाइन स्टोर", "कस्टम सॉफ़्टवेयर"], result: "1× बिल्ड", unit: "· हमेशा चलता है", tone: "dfy" },
+      { pilar: "brain", badge: "Guileo Brain", icon: "🧠", accent: "#FF8A33", owns: "आपकी परफ़ॉर्मेंस", line: "AI कर्मचारी जो रिसेप्शन संभालता है — हर कॉल और मैसेज का जवाब, बुकिंग, कोटेशन, डील बंद और वसूली। 24/7, 16 भाषाएँ।", result: "+$2k–11k", unit: "/माह वापस", tone: "ai" },
+      { pilar: "ad", badge: "Guileo AD", icon: "📈", accent: "#4C9AFF", owns: "आपकी ग्रोथ", line: "मार्केटिंग जो हर दिन चलती है — ज़्यादा लोगों तक पहुँच, ज़्यादा डील, कम विज्ञापन बर्बादी।", result: "ज़्यादा लीड", unit: "· कम बर्बादी", tone: "hybrid" },
+      { pilar: "build", badge: "Guileo Build", icon: "🏗️", accent: "#9AA0FF", owns: "आपकी नींव", line: "वेबसाइट, ऐप, स्टोर और सॉफ़्टवेयर जिन पर पूरा ऑपरेशन चलता है — एक बार बनता है, हमेशा चलता है।", result: "1× बिल्ड", unit: "· हमेशा चलता है", tone: "dfy" },
     ],
   },
 };
@@ -95,7 +147,17 @@ export default function PillarsProducts() {
             {t.h1a}
             <span className="bg-gradient-to-r from-g-green via-g-gold to-g-copper bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "prshine 6s linear infinite" }}>{t.h1b}</span>
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-g-ink">{t.sub}</p>
+          {/* ── O SUBTÍTULO SAIU (Luis, 2026-08-12) ───────────────────────────────────────────
+              Ele dizia "Não são recursos — são pilares. Cada um tem um trabalho, entrega um
+              resultado e se paga." — uma frase que DISCUTE TAXONOMIA com quem só quer saber o que
+              ganha. "Recurso × pilar" é uma distinção nossa, interna; o dono de salão não tem essa
+              briga na cabeça, e ler sobre ela é trabalho sem recompensa bem no ponto em que ele
+              deveria estar olhando os números.
+              Somado às etiquetas que agora carregam o resultado (+$2k–11k, 21×, −10–20%), a seção
+              passou a explicar-se sozinha: o título diz o quê, os cards dizem quanto. Uma frase que
+              defende a estrutura em vez de mostrar o ganho é peso, não clareza.
+              O texto continua em `t.sub` (os 4 idiomas) — se um dia fizer falta numa página onde
+              explicar a estrutura SEJA o assunto, ele está aqui, não foi jogado fora. */}
         </Reveal>
 
         <style>{`@keyframes prshine{to{background-position:220% center}}`}</style>
@@ -124,9 +186,17 @@ export default function PillarsProducts() {
 
                   {/* the real products under this pillar */}
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {p.products.map((pr) => (
-                      <span key={pr} className="rounded-full border px-2.5 py-1 text-[11px] font-semibold text-g-light" style={{ borderColor: `rgba(${rgb},0.3)`, background: `rgba(${rgb},0.07)` }}>{pr}</span>
-                    ))}
+                    {(() => { const { itens, resto } = produtosDoPilar(p.pilar, lang); return (<>
+                      {itens.map((it) => (
+                        <span key={it.nome} title={it.detalhe} className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold text-g-light" style={{ borderColor: `rgba(${rgb},0.3)`, background: `rgba(${rgb},0.07)` }}>
+                          {it.nome}
+                          {it.valor && <b className="font-black tabular-nums" style={{ color: `rgb(${rgb})` }}>{it.valor}</b>}
+                        </span>
+                      ))}
+                      {resto > 0 && (
+                        <span className="rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-g-muted">+{resto}</span>
+                      )}
+                    </>); })()}
                   </div>
 
                   {/* honest delivery tag */}

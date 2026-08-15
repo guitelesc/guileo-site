@@ -19,6 +19,63 @@ const LIVE_COUNT = {
   hi: (s, b) => `लाइव: ${b} Guileo व्यवसाय${b > 1 ? "ों" : ""} में ${s} ग्राहक अनुभव मापे गए`,
 };
 
+
+// ── O PISO DO CONTADOR AO VIVO (2026-08-11) ─────────────────────────────────────────────────────
+// Este selo estava anunciando, em produção: "Live: 16 customer experiences measured across 2
+// Guileo businesses". Verdade — e CONTRAPROVA. Um contador ao vivo só é prova social se o número
+// impressiona; abaixo de um piso, o mesmo número honesto vira o argumento do concorrente ("olha,
+// ninguém usa"). O visitante não lê "estamos começando", lê "não pegou".
+//
+// O componente JÁ tinha esse conceito e o aplicava só na média (`ready` = dados suficientes para
+// uma média não enganosa). O buraco era a camada de CONTAGEM, que disparava com `> 0` — qualquer
+// coisa acima de zero virava manchete. Aqui o piso é o mesmo raciocínio, aplicado ao número que
+// fala de ESCALA em vez de precisão.
+//
+// A saída NÃO é inflar nem esconder para sempre: o selo volta sozinho quando o número virar
+// argumento, sem ninguém editar nada. Enquanto isso a seção se sustenta no que já é forte e não
+// depende de escala — a comparação de preço ($49 fixo contra $300–600 por unidade).
+
+// ── O PAINEL DO PULSE, MOSTRADO EM VEZ DE DESCRITO (Luis, 2026-08-11) ───────────────────────────
+// «um termômetro de satisfação, pesquisas e avaliação de 1 a 5 estrelas — ISSO é o serviço; tem
+// que estar VISÍVEL e casar com o design.»
+// Eu tinha cortado os 4 cartões que EXPLICAVAM o produto, e o corte estava certo: texto explicando
+// não vende um produto visual. O que faltava não era texto menor — era o produto APARECENDO.
+// Este bloco é o painel que o dono vê: o termômetro (a nota), a distribuição de estrelas (de onde
+// a nota vem) e a pergunta que o cliente dele responde (como a nota é coletada). Três peças, uma
+// linha, zero parágrafo.
+//
+// HONESTIDADE: estes números são EXEMPLO, e o rótulo diz isso na cara — não são média de cliente
+// nenhum. O selo "ao vivo" desta seção continua sendo a única coisa que fala de dados reais, e ele
+// só aparece acima do piso (ver PISO_NEGOCIOS/PISO_SINAIS). Painel de demonstração e alegação de
+// resultado são coisas diferentes; misturar as duas é como o "40%" que saiu daqui.
+const PAINEL = {
+  en: { tag: "What you get, every week", score: "Your CX score", ex: "example panel",
+        stars: "Where the score comes from", ask: "What your customer is asked", q: "How was your visit today?", send: "Tap to answer" },
+  pt: { tag: "O que você recebe, toda semana", score: "Sua nota de satisfação", ex: "painel de exemplo",
+        stars: "De onde a nota vem", ask: "O que o seu cliente responde", q: "Como foi seu atendimento hoje?", send: "Toque para responder" },
+  es: { tag: "Lo que recibes, cada semana", score: "Tu nota de satisfacción", ex: "panel de ejemplo",
+        stars: "De dónde viene la nota", ask: "Lo que responde tu cliente", q: "¿Cómo fue tu atención hoy?", send: "Toca para responder" },
+  hi: { tag: "हर हफ़्ते आपको क्या मिलता है", score: "आपका CX स्कोर", ex: "उदाहरण पैनल",
+        stars: "स्कोर कहाँ से आता है", ask: "आपके ग्राहक से क्या पूछा जाता है", q: "आज आपका अनुभव कैसा रहा?", send: "जवाब देने के लिए टैप करें" },
+};
+// distribuição de exemplo (5★ → 1★). Soma 100 de propósito: é leitura de percentual.
+// ── A PORTA PARA /pulse (2026-08-12) ───────────────────────────────────────────────────────────
+// Criei a página /pulse e ela nasceu ÓRFÃ: nenhum link, fora do sitemap. Página que existe não é
+// página que se alcança — é a mesma família do "sucesso sem comprovante" que persegui a sessão
+// inteira, e a mais fácil de não notar, porque `curl /pulse` devolve 200 alegremente.
+// Duas portas, e são para públicos diferentes: o SITEMAP é a do Google, o LINK abaixo é a do
+// visitante que quer entender o produto antes de dar o telefone. Faltar qualquer uma das duas
+// deixa a página existindo para ninguém.
+const VER_MAIS = {
+  en: "See how Pulse works →", pt: "Veja como o Pulse funciona →",
+  es: "Mira cómo funciona Pulse →", hi: "देखें Pulse कैसे काम करता है →",
+};
+const ESTRELAS = [{ n: 5, pct: 68 }, { n: 4, pct: 21 }, { n: 3, pct: 6 }, { n: 2, pct: 3 }, { n: 1, pct: 2 }];
+const NOTA = 86;
+
+const PISO_NEGOCIOS = 10;   // abaixo disso "N negócios" conta contra nós
+const PISO_SINAIS = 500;    // idem para o volume de experiências medidas
+
 // PulseSection — landing wedge for GUILEO PULSE, a standalone product:
 // "the Qualtrics of the small business, run by AI". It MEASURES the satisfaction of the
 // customer-of-the-customer from signals Gui already captures (call sentiment + reviews,
@@ -27,10 +84,17 @@ const LIVE_COUNT = {
 // per-location incumbents (Birdeye/Podium) and enterprise (Medallia/Qualtrics).
 //
 // Self-contained: local dict keyed by `lang` from useLang() (same pattern as GrowthV2 /
-// LeadCaptureV2). Landing design system only (g-* tokens, rounded-xl3, shadow-lift).
+// LeadCaptureV2). Landing design system only (g-* tokens, shadow-lift).
+// RAIO: cartão = rounded-2xl (o mesmo dos pilares e de toda a narrativa da página); rounded-xl3
+// fica só para PAINEL largo. A linha anterior deste comentário dizia que xl3 era "o sistema" —
+// não era, e foi seguindo o comentário que esta seção acabou com cara de outro site.
 // CTA reuses the site's phone-input "AI calls you" flow (/api/lead noCall + /api/call).
 
-const P = {
+// EXPORTADO: a página /pulse consome ESTE dicionário. O conteúdo que saiu da landing (os 4 cartões
+// de benefício e a faixa dos 40%) continua vivo aqui e é renderizado lá — nenhuma linha foi copiada.
+// Copiar teria criado a 2ª fonte que passei a sessão inteira eliminando: no dia em que um número
+// mudar, o certo é mudar num lugar só. Ver [[project_guileo_landing_pillars]].
+export const PULSE_COPY = {
   en: {
     eyebrow: "GUILEO PULSE",
     category: "Experience Management · small-business price",
@@ -39,10 +103,10 @@ const P = {
     h1c: " — automatically.",
     sub: "Enterprise-grade experience management, already running — because Gui is already on the calls. No surveys to build, no per-location bill.",
     benefits: [
-      { ic: "🎯", t: "A CX score from what you already get", d: "Call sentiment + reviews become one live score. Zero surveys to design — it's measured the moment Gui hangs up." },
-      { ic: "🔎", t: "Your top detractor-drivers, this week", d: "See exactly what's dragging you down — wait times, a rude tone, a broken promise — ranked by how much it costs you." },
-      { ic: "🔁", t: "Auto close-the-loop before they churn", d: "An unhappy customer? Gui follows up automatically — apologizes, fixes it, wins them back — before they're gone." },
-      { ic: "📊", t: "NPS, CSAT & CES without the busywork", d: "Add active surveys when you want them. Passive + active feed the same score — one number that finally means something." },
+      { ic: "🎯", t: "One number, from the calls you already get", d: "Every call Gui answers gets read for how the customer felt. That becomes one score. You build no surveys." },
+      { ic: "🔎", t: "What's costing you customers this week", d: "The real reasons people leave unhappy — the wait, a short tone, a promise not kept — ranked by what each one costs you." },
+      { ic: "🔁", t: "The unhappy customer gets a call back", d: "Someone hung up upset? Gui calls, apologizes and fixes it — while they're still yours." },
+      { ic: "📊", t: "Ask them directly, when you want to", d: "Send a quick question after a visit if you like. What they answer and how they sounded feed the same number (NPS, CSAT and CES included)." },
     ],
     statBig: "40%",
     statText: "of customers who stopped responding said it's because nothing happened the last time they gave feedback.",
@@ -73,10 +137,10 @@ const P = {
     h1c: " — no automático.",
     sub: "Gestão de experiência nível enterprise, já rodando — porque a Gui já está nas ligações. Sem pesquisa pra montar, sem conta por unidade.",
     benefits: [
-      { ic: "🎯", t: "Um score de CX do que você já recebe", d: "Sentimento das ligações + avaliações viram um score ao vivo. Zero pesquisa pra criar — é medido no instante em que a Gui desliga." },
-      { ic: "🔎", t: "Seus maiores motivos de insatisfação, desta semana", d: "Veja exatamente o que te derruba — tempo de espera, tom ríspido, promessa quebrada — ranqueado pelo quanto custa a você." },
-      { ic: "🔁", t: "Fecha o ciclo antes do cliente sumir", d: "Cliente insatisfeito? A Gui faz o follow-up sozinha — pede desculpa, resolve, reconquista — antes de ele ir embora." },
-      { ic: "📊", t: "NPS, CSAT e CES sem trabalho manual", d: "Adicione pesquisas ativas quando quiser. Passivo + ativo alimentam o mesmo score — um número que finalmente significa algo." },
+      { ic: "🎯", t: "Um número, das ligações que você já recebe", d: "Toda ligação que a Gui atende é lida pelo que o cliente sentiu. Isso vira uma nota só. Você não monta pesquisa nenhuma." },
+      { ic: "🔎", t: "O que está te custando cliente nesta semana", d: "Os motivos reais de quem sai insatisfeito — a espera, um tom seco, uma promessa não cumprida — ranqueados pelo que cada um custa." },
+      { ic: "🔁", t: "O cliente insatisfeito recebe uma ligação", d: "Alguém desligou chateado? A Gui liga, pede desculpa e resolve — enquanto ele ainda é seu." },
+      { ic: "📊", t: "Pergunte direto, quando você quiser", d: "Mande uma pergunta rápida depois do atendimento, se quiser. O que a pessoa responde e como ela soou alimentam o mesmo número (NPS, CSAT e CES inclusos)." },
     ],
     statBig: "40%",
     statText: "dos clientes que pararam de responder disseram que foi porque nada aconteceu da última vez que deram um feedback.",
@@ -107,10 +171,10 @@ const P = {
     h1c: " — en automático.",
     sub: "Gestión de experiencia nivel enterprise, ya funcionando — porque Gui ya está en las llamadas. Sin encuestas que armar, sin cobro por local.",
     benefits: [
-      { ic: "🎯", t: "Un score de CX de lo que ya recibes", d: "El sentimiento de las llamadas + reseñas se vuelven un score en vivo. Cero encuestas que diseñar — se mide en cuanto Gui cuelga." },
-      { ic: "🔎", t: "Tus mayores motivos de insatisfacción, esta semana", d: "Ve exactamente qué te hunde — tiempos de espera, un tono grosero, una promesa rota — ordenado por cuánto te cuesta." },
-      { ic: "🔁", t: "Cierra el ciclo antes de que se vayan", d: "¿Un cliente molesto? Gui hace el seguimiento sola — se disculpa, lo resuelve, lo recupera — antes de perderlo." },
-      { ic: "📊", t: "NPS, CSAT y CES sin trabajo manual", d: "Agrega encuestas activas cuando quieras. Pasivo + activo alimentan el mismo score — un número que por fin significa algo." },
+      { ic: "🎯", t: "Un número, de las llamadas que ya recibes", d: "Cada llamada que Gui atiende se lee por lo que el cliente sintió. Eso se vuelve una sola nota. No armas ninguna encuesta." },
+      { ic: "🔎", t: "Qué te está costando clientes esta semana", d: "Los motivos reales de quien se va molesto — la espera, un tono seco, una promesa incumplida — ordenados por lo que cada uno cuesta." },
+      { ic: "🔁", t: "El cliente molesto recibe una llamada", d: "¿Alguien colgó molesto? Gui llama, se disculpa y lo resuelve — mientras todavía es tuyo." },
+      { ic: "📊", t: "Pregunta directo, cuando quieras", d: "Manda una pregunta rápida después de la visita, si quieres. Lo que responde y cómo sonó alimentan el mismo número (NPS, CSAT y CES incluidos)." },
     ],
     statBig: "40%",
     statText: "de los clientes que dejaron de responder dijeron que fue porque nada pasó la última vez que dieron feedback.",
@@ -119,8 +183,8 @@ const P = {
     us: "Pulse — $49/mes, fijo",
     usSub: "todos los locales incluidos",
     rivals: [
-      { n: "Birdeye · Podium", p: "$300–600 / local / mes" },
-      { n: "Medallia · Qualtrics", p: "$20K+ / año" },
+      { n: "Birdeye · Podium", p: "US$300–600 / local / mes" },
+      { n: "Medallia · Qualtrics", p: "US$20K+ / año" },
     ],
     price: "$49",
     per: "/mes · fijo, todos los locales",
@@ -141,10 +205,10 @@ const P = {
     h1c: " — अपने-आप।",
     sub: "एंटरप्राइज़-स्तर का एक्सपीरियंस मैनेजमेंट, पहले से चालू — क्योंकि Gui पहले से कॉल पर है। कोई सर्वे नहीं बनाना, कोई प्रति-लोकेशन बिल नहीं।",
     benefits: [
-      { ic: "🎯", t: "जो पहले से मिल रहा है उसी से CX स्कोर", d: "कॉल सेंटिमेंट + रिव्यू मिलकर एक लाइव स्कोर बनते हैं। कोई सर्वे डिज़ाइन नहीं — Gui के फ़ोन रखते ही माप लिया जाता है।" },
-      { ic: "🔎", t: "इस हफ़्ते आपके सबसे बड़े असंतोष के कारण", d: "देखें आपको क्या गिरा रहा है — इंतज़ार, रूखा लहजा, टूटा वादा — इस क्रम में कि आपको कितना महँगा पड़ रहा है।" },
-      { ic: "🔁", t: "ग्राहक जाने से पहले लूप बंद करें", d: "नाख़ुश ग्राहक? Gui खुद फ़ॉलो-अप करती है — माफ़ी माँगती है, ठीक करती है, वापस जीतती है — इससे पहले कि वे चले जाएँ।" },
-      { ic: "📊", t: "NPS, CSAT और CES बिना मेहनत के", d: "जब चाहें एक्टिव सर्वे जोड़ें। पैसिव + एक्टिव एक ही स्कोर को भरते हैं — एक नंबर जो आख़िरकार मायने रखता है।" },
+      { ic: "🎯", t: "एक नंबर, उन्हीं कॉल्स से जो पहले से आती हैं", d: "गुई जो भी कॉल उठाती है, उसे ग्राहक की भावना के लिए पढ़ा जाता है। वही एक स्कोर बनता है। कोई सर्वे नहीं बनाना पड़ता।" },
+      { ic: "🔎", t: "इस हफ़्ते आपको ग्राहक किस वजह से खो रहे हैं", d: "नाराज़ जाने की असली वजहें — इंतज़ार, रूखा लहजा, अधूरा वादा — इस क्रम में कि हर एक आपको कितना महँगा पड़ता है।" },
+      { ic: "🔁", t: "नाराज़ ग्राहक को कॉल वापस जाती है", d: "कोई नाराज़ होकर फ़ोन रख गया? गुई कॉल करती है, माफ़ी माँगती है और ठीक करती है — जब तक वह आपका है।" },
+      { ic: "📊", t: "जब चाहें, सीधे पूछिए", d: "चाहें तो विज़िट के बाद एक छोटा सवाल भेजिए। जवाब और आवाज़ का लहजा — दोनों उसी नंबर में जाते हैं (NPS, CSAT और CES शामिल)।" },
     ],
     statBig: "40%",
     statText: "ग्राहक जिन्होंने जवाब देना बंद किया, बोले कि पिछली बार फ़ीडबैक देने पर कुछ हुआ ही नहीं, इसीलिए।",
@@ -153,8 +217,8 @@ const P = {
     us: "Pulse — $49/माह, फ़्लैट",
     usSub: "हर लोकेशन शामिल",
     rivals: [
-      { n: "Birdeye · Podium", p: "$300–600 / लोकेशन / माह" },
-      { n: "Medallia · Qualtrics", p: "$20K+ / वर्ष" },
+      { n: "Birdeye · Podium", p: "US$300–600 / लोकेशन / माह" },
+      { n: "Medallia · Qualtrics", p: "US$20K+ / वर्ष" },
     ],
     price: "$49",
     per: "/माह · फ़्लैट, सभी लोकेशन",
@@ -171,7 +235,7 @@ const P = {
 
 export default function PulseSection() {
   const { lang } = useLang();
-  const G = P[lang] || P.en;
+  const G = PULSE_COPY[lang] || PULSE_COPY.en;
 
   const [phone, setPhone] = useState("");
   const [consent, setConsent] = useState(false); // TCPA — affirmative opt-in before any automated call
@@ -184,12 +248,21 @@ export default function PulseSection() {
     fetch("/api/pulse-stat").then((r) => (r.ok ? r.json() : null)).then((d) => { if (ok) setLive(d || null); }).catch(() => {});
     return () => { ok = false; };
   }, []);
+  // ⚠️ CHAMA-SE `PN`, NÃO `P`: o dicionário de idiomas deste arquivo JÁ é `const P` (linha ~82) e é
+  // lido logo acima em `const G = P[lang]`. Declarar outro `P` aqui dentro criava uma SOMBRA no
+  // mesmo escopo de função → zona morta temporal, e a linha de cima passava a ler a variável que
+  // ainda não existe. O build compilou sem uma palavra; o erro só apareceu no navegador, e o
+  // ErrorBoundary engoliu a seção INTEIRA em silêncio (a página seguia perfeita, sem o Pulse).
+  // Duas lições numa: sombra de `const` é invisível ao compilador e ao olho quando as duas
+  // declarações estão a 154 linhas de distância; e rede de proteção que esconde a queda é a mesma
+  // família do fallback que vira zero — some com o sintoma e preserva a causa.
+  const PN = PAINEL[lang] || PAINEL.en;
   const liveText = !live ? null
     : (live.ready && live.avg_cx > 0 && live.businesses > 0)
       ? (LIVE_LABEL[lang] || LIVE_LABEL.en)(live.avg_cx, live.businesses)     // enough data → show avg CX
-      : (live.businesses > 0 && live.signals > 0)
-        ? (LIVE_COUNT[lang] || LIVE_COUNT.en)(live.signals, live.businesses)  // any data → real counts, no avg
-        : null;                                                              // nothing real yet → stay static
+      : (live.businesses >= PISO_NEGOCIOS && live.signals >= PISO_SINAIS)
+        ? (LIVE_COUNT[lang] || LIVE_COUNT.en)(live.signals, live.businesses)  // dado real E suficiente
+        : null;                                                              // abaixo do piso → fica calado
 
   const submit = async (e) => {
     e.preventDefault();
@@ -224,47 +297,78 @@ export default function PulseSection() {
             {liveText}
           </div>
         )}
-        <h2 className="mx-auto mt-4 max-w-2xl font-black leading-[0.98] tracking-tight" style={{ fontSize: "clamp(2rem,4.4vw,3.2rem)" }}>
-          <span className="text-g-word" style={{ animation: "pureveal .8s cubic-bezier(.2,.7,.2,1) .1s both" }}>{G.h1a}</span>
-          <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "pureveal .8s cubic-bezier(.2,.7,.2,1) .22s both, pushine 6s linear infinite" }}>{G.h1b}</span>
-          <span className="text-g-word" style={{ animation: "pureveal .8s cubic-bezier(.2,.7,.2,1) .1s both" }}>{G.h1c}</span>
-        </h2>
-        <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-g-ink" style={{ animation: "pureveal .8s ease .3s both" }}>{G.sub}</p>
+        {/* O título de 3 linhas e o parágrafo saíram: DEPOIS do preço, esta seção não abre nada —
+            ela fecha. Quem chega aqui já leu a landing inteira e já viu $149–$999; não precisa de
+            outro herói, precisa da razão de ser $49. Uma frase de contexto e o número bastam. */}
+        <p className="mx-auto mt-3 max-w-lg text-[14.5px] leading-relaxed text-g-ink" style={{ animation: "pureveal .8s ease .2s both" }}>{G.sub}</p>
       </div>
 
-      {/* benefits grid */}
-      <div className="mx-auto mt-12 grid max-w-4xl gap-4 sm:grid-cols-2">
-        {G.benefits.map((b, i) => {
-          const rgb = ["62,148,104", "214,194,154", "231,138,51", "194,168,120"][i];
-          return (
-            <div key={b.t} className="group relative overflow-hidden rounded-xl3 border bg-white/[0.04] p-6 shadow-lift backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:bg-white/[0.06]"
-              style={{ borderColor: `rgba(${rgb},0.28)`, animation: `pureveal .7s cubic-bezier(.2,.7,.2,1) ${0.35 + i * 0.1}s both` }}>
-              <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: `linear-gradient(90deg,transparent,rgba(${rgb},0.85),transparent)` }} />
-              <span className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full blur-2xl" style={{ background: `rgba(${rgb},0.12)` }} />
-              <div className="flex items-start gap-4">
-                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border text-2xl" style={{ borderColor: `rgba(${rgb},0.35)`, background: `rgba(${rgb},0.1)` }}>{b.ic}</span>
-                <div className="min-w-0">
-                  <div className="text-[16px] font-extrabold leading-snug text-g-word">{b.t}</div>
-                  <p className="mt-1.5 text-[13.5px] leading-relaxed text-g-ink">{b.d}</p>
+      {/* Os 4 cartões de benefício saíram daqui (Luis: "tá confuso, é grande"). Eram 4 blocos de
+          texto explicando COMO o Pulse funciona — explicação é trabalho de página de produto, não
+          de um bloco que existe para capturar quem não comprou o plano. O texto continua vivo em
+          `G.benefits` e é o conteúdo pronto para /pulse quando ela existir. */}
+
+      {/* A faixa "40%" saiu: é um argumento de POR QUE medir experiência importa — convence quem
+          ainda não quer o produto. Aqui embaixo, quem sobrou já foi convencido pela landing toda;
+          o que falta é o preço bater. Mantida em `G.statBig/statText/statPunch` para /pulse. */}
+
+      {/* ── PAINEL: termômetro · estrelas · pesquisa (ver a nota do topo) ─────────────────── */}
+      <div className="mx-auto mt-10 max-w-4xl">
+        <div className="mb-4 flex items-center justify-center gap-2 text-[11.5px] font-black uppercase tracking-[0.2em] text-g-gold">
+          {PN.tag}
+          <span className="rounded-full border border-white/15 bg-white/[0.05] px-2 py-0.5 text-[9.5px] font-bold normal-case tracking-normal text-g-muted">{PN.ex}</span>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+
+          {/* 1. TERMÔMETRO — arco 0-100, a cor segue a nota (vermelho→âmbar→verde) */}
+          <div className="rounded-2xl border border-g-green/25 bg-g-green/[0.06] p-5 text-center">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-g-muted">{PN.score}</div>
+            <svg viewBox="0 0 120 68" className="mx-auto mt-2 w-full max-w-[190px]" role="img" aria-label={`${PN.score}: ${NOTA}`}>
+              <path d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="10" strokeLinecap="round" />
+              <path d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke="url(#pulseGrad)" strokeWidth="10" strokeLinecap="round"
+                strokeDasharray="157" strokeDashoffset={157 - (157 * NOTA) / 100} style={{ transition: "stroke-dashoffset 1.2s cubic-bezier(.2,.7,.2,1)" }} />
+              <defs>
+                <linearGradient id="pulseGrad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#e0855f" /><stop offset="55%" stopColor="#FFC23D" /><stop offset="100%" stopColor="#3E9468" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div className="-mt-4 text-[34px] font-black leading-none tabular-nums text-g-word">{NOTA}</div>
+          </div>
+
+          {/* 2. DE ONDE A NOTA VEM — 1 a 5 estrelas */}
+          <div className="rounded-2xl border border-g-gold/25 bg-g-gold/[0.05] p-5">
+            <div className="text-center text-[11px] font-bold uppercase tracking-wider text-g-muted">{PN.stars}</div>
+            <div className="mt-3 flex flex-col gap-1.5">
+              {ESTRELAS.map((e) => (
+                <div key={e.n} className="flex items-center gap-2">
+                  <span className="w-8 shrink-0 text-right text-[11px] font-bold tabular-nums text-g-ink">{e.n}★</span>
+                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.07]">
+                    <span className="block h-full rounded-full" style={{ width: `${e.pct}%`, background: e.n >= 4 ? "#3E9468" : e.n === 3 ? "#FFC23D" : "#e0855f" }} />
+                  </span>
+                  <span className="w-8 shrink-0 text-[11px] tabular-nums text-g-muted">{e.pct}%</span>
                 </div>
-              </div>
+              ))}
             </div>
-          );
-        })}
-      </div>
+          </div>
 
-      {/* 40% proof band */}
-      <div className="mx-auto mt-6 max-w-4xl overflow-hidden rounded-xl3 border border-g-gold/35 bg-gradient-to-br from-g-gold/[0.1] via-white/[0.03] to-g-green/[0.08] p-7 shadow-lift backdrop-blur-xl sm:p-9" style={{ animation: "pureveal .8s ease .55s both" }}>
-        <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
-          <div className="shrink-0">
-            <div className="bg-gradient-to-br from-g-gold to-g-copper bg-clip-text text-[64px] font-black leading-none tracking-tight text-transparent tabular-nums sm:text-[84px]" style={{ textShadow: "0 0 30px rgba(214,194,154,0.35)" }}>{G.statBig}</div>
+          {/* 3. A PESQUISA — o que o cliente do cliente vê */}
+          <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-5">
+            <div className="text-center text-[11px] font-bold uppercase tracking-wider text-g-muted">{PN.ask}</div>
+            <div className="mt-3 rounded-xl border border-white/10 bg-[#0e0d0b] p-4">
+              <div className="text-[12.5px] font-semibold leading-snug text-g-word">{PN.q}</div>
+              <div className="mt-3 flex justify-between text-[22px]">
+                {[1,2,3,4,5].map((n) => <span key={n} style={{ opacity: n <= 4 ? 0.35 : 1 }}>★</span>)}
+              </div>
+              <div className="mt-2 text-center text-[10.5px] text-g-muted">{PN.send}</div>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-[15px] font-semibold leading-relaxed text-g-word sm:text-[16.5px]">{G.statText}</p>
-            <p className="mt-2 inline-flex items-center gap-2 text-[13.5px] font-bold text-g-green">
-              <span className="text-lg">🔁</span> {G.statPunch}
-            </p>
-          </div>
+
+        </div>
+        <div className="mt-5 text-center">
+          <a href="/pulse" className="inline-flex items-center gap-1.5 rounded-full border border-g-green/40 bg-g-green/[0.09] px-5 py-2.5 text-[13px] font-bold text-g-light transition hover:bg-g-green/[0.16]">
+            {VER_MAIS[lang] || VER_MAIS.en}
+          </a>
         </div>
       </div>
 

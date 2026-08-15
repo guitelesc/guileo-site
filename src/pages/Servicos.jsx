@@ -6,7 +6,6 @@ import VoiceAgent from "../components/VoiceAgent";
 import { Reveal } from "../lib/ui.jsx";
 import { waLink } from "../data/contact.js";
 import LeadForm from "../components/LeadForm.jsx";
-import PillarsProducts from "../components/PillarsProducts.jsx";
 import { useLang } from "../i18n.jsx";
 import { CATALOG, CATALOG_TOTAL } from "../data/serviceCatalog.js";
 import { SEO_VERTICALS } from "../data/seoVerticals.js";
@@ -63,6 +62,41 @@ const UI = {
   },
   waTalk: { en: "💬 Talk on WhatsApp", pt: "💬 Falar no WhatsApp", es: "💬 Hablar por WhatsApp", hi: "💬 WhatsApp पर बात करें" },
 };
+
+// ── OS 6 GRUPOS AGORA MORAM DENTRO DOS 3 PILARES (2026-08-12) ──────────────────────────────────
+// Luis: «unifica as duas». Esta página mostrava DUAS classificações ao mesmo tempo — os pilares
+// (como vendemos) e os 6 grupos (como se organiza). Nenhuma errada, e era isso que confundia: o
+// visitante tinha que descobrir sozinho que eram VISTAS da mesma coisa, não coisas diferentes.
+// Agora é uma árvore: PILAR → grupo → serviço. O `pilar` vem de serviceCatalog.js (grupo ou, no
+// Guarda-chuva que é misto, do próprio serviço) — nunca de uma lista escrita aqui.
+const PILAR_INFO = {
+  brain: { emoji: "🧠", rgb: "255,138,51",
+    nome: { en: "Guileo Brain", pt: "Guileo Brain", es: "Guileo Brain", hi: "Guileo Brain" },
+    linha: { en: "What the AI employee does on its own", pt: "O que a agente faz sozinha",
+             es: "Lo que la agente hace sola", hi: "एजेंट खुद क्या करती है" } },
+  ad: { emoji: "📈", rgb: "76,154,255",
+    nome: { en: "Guileo AD", pt: "Guileo AD", es: "Guileo AD", hi: "Guileo AD" },
+    linha: { en: "What the marketing team runs for you", pt: "O que o time de marketing roda pra você",
+             es: "Lo que el equipo de marketing hace por ti", hi: "मार्केटिंग टीम आपके लिए क्या चलाती है" } },
+  build: { emoji: "🏗️", rgb: "154,160,255",
+    nome: { en: "Guileo Build", pt: "Guileo Build", es: "Guileo Build", hi: "Guileo Build" },
+    linha: { en: "What the engineering team builds once", pt: "O que o time de engenharia constrói uma vez",
+             es: "Lo que ingeniería construye una vez", hi: "इंजीनियरिंग टीम एक बार क्या बनाती है" } },
+};
+const ORDEM_PILARES = ["brain", "ad", "build"];
+// Reagrupa o catálogo já filtrado pela busca: pilar → grupos (com só os serviços daquele pilar).
+// Um grupo misto (o Guarda-chuva) aparece nos DOIS pilares, cada vez com os serviços que são dele
+// — o que é a leitura correta: ele nunca foi um bloco só, era uma gaveta com duas coisas dentro.
+function porPilar(grupos) {
+  return ORDEM_PILARES.map((pilar) => {
+    const gs = grupos.map((g) => {
+      const servs = (g.services || []).filter((s) => (s.pilar || g.pilar) === pilar);
+      return servs.length ? { ...g, services: servs } : null;
+    }).filter(Boolean);
+    const total = gs.reduce((n, g) => n + g.services.length, 0);
+    return total ? { pilar, grupos: gs, total } : null;
+  }).filter(Boolean);
+}
 
 export default function Servicos() {
   const { lang } = useLang();
@@ -156,13 +190,35 @@ export default function Servicos() {
       </header>
 
       {/* Lead the services page with the SAME 3-pillar story as the landing (ecosystem coherence) */}
-      <PillarsProducts />
+      {/* ── O BLOCO DOS PILARES SAIU DAQUI (2026-08-12) ────────────────────────────────────────
+          Ele era a SEGUNDA taxonomia da página — a razão de o Luis pedir "unifica as duas". Agora
+          que os 6 grupos do catálogo moram DENTRO dos 3 pilares (pilar → grupo → serviço), manter
+          um bloco separado que também apresenta os pilares é dizer a mesma coisa duas vezes na
+          mesma rolagem: primeiro em resumo, depois em detalhe. O visitante lia as duas para
+          descobrir que eram uma.
+          Ele continua na LANDING, que é onde os pilares fazem o trabalho de VENDER. Aqui, onde o
+          trabalho é DETALHAR, o pilar já é o título de cada seção — apresentá-lo de novo antes
+          seria um índice do que vem logo abaixo. Unificar não foi juntar os dois blocos: foi
+          descobrir que um deles virou a estrutura do outro. */}
 
       <div className="wrap py-10">
         {groups.length === 0 && <div role="status" className="text-center py-20 text-g-muted">{u("noMatch")}</div>}
 
         {/* ── Group sections ─────────────────────────────────────────────── */}
-        {groups.map((g) => {
+        {porPilar(groups).map((bloco) => {
+          const info = PILAR_INFO[bloco.pilar];
+          return (
+        <div key={bloco.pilar} className="mb-16">
+          {/* O PILAR é o título de nível 1 — a taxonomia única desta página. */}
+          <Reveal>
+            <div className="mb-6 flex items-baseline gap-3 border-b pb-3" style={{ borderColor: `rgba(${info.rgb},0.28)` }}>
+              <span className="text-2xl">{info.emoji}</span>
+              <h2 className="text-[26px] font-black tracking-tight" style={{ color: `rgb(${info.rgb})` }}>{L(info.nome)}</h2>
+              <span className="text-[13px] text-g-muted">{L(info.linha)}</span>
+              <span className="ml-auto text-[11px] font-black tabular-nums" style={{ color: `rgb(${info.rgb})` }}>{bloco.total}</span>
+            </div>
+          </Reveal>
+        {bloco.grupos.map((g) => {
           const gi = CATALOG.indexOf(CATALOG.find((c) => c.group.en === g.group.en));
           const color = GROUP_COLOR[gi] || GUI_ORANGE;
           return (
@@ -184,13 +240,27 @@ export default function Servicos() {
                         <h3 className="font-extrabold text-g-word text-[15px] leading-snug">{L(s.name)}</h3>
                       </div>
                       <p className="mt-3 text-[13px] leading-relaxed text-g-ink">{L(s.does)}</p>
+                      {/* ── UMA VOZ ALTA, UMA BAIXA (2026-08-12) ──────────────────────────────────
+                          Antes cada um dos 35 cards trazia DOIS blocos rotulados em caixa alta —
+                          "VOCÊ GANHA" e "RESULTADO" — com o mesmo peso visual. Medi o conteúdo:
+                          33 dos 35 `result` apenas RE-DIZEM o `gain` com outras palavras ("uma
+                          vitrine que de fato vende" × "sua presença trabalha tanto quanto seu
+                          balcão"). Multiplicado por 35, viram 13 mil caracteres e 70 rótulos
+                          gritando. A página não confundia por falta de informação: confundia
+                          porque se repetia 35 vezes, e duas afirmações do mesmo tamanho competindo
+                          fazem o olho ler as duas para descobrir que eram uma.
+                          ⚠️ POR QUE NÃO APAGUEI O `result`: os outros 2 carregam informação
+                          COMERCIAL que não está em lugar nenhum — "orçado por trabalho, não
+                          incluído no mensal" (vídeo) e o número de ligações perdidas. Corte cego
+                          teria destruído justamente o aviso que evita mal-entendido na assinatura.
+                          Então é hierarquia, não exclusão: o GANHO fala alto (é o que vende), o
+                          resultado vira eco discreto. Os 2 informativos continuam legíveis porque
+                          são distintos; os 33 poéticos param de disputar. */}
                       <div className="mt-3 rounded-lg px-3 py-2 text-[13px] font-bold text-g-light bg-g-green/[0.10] border border-g-green/25">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-g-light/70 block">{u("gain")}</span>
                         {L(s.gain)}
                       </div>
                       <div className="mt-auto pt-3">
-                        <div className="text-[10px] font-black uppercase tracking-wider text-g-muted">{u("result")}</div>
-                        <p className="text-[13px] leading-relaxed text-g-word/90 font-semibold">{L(s.result)}</p>
+                        <p className="text-[12px] leading-relaxed text-g-muted">{L(s.result)}</p>
                         {s.resultIsEstimate && (
                           <p className="mt-1 text-[11px] italic text-g-muted">※ {u("estimate")}</p>
                         )}
@@ -200,6 +270,9 @@ export default function Servicos() {
                 ))}
               </div>
             </section>
+          );
+        })}
+        </div>
           );
         })}
 

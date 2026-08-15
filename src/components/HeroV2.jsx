@@ -4,10 +4,10 @@ import { useLang } from "../i18n.jsx";
 
 // Hero copy that lives in the component (richer than the shared dict) — translated inline.
 const HERO_COPY = {
-  en: { eyebrow:"Intelligent solutions for your business · whatever you need, we solve it", sub:["Never miss a call, a lead, or a sale."," answers, books, quotes & sells and follows up — 24/7. Stop trading hours for tasks — the offer "," fulfills itself","."], method:["⚡ Performance","Sales","Growth"], cta:"Hear Gui work", sub2:"Real AI · real calls · real bookings." },
-  pt: { eyebrow:"Soluções inteligentes para o seu negócio · o que você precisar, a gente resolve", sub:["Nunca perca uma ligação, um lead ou uma venda."," atende, agenda, orça & vende e faz follow-up — 24/7. Pare de trocar horas por tarefas — a oferta "," se cumpre sozinha","."], method:["⚡ Performance","Vendas","Crescimento"], cta:"Ouça a Gui trabalhar", sub2:"IA de verdade · ligações reais · agendamentos reais." },
-  es: { eyebrow:"Soluciones inteligentes para tu negocio · lo que necesites, lo resolvemos", sub:["Nunca pierdas una llamada, un lead ni una venta."," contesta, agenda, cotiza & vende y hace seguimiento — 24/7. Deja de cambiar horas por tareas — la oferta "," se cumple sola","."], method:["⚡ Rendimiento","Ventas","Crecimiento"], cta:"Escucha a Gui trabajar", sub2:"IA real · llamadas reales · reservas reales." },
-  hi: { eyebrow:"आपके व्यवसाय के लिए बुद्धिमान समाधान · जो भी चाहिए, हम हल करते हैं", sub:["कोई कॉल, लीड या बिक्री कभी न चूकें."," जवाब देती, बुकिंग, कोटेशन & बिक्री करती और फॉलो-अप करती है — 24/7। घंटे काम के बदले देना बंद करें — ऑफ़र "," खुद पूरा होता है","।"], method:["⚡ Performance","Sales","Growth"], cta:"Gui को काम करते सुनें", sub2:"असली AI · असली कॉल · असली बुकिंग।" },
+  en: { eyebrow:"AI · ads · creative — the agency that grows local businesses", sub:["We run the ads that fill your calendar — and "," answers every call 24/7 in 16 languages, books, quotes and collects. You buy the "," result, not the tools","."], method:["⚡ Performance","Sales","Growth"], cta:"Hear Gui work", sub2:"Real AI · real calls · real bookings." },
+  pt: { eyebrow:"AI · anúncios · criativo — a agência que faz o negócio local crescer", sub:["A gente roda os anúncios que enchem sua agenda — e a "," atende 24/7 em 16 idiomas, agenda, orça e cobra. Você compra o "," resultado, não a ferramenta","."], method:["⚡ Performance","Vendas","Crescimento"], cta:"Ouça a Gui trabalhar", sub2:"IA de verdade · ligações reais · agendamentos reais." },
+  es: { eyebrow:"IA · anuncios · creativo — la agencia que hace crecer al negocio local", sub:["Nosotros manejamos los anuncios que llenan tu agenda — y "," contesta 24/7 en 16 idiomas, agenda, cotiza y cobra. Compras el "," resultado, no la herramienta","."], method:["⚡ Rendimiento","Ventas","Crecimiento"], cta:"Escucha a Gui trabajar", sub2:"IA real · llamadas reales · reservas reales." },
+  hi: { eyebrow:"AI · विज्ञापन · क्रिएटिव — स्थानीय व्यवसाय बढ़ाने वाली एजेंसी", sub:["हम वो विज्ञापन चलाते हैं जो आपका कैलेंडर भरते हैं — और "," 16 भाषाओं में 24/7 जवाब देती, बुकिंग, कोटेशन और वसूली करती है। आप "," नतीजा खरीदते हैं, टूल नहीं","।"], method:["⚡ Performance","Sales","Growth"], cta:"Gui को काम करते सुनें", sub2:"असली AI · असली कॉल · असली बुकिंग।" },
 };
 
 // HeroV2 — TEST (/v2). Realistic, LIVING iPhone-2026 mockup of Gui working nonstop.
@@ -16,19 +16,32 @@ const HERO_COPY = {
 // cards (services + profit + numbers) rotate with soft crossfades. Plant is back behind.
 // All motion = CSS transforms + eased crossfades (framer `animate` is unreliable here).
 
+// ── O FEED DO TELEFONE, NOS 4 IDIOMAS (2026-08-11) ──────────────────────────────────────────────
+// Estas 17 linhas eram STRINGS FIXAS EM INGLÊS. A página inteira já trocava de idioma; só o
+// telefone — a peça mais olhada do herói — continuava dizendo "Booked", "Sale logged", "Quote
+// sent" para um visitante lendo português. É a mesma classe do bug da voz que falava metade em
+// inglês numa ligação brasileira: não quebra nada, não dá erro, e denuncia na hora que quem está
+// do outro lado é uma máquina montada para outro público.
+// Nomes próprios ficam (Maria, João, Carlos); o que localiza é HORA, MOEDA e verbo — que é
+// exatamente onde a tradução automática costuma errar e onde o olho do dono bate primeiro.
 const POOL = [
-  { icon: "📅", label: "Booked", detail: "Maria · Sat 3:00 PM" },
-  { icon: "💳", label: "Sale logged", detail: "$85 · card on file" },
-  { icon: "🧾", label: "Quote sent", detail: "Kitchen remodel · $4,200" },
-  { icon: "⭐", label: "Review requested", detail: "Carlos · 5-star link" },
-  { icon: "🎯", label: "Lead captured", detail: "New patient · insurance ✓" },
-  { icon: "↩️", label: "Follow-up sent", detail: "No-show → rebooked" },
-  { icon: "💬", label: "Replied on WhatsApp", detail: "Spanish · instant" },
-  { icon: "🛒", label: "Order placed", detail: "2× Large · pickup 7:15" },
-  { icon: "🔗", label: "Payment link · paid", detail: "$120 · cleared" },
-  { icon: "📞", label: "Callback set", detail: "Tomorrow 10:00 AM" },
-  { icon: "🔁", label: "Rescheduled", detail: "João · Fri 2:00 PM" },
-  { icon: "📋", label: "Intake completed", detail: "New client form" },
+  { icon: "📅", label: { en: "Booked", pt: "Agendado", es: "Agendado", hi: "बुक हुआ" }, detail: { en: "Maria · Sat 3:00 PM", pt: "Maria · sáb 15:00", es: "María · sáb 15:00", hi: "मारिया · शनि 3:00 PM" } },
+  { icon: "💳", label: { en: "Sale logged", pt: "Venda registrada", es: "Venta registrada", hi: "बिक्री दर्ज" }, detail: { en: "$85 · card on file", pt: "US$ 85 · cartão salvo", es: "$85 · tarjeta guardada", hi: "$85 · कार्ड सेव" } },
+  { icon: "🧾", label: { en: "Quote sent", pt: "Orçamento enviado", es: "Cotización enviada", hi: "कोटेशन भेजा" }, detail: { en: "Kitchen remodel · $4,200", pt: "Reforma de cozinha · US$ 4.200", es: "Reforma de cocina · $4,200", hi: "किचन रीमॉडल · $4,200" } },
+  { icon: "⭐", label: { en: "Review requested", pt: "Avaliação pedida", es: "Reseña solicitada", hi: "समीक्षा माँगी" }, detail: { en: "Carlos · 5-star link", pt: "Carlos · link 5 estrelas", es: "Carlos · enlace 5 estrellas", hi: "कार्लोस · 5-स्टार लिंक" } },
+  { icon: "🎯", label: { en: "Lead captured", pt: "Lead capturado", es: "Lead capturado", hi: "लीड कैप्चर" }, detail: { en: "New patient · insurance ✓", pt: "Paciente novo · convênio ✓", es: "Paciente nuevo · seguro ✓", hi: "नया मरीज़ · बीमा ✓" } },
+  { icon: "↩️", label: { en: "Follow-up sent", pt: "Retorno enviado", es: "Seguimiento enviado", hi: "फ़ॉलो-अप भेजा" }, detail: { en: "No-show → rebooked", pt: "Faltou → remarcado", es: "Faltó → reagendado", hi: "नो-शो → फिर बुक" } },
+  { icon: "💬", label: { en: "Replied on WhatsApp", pt: "Respondeu no WhatsApp", es: "Respondió en WhatsApp", hi: "WhatsApp पर जवाब" }, detail: { en: "Spanish · instant", pt: "Espanhol · na hora", es: "Español · al instante", hi: "स्पेनिश · तुरंत" } },
+  { icon: "🛒", label: { en: "Order placed", pt: "Pedido feito", es: "Pedido hecho", hi: "ऑर्डर हुआ" }, detail: { en: "2× Large · pickup 7:15", pt: "2× grande · retirada 19:15", es: "2× grande · recoger 19:15", hi: "2× लार्ज · पिकअप 7:15" } },
+  { icon: "🔗", label: { en: "Payment link · paid", pt: "Link de pagamento · pago", es: "Enlace de pago · pagado", hi: "पेमेंट लिंक · भुगतान" }, detail: { en: "$120 · cleared", pt: "US$ 120 · compensado", es: "$120 · acreditado", hi: "$120 · क्लियर" } },
+  { icon: "📞", label: { en: "Callback set", pt: "Retorno agendado", es: "Devolución agendada", hi: "कॉलबैक तय" }, detail: { en: "Tomorrow 10:00 AM", pt: "Amanhã às 10:00", es: "Mañana 10:00", hi: "कल 10:00 AM" } },
+  { icon: "🔁", label: { en: "Rescheduled", pt: "Remarcado", es: "Reagendado", hi: "फिर से तय" }, detail: { en: "João · Fri 2:00 PM", pt: "João · sex 14:00", es: "João · vie 14:00", hi: "जोआओ · शुक्र 2:00 PM" } },
+  { icon: "📋", label: { en: "Intake completed", pt: "Cadastro concluído", es: "Registro completado", hi: "इनटेक पूरा" }, detail: { en: "New client form", pt: "Ficha de cliente novo", es: "Ficha de cliente nuevo", hi: "नए क्लाइंट का फ़ॉर्म" } },
+  { icon: "📣", label: { en: "Ad campaign live", pt: "Campanha no ar", es: "Campaña en marcha", hi: "कैंपेन लाइव" }, detail: { en: "Google · 14 clicks today", pt: "Google · 14 cliques hoje", es: "Google · 14 clics hoy", hi: "Google · आज 14 क्लिक" } },
+  { icon: "⚡", label: { en: "Ad lead → called", pt: "Lead do anúncio → ligou", es: "Lead del anuncio → llamó", hi: "विज्ञापन लीड → कॉल" }, detail: { en: "54 seconds after the click", pt: "54 segundos após o clique", es: "54 segundos tras el clic", hi: "क्लिक के 54 सेकंड बाद" } },
+  { icon: "🎬", label: { en: "Post published", pt: "Post publicado", es: "Post publicado", hi: "पोस्ट प्रकाशित" }, detail: { en: "4 this week · your voice", pt: "4 esta semana · sua voz", es: "4 esta semana · tu voz", hi: "इस हफ़्ते 4 · आपकी आवाज़" } },
+  { icon: "🖥️", label: { en: "Website shipped", pt: "Site entregue", es: "Web entregada", hi: "वेबसाइट डिलीवर" }, detail: { en: "Gui lives inside it", pt: "com a Gui morando dentro", es: "con Gui viviendo dentro", hi: "गुई उसी में रहती है" } },
+  { icon: "📱", label: { en: "App on the stores", pt: "App nas lojas", es: "App en las tiendas", hi: "ऐप स्टोर पर" }, detail: { en: "iOS + Android · live", pt: "iOS + Android · no ar", es: "iOS + Android · en vivo", hi: "iOS + Android · लाइव" } },
 ];
 
 // Every kind of work Gui does — inbound & outbound, confirmations, sales, support, tracking…
@@ -76,13 +89,15 @@ function Waveform() {
   );
 }
 
-function FeedRow({ a }) {
+const txt = (v, lang) => (typeof v === "string" ? v : (v && (v[lang] || v.en)) || "");
+
+function FeedRow({ a, lang }) {
   return (
     <div className="flex items-center gap-2.5 rounded-xl bg-white/[0.05] px-3 py-2.5 ring-1 ring-white/10">
       <span className="text-base">{a.icon}</span>
       <div className="min-w-0 flex-1">
-        <div className="text-[12.5px] font-bold text-white">{a.label}</div>
-        <div className="truncate text-[11px] text-white/70">{a.detail}</div>
+        <div className="text-[12.5px] font-bold text-white">{txt(a.label, lang)}</div>
+        <div className="truncate text-[11px] text-white/70">{txt(a.detail, lang)}</div>
       </div>
       <span className="text-[11px] text-g-green">✓</span>
     </div>
@@ -113,21 +128,29 @@ function Phone() {
 
   return (
     <div className="relative mx-auto w-[360px] max-w-full">
-      <img src={mark} alt="" className="pointer-events-none absolute -top-10 left-1/2 w-[420px] max-w-none -translate-x-1/2 opacity-[0.16] blur-[1px] saturate-150" />
       <div className="pointer-events-none absolute -inset-12 bg-[radial-gradient(closest-side,rgba(62,148,104,0.22),transparent)] blur-2xl" />
       {/* Gui's warm signature glow hugging the live device */}
       <div className="pointer-events-none absolute -inset-10 bg-[radial-gradient(closest-side,rgba(255,138,51,0.16),transparent)] blur-2xl" style={{ animation: "gembers 6s ease-in-out infinite" }} />
 
-      <div className="relative rounded-[3.1rem] bg-gradient-to-b from-[#2a2a2a] to-[#0a0a0a] p-[8px] ring-1 ring-white/10 shadow-[0_60px_150px_-30px_rgba(0,0,0,0.9)]">
-        <div className="relative overflow-hidden rounded-[2.7rem] bg-[#0b0b0b]">
-          <div className="absolute left-1/2 top-2.5 z-20 h-6 w-28 -translate-x-1/2 rounded-full bg-black" />
+      {/* A MARCA no lugar do aparelho. Saíram as três coisas que faziam disto um telefone —
+          a moldura de alumínio, o entalhe e a barra "9:41 ▮▮▮ 100%" — e ficou TUDO o que ele
+          fazia: a ligação ao vivo, a fala da Gui, o mural do que ela está resolvendo e os
+          cartões flutuantes. Mesma função, outra identidade.
+          POR QUÊ: um telefone desenhado diz "isto é um aplicativo", e a Guileo não vende
+          aplicativo — vende resultado que se acumula. A marca diz isso sozinha: folhas em
+          cima, raízes de CIRCUITO embaixo. E é a única imagem deste mercado que ninguém
+          copia sem virar cópia declarada. */}
+      <div className="relative rounded-[2.4rem] border border-white/[0.07] bg-[#0b0b0b]/80 shadow-[0_60px_150px_-30px_rgba(0,0,0,0.9)] backdrop-blur-xl">
+        <div className="relative overflow-hidden rounded-[2.4rem]">
 
-          <div className="flex items-center justify-between px-6 pt-3.5 pb-2 text-[12px] font-semibold text-white/85">
-            <span>9:41</span>
-            <span className="text-[10px] tracking-wide">▮▮▮ ⌃ 100%</span>
+          {/* a logo real, grande, respirando — o objeto central da dobra */}
+          <div className="flex justify-center pt-7 pb-1">
+            <img src={mark} alt="Guileo" width="1200" height="1200"
+                 className="h-[132px] w-[132px] object-contain drop-shadow-[0_18px_38px_rgba(0,0,0,0.5)]"
+                 style={{ animation: "gplant 8s ease-in-out infinite" }} />
           </div>
 
-          <div className="px-6 pt-3">
+          <div className="px-6 pt-1">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-g-green">
                 <span className="relative flex h-2 w-2">
@@ -141,21 +164,17 @@ function Phone() {
               </span>
             </div>
             <div className="mt-2.5 flex items-center gap-3">
-              {/* Gui avatar = Guileo plant logo + live microphone (voice AI on a call) */}
-              <div className="relative h-14 w-14 shrink-0">
-                <span className="absolute inset-0 rounded-full ring-2 ring-g-green/45" style={{ animation: "gpulse 2s ease-out infinite" }} />
-                <span className="absolute inset-0 rounded-full ring-2" style={{ "--tw-ring-color": "rgba(255,138,51,0.40)", animation: "gpulse 2s ease-out 1s infinite" }} />
-                <div className="relative grid h-14 w-14 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-g-green/25 to-g-gold/15 ring-1 ring-white/15">
-                  <img src={mark} alt="Guileo Gui" className="h-11 w-11 object-contain drop-shadow" />
-                </div>
-                <span className="absolute -bottom-0.5 -right-0.5 grid h-6 w-6 place-items-center rounded-full bg-[#0c0c0c] text-g-green ring-2 ring-g-green/60">
-                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="9" y="2" width="6" height="11" rx="3" />
-                    <path d="M5 10a7 7 0 0 0 14 0" />
-                    <line x1="12" y1="19" x2="12" y2="22" />
-                  </svg>
-                </span>
-              </div>
+              {/* O avatar redondo saiu: a logo GRANDE já está acima, e repetir a mesma marca
+                  a 14px logo abaixo dela só rouba atenção dela mesma. Fica o microfone —
+                  ele não é enfeite, é a informação de que isto é VOZ ao vivo, não chat. */}
+              <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-g-green/25 to-g-gold/15 text-g-green ring-1 ring-g-green/40">
+                <span className="absolute inset-0 rounded-full ring-2 ring-g-green/35" style={{ animation: "gpulse 2s ease-out infinite" }} />
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="2" width="6" height="11" rx="3" />
+                  <path d="M5 10a7 7 0 0 0 14 0" />
+                  <line x1="12" y1="19" x2="12" y2="22" />
+                </svg>
+              </span>
               <div className="leading-tight">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[16px] font-bold text-white">Gui</span>
@@ -179,21 +198,27 @@ function Phone() {
             </div>
             <div className="relative h-[232px] overflow-hidden" style={{ maskImage: "linear-gradient(to bottom,transparent,#000 14%,#000 86%,transparent)", WebkitMaskImage: "linear-gradient(to bottom,transparent,#000 14%,#000 86%,transparent)" }}>
               <div className="space-y-2" style={{ animation: "gscroll 30s linear infinite" }}>
-                {[...POOL, ...POOL].map((a, i) => <FeedRow key={i} a={a} />)}
+                {[...POOL, ...POOL].map((a, i) => <FeedRow key={i} a={a} lang={lang} />)}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* floating proof cards — rotate (services + profit + numbers), soft crossfade + float */}
-      <div className="absolute -left-20 top-36 hidden w-[170px] rounded-xl2 border border-white/10 bg-[#14130F]/90 px-3 py-2 shadow-[0_24px_60px_-18px_rgba(0,0,0,0.85)] ring-1 ring-white/[0.06] backdrop-blur-xl lg:block" style={{ animation: "gfloat 6s ease-in-out infinite" }}>
+      {/* floating proof cards — rotate (services + profit + numbers), soft crossfade + float
+          ENQUADRAMENTO: a posição negativa move a ORIGEM, não empurra pra fora — quem decide
+          se o cartão sai do card é a LARGURA. Em -left-20 (−80px) com 170px de largura, a borda
+          direita caía em +90px e o cartão cobria "ON A CALL · 10:34". Agora: 156px de largura em
+          -left-[136px] → sobra só 20px de encaixe na quina arredondada, que é proposital (dá a
+          sensação de camada), e o cabeçalho fica livre. As alturas também mudaram para os VÃOS:
+          o da esquerda ao lado da onda sonora, o da direita no meio do mural. */}
+      <div className="absolute -left-[136px] top-[208px] hidden w-[156px] rounded-xl2 border border-white/10 bg-[#14130F]/90 px-3 py-2 shadow-[0_24px_60px_-18px_rgba(0,0,0,0.85)] ring-1 ring-white/[0.06] backdrop-blur-xl lg:block" style={{ animation: "gfloat 6s ease-in-out infinite" }}>
         <div key={"l" + stat} style={{ animation: "gswap .45s ease-out both" }}>
           <div className="text-[11px] font-bold text-g-word">{L.icon} {loc(L.a)}</div>
           <div className="text-[10px] text-g-ink">{loc(L.b)}</div>
         </div>
       </div>
-      <div className="absolute -right-20 bottom-44 hidden w-[170px] rounded-xl2 border border-white/10 bg-[#14130F]/90 px-3 py-2 shadow-[0_24px_60px_-18px_rgba(0,0,0,0.85)] ring-1 ring-white/[0.06] backdrop-blur-xl lg:block" style={{ animation: "gfloat 7s ease-in-out 1s infinite" }}>
+      <div className="absolute -right-[136px] bottom-[168px] hidden w-[156px] rounded-xl2 border border-white/10 bg-[#14130F]/90 px-3 py-2 shadow-[0_24px_60px_-18px_rgba(0,0,0,0.85)] ring-1 ring-white/[0.06] backdrop-blur-xl lg:block" style={{ animation: "gfloat 7s ease-in-out 1s infinite" }}>
         <div key={"r" + stat} style={{ animation: "gswap .45s ease-out both" }}>
           <div className="text-[11px] font-bold text-g-word">{R.icon} {loc(R.a)}</div>
           <div className="text-[10px] text-g-ink">{loc(R.b)}</div>
@@ -216,6 +241,7 @@ export default function HeroV2() {
         /* faster, translate-free crossfade for the floating proof cards so the pill never reads empty mid-swap */
         @keyframes gswap{from{opacity:.15}to{opacity:1}}
         @keyframes gfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+        @keyframes gplant{0%,100%{transform:translateY(0) rotate(-.8deg)}50%{transform:translateY(-7px) rotate(.8deg)}}
         @keyframes gpulse{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.45);opacity:0}}
         @keyframes greveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
         @keyframes gshine{to{background-position:220% center}}
@@ -275,7 +301,7 @@ export default function HeroV2() {
 
         <div className="relative min-w-0">
           <Phone />
-          {/* Honesty caption — the phone + floating stat cards are a DEMO of what Gui does, not
+          {/* Honesty caption — the live panel + floating stat cards are a DEMO of what Gui does, not
               client-sourced results; keeps the claims clean (FTC-safe) without killing the vibe. */}
           <p className="mt-3 text-center text-[10.5px] text-g-muted/60">
             {lang === "pt" ? "Demonstração ilustrativa do que a Gui faz no dia a dia."

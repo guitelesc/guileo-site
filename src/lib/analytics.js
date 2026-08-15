@@ -109,7 +109,7 @@ function captureUTM() {
     if (!src) return; // only overwrite/refresh when THIS visit carries campaign params
     const existing = JSON.parse(localStorage.getItem(UTM_KEY) || "null");
     if (existing && existing.at && Date.now() - existing.at < UTM_TTL_MS) return; // first touch stays
-    localStorage.setItem(UTM_KEY, JSON.stringify({
+    const attr = {
       source: (q.get("utm_source") || "").slice(0, 60),
       medium: (q.get("utm_medium") || "").slice(0, 60),
       campaign: (q.get("utm_campaign") || "").slice(0, 80),
@@ -118,7 +118,22 @@ function captureUTM() {
       gclid: (q.get("gclid") || "").slice(0, 120),
       fbclid: (q.get("fbclid") || "").slice(0, 120),
       at: Date.now(),
-    }));
+    };
+    localStorage.setItem(UTM_KEY, JSON.stringify(attr));
+
+    // ── E TAMBÉM NUM COOKIE PRIMÁRIO ────────────────────────────────────────────────────────
+    // localStorage só o JavaScript enxerga. Para o SERVIDOR saber de qual anúncio veio o lead,
+    // alguém teria que costurar getUTM() em cada um dos ~10 lugares que enviam lead — e o 11º
+    // nasceria sem. O cookie viaja sozinho em toda requisição para o nosso próprio domínio, então
+    // /api/lead, o widget e qualquer rota futura recebem a atribuição de graça.
+    //
+    // PRIMÁRIO E NOSSO: nunca sai para terceiros, é o mesmo dado que já guardávamos, e serve para
+    // dizer ao dono do negócio qual anúncio trouxe qual cliente — que é o motivo de ele existir.
+    try {
+      const enxuto = { s: attr.source, c: attr.campaign, m: attr.medium, g: attr.gclid, f: attr.fbclid };
+      const valor = encodeURIComponent(JSON.stringify(enxuto)).slice(0, 700);
+      document.cookie = `gui_attr=${valor}; Max-Age=${Math.floor(UTM_TTL_MS / 1000)}; Path=/; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
+    } catch { /* cookie é bônus; o localStorage já guardou */ }
   } catch { /* never break the site over attribution */ }
 }
 

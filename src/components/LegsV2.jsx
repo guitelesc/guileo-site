@@ -15,8 +15,8 @@ const LV_COPY = {
     strip: ["Performance", "Sales", "Growth"],
     steps: [
       { badge: "Guileo Brain", owns: "Owns your performance", title: "Does the work of employees", desc: "Answers every call & message, books, quotes, closes & collects — 24/7, in 16 languages. Output goes up, payroll doesn't.", tag: "performance, elevated" },
-      { badge: "Guileo.AD", owns: "Owns your sales", title: "Sells while you work", desc: "Your ads, content & funnels run every day — you reach more people, close more deals, waste less ad money.", tag: "you sell more" },
-      { badge: "Guileo Grow", owns: "The result — your growth", title: "Growth that compounds", desc: "Every lead followed up every single day — monitored 24/7, nothing slips. Your business grows on autopilot.", tag: "monitored 24/7" },
+      { badge: "Guileo AD", owns: "Owns your growth", title: "Sells while you work", desc: "Your ads, content & funnels run every day — you reach more people, close more deals, waste less ad money.", tag: "you sell more" },
+      { badge: "Guileo Build", owns: "Owns your foundation", title: "Builds what you run on", desc: "The website, apps, online store and custom automations your whole operation runs on — built once by our team, working from then on.", tag: "built once, runs on" },
     ],
     buildA: "And ", buildB: "Guileo Build", buildC: " crafts the websites, apps & software it all runs on.",
     biz: "YOUR BUSINESS", st: ["● connected", "automated", "growing 24/7"], cta: "Get this for my business",
@@ -28,8 +28,8 @@ const LV_COPY = {
     strip: ["Performance", "Vendas", "Crescimento"],
     steps: [
       { badge: "Guileo Brain", owns: "Dono da sua performance", title: "Faz o trabalho de funcionários", desc: "Atende toda ligação e mensagem, agenda, orça, fecha e cobra — 24/7, em 16 idiomas. O rendimento sobe, a folha não.", tag: "performance elevada" },
-      { badge: "Guileo.AD", owns: "Dono das suas vendas", title: "Vende enquanto você trabalha", desc: "Seus anúncios, conteúdo e funis rodando todo dia — você alcança mais gente, fecha mais e desperdiça menos.", tag: "você vende mais" },
-      { badge: "Guileo Grow", owns: "O resultado — seu crescimento", title: "Crescimento que compõe", desc: "Cada lead acompanhado todos os dias — monitorado 24h, nada escapa. Seu negócio cresce no automático.", tag: "monitorado 24/7" },
+      { badge: "Guileo AD", owns: "Dono do seu crescimento", title: "Vende enquanto você trabalha", desc: "Seus anúncios, conteúdo e funis rodando todo dia — você alcança mais gente, fecha mais e desperdiça menos.", tag: "você vende mais" },
+      { badge: "Guileo Build", owns: "Dono da sua fundação", title: "Constrói o que você usa", desc: "O site, os apps, a loja online e as automações sob medida onde sua operação inteira roda — construídos uma vez pelo nosso time, funcionando dali em diante.", tag: "construído uma vez" },
     ],
     buildA: "E o ", buildB: "Guileo Build", buildC: " constrói os sites, apps e softwares que fazem tudo rodar.",
     biz: "SEU NEGÓCIO", st: ["● conectado", "automatizado", "crescendo 24/7"], cta: "Quero isso no meu negócio",
@@ -41,8 +41,8 @@ const LV_COPY = {
     strip: ["Performance", "Ventas", "Crecimiento"],
     steps: [
       { badge: "Guileo Brain", owns: "Dueño de tu performance", title: "Hace el trabajo de empleados", desc: "Atiende cada llamada y mensaje, agenda, cotiza, cierra y cobra — 24/7, en 16 idiomas. El rendimiento sube, la nómina no.", tag: "performance elevada" },
-      { badge: "Guileo.AD", owns: "Dueño de tus ventas", title: "Vende mientras trabajas", desc: "Tus anuncios, contenido y embudos corren cada día — llegas a más gente, cierras más y desperdicias menos.", tag: "vendes más" },
-      { badge: "Guileo Grow", owns: "El resultado — tu crecimiento", title: "Crecimiento que se acumula", desc: "Cada lead con seguimiento todos los días — monitoreado 24/7, nada se escapa. Tu negocio crece en automático.", tag: "monitoreado 24/7" },
+      { badge: "Guileo AD", owns: "Dueño de tu crecimiento", title: "Vende mientras trabajas", desc: "Tus anuncios, contenido y embudos corren cada día — llegas a más gente, cierras más y desperdicias menos.", tag: "vendes más" },
+      { badge: "Guileo Build", owns: "Dueño de tu base", title: "Construye lo que usas", desc: "La web, las apps, la tienda online y las automatizaciones a medida donde corre toda tu operación — construidas una vez por nuestro equipo, funcionando desde entonces.", tag: "construido una vez" },
     ],
     buildA: "Y ", buildB: "Guileo Build", buildC: " construye las webs, apps y software donde todo corre.",
     biz: "TU NEGOCIO", st: ["● conectado", "automatizado", "creciendo 24/7"], cta: "Quiero esto en mi negocio",
@@ -54,8 +54,8 @@ const LV_COPY = {
     strip: ["परफ़ॉर्मेंस", "बिक्री", "ग्रोथ"],
     steps: [
       { badge: "Guileo Brain", owns: "आपकी परफ़ॉर्मेंस का मालिक", title: "कर्मचारियों का काम करता है", desc: "हर कॉल और मैसेज का जवाब, बुकिंग, कोटेशन, डील बंद और वसूली — 24/7, 16 भाषाओं में। आउटपुट बढ़ता है, पेरोल नहीं।", tag: "परफ़ॉर्मेंस ऊँची" },
-      { badge: "Guileo.AD", owns: "आपकी बिक्री का मालिक", title: "आप काम करें, यह बेचता है", desc: "आपके विज्ञापन, कंटेंट और फ़नल हर दिन चलते हैं — ज़्यादा लोग, ज़्यादा डील, कम बर्बादी।", tag: "आप ज़्यादा बेचते हैं" },
-      { badge: "Guileo Grow", owns: "नतीजा — आपकी ग्रोथ", title: "ग्रोथ जो बढ़ती जाती है", desc: "हर लीड का हर दिन फ़ॉलो-अप — 24/7 निगरानी, कुछ नहीं छूटता। आपका व्यवसाय ऑटोपायलट पर बढ़ता है।", tag: "24/7 निगरानी" },
+      { badge: "Guileo AD", owns: "आपकी ग्रोथ का मालिक", title: "आप काम करें, यह बेचता है", desc: "आपके विज्ञापन, कंटेंट और फ़नल हर दिन चलते हैं — ज़्यादा लोग, ज़्यादा डील, कम बर्बादी।", tag: "आप ज़्यादा बेचते हैं" },
+      { badge: "Guileo Build", owns: "आपकी नींव का मालिक", title: "जिस पर आप चलते हैं, वह बनाता है", desc: "वेबसाइट, ऐप्स, ऑनलाइन स्टोर और कस्टम ऑटोमेशन जिन पर आपका पूरा संचालन चलता है — हमारी टीम एक बार बनाती है, उसके बाद चलता रहता है।", tag: "एक बार बना" },
     ],
     buildA: "और ", buildB: "Guileo Build", buildC: " वे वेबसाइट, ऐप और सॉफ़्टवेयर बनाता है जिन पर सब चलता है।",
     biz: "आपका व्यवसाय", st: ["● कनेक्टेड", "ऑटोमेटेड", "24/7 बढ़ता"], cta: "मेरे व्यवसाय के लिए चाहिए",

@@ -79,6 +79,10 @@ function useReferralAttribution() {
 }
 
 const Servicos = lazyRetry(() => import("./pages/Servicos"));
+// /heroi — página de DECISÃO do herói (duas direções com a logo 3D real). Rota nova de propósito:
+// rota que não existia não pode quebrar o que está no ar. Some quando a direção for escolhida.
+const HeroiEscolha = lazyRetry(() => import("./pages/HeroiEscolha"));
+const VozWeb = lazyRetry(() => import("./pages/VozWeb")); // /voz/:slug — a Gui atendendo por VOZ no navegador
 const ClientSite = lazyRetry(() => import("./pages/ClientSite")); // /site/:slug — o site REAL do cliente (produto foundation)
 const PrimeiraSemana = lazyRetry(() => import("./pages/PrimeiraSemana")); // o que o cliente recebe DE VERDADE na 1a semana (material do vendedor)
 const Portal = lazyRetry(() => import("./pages/Portal"));
@@ -104,7 +108,8 @@ const Vendedor = lazyRetry(() => import("./pages/Vendedor")); // logged-in selle
 const Equipe = lazyRetry(() => import("./pages/Equipe")); // internal team hub — 🛠 tech support queue + 📊 marketing/ads performance
 const ConectarPagamento = lazyRetry(() => import("./pages/ConectarPagamento")); // client connects their own Stripe → Gui charges land in THEIR account
 const Kit = lazyRetry(() => import("./pages/Kit")); // print-optimized per-niche field kit one-pager (built from pitch-card data)
-const Planos = lazyRetry(() => import("./pages/Planos")); // self-service Track-A plans (Stripe subscribe → auto-activate)
+const Planos = lazyRetry(() => import("./pages/Planos"));
+const Pulse = lazyRetry(() => import("./pages/Pulse")); // /pulse — a casa do produto de $49 (o conteúdo cortado da landing vive lá, sem cópia) // self-service Track-A plans (Stripe subscribe → auto-activate)
 const HomeServices = lazyRetry(() => import("./pages/HomeServices")); // niche landing — the easiest-to-close vertical
 const NossaGente = lazyRetry(() => import("./pages/NossaGente")); // BLUE OCEAN — bilingual/immigrant + Brazil positioning
 const Compliance = lazyRetry(() => import("./pages/Compliance")); // the moat — TCPA/A2P compliance done-for-you
@@ -174,7 +179,9 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/servicos" element={<Servicos />} />
+            <Route path="/heroi" element={<HeroiEscolha />} />
             <Route path="/site/:slug" element={<ClientSite />} />
+            <Route path="/voz/:slug" element={<VozWeb />} />
             <Route path="/primeira-semana" element={<PrimeiraSemana />} />
             <Route path="/portal" element={<Portal />} />
             <Route path="/live" element={<LiveActivity />} />
@@ -212,6 +219,7 @@ export default function App() {
             <Route path="/kit" element={<Kit />} />
             <Route path="/kit/:niche" element={<Kit />} />
             <Route path="/planos" element={<Planos />} />
+            <Route path="/pulse" element={<Pulse />} />
             <Route path="/plans" element={<Navigate to="/planos" replace />} />
             <Route path="/precos" element={<Navigate to="/planos" replace />} />
             <Route path="/privacy" element={<Privacy />} />

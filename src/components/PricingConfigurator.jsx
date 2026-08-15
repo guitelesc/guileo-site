@@ -178,10 +178,16 @@ export default function PricingConfigurator() {
             <>
               <div className="relative flex items-center justify-between">
                 <div className="inline-flex items-center gap-3 text-[11px] font-black uppercase tracking-wider" style={{ color: `rgb(${rgb})` }}>
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border text-[16px] font-black" style={{ borderColor: `rgba(${rgb},0.5)`, background: `rgba(${rgb},0.15)`, color: `rgb(${rgb})`, boxShadow: `0 0 16px rgba(${rgb},0.35)` }}>3</span>
+                  {/* SEM NÚMERO, DE PROPÓSITO. Este painel era "Passo 3" — e não é passo nenhum,
+                      é a RESPOSTA. Numerar o resultado faz o visitante procurar o que ele tem
+                      que fazer aqui, e em tela larga o "1" e o "3" ficavam lado a lado com o "2"
+                      escondido embaixo dos chips: o olho lia 1 → 3 e concluía que tinha pulado
+                      alguma coisa. Era essa a "dificuldade de entender". Agora o lado esquerdo é
+                      o que VOCÊ diz (1 e 2) e o direito é o que NÓS desenhamos. */}
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border text-[15px]" style={{ borderColor: `rgba(${rgb},0.5)`, background: `rgba(${rgb},0.15)`, color: `rgb(${rgb})`, boxShadow: `0 0 16px rgba(${rgb},0.35)` }}>✍️</span>
                   <div className="text-left">
-                    <div className="text-[10px] font-black uppercase tracking-[0.22em]" style={{ color: `rgb(${rgb})`, opacity: 0.7 }}>{t("Step 3", "Passo 3", "Paso 3", "चरण 3")}</div>
-                    <div className="flex items-center gap-1.5 text-[13px]">{t("Your Guileo package", "Seu pacote Guileo", "Tu paquete Guileo", "आपका Guileo पैकेज")}<span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full" style={{ background: `rgba(${rgb},0.5)` }} /><span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: `rgb(${rgb})` }} /></span></div>
+                    <div className="text-[10px] font-black uppercase tracking-[0.22em]" style={{ color: `rgb(${rgb})`, opacity: 0.7 }}>{t("What we design for you", "O que a gente desenha pra você", "Lo que diseñamos para ti", "हम आपके लिए क्या डिज़ाइन करते हैं")}</div>
+                    <div className="flex items-center gap-1.5 text-[13px]">{t("Built around your business", "Feito em volta do seu negócio", "Hecho alrededor de tu negocio", "आपके व्यवसाय के हिसाब से")}<span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full" style={{ background: `rgba(${rgb},0.5)` }} /><span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: `rgb(${rgb})` }} /></span></div>
                   </div>
                 </div>
                 <span className="rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider" style={{ borderColor: `rgba(${rgb},0.4)`, color: `rgb(${rgb})` }}>{t("recommended", "recomendado", "recomendado", "अनुशंसित")}</span>

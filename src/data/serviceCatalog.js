@@ -6,9 +6,30 @@
 // page must render the "market estimates by sector" caption next to it. Do NOT add new
 // numbers here without approval — qualitative results are fine (resultIsEstimate:false).
 
+
+// ── UMA TAXONOMIA SÓ: OS 6 GRUPOS MORAM DENTRO DOS 3 PILARES (2026-08-12) ──────────────────────
+// A página /servicos mostrava DUAS classificações ao mesmo tempo — os 3 pilares (Brain·AD·Build,
+// que é como VENDEMOS) e os 6 grupos deste catálogo (que é como se ORGANIZA). Nenhuma das duas
+// está errada, e é justamente isso que confundia: o visitante tinha que descobrir sozinho que
+// eram vistas diferentes da mesma coisa, em vez de duas coisas diferentes.
+//
+// O CRITÉRIO É O DO LUIS, dito por ele mesmo ao escolher o nome do 3º pilar — "Build porque a
+// gente constrói site, app": QUEM EXECUTA. Não "para que serve" (por esse caminho tudo vira
+// crescimento e o pilar deixa de significar algo).
+//   brain → o que a AGENTE faz sozinha: atender, agendar, vender/cobrar, e a inteligência que ela
+//           produz (cockpit, relatório, CRM — são a saída do trabalho dela)
+//   ad    → o que o TIME DE MARKETING faz: crescimento + conteúdo, vídeo e anúncios
+//   build → o que o TIME DE ENGENHARIA constrói uma vez: sites, apps, loja, automação
+//
+// ⚠️ O "GUARDA-CHUVA" NÃO CABIA EM UM PILAR — e essa era a razão real de a unificação parecer
+// impossível. Ele é um grupo MISTO: sites/apps/loja/automação são Build; conteúdo/vídeo/marketing
+// são AD. Por isso o `pilar` desse grupo vive em cada SERVIÇO, não no grupo. Forçar o grupo
+// inteiro para um lado teria posto "Sites" debaixo de marketing ou "Vídeo" debaixo de engenharia —
+// e um mapa errado é pior que dois mapas certos.
 export const CATALOG = [
   {
     icon: "📞",
+    pilar: "brain",
     group: {
       en: "Answering",
       pt: "Atendimento",
@@ -141,6 +162,7 @@ export const CATALOG = [
   },
   {
     icon: "📅",
+    pilar: "brain",
     group: {
       en: "Scheduling & Operations",
       pt: "Agenda e Operação",
@@ -296,6 +318,7 @@ export const CATALOG = [
   },
   {
     icon: "💰",
+    pilar: "brain",
     group: {
       en: "Sales & Collection",
       pt: "Vendas e Cobrança",
@@ -428,6 +451,7 @@ export const CATALOG = [
   },
   {
     icon: "📈",
+    pilar: "ad",
     group: {
       en: "Growth",
       pt: "Crescimento",
@@ -583,6 +607,7 @@ export const CATALOG = [
   },
   {
     icon: "🧠",
+    pilar: "brain",
     group: {
       en: "Intelligence",
       pt: "Inteligência",
@@ -738,6 +763,7 @@ export const CATALOG = [
   },
   {
     icon: "🏗️",
+    pilar: null, // MISTO de propósito: cada serviço deste grupo tem o seu (ver a nota do topo)
     group: {
       en: "The Guileo Umbrella",
       pt: "Guarda-chuva Guileo",
@@ -753,7 +779,7 @@ export const CATALOG = [
     services: [
       {
         icon: "🖥️",
-        name: { en: "Websites", pt: "Sites", es: "Sitios web", hi: "वेबसाइट्स" },
+        pilar: "build", name: { en: "Websites", pt: "Sites", es: "Sitios web", hi: "वेबसाइट्स" },
         does: {
           en: "Fast, beautiful websites built to convert — with Gui already living inside them.",
           pt: "Sites rápidos e bonitos feitos pra converter — com a Gui já morando dentro deles.",
@@ -774,9 +800,61 @@ export const CATALOG = [
         },
         resultIsEstimate: false,
       },
+      // CRIATIVOS — o menu do site promete "Criação de conteúdo" e "Produção de vídeo" e mandava
+      // o clique pra cá, onde nenhum dos dois existia (auditoria 2026-08-11). Promessa que
+      // aterrissa no vazio custa mais caro que promessa que não se faz.
+      // HONESTIDADE: a IA escreve o TEXTO (motor real em functions/lib/criativoAds.js e
+      // social-publish draft/generate); imagem e vídeo são produzidos por GENTE do time. O texto
+      // abaixo diz exatamente isso — nada de sugerir vídeo gerado por IA, que não existe aqui.
+      {
+        icon: "✍️",
+        pilar: "ad", name: { en: "Content creation", pt: "Criação de conteúdo", es: "Creación de contenido", hi: "कंटेंट निर्माण" },
+        does: {
+          en: "Posts, captions and ad copy written in your brand's voice — AI drafts, our team edits and approves.",
+          pt: "Posts, legendas e textos de anúncio na voz da sua marca — a IA rascunha, nosso time edita e aprova.",
+          es: "Posts, textos y copy de anuncios en la voz de tu marca — la IA redacta, nuestro equipo edita y aprueba.",
+          hi: "आपकी ब्रांड की आवाज़ में पोस्ट, कैप्शन और विज्ञापन टेक्स्ट — AI ड्राफ्ट करता है, हमारी टीम संपादित कर मंज़ूरी देती है।",
+        },
+        gain: {
+          en: "You stop staring at a blank screen every week.",
+          pt: "Você para de encarar a tela em branco toda semana.",
+          es: "Dejas de mirar la pantalla en blanco cada semana.",
+          hi: "हर हफ़्ते खाली स्क्रीन को घूरना बंद।",
+        },
+        result: {
+          en: "Your brand keeps showing up, in your own words.",
+          pt: "Sua marca continua aparecendo, com as suas palavras.",
+          es: "Tu marca sigue apareciendo, con tus palabras.",
+          hi: "आपकी ब्रांड दिखती रहती है, आपके ही शब्दों में।",
+        },
+        resultIsEstimate: false,
+      },
+      {
+        icon: "🎬",
+        pilar: "ad", name: { en: "Video & design", pt: "Vídeo & design", es: "Video & diseño", hi: "वीडियो & डिज़ाइन" },
+        does: {
+          en: "Video and visuals produced by our creative team — shot, edited and delivered ready to post.",
+          pt: "Vídeo e peças visuais produzidos pelo nosso time de criação — gravados, editados e entregues prontos pra publicar.",
+          es: "Video y piezas visuales producidos por nuestro equipo creativo — grabados, editados y entregados listos para publicar.",
+          hi: "हमारी क्रिएटिव टीम द्वारा बनाए गए वीडियो और विज़ुअल — शूट, एडिट और पोस्ट के लिए तैयार।",
+        },
+        gain: {
+          en: "Work that looks like a brand, not like a phone snapshot.",
+          pt: "Um material com cara de marca, não de foto de celular.",
+          es: "Material con cara de marca, no de foto de celular.",
+          hi: "ऐसा काम जो ब्रांड जैसा दिखे, फ़ोन की तस्वीर जैसा नहीं।",
+        },
+        result: {
+          en: "A scope-based project — quoted per job, not part of the monthly plan.",
+          pt: "Projeto por escopo — orçado por trabalho, não incluído no mensal.",
+          es: "Proyecto por alcance — cotizado por trabajo, no incluido en el mensual.",
+          hi: "स्कोप-आधारित प्रोजेक्ट — प्रति काम कोट, मासिक प्लान में शामिल नहीं।",
+        },
+        resultIsEstimate: false,
+      },
       {
         icon: "📱",
-        name: { en: "Apps", pt: "Apps", es: "Apps", hi: "ऐप्स" },
+        pilar: "build", name: { en: "Apps", pt: "Apps", es: "Apps", hi: "ऐप्स" },
         does: {
           en: "Mobile apps for your customers or your team — designed and shipped end to end.",
           pt: "Apps móveis pros seus clientes ou pro seu time — desenhados e entregues de ponta a ponta.",
@@ -799,7 +877,7 @@ export const CATALOG = [
       },
       {
         icon: "🛒",
-        name: { en: "E-commerce", pt: "E-commerce", es: "E-commerce", hi: "ई-कॉमर्स" },
+        pilar: "build", name: { en: "E-commerce", pt: "E-commerce", es: "E-commerce", hi: "ई-कॉमर्स" },
         does: {
           en: "Online stores with catalog, checkout and payments — ready to sell from day one.",
           pt: "Lojas online com catálogo, checkout e pagamentos — prontas pra vender desde o dia um.",
@@ -822,7 +900,7 @@ export const CATALOG = [
       },
       {
         icon: "📣",
-        name: { en: "Marketing & ads", pt: "Marketing e anúncios", es: "Marketing & anuncios", hi: "मार्केटिंग और विज्ञापन" },
+        pilar: "ad", name: { en: "Marketing & ads", pt: "Marketing e anúncios", es: "Marketing & anuncios", hi: "मार्केटिंग और विज्ञापन" },
         does: {
           en: "Campaigns, ads and lead generation managed for you — feeding leads straight to Gui, who calls them in ~60 seconds.",
           pt: "Campanhas, anúncios e geração de leads gerenciados pra você — alimentando a Gui, que liga pro lead em ~60 segundos.",
@@ -845,7 +923,7 @@ export const CATALOG = [
       },
       {
         icon: "⚙️",
-        name: { en: "Automation", pt: "Automação", es: "Automatización", hi: "ऑटोमेशन" },
+        pilar: "build", name: { en: "Automation", pt: "Automação", es: "Automatización", hi: "ऑटोमेशन" },
         does: {
           en: "Custom automations connecting your tools, systems and routines — the repetitive work, done by machines.",
           pt: "Automações sob medida conectando suas ferramentas, sistemas e rotinas — o trabalho repetitivo, feito por máquinas.",

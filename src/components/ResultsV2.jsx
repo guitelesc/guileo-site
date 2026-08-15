@@ -80,7 +80,18 @@ const BIZ = [
     acts: { en: ["🚗 Test drives", "🎯 Qualify", "🧾 Quotes", "📞 Follow-up"], pt: ["🚗 Test drives", "🎯 Qualificação", "🧾 Orçamentos", "📞 Follow-up"], es: ["🚗 Pruebas de manejo", "🎯 Calificación", "🧾 Cotizaciones", "📞 Seguimiento"], hi: ["🚗 टेस्ट ड्राइव", "🎯 क्वालिफाई", "🧾 कोटेशन", "📞 फ़ॉलो-अप"] } },
 ];
 
-const fmt = (n) => "$" + Math.round(n).toLocaleString("en-US");
+// ── DINHEIRO PRECISA SABER O IDIOMA (2026-08-11) ────────────────────────────────────────────────
+// Esta função tinha "$" e "en-US" FIXOS — o mesmo defeito, com o mesmo nome, que já me pegou na
+// VOZ da agente (o fmt() com "en-US" que fazia ela falar metade da ligação em inglês com um
+// cliente brasileiro). Aqui ele fixava duas coisas de uma vez:
+//   • o CIFRÃO: o brasileiro lê "$647" e entende 647 reais; são US$ 647 ≈ R$ 3.500;
+//   • o SEPARADOR: "en-US" escreve 1,240 — e em português a vírgula é DECIMAL, então o mesmo
+//     número lê como "um e vinte e quatro". Milhar e decimal trocados é erro de fator 1000.
+// Um fmt() que não recebe idioma é sempre a mesma bomba, e ela renasce em cada arquivo novo que
+// precisa mostrar dinheiro. Por isso este recebe `lang` como parâmetro obrigatório na chamada.
+const LOC = { en: "en-US", pt: "pt-BR", es: "es-ES", hi: "en-IN" };
+const fmt = (n, lang = "en") =>
+  (lang === "en" ? "$" : "US$ ") + Math.round(n).toLocaleString(LOC[lang] || "en-US");
 
 export default function ResultsV2() {
   const { lang } = useLang();
@@ -164,7 +175,7 @@ export default function ResultsV2() {
             <div className="text-center md:text-left">
               <div className="text-[11px] font-bold uppercase tracking-wider text-[#d8916e]">{C.without}</div>
               <div className="relative mt-1 inline-block">
-                <div className="text-[42px] font-black leading-none text-[#e0855f] sm:text-[50px]">{fmt(count)}</div>
+                <div className="text-[42px] font-black leading-none text-[#e0855f] sm:text-[50px]">{fmt(count, lang)}</div>
                 <span className="pointer-events-none absolute -right-5 top-0 text-sm" style={{ animation: "rvfall 1.6s ease-in-out infinite" }}>💸</span>
                 <span className="pointer-events-none absolute -right-2 top-0 text-sm" style={{ animation: "rvfall 1.6s ease-in-out .8s infinite" }}>💸</span>
               </div>

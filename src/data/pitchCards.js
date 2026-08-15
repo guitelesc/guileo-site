@@ -12,6 +12,7 @@ const K_LATER = killer("later");
 
 export const PITCH_NICHES = [
   { id: "universal",   emoji: "🌱", name: { pt: "Pitch mestre · qualquer negócio", en: "Master pitch · any business", es: "Pitch maestro · cualquier negocio" } },
+  { id: "ads",         emoji: "📣", name: { pt: "Anúncios · vender RESULTADO", en: "Ads · sell the RESULT", es: "Anuncios · vender RESULTADO" } },
   { id: "restaurant",  emoji: "🍽️", name: { pt: "Restaurantes",       en: "Restaurants",        es: "Restaurantes" } },
   { id: "dental",      emoji: "🦷", name: { pt: "Consultórios odontológicos", en: "Dental offices", es: "Consultorios dentales" } },
   { id: "clinic",      emoji: "🩺", name: { pt: "Clínicas",            en: "Clinics",            es: "Clínicas" } },
@@ -64,6 +65,59 @@ export const PITCH_CARDS = {
     objection: {
       q: { pt: K_EXPENSIVE.q.pt, en: K_EXPENSIVE.q.en, es: K_EXPENSIVE.q.es },
       a: { pt: K_EXPENSIVE.a.pt, en: K_EXPENSIVE.a.en, es: K_EXPENSIVE.a.es },
+    },
+  },
+
+  // ── ANÚNCIOS — a carta que o vendedor usa para vender RESULTADO, não anúncio ──────────────
+  // Existe porque o motor de anúncios é metade do produto e ninguém sabia explicar. A dor aqui
+  // não é "preciso de anúncio" — é "já gastei e não sei se voltou", que TODO dono de negócio
+  // local já viveu. A vantagem que se vende é estrutural, não uma tela mais bonita: Google e
+  // Meta enxergam cliques, o dono enxerga faturamento, e o elo do meio é o TELEFONE — que
+  // nenhuma plataforma de anúncio vê e a Gui atende.
+  ads: {
+    pain: {
+      pt: "Você já pagou anúncio e ficou sem saber se voltou. A agência mandou um relatório cheio de cliques e impressões, e nenhum deles paga a conta de luz.",
+      en: "You've paid for ads and never knew if it came back. The agency sent a report full of clicks and impressions — and none of them pay the light bill.",
+      es: "Ya pagaste anuncios y nunca supiste si volvió. La agencia mandó un informe lleno de clics e impresiones, y ninguno paga la luz.",
+    },
+    leak: {
+      pt: "Sem saber qual anúncio traz cliente de verdade, você corta o que estava funcionando e continua pagando o que não traz — os dois erros ao mesmo tempo.",
+      en: "Without knowing which ad brings real customers, you cut the one that was working and keep paying the one that isn't — both mistakes at once.",
+      es: "Sin saber qué anuncio trae clientes reales, cortas el que funcionaba y sigues pagando el que no — los dos errores a la vez.",
+    },
+    solution: {
+      pt: "O Google e a Meta sabem cliques. Você sabe faturamento. Ninguém liga os dois porque no meio está o TELEFONE — e é ele que a Gui atende. A gente mostra, por campanha: gastou X, entraram tantos clientes, agendaram tanto. Cada $1 virou quanto.",
+      en: "Google and Meta know clicks. You know revenue. Nobody connects them because the PHONE sits in the middle — and that's what Gui answers. We show you, per campaign: you spent X, this many customers came in, this much got booked. What each $1 turned into.",
+      es: "Google y Meta saben clics. Tú sabes facturación. Nadie los conecta porque en medio está el TELÉFONO — y eso es lo que Gui contesta. Te mostramos, por campaña: gastaste X, entraron tantos clientes, reservaron tanto. En cuánto se convirtió cada $1.",
+    },
+    gain: [
+      { pt: "Cada campanha com o seu próprio número: quem liga do anúncio já chega identificado", en: "Each campaign gets its own number: whoever calls from the ad arrives identified", es: "Cada campaña con su propio número: quien llama del anuncio llega identificado" },
+      { pt: "Aviso ANTES do prejuízo: se uma campanha começa a queimar, você sabe na segunda — não no fim do mês", en: "A warning BEFORE the loss: if a campaign starts burning, you know on Monday — not at month's end", es: "Aviso ANTES de la pérdida: si una campaña empieza a quemar, lo sabes el lunes — no a fin de mes" },
+      { pt: "E o contrário também: quando uma campanha paga 3× ou mais, a gente avisa para aumentar", en: "And the reverse: when a campaign pays 3× or more, we tell you to scale it", es: "Y al revés: cuando una campaña paga 3× o más, te avisamos para aumentar" },
+    ],
+    edge: {
+      pt: "Qualquer agência mostra relatório. A gente atende a ligação que o anúncio gerou — por isso conseguimos dizer quanto voltou em dinheiro, e não quantos cliques deu. Nenhuma ferramenta de anúncio consegue fazer essa conta sozinha.",
+      en: "Any agency shows a report. We answer the call the ad generated — that's why we can tell you how much came back in money, not how many clicks. No ad tool can do that math on its own.",
+      es: "Cualquier agencia muestra un informe. Nosotros contestamos la llamada que el anuncio generó — por eso podemos decirte cuánto volvió en dinero, no cuántos clics. Ninguna herramienta de anuncios puede hacer esa cuenta sola.",
+    },
+    opener: {
+      pt: "Uma pergunta: da última vez que você investiu em anúncio, alguém conseguiu te dizer quantos CLIENTES aquilo trouxe — não cliques, clientes?",
+      en: "One question: last time you spent on ads, could anyone tell you how many CUSTOMERS it brought — not clicks, customers?",
+      es: "Una pregunta: la última vez que invertiste en anuncios, ¿alguien pudo decirte cuántos CLIENTES trajo — no clics, clientes?",
+    },
+    discovery: [
+      { pt: "Quanto você investe em anúncio por mês hoje — e como você sabe se valeu?", en: "How much do you spend on ads a month today — and how do you know if it was worth it?", es: "¿Cuánto inviertes en anuncios al mes hoy — y cómo sabes si valió?" },
+      { pt: "Quando alguém liga por causa de um anúncio, alguém anota de onde veio?", en: "When someone calls because of an ad, does anyone note where they came from?", es: "Cuando alguien llama por un anuncio, ¿alguien anota de dónde vino?" },
+      { pt: "Já cortou alguma campanha sem ter certeza se ela estava dando certo?", en: "Have you ever cut a campaign without being sure it wasn't working?", es: "¿Alguna vez cortaste una campaña sin estar seguro de que no funcionaba?" },
+    ],
+    objection: {
+      // A objeção REAL deste produto não é preço — é desconfiança, e ela é merecida.
+      q: { pt: "Já me prometeram isso e o relatório era enfeitado. Como sei que o número é real?",
+           en: "I've been promised this before and the report was dressed up. How do I know the number is real?",
+           es: "Ya me prometieron esto y el informe estaba maquillado. ¿Cómo sé que el número es real?" },
+      a: { pt: "Justo — e é por isso que quando a gente NÃO sabe, o painel diz que não sabe, em vez de mostrar zero. Se o gasto de uma campanha não foi lançado, o retorno dela aparece em branco com o motivo. E o número de clientes não é estimativa: é agendamento que existe na sua agenda, com nome e horário. Você pode conferir um por um.",
+           en: "Fair — and that's why when we DON'T know, the dashboard says so instead of showing zero. If a campaign's spend wasn't entered, its return shows blank with the reason. And the customer count isn't an estimate: it's a booking that exists in your calendar, with a name and a time. You can check them one by one.",
+           es: "Justo — por eso cuando NO sabemos, el panel lo dice en vez de mostrar cero. Si no se cargó el gasto de una campaña, su retorno aparece en blanco con el motivo. Y el número de clientes no es estimación: es una reserva que existe en tu agenda, con nombre y hora. Puedes verificarlas una por una." },
     },
   },
 

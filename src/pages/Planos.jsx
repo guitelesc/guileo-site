@@ -9,6 +9,8 @@ import { useSeo } from "../lib/seo.js";
 import { SELF_SERVE_PLANS } from "../data/selfServePlans.js";
 import { trackSubscribe } from "../lib/analytics.js";
 import { fmtMoneyUSD } from "../lib/intl.js";
+import PricingConfigurator from "../components/PricingConfigurator";
+import { Reveal } from "../lib/ui.jsx";
 
 const T = {
   en: { eyebrow: "Self-service · start in minutes", h1: "Start your AI in minutes", sub: "Pick a plan, pay securely, and you're live. Your connection code lands in your inbox — log in and watch Gui work. Cancel anytime, 30-day money-back.", mo: "/mo", credits: "credits / month", subscribe: "Subscribe →", talk: "Talk to us →", guarantee: "30-day money-back · cancel anytime · no setup fee", cardG: "🛡️ 30-day money-back · cancel anytime", bigger: "Need a done-for-you setup, your own number and a dedicated build?", biggerCta: "See the tailored package →", trySub: "Not sure yet?", tryCta: "Let Gui call you first — free live demo →", faqT: "Quick questions", faq: [["What's a credit?", "Roughly one task Gui does for you — an answered call, a booking made, a follow-up sent (~5 credits per call answered). Your plan renews them monthly."], ["Can I cancel anytime?", "Yes — one click, no contract, no cancellation fee. And every plan starts with a 30-day money-back guarantee."], ["How fast am I live?", "Minutes. Pay → your connection code arrives by email → your AI is already trained for your business type."]] },
@@ -141,6 +143,30 @@ export default function Planos() {
             ))}
           </div>
         </div>
+
+      {/* ── O CONFIGURADOR ACHOU CASA (2026-08-11) ─────────────────────────────────────────────
+          Ele foi TIRADO da landing hoje, e a razão era boa: lá ele ficava colado no quadro dos 3
+          planos, e duas máquinas de decisão vizinhas não somam — dividem. Quem já tinha escolhido
+          um plano voltava à dúvida; quem montava o pacote descobria que havia cardápio pronto.
+          Aqui é diferente e é por isso que ele volta: em /planos o preço JÁ É o assunto. A pessoa
+          que rolou a página inteira e não se viu em nenhuma das três caixas é exatamente quem o
+          configurador atende — ela não está escolhendo entre ele e um plano, está dizendo que
+          nenhum plano serviu. Deixar de fora seria perder essa pessoa em silêncio.
+          Tirar da landing não era "este componente é ruim", era "este componente está no lugar
+          errado" — e cortar sem dar destino é jogar fora, não editar. */}
+      <section className="wrap pb-16">
+        <Reveal>
+          <div className="mb-6 text-center">
+            <div className="text-[11.5px] font-black uppercase tracking-[0.2em] text-g-gold">
+              {lang === "pt" ? "✍️ Nenhum dos três serviu?" : lang === "es" ? "✍️ ¿Ninguno de los tres sirvió?" : lang === "hi" ? "✍️ तीनों में से कोई नहीं?" : "✍️ None of the three fit?"}
+            </div>
+            <h2 className="mt-2 font-black tracking-tight text-g-word" style={{ fontSize: "clamp(1.5rem,3vw,2.1rem)" }}>
+              {lang === "pt" ? "Diga o que você quer crescer. A gente desenha o resto." : lang === "es" ? "Dinos qué quieres hacer crecer. Nosotros diseñamos el resto." : lang === "hi" ? "बताइए क्या बढ़ाना है। बाकी हम डिज़ाइन करते हैं।" : "Tell us what you want to grow. We design the rest."}
+            </h2>
+          </div>
+          <PricingConfigurator />
+        </Reveal>
+      </section>
       </main>
       <Footer />
       <VoiceAgent />
