@@ -115,6 +115,19 @@ async function clientByAgent(env, agentId) {
   try { const r = await rpc("client_by_agent", { p_secret: env.INGEST_SECRET || "", p_agent_id: agentId }); if (!r.ok) return ""; return ((await r.json()) || "").toString(); } catch { return ""; }
 }
 
+// De quem é esta conversa quando o agent_id não resolve — o carimbo do NOSSO servidor.
+// `voice_web_owner` (db/voice_web.sql) só conhece conversation_id que passou por /api/voice-web,
+// então não há como um navegador reivindicar a conversa de outro negócio: o índice único em
+// `voice_web_sessions.conv_id` garante uma dona só. service_role, nunca a chave anônima.
+async function voiceWebOwner(env, convId) {
+  if (!convId) return "";
+  try {
+    const r = await svcRpc(env, "voice_web_owner", { p_secret: env.INGEST_SECRET || "", p_conv: convId });
+    if (!r.ok) return "";
+    return ((await r.json()) || "").toString();
+  } catch { return ""; }
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
@@ -133,11 +146,22 @@ export async function onRequestPost(context) {
     // Idempotency — ElevenLabs can re-deliver the same call; only record it once.
     if (!(await isFresh(env, "elevenlabs", convId))) return json({ ok: true, duplicate: true });
 
-    // Attribution priority: explicit client_email → reverse lookup by agent_id → owner fallback.
-    // This makes a real client's call land in THEIR portal (not Luis's), even if the agent
-    // didn't pass client_email as a dynamic variable.
-    let email = (vars.client_email || "").toString().trim();
-    if (!email) email = await clientByAgent(env, agentId);
+    // ── DE QUEM É ESTA CONVERSA — ORDEM INVERTIDA EM 2026-08-11 ────────────────────────────────
+    // A ordem era: `vars.client_email` (dito por quem abriu a conversa) → agent_id → dono.
+    // Isso era seguro enquanto TODA conversa nascia no nosso servidor (Twilio, nossa discagem).
+    // Com a voz no navegador, `dynamic_variables` passou a ser digitado pelo VISITANTE: quem tem
+    // a URL assinada abre a conversa declarando `client_email` de outro negócio, e o custo de voz,
+    // a transcrição e o contato caem na conta da vítima. A linha não mudou — o mundo em volta dela
+    // mudou, que é a classe de defeito mais difícil de ver num diff.
+    //
+    // Agora manda quem NÃO é forjável, nesta ordem:
+    //   1) agent_id — vem da URL assinada, escopada a UM agente pelo nosso servidor;
+    //   2) voice_web_owner — o conversation_id que o NOSSO servidor carimbou ao abrir a sessão;
+    //   3) vars.client_email — só quando nenhum dos dois resolve (ligação telefônica antiga);
+    //   4) dono da plataforma, último recurso.
+    let email = await clientByAgent(env, agentId);
+    if (!email) email = await voiceWebOwner(env, convId);
+    if (!email) email = (vars.client_email || "").toString().trim();
     if (!email) email = (env.OWNER_EMAIL || "smart@guileoai.com").toString();
 
     const summary = d?.analysis?.transcript_summary || d?.analysis?.call_summary_title || "AI call completed";
@@ -187,6 +211,23 @@ export async function onRequestPost(context) {
     let cxContactId = null;
     if (env.SCHED_SECRET) {
       const caller = (vars.system__caller_id || vars.caller_id || vars.from || d?.metadata?.phone_call?.external_number || "").toString().trim();
+
+      // DE QUAL ANÚNCIO VEIO ESTA LIGAÇÃO. O motor de anúncios media o lead de FORMULÁRIO e era
+      // cego para o de TELEFONE — justamente o caminho principal de um negócio local, e o que a
+      // Guileo tem de diferente. Quando a linha discada pertence a uma campanha (db/ads_engine),
+      // quem ligou é creditado a ela sem cookie, sem formulário, sem nada no navegador.
+      // `agent_number` é o campo real, confirmado numa ligação de verdade em 2026-08-09.
+      // Best-effort: perder a atribuição é ruim, perder o registro da LIGAÇÃO seria muito pior.
+      try {
+        const discado = (d?.metadata?.phone_call?.agent_number || "").toString().trim();
+        if (discado && caller) {
+          await svcRpc(env, "ads_attr_from_call", {
+            p_secret: env.INGEST_SECRET || "", p_email: email,
+            p_numero_discado: discado, p_quem_ligou: caller,
+          });
+        }
+      } catch { /* atribuição é bônus — nunca derruba o registro da ligação */ }
+
       if (caller) {
         try {
           const crmRpc = (fn, body) => fetch(`${SB_URL}/rest/v1/rpc/${fn}`, { method: "POST", headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" }, body: JSON.stringify({ p_secret: env.SCHED_SECRET, ...body }) });

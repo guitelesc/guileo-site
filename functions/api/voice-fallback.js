@@ -7,7 +7,7 @@
 // Twilio config: Phone Numbers → number → Voice Configuration → "Call fails" / Fallback URL:
 //   https://guileoai.com/api/voice-fallback  (HTTP POST) — see db/VOICE_FALLBACK_SETUP.md
 import { json, safeEq } from "./../lib/guard.js";
-import { sendText } from "./../lib/twilio.js";
+import { sendText, sendOrFlag } from "./../lib/twilio.js";
 import { emitFailure } from "./../lib/failure.js";
 import { svcRpc } from "./../lib/sb.js";
 
@@ -186,7 +186,11 @@ export async function onRequestPost(context) {
     // a DB/Twilio hiccup here must NEVER turn the apology into more dead air):
     // 1. text the CALLER (WhatsApp-first) so the lead has a live thread the second they hang up
     if (from && !from.startsWith("client:")) {
-      try { await sendText(env, from, TEXTBACK[lk](profile?.business_name), { channel: "whatsapp" }); } catch { /* */ }
+      // O text-back é a promessa principal do produto: "perdeu a ligação? mandamos mensagem na
+      // hora". Falhar aqui em silêncio leva o lead junto e ninguém fica sabendo. Agora o dono é
+      // avisado com o motivo, e pode recuperar o cliente na mão.
+      await sendOrFlag(env, { to: from, body: TEXTBACK[lk](profile?.business_name),
+        opts: { channel: "whatsapp" }, tenant: email || "", motivo: "resposta de ligação perdida" });
     }
     // 2. tenant feed: this WAS a missed call — the client must see it in their portal
     await ingest(env, email, "missed", `📵 Voice platform down — inbound call from ${from} rescued by fallback (text-back sent)`, { from, to, error_code: errCode, error_url: errUrl.slice(0, 200), fallback: true });
