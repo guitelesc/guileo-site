@@ -18,3 +18,6 @@ Disallow: /vendedor
 Disallow: /setup-agenda
 
 Sitemap: https://guileoai.com/sitemap.xml
+
+# Sites dos clientes — gerado ao vivo (publicar no cockpit entra aqui em minutos)
+Sitemap: https://guileoai.com/sitemap-clientes.xml

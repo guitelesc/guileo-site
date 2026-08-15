@@ -26,6 +26,14 @@ const STATIC = [
   ["/calculator", "monthly", "0.7"],
   ["/marketing", "monthly", "0.7"],
   ["/planos", "monthly", "0.8"],
+  // /pulse — página do produto de $49 (2026-08-12). ⚠️ ENTRA AQUI, NUNCA no public/sitemap.xml:
+  // aquele arquivo é GERADO por este script no início de todo `npm run build`. Eu editei o arquivo
+  // à mão, o grep confirmou que a linha estava lá, o build rodou "com sucesso" — e sobrescreveu.
+  // Em produção o Google recebia 1058 URLs sem o /pulse, e nada em lugar nenhum reclamou.
+  // É a mesma família de "cópia sem vínculo" do resto desta sessão, na variante mais traiçoeira:
+  // o artefato é reescrito por uma fonte que você não tocou. Regra: se o arquivo é gerado, o
+  // conserto é no gerador — sempre.
+  ["/pulse", "monthly", "0.8"],
   ["/home-services", "monthly", "0.7"],
   ["/go-live", "monthly", "0.7"],
   ["/quiz", "monthly", "0.5"],
