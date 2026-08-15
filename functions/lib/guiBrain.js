@@ -58,8 +58,16 @@ export const MODEL_CHAIN = ["claude-fable-5", "claude-sonnet-5", "claude-haiku-4
 // failure). Never throws. auth/billing (401/402) stops early — another model won't help.
 // Reusable by ANY brain (tenant-facing here, support/BROTO, pitch) so the fallback
 // discipline lives in exactly one place.
-export async function askClaude(env, { system, messages, maxTokens = 300 }) {
-  if (!env.ANTHROPIC_API_KEY) return "";
+// ⚠️ `diag` (opcional): passe um ARRAY e ele recebe o motivo real de cada tentativa.
+// Existe porque em 2026-08-14 a IA caiu em produção INTEIRA — o chat no site do cliente
+// pagante respondia a frase-fallback em vez de atender — e esta função não sabia dizer por quê:
+// `catch {}` mudo, `return ""`, e cada chamador traduzindo esse "" em "tudo bem, uso o texto
+// enlatado". O sintoma era educado e a causa, invisível. Um fallback que não registra a falha
+// não é resiliência: é a falha com roupa de sucesso.
+// Quem não passa `diag` não muda em nada — o contrato antigo (string, nunca levanta) segue igual.
+export async function askClaude(env, { system, messages, maxTokens = 300, diag = null }) {
+  const nota = (o) => { if (Array.isArray(diag)) diag.push(o); };
+  if (!env.ANTHROPIC_API_KEY) { nota({ erro: "ANTHROPIC_API_KEY ausente" }); return ""; }
   for (const model of MODEL_CHAIN) {
     try {
       const r = await fetch("https://api.anthropic.com/v1/messages", {
@@ -67,9 +75,24 @@ export async function askClaude(env, { system, messages, maxTokens = 300 }) {
         headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
         body: JSON.stringify({ model, max_tokens: maxTokens, system, messages }),
       });
-      if (r.ok) { const d = await r.json().catch(() => ({})); const t = (d?.content?.[0]?.text || "").trim(); if (t) return t; }
-      else if (r.status === 401 || r.status === 402) break; // auth/billing won't improve with another model
-    } catch { /* try next model */ }
+      if (r.ok) {
+        const d = await r.json().catch(() => ({}));
+        const t = (d?.content?.[0]?.text || "").trim();
+        if (t) { nota({ model, status: 200, ok: true }); return t; }
+        nota({ model, status: 200, erro: "200 sem texto", stop: d?.stop_reason || "" });
+      } else {
+        // O corpo do erro da Anthropic diz o tipo (authentication_error, credit_balance,
+        // not_found_error de modelo inexistente…). Sem ele, "falhou" não orienta nada.
+        const corpo = await r.text().catch(() => "");
+        let tipo = ""; try { tipo = JSON.parse(corpo)?.error?.type || ""; } catch { /* texto puro */ }
+        nota({ model, status: r.status, tipo, detalhe: corpo.slice(0, 160) });
+        // SALDO ZERADO VEM COMO 400, não 401/402 (visto em produção 2026-08-14). O corte que
+        // existia só olhava 401/402, então a plataforma tentava os TRÊS modelos a cada pedido —
+        // três viagens de rede por usuário, num erro em que nenhum modelo vai ajudar. Barato de
+        // ver depois; caro no meio de um apagão, quando cada chamada demora 3× pra falhar igual.
+        if (r.status === 401 || r.status === 402 || /credit balance|billing/i.test(corpo)) break;
+      }
+    } catch (e) { nota({ model, erro: String(e).slice(0, 120) }); }
   }
   return "";
 }

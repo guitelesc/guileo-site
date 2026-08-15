@@ -48,7 +48,7 @@ import { ACTION_EVAL_CASES, ACTION_EVAL_SANDBOX_TENANT } from "../../src/data/ac
 // O golden set original não tinha dimensão de vertical: media o cérebro genericamente.
 import { VERTICAL_EVAL_CASES } from "../../src/data/verticalEvalCases.js";
 // guiBrain EXPORTA guiReply + askClaude (o runner da cadeia de modelos que o JUIZ usa).
-import { guiReply, askClaude } from "../lib/guiBrain.js";
+import { guiReply, askClaude, MODEL_CHAIN } from "../lib/guiBrain.js";
 // Namespaces + feature-detect: essas duas brains são internas até o patch de 1 linha acima.
 import * as supportMod from "./support.js";
 import * as reviewMod from "./review-responder.js";
@@ -240,6 +240,39 @@ export async function onRequest(context) {
   }
   if (!authed) return json({ error: "unauthorized" }, 401);
 
+  // ── `diag=1` — POR QUE o modelo não respondeu ────────────────────────────────────────────────
+  // Uma chamada mínima com o `diag` do askClaude ligado. Devolve o status e o TIPO de erro da
+  // Anthropic por modelo da cadeia (authentication_error, credit balance, modelo inexistente…).
+  // Nasceu do apagão de 2026-08-14: a plataforma inteira caiu no fallback educado e não havia
+  // como saber a causa sem adivinhar. NUNCA devolve a chave — só o veredito sobre ela.
+  if (url.searchParams.get("diag") === "1") {
+    const diag = [];
+    const t0 = Date.now();
+    const txt = await askClaude(env, { system: "Answer with the single word: ok", messages: [{ role: "user", content: "ping" }], maxTokens: 16, diag });
+
+    // ── IMPRESSÃO DIGITAL DA CHAVE ────────────────────────────────────────────────────────────
+    // Segredo do Cloudflare é gravado criptografado: ninguém lê de volta — nem eu, nem o dono.
+    // Então "a chave trocou mesmo?" virava uma pergunta constrangedora e sem resposta, e a gente
+    // ficava chutando billing quando o problema podia ser um `secret put` que não pegou.
+    // O HASH resolve os dois lados: não dá pra reverter (não revela a chave), e MUDA se o valor
+    // mudar. O dono roda o mesmo hash na chave que ele pretendia gravar e compara 8 caracteres.
+    // Vira fato onde antes havia palavra contra palavra.
+    let impressao = null, formato = null;
+    if (env.ANTHROPIC_API_KEY) {
+      const k = String(env.ANTHROPIC_API_KEY);
+      const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(k));
+      impressao = [...new Uint8Array(h)].slice(0, 4).map((b) => b.toString(16).padStart(2, "0")).join("");
+      formato = { comeca_com_sk_ant: k.startsWith("sk-ant-"), tamanho: k.length };
+    }
+    return json({
+      ok: !!txt, diag: true, respondeu: txt ? txt.slice(0, 40) : null,
+      tem_chave: !!env.ANTHROPIC_API_KEY, ms: Date.now() - t0,
+      chave_impressao: impressao, chave_formato: formato,
+      confira_assim: 'echo -n "SUA_CHAVE" | shasum -a 256 | cut -c1-8',
+      cadeia: MODEL_CHAIN, tentativas: diag,
+    });
+  }
+
   // READ-ONLY placar: o QualityPanel carrega com action:'latest' → só LÊ o último resultado gravado
   // (agent_evals_summary), SEM chamar o modelo (barato, seguro). Só action:'run' (ou o GET do cron,
   // que não manda action) roda o golden set de verdade — nunca dispare um eval pago só por abrir a tela.
@@ -421,5 +454,43 @@ export async function onRequest(context) {
   }));
   out.has_key = true;
   out.ran_at = new Date().toISOString();
+
+  // ── A CORRENTE (2026-08-14) ────────────────────────────────────────────────────────────────
+  // O eval nunca esteve quebrado. Ele funcionava exatamente como escrito — e o que estava escrito
+  // media 2 casos de 40, sempre os mesmos 2, todas as noites, desde que os lotes existem.
+  //
+  // O motivo: um lote para no soft deadline e devolve `more:true` + `cursor` pra quem chamou
+  // continuar. O QualityPanel continua (é uma tela, tem alguém do outro lado). O cron NÃO — ele
+  // dispara a URL e segue a vida. Então os 38 casos restantes — os 13 verticais e as travas de
+  // AÇÃO/dinheiro — nunca rodaram uma única vez por cron. Nenhum alerta, porque o lote 1 sempre
+  // volta 200 com nota bonita. É a mesma família de erro da sessão inteira: um número verdadeiro
+  // sobre a coisa errada. "PASS 1/2" é verdade; a leitura "a Gui está 50% boa" é ficção.
+  //
+  // A corrente fecha isso: cada lote chama o PRÓXIMO. Cada salto é uma invocação nova, com
+  // wall-time próprio — por isso não estoura, e por isso não dá pra resolver com um laço aqui.
+  //
+  // ⚠️ TRÊS TRAVAS, porque isto é código que se auto-chama:
+  //   1. `hops` com teto duro — recursão sem teto é como se derruba a própria plataforma.
+  //   2. `offset` ESTRITAMENTE crescente (o lote sempre processa ≥1 caso), então a corrente
+  //      termina sozinha mesmo se o teto falhar.
+  //   3. `dry` não encadeia — ensaio não vira varredura paga por descuido.
+  // Sem `await`: o salto seguinte não pode segurar a resposta deste lote. Se o salto falhar,
+  // a corrente para e o histórico mostra a run incompleta — parar visível, não mentir completo.
+  const MAX_HOPS = 25;
+  const hops = Math.max(0, Number(url.searchParams.get("hops") || body.hops || 0));
+  const cadeia = url.searchParams.get("cadeia") === "1" || body.cadeia === true;
+  if (cadeia && out.more && !dry && hops < MAX_HOPS) {
+    const prox = new URL(url.origin + "/api/agent-eval");
+    prox.searchParams.set("cadeia", "1");
+    prox.searchParams.set("hops", String(hops + 1));
+    prox.searchParams.set("run_id", out.run_id);
+    prox.searchParams.set("offset", String(out.next_offset));
+    prox.searchParams.set("tenant", tenant);
+    prox.searchParams.set("token", tok);
+    context.waitUntil(fetch(prox.toString()).catch(() => {}));
+    out.corrente = { saltou_para: out.next_offset, hop: hops + 1, teto: MAX_HOPS };
+  } else if (out.more && !cadeia) {
+    out.corrente = { saltou_para: null, motivo: "sem cadeia=1 — este lote para aqui e o resto do conjunto NÃO roda" };
+  }
   return json(out);
 }
