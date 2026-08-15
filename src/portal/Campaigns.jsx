@@ -9,16 +9,19 @@ import { toast, portalApi, loadDataKey } from "../lib/portalApi.js";
 import { waLink } from "../data/contact.js";
 import { loadCreated, genCampaigns, pushCreated, vnum, MiniStats, Card, tr, Empty, Drawer, SectionSkeleton } from "../pages/Portal.jsx";
 
-/* Best-effort seam to the real coupons/campaigns engine. Returns null on ANY failure so the UI
-   degrades to an honest state and never throws. */
+/* Seam to the real coupons/campaigns engine. Every answer carries its OWN verdict (`_ok`):
+   the previous version returned `null` on any failure and the list fell back to `[]`, so a 401
+   (expired connection code) or a network blip rendered as "No campaigns yet — build one in
+   Coupons & Campaigns". The owner concluded their campaigns had vanished. Failure and emptiness
+   are opposite states and must never share a screen. */
 async function couponsApi(body) {
   try {
     const r = await fetch("/api/coupons", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch { return null; }
+    const d = await r.json().catch(() => ({}));
+    return { ...(d && typeof d === "object" ? d : {}), _ok: r.ok && d?.ok !== false };
+  } catch (e) { return { _ok: false, error: String(e).slice(0, 120) }; }
 }
 
 /* ⚡ FLASH CAMPAIGN (1-click reactivation blitz) — the owner types a short offer, previews EXACTLY
@@ -147,6 +150,7 @@ const kindLabel = (c) => (c.template || c.kind || "promo").toString();
 function RealCampaigns({ V, onNav, email, dataKey }) {
   const [rows, setRows] = useState(null);   // null = fetch in flight
   const [ready, setReady] = useState(true);
+  const [readErr, setReadErr] = useState(false);
   const [sel, setSel] = useState(null);
   const [sending, setSending] = useState(false);
 
@@ -154,8 +158,9 @@ function RealCampaigns({ V, onNav, email, dataKey }) {
     let alive = true;
     couponsApi({ action: "campaign_list", token: dataKey, email }).then((d) => {
       if (!alive) return;
-      setReady(d?.ready !== false);
-      setRows(Array.isArray(d?.campaigns) ? d.campaigns : []);
+      setReadErr(!d._ok);
+      setReady(d.ready !== false);
+      setRows(Array.isArray(d.campaigns) ? d.campaigns : []);
     });
     return () => { alive = false; };
   }, [dataKey, email]);
@@ -168,7 +173,7 @@ function RealCampaigns({ V, onNav, email, dataKey }) {
     setSending(true);
     const d = await couponsApi({ action: "campaign_send", token: dataKey, email, campaign_id: c.id });
     setSending(false);
-    if (!d?.ok) { toast(tr("I couldn't send that — check your connection and try again.")); return; }
+    if (!d._ok) { toast(d.note || tr("I couldn't send that — check your connection and try again.")); return; }
     if (typeof d.sent === "number" && d.sent > 0) {
       setRows((cs) => (cs || []).map((x) => (x.id === c.id ? { ...x, status: "sent", sent_count: d.sent } : x)));
       setSel((s) => (s && s.id === c.id ? { ...s, status: "sent", sent_count: d.sent } : s));
@@ -214,7 +219,9 @@ function RealCampaigns({ V, onNav, email, dataKey }) {
             );
           })}
           {rows.length === 0 && (
-            <Empty icon="📣" text={ready
+            <Empty icon={readErr ? "⚠️" : "📣"} text={readErr
+              ? tr("I couldn't read your campaigns just now — this is a connection problem, not an empty list. Reload in a moment.")
+              : ready
               ? tr("No campaigns yet — build one in Coupons & Campaigns and it'll show up here, in your brand.")
               : tr("Campaigns aren't switched on yet — once activated, every promo you send appears here.")} />
           )}
@@ -270,11 +277,13 @@ function DemoCampaigns({ V, onNav }) {
   const buildAudience = (c) => { pushCreated(V.label, "audiences", { name: `${c.name} · engagers`, size: vnum(V.label, c.name, 1200, 9000), source: "CRM" }); setSel(null); toast(`Audience built from "${c.name}" ✓ — see it in Ad Audiences`); onNav?.("audiences"); };
   const sent = rows.reduce((s, c) => s + c.sent, 0);
   const rev = rows.reduce((s, c) => s + c.revenue, 0);
-  const open = Math.round(rows.reduce((s, c) => s + c.opened, 0) / rows.length);
+  // Divisão por zero devolvia NaN e a tela imprimia "Avg. open rate NaN%" — número
+  // impossível apresentado como métrica. Lista vazia = "—", que é a verdade.
+  const open = rows.length ? Math.round(rows.reduce((s, c) => s + (Number(c.opened) || 0), 0) / rows.length) : null;
   return (
     <div className="space-y-4 stagger">
       <div className="rounded-xl border border-g-gold/25 bg-g-gold/[0.06] px-4 py-2.5 text-[11px] font-bold text-g-muted">{tr("Demo — sample data. Connect your account in Settings to see your real campaigns here.")}</div>
-      <MiniStats items={[["Campaigns", `${rows.length}`], ["Messages sent", sent.toLocaleString()], ["Avg. open rate", `${open}%`, "good"], ["Revenue", `$${rev.toLocaleString()}`, "good"]]} />
+      <MiniStats items={[["Campaigns", `${rows.length}`], ["Messages sent", sent.toLocaleString()], ["Avg. open rate", open == null ? "—" : `${open}%`, "good"], ["Revenue", `$${rev.toLocaleString()}`, "good"]]} />
       <FlashCampaign V={V} />
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Campaigns")}</span><a href={waLink("I'd like to launch a campaign")} target="_blank" rel="noopener" className="text-[11px] font-bold text-g-gold hover:underline">{tr("New campaign →")}</a></div>

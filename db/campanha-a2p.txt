@@ -1,0 +1,115 @@
+════════════════════════════════════════════════════════════════════════════════
+CAMPANHA A2P 10DLC — TEXTO FINAL PARA REENVIO
+Tudo abaixo foi CONFERIDO na tela em 2026-08-09, não é suposição.
+════════════════════════════════════════════════════════════════════════════════
+
+ONDE CLICAR
+  Twilio Console → Messaging → Regulatory Compliance → Campaigns
+  → clicar na campanha  CMb2288d086893436821322c81d1db18ce  (status Failed)
+  → botão "Edit Campaign"
+
+  ⚠️ EDITAR, não criar nova. Campanha reprovada se edita e reenvia — criar outra
+  empilha uma segunda campanha na conta sem necessidade.
+
+────────────────────────────────────────────────────────────────────────────────
+POR QUE REPROVOU (causa real, lida na própria submissão)
+────────────────────────────────────────────────────────────────────────────────
+O texto enviado dizia:
+    "End users opt in on our website forms at https://guileoai.com ..."
+
+Apontava para a HOME. O revisor abriu guileoai.com, caiu numa landing de
+marketing, procurou a caixa de consentimento, não achou → erro 30909
+"could not verify the Call to Action".
+
+A página que mostra tudo é /sms — e ela nunca foi apontada.
+
+O QUE **NÃO** ERA (hipótese minha, verificada e descartada):
+  não é descasamento de marca. O website da brand TRANSPOINT já é
+  https://guileoai.com. Conferido no Trust Hub.
+
+────────────────────────────────────────────────────────────────────────────────
+CAMPO 1 — "How do end users consent to receive messages?"  (MESSAGE_FLOW)
+COLAR EXATAMENTE ISTO:
+────────────────────────────────────────────────────────────────────────────────
+End users opt in on our dedicated SMS consent page, https://guileoai.com/sms,
+which documents the complete opt-in flow and displays the exact consent language.
+
+On https://guileoai.com the visitor enters their name and phone number in the
+contact form and must tick a checkbox that is UNCHECKED by default. The form
+cannot be submitted without it. The exact label shown next to the checkbox is:
+
+"I agree to be contacted by Gui (Guileo) at the number provided, by call and
+text. Msg & data rates may apply. Msg frequency varies. Reply STOP to opt out,
+HELP for help."
+
+Consent is never pre-checked and is never a condition of purchase. Each consent
+is stored with the timestamp, the phone number, and the exact wording displayed
+at that moment. The /sms page also states what we send, the message frequency,
+that message and data rates may apply, and the STOP and HELP instructions.
+
+────────────────────────────────────────────────────────────────────────────────
+CAMPO 2 — "Sample messages"  (usar as TRÊS)
+────────────────────────────────────────────────────────────────────────────────
+1) Guileo: Hi Maria, this is a reminder of your appointment at Natura Spa
+   tomorrow, Aug 12 at 2:00 PM. Reply C to confirm or R to reschedule.
+   Reply STOP to opt out.
+
+2) Guileo: Hi John, we missed your call at Natura Spa. Reply here and we'll help
+   you book — or call us back at (986) 444-3334. Reply STOP to opt out.
+
+3) Guileo: Hi Ana, your payment link for Natura Spa is
+   https://guileoai.com/p/ab12 ($60.00, Deep Tissue 60min).
+   Reply STOP to opt out.
+
+   → As três batem com o que a página /sms promete ("appointment reminders",
+     "a reply when no one could pick up", "a secure payment link"). Se o revisor
+     comparar, fecha.
+
+────────────────────────────────────────────────────────────────────────────────
+CAMPOS RESTANTES
+────────────────────────────────────────────────────────────────────────────────
+Use case ............ Mixed / Customer Care
+Número .............. +1 986 444 3334   (já está no Sender Pool do serviço "Guileo")
+
+Opt-in keywords ..... START, YES, UNSTOP
+Opt-out keywords .... STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT
+Help keywords ....... HELP, INFO
+
+Opt-out message ..... You have been unsubscribed from Guileo messages. No more
+                      messages will be sent. Reply START to resubscribe.
+Help message ........ Guileo appointment assistant. Reply STOP to unsubscribe.
+                      Support: support@guileoai.com
+
+Marcar:
+  [x] Subscriber opt-in
+  [x] Subscriber opt-out
+  [x] Subscriber help
+  [x] Embedded link              (o link de pagamento é do nosso próprio domínio)
+  [x] Embedded phone number      (o número do próprio negócio)
+  [ ] Direct lending or loan arrangement ...... NÃO
+  [ ] Age-gated content ...................... NÃO
+
+────────────────────────────────────────────────────────────────────────────────
+O QUE **NÃO** DECLARAR (e por quê)
+────────────────────────────────────────────────────────────────────────────────
+NÃO declare consentimento verbal por telefone nesta submissão.
+
+A documentação da Twilio diz que listar todos os caminhos de opt-in ajuda — mas
+em 2026-08-09 fui ler o cérebro da agente e ela NÃO pedia permissão antes de
+mandar SMS. Declarar um fluxo que não acontece é declaração falsa ao operador, e
+o risco disso não é reprovar: é SUSPENDER A CONTA — perde voz e SMS juntos.
+
+A regra já foi adicionada ao agente no mesmo dia ("BEFORE YOU TEXT ANYONE, ASK"),
+então numa próxima submissão o caminho verbal pode ser declarado com verdade.
+Para ESTA, o formulário sozinho basta — foi o link errado que reprovou, não a
+falta de um segundo caminho.
+
+────────────────────────────────────────────────────────────────────────────────
+CONFERIR DEPOIS, SEM ENTRAR NO CONSOLE
+────────────────────────────────────────────────────────────────────────────────
+  POST https://guileoai.com/api/prontidao  {email, key}
+  → twilio.pronto_para_sms: true   e  campanha "VERIFIED"
+
+Nada muda no código quando aprovar: o envio de SMS já está escrito e inerte —
+liga sozinho no minuto em que a campanha virar VERIFIED.
+════════════════════════════════════════════════════════════════════════════════

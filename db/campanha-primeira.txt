@@ -1,0 +1,68 @@
+════════════════════════════════════════════════════════════════════════════════════════════
+PRIMEIRA CAMPANHA DA GUILEO — pronta para publicar
+Preparada 2026-08-10. Objetivo: NÃO é retorno. É o primeiro DADO REAL na perna de anúncios.
+Hoje o banco tem 0 gastos e 0 leads atribuídos; enquanto for assim, "we run ads for you" é
+promessa. Uma linha em ad_spend e um lead atribuído transformam isso em histórico.
+════════════════════════════════════════════════════════════════════════════════════════════
+
+── O ÂNGULO ────────────────────────────────────────────────────────────────────────────────
+A dor não é "não tenho AI". A dor é o telefone tocando às 20h47 e ninguém atendendo — dinheiro
+que já estava na porta e foi embora. O anúncio abre com a PERDA, não com o produto.
+O criativo automático do nosso motor saiu "See Guileo In Action" / "Book Your Guileo Demo":
+respeitou os limites, mas fala da marca, não da dor. Anúncio frio que fala do produto não para
+o dedo de ninguém. Ficou registrado como melhoria do motor (o contexto que ele recebe é
+descritivo demais; precisa da dor do vertical, não do cardápio).
+
+── META (Instagram/Facebook) ───────────────────────────────────────────────────────────────
+Texto principal (70/125):
+  Your phone rang at 8:47 PM. Nobody answered. That call was worth $340.
+Título (36/40):
+  We answer. And we fill the calendar.
+Descrição (19/30):
+  24/7 · 16 languages
+Destino:
+  https://guileoai.com/?utm_source=meta&utm_medium=paid&utm_campaign=demo-primeira
+
+── GOOGLE ──────────────────────────────────────────────────────────────────────────────────
+Títulos (limite 30):
+  Missed Calls Cost You Money        (27)
+  AI Answers 24/7, Any Language      (29)
+  We Run The Ads Too                 (18)
+Descrições (limite 90):
+  Every call answered, booked and quoted — 24/7, in 16 languages. Hear it yourself.   (81)
+  We run the ads that fill your calendar and the AI that closes them. See it live.    (80)
+Destino:
+  https://guileoai.com/?utm_source=google&utm_medium=cpc&utm_campaign=demo-primeira
+
+⚠️ O `utm_source` NÃO É DECORAÇÃO. `src/lib/analytics.js` só grava a origem se houver
+`utm_source` (ou `gclid`/`fbclid`). Link sem ele = campanha invisível no motor de anúncios —
+você paga e o sistema não sabe de onde veio ninguém.
+
+── PÚBLICO ─────────────────────────────────────────────────────────────────────────────────
+Quem: donos de negócio local que ATENDEM POR TELEFONE — restaurante, salão, clínica,
+       encanador/HVAC, imobiliária, escritório de advocacia.
+Onde: comece por UMA cidade onde já temos SEO (Nova York ou Miami). Cidade só, não país.
+Idade: 28–60. Interesses: empreendedorismo local, ferramentas de pequeno negócio.
+Por que estreito: com $10/dia, público largo não gera aprendizado — gera pó espalhado.
+
+── ORÇAMENTO ───────────────────────────────────────────────────────────────────────────────
+$10/dia por 7 dias = $70. Uma plataforma primeiro (sugiro Meta: criativo visual e barato).
+Não é para dar lucro. É para produzir: gasto lançado → clique → lead → ligação da Gui.
+
+── DEPOIS DE PUBLICAR (o que fazer no sistema) ──────────────────────────────────────────────
+1) Lançar o gasto todo dia (ou colar o relatório):
+   POST /api/ads  { email, key, action:"gasto", dia:"2026-08-11", fonte:"meta",
+                    campanha:"demo-primeira", valor: 10 }
+2) Ver o funil por campanha:
+   POST /api/ads  { email, key, action:"roi" }
+   → gasto · cliques · leads · agendamentos · receita · veredito
+3) O veredito EXIGE amostra: com menos de 3 leads ele diz "cedo_demais" de propósito.
+   Não corte campanha em 2 dias — 7 dias é o mínimo honesto.
+4) Segunda-feira o vigia manda o e-mail do que precisa de decisão (só se houver gasto lançado).
+
+── COMO SABER QUE FUNCIONOU (não é o lucro) ────────────────────────────────────────────────
+✅ `select count(*) from ad_spend;`          > 0
+✅ `select count(*) from lead_attribution;`  > 0
+✅ /api/ads action=roi devolve a campanha com número em vez de vazio
+Aí a frase "we run ads for you" para de ser promessa.
+════════════════════════════════════════════════════════════════════════════════════════════

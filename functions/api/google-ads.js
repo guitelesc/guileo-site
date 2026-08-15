@@ -29,15 +29,26 @@ const rpc = (name, body) => fetch(`${SB}/rest/v1/rpc/${name}`, {
   body: JSON.stringify(body),
 });
 
-// dollars-ish → cents (accepts "1,500", "$1500/mo", 1500, or budget_cents directly)
+// dollars-ish → cents (accepts "1,500", "$1500/mo", "1.500", "R$ 1.500,00", 1500, or budget_cents).
+//
+// USAVA `replace(/[^0-9.]/g, "")` + parseFloat, a mesma leitura ingênua que a guarda de cobrança
+// tinha (ver functions/lib/dinheiro.js). Aqui ela errava para os DOIS lados, num campo de texto
+// livre de um cockpit que fala quatro idiomas:
+//     "1.500"   → 1.5   → orçamento de US$ 1,50/mês   (mil vezes menor)
+//     "1.500,00"→ 1.5   → idem
+// E o número não fica só na tela: ele vai no e-mail para o time Guileo, que monta a campanha REAL
+// em cima dele, e no evento que o cliente lê no próprio feed. Orçamento errado aqui é campanha
+// montada errada — ou a conversa constrangedora de perguntar de novo quanto ele queria investir.
+// Agora usa a regra única (descobre o formato antes de limpar) e recusa moeda que não é dólar.
+import { paraCentavos, moedaNaoDolar } from "../lib/dinheiro.js";
+
 function toCents(b) {
   if (b.budget_cents != null && Number.isFinite(Number(b.budget_cents))) {
     return Math.max(0, Math.min(Math.round(Number(b.budget_cents)), 100000000));
   }
-  const raw = (b.budget != null ? String(b.budget) : "").replace(/[^0-9.]/g, "");
-  const dollars = parseFloat(raw);
-  if (!Number.isFinite(dollars) || dollars <= 0) return 0;
-  return Math.max(0, Math.min(Math.round(dollars * 100), 100000000));
+  const cents = paraCentavos(b.budget);
+  if (cents == null || cents <= 0) return 0;
+  return Math.min(cents, 100000000);
 }
 
 const uuidOk = (s) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
@@ -95,6 +106,10 @@ export async function onRequestPost(context) {
     }
 
     if (action === "request") {
+      // Moeda que não é dólar é RECUSA, não conversão implícita: o time monta a campanha em US$ e
+      // "R$ 1.500" lido como US$ 1.500 é cinco vezes o orçamento que o cliente autorizou.
+      const moeda = moedaNaoDolar(b.budget);
+      if (moeda) return json({ error: `budget came in ${moeda} — campaigns are budgeted in US$; convert it before submitting` }, 400);
       const budgetCents = toCents(b);
       const goal = (b.goal || "").toString().slice(0, 200);
       const area = (b.area || "").toString().slice(0, 200);
