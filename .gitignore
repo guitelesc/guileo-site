@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# wrangler local state/cache (KV simulado, tmp de build) — nunca versionar
+.wrangler/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
