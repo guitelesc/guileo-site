@@ -73,12 +73,27 @@ async function sendApptEmail(env, kind, p) {
 // A non-email contact (phone-only booking) is a legitimate skip, not a failure.
 async function apptEmailOrFlag(env, tenantEmail, kind, p) {
   const ok = await sendApptEmail(env, kind, { ...p, tenant: tenantEmail });
-  if (ok || !isEmail(p.contact)) return ok;
+  if (ok) return true;
+
+  // ⚠️ RESERVA SEM COMPROVANTE NA MÃO DO CLIENTE NÃO PODE SAIR CALADA (2026-08-16).
+  // Esta função tinha `if (ok || !isEmail(p.contact)) return ok;` — reserva feita por TELEFONE
+  // saía em silêncio, tratada como "pulo legítimo". Era legítima quando o SMS funcionava: o
+  // cliente recebia por lá. Com a campanha A2P bloqueada, telefone-só virou o caminho onde o
+  // cliente NÃO RECEBE NADA e ninguém fica sabendo.
+  // Foi exatamente o que aconteceu no GUI-42F0, o primeiro agendamento real: o contato era um
+  // telefone (ainda por cima quebrado), o e-mail não tinha para onde ir, e o único registro na
+  // trilha foi a agente anotando "Send confirmation text". Nada saiu. Nenhum aviso.
+  // O horário está reservado, o cliente acha que vai receber algo, e a única pessoa que poderia
+  // salvar a visita — o dono — não sabe que precisa. É a regra do comprovante aplicada ao ELO
+  // FINAL: não basta o agendamento existir no nosso banco, ele tem que chegar em quem vai ao spa.
+  const porTelefone = !isEmail(p.contact);
   try {
     await svcRpc(env, "ingest_client_event", {
-      p_secret: env.INGEST_SECRET || "", p_email: tenantEmail, p_type: "message", p_channel: "Email",
-      p_summary: `⚠️ E-mail de ${kind === "book" ? "confirmação" : kind} NÃO foi entregue a ${p.contact} — confirme com o cliente`,
-      p_amount: 0, p_payload: { delivery: "failed", kind, to: String(p.contact || "") },
+      p_secret: env.INGEST_SECRET || "", p_email: tenantEmail, p_type: "message", p_channel: porTelefone ? "Phone" : "Email",
+      p_summary: porTelefone
+        ? `⚠️ ${kind === "book" ? "Agendamento" : kind} de ${p.name || "cliente"} SEM confirmação entregue — só temos o telefone ${p.contact} e o SMS está bloqueado. Ligue ou peça o e-mail.`
+        : `⚠️ E-mail de ${kind === "book" ? "confirmação" : kind} NÃO foi entregue a ${p.contact} — confirme com o cliente`,
+      p_amount: 0, p_payload: { delivery: "failed", kind, to: String(p.contact || ""), motivo: porTelefone ? "sem_email_sms_bloqueado" : "resend_recusou", ref: String(p.ref || "") },
     });
   } catch { /* logging must never break a booking that already succeeded */ }
   return false;
