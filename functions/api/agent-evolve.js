@@ -83,6 +83,83 @@ async function evoluir(request, env) {
   // antes da chave nunca recebeu, e nada nunca conferiu. Esta sonda pergunta ao PROVEDOR.
   if (url.searchParams.get("identidade") === "1") {
     if (!env.ELEVENLABS_API_KEY) return json({ ok: false, nota: "sem ELEVENLABS_API_KEY" }, 503);
+    // `cru=1&agente=ID` despeja o platform_settings INTEIRO. Quando a ligação cai e existem duas
+    // hipóteses, adivinhar é o caminho mais caro — o provedor guarda a resposta, basta perguntar.
+    // `conversas=1` — as últimas conversas do agente NO PROVEDOR, com status e motivo de término.
+    // Quando o cliente diz "chama e cai", isto responde se a conversa chegou a existir e como
+    // morreu. Sem isto, "cai" é um sintoma sem lugar: pode ser operadora, Twilio, ou aqui.
+    if (url.searchParams.get("conversas") === "1") {
+      const alvo = url.searchParams.get("agente") || "";
+      const g = await fetch(`https://api.elevenlabs.io/v1/convai/conversations?agent_id=${alvo}&page_size=8`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+      if (!g.ok) return json({ ok: false, erro: `HTTP ${g.status}`, corpo: (await g.text().catch(()=> "")).slice(0,200) }, 502);
+      const d = await g.json();
+      return json({ ok: true, conversas: (d.conversations || []).map((c) => ({
+        id: c.conversation_id, inicio: c.start_time_unix_secs, segundos: c.call_duration_secs,
+        status: c.status, sucesso: c.call_successful, mensagens: c.message_count, direcao: c.direction,
+      })) });
+    }
+    // `porque=ID` — o detalhe de UMA conversa. "failed, 0 segundos" é sintoma; o provedor guarda
+    // o motivo. Perguntar é sempre mais barato que deduzir — e hoje eu já deduzi errado duas vezes.
+    // `destravar=1` — REPARO DE EMERGÊNCIA do teto diário -1 (2026-08-16).
+    // Manda call_limits com um teto POSITIVO de verdade. Não dá para "remover" o campo por PATCH
+    // (a ElevenLabs faz merge), então o conserto é sobrescrever com um número que existe.
+    // 5000/dia é folgado para qualquer negócio local e continua sendo um teto real — nenhum
+    // tenant nosso chega perto, e ele protege contra loop de discagem.
+    if (url.searchParams.get("destravar") === "1") {
+      const todos = await svcJson(env, "agentes_atrasados", { p_secret: env.INGEST_SECRET, p_versao: 999999, p_limite: 25 });
+      const out = [];
+      for (const a2 of ((todos && todos.lista) || [])) {
+        if (!a2.agente) continue;
+        const up = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${a2.agente}`, {
+          method: "PATCH", headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ platform_settings: { call_limits: { daily_limit: 5000, agent_concurrency_limit: 10, bursting_enabled: true } } }),
+        });
+        // NUNCA confie no 200: relê e mostra o teto que ficou de verdade.
+        let teto = null;
+        if (up.ok) {
+          const v = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${a2.agente}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+          if (v.ok) teto = (await v.json())?.platform_settings?.call_limits?.daily_limit ?? null;
+        }
+        out.push({ cliente: a2.cliente, patch: up.ok ? "ok" : `HTTP ${up.status}`, teto_agora: teto,
+          veredito: teto === 5000 ? "✅ destravado" : teto === -1 ? "🚨 AINDA -1 — continua recusando ligação" : `⚠️ teto=${teto}` });
+      }
+      return json({ ok: true, destravar: true, agentes: out });
+    }
+    if (url.searchParams.get("porque")) {
+      const cid = url.searchParams.get("porque");
+      const g = await fetch(`https://api.elevenlabs.io/v1/convai/conversations/${cid}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+      const txt = await g.text().catch(() => "");
+      if (!g.ok) return json({ ok: false, erro: `HTTP ${g.status}`, corpo: txt.slice(0, 400) }, 502);
+      let d = {}; try { d = JSON.parse(txt); } catch {}
+      return json({ ok: true, conversa: cid, status: d.status,
+        metadata: d.metadata ?? null, erro: d.error ?? d.failure_reason ?? null,
+        inicio: d.metadata?.start_time_unix_secs ?? null,
+        motivo_fim: d.metadata?.termination_reason ?? d.metadata?.error ?? null });
+    }
+    if (url.searchParams.get("cru") === "1") {
+      const alvo = url.searchParams.get("agente") || "";
+      const g = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${alvo}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+      if (!g.ok) return json({ ok: false, erro: `HTTP ${g.status}` }, 502);
+      const d = await g.json();
+      // `cru=1` agora traz o AGENTE INTEIRO em resumo — não só o pedaço que eu mexi. Olhar só onde
+      // você mexeu é como procurar a chave debaixo do poste: em 2026-08-16 a ligação continuou
+      // caindo depois de eu desfazer a minha mudança, e a causa estava fora do meu recorte.
+      const cc = d?.conversation_config || {};
+      return json({ ok: true, agente: alvo,
+        resumo: {
+          nome: d?.name || "",
+          voz: cc?.tts?.voice_id || null, modelo_voz: cc?.tts?.model_id || null,
+          idioma: cc?.agent?.language || null,
+          primeira_fala: (cc?.agent?.first_message || "").slice(0, 80),
+          tamanho_prompt: (cc?.agent?.prompt?.prompt || "").length,
+          llm: cc?.agent?.prompt?.llm || null,
+          ferramentas: (cc?.agent?.prompt?.tool_ids || []).length,
+          base_conhecimento: (cc?.agent?.prompt?.knowledge_base || []).length,
+          duracao_max: cc?.conversation?.max_duration_seconds ?? null,
+          text_only: cc?.conversation?.text_only ?? null,
+        },
+        platform_settings: d?.platform_settings ?? null });
+    }
     const todos = await svcJson(env, "agentes_atrasados", { p_secret: env.INGEST_SECRET, p_versao: 999999, p_limite: 25 });
     const linhas = [];
     for (const a of ((todos && todos.lista) || [])) {
@@ -171,7 +248,10 @@ async function evoluir(request, env) {
         else {
           const d = await t.json();
           out.twilio = { conta: env.TWILIO_ACCOUNT_SID.slice(0, 10) + "…",
-            numeros: (d.incoming_phone_numbers || []).map((n) => ({ numero: n.phone_number, apelido: n.friendly_name, comprado: n.date_created })) };
+            // voice_url É O QUE FAZ O TELEFONE TOCAR NA ELEVENLABS. Sem ele, ou apontando pro
+            // lugar errado, a chamada chega na Twilio e MORRE — o cliente ouve "chama e cai".
+            // Estava faltando neste relatório justamente no dia em que a ligação começou a cair.
+            numeros: (d.incoming_phone_numbers || []).map((n) => ({ numero: n.phone_number, apelido: n.friendly_name, comprado: n.date_created, voice_url: n.voice_url || "", voice_method: n.voice_method || "", status_url: n.status_callback || "" })) };
         }
       } catch (e) { out.twilio = { erro: String(e).slice(0, 90) }; }
     } else out.twilio = { erro: "sem TWILIO_ACCOUNT_SID/AUTH_TOKEN neste ambiente" };

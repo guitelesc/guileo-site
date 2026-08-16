@@ -434,13 +434,20 @@ export function buildPlatformSettings(env) {
   // Este limite é aplicado pelo provedor, longe do alcance de quem fala. `call_limits` é
   // enviado mesmo sem AGENT_ACTION_SECRET: teto de custo não pode depender de outra chave estar
   // configurada. Só a memória-do-chamador (workspace_overrides) exige o segredo.
+  // 🚨 NUNCA MANDE `call_limits` COM -1. Custou ligações de cliente pagante em 2026-08-16.
+  // Este bloco dizia `daily_limit: -1` com o comentário "sem limite". A ElevenLabs trata -1 como
+  // um teto LITERAL de −1: toda ligação nasce acima dele e é recusada antes de atender. O provedor
+  // devolve, palavra por palavra:
+  //     {"code": 4300, "reason": "Agent ... has exceeded its daily call limit of -1."}
+  // O valor estava aqui há tempos e era inofensivo porque nunca tinha sido APLICADO a nenhum
+  // agente — só passou a ser quando eu dei PATCH de platform_settings na frota. Aí três ligações
+  // seguidas morreram com 0 segundo e 0 mensagem, e a minha primeira reversão reenviou o MESMO -1,
+  // então "desfazer" não desfez nada.
+  // A regra que fica: teto que o provedor aplica não se escreve por convenção ("-1 deve ser
+  // infinito"), se escreve por verificação. Na dúvida, NÃO MANDE O CAMPO — o padrão do provedor é
+  // sempre mais seguro que um sentinela adivinhado. O nosso teto real é por tenant, em
+  // voice_web_limits, e continua valendo.
   const limites = {
-    call_limits: {
-      // 300s = os 240 da sessão + folga de rede. O corte do navegador continua como primeira
-      // camada (encerra limpo, devolve a sobra); este é o que segura quando ele é burlado.
-      agent_output_audio_seconds_limit: -1,   // sem limite de áudio isolado; quem manda é o tempo
-      daily_limit: -1,                        // o teto diário é NOSSO (voice_web_limits), por tenant
-    },
     max_duration_seconds: 300,
   };
   if (!env.AGENT_ACTION_SECRET) return limites;
