@@ -57,6 +57,15 @@ export async function onRequestPost(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   if (!env.DIGEST_TOKEN || !safeEq(url.searchParams.get("token") || "", env.DIGEST_TOKEN)) return json({ error: "forbidden" }, 401);
+  // ── `?apenas=lembretes` — A PASSADA DE HORA EM HORA (2026-08-16) ─────────────────────────────
+  // Este endpoint roda 1×/dia (13h/14h UTC) e faz MUITO mais que lembrete: aniversário, win-back,
+  // NPS, rebooking. Rodá-lo de hora em hora viraria spam na caixa de quem paga.
+  // Mas manter só o diário deixa um buraco que ninguém veria: reserva criada às 14h para o dia
+  // seguinte às 10h nunca cai em janela nenhuma — a próxima rodada é às 13h, DEPOIS do horário.
+  // O cliente simplesmente não é lembrado, e o no-show é lido como "cliente que não apareceu".
+  // Com este modo, o cron chama de hora em hora só a parte transacional (lembrete de horário
+  // marcado, que a pessoa PEDIU), e o marketing continua uma vez por dia.
+  const soLembretes = url.searchParams.get("apenas") === "lembretes";
   if (!env.SCHED_SECRET) return json({ ok: true, note: "scheduling not configured" });
 
   // Enumerate live tenants dynamically (same INGEST-gated clients_list RPC nps.js/health-monitor.js
@@ -203,14 +212,36 @@ export async function onRequestPost(context) {
       }
     }
 
-    // REMINDERS — appointments in the next 24h get a gentle branded reminder EMAIL today (no A2P needed),
-    // for customers whose contact is an email. biz_due_reminders marks them reminded so it fires once.
-    const rem = await rpc(env, "biz_due_reminders", { p_email: email, p_hours: 24, p_limit: 50 });
+    // ── LEMBRETE: LISTAR → ENVIAR → MARCAR SÓ QUEM RECEBEU (2026-08-16) ────────────────────────
+    // A RPC antiga (`biz_due_reminders`) fazia SELECT e logo em seguida `update ... set reminded=true`
+    // para TODOS os vencendo — antes de qualquer envio. E o laço abaixo pula quem não tem e-mail.
+    // Resultado: contato por TELEFONE saía marcado como lembrado e nunca era lembrado, para sempre.
+    // Não era um caso raro: é o caminho do GUI-42F0, o primeiro agendamento real da plataforma.
+    // Marcar antes de fazer é a mesma família de "sucesso sem comprovante" que me perseguiu o dia
+    // inteiro — só que aqui o registro falso apaga a segunda chance.
+    //
+    // Agora são duas RPCs: `biz_reminders_due` só LÊ, e `biz_reminder_mark` carimba UMA linha
+    // depois de o envio ter sido confirmado. Quem não pôde ser lembrado continua na fila da próxima
+    // rodada — e a rodada agora é DE HORA EM HORA (ver cron-tick), com janela de 26h.
+    // A janela de 24h com rodada diária tinha um buraco silencioso: reserva criada DEPOIS da rodada
+    // do dia para o dia seguinte nunca caía em janela nenhuma. As 2h a mais cobrem a folga.
+    const rem = await rpc(env, "biz_reminders_due", { p_email: email, p_hours: 26, p_limit: 50 });
     for (const a of (rem?.due || [])) {
-      if (!isEmail(a.contact)) continue; // transacional: a pessoa marcou este horário
+      // Sem e-mail não há como lembrar hoje (o SMS está preso no A2P) — e por isso NÃO marcamos:
+      // no dia em que o A2P sair, ou em que o cliente der o e-mail, esta pessoa ainda está na fila.
+      if (!isEmail(a.contact)) continue;
       const { subject, html } = appointmentReminderEmail({ name: a.name || "there", business: (brand && brand.business) || "", service: a.service || "", whenLabel: fmtWhen(a.when), ref: a.ref || "", lang: L, bizEmail: email, brand, address });
-      if (await capSend(a.contact, subject, html)) reminded++;
+      if (await capSend(a.contact, subject, html)) {
+        reminded++;
+        // só agora. Se o carimbo falhar, o pior caso é um lembrete repetido — muito melhor que
+        // um lembrete que nunca sai porque foi dado como enviado.
+        await rpc(env, "biz_reminder_mark", { p_email: email, p_id: a.id, p_channel: "email" });
+      }
     }
+
+    // Na passada horária o trabalho acaba aqui: daqui para baixo é MARKETING (aniversário,
+    // win-back, NPS, rebooking), e marketing tem cadência diária de propósito.
+    if (soLembretes) continue;
 
     // BIRTHDAY — Gui never forgets. Celebrate every customer whose birthday is today (email).
     const bd = await rpc(env, "biz_birthdays", { p_email: email, p_within: 0, p_limit: 100 });

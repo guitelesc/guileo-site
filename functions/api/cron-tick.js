@@ -122,6 +122,12 @@ export async function onRequest(context) {
     // ligar a varredura republicaria o post que o cockpit estava publicando naquele instante.
     // Reserva ANTES de enviar → re-rodar nunca publica duas vezes. Inerte e honesta sem META_APP_*.
       { name: "automations", url: `${base}/api/automations?token=${t}` },
+      // LEMBRETE DE HORÁRIO, DE HORA EM HORA (2026-08-16). Só a parte transacional — o marketing
+      // continua na rodada diária das 13h. Antes, o lembrete só existia 1×/dia com janela de 24h,
+      // então reserva criada depois da rodada para o dia seguinte NUNCA era lembrada. No-show é a
+      // perda mais cara depois da venda perdida, e essa era invisível: o dono lia como "faltou".
+      // Barato quando não há nada vencendo: uma consulta que volta vazia.
+      { name: "lembretes", url: `${base}/api/proactive?apenas=lembretes&token=${t}` },
       { name: "lifecycle", url: `${base}/api/lifecycle?token=${t}` },
       { name: "social-sweep", url: `${base}/api/social-publish?sweep=1&token=${t}` },
     ];
