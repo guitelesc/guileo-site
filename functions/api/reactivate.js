@@ -55,8 +55,18 @@ export async function onRequestPost(context) {
     const dryRun = b.dryRun === true || b.dryRun === "1"; // preview WHO + WHAT without sending a single message
     const note = (b.note || "").toString().slice(0, 160); // free-text label from the cockpit (echoed back + logged)
 
-    // Pull the lapsed list (global), keep only this tenant's, up to the limit.
-    const rows = ((await rpc(env, "due_winback")) || []).filter((c) => (c.client_email || "").toLowerCase() === email).slice(0, limit);
+    // ⚠️ `|| []` AQUI DIZIA "NINGUÉM PARA REATIVAR" QUANDO A VERDADE ERA "A FUNÇÃO NÃO EXISTE".
+    // A auditoria de 2026-08-12 provou que `due_winback` é nome da geração ANTERIOR do schema e
+    // NÃO está neste banco. O dono clicava "reativar clientes sumidos", recebia `pulled: 0` e
+    // concluía que não havia ninguém sumido — enquanto o motor nunca tinha rodado uma vez.
+    // Lista ausente ≠ lista vazia. Este é o mesmo engano que me custou o dia inteiro, e aqui ele
+    // esconde justamente a receita mais barata que existe: cliente que já comprou uma vez.
+    const cru = await rpc(env, "due_winback");
+    if (!Array.isArray(cru)) {
+      return json({ ok: false, motor_morto: "due_winback",
+        erro: "o motor de reativação não está disponível neste banco (RPC due_winback ausente) — isto NÃO é 'ninguém para reativar'" }, 503);
+    }
+    const rows = cru.filter((c) => (c.client_email || "").toLowerCase() === email).slice(0, limit);
     const out = { ok: true, dryRun, channel, ...(note ? { note } : {}), pulled: rows.length, sms: 0, calls: 0, skipped: 0, sample: [] };
 
     let calls = 0;

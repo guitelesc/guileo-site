@@ -272,7 +272,32 @@ function statusToColor(s) {
   if (s === "notReady" || s === "unknown" || s === "degraded") return "yellow";
   return "yellow";
 }
-function computeSlo(funnel, rpc, failures, agents) {
+// `motoresMortos` entra como DADO, não como leitura: computeSlo é pura de propósito (dá para
+// testá-la sem rede). Quem tem env colhe a lista lá embaixo e passa pra cá.
+// SONDA DOS MOTORES MORTOS — pergunta ao banco se a função existe, sem rodar motor nenhum.
+// A auditoria de 2026-08-12 provou que estes nomes são da geração ANTERIOR do schema: o motor de
+// agenda foi reescrito com prefixo `biz_` e o automations.js ficou para trás, chamando funções
+// fantasma 96×/dia e lendo "não existe" como "nada vencendo hoje".
+const RPCS_DE_MOTOR = ["due_reminders", "due_review_requests", "due_winback"];
+async function motoresMortosProbe(env) {
+  const mortos = [];
+  for (const nome of RPCS_DE_MOTOR) {
+    try {
+      const k = sbKey(env);
+      const r = await timedFetch(`${SB_URL}/rest/v1/rpc/${nome}`, {
+        method: "POST",
+        headers: { apikey: k, Authorization: `Bearer ${k}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_secret: env.INGEST_SECRET || "" }),
+      });
+      // 404 = a função não existe. Outros erros (401/400) NÃO viram "morto": podem ser argumento
+      // ou permissão, e acusar por engano é o mesmo pecado da lista vazia lida como "não achei".
+      if (r.status === 404) mortos.push(nome);
+    } catch { /* sonda muda não acusa ninguém */ }
+  }
+  return { motoresMortos: mortos };
+}
+
+function computeSlo(funnel, rpc, failures, agents, motoresMortos = null) {
   // seed every area with no signal
   const acc = {}; for (const a of AREAS) acc[a] = { color: null, signals: [] };
   const bump = (area, color, label) => {
@@ -311,6 +336,15 @@ function computeSlo(funnel, rpc, failures, agents) {
     bump("agentes", "yellow", `agent_evals:${agents.note || "sem medição"}`);
   }
 
+  // ── MOTOR MORTO É AMARELO, NÃO SILÊNCIO (2026-08-16) ──────────────────────────────────────
+  // `automations.js` já declarava honestamente quais RPCs não existem neste banco — mas essa
+  // declaração morria na resposta do cron e ninguém lia. Um motor que roda 96×/dia devolvendo
+  // "nada vencendo" porque a função NÃO EXISTE é exatamente o que este semáforo deveria pegar,
+  // e passava batido por falta de UMA leitura. Entra em `agenda`: lembrete e win-back são agenda.
+  if (Array.isArray(motoresMortos) && motoresMortos.length) {
+    bump("agenda", "yellow", `motores mortos: ${motoresMortos.join(", ")} — rodam e não fazem nada`);
+  }
+
   const areas = {};
   let worst = 0, anyKnown = false;
   for (const a of AREAS) {
@@ -344,14 +378,21 @@ export async function onRequest(context) {
     const origin = new URL(request.url).origin;
 
     // Every section is isolated + best-effort — one down source can never break the consolidation.
-    const [funnel, rpc, failures, agents] = await Promise.all([
+    const [funnel, rpc, failures, agents, mortos] = await Promise.all([
       funnelUptime(env, origin).catch((e) => ({ source: "canary", ok: false, reachable: false, detail: String(e).slice(0, 120), probes: {} })),
       rpcHealth(env).catch((e) => ({ source: "health-monitor.RPC_PROBES", reusable: false, note: String(e).slice(0, 120), results: [] })),
       recentFailures(env).catch((e) => ({ source: "admin_all_events", ready: false, note: String(e).slice(0, 120), total: 0, byChannel: {}, byArea: {} })),
       agentQuality(env).catch((e) => ({ source: "agent_evals_summary", ready: false, note: String(e).slice(0, 120) })),
+      // A 5ª fonte: quais motores rodam contra RPC que NÃO EXISTE neste banco.
+      // ⚠️ NÃO chame /api/automations para descobrir isso. Ele não tem modo seco — a chamada
+      // DISPARARIA os motores, e a pergunta "está tudo bem?" viraria uma ação com efeito colateral
+      // (mensagem enviada a cliente de verdade). Escrevi essa versão antes de conferir e quase subi.
+      // As RPCs em si são de LEITURA (devolvem quem está vencendo); quem envia é o automations.
+      // Então perguntar direto a elas é seguro e responde a mesma coisa.
+      motoresMortosProbe(env),
     ]);
 
-    const slo = computeSlo(funnel, rpc, failures, agents);
+    const slo = computeSlo(funnel, rpc, failures, agents, mortos?.motoresMortos || null);
 
     return json({
       ok: true,

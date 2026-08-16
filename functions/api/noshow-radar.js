@@ -30,11 +30,17 @@ async function sendConfirmEmail(env, to, name, business, whenLabel, bizEmail, la
   if (!env.RESEND_API_KEY || !isEmailAddr(to)) return false;
   try {
     const { subject, html } = appointmentReminderEmail({ name: name || "there", business: business || "", whenLabel: whenLabel || "", bizEmail: bizEmail || "", lang });
-    await fetch("https://api.resend.com/emails", {
+    // ⚠️ `await fetch(); return true;` — o fetch NÃO lança em erro HTTP. Este `return true` dizia
+    // "lembrei" para um 4xx do Resend (domínio não verificado, endereço inválido, rate limit), e o
+    // cockpit do CLIENTE estampava "Gui lembrou 3 clientes" com ZERO e-mail entregue. Pior: o claim
+    // bloqueia o mesmo agendamento por 7 dias, então o lembrete que falhou nunca era tentado de novo.
+    // Mentir para o dono sobre o trabalho feito é a única coisa que este produto não pode fazer:
+    // ele existe para o dono confiar no que não viu acontecer.
+    const r = await fetch("https://api.resend.com/emails", {
       method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to, subject, html }),
     });
-    return true;
+    return r.ok;
   } catch { return false; }
 }
 
@@ -50,6 +56,20 @@ async function claimConfirm(env, email, apptId) {
     if (!r.ok) return null;
     return (await r.json().catch(() => null)) === true;
   } catch { return null; }
+}
+
+// DESFAZ a marca do claim quando o envio falha — sem isto o agendamento fica bloqueado 7 dias
+// tendo recebido nada. Escreve direto na coluna que o claim carimba (risk_nudged_at), pelo mesmo
+// portão INGEST. Best-effort: se não der, o pior caso é o comportamento antigo, e o evento de
+// falha que gravamos ao lado já conta a verdade para o dono.
+async function soltarClaim(env, email, apptId) {
+  try {
+    await fetch(`${SB}/rest/v1/biz_appointments?id=eq.${encodeURIComponent(apptId)}&client_email=eq.${encodeURIComponent(email)}`, {
+      method: "PATCH",
+      headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({ risk_nudged_at: null }),
+    });
+  } catch { /* nunca quebra a varredura */ }
 }
 
 // Log the action into the live feed (best-effort). kind:'confirm-nudge' on the phone path is what the
@@ -133,9 +153,18 @@ export async function onRequestPost(context) {
         if (isEmailAddr(contact)) {
           // EMAIL PATH — send NOW, deduped by the atomic 7-day claim (email bookings are never touched
           // by the phone auto-confirm engine, so claiming here starves nothing).
+          // ⚠️ A ORDEM: LER o claim (sem gravar) → ENVIAR → só então MARCAR. Antes o claim carimbava
+          // ANTES do envio, então um envio que falhava saía bloqueado por 7 dias — o pior dos dois
+          // mundos: não lembrou e não vai tentar de novo.
           const claimable = await claimConfirm(env, email, aid);
-          if (claimable === false) { skipped++; continue; } // already reminded within 7 days → no double-send
+          if (claimable === false) { skipped++; continue; } // já lembrado nos últimos 7 dias
           const ok = await sendConfirmEmail(env, contact, who, bizName, fmtWhen(a.starts_at, bizLang), email, bizLang);
+          if (!ok) {
+            // Envio recusado: DESFAZ a marca para a próxima rodada tentar de novo, e deixa o motivo
+            // visível. Falha silenciosa aqui vira no-show, e o dono culpa a IA sem saber por quê.
+            await soltarClaim(env, email, aid);
+            await logConfirm(env, email, `⚠️ NÃO consegui enviar a confirmação para ${who} — o provedor de e-mail recusou. Vou tentar de novo.`, { kind: "confirm-falhou", appointment_id: aid, via: "email" });
+          }
           if (ok) {
             sent++; via = via || "email";
             await logConfirm(env, email, `✅ Gui sent an extra confirmation to ${who} (no-show risk ${Number(a.risk) || 0}%)`, { kind: "confirm-sent", appointment_id: aid, via: "email", risk: Number(a.risk) || 0 });
