@@ -212,13 +212,13 @@ function Phone() {
           -left-[136px] → sobra só 20px de encaixe na quina arredondada, que é proposital (dá a
           sensação de camada), e o cabeçalho fica livre. As alturas também mudaram para os VÃOS:
           o da esquerda ao lado da onda sonora, o da direita no meio do mural. */}
-      <div className="absolute -left-[136px] top-[208px] hidden w-[156px] rounded-xl2 border border-white/10 bg-[#14130F]/90 px-3 py-2 shadow-[0_24px_60px_-18px_rgba(0,0,0,0.85)] ring-1 ring-white/[0.06] backdrop-blur-xl lg:block" style={{ animation: "gfloat 6s ease-in-out infinite" }}>
+      <div className="absolute -left-[136px] top-[208px] hidden w-[156px] rounded-2xl border border-white/10 bg-[#14130F]/90 px-3 py-2 shadow-[0_24px_60px_-18px_rgba(0,0,0,0.85)] ring-1 ring-white/[0.06] backdrop-blur-xl lg:block" style={{ animation: "gfloat 6s ease-in-out infinite" }}>
         <div key={"l" + stat} style={{ animation: "gswap .45s ease-out both" }}>
           <div className="text-[11px] font-bold text-g-word">{L.icon} {loc(L.a)}</div>
           <div className="text-[10px] text-g-ink">{loc(L.b)}</div>
         </div>
       </div>
-      <div className="absolute -right-[136px] bottom-[168px] hidden w-[156px] rounded-xl2 border border-white/10 bg-[#14130F]/90 px-3 py-2 shadow-[0_24px_60px_-18px_rgba(0,0,0,0.85)] ring-1 ring-white/[0.06] backdrop-blur-xl lg:block" style={{ animation: "gfloat 7s ease-in-out 1s infinite" }}>
+      <div className="absolute -right-[136px] bottom-[168px] hidden w-[156px] rounded-2xl border border-white/10 bg-[#14130F]/90 px-3 py-2 shadow-[0_24px_60px_-18px_rgba(0,0,0,0.85)] ring-1 ring-white/[0.06] backdrop-blur-xl lg:block" style={{ animation: "gfloat 7s ease-in-out 1s infinite" }}>
         <div key={"r" + stat} style={{ animation: "gswap .45s ease-out both" }}>
           <div className="text-[11px] font-bold text-g-word">{R.icon} {loc(R.a)}</div>
           <div className="text-[10px] text-g-ink">{loc(R.b)}</div>

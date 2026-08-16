@@ -77,7 +77,7 @@ export default function LeadCaptureV2() {
         </p>
       </div>
 
-      <div className="mx-auto mt-8 max-w-xl rounded-[1.75rem] border border-g-line bg-white/[0.04] p-6 shadow-[0_40px_90px_-50px_rgba(0,0,0,0.85)] backdrop-blur-sm sm:p-8" style={{ animation: "lcreveal .8s ease .35s both" }}>
+      <div className="mx-auto mt-8 max-w-xl rounded-xl3 border border-g-line bg-white/[0.04] p-6 shadow-[0_40px_90px_-50px_rgba(0,0,0,0.85)] backdrop-blur-sm sm:p-8" style={{ animation: "lcreveal .8s ease .35s both" }}>
         {status === "done" ? (
           <div className="py-8 text-center">
             <div className="text-4xl">🌱</div>
