@@ -310,6 +310,11 @@ async function doBrand(env, b) {
   // faz" na frente do cliente. `generic` diz a verdade; quem consome decide o que fazer.
   return reply({
     name: finalName, tagline, facts, colors, logo, services, source: "url",
+    // O SITE, GUARDADO (2026-08-15). A demo é CONSTRUÍDA a partir da URL e depois só sobravam os
+    // derivados (nome, cores, logo) — a URL, que é o dado bruto, era jogada fora. Isso deixava a
+    // análise do prospect (ROTA-ANALISE) sem o único campo de que ela precisa, num fluxo onde o
+    // dado já estava na mão. Guardar aqui é aditivo: nada que lê `brand` hoje enxerga a chave nova.
+    site: url || "",
     generic,
     ...(generic ? { note: "o site não entregou dados legíveis (proteção anti-bot ou página em JS) — conteúdo típico do setor; revise antes de mostrar" } : {}),
   });
@@ -361,7 +366,8 @@ async function doGet(env, b) {
   } catch { return json({ ok: false, error: "not found" }, 404); }
 }
 
-async function doEvent(env, b, kind, request) {
+async function doEvent(env, b, kind, request, context) {
+  let analise = null;   // visibilidade do gatilho da análise (ver bloco no fim)
   const token = s(b.demo_token || b.token, 200).trim();
   const product = s(b.product || b.productId, 120).trim(); // UI sends `productId`; sellers send `product`
   const brandName = s(b.brand?.name || b.brand, 200);
@@ -390,9 +396,38 @@ async function doEvent(env, b, kind, request) {
           }),
         });
       } catch { /* lead forward is best-effort */ }
+
+      // ── O GATILHO DA ANÁLISE (2026-08-15) ────────────────────────────────────────────────
+      // «ele já ganha isso só de marcar a demo». Marcou → a gente lê o site dele e manda os 3
+      // achados + o link da página. Vale antes da call: o prospect vê que já trabalhamos por ele,
+      // e o vendedor entra sabendo onde dói.
+      //
+      // ⚠️ FALHA EM SILÊNCIO, DE PROPÓSITO. Se o site estiver atrás de captcha (metade deles) ou
+      // não render achado nenhum, NÃO sai e-mail. "Não conseguimos ler seu site" como presente de
+      // boas-vindas é pior que presente nenhum — e é a primeira impressão da Guileo, que não tem
+      // segunda chance. Sem site, sem análise, sem e-mail: a demo segue igual.
+      //
+      // Nunca bloqueia nem atrasa a resposta da demo: `waitUntil` solta em segundo plano. A demo
+      // é o momento mais frágil do funil; nada novo pode segurá-la.
+      const siteProspect = s(b.brand?.site || b.site, 300).trim();
+      // Por que ele NÃO disparou fica registrado. A 1ª versão saía calada nas três condições e a
+      // única prova era "não apareceu linha no banco" — que é igual pra causa nenhuma.
+      analise = { site: !!siteProspect, token: !!env.DIGEST_TOKEN, ctx: !!context?.waitUntil, disparado: false };
+      if (siteProspect && env.DIGEST_TOKEN && context?.waitUntil) {
+        analise.disparado = true;
+        const origin = new URL(request.url).origin;
+        context.waitUntil(fetch(`${origin}/api/diagnostico`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            token: env.DIGEST_TOKEN, site: siteProspect, contato: c,
+            nome: s(b.name, 60), lang: s(b.lang, 2) || "en", seller: s(b.seller, 160),
+            enviar: true,
+          }),
+        }).catch(() => {}));
+      }
     }
   }
-  return json({ ok: true });
+  return json({ ok: true, ...(analise ? { analise } : {}) });
 }
 
 // plan → the canonical, ALREADY-AUDITED Stripe Payment Link (the 3 KEEP_URLS in
@@ -450,7 +485,7 @@ export async function onRequestPost(context) {
       case "screenshot": return doScreenshot(env, b);
       case "save":       return await doSave(env, b);
       case "get":        return await doGet(env, b);
-      case "lead":       return await doEvent(env, b, "lead", request);
+      case "lead":       return await doEvent(env, b, "lead", request, context);
       case "view":       return await doEvent(env, b, "view");
       case "checkout":   return await doCheckout(env, b);
       case "stats":      return await doStats(env, b);

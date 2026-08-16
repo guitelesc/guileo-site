@@ -134,12 +134,27 @@ export async function onRequestPost(context) {
       // full outer join do ads_roi — metade com gasto e 0 leads, metade com leads e gasto NULL, e
       // AS DUAS liam como fracasso. Ordem de verdade: coluna da linha > dropdown > assinatura do
       // cabeçalho (só a Meta escreve "amount spent") > "outro". Achado 2026-08-11.
-      const iCanal = acha("source", "platform", "canal", "plataforma", "publisher", "rede", "network");
+      // "campaign type" / "advertising channel type" são como o EXPORT DO GOOGLE ADS nomeia a
+      // coluna que diz Search vs Video — sem elas o gasto de YouTube chega sem canal e cai no
+      // dropdown, que é justamente o que acabou de ser separado. Separar no normCanal e não
+      // enxergar a coluna que carrega o dado seria meia correção.
+      const iCanal = acha("source", "platform", "canal", "plataforma", "publisher", "rede", "network",
+        "campaign type", "advertising channel", "tipo de campanha");
       const canalDoCabecalho = cab.some((c) => c.includes("amount spent")) ? "meta" : "";
       const normCanal = (v) => {
         const t = String(v || "").toLowerCase();
         if (/meta|facebook|instagram|fb\b/.test(t)) return "meta";
-        if (/google|adwords|gads|youtube/.test(t)) return "google";
+        // ── YOUTUBE É CANAL PRÓPRIO (2026-08-15) ─────────────────────────────────────────────
+        // Estava dobrado dentro de "google", e isso apagava a única comparação que decide onde
+        // pôr dinheiro: BUSCA é quem já procura por você (intenção); VÍDEO é quem foi
+        // interrompido (interrupção). Custo por agendamento e tempo até fechar são diferentes —
+        // somados, o veredito dizia "google deu lucro" e ninguém sabia qual dos dois pagou a
+        // conta. O motor CRIATIVO já tratava youtube como formato próprio (criativoFormatos.js):
+        // as duas metades da casa discordavam sobre o que é um canal, e a de dinheiro perdia.
+        // ⚠️ Vale de agora em diante. Linhas já gravadas como "google" continuam como estão —
+        // reclassificar histórico por regex mudaria número que alguém já leu e decidiu em cima.
+        if (/youtube|yt\b|video/.test(t)) return "youtube";
+        if (/google|adwords|gads|search|sem\b/.test(t)) return "google";
         if (/tiktok/.test(t)) return "tiktok";
         return t.trim().slice(0, 40);
       };

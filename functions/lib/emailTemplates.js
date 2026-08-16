@@ -3028,3 +3028,58 @@ export function forwardingSetupEmail({ name = "there", business = "your business
   <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
   return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
 }
+
+// ── A ANÁLISE QUE VEM COM A DEMO ─────────────────────────────────────────────────────────────
+// O Luis, vendo o anúncio do AutoSEO: «ele já ganha isso só de marcar a demo». O corpo carrega
+// TRÊS linhas e o link; a página tem o resto.
+//
+// ⚠️ POR QUE TRÊS E NÃO A LISTA INTEIRA: isto chega numa confirmação de reunião, que ninguém lê
+// inteira. Três achados cabem no preview do celular e já provam que a gente estudou o negócio —
+// que é o trabalho deste e-mail. A lista completa numa confirmação vira parede de texto e mata
+// o clique que leva pra página, onde o argumento realmente acontece.
+//
+// ⚠️ NUNCA DIZ QUANTO ELE PERDE EM DINHEIRO. A tentação é "você está perdendo $4.500/mês" — e
+// esse número não existe: precisaria do ticket médio e do volume dele, que a gente não tem. Um
+// número inventado aqui é descoberto na primeira pergunta da call e leva a análise inteira junto.
+// O que sai daqui é só o que foi LIDO no site.
+export function demoAnalysisEmail({ name = "", business = "your business", achados = [], link = "", horas = null, lang = "en" } = {}) {
+  business = esc(business); name = esc(name);
+  const linhas = (achados || []).slice(0, 3).map((a) => `
+    <tr><td style="padding:7px 0;border-bottom:1px solid ${B.line};">
+      <span style="color:${B.gold};font-weight:700;">•</span>
+      <span style="color:${B.ink};font-size:15px;">&nbsp;${esc(a)}</span>
+    </td></tr>`).join("");
+  const t = lang === "pt" ? {
+    subject: `${business}: 3 coisas que achamos antes da nossa conversa`,
+    pre: horas ? `A começar por ${horas}h por semana com o telefone sem ninguém.` : "O que lemos no site de vocês.",
+    eyebrow: "Sua análise · sem custo",
+    h1: name ? `${name}, olhamos antes` : "Olhamos antes da conversa",
+    intro: `Antes da nossa reunião, lemos o site de <strong style="color:${B.ink};">${business}</strong> e levantamos o que está aberto. Três pontos, para começar:`,
+    cta: "Ver a análise completa →",
+    foot: "É de graça e é sua, independente do que decidir depois. Na conversa a gente passa por cada ponto.",
+  } : lang === "es" ? {
+    subject: `${business}: 3 cosas que encontramos antes de hablar`,
+    pre: horas ? `Empezando por ${horas}h por semana con el teléfono sin nadie.` : "Lo que leímos en su sitio.",
+    eyebrow: "Su análisis · sin costo",
+    h1: name ? `${name}, miramos antes` : "Miramos antes de hablar",
+    intro: `Antes de nuestra reunión leímos el sitio de <strong style="color:${B.ink};">${business}</strong> y levantamos lo que está abierto. Tres puntos, para empezar:`,
+    cta: "Ver el análisis completo →",
+    foot: "Es gratis y es suyo, decida lo que decida después. En la llamada repasamos cada punto.",
+  } : {
+    subject: `${business}: 3 things we found before we talk`,
+    pre: horas ? `Starting with ${horas}h a week with nobody on the phone.` : "What we read on your site.",
+    eyebrow: "Your analysis · no cost",
+    h1: name ? `${name}, we looked first` : "We looked before we talk",
+    intro: `Before our call we read the ${business} website and mapped what's open. Three points to start:`,
+    cta: "See the full analysis →",
+    foot: "It's free and it's yours, whatever you decide afterwards. On the call we walk through each point.",
+  };
+  const body = `
+  <div style="font-size:26px;line-height:1.2;color:${B.ink2};font-weight:700;">${t.h1}</div>
+  <div class="g-intro" style="font-size:16px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
+  <table role="presentation" width="100%" style="margin-top:16px;border-collapse:collapse;">${linhas}</table>
+  <div style="height:24px;line-height:24px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(t.cta, link)}</div>
+  <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+}

@@ -63,6 +63,7 @@ dessa perna. Todos LIVE e provados por execução.
 | **Atribuição web** | cookie primário `gui_attr` no 1º clique → viaja sozinho para toda rota | 🟢 LIVE | `lib/atribuicao.js` |
 | **Atribuição por LIGAÇÃO** | um número por campanha; quem liga chega identificado | 🟢 LIVE | `ads_number_map` · webhook lê `agent_number` |
 | **Importador** | cola o relatório do Google/Meta; upsert por dia+campanha (não duplica) | 🟢 LIVE | `api/ads.js {action:"importar"}` |
+| **YouTube como canal próprio** | busca ≠ vídeo: intenção vs interrupção, custo por agendamento diferente | 🟢 LIVE 2026-08-15 | `normCanal` em `api/ads.js` (antes dobrava em "google"); lê também a coluna "campaign type" do export do Google Ads. Criativo já tinha formato próprio em `criativoFormatos.js` — quem não enxergava era o lado do dinheiro. Histórico já gravado como "google" fica como está. |
 | **O vigia** | varre toda segunda e avisa o que precisa de decisão | 🟢 LIVE | `api/ads-vigia.js` + cron |
 | **Criativo de post** | escreve no tom da marca, com preço real; gera SEM a Meta | 🟢 LIVE | `api/social-publish.js` |
 | **Criativo de ANÚNCIO** | títulos/descrições por plataforma, com autocorreção de limite | 🟢 LIVE | `lib/criativoAds.js` |

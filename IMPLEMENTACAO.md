@@ -57,6 +57,32 @@
 ## ROTA-CANAL · ligar um canal pendente (WhatsApp/IG/…)
 **Quando:** a API/aprovação do canal libera. **Passos:** setar a env/creds do canal no Cloudflare → o código já wired acende sozinho (padrão scaffold-inerte). WhatsApp: aprovar sender Twilio. IG/FB/TikTok/LinkedIn/Google Business/Ads: OAuth/API key. **Prova:** o canal muda de âmbar "aguardando" pra verde "ativo" no cockpit.
 
+## ROTA-ANALISE · a análise que o prospect ganha ao marcar a demo
+**Quando:** marcou demo. O prospect recebe valor ANTES da call e o vendedor entra sabendo onde dói.
+1. **Gerar:** `POST /api/diagnostico {site, contato, nome, lang}` + `sid` do vendedor **ou** `token` admin → devolve `link`, `resumo` e **`tres_linhas`** (os 3 achados mais graves).
+2. **Conferir o `tres_linhas`** — é o que vai no e-mail e o que o vendedor vai falar em voz alta.
+3. **Mandar:** o mesmo POST com `"enviar": true` → e-mail branded (`demoAnalysisEmail`) com as 3 linhas + botão pra página. Resposta traz `envio:{ok,…}` com o motivo real se falhar.
+4. **Ler depois:** `GET /api/diagnostico?id=<uuid>` (o link do prospect). A 1ª abertura grava `aberto_em` — mede interesse real.
+
+**O que ele mede (e por que NÃO é o painel do AutoSEO):** keyword/volume é diagnóstico de quem vende conteúdo. Aqui cada achado é **uma ferida que a demo fecha**, e carrega o campo `gui` dizendo o que a agente faz. Achado sem `gui` não entra. Hoje: horas fora do expediente · sem agendamento online · formulário sem telefone · idioma único · sem caminho de avaliação · unidades > linhas · sem canal de texto.
+**Honestidade que custou uma correção:** com menos de 5 dias de horário lidos, o título vira **"pelo menos Xh"** — o site do Miami Skin Spa declarava 4 dias e o total fechado saía maior que a verdade. É o número que o vendedor fala na call; errar nele derruba a análise inteira.
+**Não temos e não fingimos:** volume/dificuldade de busca exige dado pago (Ahrefs/SEMrush).
+**GATILHO AUTOMÁTICO (LIVE):** `action:"lead"` no `/api/demo` dispara a análise sozinho, em `waitUntil` (nunca segura a demo). O site vem de `brand.site`, guardado no cadastro da demo — antes era descartado depois de usado. **Falha em silêncio de propósito:** site ilegível ou zero achados → NÃO sai e-mail; "não conseguimos ler seu site" como boas-vindas é pior que nada. ⚠️ O campo é `site`, NUNCA `website` — `website` é honeypot anti-spam no `/api/lead` e faria todo lead de demo sumir respondendo `ok:true`.
+
+**COMPARAÇÃO COM O VIZINHO (LIVE 2026-08-15, `GOOGLE_PLACES_KEY`):** o achado mais forte da análise. Sai assim: *"9 de 9 concorrentes próximos ficam disponíveis mais tempo que vocês"* + *"6 de 9 têm mais avaliações"*.
+- **Nunca cita nome** do concorrente — documento que o prospect encaminha não pode virar fofoca do bairro.
+- **Piso de 3** vizinhos COM o dado publicado; abaixo disso o achado não nasce.
+- **⚠️ A CONSULTA NÃO PODE LEVAR RUA E NÚMERO.** `"med spa near 1501 South Miami Ave #201, Miami, FL"` devolveu **2** vizinhos (abaixo do piso → achado não nasceu, sem erro nenhum); cortando para cidade+estado deu **9**. O `#201` vira ruído de texto na busca. Sem o campo `vizinhos_lidos` no relatório eu teria concluído "não há dados" e AFROUXADO o piso — consertando a trava de honestidade para compensar uma busca mal escrita.
+- Custa 2 chamadas Places por prospect (ficha + vizinhos). Roda também com o site lido — revisa, de propósito e por escrito, a regra "só chama o Google se o site falhar".
+
+**⚠️ ARMADILHA DO `wrangler pages secret put`:** ele responde `✨ Success` para valor VAZIO e aceita uma chave de API como NOME do segredo. Aconteceram os dois aqui, e `secret list` mostra os dois como `Value Encrypted` — ele lista o NOME, não o conteúdo. Por isso o endpoint reporta `chave_tam`: `0` = gravada vazia, `39` = chave do Places inteira. **Segredo novo se confere pelo tamanho, nunca pelo "Success".**
+
+**⚠️ O CAPTCHA É INTERMITENTE, NÃO PERMANENTE (corrigido 2026-08-15):** o 1º teste deu 2 de 4 sites bloqueados e eu registrei "metade dos sites" como se fosse fixo. Horas depois os MESMOS dois (naturaspanyc, monacomedspa) leram normalmente. A proteção varia por requisição/IP — então a leitura falha às vezes, não sempre. **Consequência prática: vale RETENTAR antes de desistir.** Uma medição só nunca vira taxa.
+**Rede de segurança (inerte):** site recusou → `fichaDoGoogle` (Places searchText) com o nome do negócio como consulta. Traz horário real, telefone público, nota e nº de avaliações. Acende com `GOOGLE_PLACES_KEY`; sem chave devolve o motivo e a análise segue sem ele. **Do Google só nascem achados que o Google prova** (horário + avaliações) — nunca "sem agendamento online"/"só formulário"/"um idioma", que exigem ter LIDO o site. A página carrega `nota_fonte` avisando que o site não abriu.
+**Zero modelo:** roda com a IA sem saldo — foi decisão depois do apagão de 14/08.
+**Prova:** token lixo → 401 · `avabello.com` → 4 achados, 3 linhas, `envio:null` sem `enviar:true` · e-mail renderiza com exatamente 3 bullets (suíte 56/56).
+**Arquivos:** `functions/lib/diagnostico.js`, `functions/api/diagnostico.js`, `demoAnalysisEmail` em `emailTemplates.js`, RPCs `diag_save`/`diag_get` (tabela `prospect_diagnostics`).
+
 ## ROTA-ENCAMINHA · fazer o telefone REAL do cliente cair na Gui
 **Quando:** o cliente tem agente + número nosso e mesmo assim recebe ZERO ligação. Foi o caso do Natura (2026-08-14): agente ok, número ok, pipeline ok, 15 ligações no banco — **todas nossas, de teste**. Um número provisionado por nós é um número que ninguém disca: quem o mundo liga é a linha publicada do cliente (Google, porta, Instagram, cartão). Sem encaminhamento, a Gui atende um telefone que não toca.
 

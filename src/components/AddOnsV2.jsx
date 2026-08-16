@@ -146,6 +146,25 @@ const AO_COPY = {
 // accent rgb + price-pill flavor per card (green = monthly revenue, gold = one-time/premium)
 // `champion` = the #1 sales weapon: champagne ring + its own "fecha mais" badge.
 // Order optimized for conversion + retention: recurring/instant-ROI lead, one-time/setup trail.
+// ── A ORDEM É POR TEMPO ATÉ O PRIMEIRO DÓLAR DE VOLTA (2026-08-15) ──────────────────────────
+// A grade tinha OITO cartões de peso igual, e isso é catálogo, não recomendação: o dono de salão
+// não sabe se precisa de depósito ou de reativação — ele sabe que perde cliente. Uma seção
+// chamada "seu plano cresce com você" tem que MOSTRAR o caminho.
+//
+// ⚠️ A RÉGUA NÃO É IMPACTO, É VELOCIDADE DE PROVA. O Speed-to-Lead rende mais que os outros dois
+// e mesmo assim é o TERCEIRO: ele exige que já exista lead chegando. Add-on que depende de outra
+// coisa funcionando antes cria a impressão de que o produto não entrega — e essa impressão custa
+// a renovação inteira, não só o add-on. O primeiro upsell não é o que rende mais; é o que prova
+// mais rápido.
+//   1º Reativação  — vira dinheiro NESTA semana, com a lista que ele já tem, sem depender de nada
+//   2º Depósito    — o mais barato e o mais fácil de provar (o cliente vê na primeira falta)
+//   3º Speed-to-Lead — o de maior impacto, e o que precisa de tráfego antes
+//
+// A chave é canônica (pid/href/real), NÃO a posição no array: os textos vivem em 4 idiomas e
+// reordenar quatro listas à mão é como se dessincronizam. Aqui a ordem existe uma vez só.
+const chaveAddon = (it) => it.pid || (it.href || "").replace("/", "") || ((it.real || "").toLowerCase().includes("blitz") ? "reativacao" : "outro");
+const ORDEM_PROVA = ["reativacao", "noshow", "speedlead"];
+
 const META = [
   // 1 · No-show Shield (+$97/mo) — the opener: easiest "yes", self-paying, recurring
   { rgb: "62,148,104", flavor: "green", featured: true },
@@ -190,10 +209,19 @@ export default function AddOnsV2() {
           <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-g-ink" style={{ animation: "aoreveal .8s ease .3s both" }}>{A.sub}</p>
         </div>
 
-        {/* 8 add-ons — compact glanceable grid, the whole menu in one screen (4×2 on desktop) */}
-        <div className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {A.items.map((it, i) => {
-            const m = META[i] || { rgb: "62,148,104", flavor: "green", featured: false };
+        {/* HIERARQUIA: 3 em destaque (ordem de prova) · o resto menor · "incluído" fora da grade.
+            O `metaDe` continua lendo o META pela POSIÇÃO ORIGINAL — reordenar a exibição não pode
+            trocar a cor/selo de cartão nenhum. */}
+        {(() => {
+          const idx = new Map(A.items.map((it, i) => [it, i]));
+          const metaDe = (it) => META[idx.get(it)] || { rgb: "62,148,104", flavor: "green", featured: false };
+          // "included" no meio de preços parece erro de tabela, não vantagem: sai da grade.
+          const incluido = A.items.find((x) => (x.href || "") === "/nossa-gente");
+          const naGrade = A.items.filter((x) => x !== incluido);
+          const destaque = ORDEM_PROVA.map((k) => naGrade.find((x) => chaveAddon(x) === k)).filter(Boolean);
+          const resto = naGrade.filter((x) => !destaque.includes(x));
+          const cartao = (it, i, grande) => {
+            const m = metaDe(it);
             const Card = it.href ? "a" : "div";
             const linkProps = it.href ? { href: it.href } : {};
             // p-5, não p-3.5: com 3.5 os oito cartões ficavam apertados logo depois de seções com
@@ -214,16 +242,46 @@ export default function AddOnsV2() {
                   <span className="select-none text-[26px]" style={{ filter: `drop-shadow(0 4px 12px rgba(${m.rgb},0.55))` }}>{it.e}</span>
                   {m.featured && <span className="rounded-full border border-g-gold/40 bg-g-gold/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-g-gold">{m.champion ? (A.champBadge || A.badge) : A.badge}</span>}
                 </div>
-                <div className="mt-2 text-[14px] font-black leading-tight tracking-tight text-g-word">{nome}</div>
-                <p className="mt-1 line-clamp-2 text-[11.5px] leading-snug text-g-ink">{it.p}</p>
+                <div className={`mt-2 font-black leading-tight tracking-tight text-g-word ${grande ? "text-[16px]" : "text-[14px]"}`}>{nome}</div>
+                {/* SEM RETICÊNCIAS. O `line-clamp-2` cortava a promessa no meio ("no-shows pay
+                    for…"), que é o pior lugar possível: o leitor para exatamente onde o valor
+                    apareceria. No destaque a frase sai inteira; no resto, clamp de 3 linhas. */}
+                <p className={`mt-1 text-[11.5px] leading-snug text-g-ink ${grande ? "" : "line-clamp-3"}`}>{it.p}</p>
                 <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                   <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11.5px] font-extrabold tabular-nums ${pill(m.flavor)}`}>{moedaExplicita(it.pr, lang)}</span>
                   <span className="inline-flex items-center rounded-full border border-g-line bg-white/[0.04] px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-g-muted">{it.tg}</span>
                 </div>
               </Card>
             );
-          })}
-        </div>
+          };
+          return (
+            <>
+              {/* OS TRÊS — maiores, na ordem de prova, cada um com o passo numerado */}
+              <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                {destaque.map((it, i) => (
+                  <div key={it.n} className="relative">
+                    <span className="absolute -top-2 left-4 z-10 grid h-6 w-6 place-items-center rounded-full bg-g-gold text-[11px] font-black text-g-deep shadow-lift">{i + 1}</span>
+                    {cartao(it, i, true)}
+                  </div>
+                ))}
+              </div>
+              {/* O RESTO — menor, sem selo, para quem já sabe o que quer */}
+              <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                {resto.map((it, i) => cartao(it, i + 3, false))}
+              </div>
+              {/* INCLUÍDO — linha, não cartão. Preço "included" ao lado de $97 lê como erro. */}
+              {incluido && (
+                <a href={incluido.href} className="mt-3 flex items-center gap-3 rounded-2xl border border-g-green/30 bg-g-green/[0.06] px-4 py-3 transition hover:border-g-green/60">
+                  <span className="text-[20px]">{incluido.e}</span>
+                  <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-g-ink">
+                    <b className="text-g-word">{nomeDoAddon(incluido, lang)}</b> — {incluido.p}
+                  </span>
+                  <span className="shrink-0 rounded-full border border-g-green/40 bg-g-green/15 px-2.5 py-0.5 text-[11px] font-extrabold text-g-green">{incluido.pr}</span>
+                </a>
+              )}
+            </>
+          );
+        })()}
 
         {/* 2 strategic — compact strip */}
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
