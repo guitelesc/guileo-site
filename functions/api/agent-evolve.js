@@ -88,6 +88,51 @@ async function evoluir(request, env) {
     // `conversas=1` — as últimas conversas do agente NO PROVEDOR, com status e motivo de término.
     // Quando o cliente diz "chama e cai", isto responde se a conversa chegou a existir e como
     // morreu. Sem isto, "cai" é um sintoma sem lugar: pode ser operadora, Twilio, ou aqui.
+    // `telefonia=1` — O ANDAR DE BAIXO. O verificador responde "a config atenderia?"; quando ela
+    // diz SIM e o telefone diz NÃO, o problema está na operadora, não no agente. Esta sonda lê o
+    // estado da CONTA (trial recusa chamada de número não verificado) e as últimas chamadas que
+    // chegaram na Twilio — se não houver nenhuma, a ligação nem chegou a sair de quem discou.
+    // `prompt=1&agente=ID` — o cérebro CRU que está no provedor, para ver posição e vizinhança de
+    // uma regra. "A lição está lá" (âncora) e "a lição é obedecida" são perguntas diferentes: uma
+    // regra pode estar presente e perder para a vizinha.
+    if (url.searchParams.get("prompt") === "1") {
+      const alvo = url.searchParams.get("agente") || "";
+      const g = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${alvo}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+      if (!g.ok) return json({ ok: false, erro: `HTTP ${g.status}` }, 502);
+      const txt = (await g.json())?.conversation_config?.agent?.prompt?.prompt || "";
+      const acha = (frase) => { const i = txt.indexOf(frase); return i < 0 ? null : { pos: i, pct: Math.round(i * 100 / txt.length) }; };
+      return json({ ok: true, tamanho: txt.length,
+        onde: {
+          v8_peca_email: acha("PEÇA O E-MAIL QUANDO SÓ TIVER O TELEFONE"),
+          v6_cada_pergunta_custa: acha("CADA PERGUNTA CUSTA UM PEDAÇO DA VENDA"),
+          v7_nao_empurre: acha("NÃO EMPURRE PARA UM HUMANO"),
+          so_afirme: acha("SÓ AFIRME O QUE A FERRAMENTA CONFIRMOU"),
+        },
+        trecho_v8: (() => { const i = txt.indexOf("PEÇA O E-MAIL"); return i < 0 ? null : txt.slice(i, i + 480); })(),
+        trecho_pergunta_custa: (() => { const i = txt.indexOf("CADA PERGUNTA CUSTA"); return i < 0 ? null : txt.slice(i, i + 420); })(),
+      });
+    }
+    if (url.searchParams.get("telefonia") === "1") {
+      if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN) return json({ ok: false, erro: "sem credenciais Twilio" }, 503);
+      const auth = btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
+      const H2 = { Authorization: `Basic ${auth}` };
+      const out = { conta: null, chamadas: null };
+      try {
+        const c = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}.json`, { headers: H2 });
+        if (c.ok) { const d = await c.json(); out.conta = { tipo: d.type, status: d.status, nome: d.friendly_name, criada: d.date_created }; }
+        else out.conta = { erro: `HTTP ${c.status}` };
+      } catch (e) { out.conta = { erro: String(e).slice(0, 80) }; }
+      try {
+        const alvo = url.searchParams.get("numero") || "";
+        const q = alvo ? `&To=${encodeURIComponent(alvo)}` : "";
+        const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Calls.json?PageSize=10${q}`, { headers: H2 });
+        if (r.ok) {
+          const d = await r.json();
+          out.chamadas = (d.calls || []).map((c) => ({ de: c.from, para: c.to, direcao: c.direction, status: c.status, quando: c.start_time, seg: c.duration, erro: c.error_code || null }));
+        } else out.chamadas = { erro: `HTTP ${r.status}` };
+      } catch (e) { out.chamadas = { erro: String(e).slice(0, 80) }; }
+      return json({ ok: true, telefonia: true, ...out });
+    }
     if (url.searchParams.get("conversas") === "1") {
       const alvo = url.searchParams.get("agente") || "";
       const g = await fetch(`https://api.elevenlabs.io/v1/convai/conversations?agent_id=${alvo}&page_size=8`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
@@ -387,7 +432,12 @@ async function evoluir(request, env) {
     // Em 2026-08-16 a v7 subiu e esta linha ficou na frase da v6: a conferência devolveu 4/4 ✅
     // provando que a frota tinha uma lição ANTIGA, e passaria igual se a nova não tivesse entrado.
     // Uma conferência que não pode falhar não é conferência — é decoração cara.
-    const ancora = "PEÇA O E-MAIL QUANDO SÓ TIVER O TELEFONE";
+    // ⚠️ A ÂNCORA NÃO PODE ATRAVESSAR QUEBRA DE LINHA. As lições são template strings indentadas —
+    // no prompt final "FECHAR" e "INCLUI" ficam em linhas diferentes, com dois espaços de indentação
+    // no meio. Em 2026-08-16 a âncora foi escrita com um espaço simples e a conferência devolveu
+    // 0/4 sobre uma frota que ESTAVA correta: alarme falso, e eu quase saí consertando o que já
+    // funcionava. Escolha sempre um trecho contíguo de UMA linha só.
+    const ancora = "INCLUI O COMPROVANTE NA MÃO DA PESSOA";
     if (!env.ELEVENLABS_API_KEY) return json({ ok: false, conferir: true, nota: "sem ELEVENLABS_API_KEY — não deu para provar" }, 503);
     // ⚠️ NÃO INVENTE NOME DE RPC. Minha 1ª versão chamava `agent_ids_all`, que NÃO EXISTE — o mesmo
     // erro que cometi hoje de manhã com `agent_evals_latest` e que deixou o painel mentindo por 3

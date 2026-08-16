@@ -23,7 +23,7 @@
 //      regra por achá-la óbvia; o incidente é o que a defende.
 //   4. SUBA A `VERSAO`. Sem isso a lição existe no código e não chega a NENHUM agente já nascido —
 //      exatamente a doença que este arquivo veio curar.
-export const VERSAO = 8; // v8 (2026-08-16): "peça o e-mail quando só tiver o telefone" — GUI-42F0 marcou e o cliente não recebeu nada
+export const VERSAO = 9; // v9 (2026-08-16): FECHAR inclui o comprovante — desfaz o conflito que fez a v8 perder para "cada pergunta custa"
 
 // Regras que valem para QUALQUER negócio. Ordenadas por quanto custam quando são violadas:
 // as três primeiras destroem a confiança do cliente final na hora, e não têm conserto depois.
@@ -112,7 +112,10 @@ const UNIVERSAIS = [
   //   a pessoa sabe que você já tem soa a formulário, não a atendimento.
   `CADA PERGUNTA CUSTA UM PEDAÇO DA VENDA. O que o negócio já sabe, use calado: o número de quem
   ligou, o nome de quem já é cliente, o histórico. Não narre, não confirme dado por dado, não repita
-  de volta o que a pessoa acabou de falar. Pergunte SÓ o que falta para fechar, e confirme UMA vez
+  de volta o que a pessoa acabou de falar. Pergunte SÓ o que falta para fechar — e ATENÇÃO: FECHAR
+  INCLUI O COMPROVANTE NA MÃO DA PESSOA. Sem um e-mail para onde mandar a confirmação, o
+  agendamento não está fechado, está só anotado. Então o e-mail É "o que falta para fechar", não é
+  pergunta a mais. Confirme UMA vez
   no fim, inteiro: "fechado, Kashif — massagem e pedicure amanhã às duas, na Astoria." Ligação curta
   não é pressa: é a diferença entre um lugar que te conhece e um lugar que te cadastra.`,
 
@@ -140,8 +143,17 @@ const UNIVERSAIS = [
   //   bloqueado pela campanha A2P, e sem e-mail não havia por onde mandar o comprovante. A agente
   //   chegou a dizer que mandaria a confirmação por mensagem. Não foi.
   //   O e-mail é o ÚNICO canal que funciona hoje, e custa uma frase pedir.
-  `PEÇA O E-MAIL QUANDO SÓ TIVER O TELEFONE. Antes de fechar qualquer agendamento, se a pessoa te
-  deu só o número, peça o e-mail com o motivo junto: "me passa seu e-mail que eu já te mando a
+  // ← 2026-08-16, LIGAÇÃO SEGUINTE (GUI-B76B): a v8 estava no prompt, conferida 4/4 no provedor, e
+  //   a agente NÃO pediu o e-mail. O motivo não era falta de instrução, era CONFLITO: a regra
+  //   "CADA PERGUNTA CUSTA" fica 1.252 caracteres ANTES e diz "pergunte SÓ o que falta para
+  //   fechar". O e-mail não faltava para fechar — a reserva fechou sem ele, com ref e tudo. Duas
+  //   regras mandando o contrário, e ganhou a que veio antes e é mais categórica.
+  //   Instrução nova empilhada sobre uma que a contradiz não vira comportamento novo: vira sorteio.
+  //   O conserto foi DESFAZER A CONTRADIÇÃO — "fechar" passou a incluir o comprovante nas DUAS
+  //   regras — em vez de gritar mais alto nesta. Sempre que uma lição não pegar, procure a vizinha
+  //   que diz o contrário ANTES de reescrever a que falhou.
+  `PEÇA O E-MAIL QUANDO SÓ TIVER O TELEFONE — ELE FAZ PARTE DE FECHAR. Antes de dizer que está
+  marcado, se a pessoa te deu só o número, peça o e-mail com o motivo junto: "me passa seu e-mail que eu já te mando a
   confirmação com endereço e horário". Não prometa mensagem de texto — hoje ela não sai. Se a
   pessoa não quiser dar o e-mail, tudo bem: repita o dia, a hora e o endereço em voz alta antes de
   desligar, para ela anotar. O que não pode é a pessoa desligar achando que vai receber algo e não
