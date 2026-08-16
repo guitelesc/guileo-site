@@ -96,7 +96,30 @@ export async function onRequestPost({ request, env }) {
         nota: "devolvido ao estoque da Twilio — não há como recuperar este número" });
     }
 
-    return json({ error: "acao deve ser 'desamarrar' ou 'liberar'" }, 400);
+    // `recarimbar` — conserta a ETIQUETA dos números que já existem.
+    // A correção em provision.js faz o rótulo nascer do agente, mas só para vínculos NOVOS. Os que
+    // já estão lá continuariam com o carimbo velho para sempre — e o carimbo velho é justamente o
+    // que um humano lê na hora de decidir o que apagar. Conserto de causa sem conserto de estoque
+    // deixa a bomba armada; é o mesmo motivo pelo qual o agent-evolve existe para as lições.
+    // Mexe SÓ no label. Nunca toca no vínculo: quem atende continua atendendo.
+    if (acao === "recarimbar") {
+      if (!naEleven) return json({ ok: false, motivo: "número não está na ElevenLabs" });
+      const ag = naEleven.assigned_agent?.agent_id;
+      if (!ag) return json({ ok: false, motivo: "sem agente — não há de quem derivar o carimbo" });
+      const gr = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${ag}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+      if (!gr.ok) return json({ ok: false, erro: `não li o agente (HTTP ${gr.status})` }, 502);
+      const novo = ((await gr.json().catch(() => ({})))?.name || "").slice(0, 60);
+      if (!novo) return json({ ok: false, erro: "agente sem nome — não invento carimbo" }, 502);
+      if (novo === naEleven.label) return json({ ok: true, ja_estava: true, carimbo: novo });
+      const up = await fetch(`https://api.elevenlabs.io/v1/convai/phone-numbers/${naEleven.phone_number_id}`, {
+        method: "PATCH", headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ label: novo }),
+      });
+      if (!up.ok) return json({ ok: false, erro: `ElevenLabs recusou (HTTP ${up.status})`, corpo: (await up.text().catch(() => "")).slice(0, 200) }, 502);
+      return json({ ok: true, acao: "recarimbar", numero: naEleven.phone_number, de: naEleven.label, para: novo });
+    }
+
+    return json({ error: "acao deve ser 'desamarrar', 'liberar' ou 'recarimbar'" }, 400);
   } catch (e) {
     return json({ error: String(e).slice(0, 200) }, 500);
   }

@@ -42,7 +42,10 @@ export async function onRequestPost(context) {
     if (!agentId) return json({ error: "esse cliente não tem agente ainda — aprove o cadastro primeiro" }, 400);
 
     // import the number into ElevenLabs convai + assign the agent (auto-wires Twilio voice webhook)
-    const bind = await elevenBindNumber(env, number, agentId, email.split("@")[0]);
+    // ⚠️ NÃO passe mais `email.split("@")[0]` como rótulo — era daqui que saía o carimbo
+    // "naturaspaadm" gravado nos TRÊS números da conta, inclusive na linha de demo da Guileo.
+    // O rótulo agora nasce do agente lá dentro; isto aqui é só a rede para provedor mudo.
+    const bind = await elevenBindNumber(env, number, agentId, `Gui · ${email}`);
     if (!bind || !bind.ok) return json({ ok: false, note: "não consegui mapear o número — confira se ele está na conta Twilio", detail: bind && bind.reason });
 
     // register the mapped number EVERYWHERE the onboard path does (onboard-client.js step 5), so the

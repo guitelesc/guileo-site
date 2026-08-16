@@ -8,7 +8,7 @@
 //      SMS + Voice webhooks to Gui automatically
 //   5. returns the connection code, agent id and number so Luis hands them over.
 import { json } from "../lib/guard.js";
-import { buildConversationConfig, forwardingInstructions, buildDefaultSchedulePayload } from "../lib/provision.js";
+import { buildConversationConfig, forwardingInstructions, buildDefaultSchedulePayload, elevenBindNumber } from "../lib/provision.js";
 import { resolveNativeVoices } from "../lib/voiceLibrary.js";
 import { emitFailure } from "../lib/failure.js";
 import { svcRpc } from "../lib/sb.js";
@@ -60,29 +60,12 @@ async function configureTwilioWebhooks(env, numberSid) {
   });
 }
 
-// INBOUND → THE CLIENT'S OWN GUI: import the client's Twilio number into ElevenLabs convai and assign
-// their dedicated agent, so an inbound call is ANSWERED by their trained Gui (not just forwarded/texted
-// back). ElevenLabs auto-configures the Twilio voice webhook on import. agent_id isn't accepted on the
-// import body → it's set via PATCH /v1/convai/phone-numbers/{id}. Best-effort; never throws.
-async function elevenBindNumber(env, number, agentId, label) {
-  if (!env.ELEVENLABS_API_KEY || !env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !number || !agentId) return { ok: false, reason: "missing inputs" };
-  try {
-    const cr = await fetch("https://api.elevenlabs.io/v1/convai/phone-numbers", {
-      method: "POST", headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ provider: "twilio", phone_number: number, label: (label || "Gui").slice(0, 60), sid: env.TWILIO_ACCOUNT_SID, token: env.TWILIO_AUTH_TOKEN }),
-    });
-    if (!cr.ok) return { ok: false, reason: `import ${cr.status}: ${(await cr.text().catch(() => "")).slice(0, 160)}` };
-    const cd = await cr.json().catch(() => ({}));
-    const pnId = cd.phone_number_id || cd.id || "";
-    if (!pnId) return { ok: false, reason: "no phone_number_id returned" };
-    const pr = await fetch(`https://api.elevenlabs.io/v1/convai/phone-numbers/${pnId}`, {
-      method: "PATCH", headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ agent_id: agentId }),
-    });
-    if (!pr.ok) return { ok: false, reason: `assign ${pr.status}: ${(await pr.text().catch(() => "")).slice(0, 500)}` };
-    return { ok: true, phone_number_id: pnId };
-  } catch (e) { return { ok: false, reason: String(e).slice(0, 120) }; }
-}
+// A CÓPIA LOCAL DE `elevenBindNumber` FOI REMOVIDA EM 2026-08-16.
+// Este arquivo tinha a função duplicada, byte a byte igual à de lib/provision.js. Quando o carimbo
+// do número foi corrigido lá (passou a nascer do AGENTE, não do e-mail de quem pediu), esta cópia
+// teria continuado carimbando errado — e metade dos clientes novos nasceria com a etiqueta velha,
+// que é exatamente a doença que a correção veio curar. Função duplicada não é redundância: é uma
+// bomba-relógio que dispara no dia em que alguém conserta só uma das duas.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SELF-SERVE AUTONOMY HELPERS (#14) — additive, only ever invoked when b.self_serve===true.

@@ -533,12 +533,35 @@ export async function provisionClientAgent(env, { email, business, industry, lan
 
 // INBOUND → THE CLIENT'S OWN GUI: import the client's Twilio number into ElevenLabs convai and assign
 // their dedicated agent, so an inbound call is ANSWERED by their trained Gui. Best-effort; never throws.
+// O CARIMBO NASCE DO AGENTE, NÃO DE QUEM PEDIU (2026-08-16).
+// ← Auditoria: os TRÊS números da conta estavam etiquetados "naturaspaadm" na ElevenLabs —
+//   inclusive o +1 986 444 3334, que atende o agente GUI, a linha de demo da própria Guileo.
+//   A origem era `bind-number.js`: `label: email.split("@")[0]`.
+//   O vínculo vinha do AGENTE, o rótulo vinha do E-MAIL DO PEDIDO — duas entradas independentes
+//   descrevendo a mesma coisa, sem nada obrigando as duas a concordar. Divergiram, e ninguém viu,
+//   porque só o vínculo tem efeito audível. O rótulo só é lido por um humano decidindo o que
+//   apagar — que é o pior momento possível para uma etiqueta estar mentindo.
+// A correção é de FORMA, não de valor: o rótulo passa a ser derivado do mesmo `agentId` que decide
+// o vínculo. Não dá mais para discordar, porque não são mais duas fontes. O `label` do chamador
+// vira só a rede de segurança para quando o provedor não responder quem é o agente.
+async function carimboDoAgente(env, agentId, fallback) {
+  try {
+    const r = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agentId}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+    if (r.ok) {
+      const nome = (await r.json().catch(() => ({})))?.name || "";
+      if (nome) return nome.slice(0, 60); // "Lilian · Natura Spa + Salon" — o nome white-label
+    }
+  } catch { /* provedor mudo → cai no rótulo do chamador, que é melhor que rótulo vazio */ }
+  return (fallback || "Gui").slice(0, 60);
+}
+
 export async function elevenBindNumber(env, number, agentId, label) {
   if (!env.ELEVENLABS_API_KEY || !env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !number || !agentId) return { ok: false, reason: "missing inputs" };
   try {
+    const carimbo = await carimboDoAgente(env, agentId, label);
     const cr = await fetch("https://api.elevenlabs.io/v1/convai/phone-numbers", {
       method: "POST", headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ provider: "twilio", phone_number: number, label: (label || "Gui").slice(0, 60), sid: env.TWILIO_ACCOUNT_SID, token: env.TWILIO_AUTH_TOKEN }),
+      body: JSON.stringify({ provider: "twilio", phone_number: number, label: carimbo, sid: env.TWILIO_ACCOUNT_SID, token: env.TWILIO_AUTH_TOKEN }),
     });
     if (!cr.ok) return { ok: false, reason: `import ${cr.status}: ${(await cr.text().catch(() => "")).slice(0, 160)}` };
     const cd = await cr.json().catch(() => ({}));
