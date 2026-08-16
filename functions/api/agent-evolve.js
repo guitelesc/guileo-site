@@ -227,7 +227,7 @@ async function evoluir(request, env) {
           nome: d?.name || "",
           voz: cc?.tts?.voice_id || null, modelo_voz: cc?.tts?.model_id || null,
           idioma: cc?.agent?.language || null,
-          primeira_fala: (cc?.agent?.first_message || "").slice(0, 80),
+          primeira_fala: cc?.agent?.first_message || "",  // INTEIRA: cortar em 80 me fez ler '...' como 'não tem variável' e dar um ✅ falso
           tamanho_prompt: (cc?.agent?.prompt?.prompt || "").length,
           llm: cc?.agent?.prompt?.llm || null,
           ferramentas: (cc?.agent?.prompt?.tool_ids || []).length,

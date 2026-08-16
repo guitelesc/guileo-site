@@ -77,7 +77,19 @@ const toElevenLang = (code) => ELEVEN_LANG[code] || code;
 // por ligar…"): se o começo comer meia sílaba, come a almofada, não o nome do negócio.
 // Depois vem, nesta ordem: NOME DO NEGÓCIO (a marca dele atende) → quem fala → uma oferta de
 // cuidado. Frase curta, calorosa, sem "em que posso ajudar" de call center.
-// {{caller_ola}} — O NOME DE QUEM LIGA, NO ÚNICO LUGAR ONDE CABE (2026-08-16).
+// 🚨 NÃO COLOQUE VARIÁVEL DINÂMICA NA SAUDAÇÃO. Tentado em 2026-08-16 e REVERTIDO três vezes.
+// A ElevenLabs derruba a ligação (failed, 0s, 0 mensagens) quando a primeira frase referencia
+// {{variavel}} numa chamada de telefone — inclusive com a variável DECLARADA em
+// dynamic_variable_placeholders e com o webhook de iniciação instalado. As duas condições que eu
+// achei que faltavam foram satisfeitas e a ligação caiu do mesmo jeito.
+//
+// E o pior veio depois: eu tinha revertido no AGENTE, mas deixei a variável AQUI. A sincronização
+// seguinte (lição v8) reescreveu a saudação de TODOS os agentes a partir deste arquivo e derrubou
+// as duas linhas — a de demo E a do cliente pagante. Reverter no estoque sem reverter na FONTE é
+// um conserto com prazo de validade: dura até o próximo sync.
+// Se um dia isso for tentado de novo: prove numa conversa de TELEFONE real antes de tocar em
+// qualquer agente, e reverta AQUI primeiro.
+// (histórico) {{caller_ola}} — o nome de quem liga, na tentativa que não funcionou:
 // O webhook de identidade já entregava `caller_name` e a agente continuava sem chamar ninguém pelo
 // nome: a saudação era texto FIXO. Cano instalado, torneira fechada.
 // A variável vai no FIM da pergunta porque colada no nome dela sairia "This is Gui, Luis — …",
@@ -86,9 +98,9 @@ const toElevenLang = (code) => ELEVEN_LANG[code] || code;
 // Só os 3 idiomas do mercado atual ganharam o slot; os outros herdam a saudação sem nome, que
 // continua correta — meia dúzia de idiomas com vírgula órfã seria pior que sem nome nenhum.
 const GREETINGS = {
-  en: "Thank you for calling {biz}. This is {name} — how may I help you today{{caller_ola}}?",
-  pt: "Obrigada por ligar para {biz}! Aqui é a {name} — em que eu posso te ajudar hoje{{caller_ola}}?",
-  es: "Gracias por llamar a {biz}. Le habla {name} — ¿en qué puedo ayudarle hoy{{caller_ola}}?",
+  en: "Thank you for calling {biz}. This is {name} — how may I help you today?",
+  pt: "Obrigada por ligar para {biz}! Aqui é a {name} — em que eu posso te ajudar hoje?",
+  es: "Gracias por llamar a {biz}. Le habla {name} — ¿en qué puedo ayudarle hoy?",
   fr: "{biz}, bonjour, {name} à l'appareil. Que puis-je faire pour vous ?",
   it: "{biz}, buongiorno, sono {name}. Come posso aiutarla?",
   de: "{biz}, guten Tag, hier ist {name}. Was kann ich für Sie tun?",
