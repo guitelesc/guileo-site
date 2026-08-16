@@ -18,6 +18,7 @@ export default function LiveCallBar({ source = "callbar", compacto = false }) {
   const [phone, setPhone] = useState("");
   const [consent, setConsent] = useState(false); // TCPA — affirmative opt-in required before any automated call
   const [err, setErr] = useState(false);
+  const [falha, setFalha] = useState("");  // motivo REAL da recusa, mostrado ao visitante
   const [st, setSt] = useState("idle"); // idle · calling · done
 
   const submit = async (e) => {
@@ -29,8 +30,21 @@ export default function LiveCallBar({ source = "callbar", compacto = false }) {
     // enforces DNC + per-IP caps). consent is logged so it's never auto-called without opt-in.
     fetch("/api/lead", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone, source, consent, lang, noCall: true }) }).catch(() => {});
-    try { await fetch("/api/call", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone }) }); } catch { /* noop */ }
+    // ⚠️ CONFERE A RESPOSTA. A 1ª versão fazia `await fetch(...)` sem ler nada e chamava
+    // setSt("done") sempre — ou seja, dizia "a Gui vai te ligar" mesmo quando o portão RECUSOU
+    // (DNC, teto diário, saldo baixo, agente sem número) ou quando a rede caiu. O visitante via
+    // sucesso e o telefone nunca tocava. É a promessa sem lastro no pior lugar possível: o
+    // primeiro contato de um cliente novo, que conclui que o produto não funciona.
+    // Regra da casa: todo envio confere `ok` e mostra a falha real. (feedback_check_send_results)
+    let ligou = false, motivo = "";
+    try {
+      const r = await fetch("/api/call", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }) });
+      const d = await r.json().catch(() => ({}));
+      ligou = r.ok && d.ok !== false;
+      if (!ligou) motivo = (d.reason || d.error || `HTTP ${r.status}`).toString().slice(0, 80);
+    } catch (e) { motivo = "rede"; }
+    if (!ligou) { setSt("idle"); setErr(true); setFalha(motivo || "nao_deu"); return; }
     setSt("done");
   };
 
@@ -68,6 +82,16 @@ export default function LiveCallBar({ source = "callbar", compacto = false }) {
                 sempre visível no instante da decisão, e sempre antes de qualquer ligação (o botão
                 segue travado sem o check). Em 390px o parágrafo vira 4 linhas e engordava a faixa
                 fixa sem que ninguém estivesse lendo ainda. */}
+            {/* A RECUSA APARECE. Sem isto o conserto seria só interno: o visitante continuaria
+                sem saber por que nada aconteceu. Mostra o caminho alternativo (ligar direto),
+                porque um "não deu" sem saída é igual a um sucesso falso — os dois perdem o lead. */}
+            {falha && (
+              <div className="rounded-xl border border-g-gold/40 bg-g-gold/10 px-3 py-2 text-[11.5px] leading-snug text-g-gold">
+                Não consegui disparar a ligação agora{falha && falha !== "nao_deu" ? ` (${falha})` : ""}.
+                Tenta de novo em instantes — ou fala com a gente por{" "}
+                <a href="https://wa.me/19298288170" className="underline font-bold">WhatsApp</a>.
+              </div>
+            )}
             <label className={`${compacto && !phone ? "hidden" : "flex"} items-start gap-2 text-[10px] leading-snug ${err && !consent ? "text-g-gold" : "text-g-muted"}`}>
               <input type="checkbox" required checked={consent} onChange={(e) => { setConsent(e.target.checked); if (e.target.checked) setErr(false); }} className="mt-0.5 shrink-0" />
               <span><ConsentText lang={lang} /></span>

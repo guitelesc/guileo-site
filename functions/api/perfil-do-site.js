@@ -21,6 +21,7 @@
 // endereço de terceiro sob comando de estranho.
 import { json, sameOrigin, rateLimited, safeEq } from "../lib/guard.js";
 import { perfilDoSite } from "../lib/brandExtract.js";
+import { verifySession } from "../lib/sellerSession.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -40,9 +41,15 @@ export async function onRequestPost({ request, env }) {
     const site = (b.site || "").toString().trim().slice(0, 300);
     if (!site) return json({ error: "informe o site" }, 400);
 
-    // GATE — crachá de vendedor (o mesmo do hub) ou token de admin.
+    // GATE — crachá de vendedor (o mesmo do hub) OU token de admin.
+    // ⚠️ O CRACHÁ FALTAVA. Este comentário prometia "crachá de vendedor" desde o primeiro dia e o
+    // código só aceitava admin — zero menções a `sid` no arquivo. Resultado: a ferramenta existia,
+    // o hub não conseguia usá-la, e quem lesse o cabeçalho perderia tempo procurando o bug em
+    // outro lugar (perdi, hoje). Comentário que promete o que o código não faz é pior que
+    // comentário nenhum: ele *desvia* a investigação em vez de só deixar de ajudar.
     const token = (b.token || "").toString().trim();
-    let autorizado = !!(env.ADMIN_TOKEN && safeEq(token, env.ADMIN_TOKEN));
+    let autorizado = !!(await verifySession(env, (b.sid || "").toString()));
+    if (!autorizado) autorizado = !!(env.ADMIN_TOKEN && safeEq(token, env.ADMIN_TOKEN));
     if (!autorizado && token) {
       try {
         const g = await rpc("blitz_stats", { p_token: token, p_email: "" });
