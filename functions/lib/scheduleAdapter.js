@@ -86,9 +86,28 @@ export async function resolveScheduler(env, email) {
   // 1) MINDBODY — needs the platform developer key (MINDBODY_API_KEY) + per-tenant site creds.
   //    No platform key → the connector is inert → NOT the source of truth (Natura falls through
   //    here today: creds may be stored, but without MINDBODY_API_KEY we route to internal).
+  // ⚠️ `site_id` SOZINHO NÃO É PRONTIDÃO — foi o defeito mais caro da plataforma (2026-08-16).
+  // Este bloco pedia só `c.site_id`, enquanto o comentário quatro linhas acima já dizia a regra
+  // certa ("creds present AND everything needed to actually reach the provider"). O Natura tinha
+  // os site_id das 3 unidades gravados e `source_name`/`source_password` como STRING VAZIA.
+  // A cadeia inteira que isso produzia, em ligação real:
+  //   resolveScheduler → "mindbody" (não-interno)
+  //   → book vai pro adaptador externo → MindBody não autentica (sem credencial)
+  //   → handled:true, ok:false → e o book se RECUSA a cair no motor interno, de propósito, pra
+  //     não duplicar reserva contra o sistema do salão
+  //   → devolve anotadoMsg: "anotei, a recepção confirma"
+  // Ou seja: a frase "a recepção confirma" que eu passei um dia inteiro achando que era a agente
+  // escapando era A NOSSA PLATAFORMA MANDANDO ELA DIZER. 7 ligações com intenção de agendar, 0
+  // agendamentos, e uma lição v7 escrita contra uma frase que o modelo nunca escolheu.
+  // A `availability` melhorava e o `book` não pelo mesmo motivo: availability cai no interno com
+  // handled:false, book não cai com handled:true+!ok. Meia ligação funcionando é a assinatura disto.
   if (env.MINDBODY_API_KEY) {
     const c = await credsLookup("mb_creds_lookup", env, e);
-    if (c && c.site_id) return { provider: "mindbody", ready: true, creds: c, reason: "mindbody-connected" };
+    const temLogin = !!(c && String(c.source_name || "").trim() && String(c.source_password || "").trim());
+    if (c && c.site_id && temLogin) return { provider: "mindbody", ready: true, creds: c, reason: "mindbody-connected" };
+    // Configuração pela metade é PIOR que nenhuma: ela desliga o motor que funciona e liga um que
+    // não responde. Cai para o interno e deixa o motivo escrito, para o painel poder mostrar.
+    if (c && c.site_id) return { provider: "internal", ready: true, creds: null, reason: "mindbody-sem-credencial" };
   }
 
   // 2) SQUARE — fully public: per-tenant access_token + location_id is all it takes (no platform key).

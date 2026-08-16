@@ -23,7 +23,7 @@
 // GATE: DIGEST_TOKEN (é o cron quem chama, não o navegador).
 import { json, safeEq } from "../lib/guard.js";
 import { svcJson, sbKey, SB_URL } from "../lib/sb.js";
-import { CEREBRO_VERSAO } from "../lib/provision.js";
+import { CEREBRO_VERSAO, buildPlatformSettings } from "../lib/provision.js";
 
 async function evoluir(request, env) {
   const url = new URL(request.url);
@@ -74,6 +74,50 @@ async function evoluir(request, env) {
   //
   // SÓ LEITURA. Esta rota não desamarra nada: desamarrar número de cliente pagante é decisão do
   // dono, e um diagnóstico que também age é um diagnóstico em que ninguém confia.
+  // ── `identidade=1` — A AGENTE SABE QUEM ESTÁ LIGANDO? (2026-08-16) ──────────────────────────
+  // O Luis ligou hoje e a agente pediu nome e telefone. O CRM tem ele: `+1 929 535 0191`, nome
+  // "Luis", 14 visitas, atualizado por essa mesma ligação. Gravar funciona; ENTREGAR não.
+  // O caminho existe: o agente é provisionado com `conversation_initiation_client_data_webhook`
+  // apontando para /api/twilio-inbound, que devolve caller_name/caller_last/caller_note. Mas esse
+  // bloco só é enviado quando AGENT_ACTION_SECRET existe na hora do provisionamento — quem nasceu
+  // antes da chave nunca recebeu, e nada nunca conferiu. Esta sonda pergunta ao PROVEDOR.
+  if (url.searchParams.get("identidade") === "1") {
+    if (!env.ELEVENLABS_API_KEY) return json({ ok: false, nota: "sem ELEVENLABS_API_KEY" }, 503);
+    const todos = await svcJson(env, "agentes_atrasados", { p_secret: env.INGEST_SECRET, p_versao: 999999, p_limite: 25 });
+    const linhas = [];
+    for (const a of ((todos && todos.lista) || [])) {
+      if (!a.agente) continue;
+      try {
+        const g = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${a.agente}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+        if (!g.ok) { linhas.push({ cliente: a.cliente, erro: `HTTP ${g.status}` }); continue; }
+        const d = await g.json();
+        const w = d?.platform_settings?.workspace_overrides?.conversation_initiation_client_data_webhook;
+        linhas.push({
+          cliente: a.cliente, agente: a.agente,
+          webhook_de_identidade: w?.url || null,
+          tem_segredo: !!(w?.request_headers && Object.keys(w.request_headers).length),
+          // sem o webhook, os placeholders chegam vazios e a agente PERGUNTA o que já sabemos
+          veredito: w?.url ? "recebe quem está ligando" : "❌ NÃO recebe — vai perguntar nome e telefone",
+        });
+        // `corrigir=1` instala o bloco nos que estão sem. Usa buildPlatformSettings — o MESMO
+        // construtor do provisionamento — porque uma segunda versão do payload aqui divergiria da
+        // primeira no dia seguinte, e aí agente novo e agente consertado sairiam diferentes.
+        if (!w?.url && url.searchParams.get("corrigir") === "1") {
+          const ps = buildPlatformSettings(env);
+          if (!ps.workspace_overrides) { linhas[linhas.length - 1].correcao = "sem AGENT_ACTION_SECRET — não dá para instalar"; }
+          else {
+            const up = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${a.agente}`, {
+              method: "PATCH", headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
+              body: JSON.stringify({ platform_settings: ps }),
+            });
+            linhas[linhas.length - 1].correcao = up.ok ? "instalado" : `recusado HTTP ${up.status}: ${(await up.text().catch(() => "")).slice(0, 140)}`;
+          }
+        }
+      } catch (e) { linhas.push({ cliente: a.cliente, erro: String(e).slice(0, 80) }); }
+    }
+    return json({ ok: true, identidade: true, agentes: linhas });
+  }
+
   if (url.searchParams.get("numeros") === "1") {
     if (!env.ELEVENLABS_API_KEY) return json({ ok: false, nota: "sem ELEVENLABS_API_KEY" }, 503);
     const out = { ok: true, numeros: true, elevenlabs: null, twilio: null, banco: null, veredito: [] };

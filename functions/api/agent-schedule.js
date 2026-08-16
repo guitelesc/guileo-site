@@ -435,6 +435,11 @@ export async function onRequestPost(context) {
           //    (NEVER book blind — that's the double-book the audit caught).
           //  • otherwise: the external rejected the slot (taken) → offer the next opening.
           if (ext.needsFrontdesk) {
+            // ⚠️ ESTE ERA O ÚNICO DESFECHO SEM RASTRO — e por isso o mais caro de diagnosticar.
+            // A trilha da ligação do Luis (16/08) mostrava `book → chamada` e MAIS NADA: nem OK,
+            // nem RECUSA. Sem o motivo escrito, "não agendou" vira adivinhação, e eu quase culpei
+            // o comportamento da agente por uma frase que sai daqui, do nosso próprio código.
+            await logRecusa(env, email, op, `externo_nao_confirmou:${scB.provider}`, b.when || b.start || "");
             return json({ ok: false, source: scB.provider, captured: true, message: anotadoMsg(b.lang, svc.name, fmt(startX, bizTz, b.lang)) });
           }
           return json({ ok: false, source: scB.provider, message: (await logRecusa(env, email, op, "horario_tomado_na_hora", b.when || b.start || ""), diz("acabou_de_sair", b.lang)) });
