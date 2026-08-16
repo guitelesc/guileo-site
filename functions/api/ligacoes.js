@@ -28,6 +28,7 @@
 // quanto durou. NUNCA transcrição: o conteúdo da conversa é do cliente do cliente, e um endpoint
 // de diagnóstico não é lugar para dado de paciente.
 import { json, isOwnerEmail, sameOrigin, rateLimited } from "../lib/guard.js";
+import { svcRpc } from "../lib/sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -192,10 +193,22 @@ export async function onRequestPost(context) {
       veredito = `leitura parcial — Twilio ${twilio.lido ? nTw : "não lida"}, ElevenLabs ${eleven.lido ? nEl : "não lida"}, banco ${banco.lido ? nBc : "não lido"}`;
     }
 
+    // O DESFECHO COMERCIAL, ao lado do diagnóstico técnico. Os degraus abaixo respondem "a ligação
+    // chegou?"; isto responde "a ligação VALEU?". Sem os dois juntos, uma cadeia tecnicamente
+    // perfeita com zero agendamento continua parecendo saúde — foi o que aconteceu no Natura por
+    // 14 ligações seguidas. `success` da ElevenLabs vai junto de propósito: ver o número que
+    // mentia encostado no verdadeiro é o que faz alguém acreditar no verdadeiro.
+    let desfecho = null;
+    try {
+      const dr = await svcRpc(env, "call_outcome_truth", { p_secret: env.SCHED_SECRET || "", p_email: email, p_days: 30 });
+      if (dr.ok) { const d = await dr.json().catch(() => null); if (d && !d.error) desfecho = d; }
+    } catch { /* diagnóstico técnico vale por si; o desfecho é um a mais */ }
+
     return json({
       janela_horas: horas,
       veredito,
       onde_arrebentou,
+      desfecho_30d: desfecho,
       degraus: {
         "1_telefone_tocou_twilio": twilio.lido ? nTw : `NÃO LIDO — ${twilio.motivo}`,
         "2_agente_atendeu_elevenlabs": eleven.lido ? nEl : `NÃO LIDO — ${eleven.motivo}`,

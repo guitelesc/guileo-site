@@ -348,9 +348,20 @@ export async function onRequestPost(context) {
     // SERVIÇO E UNIDADE SAEM JUNTOS (bizMatch.js). Separados, "corte no Upper East Side" perdia as
     // duas pontas: a unidade não casava com nome nenhum (null → busca em tudo → oferece Astoria) e
     // o serviço genérico ganhava do gêmeo da unidade certa. 14 ligações do Natura, 0 agendamentos.
-    const { svc, loc } = resolveServicoLocal(services, locations, pros, b.service, b.location);
+    const { svc, loc, unidadesPossiveis } = resolveServicoLocal(services, locations, pros, b.service, b.location);
     const pro = pick(pros, b.professional || b.pro);
     if (!svc) return json({ message: servicoIndefinidoMsg(b.lang, services.map((s) => s.name).join(", ")) });
+
+    // O SERVIÇO EXISTE EM MAIS DE UMA UNIDADE E NINGUÉM DISSE QUAL. Pergunte antes de procurar.
+    // Sem isto o serviço escolhido carrega uma unidade escondida junto (o `Massage` do Natura é o
+    // de Astoria), a busca só devolve horário de lá, e a outra unidade some da ligação — receita
+    // que existe e nunca é oferecida. Não vale para `lookup` (é o cardápio, não uma escolha) nem
+    // para as operações que já trabalham sobre um agendamento existente.
+    if (unidadesPossiveis.length > 1 && (op === "availability" || op === "book" || op === "recurring")) {
+      await logRecusa(env, email, op, "unidade_ambigua", unidadesPossiveis.map((u) => u.name).join("|"));
+      return json({ ok: false, reason: "unidade_ambigua", locations: unidadesPossiveis,
+        message: qualUnidadeMsg(b.lang, svc.name, unidadesPossiveis) });
+    }
 
     if (op === "availability") {
       // EXTERNAL FIRST (golden rule): if the tenant has a connected+ready external calendar, its
@@ -908,6 +919,21 @@ function pontosMsg(lang, pontos, visitas) {
   if (L === "es") return `Tiene ${pontos} puntos de fidelidad${v}.`;
   if (L === "hi") return `आपके ${pontos} लॉयल्टी पॉइंट हैं${v}।`;
   return `You have ${pontos} loyalty points${v}.`;
+}
+
+// DUAS UNIDADES FAZEM ISSO — pergunte, não escolha.
+// ← 2026-08-16: o Natura faz massagem em Astoria E no med spa do Upper East Side, com nomes de
+//   serviço diferentes. Quem liga e não diz onde quer só era oferecido Astoria, e a segunda
+//   unidade ficava invisível — receita existindo e não sendo mostrada. Escolher calado pela
+//   pessoa é o mesmo pecado de marcar no horário errado: pode acertar, e quando erra ela só
+//   descobre no balcão. Uma pergunta de cinco palavras resolve e ainda vende a outra unidade.
+function qualUnidadeMsg(lang, servico, unidades) {
+  const L = L2(lang);
+  const lista = unidades.map((u) => u.name).join(L === "pt" ? " ou " : L === "es" ? " o " : L === "hi" ? " या " : " or ");
+  if (L === "pt") return `A gente faz ${servico} na ${lista}. Qual fica melhor pra você?`;
+  if (L === "es") return `Hacemos ${servico} en ${lista}. ¿Cuál le queda mejor?`;
+  if (L === "hi") return `हम ${servico} ${lista} में करते हैं। कौन सा आपके लिए बेहतर है?`;
+  return `We do ${servico} at ${lista}. Which is better for you?`;
 }
 
 // "Não entendi qual serviço" — lista o cardápio real em vez de pedir de novo no vazio.
