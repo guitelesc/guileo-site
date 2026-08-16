@@ -387,7 +387,7 @@ async function evoluir(request, env) {
     // Em 2026-08-16 a v7 subiu e esta linha ficou na frase da v6: a conferência devolveu 4/4 ✅
     // provando que a frota tinha uma lição ANTIGA, e passaria igual se a nova não tivesse entrado.
     // Uma conferência que não pode falhar não é conferência — é decoração cara.
-    const ancora = "NÃO EMPURRE PARA UM HUMANO QUE NINGUÉM AVISOU";
+    const ancora = "PEÇA O E-MAIL QUANDO SÓ TIVER O TELEFONE";
     if (!env.ELEVENLABS_API_KEY) return json({ ok: false, conferir: true, nota: "sem ELEVENLABS_API_KEY — não deu para provar" }, 503);
     // ⚠️ NÃO INVENTE NOME DE RPC. Minha 1ª versão chamava `agent_ids_all`, que NÃO EXISTE — o mesmo
     // erro que cometi hoje de manhã com `agent_evals_latest` e que deixou o painel mentindo por 3

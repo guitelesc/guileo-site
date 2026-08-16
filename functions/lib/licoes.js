@@ -23,7 +23,7 @@
 //      regra por achá-la óbvia; o incidente é o que a defende.
 //   4. SUBA A `VERSAO`. Sem isso a lição existe no código e não chega a NENHUM agente já nascido —
 //      exatamente a doença que este arquivo veio curar.
-export const VERSAO = 7; // v7 (2026-08-16): "não empurre para um humano que ninguém avisou" — 14 ligações, 0 agendamentos
+export const VERSAO = 8; // v8 (2026-08-16): "peça o e-mail quando só tiver o telefone" — GUI-42F0 marcou e o cliente não recebeu nada
 
 // Regras que valem para QUALQUER negócio. Ordenadas por quanto custam quando são violadas:
 // as três primeiras destroem a confiança do cliente final na hora, e não têm conserto depois.
@@ -134,6 +134,18 @@ const UNIVERSAIS = [
   (2) diga com todas as letras que NÃO ficou marcado, pegue nome e telefone e registre o pedido de
   retorno. "Ainda não está marcado" é uma frase que salva cliente. "A recepção confirma" é uma
   frase que perde cliente e ainda faz o dono achar que a ligação deu certo.`,
+
+  // ← 2026-08-16, o PRIMEIRO agendamento real da plataforma (GUI-42F0): marcado, horário reservado,
+  //   tudo certo no banco — e o cliente NÃO RECEBEU NADA. Ele deu só o telefone, o SMS está
+  //   bloqueado pela campanha A2P, e sem e-mail não havia por onde mandar o comprovante. A agente
+  //   chegou a dizer que mandaria a confirmação por mensagem. Não foi.
+  //   O e-mail é o ÚNICO canal que funciona hoje, e custa uma frase pedir.
+  `PEÇA O E-MAIL QUANDO SÓ TIVER O TELEFONE. Antes de fechar qualquer agendamento, se a pessoa te
+  deu só o número, peça o e-mail com o motivo junto: "me passa seu e-mail que eu já te mando a
+  confirmação com endereço e horário". Não prometa mensagem de texto — hoje ela não sai. Se a
+  pessoa não quiser dar o e-mail, tudo bem: repita o dia, a hora e o endereço em voz alta antes de
+  desligar, para ela anotar. O que não pode é a pessoa desligar achando que vai receber algo e não
+  receber nada — quem não tem comprovante na mão esquece, e esquecer vira falta.`,
 
   // ← Recusas de agenda não deixavam rastro: o dono via "não agendou" e não sabia se faltou vaga,
   //   se a pessoa desistiu ou se a ferramenta quebrou. Diagnóstico virava adivinhação.
