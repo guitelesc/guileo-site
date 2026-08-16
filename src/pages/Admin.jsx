@@ -7,6 +7,7 @@ import CompanyOS from "../components/CompanyOS.jsx";
 import MetaConnect from "../components/MetaConnect.jsx";
 import ChannelStatus from "../components/ChannelStatus.jsx";
 import QualityPanel from "../components/QualityPanel.jsx";
+import LinhasPanel from "../components/LinhasPanel.jsx";
 import WarRoom from "../components/WarRoom.jsx";
 import OnboardApprovals from "../components/OnboardApprovals.jsx";
 import ClientWallet from "../components/ClientWallet.jsx";
@@ -873,6 +874,10 @@ export default function Admin() {
         {/* ═════════════════════ 🎯 QUALIDADE ═════════════════════ */}
         {tab === "qualidade" && (
           <div className="mt-5 space-y-5">
+            {/* AS LINHAS PRIMEIRO. Nota de eval e unit economics importam DEPOIS de a linha atender:
+                em 2026-08-16 a plataforma passou horas com o semáforo verde e o telefone do cliente
+                pagante recusando toda ligação. O que dá nome à empresa vai no topo da página. */}
+            <LinhasPanel token={token} />
             {/* ── PAINEL DE QUALIDADE — saúde REAL dos agentes (evals) + SLO + unit economics ── */}
             <QualityPanel token={token} />
           </div>

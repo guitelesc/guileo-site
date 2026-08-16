@@ -224,6 +224,39 @@ export async function onRequest(context) {
         if (pr.ok) { const pj = await pr.json().catch(() => null); semaforo = pj?.slo || null; }
         else semaforo = { overall: "unknown", nota: `platform-status http ${pr.status}` };
       } catch (e) { semaforo = { overall: "unknown", nota: String(e).slice(0, 80) }; }
+
+      // ── AS LINHAS ATENDEM? (2026-08-16) ─────────────────────────────────────────────────────
+      // O buraco que isto fecha: o semáforo media chat, links de pagamento e widget — tudo que dá
+      // para testar com um fetch — e NÃO media a única coisa que dá nome à empresa: o telefone
+      // atender. Neste dia a plataforma passou horas verde com a linha do cliente PAGANTE recusando
+      // toda ligação (teto diário -1), e o dono só descobriu discando.
+      // Medir o que era fácil de medir em vez do que dá dinheiro é a mesma família dos enganos do
+      // dia: uma medição verdadeira respondendo a pergunta errada.
+      //
+      // PÚBLICO E SEM SEGREDO, de propósito — a pergunta "está de pé?" se faz do celular, às 2h,
+      // sem senha. Por isso aqui vai só a CONTAGEM: nada de nome de cliente, número ou
+      // configuração. Quem quiser saber QUAL e POR QUÊ usa /api/agente-prova, que é gated.
+      try {
+        const lr = await fetch(`${base}/api/agente-prova?token=${t}`);
+        if (lr.ok) {
+          const lj = await lr.json().catch(() => null);
+          const r = lj?.resumo;
+          if (r) {
+            semaforo = semaforo || {};
+            semaforo.linhas = {
+              atendem: r.atenderiam ?? null,
+              de: r.linhas ?? null,
+              // `estado` existe para quem lê no celular não precisar comparar dois números.
+              // null (não deu para provar) NUNCA vira verde — é o erro que este dia inteiro ensinou.
+              estado: r.ok === true ? "verde" : r.ok === false ? "vermelho" : "cinza",
+            };
+            // Uma linha caída derruba o semáforo GERAL. Antes, o telefone podia estar morto e o
+            // `overall` continuava "ok" porque ninguém o consultava.
+            if (r.ok === false) semaforo.overall = "down";
+            else if (r.ok === null && semaforo.overall === "ok") semaforo.overall = "unknown";
+          }
+        } else if (semaforo) semaforo.linhas = { estado: "cinza", nota: `agente-prova http ${lr.status}` };
+      } catch (e) { if (semaforo) semaforo.linhas = { estado: "cinza", nota: String(e).slice(0, 60) }; }
     }
 
     // PHONE RE-ENGAGEMENT EXECUTOR (#19) — once per hour, dial the queued phone-contact
