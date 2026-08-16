@@ -16,6 +16,7 @@ import { resolveScheduler, getAvailability as adapterAvailability, book as adapt
 import { brandFor } from "../lib/clientBrand.js";
 import { resolveSlot, oQueAPessoaDisse } from "../lib/slotResolver.js";
 import { resolveServicoLocal } from "../lib/bizMatch.js";
+import { avaliarContato, pedirContatoMsg } from "../lib/contato.js";
 import { svcRpc } from "../lib/sb.js";
 
 // Send a branded confirmation to the CUSTOMER (email now; SMS lights up when A2P clears). Best-effort.
@@ -387,6 +388,21 @@ export async function onRequestPost(context) {
     }
 
     if (op === "book") {
+      // O CONTATO PRECISA PODER SER CHAMADO DE VOLTA (ver lib/contato.js).
+      // ← GUI-42F0, o PRIMEIRO agendamento real da plataforma: gravado com "929-535-191", nove
+      //   dígitos, um zero perdido de ouvido. Horário reservado e o spa sem como avisar ninguém.
+      // Só recusa quando o contato VEIO e está quebrado — contato vazio segue o caminho de antes,
+      // porque endurecer isso agora bloquearia reservas que hoje funcionam, e a regra do dia é
+      // não trocar um problema por outro. Devolve uma pergunta, não um erro: a pessoa está na
+      // linha AGORA, e este é o único momento em que consertar o número é de graça.
+      const contatoBruto = (b.contact || "").toString().trim();
+      if (contatoBruto) {
+        const av = avaliarContato(contatoBruto);
+        if (!av.ok) {
+          await logRecusa(env, email, op, `contato_invalido:${av.motivo || av.tipo}`, contatoBruto);
+          return json({ ok: false, reason: "contato_invalido", message: pedirContatoMsg(b.lang, av.tipo) });
+        }
+      }
       // EXTERNAL FIRST (golden rule): if a connected+ready external calendar owns this tenant, WRITE
       // the booking there (the salon's real system) — the adapter mirrors it into biz_appointments for
       // the cockpit. handled:false → external down/unmappable → fall through to the internal engine,

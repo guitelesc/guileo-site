@@ -162,8 +162,14 @@ async function evoluir(request, env) {
     }
     const todos = await svcJson(env, "agentes_atrasados", { p_secret: env.INGEST_SECRET, p_versao: 999999, p_limite: 25 });
     const linhas = [];
+    // `so=<email>` limita a ação a UM cliente. Existe porque em 2026-08-16 eu apliquei uma
+    // configuração inédita na frota inteira — incluindo o cliente pagante — e derrubei as ligações.
+    // Cobaia primeiro, cliente depois; e a cobaia precisa ter TELEFONE para a prova ser uma ligação
+    // de verdade (o e2e-test não tem, então a cobaia é a linha de demo da própria Guileo).
+    const so = (url.searchParams.get("so") || "").toLowerCase();
     for (const a of ((todos && todos.lista) || [])) {
       if (!a.agente) continue;
+      if (so && (a.cliente || "").toLowerCase() !== so) continue;
       try {
         const g = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${a.agente}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
         if (!g.ok) { linhas.push({ cliente: a.cliente, erro: `HTTP ${g.status}` }); continue; }
