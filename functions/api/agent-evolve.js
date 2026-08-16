@@ -22,7 +22,7 @@
 //
 // GATE: DIGEST_TOKEN (é o cron quem chama, não o navegador).
 import { json, safeEq } from "../lib/guard.js";
-import { svcJson } from "../lib/sb.js";
+import { svcJson, sbKey, SB_URL } from "../lib/sb.js";
 import { CEREBRO_VERSAO } from "../lib/provision.js";
 
 async function evoluir(request, env) {
@@ -62,6 +62,91 @@ async function evoluir(request, env) {
   //
   // Read-only: um GET por agente. Procura a FRASE-ÂNCORA da lição mais nova no prompt que está
   // realmente lá. Sem chave da ElevenLabs → devolve "não deu para provar" (nunca um falso ok).
+  // ── `numeros=1` — DE QUEM É CADA NÚMERO (2026-08-16) ────────────────────────────────────────
+  // O `conferir=1` mostrou DOIS números amarrados ao agente do Natura: o +1 929 828 8170, que está
+  // no nosso `client_agents`, e um +1 406 800 0052 (Montana) que NÃO existe em nenhuma tabela nossa
+  // — varri todas as colunas de texto/jsonb do banco procurando "4068000052" e deu zero.
+  //
+  // Um número desconhecido tocando num agente de CLIENTE PAGANTE não é curiosidade: quem discar
+  // nele é atendido como se fosse o Natura, e a conta de voz sai do bolso do Luis. Achar o dono
+  // exige perguntar às TRÊS fontes e mostrar as três respostas lado a lado — é exatamente por não
+  // fazer isso que o alerta 📵 mentiu por semanas (ver o comentário do bloco do telefone abaixo).
+  //
+  // SÓ LEITURA. Esta rota não desamarra nada: desamarrar número de cliente pagante é decisão do
+  // dono, e um diagnóstico que também age é um diagnóstico em que ninguém confia.
+  if (url.searchParams.get("numeros") === "1") {
+    if (!env.ELEVENLABS_API_KEY) return json({ ok: false, nota: "sem ELEVENLABS_API_KEY" }, 503);
+    const out = { ok: true, numeros: true, elevenlabs: null, twilio: null, banco: null, veredito: [] };
+
+    // 1ª FONTE — o provedor de voz: quem toca quando alguém disca.
+    try {
+      const p = await fetch("https://api.elevenlabs.io/v1/convai/phone-numbers", { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+      if (!p.ok) out.elevenlabs = { erro: `HTTP ${p.status}` };
+      else {
+        const arr = await p.json();
+        out.elevenlabs = (Array.isArray(arr) ? arr : []).map((n) => ({
+          numero: n?.phone_number || "?", id: n?.phone_number_id || "",
+          provedor: n?.provider || "?", rotulo: n?.label || "",
+          agente: n?.assigned_agent?.agent_id || null, agente_nome: n?.assigned_agent?.agent_name || "",
+        }));
+      }
+    } catch (e) { out.elevenlabs = { erro: String(e).slice(0, 90) }; }
+
+    // 2ª FONTE — a operadora: o número foi COMPRADO nesta conta? Se não estiver aqui, ele entrou
+    // na ElevenLabs por outra conta Twilio ou por SIP, e aí o dono é outra pessoa.
+    if (env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN) {
+      try {
+        const auth = btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
+        const t = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/IncomingPhoneNumbers.json?PageSize=100`,
+          { headers: { Authorization: `Basic ${auth}` } });
+        if (!t.ok) out.twilio = { erro: `HTTP ${t.status}`, conta: env.TWILIO_ACCOUNT_SID.slice(0, 10) + "…" };
+        else {
+          const d = await t.json();
+          out.twilio = { conta: env.TWILIO_ACCOUNT_SID.slice(0, 10) + "…",
+            numeros: (d.incoming_phone_numbers || []).map((n) => ({ numero: n.phone_number, apelido: n.friendly_name, comprado: n.date_created })) };
+        }
+      } catch (e) { out.twilio = { erro: String(e).slice(0, 90) }; }
+    } else out.twilio = { erro: "sem TWILIO_ACCOUNT_SID/AUTH_TOKEN neste ambiente" };
+
+    // 3ª FONTE — nós: o que a Guileo acha que comprou e para quem.
+    // ⚠️ LISTA VAZIA NÃO É "NÃO ACHEI" — É "NÃO LI". A 1ª versão usava `clients_list`, que NÃO
+    // devolve o campo `number`: veio `[]`, o cruzamento comparou contra um conjunto vazio e os TRÊS
+    // números receberam "ninguém no banco reivindica" — uma acusação inventada, porque o
+    // `client_agents` tem o +1 929 828 8170 do Natura gravado. Foi o `fallback_esconde_erro`
+    // acontecendo dentro do próprio diagnóstico que existe para achar erro. Agora: fonte que volta
+    // vazia vira `null`, e `null` nunca vira veredito.
+    let nosso = null;
+    try {
+      const k = sbKey(env);
+      const r = await fetch(`${SB_URL}/rest/v1/client_agents?select=client_email,number`, {
+        headers: { apikey: k, Authorization: `Bearer ${k}` },
+      });
+      if (r.ok) { const d = await r.json(); if (Array.isArray(d) && d.length) nosso = d; }
+    } catch { /* fonte muda vira null, não vira zero */ }
+    out.banco = nosso ? nosso.filter((c) => c && c.number).map((c) => ({ cliente: c.client_email, numero: c.number })) : null;
+
+    // O CRUZAMENTO. Cada número do provedor recebe um veredito com as três respostas — nunca uma
+    // conclusão sem mostrar de onde ela saiu.
+    const soDigitos = (s) => (s || "").toString().replace(/\D/g, "");
+    const naTwilio = new Set((out.twilio?.numeros || []).map((n) => soDigitos(n.numero)));
+    const noBanco = new Set((out.banco || []).map((n) => soDigitos(n.numero)));
+    for (const n of (Array.isArray(out.elevenlabs) ? out.elevenlabs : [])) {
+      const d = soDigitos(n.numero);
+      const t = out.twilio?.numeros ? naTwilio.has(d) : null;
+      const b = out.banco ? noBanco.has(d) : null;
+      out.veredito.push({
+        numero: n.numero, provedor: n.provedor, rotulo: n.rotulo, agente: n.agente,
+        na_nossa_twilio: t, no_nosso_banco: b,
+        conclusao: t === false && b === false ? "ÓRFÃO — não é da nossa Twilio nem do nosso banco; entrou por fora"
+          : t === false && b === true ? "no nosso banco mas NÃO na nossa Twilio — provavelmente da conta Twilio ANTIGA"
+          : t === true && b === false ? "é nosso na Twilio mas ninguém no banco reivindica"
+          : t === true && b === true ? "coerente nas três fontes"
+          : "não deu para provar (alguma fonte não respondeu)",
+      });
+    }
+    return json(out);
+  }
+
   if (url.searchParams.get("conferir") === "1") {
     // ⚠️ A ÂNCORA TEM QUE SER A FRASE DA VERSÃO ATUAL — subiu VERSAO em licoes.js, troque aqui.
     // Em 2026-08-16 a v7 subiu e esta linha ficou na frase da v6: a conferência devolveu 4/4 ✅
