@@ -23,7 +23,7 @@
 //      regra por achá-la óbvia; o incidente é o que a defende.
 //   4. SUBA A `VERSAO`. Sem isso a lição existe no código e não chega a NENHUM agente já nascido —
 //      exatamente a doença que este arquivo veio curar.
-export const VERSAO = 6; // v6 (2026-08-11): "nenhuma recusa é a última frase" — ver a nota da regra
+export const VERSAO = 7; // v7 (2026-08-16): "não empurre para um humano que ninguém avisou" — 14 ligações, 0 agendamentos
 
 // Regras que valem para QUALQUER negócio. Ordenadas por quanto custam quando são violadas:
 // as três primeiras destroem a confiança do cliente final na hora, e não têm conserto depois.
@@ -115,6 +115,25 @@ const UNIVERSAIS = [
   de volta o que a pessoa acabou de falar. Pergunte SÓ o que falta para fechar, e confirme UMA vez
   no fim, inteiro: "fechado, Kashif — massagem e pedicure amanhã às duas, na Astoria." Ligação curta
   não é pressa: é a diferença entre um lugar que te conhece e um lugar que te cadastra.`,
+
+  // ← 2026-08-16, achado auditando o BANCO e não uma reclamação: o Natura teve 14 ligações reais,
+  //   4 com intenção clara de marcar (118s a 174s, 22 a 37 turnos), e ZERO agendamentos no banco.
+  //   Em TODAS elas a Lilian usou a mesma saída: "a recepção confirma o horário exato", "anotei e o
+  //   pessoal da frente finaliza". Ninguém na recepção soube de nada. Nenhuma linha foi criada.
+  //   POR QUE A REGRA DE CIMA NÃO PEGOU ISSO: "só afirme o que a ferramenta confirmou" proíbe dizer
+  //   que agendou. Esta frase não diz que agendou — ela é honesta sobre si mesma e transfere a
+  //   tarefa para um humano. Passa pela regra e mata a venda do mesmo jeito, porque para quem ouve
+  //   "a recepção confirma" é indistinguível de "está marcado": a pessoa desliga tranquila e não
+  //   aparece. É a pior das três saídas possíveis — pior que um "não", que ao menos manda a pessoa
+  //   procurar outro lugar enquanto ainda dá tempo.
+  `NÃO EMPURRE PARA UM HUMANO QUE NINGUÉM AVISOU. Nunca diga "a recepção confirma", "o pessoal da
+  frente finaliza", "alguém te retorna" ou qualquer coisa que transfira a tarefa para outra pessoa —
+  ninguém do outro lado está sabendo, e quem ligou vai embora achando que resolveu. Se a ferramenta
+  não fechou o horário, você tem DUAS saídas, e só essas duas: (1) ofereça o que existe de verdade —
+  outro horário, outro dia, ou a outra unidade que faz esse serviço, porque quase sempre existe; ou
+  (2) diga com todas as letras que NÃO ficou marcado, pegue nome e telefone e registre o pedido de
+  retorno. "Ainda não está marcado" é uma frase que salva cliente. "A recepção confirma" é uma
+  frase que perde cliente e ainda faz o dono achar que a ligação deu certo.`,
 
   // ← Recusas de agenda não deixavam rastro: o dono via "não agendou" e não sabia se faltou vaga,
   //   se a pessoa desistiu ou se a ferramenta quebrou. Diagnóstico virava adivinhação.

@@ -63,7 +63,11 @@ async function evoluir(request, env) {
   // Read-only: um GET por agente. Procura a FRASE-ÂNCORA da lição mais nova no prompt que está
   // realmente lá. Sem chave da ElevenLabs → devolve "não deu para provar" (nunca um falso ok).
   if (url.searchParams.get("conferir") === "1") {
-    const ancora = "NENHUMA RECUSA É A ÚLTIMA FRASE";
+    // ⚠️ A ÂNCORA TEM QUE SER A FRASE DA VERSÃO ATUAL — subiu VERSAO em licoes.js, troque aqui.
+    // Em 2026-08-16 a v7 subiu e esta linha ficou na frase da v6: a conferência devolveu 4/4 ✅
+    // provando que a frota tinha uma lição ANTIGA, e passaria igual se a nova não tivesse entrado.
+    // Uma conferência que não pode falhar não é conferência — é decoração cara.
+    const ancora = "NÃO EMPURRE PARA UM HUMANO QUE NINGUÉM AVISOU";
     if (!env.ELEVENLABS_API_KEY) return json({ ok: false, conferir: true, nota: "sem ELEVENLABS_API_KEY — não deu para provar" }, 503);
     // ⚠️ NÃO INVENTE NOME DE RPC. Minha 1ª versão chamava `agent_ids_all`, que NÃO EXISTE — o mesmo
     // erro que cometi hoje de manhã com `agent_evals_latest` e que deixou o painel mentindo por 3

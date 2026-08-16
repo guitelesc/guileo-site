@@ -15,6 +15,7 @@ import { sendText, sendOrFlag } from "../lib/twilio.js";
 import { resolveScheduler, getAvailability as adapterAvailability, book as adapterBook } from "../lib/scheduleAdapter.js";
 import { brandFor } from "../lib/clientBrand.js";
 import { resolveSlot, oQueAPessoaDisse } from "../lib/slotResolver.js";
+import { resolveServicoLocal } from "../lib/bizMatch.js";
 import { svcRpc } from "../lib/sb.js";
 
 // Send a branded confirmation to the CUSTOMER (email now; SMS lights up when A2P clears). Best-effort.
@@ -344,8 +345,10 @@ export async function onRequestPost(context) {
     }
 
     // resolve names → records
-    const svc = pick(services, b.service);
-    const loc = pick(locations, b.location);
+    // SERVIÇO E UNIDADE SAEM JUNTOS (bizMatch.js). Separados, "corte no Upper East Side" perdia as
+    // duas pontas: a unidade não casava com nome nenhum (null → busca em tudo → oferece Astoria) e
+    // o serviço genérico ganhava do gêmeo da unidade certa. 14 ligações do Natura, 0 agendamentos.
+    const { svc, loc } = resolveServicoLocal(services, locations, pros, b.service, b.location);
     const pro = pick(pros, b.professional || b.pro);
     if (!svc) return json({ message: servicoIndefinidoMsg(b.lang, services.map((s) => s.name).join(", ")) });
 
