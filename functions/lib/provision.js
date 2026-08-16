@@ -77,10 +77,18 @@ const toElevenLang = (code) => ELEVEN_LANG[code] || code;
 // por ligar…"): se o começo comer meia sílaba, come a almofada, não o nome do negócio.
 // Depois vem, nesta ordem: NOME DO NEGÓCIO (a marca dele atende) → quem fala → uma oferta de
 // cuidado. Frase curta, calorosa, sem "em que posso ajudar" de call center.
+// {{caller_ola}} — O NOME DE QUEM LIGA, NO ÚNICO LUGAR ONDE CABE (2026-08-16).
+// O webhook de identidade já entregava `caller_name` e a agente continuava sem chamar ninguém pelo
+// nome: a saudação era texto FIXO. Cano instalado, torneira fechada.
+// A variável vai no FIM da pergunta porque colada no nome dela sairia "This is Gui, Luis — …",
+// como se a agente tivesse dois nomes. No fim, "…how may I help you today, Luis?" soa como quem
+// reconhece, e para quem liga pela primeira vez `caller_ola` é "" e a frase fica intacta.
+// Só os 3 idiomas do mercado atual ganharam o slot; os outros herdam a saudação sem nome, que
+// continua correta — meia dúzia de idiomas com vírgula órfã seria pior que sem nome nenhum.
 const GREETINGS = {
-  en: "Thank you for calling {biz}. This is {name} — how may I help you today?",
-  pt: "Obrigada por ligar para {biz}! Aqui é a {name} — em que eu posso te ajudar hoje?",
-  es: "Gracias por llamar a {biz}. Le habla {name} — ¿en qué puedo ayudarle hoy?",
+  en: "Thank you for calling {biz}. This is {name} — how may I help you today{{caller_ola}}?",
+  pt: "Obrigada por ligar para {biz}! Aqui é a {name} — em que eu posso te ajudar hoje{{caller_ola}}?",
+  es: "Gracias por llamar a {biz}. Le habla {name} — ¿en qué puedo ayudarle hoy{{caller_ola}}?",
   fr: "{biz}, bonjour, {name} à l'appareil. Que puis-je faire pour vous ?",
   it: "{biz}, buongiorno, sono {name}. Come posso aiutarla?",
   de: "{biz}, guten Tag, hier ist {name}. Was kann ich für Sie tun?",
@@ -416,7 +424,7 @@ export function buildConversationConfig(env, { business, industry, lang, brain, 
       // CALLER MEMORY defaults — the prompt references {{caller_name}}/{{caller_last}}/{{caller_note}};
       // these placeholders make an UNKNOWN caller graceful (empty ⇒ "treat as new customer") instead of
       // failing conversation-init on a missing dynamic variable.
-      dynamic_variables: { dynamic_variable_placeholders: { caller_name: "", caller_last: "", caller_note: "", caller_phone: "" } },
+      dynamic_variables: { dynamic_variable_placeholders: { caller_name: "", caller_last: "", caller_note: "", caller_phone: "", caller_ola: "" } },
     },
   };
 }

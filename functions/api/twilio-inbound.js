@@ -86,7 +86,15 @@ async function handleElevenInitiation(env, body) {
   // caller_phone É O BINA. Sem ele a agente pedia o telefone de quem estava ligando DAQUELE
   // telefone — o Luis teve que ditar o número duas vezes na primeira ligação real (2026-08-07).
   // Perguntar o que o sistema já sabe queima o bem mais escasso da ligação: o tempo dele.
-  const empty = { caller_name: "", caller_last: "", caller_note: "", caller_phone: "" };
+  // `caller_ola` É O QUE FALTAVA PARA O NOME CHEGAR NA BOCA DA AGENTE (2026-08-16).
+  // O webhook já entregava `caller_name` — e a agente continuava sem chamar ninguém pelo nome,
+  // porque a PRIMEIRA FRASE dela é texto fixo ("Thank you for calling X. This is Y — how may I
+  // help you today?"). Cano instalado, torneira fechada.
+  // Não dá para enfiar {{caller_name}} cru na saudação: para quem liga pela primeira vez sairia
+  // "This is Lilian,  — how may I help you", com a vírgula órfã denunciando a máquina. Então o
+  // webhook entrega a SAUDAÇÃO PRONTA: ", Luis" para quem já é conhecido, "" para quem não é.
+  // Quem decide a frase é quem tem o dado; o prompt só encaixa.
+  const empty = { caller_name: "", caller_last: "", caller_note: "", caller_phone: "", caller_ola: "" };
   const reply = (vars) => new Response(JSON.stringify({ type: "conversation_initiation_client_data", dynamic_variables: vars }), {
     status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
   try {
@@ -115,7 +123,11 @@ async function handleElevenInitiation(env, body) {
               if (j.visits_count > 1) last += ` — visit #${j.visits_count}`;
             } catch { /* keep last empty */ }
             const note = j.last_service ? ` · last: ${String(j.last_service).slice(0, 120)}` : j.summary ? ` · last: ${String(j.summary).slice(0, 120)}` : "";
-            return { caller_name: (j.name || "").toString().slice(0, 80), caller_last: last, caller_note: note, caller_phone: caller };
+            {
+              const nome = (j.name || "").toString().slice(0, 80);
+              return { caller_name: nome, caller_last: last, caller_note: note, caller_phone: caller,
+                       caller_ola: nome ? `, ${nome.split(/\s+/)[0]}` : "" };
+            }
           }
         }
       } catch { /* fall through to crm_caller_lookup */ }
@@ -135,6 +147,7 @@ async function handleElevenInitiation(env, body) {
       } catch { /* keep last empty */ }
       return {
         caller_name: (c.full_name || "").toString().slice(0, 80),
+        caller_ola: (c.full_name || "") ? `, ${String(c.full_name).trim().split(/\s+/)[0].slice(0, 40)}` : "",
         caller_last: last,
         caller_note: c.last_summary ? ` · last: ${String(c.last_summary).slice(0, 120)}` : "",
         caller_phone: caller,

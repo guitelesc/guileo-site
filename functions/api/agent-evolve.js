@@ -105,6 +105,38 @@ async function evoluir(request, env) {
     // (a ElevenLabs faz merge), então o conserto é sobrescrever com um número que existe.
     // 5000/dia é folgado para qualquer negócio local e continua sendo um teto real — nenhum
     // tenant nosso chega perto, e ele protege contra loop de discagem.
+    // `saudacao=1` — abre a torneira num agente JÁ EXISTENTE: insere {{caller_ola}} no fim da
+    // primeira frase. Agente novo já nasce assim (GREETINGS em provision.js); este é o estoque.
+    // Genérico de propósito: pega a frase que está lá e encaixa antes do "?" — não reescreve a
+    // saudação do cliente, que pode ter sido ajustada à mão.
+    if (url.searchParams.get("saudacao") === "1") {
+      const so2 = (url.searchParams.get("so") || "").toLowerCase();
+      const todos = await svcJson(env, "agentes_atrasados", { p_secret: env.INGEST_SECRET, p_versao: 999999, p_limite: 25 });
+      const out = [];
+      for (const a2 of ((todos && todos.lista) || [])) {
+        if (!a2.agente || (so2 && (a2.cliente || "").toLowerCase() !== so2)) continue;
+        const g = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${a2.agente}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+        if (!g.ok) { out.push({ cliente: a2.cliente, erro: `HTTP ${g.status}` }); continue; }
+        const atual = (await g.json())?.conversation_config?.agent?.first_message || "";
+        if (atual.includes("caller_ola")) { out.push({ cliente: a2.cliente, ja_tinha: true, frase: atual }); continue; }
+        // encaixa antes do último "?" (ou no fim, se a frase não terminar em pergunta)
+        const i = atual.lastIndexOf("?");
+        const nova = i >= 0 ? atual.slice(0, i) + "{{caller_ola}}" + atual.slice(i) : atual + "{{caller_ola}}";
+        const up = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${a2.agente}`, {
+          method: "PATCH", headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation_config: { agent: { first_message: nova } } }),
+        });
+        // relê: PATCH 200 não é prova de nada (a ElevenLabs faz merge e já me enganou hoje)
+        let ficou = null;
+        if (up.ok) {
+          const v = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${a2.agente}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+          if (v.ok) ficou = (await v.json())?.conversation_config?.agent?.first_message || "";
+        }
+        out.push({ cliente: a2.cliente, de: atual, para: ficou,
+          veredito: ficou && ficou.includes("caller_ola") ? "✅ nome encaixado" : `⚠️ não confirmado (${up.status})` });
+      }
+      return json({ ok: true, saudacao: true, agentes: out });
+    }
     if (url.searchParams.get("destravar") === "1") {
       const todos = await svcJson(env, "agentes_atrasados", { p_secret: env.INGEST_SECRET, p_versao: 999999, p_limite: 25 });
       const out = [];
