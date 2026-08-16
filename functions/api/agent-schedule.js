@@ -486,7 +486,18 @@ export async function onRequestPost(context) {
       // crua para o banco como se fosse um carimbo de data. O que a pessoa fala nunca é um
       // timestamp; resolver não é opcional.
       {
-        const av = await rpc(env, "biz_availability", { p_email: email, p_service_id: svc.id, p_location_id: locId, p_limit: 30 });
+        // 🚨 O PROFISSIONAL PEDIDO TEM QUE ENTRAR NA BUSCA (2026-08-16).
+        // Esta linha buscava horário SEM `p_pro_id` e três linhas abaixo fazia
+        // `proId = proId || match.pro_id` — mantendo quem a pessoa PEDIU sobre um slot que podia
+        // ser de OUTRO. Quem liga e diz "com a Ana às 14h" saía marcado COM A ANA num horário que
+        // era do Bruno: no dia, ou a Ana não está, ou dois clientes chegam para o mesmo barbeiro.
+        // Acontece na ligação de MAIOR intenção de compra — a de quem já sabe com quem quer ir.
+        //
+        // POR QUE NUNCA APARECEU: o Natura tem 3 times em 3 unidades, um em cada, então o filtro
+        // por unidade já sobrava um profissional só e o defeito ficava mascarado. Ele acorda na
+        // primeira barbearia, salão ou clínica com duas pessoas no mesmo endereço — a maior parte
+        // do mercado. Prova viva em functions/lib/agendaCenarios.js (Barbearia Dois Irmãos).
+        const av = await rpc(env, "biz_availability", { p_email: email, p_service_id: svc.id, p_location_id: locId, p_pro_id: proId || null, p_limit: 30 });
         // A agente fala como gente ("amanhã às 9") — a ferramenta pede isso na própria descrição.
         // O código antigo fazia Date.parse desse texto e comparava com o instante do slot. Duas
         // formas de falhar, as duas silenciosas: NaN (nunca casa) ou uma data INVENTADA
@@ -711,7 +722,18 @@ export async function onRequestPost(context) {
       // resolve a pro for the first slot
       let proId = pro?.id || null, locId = loc?.id || null;
       if (!proId) {
-        const av = await rpc(env, "biz_availability", { p_email: email, p_service_id: svc.id, p_location_id: locId, p_limit: 30 });
+        // 🚨 O PROFISSIONAL PEDIDO TEM QUE ENTRAR NA BUSCA (2026-08-16).
+        // Esta linha buscava horário SEM `p_pro_id` e três linhas abaixo fazia
+        // `proId = proId || match.pro_id` — mantendo quem a pessoa PEDIU sobre um slot que podia
+        // ser de OUTRO. Quem liga e diz "com a Ana às 14h" saía marcado COM A ANA num horário que
+        // era do Bruno: no dia, ou a Ana não está, ou dois clientes chegam para o mesmo barbeiro.
+        // Acontece na ligação de MAIOR intenção de compra — a de quem já sabe com quem quer ir.
+        //
+        // POR QUE NUNCA APARECEU: o Natura tem 3 times em 3 unidades, um em cada, então o filtro
+        // por unidade já sobrava um profissional só e o defeito ficava mascarado. Ele acorda na
+        // primeira barbearia, salão ou clínica com duas pessoas no mesmo endereço — a maior parte
+        // do mercado. Prova viva em functions/lib/agendaCenarios.js (Barbearia Dois Irmãos).
+        const av = await rpc(env, "biz_availability", { p_email: email, p_service_id: svc.id, p_location_id: locId, p_pro_id: proId || null, p_limit: 30 });
         // MESMO conserto do book (ver slotResolver.js) — e aqui o antigo era ainda pior: quando o
         // horário não casava, ele caía em `|| slots[0]` e marcava o PRIMEIRO livre em silêncio.
         // Quem pediu "terça às 18h" saía com 12 semanas marcadas no horário errado, sem aviso.

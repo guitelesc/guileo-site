@@ -100,7 +100,16 @@ function telefoneUtil(bruto) {
   const s = String(bruto || "").trim();
   if (!s || s.includes("@")) return "";
   const r = avaliarContato(s);
-  return r.ok ? s : "";
+  if (!r.ok) return "";
+  // ⚠️ VALIDAR NÃO É NORMALIZAR. A versão anterior devolvia a string CRUA — "(929) 535-0191"
+  // chegaria assim na Twilio, que responde 400 e o comprovante morre no dia em que o A2P
+  // finalmente for aprovado. Pior: o canal já teria sido ESCOLHIDO, então o código acharia que
+  // mandou. Aqui sai em E.164, que é o único formato que a operadora aceita.
+  const d = s.replace(/\D/g, "");
+  if (s.trim().startsWith("+")) return `+${d}`;
+  if (d.length === 11 && d.startsWith("1")) return `+${d}`;
+  if (d.length === 10) return `+1${d}`;   // sem prefixo assumimos EUA (ver contato.js)
+  return `+${d}`;
 }
 function motivoTelefone(bruto) {
   const s = String(bruto || "").trim();
@@ -183,7 +192,9 @@ async function enviarTextoReal(env, canal, destino, p) {
 // (nenhum canal / provedor recusou) também sobe para o barramento de falhas da plataforma, porque
 // o dono do negócio pode não abrir o cockpit hoje — e "hoje" é o prazo de salvar a visita.
 async function registrarReal(env, evento) {
-  await svcRpc(env, "ingest_client_event", {
+  // devolve a Response para o `seguro()` poder olhar o .ok — sem isto, "registrado" era um chute
+  if (!env || !env.INGEST_SECRET) return { ok: false };
+  return svcRpc(env, "ingest_client_event", {
     p_secret: (env && env.INGEST_SECRET) || "", p_email: evento.tenant,
     p_type: "message", p_channel: evento.canal_label, p_summary: evento.resumo.slice(0, 300),
     p_amount: 0, p_payload: evento.payload,
@@ -278,6 +289,13 @@ export async function entregarComprovante(env, p = {}, deps = {}) {
   // A MARCA DO ESTOQUE: `comprovante: "pendente"` é o que uma varredura futura procura para
   // reentregar o que ficou para trás. Sem marca estável, consertar o passado vira arqueologia.
   const pendencia = {
+    // ⚠️ DUAS MARCAS PARA O MESMO FATO = UMA VARREDURA QUE ACHA METADE. O estoque REAL que já
+    // existe em produção (agent-schedule.js) grava `delivery: "failed"`. Se este módulo gravasse só
+    // `comprovante: "pendente"`, a varredura de reparo encontraria apenas os registros NOVOS e
+    // deixaria os antigos para trás — exatamente o erro "conserta a causa, esquece o estoque" que
+    // me custou o dia. As duas marcas saem juntas: a antiga para compatibilidade, a nova porque diz
+    // de qual comprovante se trata.
+    delivery: "failed",
     comprovante: "pendente", motivo: semCanal ? "sem_canal" : "provedor_recusou", detalhe: motivo,
     kind: p.kind || "book", ref: String(p.ref || ""), name: String(p.name || ""),
     email: String(p.email || ""), phone: String(p.phone || ""), whenLabel: String(p.whenLabel || ""),
@@ -295,8 +313,18 @@ export async function entregarComprovante(env, p = {}, deps = {}) {
 // Registrar/alertar é BÔNUS: nunca pode derrubar quem chamou (o agendamento já aconteceu).
 // Devolve true/false para que o resultado diga a verdade sobre o que foi registrado — um
 // `registrado: true` chutado seria a mesma classe de erro que este módulo existe para matar.
+// ⚠️ `try { await fn(); return true }` DIZ SUCESSO PARA QUALQUER COISA QUE NÃO LANÇOU.
+// `svcRpc` devolve uma Response — um 400 do Supabase (ou INGEST_SECRET ausente) não lança, então
+// `registrado: true` saía sobre uma escrita que nunca aconteceu. É o mesmo engano que hoje me fez
+// ler `200` de PATCH como "mudou" quando era "recebi": o resultado descrevia a chamada, não o
+// efeito. Aqui a função tem que devolver algo verdadeiro sobre o ESTADO, e `false` é o único
+// default honesto quando não dá para confirmar.
 async function seguro(fn) {
-  try { await fn(); return true; } catch { return false; }
+  try {
+    const r = await fn();
+    if (r && typeof r === "object" && "ok" in r) return !!r.ok;  // Response do svcRpc
+    return r !== false;
+  } catch { return false; }
 }
 
 /**

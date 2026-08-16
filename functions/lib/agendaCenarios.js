@@ -161,7 +161,10 @@ export function decidirAgenda(negocio, fala) {
   // que pode ser de OUTRO. Quem liga e diz "com a Ana" sai marcado com a Ana num slot do Bruno.
   // A primeira versão desta bateria filtrava por profissional NAS DUAS operações, ficava verde,
   // e o bug seguia invisível. Um espelho mais correto que o original é um espelho inútil.
-  const slots = vagas(negocio, svc.id, loc ? loc.id : null, op === "book" ? null : (pro ? pro.id : null));
+  // CONSERTADO EM 2026-08-16: agora a produção TAMBÉM filtra por profissional no book
+  // (agent-schedule.js passa p_pro_id). O espelho volta a filtrar nas duas operações — e o cenário
+  // "com a Ana às 14h" passa a recusar, que é a resposta certa: as 14h são do Bruno.
+  const slots = vagas(negocio, svc.id, loc ? loc.id : null, pro ? pro.id : null);
 
   if (op === "availability") {
     return slots.length
