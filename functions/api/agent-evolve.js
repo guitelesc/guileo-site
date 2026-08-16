@@ -102,6 +102,30 @@ async function evoluir(request, env) {
         // `corrigir=1` instala o bloco nos que estão sem. Usa buildPlatformSettings — o MESMO
         // construtor do provisionamento — porque uma segunda versão do payload aqui divergiria da
         // primeira no dia seguinte, e aí agente novo e agente consertado sairiam diferentes.
+        // `reverter=1` TIRA o bloco. Existe porque em 2026-08-16, minutos depois de instalar, a
+        // ligação passou a CAIR: se o webhook de iniciação não responde do jeito que a ElevenLabs
+        // espera, ela não inicia a conversa — e o cliente ouve o telefone cair. Restaurar serviço
+        // vem antes de entender a causa; o desfazer tem que ser tão rápido quanto o fazer.
+        if (w?.url && url.searchParams.get("reverter") === "1") {
+          // ⚠️ OMITIR NÃO APAGA. A 1ª tentativa mandou platform_settings SEM workspace_overrides e
+          // a ElevenLabs devolveu 200 — mas ela faz MERGE, não substituição, e o webhook continuou
+          // lá. "PATCH ok" descrevia a requisição, não o estado. Só a releitura pegou. Para apagar
+          // é preciso mandar o campo explicitamente nulo.
+          const up = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${a.agente}`, {
+            method: "PATCH", headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
+            body: JSON.stringify({ platform_settings: { ...buildPlatformSettings(env), workspace_overrides: { conversation_initiation_client_data_webhook: null } } }),
+          });
+          // E o veredito NÃO é o status: relê o agente e confirma que sumiu de verdade.
+          let sumiu = null;
+          if (up.ok) {
+            const v = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${a.agente}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+            if (v.ok) sumiu = !((await v.json())?.platform_settings?.workspace_overrides?.conversation_initiation_client_data_webhook?.url);
+          }
+          linhas[linhas.length - 1].correcao = !up.ok ? `recusou HTTP ${up.status}`
+            : sumiu === true ? "revertido (confirmado na releitura)"
+            : sumiu === false ? "⚠️ PATCH aceito MAS o webhook continua lá"
+            : "PATCH aceito, não deu para reler";
+        }
         if (!w?.url && url.searchParams.get("corrigir") === "1") {
           const ps = buildPlatformSettings(env);
           if (!ps.workspace_overrides) { linhas[linhas.length - 1].correcao = "sem AGENT_ACTION_SECRET — não dá para instalar"; }
