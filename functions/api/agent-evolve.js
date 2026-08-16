@@ -118,7 +118,52 @@ async function evoluir(request, env) {
         const g = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${a2.agente}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
         if (!g.ok) { out.push({ cliente: a2.cliente, erro: `HTTP ${g.status}` }); continue; }
         const atual = (await g.json())?.conversation_config?.agent?.first_message || "";
+        // DESFAZER É TÃO IMPORTANTE QUANTO FAZER — e hoje eu já precisei duas vezes.
+        // `reverter=1` tira o {{caller_ola}} da frase. A ElevenLabs derruba a ligação quando a
+        // saudação referencia uma variável dinâmica que ela não consegue resolver no início da
+        // chamada: sem valor, a frase não renderiza e a conversa morre antes de atender.
+        if (url.searchParams.get("reverter") === "1") {
+          if (!atual.includes("caller_ola")) { out.push({ cliente: a2.cliente, ja_estava: "sem a variavel" }); continue; }
+          const limpa = atual.replace(/\{\{caller_ola\}\}/g, "");
+          const upr = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${a2.agente}`, {
+            method: "PATCH", headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
+            body: JSON.stringify({ conversation_config: { agent: { first_message: limpa } } }),
+          });
+          let ficou = null;
+          if (upr.ok) {
+            const v = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${a2.agente}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+            if (v.ok) ficou = (await v.json())?.conversation_config?.agent?.first_message || "";
+          }
+          out.push({ cliente: a2.cliente, para: ficou,
+            veredito: ficou && !ficou.includes("caller_ola") ? "✅ revertido (confirmado na releitura)" : `⚠️ NAO confirmado (${upr.status})` });
+          continue;
+        }
         if (atual.includes("caller_ola")) { out.push({ cliente: a2.cliente, ja_tinha: true, frase: atual }); continue; }
+
+        // 🚨 TRAVA: NÃO ESCREVA {{variável}} NUMA SAUDAÇÃO SEM ELA ESTAR DECLARADA NO AGENTE.
+        // Em 2026-08-16 eu pus {{caller_ola}} na primeira frase depois de declarar a variável em
+        // provision.js — que é o código que NASCE agentes novos. O agente que já existia continuou
+        // declarando só caller_name/last/note/phone, a ElevenLabs não conseguiu renderizar a frase,
+        // e a ligação morreu antes de atender. Terceira vez no mesmo dia que eu conserto a causa e
+        // esqueço o estoque; as duas anteriores só deixaram dado feio, esta derruba receita.
+        // Por isso a ordem é DECLARAR → PROVAR QUE FICOU → só então usar. E se a prova falhar, a
+        // saudação não é tocada: melhor ficar sem o nome do que sem a ligação.
+        const jaTem = (g2) => Object.keys(g2?.conversation_config?.agent?.dynamic_variables?.dynamic_variable_placeholders || {});
+        const decl = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${a2.agente}`, {
+          method: "PATCH", headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation_config: { agent: { dynamic_variables: { dynamic_variable_placeholders: {
+            caller_name: "", caller_last: "", caller_note: "", caller_phone: "", caller_ola: "",
+          } } } } }),
+        });
+        let declaradas = [];
+        if (decl.ok) {
+          const v0 = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${a2.agente}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+          if (v0.ok) declaradas = jaTem(await v0.json());
+        }
+        if (!declaradas.includes("caller_ola")) {
+          out.push({ cliente: a2.cliente, veredito: "🚫 RECUSADO — caller_ola não ficou declarada; saudação NÃO foi tocada", declaradas });
+          continue;
+        }
         // encaixa antes do último "?" (ou no fim, se a frase não terminar em pergunta)
         const i = atual.lastIndexOf("?");
         const nova = i >= 0 ? atual.slice(0, i) + "{{caller_ola}}" + atual.slice(i) : atual + "{{caller_ola}}";
@@ -188,6 +233,10 @@ async function evoluir(request, env) {
           ferramentas: (cc?.agent?.prompt?.tool_ids || []).length,
           base_conhecimento: (cc?.agent?.prompt?.knowledge_base || []).length,
           duracao_max: cc?.conversation?.max_duration_seconds ?? null,
+          // AS VARIÁVEIS QUE O AGENTE DECLARA. Se a saudação usar uma que não está aqui, a
+          // ElevenLabs não consegue renderizar a primeira frase e a LIGAÇÃO MORRE antes de atender
+          // — foi o que aconteceu em 2026-08-16 com {{caller_ola}}.
+          variaveis_declaradas: Object.keys(cc?.agent?.dynamic_variables?.dynamic_variable_placeholders || {}),
           text_only: cc?.conversation?.text_only ?? null,
         },
         platform_settings: d?.platform_settings ?? null });
