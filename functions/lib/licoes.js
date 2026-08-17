@@ -23,7 +23,7 @@
 //      regra por achá-la óbvia; o incidente é o que a defende.
 //   4. SUBA A `VERSAO`. Sem isso a lição existe no código e não chega a NENHUM agente já nascido —
 //      exatamente a doença que este arquivo veio curar.
-export const VERSAO = 9; // v9 (2026-08-16): FECHAR inclui o comprovante — desfaz o conflito que fez a v8 perder para "cada pergunta custa"
+export const VERSAO = 12; // v10 (2026-08-17): força o re-sync que reconstrói language_presets (sumiram do Natura) + pronúncia falada
 
 // Regras que valem para QUALQUER negócio. Ordenadas por quanto custam quando são violadas:
 // as três primeiras destroem a confiança do cliente final na hora, e não têm conserto depois.

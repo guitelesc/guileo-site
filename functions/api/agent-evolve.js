@@ -95,6 +95,50 @@ async function evoluir(request, env) {
     // `prompt=1&agente=ID` — o cérebro CRU que está no provedor, para ver posição e vizinhança de
     // uma regra. "A lição está lá" (âncora) e "a lição é obedecida" são perguntas diferentes: uma
     // regra pode estar presente e perder para a vizinha.
+    // `voz=1&so=<email>` — AFINA A VOZ. Escopo obrigatório: sem `so=` recusa, porque afinar a
+    // frota inteira de uma vez é o erro que derrubou a linha três vezes em 2026-08-16.
+    // O QUE MUDA E POR QUÊ:
+    //   · modelo: `eleven_flash_v2` é otimizado para LATÊNCIA, não para expressividade — ele é
+    //     plano de propósito. Ninguém escolheu isso: entrou como padrão e ficou, do mesmo jeito
+    //     que o `daily_limit: -1`. `turbo_v2_5` tem prosódia (pausa, ênfase, respiração) por
+    //     algumas centenas de ms a mais. Numa ligação de agendamento, natural ganha de instantâneo.
+    //   · stability: CONTRA-INTUITIVO — quanto MAIOR, mais monótona ("leitura de teleprompter").
+    //     0.45 → 0.32 devolve variação de entonação; o similarity_boost alto segura o timbre para
+    //     ela não virar outra pessoa.
+    //   · `speed` NÃO É TOCADO. O Luis disse que amou a velocidade atual; mudar seria desfazer o
+    //     que já está certo para consertar o que está errado.
+    if (url.searchParams.get("voz") === "1") {
+      const so3 = (url.searchParams.get("so") || "").toLowerCase();
+      if (!so3) return json({ ok: false, erro: "use so=<email> — afinar a frota inteira de uma vez não é permitido" }, 400);
+      const todos = await svcJson(env, "agentes_atrasados", { p_secret: env.INGEST_SECRET, p_versao: 999999, p_limite: 500 });
+      const alvo = ((todos && todos.lista) || []).find((a2) => (a2.cliente || "").toLowerCase() === so3);
+      if (!alvo) return json({ ok: false, erro: `não achei ${so3}` }, 404);
+      const g = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${alvo.agente}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+      if (!g.ok) return json({ ok: false, erro: `HTTP ${g.status}` }, 502);
+      const antes = (await g.json())?.conversation_config?.tts || {};
+      const novo = {
+        model_id: url.searchParams.get("modelo") || "eleven_turbo_v2_5",
+        stability: Number(url.searchParams.get("stab") || 0.32),
+        similarity_boost: antes.similarity_boost ?? 0.8,
+      };
+      const up = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${alvo.agente}`, {
+        method: "PATCH", headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_config: { tts: novo } }),
+      });
+      // RELÊ SEMPRE. "PATCH 200" descreve a requisição, não o estado — e a ElevenLabs faz merge.
+      let depois = null, teto = null, fala = "";
+      if (up.ok) {
+        const v = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${alvo.agente}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+        if (v.ok) { const d2 = await v.json(); depois = d2?.conversation_config?.tts || null;
+          teto = d2?.platform_settings?.call_limits?.daily_limit ?? null;
+          fala = d2?.conversation_config?.agent?.first_message || ""; }
+      }
+      const corpoErro = up.ok ? null : (await up.text().catch(() => "")).slice(0, 400);
+      return json({ ok: up.ok, status: up.status, corpo_erro: corpoErro, cliente: so3, antes: { model_id: antes.model_id, stability: antes.stability, speed: antes.speed },
+        depois: depois && { model_id: depois.model_id, stability: depois.stability, similarity_boost: depois.similarity_boost, speed: depois.speed },
+        // as duas coisas que já derrubaram ligação — conferidas DEPOIS de qualquer PATCH
+        teto_diario: teto, saudacao_tem_variavel: /\{\{/.test(fala) });
+    }
     if (url.searchParams.get("prompt") === "1") {
       const alvo = url.searchParams.get("agente") || "";
       const g = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${alvo}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
@@ -282,6 +326,11 @@ async function evoluir(request, env) {
           // ElevenLabs não consegue renderizar a primeira frase e a LIGAÇÃO MORRE antes de atender
           // — foi o que aconteceu em 2026-08-16 com {{caller_ola}}.
           variaveis_declaradas: Object.keys(cc?.agent?.dynamic_variables?.dynamic_variable_placeholders || {}),
+          // OS PRESETS DE IDIOMA MORAM EM conversation_config, NAO em platform_settings.widget.
+          // Procurei no widget, achei {} e quase reportei "o Natura nao fala portugues" — o widget
+          // tem uma lista HOMONIMA e vazia, que e outra coisa. Nome igual em caminho diferente e a
+          // armadilha mais barata de cair e a mais cara de acreditar.
+          idiomas_presets: Object.keys(cc?.language_presets || {}),
           text_only: cc?.conversation?.text_only ?? null,
         },
         platform_settings: d?.platform_settings ?? null });

@@ -8,6 +8,7 @@
 // re-applying the current voice + prompt so an existing agent picks up the latest voice on any sync.
 // Never throws — returns { ok, agent_id, step } so callers can surface the exact outcome.
 import { emitFailure } from "./failure.js";
+import { frasefalada } from "./pronuncia.js";
 import { guardSystemPrompt } from "./guiConstitution.js";
 // O MOTOR DE AGENTE: as lições de ligações reais + a versão que a varredura compara para saber
 // quem ficou para trás. Lição nova → sobe VERSAO lá → /api/agent-evolve atualiza a frota inteira.
@@ -138,7 +139,10 @@ export function buildLanguagePresets(primary, { business, agentName, nativeVoice
     if (code === primary) continue;                    // o primário não é preset, é o padrão
     const g = GREETINGS[code];
     const overrides = {};
-    if (g) overrides.agent = { first_message: g.replace(/\{biz\}/g, biz).replace(/\{name\}/g, name) };
+    // mesma reescrita fonética da saudação primária — por IDIOMA, que é o ponto: "Gui" vira
+    // "Ghee" em inglês e continua "Gui" em português. Sem isto, os presets ficariam corretos no
+    // cadastro e errados na boca, exatamente como estava a saudação principal.
+    if (g) overrides.agent = { first_message: frasefalada(g.replace(/\{biz\}/g, biz).replace(/\{name\}/g, name), code) };
     if (voices[code]) overrides.tts = { voice_id: voices[code] };
     // `overrides` é OBRIGATÓRIO mesmo vazio — a ElevenLabs recusa o preset inteiro sem ele
     // (validation_error "Field required · language_presets.bn.overrides", visto em 2026-08-05).
@@ -154,7 +158,14 @@ export function buildLanguagePresets(primary, { business, agentName, nativeVoice
 // `similarity_boost` alto mantém o timbre reconhecível enquanto ela ganha essa variação.
 // `speed` NÃO é mexido: o Luis disse que amou a velocidade atual — mudar seria desfazer o que já
 // está bom pra tentar consertar o que não está.
-const WARMTH = { stability: 0.45, similarity_boost: 0.8 };
+// ESCOLHA DO LUIS, 2026-08-17, ouvindo os dois lado a lado: FICA O RÁPIDO.
+// O `multilingual_v2` tem prosódia melhor e a ElevenLabs ACEITA (a mensagem de erro dela —
+// "English Agents must use turbo or flash v2" — está incompleta e me fez concluir que era
+// impossível; três testes derrubaram isso). Mas ele responde mais devagar, e numa ligação de
+// agendamento o Luis prefere a resposta imediata. Decisão de produto, não limitação técnica.
+// 0.35 e não 0.30: abaixo de ~0.3 a voz oscila e soa instável — aviso que já estava escrito aqui
+// e que eu ignorei por algumas horas em 2026-08-16.
+const WARMTH = { stability: 0.35, similarity_boost: 0.8 };
 
 // Build the SALES-FIRST Four Seasons concierge prompt + localized first message from the client's brain.
 // agentName lets a client white-label the voice (e.g. "Sofia"); empty → defaults to the Guileo brand "Gui".
@@ -230,7 +241,14 @@ the carrier and risks the whole account, not just one campaign.
   // ES (LatAm): "le atiende" soa a call center espanhol; "habla" é o que se usa de verdade.
   // Mesma tabela GREETINGS que alimenta os language_presets — uma saudação, uma fonte. Antes havia
   // duas cópias (aqui e nos presets) e elas iam divergir na primeira vez que alguém retocasse uma.
-  const firstMessage = (GREETINGS[lang] || GREETINGS.en).replace(/\{biz\}/g, biz).replace(/\{name\}/g, name);
+  // ⚠️ A GRAFIA QUE VAI PARA A BOCA NÃO É A DO CADASTRO. O motor de voz lê com as regras do
+  // idioma dele: "Gui" em inglês sai /gwaɪ/ — "guai" —, que é a leitura CORRETA em inglês de uma
+  // grafia portuguesa. O Luis ouviu isso numa ligação real em 2026-08-16.
+  // `frasefalada` reescreve foneticamente só o que é FALADO; cadastro, e-mail, cockpit e CRM
+  // continuam com o nome de verdade. Ver lib/pronuncia.js — e a regra de que só entra nome que
+  // alguém ouviu sair errado, porque fonética por palpite estraga nome que já saía certo.
+  const firstMessage = frasefalada(
+    (GREETINGS[lang] || GREETINGS.en).replace(/\{biz\}/g, biz).replace(/\{name\}/g, name), lang);
   return { prompt: guardedPrompt, firstMessage, name };
 }
 
@@ -409,7 +427,13 @@ export function buildConversationConfig(env, { business, industry, lang, brain, 
     : "";
   // ElevenLabs rejects flash_v2_5 for English-PRIMARY agents ("English Agents must use turbo or flash v2");
   // turbo_v2_5 is multilingual AND accepted for English → use it for en, flash_v2_5 (multilingual) for pt/es.
-  const ttsModel = L === "en" ? (env.ELEVEN_EN_MODEL || "eleven_flash_v2") : "eleven_flash_v2_5";
+  // `turbo_v2` no lugar do `flash_v2` para ingles: mesma familia (a ElevenLabs so aceita turbo ou
+  // flash v2 em agente ingles), mas o turbo tem prosodia melhor. O `multilingual_v2` e MAIS
+  // expressivo e a API aceita — o Luis ouviu os dois em 2026-08-17 e escolheu o rapido: numa
+  // ligacao de agendamento, resposta imediata ganha.
+  // ⚠️ LICAO DE FORMA: eu tinha mudado so o WARMTH, e o sync seguinte devolveu o modelo antigo,
+  // porque o modelo se decide AQUI. Mudar no agente sem mudar na fonte dura ate o proximo sync.
+  const ttsModel = L === "en" ? (env.ELEVEN_EN_MODEL || "eleven_turbo_v2") : "eleven_flash_v2_5";
   // CADASTRO COMPLETO — a client can pick their OWN voice (agent.voice_key → voice_id, see
   // src/data/agentVoices.js). voiceId wins; the brand default ELEVEN_VOICE_ID is the fallback so the
   // signature stays backward-compatible (callers that don't pass voiceId keep the old behavior).
