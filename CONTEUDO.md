@@ -117,8 +117,19 @@ No days off, no "we're closed", no customer left hanging. Any language, any hour
 👉 Comment "GUI" and she'll call you right now.
 #aiagent #customerservice #nycsmallbusiness #leadgeneration #automation
 
-### Instagram bio (@guileoai) — EN:
-🌱 AI + marketing that answers, sells & grows your business 24/7
-⚡ Live in 7 days · 30-day guarantee · NYC
-👇 Let Gui call you:
-guileoai.com/quiz?ref=ig
+### Instagram — perfis FINAIS (v2, aprovado 2026-08-07):
+**@guileoai** · Nome (pesquisável): `Guileo | AI Receptionist NYC`
+Never miss another call, lead, or sale 🌱
+Gui answers, books & sells for you — 24/7
+Live in 7 days · 30-day guarantee · NYC
+⬇️ Hear her call YOU
+(link: guileoai.com/quiz?ref=ig)
+
+**@guileo.ad** · Nome (pesquisável): `Guileo AD | Websites & Growth NYC`
+A pretty website doesn't pay rent. Ours do. 📈
+Sites, apps & ads — built in 7 days, AI inside
+The engine behind @guileoai
+⬇️ Get yours
+(link: guileoai.com/?ref=igad)
+
+Regra dos perfis: 1ª linha = gancho (aparece na busca) · campo NOME leva keyword pesquisável · 1 CTA · cross-link entre os dois perfis.
