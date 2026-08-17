@@ -271,10 +271,22 @@ export default function SellerCloser({ lang = "pt", seller, market: marketProp, 
         <div className="text-[11px] font-black uppercase tracking-wider text-g-gold">{t.demoTitle}</div>
         <p className="mt-1 text-[12.5px] text-g-muted">{t.demoSub}</p>
 
+        {/* ── DOIS DOS TRÊS PASSOS ESTAVAM QUEBRADOS (auditoria 2026-08-17) ──────────────────
+            Esta é a demo que o vendedor roda AO VIVO, na frente do prospect. Dois dos três botões
+            não levavam a lugar nenhum:
+              · o passo 2 apontava para /portal?demo=1 — e o Portal lê `tab`, `v`, `code` e `speak`,
+                NUNCA `demo`. O prospect clicava e via TELA DE SENHA. Agora vai para /vitrine, que
+                é a vitrine na marca do cliente, feita exatamente pra mostrar a prospect.
+              · o passo 3 apontava para /#chat — e o chat foi REMOVIDO da landing de propósito
+                (gastava Anthropic numa demo errada). O roteiro nunca foi atualizado, então o
+                âncora não tinha alvo: a página só rolava pro topo. Passo apagado em vez de
+                apontado pra qualquer coisa — demo com passo inventado é pior que demo com dois.
+            ⚠️ A LIÇÃO: quando se remove uma superfície, o que APONTAVA pra ela não reclama. Link
+            morto não dá erro, não aparece em build, não aparece em teste — só aparece na hora em
+            que o vendedor está com o cliente na frente. */}
         <div className="mt-4 space-y-3">
           <DemoStep n="1" btn={<a href={`tel:${GUI_DEMO_PHONE}`} className="btn-bright text-[13px]">{t.step1Btn}</a>} say={t.step1Say} theSay={t.theSay} />
-          <DemoStep n="2" btn={<a href="/portal?demo=1" target="_blank" rel="noopener" className="btn-ghost text-[13px]">{t.step2Btn}</a>} say={t.step2Say} theSay={t.theSay} />
-          <DemoStep n="3" btn={<a href="/#chat" target="_blank" rel="noopener" className="btn-ghost text-[13px]">{t.step3Btn}</a>} say={t.step3Say} theSay={t.theSay} />
+          <DemoStep n="2" btn={<a href="/vitrine" target="_blank" rel="noopener" className="btn-ghost text-[13px]">{t.step2Btn}</a>} say={t.step2Say} theSay={t.theSay} />
         </div>
       </div>
 

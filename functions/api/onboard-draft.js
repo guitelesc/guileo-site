@@ -252,7 +252,13 @@ export async function onRequestPost(context) {
     if (action === "wallet") {
       if (await adminOk(b.token)) {
         const r = await rpc("seller_wallet", { p_secret: ING, p_seller_email: "" });
-        return json({ ok: true, scope: "all", rows: r.ok ? await r.json() : [] });
+        // ⚠️ ERA `rows: r.ok ? await r.json() : []` (auditoria 2026-08-17): a falha da RPC virava
+        // LISTA VAZIA com ok:true, e a carteira do /admin dizia "nenhum cliente na carteira ainda"
+        // para um dono que tem clientes pagando. Sete linhas abaixo, o caminho do VENDEDOR já
+        // devolvia 500 no mesmo caso — o padrão honesto e o silencioso conviviam no mesmo arquivo,
+        // separados por sete linhas. É o mesmo pecado dos três motores mortos: erro lido como zero.
+        if (!r.ok) return json({ error: "wallet unavailable (paste db/seller_wallet.sql)" }, 500);
+        return json({ ok: true, scope: "all", rows: await r.json().catch(() => []) });
       }
       const seller = await sellerAuthFull(env, b.seller_email || (b.seller && b.seller.email), b.seller_code);
       if (!seller) return json({ error: "unauthorized" }, 401);

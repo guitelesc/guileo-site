@@ -24,6 +24,10 @@ const indEmoji = (v) => IND[(v || "").toLowerCase()] || "🏪";
 
 export default function ClientWallet({ token }) {
   const [rows, setRows] = useState(null); // null=loading, []=empty
+  // ⚠️ TERCEIRO ESTADO, QUE FALTAVA: erro de leitura. Antes só existiam "carregando" e
+  // "lista" — então 401/500/rede caíam no [] e a tela dizia "nenhum cliente na carteira
+  // ainda" para um dono que tem clientes PAGANDO. Vazio e falha são fatos diferentes.
+  const [erro, setErro] = useState(false);
   const [open, setOpen] = useState(null); // draft id pulled out of the stack
   const [profiles, setProfiles] = useState({}); // client_email → live profile (admin_client_profile)
   const [sellers, setSellers] = useState([]); // roster of active sellers (for the transfer dropdown)
@@ -106,8 +110,9 @@ export default function ClientWallet({ token }) {
         body: JSON.stringify({ action: "wallet", token }),
       });
       const d = await r.json().catch(() => ({}));
-      setRows(Array.isArray(d.rows) ? d.rows : []);
-    } catch { setRows([]); }
+      if (!r.ok || !Array.isArray(d.rows)) { setErro(true); return; }
+      setErro(false); setRows(d.rows);
+    } catch { setErro(true); }
   };
   // LIVE — reloads itself every 30s (and on tab focus) so a client flips 🔵→🟢 with zero clicks
   useEffect(() => {
@@ -139,7 +144,12 @@ export default function ClientWallet({ token }) {
       </div>
 
       {rows === null && <div className="mt-3 h-24 animate-pulse rounded-2xl border border-g-line bg-white/[0.03]" />}
-      {Array.isArray(rows) && rows.length === 0 && (
+      {erro && (
+        <div className="mt-3 grid min-h-[90px] place-items-center rounded-2xl border border-[#e0855f]/45 bg-[#e0855f]/10 px-4 text-center text-[12.5px] font-semibold leading-snug text-[#e0855f]">
+          ⚠️ Não consegui LER a carteira agora (sessão ou banco).<br />Isto NÃO quer dizer que está vazia — ela recarrega em 30s.
+        </div>
+      )}
+      {!erro && Array.isArray(rows) && rows.length === 0 && (
         <div className="mt-3 grid min-h-[90px] place-items-center rounded-2xl border border-dashed border-g-line px-4 text-center text-[12.5px] text-g-muted">
           🌱 Nenhum cliente na carteira ainda — nasce aqui no 1º cadastro aprovado.
         </div>
