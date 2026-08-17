@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { useLang } from "../i18n.jsx";
 import Broto from "../components/Broto.jsx";
 import ActivationRunbook from "../components/ActivationRunbook.jsx";
 import CompanyFinance from "../components/CompanyFinance.jsx";
@@ -44,9 +45,32 @@ const authSupabase = createClient(
 const ICON = { book: "📅", reschedule: "🔁", cancel: "✖️", lead: "🎯", callback: "📞", review: "⭐", sale: "💳", quote: "🧾", order: "🛒", invoice: "🔗", qualify: "🎯", confirm: "✅", winback: "💚", noshow: "🔄", info: "💬" };
 const LABEL = { book: "Booked", reschedule: "Rescheduled", cancel: "Cancelled", lead: "Lead", callback: "Callback", review: "Review", sale: "Sale", quote: "Quote", order: "Order", invoice: "Payment link", qualify: "Qualified", confirm: "Confirmed", winback: "Win-back", noshow: "No-show", info: "Info" };
 
+
+// ── O LOGIN DO /ADMIN FALAVA SÓ INGLÊS (auditoria 2026-08-17) ──────────────────────────────────
+// Esta página inteira é em português e a PORTA DELA estava 100% em inglês: "Private command center",
+// "Password", "Enter →", "Back to site". E não era descuido de uma frase — o arquivo não importava
+// o i18n em lugar nenhum, então não havia nem como traduzir.
+// Por que isto importa mais do que parece: a regra do dono é "nada de texto EN numa tela PT, em
+// TODA superfície". A porta é a primeira coisa que se vê, e é a única tela que um colaborador novo
+// (ou um parceiro em espanhol) encontra antes de qualquer contexto — é o pior lugar possível para
+// a plataforma parecer meio traduzida.
+// ⚠️ SEM SELETOR DE IDIOMA AQUI, DE PROPÓSITO: a tela segue o idioma que a pessoa já escolheu no
+// site (o mesmo `useLang` do resto). Botão de bandeira numa tela de senha é decisão a mais no
+// momento em que a pessoa só quer entrar — e o idioma dela já é conhecido.
+const LOGIN_TX = {
+  pt: { titulo: "Guileo Admin", sub: "Central de comando privada.", ph: "Senha", entrar: "Entrar →", voltar: "← Voltar ao site", vazio: "Digite a senha" },
+  en: { titulo: "Guileo Admin", sub: "Private command center.", ph: "Password", entrar: "Enter →", voltar: "← Back to site", vazio: "Enter the password" },
+  es: { titulo: "Guileo Admin", sub: "Centro de mando privado.", ph: "Contraseña", entrar: "Entrar →", voltar: "← Volver al sitio", vazio: "Escribe la contraseña" },
+  hi: { titulo: "Guileo Admin", sub: "निजी कमांड सेंटर।", ph: "पासवर्ड", entrar: "प्रवेश →", voltar: "← साइट पर वापस", vazio: "पासवर्ड डालें" },
+};
+
 export default function Admin() {
   const [token, setToken] = useState(() => { try { return sessionStorage.getItem("guileo_admin_tok") || ""; } catch { return ""; } });
   const [unlocked, setUnlocked] = useState(() => { try { return !!sessionStorage.getItem("guileo_admin_tok"); } catch { return false; } });
+  // O idioma vem do MESMO seletor do site — a porta do /admin não tem bandeira própria
+  // (ver a nota do LOGIN_TX): a pessoa já escolheu o idioma antes de chegar aqui.
+  const { lang } = useLang();
+  const tL = LOGIN_TX[lang] || LOGIN_TX.pt;
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
   const [rows, setRows] = useState([]);
@@ -165,16 +189,16 @@ export default function Admin() {
   if (!unlocked) {
     return (
       <div className="grid min-h-screen place-items-center bg-g-cream px-5 text-g-word">
-        <form onSubmit={(e) => { e.preventDefault(); const t = pass.trim(); if (!t) { setErr("Enter the password"); return; } try { sessionStorage.setItem("guileo_admin_tok", t); } catch { /* */ } setToken(t); setErr(""); setState("loading"); setUnlocked(true); }}
+        <form onSubmit={(e) => { e.preventDefault(); const t = pass.trim(); if (!t) { setErr(tL.vazio); return; } try { sessionStorage.setItem("guileo_admin_tok", t); } catch { /* */ } setToken(t); setErr(""); setState("loading"); setUnlocked(true); }}
           className="w-full max-w-sm rounded-2xl border border-g-line bg-white/[0.04] p-7 text-center backdrop-blur-sm">
           <div className="text-3xl">🛡️</div>
-          <div className="mt-2 text-[20px] font-black">Guileo Admin</div>
-          <p className="mt-1 text-[13px] text-g-muted">Private command center.</p>
-          <input type="password" value={pass} onChange={(e) => { setPass(e.target.value); setErr(""); }} placeholder="Password" autoFocus
+          <div className="mt-2 text-[20px] font-black">{tL.titulo}</div>
+          <p className="mt-1 text-[13px] text-g-muted">{tL.sub}</p>
+          <input type="password" value={pass} onChange={(e) => { setPass(e.target.value); setErr(""); }} placeholder={tL.ph} autoFocus
             className="mt-5 w-full rounded-xl border border-g-line bg-white/[0.05] px-4 py-3 text-center text-g-word placeholder:text-g-muted focus:border-g-green/50 focus:outline-none" />
           {err && <div className="mt-2 text-[12px] text-[#e0855f]">{err}</div>}
-          <button type="submit" className="mt-3 w-full rounded-xl bg-gradient-to-r from-g-green to-g-dark px-5 py-3 text-[14px] font-bold text-white">Enter →</button>
-          <a href="/" className="mt-4 inline-block text-[12px] text-g-muted hover:text-g-word">← Back to site</a>
+          <button type="submit" className="mt-3 w-full rounded-xl bg-gradient-to-r from-g-green to-g-dark px-5 py-3 text-[14px] font-bold text-white">{tL.entrar}</button>
+          <a href="/" className="mt-4 inline-block text-[12px] text-g-muted hover:text-g-word">{tL.voltar}</a>
         </form>
       </div>
     );
