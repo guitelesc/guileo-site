@@ -45,24 +45,35 @@ export const ENTIDADES = {
     moeda: "BRL",
     idiomas: ["pt"],
   },
+  // 🚨 A TRIBECA GLOBAL INC. NÃO EXISTE AINDA (Luis, 17/08/2026: "só tem a ORIGEM, a Tribeca ainda
+  // não está aberta"). Ela fica aqui APENAS como plano, com `constituida:false`, e NÃO PODE emitir
+  // documento. Isto não é um dado faltando — é pior: nomear como parte uma sociedade que não foi
+  // constituída não deixa o contrato incompleto, deixa VAZIO. Não há quem se obrigue, não há quem
+  // seja cobrado, e do outro lado sobra a alegação de que a contratada se apresentou como algo que
+  // não é. Enquanto `constituida` for false, `entidadePorIdioma` devolve a ORIGEM em TODOS os
+  // idiomas — um contrato em inglês assinado pela ORIGEM é perfeitamente válido; um assinado por
+  // uma empresa inexistente não é.
   us: {
     id: "us",
+    constituida: false,
     razaoSocial: "Tribeca Global Inc.",
-    fantasia: "Guileo",
+    fantasia: null,
+    marca: "Guileo",
     docTipo: "EIN",
-    doc: null,            // ⏳ EIN
-    estadoConstituicao: null, // ⏳ Delaware? New York? — decide o foro do contrato internacional
-    endereco: null,       // ⏳ endereço da sede
+    doc: null,
+    estadoConstituicao: null, // Delaware? New York? — decidirá o foro do contrato internacional
+    endereco: null,
     pais: "United States",
-    lei: "US",            // ⚠️ a cláusula de lei aplicável AINDA não tem a versão americana
+    lei: "US",
     moeda: "USD",
-    idiomas: ["en", "es"],
+    idiomas: [],              // vazio de propósito: não atende idioma nenhum enquanto não existir
   },
 };
 
 // A parte está pronta para assinar um contrato de receita?
 export function qualificado(e) {
   if (!e) return false;
+  if (e.constituida === false) return false; // sociedade não constituída não assina nada
   const base = !!(e.razaoSocial && e.doc && e.endereco);
   return e.id === "us" ? base && !!e.estadoConstituicao : base;
 }
@@ -70,6 +81,7 @@ export function qualificado(e) {
 // O que falta, em português, para quem for cobrar o dado.
 export function pendencias(e) {
   if (!e) return ["entidade inexistente"];
+  if (e.constituida === false) return ["a sociedade ainda não foi constituída"];
   const f = [];
   if (!e.doc) f.push(e.docTipo);
   if (!e.endereco) f.push("endereço");
@@ -80,7 +92,15 @@ export function pendencias(e) {
 // Escolhe a entidade pelo idioma do documento. Regra simples e honesta: português → ORIGEM (BR);
 // inglês/espanhol → a Inc. Pode ser sobrescrito na emissão quando o caso fugir da regra (um cliente
 // brasileiro que fatura em dólar, por exemplo).
-export const entidadePorIdioma = (lang) => (lang === "pt" ? ENTIDADES.br : ENTIDADES.us);
+export const entidadePorIdioma = (lang) => {
+  const alvo = lang === "pt" ? ENTIDADES.br : ENTIDADES.us;
+  // 🚨 O PORTÃO: entidade não constituída nunca emite documento — cai na ORIGEM, que existe.
+  // Sem esta linha, todo contrato em inglês ou espanhol sairia em nome da Tribeca Global Inc., uma
+  // sociedade que ainda não foi aberta. Um contrato em inglês assinado pela ORIGEM LTDA é
+  // perfeitamente válido; um assinado por empresa inexistente não obriga ninguém — e ainda entrega
+  // ao outro lado o argumento de que a contratada se apresentou como algo que não é.
+  return alvo && alvo.constituida !== false ? alvo : ENTIDADES.br;
+};
 
 // Linha de qualificação para o cabeçalho do contrato, nos 3 idiomas. Só imprime o que existe.
 export function qualificacao(e, lang = "pt") {
