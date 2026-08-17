@@ -27,10 +27,10 @@ import { useLang } from "../i18n.jsx";
 // "Você compra o resultado, não a ferramenta" FICOU: é o posicionamento contra quem vende software
 // — só saiu do fim de uma lista, onde ninguém lia, para o fim da frase, onde fecha o raciocínio.
 const HERO_COPY = {
-  en: { eyebrow:"AI · ads · creative — the agency that grows local businesses", sub:["The calls you miss don't leave a voicemail — they call the next place on Google. "," answers every one, in your customer's language, and closes it: booked on your calendar, or deposit already paid. You buy the ","result, not the tools","."], method:["Brain","AD","Build"], owns:["performance","growth","foundation"], cta:"Hear Gui work", sub2:"Leave your number — she calls in about a minute.", h1:["Work Smart.","Grow Faster.","Sleep Better."], promessa:"We bring the customers. AI answers, books & sells. You grow." },
-  pt: { eyebrow:"AI · anúncios · criativo — a agência que faz o negócio local crescer", sub:["A ligação que ninguém atende não deixa recado — ela liga pro próximo da lista do Google. A "," atende todas, no idioma do seu cliente, e fecha: horário marcado na agenda, ou sinal já pago. Você compra o ","resultado, não a ferramenta","."], method:["Brain","AD","Build"], owns:["performance","crescimento","fundação"], cta:"Ouça a Gui trabalhar", sub2:"Deixa seu número — ela liga em mais ou menos um minuto.", h1:["Trabalhe com inteligência.","Cresça mais rápido.","Durma melhor."], promessa:"A gente traz os clientes. A AI atende, agenda e vende. Você cresce." },
-  es: { eyebrow:"IA · anuncios · creativo — la agencia que hace crecer al negocio local", sub:["La llamada que nadie contesta no deja mensaje — llama al siguiente de la lista de Google. "," contesta todas, en el idioma de tu cliente, y cierra: cita agendada, o anticipo ya pagado. Compras el ","resultado, no la herramienta","."], method:["Brain","AD","Build"], owns:["rendimiento","crecimiento","base"], cta:"Escucha a Gui trabajar", sub2:"Deja tu número — te llama en un minuto.", h1:["Trabaja inteligente.","Crece más rápido.","Duerme mejor."], promessa:"Nosotros traemos los clientes. La IA contesta, agenda y vende. Tú creces." },
-  hi: { eyebrow:"AI · विज्ञापन · क्रिएटिव — स्थानीय व्यवसाय बढ़ाने वाली एजेंसी", sub:["छूटी हुई कॉल मैसेज नहीं छोड़ती — वो Google पर अगली दुकान को कॉल करती है। "," हर कॉल उठाती है, आपके ग्राहक की भाषा में, और उसे बंद करती है: कैलेंडर में बुकिंग, या चुकाया हुआ एडवांस। आप ","नतीजा खरीदते हैं, टूल नहीं","।"], method:["Brain","AD","Build"], owns:["परफ़ॉर्मेंस","ग्रोथ","नींव"], cta:"Gui को काम करते सुनें", sub2:"अपना नंबर छोड़ें — वो लगभग एक मिनट में कॉल करती है।", h1:["होशियारी से काम।","तेज़ी से बढ़ें।","चैन से सोएँ।"], promessa:"ग्राहक हम लाते हैं। AI जवाब देती, बुक करती और बेचती है। आप बढ़ते हैं।" },
+  en: { eyebrow:"AI · ads · creative — the agency that grows local businesses", sub:["A missed call doesn't leave a voicemail — it calls the next place on Google. "," answers in your customer's language and takes the deposit before they hang up. You buy the ","result, not the tools","."], method:["Brain","AD","Build"], owns:["performance","growth","foundation"], cta:"Hear Gui work", sub2:"Leave your number — she calls in about a minute.", h1:["Work Smart.","Grow Faster.","Sleep Better."], promessa:"We bring the customers. AI answers, books & sells. You grow." },
+  pt: { eyebrow:"AI · anúncios · criativo — a agência que faz o negócio local crescer", sub:["A ligação perdida não deixa recado — ela liga pro próximo da lista do Google. A "," atende no idioma do seu cliente e já pega o sinal antes de desligar. Você compra o ","resultado, não a ferramenta","."], method:["Brain","AD","Build"], owns:["performance","crescimento","fundação"], cta:"Ouça a Gui trabalhar", sub2:"Deixa seu número — ela liga em mais ou menos um minuto.", h1:["Trabalhe com inteligência.","Cresça mais rápido.","Durma melhor."], promessa:"A gente traz os clientes. A AI atende, agenda e vende. Você cresce." },
+  es: { eyebrow:"IA · anuncios · creativo — la agencia que hace crecer al negocio local", sub:["La llamada perdida no deja mensaje — llama al siguiente de la lista de Google. "," contesta en el idioma de tu cliente y cobra el anticipo antes de colgar. Compras el ","resultado, no la herramienta","."], method:["Brain","AD","Build"], owns:["rendimiento","crecimiento","base"], cta:"Escucha a Gui trabajar", sub2:"Deja tu número — te llama en un minuto.", h1:["Trabaja inteligente.","Crece más rápido.","Duerme mejor."], promessa:"Nosotros traemos los clientes. La IA contesta, agenda y vende. Tú creces." },
+  hi: { eyebrow:"AI · विज्ञापन · क्रिएटिव — स्थानीय व्यवसाय बढ़ाने वाली एजेंसी", sub:["छूटी हुई कॉल मैसेज नहीं छोड़ती — वो Google पर अगली दुकान को कॉल करती है। "," आपके ग्राहक की भाषा में जवाब देती है और फ़ोन रखने से पहले एडवांस ले लेती है। आप ","नतीजा खरीदते हैं, टूल नहीं","।"], method:["Brain","AD","Build"], owns:["परफ़ॉर्मेंस","ग्रोथ","नींव"], cta:"Gui को काम करते सुनें", sub2:"अपना नंबर छोड़ें — वो लगभग एक मिनट में कॉल करती है।", h1:["होशियारी से काम।","तेज़ी से बढ़ें।","चैन से सोएँ।"], promessa:"ग्राहक हम लाते हैं। AI जवाब देती, बुक करती और बेचती है। आप बढ़ते हैं।" },
 };
 
 // A ARITMÉTICA QUE SUBSTITUIU O CLICHÊ. 168 horas tem a semana; uma loja aberta ~50 deixa 118 em
@@ -41,10 +41,10 @@ const HERO_COPY = {
 const PILAR_COR = ["#FF8A33", "#4C9AFF", "#9AA0FF"];
 
 const HORAS = {
-  en: "Your doors are open about 50 hours a week. The phone rings 168. Gui works the other 118 — nights, Sundays, the lunch rush.",
-  pt: "Sua porta abre umas 50 horas por semana. O telefone toca 168. A Gui cobre as outras 118 — noite, domingo, hora do almoço.",
-  es: "Tu puerta abre unas 50 horas por semana. El teléfono suena 168. Gui cubre las otras 118 — noche, domingo, hora del almuerzo.",
-  hi: "आपकी दुकान हफ़्ते में करीब 50 घंटे खुली रहती है। फ़ोन 168 घंटे बजता है। बाकी 118 घंटे Gui संभालती है — रात, रविवार, लंच का समय।",
+  en: "You're open about 50 hours a week. The phone rings 168. Gui works the rest — nights, Sundays, the lunch rush.",
+  pt: "Você abre umas 50 horas por semana. O telefone toca 168. A Gui cobre o resto — noite, domingo, hora do almoço.",
+  es: "Abres unas 50 horas por semana. El teléfono suena 168. Gui cubre el resto — noche, domingo, hora del almuerzo.",
+  hi: "आप हफ़्ते में करीब 50 घंटे खुले रहते हैं। फ़ोन 168 घंटे बजता है। बाकी Gui संभालती है — रात, रविवार, लंच।",
 };
 
 // HeroV2 — TEST (/v2). Realistic, LIVING iPhone-2026 mockup of Gui working nonstop.
@@ -337,7 +337,7 @@ export default function HeroV2() {
               A medida do parágrafo subiu de max-w-md para 32rem e o corpo de 15.5 para 16.5px —
               linha curta demais ao lado de um h1 de 4.5rem faz o texto parecer nota de rodapé. */}
           <p className="mt-5 max-w-[32rem] text-[16.5px] leading-[1.65] text-g-ink">
-            <span className="font-bold text-g-word">{C.sub[0]}</span>Gui{C.sub[1]}<span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text font-bold text-transparent">{C.sub[2]}</span>{C.sub[3]}
+            {C.sub[0]}<b className="font-semibold text-g-word">Gui</b>{C.sub[1]}<span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text font-bold text-transparent">{C.sub[2]}</span>{C.sub[3]}
           </p>
 
           {/* PAINEL DE PROVA — o pico visual da coluna. Hairline champanhe + fundo quase imperceptível:
