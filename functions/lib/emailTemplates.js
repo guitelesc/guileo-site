@@ -2152,6 +2152,67 @@ export function dunningEmail({ name = "there", business = "your business", amoun
 // /api/nps (voteUrlBase already carries e=<b64url email>&s=<hmac>; we only append &vote=N), so the
 // score lands with zero forms, zero login. Warm concierge tone — Gui asking how she's doing, not a
 // survey robot. Sent by /api/nps at most once per client per 90 days (nps_claim, db/nps.sql).
+// RELATÓRIO DO EVAL NOTURNO — para o DONO (Luis), não para cliente. 2026-08-17.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// POR QUE EXISTE: o eval roda toda noite e grava a nota no banco. Só que "gravado" não é
+// "sabido" — durante 11 dias o caso `voice-price-unknown-service` reprovou todas as noites, com
+// o motivo escrito por extenso no `judge_notes`, e ninguém leu. Medição que exige alguém abrir
+// para descobrir não é monitor: é arquivo. Este e-mail é o que transforma o número em aviso.
+//
+// ⚠️ O ASSUNTO CARREGA O VEREDITO, não o nome do relatório. "Eval 17/08" faz o dono abrir para
+// descobrir se importa; "2 reprovaram · média 78" ele decide sem abrir. E-mail de monitor que
+// obriga a abrir é e-mail que passa a ser ignorado na terceira semana.
+//
+// ⚠️ REPROVADO VEM PRIMEIRO E COM O MOTIVO DO JUIZ. A tentação é abrir com a média — é o número
+// bonito. Mas média sobe com caso fácil: 12 passando e 1 reprovando dá 92 e esconde exatamente
+// o caso que está perdendo cliente. Primeiro o que falhou, depois a conta.
+export function evalReportEmail({ dateLabel = "", quandoRodou = "", agente = "voice", media = 0, total = 0, reprovados = 0, casos = [], anterior = null, lang = "pt" } = {}) {
+  const t = lang === "pt" ? {
+    eyebrow: "Guileo · qualidade da Gui",
+    h1: reprovados ? `${reprovados} caso${reprovados > 1 ? "s" : ""} reprovou` : "Todos os casos passaram",
+    subj: reprovados
+      ? `Gui · ${reprovados} reprovou · média ${media} (${dateLabel})`
+      : `Gui · ${total} casos ok · média ${media} (${dateLabel})`,
+    pre: reprovados ? "O que falhou e por quê, direto do juiz." : "Rodada limpa — a conta está abaixo.",
+    rodou: "Rodada de", falharam: "O que reprovou", passaram: "Passaram",
+    conta: "A conta", casosLabel: "casos", mediaLabel: "média", antes: "rodada anterior",
+    nada: "Nenhum caso reprovou nesta rodada.",
+    rodape: "Este aviso sai do cron todas as noites, depois do eval. Se ele parar de chegar, o eval parou de rodar — e a ausência do aviso é o próprio alarme.",
+  } : {
+    eyebrow: "Guileo · Gui quality",
+    h1: reprovados ? `${reprovados} case${reprovados > 1 ? "s" : ""} failed` : "All cases passed",
+    subj: reprovados ? `Gui · ${reprovados} failed · avg ${media} (${dateLabel})` : `Gui · ${total} cases ok · avg ${media} (${dateLabel})`,
+    pre: reprovados ? "What failed and why, straight from the judge." : "Clean run — the numbers are below.",
+    rodou: "Run of", falharam: "What failed", passaram: "Passed",
+    conta: "The numbers", casosLabel: "cases", mediaLabel: "average", antes: "previous run",
+    nada: "No case failed in this run.",
+    rodape: "This alert ships from cron every night, after the eval. If it stops arriving, the eval stopped running — the missing alert IS the alarm.",
+  };
+  const falhas = casos.filter((c) => !c.passou);
+  const oks = casos.filter((c) => c.passou);
+  const linhaFalha = (c) => `
+    <div style="border-left:2px solid ${B.gold};padding:2px 0 2px 12px;margin-bottom:14px;">
+      <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;font-weight:800;color:${B.ink};">
+        ${esc(c.id)} <span style="font-weight:600;color:${B.muted};">· ${Number(c.nota) || 0}</span>
+      </div>
+      <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12.5px;line-height:1.55;color:${B.ink2};margin-top:3px;">${esc(c.motivo || "")}</div>
+    </div>`;
+  const body = `
+    <div style="font-family:'Inter','SF Pro Display',Helvetica,Arial,sans-serif;font-size:21px;font-weight:900;color:${B.ink};">${esc(t.h1)}</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};margin-top:4px;">${esc(t.rodou)} ${esc(quandoRodou)} · ${esc(agente)}</div>
+    <div style="height:16px;font-size:0;">&nbsp;</div>
+    ${falhas.length ? `<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;font-weight:900;letter-spacing:0.14em;text-transform:uppercase;color:${B.muted};margin-bottom:10px;">${esc(t.falharam)}</div>${falhas.map(linhaFalha).join("")}`
+      : `<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;color:${B.ink};">${esc(t.nada)}</div>`}
+    <div style="height:6px;font-size:0;">&nbsp;</div>
+    ${panel(`<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.7;color:${B.ink2};">
+      <b style="color:${B.ink};">${esc(t.conta)}:</b> ${total} ${esc(t.casosLabel)} · ${reprovados} ✕ · ${esc(t.mediaLabel)} <b style="color:${B.ink};">${media}</b>
+      ${anterior ? `<br><span style="color:${B.muted};">${esc(t.antes)}: ${anterior.total} ${esc(t.casosLabel)} · ${anterior.reprovados} ✕ · ${esc(t.mediaLabel)} ${anterior.media}</span>` : ""}
+    </div>`)}
+    ${oks.length ? `<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11.5px;color:${B.muted};margin-top:14px;"><b>${esc(t.passaram)}:</b> ${oks.map((c) => esc(c.id)).join(" · ")}</div>` : ""}
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;line-height:1.6;color:${B.muted};margin-top:18px;">${esc(t.rodape)}</div>`;
+  return { subject: t.subj, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+}
+
 export function npsEmail({ name = "there", business = "", voteUrlBase = "https://guileoai.com/api/nps", lang = "en" } = {}) {
   name = esc(name); business = esc(business);
   const biz = business ? ` <span style="color:${B.ink};font-weight:600;">${business}</span>` : "";

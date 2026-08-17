@@ -157,6 +157,17 @@ export async function onRequest(context) {
       // 07/08, 13/08 e 14/08. A 2ª chance é grátis: `ops_run_claim` (janela de 20h) devolve
       // "ja_rodou_hoje" e sai sem chamar modelo se a 1ª tiver dado certo.
       if (hourUTC === 0 || hourUTC === 1) targets.push({ name: "agent-eval", url: `${base}/api/agent-eval?cadeia=1&token=${t}` });
+      // O AVISO DO EVAL, ÀS 02h UTC (22h NY) — uma hora depois da 2ª chance do eval.
+      // Luis, 2026-08-17: «me avisa quando o eval rodar». A resposta certa não é eu lembrar: é o
+      // servidor mandar o e-mail todas as noites, para sempre, sem depender de sessão nenhuma.
+      // POR QUE 02h E NÃO 00h: o eval tem duas chances (00h e 01h). Se o aviso saísse às 00h,
+      // numa noite em que a 1ª falhasse ele relataria a rodada de ONTEM com a data de hoje — e
+      // relatório que erra a data é pior que nenhum, porque parece confiável. Às 02h as duas
+      // chances já passaram.
+      // O endpoint tem trava de 20h (ops_run_claim), então o bloco horário não repete o aviso; e
+      // se a última rodada tiver mais de 6h ele muda o assunto para "o eval NÃO rodou" em vez de
+      // reenviar nota velha como novidade.
+      if (hourUTC === 2) targets.push({ name: "eval-report", url: `${base}/api/eval-report?token=${t}` });
     }
     // daily ~13:00 UTC (9am ET): dates/birthdays/rebooking + NPS + money reconcile
     // two chances (13h AND 14h): a single failed tick must not skip the whole day/week —
