@@ -22,6 +22,17 @@ function fill(text, vals) {
     .replace(/\[(EMAIL|E-MAIL|CORREO)\]/g, cp.email || "[____]");
 }
 
+// Troca SÓ a cifra da frente da linha de pagamento pelo valor realmente acordado. Casa "US$ 449/mês",
+// "R$ 2.400/mês", "$999/mo" — e não encosta em nada que não comece com dinheiro, então as 8 formas
+// de pagamento sem cifra ("50% na assinatura, 50% na entrega") passam intactas.
+const PRECO_NA_FRENTE = /^\s*(?:US\$|R\$|\$|USD|BRL|€|EUR)\s?[\d.,]+\s*(?:\/\s*(?:m[êe]s|mo|month|mensal))?\s*\.?\s*/i;
+function precoUnico(texto, amount) {
+  const t = String(texto || "");
+  const v = String(amount || "").trim();
+  if (!v || !PRECO_NA_FRENTE.test(t)) return t;
+  return (v.replace(/\s*$/, "") + ". " + t.replace(PRECO_NA_FRENTE, "")).trim();
+}
+
 export function buildBody({ scope = "guileo_client", code, lang = "pt", kind = "contract", provider = {}, counterparty = {}, amount = "" } = {}) {
   const t = findTemplate(scope, code);
   const date = new Date().toLocaleDateString(lang === "pt" ? "pt-BR" : lang === "es" ? "es-ES" : "en-US");
@@ -33,9 +44,19 @@ export function buildBody({ scope = "guileo_client", code, lang = "pt", kind = "
     provider: { name: provider.name || "Tribeca Global Inc. · Guileo", ...provider },
     counterparty,
     summary: L(t.summary, lang),
-    deliverables: scope === "guileo_client" ? (L(t.deliverables, lang) || []) : null,
-    timeline: scope === "guileo_client" ? L(t.timeline, lang) : null,
-    payment: scope === "guileo_client" ? L(t.payment, lang) : null,
+    deliverables: scope === "guileo_client" ? (L(t.deliverables, lang) || []).map((d) => fill(d, vals)) : null,
+    timeline: scope === "guileo_client" ? fill(L(t.timeline, lang), vals) : null,
+    // ⚠️ UM CONTRATO NÃO PODE TER DOIS PREÇOS (2026-08-17).
+    // Os modelos de plano (GUI-ESSENTIAL/PRO/FULL) cravam o preço de tabela no campo de pagamento
+    // — "US$ 449/mês. Garantia de 30 dias…". Quando o vendedor fecha um valor NEGOCIADO, o
+    // documento saía com o preço de tabela no pagamento E o valor real no total: dois números
+    // diferentes no mesmo instrumento, que é convite a disputa e some com a força do contrato.
+    // (Encontrado gerando o 1º documento de verdade — o mesmo defeito de preço-âncora que já tinha
+    // feito a agente cotar $118 de outro serviço numa ligação real.)
+    // Quando há valor explícito, ele MANDA: a cifra da frente é trocada e o resto — que carrega a
+    // garantia de 30 dias — fica intacto. Sem valor explícito, o preço de tabela continua valendo,
+    // que é o comportamento certo pra quem só quer o plano padrão.
+    payment: scope === "guileo_client" ? precoUnico(fill(L(t.payment, lang), vals), amount) : null,
     bodyText: scope === "client_customer" ? fill(L(t.body, lang), vals) : null,
     amount,
     clauses: kind === "quote" ? null : clauseSet,

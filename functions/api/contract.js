@@ -29,9 +29,13 @@ export async function onRequestPost(context) {
     if (action === "sign") {
       const ip = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for") || "";
       const r = await rpc("contract_sign_token", { p_token: (b.sign_token || "").toString(), p_signer_name: (b.signer_name || "").toString(), p_ip: ip.split(",")[0].trim() });
-      if (!r.ok) return json({ ok: false, signed: false }, 200);
+      // ⚠️ A RECUSA PRECISA TER MOTIVO E STATUS (2026-08-17). Antes, banco fora do ar devolvia
+      // {ok:false,signed:false} com HTTP 200 — indistinguível de "token inválido" — e a página
+      // reagia igual aos dois: voltava o botão ao normal e não dizia nada. No instante da
+      // ASSINATURA, que é onde o dinheiro entra. Agora o motivo viaja e a tela fala.
+      if (!r.ok) return json({ ok: false, signed: false, motivo: "indisponivel" }, 502);
       const ok = await r.json();
-      return json({ ok: true, signed: ok === true });
+      return json({ ok: true, signed: ok === true, motivo: ok === true ? null : "link_invalido_ou_ja_assinado" });
     }
 
     // ── ADMIN/PORTAL — gated by the blitz token (same as /api/crm, /api/noshow-radar) ──
