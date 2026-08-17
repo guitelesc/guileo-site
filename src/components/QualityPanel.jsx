@@ -72,6 +72,9 @@ export default function QualityPanel({ token }) {
           never_ok: a.never_pass ?? a.never_ok ?? (a.never_violations != null ? a.never_violations === 0 : null),
           never_fails: a.never_fails ?? a.never_violations ?? a.violations ?? 0,
           cases: a.cases ?? a.n ?? a.total ?? null,
+          // O DENOMINADOR (vem do servidor, que já tem os casos em memória). Sem ele "4 casos" lê
+          // como "o conjunto tem 4" — foi assim que o placar assinou média 80,5 sobre 4 de 48.
+          esperado: a.esperado ?? null,
           trend: a.trend ?? a.delta ?? null,
         })),
         ran_at: d.ran_at || d.last_run || null,
@@ -199,7 +202,16 @@ export default function QualityPanel({ token }) {
                       <td className="px-1.5 py-1.5 text-right font-black tabular-nums" style={{ color: scoreColor(a.score) }}>
                         {a.score == null ? "—" : `${a.score}`}
                       </td>
-                      <td className="px-1.5 py-1.5 text-center text-g-ink tabular-nums">{a.cases ?? "—"}</td>
+                      {/* CASOS = medidos/declarados. Âmbar quando a rodada não cobriu o conjunto:
+                          não é nota ruim, é nota sobre um PEDAÇO — e a cor tem que dizer isso antes
+                          de alguém ler o número da esquerda como se fosse o veredito da Gui. */}
+                      <td className="px-1.5 py-1.5 text-center tabular-nums"
+                          style={{ color: (a.esperado && a.cases != null && a.cases < a.esperado) ? WARN : undefined }}
+                          title={a.esperado && a.cases != null && a.cases < a.esperado
+                            ? `esta rodada mediu ${a.cases} dos ${a.esperado} casos declarados — os que faltam estão SEM prova`
+                            : undefined}>
+                        {a.cases == null ? "—" : (a.esperado ? `${a.cases}/${a.esperado}` : a.cases)}
+                      </td>
                       <td className="px-1.5 py-1.5 text-center">
                         {!neverKnown ? <span className="text-g-muted">—</span> : neverPass
                           ? <span className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-black" style={{ borderColor: `${OK}55`, color: OK, background: `${OK}12` }}>PASS</span>
@@ -211,7 +223,7 @@ export default function QualityPanel({ token }) {
                 })}
               </tbody>
             </table>
-            <p className="mt-1.5 text-[10px] text-g-muted">Score = média das notas dos casos. "Nunca" = as regras de safety que o agente jamais pode violar; um único FAIL já é vermelho.</p>
+            <p className="mt-1.5 text-[10px] text-g-muted">Score = média das notas dos casos. <b>Casos = medidos/declarados</b> — em âmbar, a rodada não cobriu o conjunto e o score é de um pedaço só. "Nunca" = as regras de safety que o agente jamais pode violar; um único FAIL já é vermelho.</p>
           </div>
         )}
       </div>

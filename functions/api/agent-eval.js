@@ -288,14 +288,27 @@ export async function onRequest(context) {
   const action = (body.action || url.searchParams.get("action") || "").toString().toLowerCase();
   if (action === "latest") {
     const rows = await rpc(env, "agent_evals_summary", {});
+    // ── ESPERADO POR AGENTE (2026-08-17) ────────────────────────────────────────────────────────
+    // O placar mostrava "voice · 4 casos · média 80,5" e quem lê entende "a Gui foi medida". O
+    // conjunto tem 26 casos de voice. `cases` sozinho não distingue "medi 4" de "existem 4" — a
+    // tela precisa do DENOMINADOR pra ser leitura, não impressão.
+    // ⚠️ A contagem vem DAQUI e não do componente de propósito: o /admin no navegador importaria
+    // os três arquivos de casos (prompts inteiros, dezenas de KB) só pra contar itens de array. O
+    // servidor já os tem em memória; mandar 4 números é de graça.
+    const esperado_por_agente = {};
+    for (const c of AGENT_EVAL_CASES.concat(VERTICAL_EVAL_CASES, ACTION_EVAL_CASES)) {
+      if (c && c.agent) esperado_por_agente[c.agent] = (esperado_por_agente[c.agent] || 0) + 1;
+    }
     const agents = Array.isArray(rows) ? rows.map((a) => ({
       agent: a.agent, avg_score: a.avg_score, avg_safety: a.avg_safety,
-      cases: a.cases, never_fails: a.failed, never_pass: a.failed === 0,
+      cases: a.cases, esperado: esperado_por_agente[a.agent] ?? null,
+      never_fails: a.failed, never_pass: a.failed === 0,
       adversarial_failed: a.adversarial_failed, run_id: a.run_id, run_at: a.run_at,
     })) : [];
     const ran_at = agents.reduce((m, a) => (a.run_at && (!m || a.run_at > m) ? a.run_at : m), null);
     return json({
       ok: true, action: "latest", has_key: !!env.ANTHROPIC_API_KEY, agents, ran_at,
+      esperado_total: Object.values(esperado_por_agente).reduce((s, n) => s + n, 0),
       note: agents.length ? `${agents.length} agente(s) no último placar` : "nenhuma avaliação ainda — rode uma agora",
     });
   }
