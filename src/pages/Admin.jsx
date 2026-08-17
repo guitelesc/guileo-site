@@ -50,6 +50,8 @@ export default function Admin() {
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
   const [rows, setRows] = useState([]);
+  // Qual feed falhou (nome da RPC) — nunca `true` genérico: saber QUAL some com a adivinhação.
+  const [feedErr, setFeedErr] = useState(null);
   const [state, setState] = useState("loading");
   const [clients, setClients] = useState([]);
   const [clientsState, setClientsState] = useState("loading"); // loading | ok | err
@@ -105,13 +107,21 @@ export default function Admin() {
       }
       setRows(data || []); setState("ok");
       // platform-wide REAL events (calls / payments / messages across all clients) — same token gate
+      // ⚠️ AS TRÊS LEITURAS ABAIXO FALHAVAM EM SILÊNCIO (auditoria 2026-08-17).
+      // Era `if (!x.error) setX(...)`: em falha, NADA acontecia — o estado ficava no valor inicial
+      // e o painel exibia "0 visitas", "0 eventos hoje", Jornada em "Carregando…" para sempre.
+      // Pior: o selo dizia "🟢 Tudo no ar", porque `sysOnline` olhava só a PRIMEIRA das quatro.
+      // É o semáforo do dono desligando a desconfiança exatamente na hora em que ela era devida.
+      // Agora cada falha acende `feedErr`, e o selo verde exige as quatro.
       const ev = await supabase.rpc("admin_all_events", { p_token: token });
-      if (alive && !ev.error) setRealEvents(ev.data || []);
+      if (alive) { if (!ev.error) setRealEvents(ev.data || []); else setFeedErr("admin_all_events"); }
       const st = await supabase.rpc("admin_site_stats", { p_token: token });
-      if (alive && !st.error) setSiteStats(st.data || null);
+      if (alive) { if (!st.error) setSiteStats(st.data || null); else setFeedErr("admin_site_stats"); }
       // unified lead journey: demo → onboarding → retention (one token-gated aggregate)
       const jr = await supabase.rpc("admin_journey", { p_token: token });
-      if (alive && !jr.error) setJourney(jr.data || null);
+      // ⚠️ E O SQL DESTE AQUI TERMINA EM `exception when others then return null` — qualquer tabela
+      // ausente devolve SUCESSO com data null. Então "sem erro" não bastava: null também é falha.
+      if (alive) { if (!jr.error && jr.data) setJourney(jr.data); else setFeedErr("admin_journey"); }
       if (alive) setLastSync(new Date()); // stamp: the REAL feeds just refreshed
     };
     load();
@@ -167,7 +177,9 @@ export default function Admin() {
   // ── System health vitals (computed from data already loaded) ──
   const todayStr = new Date().toDateString();
   const eventsToday = realEvents.filter((e) => { try { return new Date(e.created_at).toDateString() === todayStr; } catch { return false; } }).length;
-  const sysOnline = state === "ok"; // the token-gated RPCs returned → API + DB healthy
+  // ⚠️ ERA `state === "ok"` — e `state` só reflete a PRIMEIRA das quatro leituras (admin_actions).
+  // Três podiam estar mortas sob um selo verde. Verde agora exige silêncio nas quatro.
+  const sysOnline = state === "ok" && !feedErr;
   const HCell = ({ ok = true, label, value }) => (
     <div className="rounded-xl border border-g-line bg-white/[0.03] px-3 py-2.5">
       <div className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wide text-g-muted">
@@ -326,7 +338,12 @@ export default function Admin() {
                 <div className="text-[12px] font-bold uppercase tracking-wider text-g-green">🩺 Saúde do sistema</div>
                 <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-black ${sysOnline ? "border-g-green/45 bg-g-green/10 text-g-green" : "border-[#e0855f]/45 bg-[#e0855f]/10 text-[#e0855f]"}`}>
                   <span className="relative flex h-2 w-2"><span className={`absolute inline-flex h-full w-full animate-ping rounded-full ${sysOnline ? "bg-g-green/60" : "bg-[#e0855f]/60"}`} /><span className={`relative inline-flex h-2 w-2 rounded-full ${sysOnline ? "bg-g-green" : "bg-[#e0855f]"}`} /></span>
-                  {sysOnline ? "Tudo no ar" : "Verificando…"}
+                  {/* ⚠️ "Verificando…" era o texto para TODOS os casos que não fossem verde — então
+                      uma leitura MORTA aparecia como carregamento eterno, e ninguém investiga um
+                      spinner. Agora "Verificando…" só é dito enquanto realmente carrega; falha diz
+                      o NOME da RPC que não respondeu, que é o que permite consertar em vez de
+                      adivinhar. */}
+                  {sysOnline ? "Tudo no ar" : feedErr ? `⚠️ ${feedErr} não respondeu` : "Verificando…"}
                 </span>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3">

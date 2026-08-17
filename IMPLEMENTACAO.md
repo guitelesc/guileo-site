@@ -57,6 +57,20 @@
 ## ROTA-CANAL · ligar um canal pendente (WhatsApp/IG/…)
 **Quando:** a API/aprovação do canal libera. **Passos:** setar a env/creds do canal no Cloudflare → o código já wired acende sozinho (padrão scaffold-inerte). WhatsApp: aprovar sender Twilio. IG/FB/TikTok/LinkedIn/Google Business/Ads: OAuth/API key. **Prova:** o canal muda de âmbar "aguardando" pra verde "ativo" no cockpit.
 
+## ROTA-WA-TOKEN · WhatsApp que sai de verdade (token permanente + número real)
+**Quando:** a saída do WhatsApp "aceita mas não chega", ou o token de 24h venceu (é o estado de hoje: `token_kind=temp_24h`, gerado 2026-08-03).
+
+**⚠️ LEIA ISTO ANTES: são DOIS bloqueios, não um.** O remetente cadastrado é `+1 555 660 6706`, com `env:"test"` e rótulo *"numero de teste Meta"* — o **número de sandbox**, que só entrega para até 5 destinatários pré-cadastrados, por mais válido que o token seja. Trocar só o token conserta a VALIDADE e não conserta a ENTREGA. Publicar o app (feito em 2026-08-17) também não conserta sozinho. Confundir os três é medir a coisa errada e comemorar.
+
+**Etapa 1 — token permanente (Usuário do Sistema):** `business.facebook.com/settings` → portfólio **MED MUNDO BRASIL** → *Usuários → Usuários do sistema* → **Adicionar** (ex.: `Guileo API`, função Admin) → **Adicionar ativos**: o app **Guileo** (`2252636211962171`) e a **conta do WhatsApp** (WABA `972448889140826`), controle total nos dois → **Gerar novo token** → app Guileo → permissões `whatsapp_business_messaging` + `whatsapp_business_management` → **expiração: Nunca** → copiar (aparece UMA vez).
+
+**Etapa 2 — guardar:** o token é POR TENANT e mora no banco, **não em env** (cliente novo = INSERT, zero deploy):
+`update client_integrations set tokens = tokens || jsonb_build_object('access_token','<TOKEN>','token_kind','system_user') where client_email='…' and provider='whatsapp_cloud';`
+
+**Etapa 3 — entrega:** para atender cliente real, registrar um **número próprio** na WABA (não pode estar ativo no app WhatsApp comum) e concluir a **Verificação da Empresa**. Enquanto isso, a prova possível é adicionar o celular do Luis à lista de destinatários do número de teste.
+
+**Prova (nesta ordem, senão o resultado engana):** ① token vivo → `GET /v19.0/{phone_number_id}?fields=display_phone_number` responde 200 (401 = token) · ② entrega → mensagem real chega no celular. `message_id` na resposta **não é prova**: foi exatamente ele que mentiu em 2026-08-03. **Arquivos:** `functions/api/whatsapp-cloud.js`, RPC `whatsapp_cloud_tenant_by_pnid`.
+
 ## ROTA-ANALISE · a análise que o prospect ganha ao marcar a demo
 **Quando:** marcou demo. O prospect recebe valor ANTES da call e o vendedor entra sabendo onde dói.
 1. **Gerar:** `POST /api/diagnostico {site, contato, nome, lang}` + `sid` do vendedor **ou** `token` admin → devolve `link`, `resumo` e **`tres_linhas`** (os 3 achados mais graves).

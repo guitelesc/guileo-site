@@ -66,7 +66,7 @@ const T = {
     logout: "Sair", hi: "Olá",
     nav: { start: "Início", painel: "📊 Painel", alvos: "🎯 Alvos do dia", followup: "🗓️ Follow-up", fechar: "💰 Fechar", demo: "🎬 Demo", cards: "Pitch Cards", quote: "Orçamento", contrato: "📄 Contrato", financeiro: "🧾 Financeiro", cadastro: "➕ Cadastrar cliente", academy: "Academia", metas: "Minhas Metas", treino: "Treino", ativ: "Ativação", jogadas: "💡 Jogadas", support: "Suporte" },
     cadTitle: "Cadastrar cliente", cadSub: "Preencha o cadastro completo do cliente — negócio, agente, unidades, serviços e canais. Salva um rascunho; o Luis aprova e a Gui dedicada nasce.",
-    cadMine: "Meus cadastros", cadNone: "Nenhum cadastro ainda — preencha o formulário acima pra criar o primeiro.", cadDraft: "rascunho", cadLive: "no ar", cadRefresh: "↻ Atualizar",
+    cadMine: "Meus cadastros", cadNone: "Nenhum cadastro ainda — preencha o formulário acima pra criar o primeiro.", cadErr: "⚠️ Não consegui LER seus cadastros (rede ou sessão). Isso NÃO significa que estão vazios — não cadastre de novo. Toque em Atualizar.", cadDraft: "rascunho", cadLive: "no ar", cadRefresh: "↻ Atualizar",
     ativTitle: "Ativação do cliente", ativSub: "Passo a passo pra deixar a Gui do cliente no ar depois que ele paga. Siga em ordem.",
     ativParity: "🛡️ Você vê o mesmo mapa que o dono — a diferença é que o Luis monitora tudo.",
     ativSectorTitle: "Específico por setor",
@@ -117,7 +117,7 @@ const T = {
     logout: "Sign out", hi: "Hi",
     nav: { start: "Start", painel: "📊 Panel", alvos: "🎯 Targets", followup: "🗓️ Follow-up", fechar: "💰 Close", demo: "🎬 Demo", cards: "Pitch Cards", quote: "Quote", contrato: "📄 Contract", financeiro: "🧾 Finance", cadastro: "➕ Add client", academy: "Academy", metas: "My Goals", treino: "Practice", ativ: "Activation", jogadas: "💡 Plays", support: "Support" },
     cadTitle: "Add client", cadSub: "Fill the full client intake — business, agent, locations, services and channels. It saves a draft; Luis approves and the dedicated Gui is born.",
-    cadMine: "My intakes", cadNone: "No intakes yet — fill the form above to create the first one.", cadDraft: "draft", cadLive: "live", cadRefresh: "↻ Refresh",
+    cadMine: "My intakes", cadNone: "No intakes yet — fill the form above to create the first one.", cadErr: "⚠️ Couldn't READ your intakes (network or session). This does NOT mean they're empty — don't re-register. Tap Refresh.", cadDraft: "draft", cadLive: "live", cadRefresh: "↻ Refresh",
     ativTitle: "Client activation", ativSub: "Step by step to get the client's Gui live after they pay. Follow in order.",
     ativParity: "🛡️ You see the same map the owner sees — the difference is Luis monitors everything.",
     ativSectorTitle: "Sector-specific",
@@ -164,7 +164,7 @@ const T = {
     logout: "Salir", hi: "Hola",
     nav: { start: "Inicio", painel: "📊 Panel", alvos: "🎯 Objetivos", followup: "🗓️ Seguimiento", fechar: "💰 Cerrar", demo: "🎬 Demo", cards: "Pitch Cards", quote: "Presupuesto", contrato: "📄 Contrato", financeiro: "🧾 Finanzas", cadastro: "➕ Alta cliente", academy: "Academia", metas: "Mis Metas", treino: "Práctica", ativ: "Activación", jogadas: "💡 Jugadas", support: "Soporte" },
     cadTitle: "Alta de cliente", cadSub: "Completa el alta del cliente — negocio, agente, sucursales, servicios y canales. Guarda un borrador; Luis aprueba y nace la Gui dedicada.",
-    cadMine: "Mis altas", cadNone: "Sin altas aún — completa el formulario de arriba para crear la primera.", cadDraft: "borrador", cadLive: "en vivo", cadRefresh: "↻ Actualizar",
+    cadMine: "Mis altas", cadNone: "Sin altas aún — completa el formulario de arriba para crear la primera.", cadErr: "⚠️ No pude LEER tus altas (red o sesión). Esto NO significa que estén vacías — no des de alta otra vez. Toca Actualizar.", cadDraft: "borrador", cadLive: "en vivo", cadRefresh: "↻ Actualizar",
     ativTitle: "Activación del cliente", ativSub: "Paso a paso para dejar la Gui del cliente en vivo después de que paga. Sigue en orden.",
     ativParity: "🛡️ Ves el mismo mapa que el dueño — la diferencia es que Luis lo monitorea todo.",
     ativSectorTitle: "Por sector",
@@ -985,7 +985,11 @@ function Cadastro({ t, lang, seller, go, handoff }) {
           <button type="button" onClick={load} className="rounded-full border border-white/15 px-3 py-1 text-[11.5px] font-bold text-g-muted hover:text-g-word">{t.cadRefresh}</button>
         </div>
         {state === "loading" && <div className="mt-3 text-[13px] text-g-muted">…</div>}
-        {state === "err" && <div className="mt-3 text-[13px] text-g-muted">{t.cadNone}</div>}
+        {/* ⚠️ ERA `t.cadNone` — A MESMA FRASE DO VAZIO (auditoria 2026-08-17). Um 401 (o caso real
+            de código de equipe sem roster) ou uma queda de rede dizia "nenhum cadastro ainda,
+            preencha o formulário acima" — e o vendedor fazia exatamente isso: CADASTRAVA O
+            CLIENTE DE NOVO. Erro lido como vazio virou cliente duplicado no funil. */}
+        {state === "err" && <div className="mt-3 rounded-xl border border-g-gold/40 bg-g-gold/10 px-3 py-2 text-[12.5px] font-semibold leading-snug text-g-gold">{t.cadErr || t.cadNone}</div>}
         {state === "ok" && drafts.length === 0 && <div className="mt-3 text-[13px] text-g-muted">{t.cadNone}</div>}
         {state === "ok" && drafts.length > 0 && (
           <div className="mt-3 space-y-2">
@@ -1009,6 +1013,35 @@ function Cadastro({ t, lang, seller, go, handoff }) {
     </div>
   );
 }
+
+
+// ── A NAV EM 6 FAMÍLIAS (2026-08-17, decisão do Luis) ─────────────────────────────────────────
+// Eram 19 botões numa fileira plana com rolagem horizontal. Nenhuma tela estava órfã — o problema
+// era ACHAR: 19 alvos do mesmo tamanho e da mesma cor não têm hierarquia, então o vendedor decora
+// posição em vez de procurar por intenção. Quem entra hoje leva semanas pra saber onde está o que.
+//
+// O agrupamento é pelo MOMENTO do vendedor, não por tipo de tela: ele não pensa "preciso de um
+// componente de contrato", pensa "tô fechando". Por isso "fechar" mora em VENDER junto com o
+// follow-up, e o contrato mora em MATERIAL junto com o card e o orçamento.
+//
+// ⚠️ OS TRÊS RÓTULOS LITERAIS ENTRARAM NO DICIONÁRIO. "🗽 NYC" e "🚨 SUPORTE" eram strings fixas —
+// um vendedor com a interface em espanhol via duas palavras em português/inglês no meio da nav.
+// A regra do dono é "nada de texto EN numa tela PT, em toda superfície"; a nav é a superfície mais
+// vista de todas.
+const GRUPOS = [
+  { id: "vender",   ico: "🎯", rot: { pt: "Vender",   en: "Sell",     es: "Vender",   hi: "बेचें" },   abas: ["start", "alvos", "nyc", "followup", "fechar"] },
+  { id: "material", ico: "📄", rot: { pt: "Material", en: "Material", es: "Material", hi: "सामग्री" }, abas: ["cards", "quote", "contrato", "demo"] },
+  { id: "cliente",  ico: "🤝", rot: { pt: "Cliente",  en: "Client",   es: "Cliente",  hi: "क्लाइंट" },  abas: ["cadastro", "ativ"] },
+  { id: "meu",      ico: "💰", rot: { pt: "Meu",      en: "Mine",     es: "Mío",      hi: "मेरा" },    abas: ["painel", "financeiro", "metas"] },
+  { id: "aprender", ico: "🎓", rot: { pt: "Aprender", en: "Learn",    es: "Aprender", hi: "सीखें" },   abas: ["treino", "jogadas", "academy"] },
+  { id: "ajuda",    ico: "🚨", rot: { pt: "Ajuda",    en: "Help",     es: "Ayuda",    hi: "मदद" },     abas: ["suporte", "support"] },
+];
+// Rótulo de cada aba nos 4 idiomas quando o dicionário não tem (eram os 3 literais).
+const ABA_EXTRA = {
+  nyc:     { pt: "🗽 Leads NYC", en: "🗽 NYC leads", es: "🗽 Leads NYC", hi: "🗽 NYC लीड्स" },
+  suporte: { pt: "🚨 Urgente",   en: "🚨 Urgent",    es: "🚨 Urgente",   hi: "🚨 अर्जेंट" },
+  demo:    { pt: "🎬 Demo",      en: "🎬 Demo",      es: "🎬 Demo",      hi: "🎬 डेमो" },
+};
 
 export default function Vendedor() {
   const { lang: gLang, setLang } = useLang();
@@ -1056,16 +1089,41 @@ export default function Vendedor() {
             <button onClick={logout} className="ml-1 rounded-full border border-white/15 px-3 py-1.5 text-[12px] font-bold text-g-muted hover:text-g-word">{t.logout}</button>
           </div>
         </div>
-        <nav className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-3 pb-2">
-          {NAV.map(([k, label]) => (
-            <button key={k} onClick={() => nav(k)} aria-current={tab === k ? "page" : undefined}
-              className={`whitespace-nowrap rounded-full px-4 py-1.5 text-[12.5px] font-bold transition ${
-                k === "suporte"
-                  ? (tab === k ? "bg-[#E5484D]/20 text-[#FF7A7E] ring-1 ring-[#E5484D]/60" : "text-[#E5484D] ring-1 ring-[#E5484D]/35 hover:bg-[#E5484D]/10")
-                  : (tab === k ? "bg-g-green/15 text-g-word ring-1 ring-g-green/40" : "text-g-muted hover:text-g-word")
-              }`}>{label}</button>
-          ))}
-        </nav>
+        {(() => {
+          const rotulo = (k) => (ABA_EXTRA[k] && (ABA_EXTRA[k][lang] || ABA_EXTRA[k].en)) || (NAV.find(([kk]) => kk === k) || [])[1] || k;
+          // O grupo mostrado é SEMPRE o que contém a aba aberta — assim um link vindo de outra tela
+          // (nav("fechar") a partir do painel) abre o grupo certo sozinho, sem o vendedor se perder.
+          const grupoAtivo = GRUPOS.find((g) => g.abas.includes(tab)) || GRUPOS[0];
+          return (
+            <div className="mx-auto max-w-5xl px-3 pb-2">
+              <nav className="flex gap-1 overflow-x-auto" aria-label="grupos">
+                {GRUPOS.map((g) => {
+                  const on = g.id === grupoAtivo.id;
+                  const urgente = g.id === "ajuda";
+                  return (
+                    <button key={g.id} onClick={() => nav(g.abas[0])} aria-current={on ? "true" : undefined}
+                      className={`whitespace-nowrap rounded-full px-4 py-1.5 text-[12.5px] font-black transition ${
+                        urgente
+                          ? (on ? "bg-[#E5484D]/20 text-[#FF7A7E] ring-1 ring-[#E5484D]/60" : "text-[#E5484D] ring-1 ring-[#E5484D]/35 hover:bg-[#E5484D]/10")
+                          : (on ? "bg-g-green/15 text-g-word ring-1 ring-g-green/40" : "text-g-muted hover:text-g-word")
+                      }`}>{g.ico} {g.rot[lang] || g.rot.en}</button>
+                  );
+                })}
+              </nav>
+              {/* As abas do grupo aberto. Ficam SEMPRE visíveis (não é menu que abre e fecha):
+                  esconder o segundo nível atrás de um clique troca "fileira longa" por "caça ao
+                  tesouro", que é pior. O custo é uma linha fina; o ganho é ver onde se está. */}
+              <div className="mt-1.5 flex gap-1 overflow-x-auto border-t border-white/[0.06] pt-1.5">
+                {grupoAtivo.abas.map((k) => (
+                  <button key={k} onClick={() => nav(k)} aria-current={tab === k ? "page" : undefined}
+                    className={`whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-bold transition ${
+                      tab === k ? "bg-white/10 text-g-word ring-1 ring-white/20" : "text-g-muted hover:text-g-word"
+                    }`}>{rotulo(k)}</button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-6">

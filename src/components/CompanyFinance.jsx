@@ -19,7 +19,13 @@ export default function CompanyFinance({ token }) {
   const load = async () => {
     try {
       const [s, l] = await Promise.all([call({ action: "summary" }), call({ action: "list" })]);
-      if (s.error && l.error) { setState("err"); return; }
+      // ⚠️ ERA `&&` (auditoria 2026-08-17). Com E, o erro só aparecia se as DUAS leituras
+      // falhassem: lista quebrada sozinha virava "nenhum lançamento ainda", e summary quebrado
+      // sozinho apagava os 4 cartões — com o painel marcado "ok". E o risco é concreto:
+      // company_ledger_summary e company_ledger_list foram colados à mão, não vivem em db/,
+      // então "um existe e o outro não" é o cenário provável, não o improvável.
+      // Este é o financeiro da PRÓPRIA Guileo: número errado aqui é decisão errada de caixa.
+      if (s.error || l.error) { setState("err"); return; }
       setSum(s.summary || null); setRows(l.rows || []); setState("ok");
     } catch { setState("err"); }
   };
@@ -29,9 +35,16 @@ export default function CompanyFinance({ token }) {
     e.preventDefault();
     if (!f.description.trim()) return;
     setBusy(true);
-    await call({ action: "add", ...f, amount: Number(f.amount) || 0 });
-    setF({ ...f, category: "", vendor: "", description: "", amount: "", notes: "" });
-    setOpen(false); await load(); setBusy(false);
+    // ⚠️ O RETORNO ERA DESCARTADO: o form limpava, fechava e recarregava mesmo quando o servidor
+    // recusou — o lançamento simplesmente não existia e ninguém era avisado. E `setBusy(false)`
+    // ficava depois de dois awaits, então uma queda de rede travava o botão em "Enviando" pra
+    // sempre. Agora só limpa se o servidor confirmou, e o `finally` sempre destrava.
+    try {
+      const d = await call({ action: "add", ...f, amount: Number(f.amount) || 0 });
+      if (!d || d.error || d.ok === false) { setState("err"); return; }
+      setF({ ...f, category: "", vendor: "", description: "", amount: "", notes: "" });
+      setOpen(false); await load();
+    } finally { setBusy(false); }
   };
 
   const kindTone = (k) => k === "revenue" ? "text-g-green" : k === "investment" ? "text-sky-600" : "text-[#c8623c]";

@@ -147,8 +147,14 @@ export default function SellerDashboard({ lang = "pt", seller, market = "us", na
       });
       const j = await r.json().catch(() => ({}));
       if (j && j.ok) setData(j);
-      else { setData({ dashboard: {}, leaderboard: [] }); setErr(true); }
-    } catch { setData({ dashboard: {}, leaderboard: [] }); setErr(true); }
+      // ⚠️ ANTES ELE APAGAVA O DADO BOM (auditoria 2026-08-17). Em qualquer blip — e este painel
+      // recarrega a cada 30s E a cada `focus` — o estado era SUBSTITUÍDO por objeto vazio, e a tela
+      // passava a dizer "0 clientes / $0" para um vendedor que tinha vendido. Ele não vê um erro:
+      // vê o próprio resultado desaparecer, e é a tela do dinheiro dele.
+      // `prev || vazio` mantém o último número que a gente REALMENTE leu e liga o aviso de erro em
+      // cima — o padrão que o SellerFinance.jsx:154 deste mesmo hub já fazia certo.
+      else { setData((prev) => prev || { dashboard: {}, leaderboard: [] }); setErr(true); }
+    } catch { setData((prev) => prev || { dashboard: {}, leaderboard: [] }); setErr(true); }
   };
   useEffect(() => {
     if (!seller?.email) return;

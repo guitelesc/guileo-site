@@ -56,19 +56,30 @@ export default function SellerSupport({ lang = "pt", seller }) {
   const load = async () => { setData(null); const d = await call({ action: "seller_queue" }); setData(d && d.ok ? d : { tickets: [], ready: false }); };
   useEffect(() => { if (seller?.email) load(); /* eslint-disable-next-line */ }, [seller?.email]);
 
+  // ⚠️ A RESPOSTA AO CLIENTE ERA JOGADA FORA EM SILÊNCIO (auditoria 2026-08-17).
+  // O backend recusa de verdade — support-hub.js devolve {ok:false} sem SCHED_SECRET, e ainda
+  // 403/400/500 — e aqui só o sucesso era tratado. O botão voltava de "Enviando…" para
+  // "Responder", o texto continuava na caixa, e o vendedor ia embora achando que respondeu.
+  // O mais revelador: a string `t.failed` já existia nos QUATRO idiomas e nunca era renderizada.
+  // Alguém previu a falha, escreveu o aviso, e esqueceu de mostrá-lo.
+  // É a superfície onde o cliente PAGANTE pede ajuda: silêncio aqui é cliente sem resposta.
+  const [erro, setErro] = useState(null);
   const send = async (id) => {
     const text = (reply[id] || "").trim();
     if (!text) return;
-    setBusy(id + "r");
+    setBusy(id + "r"); setErro(null);
     const d = await call({ action: "seller_reply", id, text });
     setBusy(null);
     if (d && d.ok) { setReply((r) => ({ ...r, [id]: "" })); load(); }
+    else setErro(id); // o texto NÃO é apagado: ele tenta de novo sem redigitar
   };
   const escalate = async (id) => {
     setBusy(id + "e");
     const d = await call({ action: "seller_escalate", id, note: reply[id] || "" });
     setBusy(null);
     if (d && d.ok) { setDone((x) => ({ ...x, [id]: "escalated" })); setTimeout(load, 900); }
+    else setErro(id); // mesmo motivo do send(): "mandei pro técnico" sem prova é pior que erro
+
   };
 
   const tickets = (data && data.tickets) || [];
@@ -130,6 +141,14 @@ export default function SellerSupport({ lang = "pt", seller }) {
                 <button onClick={() => escalate(k.id)} disabled={busy === k.id + "e"} className="btn-ghost text-[12px] py-1.5">{t.escalate}</button>
               )}
             </div>
+            {/* O AVISO QUE EXISTIA E NUNCA APARECIA. `t.failed` está escrito nos 4 idiomas desde o
+                primeiro dia deste arquivo — alguém previu a falha, escreveu a frase, e esqueceu de
+                renderizá-la. Sem esta linha, o vendedor lê o silêncio como "enviado". */}
+            {erro === k.id && (
+              <div className="mt-2 rounded-lg border border-[#E5484D]/40 bg-[#E5484D]/10 px-3 py-2 text-[11.5px] font-bold text-[#FF7A7E]">
+                {t.failed}
+              </div>
+            )}
           </div>
         );
       })}
