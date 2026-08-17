@@ -278,7 +278,19 @@ function statusToColor(s) {
 // A auditoria de 2026-08-12 provou que estes nomes são da geração ANTERIOR do schema: o motor de
 // agenda foi reescrito com prefixo `biz_` e o automations.js ficou para trás, chamando funções
 // fantasma 96×/dia e lendo "não existe" como "nada vencendo hoje".
-const RPCS_DE_MOTOR = ["due_reminders", "due_review_requests", "due_winback"];
+// ATUALIZADO 2026-08-17 — os três nomes antigos SUMIRAM do código, então sondá-los seria acusar um
+// fantasma para sempre. A sonda passou a vigiar as funções que os motores REALMENTE usam hoje:
+//   biz_reminders_due   → lembrete de horário (proactive.js, de hora em hora)
+//   biz_review_due      → pedido de avaliação (motor novo, db/motor_review.sql)
+//   biz_dormant_customers → win-back de quem sumiu (proactive.js, diário)
+//
+// ⚠️ POR QUE CADA UMA LEVA `p_email: ""`: o PostgREST resolve a função pela ASSINATURA. Estas
+// pedem (p_secret, p_email, ...) sem default no p_email — mandar só o segredo não acha overload
+// nenhum e volta 404, exatamente o código que esta sonda lê como "motor morto". Sondar sem o
+// argumento acusaria de morto um motor perfeitamente vivo, que é o erro que ela existe para não
+// cometer. Com o argumento presente a função EXECUTA e recusa pelo segredo (não é 404) — a única
+// forma honesta de perguntar "você existe?" sem rodar motor nenhum.
+const RPCS_DE_MOTOR = ["biz_reminders_due", "biz_review_due", "biz_dormant_customers"];
 async function motoresMortosProbe(env) {
   const mortos = [];
   for (const nome of RPCS_DE_MOTOR) {
@@ -287,7 +299,7 @@ async function motoresMortosProbe(env) {
       const r = await timedFetch(`${SB_URL}/rest/v1/rpc/${nome}`, {
         method: "POST",
         headers: { apikey: k, Authorization: `Bearer ${k}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ p_secret: env.INGEST_SECRET || "" }),
+        body: JSON.stringify({ p_secret: env.INGEST_SECRET || "", p_email: "" }),
       });
       // 404 = a função não existe. Outros erros (401/400) NÃO viram "morto": podem ser argumento
       // ou permissão, e acusar por engano é o mesmo pecado da lista vazia lida como "não achei".

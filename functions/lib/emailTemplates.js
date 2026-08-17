@@ -1604,6 +1604,30 @@ export function recallEmail({ name = "there", business = "", lang = "en", bizEma
   return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand, unsub, address }) };
 }
 
+// REVIEW REQUEST — o convite para avaliar, depois da visita. Sent to the CUSTOMER (email).
+// ⚠️ O CTA APONTA PARA UM LINK EXTERNO (o perfil do negócio no Google/Yelp), não para um mailto —
+// é o único template desta família assim. Sem `link` não existe e-mail: o motor pula o tenant e
+// diz por quê, em vez de mandar um pedido de avaliação sem lugar para avaliar.
+// ⚠️ O TEXTO NÃO PEDE NOTA ALTA e não sugere que a avaliação deva ser positiva. Condicionar o
+// convite (ou o tom dele) à satisfação é "review gating" — política de conteúdo proibido do Google,
+// com risco de derrubar o perfil do negócio que paga pela Guileo.
+export function reviewRequestEmail({ name = "there", business = "", service = "", link = "", lang = "en", brand = null, unsub = "", address = "" } = {}) {
+  name = esc(name); business = esc(business); service = esc(service);
+  const L = ({
+    pt: { subj: `Como foi sua visita${business ? " na " + business : ""}? 💚`, pre: "Trinta segundos que ajudam muito.", eyebrow: business || "Guileo", h: `${name}, como foi? 💚`, lead: `Foi um prazer te receber${business ? ` na ${business}` : ""}${service ? ` para ${service}` : ""}. Se puder contar como foi numa avaliação, ajuda demais — é o que faz outras pessoas da região nos encontrarem.`, cta: "Deixar minha avaliação →", foot: "Leva menos de um minuto. E se algo não saiu como esperado, responde este e-mail que eu quero saber." },
+    es: { subj: `¿Cómo estuvo tu visita${business ? " en " + business : ""}? 💚`, pre: "Treinta segundos que ayudan muchísimo.", eyebrow: business || "Guileo", h: `${name}, ¿cómo estuvo? 💚`, lead: `Fue un placer recibirte${business ? ` en ${business}` : ""}${service ? ` para ${service}` : ""}. Si puedes contarlo en una reseña, ayuda muchísimo — es lo que hace que otras personas de la zona nos encuentren.`, cta: "Dejar mi reseña →", foot: "Toma menos de un minuto. Y si algo no salió como esperabas, responde este correo: quiero saberlo." },
+    en: { subj: `How was your visit${business ? " to " + business : ""}? 💚`, pre: "Thirty seconds that help a lot.", eyebrow: business || "Guileo", h: `${name}, how was it? 💚`, lead: `It was a pleasure having you${business ? ` at ${business}` : ""}${service ? ` for ${service}` : ""}. If you can share how it went in a review, it helps a lot — it's what helps other people nearby find us.`, cta: "Leave my review →", foot: "It takes under a minute. And if anything fell short, just reply to this email — I want to know." },
+  })[lang === "pt" ? "pt" : lang === "es" ? "es" : "en"];
+  const body = `
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:900;color:${B.ink};text-align:center;">${L.h}</div>
+    <div style="height:10px;font-size:0;">&nbsp;</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;color:${B.ink};text-align:center;line-height:1.7;">${L.lead}</div>
+    <div style="height:18px;font-size:0;">&nbsp;</div>
+    <div align="center">${cta(L.cta, link)}</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${L.foot}</div>`;
+  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand, unsub, address }) };
+}
+
 // LOYALTY MILESTONE — celebrate a visit milestone with a reward. Turns frequency into love + repeat
 // revenue. Sent to the CUSTOMER (email).
 export function loyaltyMilestoneEmail({ name = "there", business = "", milestone = 10, lang = "en", brand = null, unsub = "", address = "" } = {}) {

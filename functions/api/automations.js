@@ -1,8 +1,10 @@
 // Cloudflare Pages Function — GET/POST /api/automations?token=DIGEST_TOKEN
-// The Guileo automations engine: three revenue loops in one cron-friendly endpoint.
-//   1. REMINDERS — 24h + 2h WhatsApp/SMS before each booking (kills no-shows)
-//   2. REVIEWS   — post-visit review request with the client's review link
-//   3. WINBACK   — "we miss you" nudge to customers who stopped coming
+// O que ainda mora aqui (2026-08-17, depois da poda dos motores mortos):
+//   0. HOLDS     — solta reserva provisória vencida, mesmo em dia parado
+//   4. RISK      — confirmação extra automática para horário com risco alto de falta
+//   5. SLOW-DAY  — promoção opt-in para encher dia de baixa ocupação
+// Lembrete, avaliação e win-back NÃO estão mais aqui: moram no /api/proactive (veja o bloco
+// "OS TRÊS MOTORES MORTOS" abaixo — é a história inteira de por quê).
 // Wire into the guileo-digest-cron Worker alongside /api/backup. Idempotent:
 // the DB RPCs only return rows not yet handled, and we only mark/ingest AFTER
 // a real Twilio send — so before Twilio is configured every run is a no-op
@@ -71,7 +73,26 @@ async function schedRpc(env, fn, args) {
 }
 
 
-// ── MOTORES MORTOS TÊM QUE APARECER (2026-08-12) ────────────────────────────────────────────────
+// ── OS TRÊS MOTORES MORTOS FORAM RESOLVIDOS (2026-08-17) ────────────────────────────────────────
+// O aviso longo abaixo (de 2026-08-12) descreve o defeito; ficou por inteiro porque a lição vale
+// mais que o código que ele guardava. O que mudou hoje: ao abrir os três, eram problemas
+// DIFERENTES, e só um pedia código novo.
+//
+//   · due_reminders       DUPLICATA. O proactive.js já lembra pelas RPCs certas, de hora em hora.
+//   · due_winback         DUPLICATA. O proactive.js já reativa (dormentes 60d + quebra de cadência).
+//   · due_review_requests NUNCA EXISTIU. Sem RPC, sem template, sem motor — ninguém pedia avaliação.
+//
+// Duplicata morta não se conserta ligando: apontá-las para as RPCs `biz_*` faria o cliente receber
+// o MESMO lembrete duas vezes. O conserto certo de código morto duplicado é a tesoura — foi o que
+// aconteceu com ENGINE 1, 2 e 3 deste arquivo. O terceiro virou motor de verdade em outro lugar:
+// db/motor_review.sql + reviewRequestEmail + o bloco de avaliação no proactive.js, onde moram os
+// outros e-mails de ciclo de vida (mesma marca, mesma supressão, mesmo teto de envio).
+//
+// `mark_booking` saiu junto: era chamada só por esses motores e também não existe neste banco.
+// A sonda do platform-status parou de vigiar os três nomes fantasma e passou a vigiar as funções
+// vivas — sondar um nome que ninguém mais chama é manter um alarme tocando por um cômodo demolido.
+//
+// ── (2026-08-12) POR QUE ELES ESTAVAM MORTOS ────────────────────────────────────────────────────
 // Auditoria completa "toda RPC que o código chama × pg_proc" (198 nomes) revelou que TRÊS motores
 // deste arquivo chamam funções que NÃO EXISTEM neste banco: `due_reminders`, `due_review_requests`
 // e `due_winback` (mais `mark_booking`). São nomes da geração ANTERIOR do schema — o projeto de
@@ -93,14 +114,6 @@ async function schedRpc(env, fn, args) {
 // invisível por um visível na caixa de entrada de quem paga.
 // Então: o silêncio vira RUÍDO. Cada motor sem RPC se declara `notReady` na resposta, o vigia vê,
 // e a decisão de aposentar este arquivo (ou reescrevê-lo) passa a ser tomada com o fato à vista.
-async function motorOuNotReady(env, rpcFn, nome, args, out) {
-  const r = await rpcFn(env, nome, args);
-  if (Array.isArray(r)) return r;
-  // null/undefined = RPC inexistente, sem permissão, ou fora do ar. NUNCA "zero vencendo".
-  out.motoresMortos = out.motoresMortos || [];
-  if (!out.motoresMortos.includes(nome)) out.motoresMortos.push(nome);
-  return [];
-}
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -109,7 +122,9 @@ export async function onRequest(context) {
   if (!env.DIGEST_TOKEN || !safeEq(tok, env.DIGEST_TOKEN)) return json({ error: "unauthorized" }, 401);
 
   const configured = !!(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_FROM);
-  const out = { holdsReleased: 0, holdsReady: true, reminders24: 0, reminders2: 0, reviews: 0, winback: 0, riskConfirm: 0, riskClaimedDupe: 0, riskSkipped: 0, riskReady: true, slowday: 0, slowdayReady: true, sent: 0, skipped: 0, configured };
+  // reminders24/reminders2/reviews/winback saíram da resposta junto com os motores: campo que só
+  // sabe devolver zero é pior que campo ausente — parece um dia parado em vez de código removido.
+  const out = { holdsReleased: 0, holdsReady: true, riskConfirm: 0, riskClaimedDupe: 0, riskSkipped: 0, riskReady: true, slowday: 0, slowdayReady: true, sent: 0, skipped: 0, configured };
   const profiles = new Map();
   const budget = () => out.sent < MAX_SENDS; // shared cap across all three engines
 
@@ -123,89 +138,6 @@ export async function onRequest(context) {
     if (hr && typeof hr.released === "number") out.holdsReleased = hr.released;
     else out.holdsReady = false; // wrapper not pasted (or RPC unreachable) → reported, not silent
   } catch { out.holdsReady = false; }
-
-  // ENGINE 1 — booking reminders (24h then 2h before starts_at)
-  for (const kind of ["24", "2"]) {
-    try {
-      const rows = await motorOuNotReady(env, rpc, "due_reminders", { p_kind: kind }, out);
-      for (const b of rows) {
-        if (!budget()) break;
-        const p = await profileFor(env, profiles, b.client_email);
-        const L = langNorm(p.lang); // en default (unchanged); pt/es render natively
-        const nome = b.customer_name || (L === "pt" ? "tudo bem" : "there");
-        const hola = `¡Hola${b.customer_name ? ` ${b.customer_name}` : ""}!`; // es greeting handles a missing name
-        const time = hhmm(b.starts_at);
-        const biz = p.business_name || (L === "pt" ? "nosso espaço" : L === "es" ? "nuestro local" : "our place");
-        const msg = kind === "24"
-          ? (L === "pt"
-            ? `Oi ${nome}! 🌱 Lembrete: você tem ${b.service || "um horário"} amanhã às ${time} em ${biz}. Responde 1 pra confirmar ou 2 pra remarcar.`
-            : L === "es"
-              ? `${hola} 🌱 Recordatorio: tienes ${b.service || "una cita"} mañana a las ${time} en ${biz}. Responde 1 para confirmar o 2 para reprogramar.`
-              : `Hi ${nome}! 🌱 Reminder: you have ${b.service || "an appointment"} tomorrow at ${time} at ${biz}. Reply 1 to confirm or 2 to reschedule.`)
-          : (L === "pt"
-            ? `Oi ${nome}! Seu horário é daqui a pouco, às ${time}. Te esperamos! 🌱 (Responde 2 se precisar remarcar)`
-            : L === "es"
-              ? `${hola} Tu cita es en un rato, a las ${time}. ¡Te esperamos! 🌱 (Responde 2 si necesitas reprogramar)`
-              : `Hi ${nome}! Your appointment is coming up soon, at ${time}. See you there! 🌱 (Reply 2 if you need to reschedule)`);
-        const r = await sendText(env, b.customer_phone, msg);
-        if (r.sent) {
-          out.sent++; out[kind === "24" ? "reminders24" : "reminders2"]++;
-          // mark only AFTER a confirmed send — unsent reminders stay due for the next run
-          await rpc(env, "mark_booking", { p_id: b.id, p_field: kind === "24" ? "reminded_24" : "reminded_2" });
-          await ingest(env, b.client_email, "message", "whatsapp", `📅 Reminder sent to ${nome} · ${time}`);
-        } else out.skipped++;
-      }
-    } catch { /* one engine failing must never block the others */ }
-  }
-
-  // ENGINE 2 — post-visit review requests
-  try {
-    const rows = await motorOuNotReady(env, rpc, "due_review_requests", undefined, out);
-    for (const b of rows) {
-      if (!budget()) break;
-      const p = await profileFor(env, profiles, b.client_email);
-      const L = langNorm(p.lang);
-      const nome = b.customer_name || (L === "pt" ? "tudo bem" : "there");
-      const hola = `¡Hola${b.customer_name ? ` ${b.customer_name}` : ""}!`;
-      const biz = b.business_name || p.business_name || (L === "pt" ? "nosso espaço" : L === "es" ? "nuestro local" : "our place");
-      const link = b.review_link || p.review_link || "";
-      const msg = L === "pt"
-        ? `Oi ${nome}! Foi um prazer te atender na ${biz} 💚 Se puder, deixa sua avaliação — leva 30 segundos e ajuda demais: ${link}`
-        : L === "es"
-          ? `${hola} Fue un placer atenderte en ${biz} 💚 Si puedes, déjanos tu reseña — toma 30 segundos y ayuda muchísimo: ${link}`
-          : `Hi ${nome}! It was a pleasure having you at ${biz} 💚 If you can, leave us a review — it takes 30 seconds and helps a lot: ${link}`;
-      const r = await sendText(env, b.customer_phone, msg);
-      if (r.sent) {
-        out.sent++; out.reviews++;
-        await rpc(env, "mark_booking", { p_id: b.id, p_field: "review_requested" });
-        await ingest(env, b.client_email, "message", "whatsapp", `⭐ Review request sent to ${nome}`);
-      } else out.skipped++;
-    }
-  } catch { /* isolated */ }
-
-  // ENGINE 3 — win-back lapsed customers
-  try {
-    const rows = await motorOuNotReady(env, rpc, "due_winback", undefined, out);
-    for (const c of rows) {
-      if (!budget()) break;
-      const p = await profileFor(env, profiles, c.client_email);
-      const L = langNorm(p.lang);
-      const nome = c.customer_name || (L === "pt" ? "tudo bem" : "there");
-      const hola = `¡Hola${c.customer_name ? ` ${c.customer_name}` : ""}!`;
-      const biz = c.business_name || p.business_name || (L === "pt" ? "nosso espaço" : L === "es" ? "nuestro local" : "our place");
-      const msg = L === "pt"
-        ? `Oi ${nome}! Sentimos sua falta na ${biz} 🌱 Já faz um tempinho — quer agendar um horário essa semana? É só responder aqui!`
-        : L === "es"
-          ? `${hola} Te extrañamos en ${biz} 🌱 Ya pasó un tiempo — ¿quieres agendar una cita esta semana? ¡Solo responde aquí!`
-          : `Hi ${nome}! We've missed you at ${biz} 🌱 It's been a while — want to book a spot this week? Just reply here!`;
-      const r = await sendText(env, c.customer_phone, msg);
-      if (r.sent) {
-        out.sent++; out.winback++;
-        // payload.phone is REQUIRED: due_winback dedupes on payload->>'phone'
-        await ingest(env, c.client_email, "winback", "whatsapp", `♻️ Win-back sent to ${nome}`, { phone: c.customer_phone });
-      } else out.skipped++;
-    }
-  } catch { /* isolated */ }
 
   // ENGINE 4 — RISK-RADAR AUTO-CONFIRM (Superpower #3 acting on its own):
   // for every client with upcoming bookings, score them with noshow_risk (p_days=2) and send

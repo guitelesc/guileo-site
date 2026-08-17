@@ -3,11 +3,13 @@
 // (winbackCustomerEmail, na marca DO CLIENTE) to dormant customers who have an email; it never auto-dials.
 // TODO e-mail de marketing daqui respeita email_suppressions (fail-closed) e leva link de descadastro
 // + endereço postal do negócio (CAN-SPAM). Lembrete de horário é transacional e é a única exceção. Reminders for
-// upcoming appointments are collected (biz_due_reminders) and emailed where an email exists (SMS lights
+// upcoming appointments are collected (biz_reminders_due) and emailed where an email exists (SMS lights
 // up at A2P). Per-business; iterates the configured client list (PROACTIVE_EMAILS) or the demo set.
+// Desde 2026-08-17 este arquivo também é a casa do PEDIDO DE AVALIAÇÃO (biz_review_due), o último dos
+// três "motores mortos" — e o único que precisou nascer em vez de ser podado.
 import { json, safeEq } from "../lib/guard.js";
 import { sbKey, svcJson } from "../lib/sb.js";
-import { winbackCustomerEmail, appointmentReminderEmail, birthdayEmail, anniversaryEmail, recallEmail, loyaltyMilestoneEmail, welcomeFirstVisitEmail, rebookEmail, promoEmail, moneyRecoveredEmail } from "../lib/emailTemplates.js";
+import { winbackCustomerEmail, appointmentReminderEmail, birthdayEmail, anniversaryEmail, recallEmail, loyaltyMilestoneEmail, welcomeFirstVisitEmail, rebookEmail, promoEmail, moneyRecoveredEmail, reviewRequestEmail } from "../lib/emailTemplates.js";
 import { brandFor } from "../lib/clientBrand.js";
 import { unsubUrl } from "../lib/unsub.js";
 
@@ -101,6 +103,13 @@ export async function onRequestPost(context) {
     return ok;
   };
   let reactivated = 0, reminded = 0, birthdays = 0, anniversaries = 0, recalls = 0, loyalty = 0, welcomes = 0, rebooks = 0;
+  // MOTOR DE AVALIAÇÃO (2026-08-17). `semLinkReview` não é estatística: é a lista de tenants cujo
+  // motor está PARADO por falta do link de avaliação no cadastro. Sem ela, zero pedidos leria como
+  // "nenhuma visita" — o mesmo fallback silencioso que deixou três motores mortos rodando 96×/dia.
+  let reviewsAsked = 0, reviewMarcaFalhou = 0;
+  const semLinkReview = [];
+  // Recusas do banco (segredo/permissão) por motor+tenant. Nunca some dentro de um `|| []`.
+  const rpcRecusou = [];
   // DATES + GROWTH (db/growth_dates.sql): crm_contacts.birth_date birthdays, per-client commemorative
   // dates (biz_marketing_dates), and post-service rebooking nudges. All dedup atomically; EMAIL now.
   let crmBirthdays = 0, marketingDates = 0, rebookNudges = 0;
@@ -226,6 +235,9 @@ export async function onRequestPost(context) {
     // A janela de 24h com rodada diária tinha um buraco silencioso: reserva criada DEPOIS da rodada
     // do dia para o dia seguinte nunca caía em janela nenhuma. As 2h a mais cobrem a folga.
     const rem = await rpc(env, "biz_reminders_due", { p_email: email, p_hours: 26, p_limit: 50 });
+    // mesma guarda do motor de avaliação: recusa do banco não pode virar "ninguém para lembrar".
+    // Este é o motor mais caro de todos para falhar em silêncio — lembrete que não sai é falta.
+    if (rem && rem.error) rpcRecusou.push(`lembrete:${email}:${rem.error}`);
     for (const a of (rem?.due || [])) {
       // Sem e-mail não há como lembrar hoje (o SMS está preso no A2P) — e por isso NÃO marcamos:
       // no dia em que o A2P sair, ou em que o cliente der o e-mail, esta pessoa ainda está na fila.
@@ -242,6 +254,45 @@ export async function onRequestPost(context) {
     // Na passada horária o trabalho acaba aqui: daqui para baixo é MARKETING (aniversário,
     // win-back, NPS, rebooking), e marketing tem cadência diária de propósito.
     if (soLembretes) continue;
+
+    // ── PEDIDO DE AVALIAÇÃO (motor novo, 2026-08-17 — db/motor_review.sql) ────────────────────
+    // O semáforo acusava `due_review_requests` como motor morto. Ao abrir, não era um motor
+    // quebrado: era um motor que NUNCA existiu — sem RPC, sem template, sem chamador. Os outros
+    // dois mortos (lembrete e win-back) eram duplicatas do que ESTE arquivo já fazia certo, e
+    // foram removidos do automations.js; só este virou código novo.
+    //
+    // Por que aqui e não lá: review é o motor que devolve lead pela ENTRADA (mais avaliação →
+    // melhor posição no Maps → mais ligação, que a Gui já atende). Mora junto dos outros e-mails
+    // de ciclo de vida, com a mesma marca, a mesma supressão e o mesmo teto de envio.
+    //
+    // SEM LINK DE AVALIAÇÃO NÃO HÁ E-MAIL — e isso APARECE. Mandar "avalie a gente" sem lugar para
+    // avaliar é pior que não mandar, e um contador zerado leria como "ninguém para pedir" quando
+    // na verdade falta um campo no cadastro do cliente.
+    const reviewLink = (profile.review_link || "").toString().trim();
+    if (!reviewLink) {
+      semLinkReview.push(email);
+    } else {
+      const rv = await rpc(env, "biz_review_due", { p_email: email, p_after_hours: 3, p_max_days: 7, p_limit: 50 });
+      // ⚠️ `rv?.due || []` SOZINHO recria o defeito que este trabalho veio matar. Segredo errado
+      // devolve {"error":"unauthorized"} — sem campo `due` — e o `|| []` transformaria "o banco me
+      // recusou" em "nenhuma visita para pedir avaliação". Motor parado com cara de dia parado é
+      // exatamente como os três morreram sem ninguém notar. Recusa é um número separado.
+      if (rv && rv.error) rpcRecusou.push(`review:${email}:${rv.error}`);
+      for (const a of (rv?.due || [])) {
+        // Marketing: respeita a lista de supressão (o lembrete não respeitava porque é transacional).
+        if (!podeMkt(a.contact)) continue;
+        const { subject, html } = reviewRequestEmail({ name: a.name || "there", business: (brand && brand.business) || "", service: a.service || "", link: reviewLink, lang: L, brand, unsub: await unsubDe(a.contact), address });
+        if (await capSend(a.contact, subject, html)) {
+          reviewsAsked++;
+          // Carimbo SÓ depois do envio confirmado, uma linha por vez — a disciplina que o bug do
+          // lembrete ensinou. Quem não pôde receber hoje continua na fila até a janela fechar.
+          // E o carimbo devolve boolean de propósito: se ele falhar, o e-mail JÁ saiu e a pessoa
+          // seria convidada de novo amanhã. Isso vira contador visível em vez de e-mail repetido
+          // que ninguém explica.
+          if (await rpc(env, "biz_review_mark", { p_email: email, p_id: a.id, p_channel: "email" }) !== true) reviewMarcaFalhou++;
+        }
+      }
+    }
 
     // BIRTHDAY — Gui never forgets. Celebrate every customer whose birthday is today (email).
     const bd = await rpc(env, "biz_birthdays", { p_email: email, p_within: 0, p_limit: 100 });
@@ -397,5 +448,5 @@ export async function onRequestPost(context) {
     }
   }
 
-  return json({ ok: true, reactivated, reminded, birthdays, anniversaries, recalls, loyalty, welcomes, rebooks, crmBirthdays, marketingDates, rebookNudges, valueReports, vipThanks, leadNurtures, businesses: businesses.length });
+  return json({ ok: true, reactivated, reminded, reviewsAsked, reviewMarcaFalhou, semLinkReview, rpcRecusou, birthdays, anniversaries, recalls, loyalty, welcomes, rebooks, crmBirthdays, marketingDates, rebookNudges, valueReports, vipThanks, leadNurtures, businesses: businesses.length });
 }
