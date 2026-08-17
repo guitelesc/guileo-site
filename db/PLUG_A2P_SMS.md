@@ -30,7 +30,7 @@ Go to **Twilio Console → Messaging → Regulatory Compliance → A2P 10DLC**.
 
 ### Step 1 — Register the Brand (the legal company)
 Have ready:
-- **Legal business name** (exactly as on the EIN letter) — e.g. *Tribeca Global Inc.*
+- **Legal business name** (exactly as on the EIN letter) — e.g. *ORIGEM LTDA*
 - **EIN** (US federal tax ID, 9 digits)
 - **Business address** (the registered one on the EIN)
 - **Website**: `https://guileoai.com`

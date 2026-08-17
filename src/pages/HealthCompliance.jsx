@@ -20,7 +20,7 @@ const LEGAL_NOTE_EN = (
   <>
     <strong>Legal note (official English version):</strong> Guileo is a scheduling and
     customer-communication platform. It is not an Electronic Health Record (EHR) and is not
-    intended to store, process or transmit clinical information. Guileo (Tribeca Global Inc.)
+    intended to store, process or transmit clinical information. Guileo (ORIGEM LTDA)
     is <strong>not HIPAA-certified</strong> and does not currently sign Business Associate
     Agreements (BAA). Healthcare organizations that require a formal BAA should not enter
     Protected Health Information (PHI) into the system; the platform may still be used for
@@ -89,7 +89,7 @@ const HC_COPY = {
       <>
         <strong>Nota legal:</strong> A Guileo é uma plataforma de agendamento e comunicação com
         clientes. Não é um prontuário eletrônico (EHR) e não se destina a armazenar, processar ou
-        transmitir informações clínicas. A Guileo (Tribeca Global Inc.) <strong>não é certificada
+        transmitir informações clínicas. A Guileo (ORIGEM LTDA) <strong>não é certificada
         HIPAA</strong> e atualmente não assina Business Associate Agreements (BAA). Organizações de
         saúde que exigem BAA formal não devem inserir Protected Health Information (PHI) no sistema;
         a plataforma ainda pode ser usada para agendamento não-clínico (nome, telefone, serviço,

@@ -1,7 +1,7 @@
 # GUILEO — WEBSITE BRIEF (master)
 
 ## Empresa
-- Marca: Guileo (produto: Guileo AI) · Operadora: Tribeca Global Inc. (Delaware C-Corp)
+- Marca: Guileo (produto: Guileo AI) · Operadora: ORIGEM LTDA (Cuiabá/MT, Brasil)
 - CEO: Luis Guilherme Teles da Costa · HQ: Cuiabá-MT + NY ops · US-first
 - Posicionamento: Voice-first Customer Intelligence Platform + agência (dev/ads). "Substitui a recepção por IA e vira inteligência de cliente."
 

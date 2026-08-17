@@ -1,5 +1,5 @@
 // serviceContracts.js
-// Guileo / Tribeca Global Inc. — Super-protective SERVICE contract data for the recurring
+// Guileo / ORIGEM LTDA — Super-protective SERVICE contract data for the recurring
 // AI-receptionist SaaS (voice agent 24/7 that answers, books, sells & collects; credit-based;
 // ~7-day activation; human supervision; 30-day money-back). Trilingual PT/EN/ES with parity
 // (same 17 clauses in all three languages).
@@ -264,7 +264,7 @@ export function buildServiceContract({ planKey, lang, provider, client, amount, 
     template_code: TEMPLATE_CODE[key],
     icon: PLAN_ICON[key],
     date: dateStr,
-    provider: { name: (provider && provider.name) || "Tribeca Global Inc. (Guileo AI)" },
+    provider: { name: (provider && provider.name) || "ORIGEM LTDA (marca Guileo)" },
     counterparty: { name: clientName, email: clientEmail },
     summary: contract.summary[L3],
     deliverables: contract.deliverables[L3],

@@ -85,11 +85,11 @@ const ROUTES = {
     title: "Live Demo — Gui calls you in seconds | Guileo",
     description: "Enter your name and phone — Guileo's AI calls you and shows what it does for your business, live.",
   },
-  "/privacy": { title: "Privacy Policy | Guileo", description: "How Guileo (Tribeca Global Inc.) collects, uses and protects your data." },
+  "/privacy": { title: "Privacy Policy | Guileo", description: "How Guileo (ORIGEM LTDA) collects, uses and protects your data." },
   "/terms": { title: "Terms of Service | Guileo", description: "The terms that govern your use of Guileo's products and services." },
   "/refunds": { title: "Refund & Cancellation Policy | Guileo", description: "Guileo's refund, cancellation and 30-day money-back terms for plans, credit top-ups and setup fees." },
   "/cancellation": { title: "Refund & Cancellation Policy | Guileo", description: "How to cancel your Guileo plan and when you can get money back — 30-day guarantee." },
-  "/contact": { title: "Contact | Guileo", description: "Reach Guileo (Tribeca Global Inc.) — sales, client support, and LGPD/GDPR/CCPA privacy requests." },
+  "/contact": { title: "Contact | Guileo", description: "Reach Guileo (ORIGEM LTDA) — sales, client support, and LGPD/GDPR/CCPA privacy requests." },
   "/cookies": { title: "Cookie & Privacy Policy | Guileo", description: "How Guileo uses cookies and handles your data — LGPD, GDPR and CCPA aligned." },
   "/compliance": { title: "Compliance | Guileo", description: "Guileo's approach to TCPA, HIPAA-aligned handling, GDPR and responsible AI." },
 };

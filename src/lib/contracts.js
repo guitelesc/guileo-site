@@ -47,7 +47,8 @@ export function buildBody({ scope = "guileo_client", code, lang = "pt", kind = "
     // parece completo e não identifica ninguém: na hora de cobrar, um nome solto sem registro e sem
     // endereço é alegação, não parte. A ironia é que os modelos que a Guileo VENDE pro cliente usar
     // com o consumidor dele já pedem [CNPJ]/[TAX ID]/[ENDEREÇO] — só o contrato da própria casa não
-    // tinha. Agora a entidade certa entra pelo idioma (pt → ORIGEM LTDA; en/es → a Inc.) e a linha
+    // tinha. Agora a entidade certa entra pelo idioma — e enquanto a Inc. não for constituída, TODOS
+    // os idiomas saem pela ORIGEM LTDA (ver o portão em empresa.js). A linha
     // de qualificação imprime SÓ o que existe de verdade: enquanto faltar CNPJ ou endereço, o
     // documento fica incompleto de forma visível, nunca completo e errado.
     provider: (() => {

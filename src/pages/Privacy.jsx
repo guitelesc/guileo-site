@@ -12,7 +12,7 @@ import { useLang } from "../i18n.jsx";
 
 // ---- English (full legal body) ----
 const EN_SECTIONS = [
-  { h: "Who we are", body: <p>Guileo is a service of <strong>Tribeca Global Inc.</strong>, with operations in New York (USA) and Cuiabá, MT (Brazil). For data-protection purposes, we act as the <strong>controller</strong> of website data and as the <strong>processor</strong> of the data we handle on behalf of our clients.</p> },
+  { h: "Who we are", body: <p>Guileo is a service of <strong>ORIGEM LTDA</strong>, with operations in New York (USA) and Cuiabá, MT (Brazil). For data-protection purposes, we act as the <strong>controller</strong> of website data and as the <strong>processor</strong> of the data we handle on behalf of our clients.</p> },
   { h: "Data we collect", body: <ul className="space-y-1"><li><strong>Contact:</strong> name, phone, email, company and the channel you choose (WhatsApp, Instagram, etc.).</li><li><strong>Website usage:</strong> anonymous visit counts (page viewed, referring site, language and country) — <strong>no cookies, no IP address and no personal identifiers</strong>; it is not possible to track a person from this data.</li><li><strong>Interactions with the AI (Gui):</strong> call recordings, transcripts and messages, when you or one of our clients uses the voice/chat service.</li><li><strong>Account:</strong> credentials and dashboard settings (Growth Cockpit).</li></ul> },
   { h: "How we use data", body: <ul className="space-y-1"><li>To answer, book, qualify and sell on the client's behalf.</li><li>To operate, improve and personalize the service.</li><li>To contact you about demos and proposals you requested.</li><li>To comply with legal and security obligations.</li></ul> },
   { h: "Voice & AI processing", body: <p>When Gui answers or places calls, the audio may be <strong>recorded and transcribed</strong> to perform the task (book, take an order, qualify a lead) and improve quality. We notify call participants where required by law and offer non-recording options where applicable. We do not sell recordings.</p> },
@@ -37,7 +37,7 @@ const EN_SECTIONS = [
 
 // ---- Portuguese (full legal body — original copy, unchanged) ----
 const PT_SECTIONS = [
-  { h: "Quem somos", body: <p>Guileo é um serviço da <strong>Tribeca Global Inc.</strong>, com operações em New York (EUA) e Cuiabá, MT (Brasil). Para fins de proteção de dados, atuamos como <strong>controlador</strong> dos dados do site e como <strong>operador/processador</strong> dos dados que tratamos em nome dos nossos clientes.</p> },
+  { h: "Quem somos", body: <p>Guileo é um serviço da <strong>ORIGEM LTDA</strong>, com operações em New York (EUA) e Cuiabá, MT (Brasil). Para fins de proteção de dados, atuamos como <strong>controlador</strong> dos dados do site e como <strong>operador/processador</strong> dos dados que tratamos em nome dos nossos clientes.</p> },
   { h: "Dados que coletamos", body: <ul className="space-y-1"><li><strong>Contato:</strong> nome, telefone, e-mail, empresa e o canal que você escolhe (WhatsApp, Instagram, etc.).</li><li><strong>Uso do site:</strong> contagem anônima de visitas (página vista, site de origem, idioma e país) — <strong>sem cookies, sem endereço IP e sem identificadores pessoais</strong>; não é possível rastrear uma pessoa por esses dados.</li><li><strong>Interações com a IA (Gui):</strong> gravações de chamadas, transcrições e mensagens, quando você ou um cliente nosso utiliza o serviço de voz/chat.</li><li><strong>Conta:</strong> credenciais e configurações do painel (Growth Cockpit).</li></ul> },
   { h: "Como usamos os dados", body: <ul className="space-y-1"><li>Para responder, agendar, qualificar e vender em nome do cliente.</li><li>Para operar, melhorar e personalizar o serviço.</li><li>Para entrar em contato sobre demonstrações e propostas que você solicitou.</li><li>Para cumprir obrigações legais e de segurança.</li></ul> },
   { h: "Processamento de voz e IA", body: <p>Quando a Gui atende ou faz chamadas, o áudio pode ser <strong>gravado e transcrito</strong> para executar a tarefa (agendar, registrar pedido, qualificar lead) e melhorar a qualidade. Avisamos os interlocutores quando exigido por lei e oferecemos opções de não-gravação onde aplicável. Não vendemos gravações.</p> },
@@ -69,28 +69,28 @@ const D = {
     title: "Privacy Policy",
     updated: "June 9, 2026",
     note: <>ℹ️ A summary of how we handle data, in line with <span className="font-bold text-g-word">LGPD, GDPR and CCPA</span>. For clients, the signed agreement and any DPA/BAA supplement this notice.</>,
-    intro: <>Guileo (operated by Tribeca Global Inc., "Guileo", "we") respects your privacy. This policy explains what data we collect, how we use it, and what your rights are when you use the guileoai.com website and our AI, voice and marketing services.</>,
+    intro: <>Guileo (operated by ORIGEM LTDA, "Guileo", "we") respects your privacy. This policy explains what data we collect, how we use it, and what your rights are when you use the guileoai.com website and our AI, voice and marketing services.</>,
     sections: EN_SECTIONS,
   },
   pt: {
     title: "Política de Privacidade",
     updated: "9 de junho de 2026",
     note: <>ℹ️ Resumo de como tratamos dados, conforme <span className="font-bold text-g-word">LGPD, GDPR e CCPA</span>. Para clientes, o contrato assinado e eventual DPA/BAA complementam este aviso.</>,
-    intro: <>A Guileo (operada pela Tribeca Global Inc., "Guileo", "nós") respeita a sua privacidade. Esta política explica quais dados coletamos, como usamos e quais são os seus direitos ao usar o site guileoai.com e os nossos serviços de IA, voz e marketing.</>,
+    intro: <>A Guileo (operada pela ORIGEM LTDA, "Guileo", "nós") respeita a sua privacidade. Esta política explica quais dados coletamos, como usamos e quais são os seus direitos ao usar o site guileoai.com e os nossos serviços de IA, voz e marketing.</>,
     sections: PT_SECTIONS,
   },
   es: {
     title: "Política de Privacidad",
     updated: "9 de junio de 2026",
     note: <>ℹ️ Resumen de cómo tratamos los datos, conforme a <span className="font-bold text-g-word">LGPD, GDPR y CCPA</span>. <span className="block mt-1 font-bold">Versión legal oficial en inglés — el texto de las secciones se muestra en inglés.</span></>,
-    intro: <>Guileo (operada por Tribeca Global Inc., "Guileo", "nosotros") respeta tu privacidad. Esta política explica qué datos recopilamos, cómo los usamos y cuáles son tus derechos al usar guileoai.com y nuestros servicios de IA, voz y marketing.</>,
+    intro: <>Guileo (operada por ORIGEM LTDA, "Guileo", "nosotros") respeta tu privacidad. Esta política explica qué datos recopilamos, cómo los usamos y cuáles son tus derechos al usar guileoai.com y nuestros servicios de IA, voz y marketing.</>,
     sections: EN_SECTIONS.map((s, i) => ({ h: ES_HEADINGS[i] || s.h, body: s.body })),
   },
   hi: {
     title: "गोपनीयता नीति",
     updated: "9 जून 2026",
     note: <>ℹ️ हम डेटा कैसे संभालते हैं इसका सारांश — <span className="font-bold text-g-word">LGPD, GDPR और CCPA</span> के अनुरूप। <span className="block mt-1 font-bold">आधिकारिक कानूनी संस्करण अंग्रेज़ी में है — अनुभागों का पाठ अंग्रेज़ी में दिखाया गया है।</span></>,
-    intro: <>Guileo (Tribeca Global Inc. द्वारा संचालित, "Guileo", "हम") आपकी गोपनीयता का सम्मान करता है। यह नीति बताती है कि guileoai.com और हमारी AI, वॉइस & मार्केटिंग सेवाओं के उपयोग में हम कौन-सा डेटा एकत्र करते हैं, कैसे उपयोग करते हैं और आपके अधिकार क्या हैं।</>,
+    intro: <>Guileo (ORIGEM LTDA द्वारा संचालित, "Guileo", "हम") आपकी गोपनीयता का सम्मान करता है। यह नीति बताती है कि guileoai.com और हमारी AI, वॉइस & मार्केटिंग सेवाओं के उपयोग में हम कौन-सा डेटा एकत्र करते हैं, कैसे उपयोग करते हैं और आपके अधिकार क्या हैं।</>,
     sections: EN_SECTIONS.map((s, i) => ({ h: HI_HEADINGS[i] || s.h, body: s.body })),
   },
 };
@@ -98,7 +98,7 @@ const D = {
 export default function Privacy() {
   const { lang } = useLang();
   const c = D[lang] || D.en;
-  useSeo({ title: "Privacy Policy | Guileo", description: "How Guileo (Tribeca Global Inc.) collects, uses and protects your data — LGPD, GDPR and CCPA aligned.", path: "/privacy" });
+  useSeo({ title: "Privacy Policy | Guileo", description: "How Guileo (ORIGEM LTDA) collects, uses and protects your data — LGPD, GDPR and CCPA aligned.", path: "/privacy" });
   return (
     <LegalDoc
       title={c.title}

@@ -35,19 +35,19 @@ const HI_HEADINGS = ["30-दिन मनी-बैक गारंटी", "अ
 const D = {
   en: { title: "Refund & Cancellation Policy", updated: "July 21, 2026",
     note: <>ℹ️ How refunds, cancellations and our <span className="font-bold text-g-word">30-day money-back guarantee</span> work. For clients, your signed agreement supplements this policy.</>,
-    intro: <>Guileo (operated by Tribeca Global Inc.) wants you to feel safe trying us. This page explains how to cancel, when you can get money back, and how refunds are processed.</>,
+    intro: <>Guileo (operated by ORIGEM LTDA) wants you to feel safe trying us. This page explains how to cancel, when you can get money back, and how refunds are processed.</>,
     sections: EN_SECTIONS },
   pt: { title: "Política de Reembolso e Cancelamento", updated: "21 de julho de 2026",
     note: <>ℹ️ Como funcionam reembolsos, cancelamentos e nossa <span className="font-bold text-g-word">garantia de 30 dias</span>. Para clientes, o contrato assinado complementa esta política.</>,
-    intro: <>A Guileo (operada pela Tribeca Global Inc.) quer que você se sinta seguro pra testar. Esta página explica como cancelar, quando dá pra ter o dinheiro de volta e como o reembolso é feito.</>,
+    intro: <>A Guileo (operada pela ORIGEM LTDA) quer que você se sinta seguro pra testar. Esta página explica como cancelar, quando dá pra ter o dinheiro de volta e como o reembolso é feito.</>,
     sections: PT_SECTIONS },
   es: { title: "Política de Reembolso y Cancelación", updated: "21 de julio de 2026",
     note: <>ℹ️ Cómo funcionan los reembolsos, cancelaciones y nuestra <span className="font-bold text-g-word">garantía de 30 días</span>. <span className="block mt-1 font-bold">Versión legal oficial en inglés — el texto de las secciones se muestra en inglés.</span></>,
-    intro: <>Guileo (operada por Tribeca Global Inc.) quiere que te sientas seguro al probarnos. Esta página explica cómo cancelar, cuándo puedes recuperar tu dinero y cómo se procesan los reembolsos.</>,
+    intro: <>Guileo (operada por ORIGEM LTDA) quiere que te sientas seguro al probarnos. Esta página explica cómo cancelar, cuándo puedes recuperar tu dinero y cómo se procesan los reembolsos.</>,
     sections: EN_SECTIONS.map((s, i) => ({ h: ES_HEADINGS[i] || s.h, body: s.body })) },
   hi: { title: "रिफ़ंड और रद्दीकरण नीति", updated: "21 जुलाई 2026",
     note: <>ℹ️ रिफ़ंड, रद्दीकरण और हमारी <span className="font-bold text-g-word">30-दिन मनी-बैक गारंटी</span> कैसे काम करती है। <span className="block mt-1 font-bold">आधिकारिक कानूनी संस्करण अंग्रेज़ी में है।</span></>,
-    intro: <>Guileo (Tribeca Global Inc. द्वारा संचालित) चाहता है कि आप हमें आज़माते समय सुरक्षित महसूस करें। यह पृष्ठ बताता है कि कैसे रद्द करें, कब पैसा वापस मिल सकता है, और रिफ़ंड कैसे प्रोसेस होते हैं।</>,
+    intro: <>Guileo (ORIGEM LTDA द्वारा संचालित) चाहता है कि आप हमें आज़माते समय सुरक्षित महसूस करें। यह पृष्ठ बताता है कि कैसे रद्द करें, कब पैसा वापस मिल सकता है, और रिफ़ंड कैसे प्रोसेस होते हैं।</>,
     sections: EN_SECTIONS.map((s, i) => ({ h: HI_HEADINGS[i] || s.h, body: s.body })) },
 };
 

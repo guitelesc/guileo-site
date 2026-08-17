@@ -59,7 +59,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="mt-12 pt-6 border-t border-white/10 flex flex-col sm:flex-row justify-between gap-2 text-xs text-white/60">
-          <span>© 2026 Guileo · Tribeca Global Inc. · Luis Teles</span>
+          <span>© 2026 Guileo · ORIGEM LTDA · Luis Teles</span>
           <span className="flex flex-wrap gap-x-4 gap-y-1">
             <a href="/privacy" className="hover:text-white">{tx("Privacy","Privacidade","Privacidad","गोपनीयता")}</a>
             <a href="/terms" className="hover:text-white">{tx("Terms","Termos","Términos","शर्तें")}</a>

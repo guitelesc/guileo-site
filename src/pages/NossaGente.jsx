@@ -16,7 +16,7 @@ const NG_COPY = {
     h1a: "Answers, sells & grows your business — ", h1b: "in your language.",
     sub: "Portuguese, Spanish, English — Gui speaks the way you speak, understands your business, and serves your customers with the confidence of someone from your community.",
     trustLabel: "🤝 Made by people who get it",
-    trustH: "Tribeca Global — New York 🗽 + Cuiabá 🇧🇷.",
+    trustH: "ORIGEM LTDA (marca Guileo) — Cuiabá 🇧🇷, atendendo clientes nos EUA 🗽.",
     trustSub: "Language, culture and trust — not a generic call center. We're the cross-border bridge: Gui handles your business here AND keeps the family in Brazil close. Your people, served by your people.",
     cardsLabel: "💚 Why it works for us",
     cards: [
@@ -34,7 +34,7 @@ const NG_COPY = {
     h1a: "Atende, vende e cresce o seu negócio — ", h1b: "na sua língua.",
     sub: "Português, espanhol, inglês — o Gui fala como você fala, entende o seu negócio, e atende seus clientes com a confiança de quem é da sua comunidade.",
     trustLabel: "🤝 Feito por quem entende",
-    trustH: "Tribeca Global — New York 🗽 + Cuiabá 🇧🇷.",
+    trustH: "ORIGEM LTDA (marca Guileo) — Cuiabá 🇧🇷, atendendo clientes nos EUA 🗽.",
     trustSub: "Língua, cultura e confiança — não é call center genérico. Somos a ponte entre os dois lados: o Gui atende seu negócio aqui E mantém a família no Brasil perto. Sua gente, atendida pela sua gente.",
     cardsLabel: "💚 Por que funciona pra nós",
     cards: [
@@ -52,7 +52,7 @@ const NG_COPY = {
     h1a: "Atiende, vende y hace crecer tu negocio — ", h1b: "en tu idioma.",
     sub: "Portugués, español, inglés — Gui habla como tú hablas, entiende tu negocio, y atiende a tus clientes con la confianza de alguien de tu comunidad.",
     trustLabel: "🤝 Hecho por quien lo entiende",
-    trustH: "Tribeca Global — New York 🗽 + Cuiabá 🇧🇷.",
+    trustH: "ORIGEM LTDA (marca Guileo) — Cuiabá 🇧🇷, atendendo clientes nos EUA 🗽.",
     trustSub: "Idioma, cultura y confianza — no es un call center genérico. Somos el puente entre los dos lados: Gui atiende tu negocio aquí Y mantiene a la familia en Brasil cerca. Tu gente, atendida por tu gente.",
     cardsLabel: "💚 Por qué funciona para nosotros",
     cards: [
@@ -70,7 +70,7 @@ const NG_COPY = {
     h1a: "आपके व्यवसाय के लिए जवाब देती, बेचती और उसे बढ़ाती है — ", h1b: "आपकी भाषा में।",
     sub: "पुर्तगाली, स्पेनिश, अंग्रेज़ी — Gui वैसे बोलती है जैसे आप बोलते हैं, आपका व्यवसाय समझती है, और आपके ग्राहकों को अपने समुदाय के इंसान जैसे भरोसे से संभालती है।",
     trustLabel: "🤝 उन लोगों का बनाया जो समझते हैं",
-    trustH: "Tribeca Global — New York 🗽 + Cuiabá 🇧🇷.",
+    trustH: "ORIGEM LTDA (marca Guileo) — Cuiabá 🇧🇷, atendendo clientes nos EUA 🗽.",
     trustSub: "भाषा, संस्कृति और भरोसा — कोई जेनेरिक कॉल सेंटर नहीं। हम दोनों ओर का पुल हैं: Gui यहाँ आपका व्यवसाय संभालती है और ब्राज़ील में परिवार को भी क़रीब रखती है। आपके लोग, आपके लोगों द्वारा।",
     cardsLabel: "💚 यह हमारे लिए क्यों काम करता है",
     cards: [

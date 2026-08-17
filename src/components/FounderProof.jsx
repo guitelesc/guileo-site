@@ -17,25 +17,25 @@ const COPY = {
   en: {
     eyebrow: "A note from the founder",
     note: "I grew up around businesses like yours. For years I watched restaurants, clinics and salons — many run by immigrant families — lose customers every single day, simply because nobody could pick up the phone. Big companies had front desks and call centers; the little guy had a voicemail. I built Guileo so every small business gets the same 24/7 team — one that answers in your customer's language, and never lets a call go unanswered.",
-    role: "Founder, Guileo (Tribeca Global Inc.)",
+    role: "Founder, Guileo (ORIGEM LTDA)",
     quotesHead: "What clients say",
   },
   pt: {
     eyebrow: "Uma carta do fundador",
     note: "Cresci cercado de negócios como o seu. Por anos vi restaurantes, clínicas e salões — muitos de famílias imigrantes — perderem clientes todos os dias, simplesmente porque ninguém conseguia atender o telefone. As grandes empresas tinham recepção e call center; o pequeno tinha caixa postal. Criei a Guileo para que todo pequeno negócio tenha a mesma equipe 24/7 — que atende no idioma do seu cliente e nunca deixa uma ligação sem resposta.",
-    role: "Fundador, Guileo (Tribeca Global Inc.)",
+    role: "Fundador, Guileo (ORIGEM LTDA)",
     quotesHead: "O que os clientes dizem",
   },
   es: {
     eyebrow: "Una nota del fundador",
     note: "Crecí rodeado de negocios como el tuyo. Durante años vi restaurantes, clínicas y salones — muchos de familias inmigrantes — perder clientes todos los días, simplemente porque nadie podía contestar el teléfono. Las grandes empresas tenían recepción y call centers; el pequeño tenía un buzón de voz. Creé Guileo para que cada pequeño negocio tenga el mismo equipo 24/7 — uno que contesta en el idioma de tu cliente y nunca deja una llamada sin respuesta.",
-    role: "Fundador, Guileo (Tribeca Global Inc.)",
+    role: "Fundador, Guileo (ORIGEM LTDA)",
     quotesHead: "Lo que dicen los clientes",
   },
   hi: {
     eyebrow: "संस्थापक की ओर से",
     note: "मैं आपके जैसे व्यवसायों के बीच बड़ा हुआ। सालों तक मैंने रेस्टोरेंट, क्लीनिक और सैलून — जिनमें कई अप्रवासी परिवारों के थे — को हर दिन ग्राहक खोते देखा, सिर्फ इसलिए कि फोन उठाने वाला कोई नहीं था। बड़ी कंपनियों के पास रिसेप्शन और कॉल सेंटर थे; छोटे व्यवसाय के पास सिर्फ वॉइसमेल। मैंने Guileo इसलिए बनाया ताकि हर छोटे व्यवसाय को वही 24/7 टीम मिले — जो आपके ग्राहक की भाषा में जवाब देती है और कोई कॉल अनुत्तरित नहीं छोड़ती।",
-    role: "संस्थापक, Guileo (Tribeca Global Inc.)",
+    role: "संस्थापक, Guileo (ORIGEM LTDA)",
     quotesHead: "ग्राहक क्या कहते हैं",
   },
 };

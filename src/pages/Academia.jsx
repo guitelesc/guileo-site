@@ -1230,7 +1230,7 @@ export default function Academia() {
             </Reveal>
             <Reveal className="mt-10 text-center">
               <a href={waLink(t.ctaMsg)} target="_blank" rel="noopener" className="btn-gold text-base">{t.cta}</a>
-              <p className="mt-4 text-[12px] text-g-muted">Guileo · Tribeca Global Inc. · {lang === "pt" ? "comissões pagas por venda fechada" : "commissions paid per closed sale"}</p>
+              <p className="mt-4 text-[12px] text-g-muted">Guileo · ORIGEM LTDA · {lang === "pt" ? "comissões pagas por venda fechada" : "commissions paid per closed sale"}</p>
             </Reveal>
           </section>
 

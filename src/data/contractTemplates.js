@@ -1,7 +1,7 @@
 // contractTemplates.js
-// Guileo / Tribeca Global Inc. — Trilingual (PT-BR + EN-US + ES-LatAm) contract & quote template library.
+// Guileo / ORIGEM LTDA — Trilingual (PT-BR + EN-US + ES-LatAm) contract & quote template library.
 // Production reference templates for digital services + AI receptionist SaaS.
-// Company is Brazilian (Tribeca Global Inc. / Guileo, Cuiabá-MT) and also sells internationally.
+// Company is Brazilian (ORIGEM LTDA / Guileo, Cuiabá-MT) and also sells internationally.
 // NOT legal advice — see DISCLAIMER below. Parties should have counsel review before signing.
 
 export const CLAUSES = {

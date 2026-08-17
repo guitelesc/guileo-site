@@ -66,7 +66,7 @@ const UI = {
   doubt: { en: "💬 I have a question", pt: "💬 Tenho uma dúvida", es: "💬 Tengo una duda", hi: "💬 मेरा एक सवाल है" },
   print: { en: "🖨️ Print / PDF", pt: "🖨️ Imprimir / PDF", es: "🖨️ Imprimir / PDF", hi: "🖨️ प्रिंट / PDF" },
   preparedBy: { en: "Prepared by", pt: "Preparado por", es: "Preparada por", hi: "तैयारकर्ता:" },
-  sig: { en: "Guileo · Tribeca Global Inc.", pt: "Guileo · Tribeca Global Inc.", es: "Guileo · Tribeca Global Inc.", hi: "Guileo · Tribeca Global Inc." },
+  sig: { en: "Guileo · ORIGEM LTDA", pt: "Guileo · ORIGEM LTDA", es: "Guileo · ORIGEM LTDA", hi: "Guileo · ORIGEM LTDA" },
   waAccept: {
     en: (biz, pkg, price) => `Hi Guileo! I accept the proposal${biz ? " for " + biz : ""} (${pkg} · ${price}/mo). I want to start.`,
     pt: (biz, pkg, price) => `Oi Guileo! Aceito a proposta${biz ? " da " + biz : ""} (${pkg} · ${price}/mês). Quero começar.`,

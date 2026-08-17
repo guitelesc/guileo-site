@@ -50,7 +50,7 @@ os 5 eventos de webhook, e a estratégia Connect. Para Connect: Dashboard Stripe
 **O que acende:** SMS hoje é BLOQUEADO (erro 30034) até registrar. Libera: survey por SMS, aviso do dono
 por SMS, missed-call text-back. **Não é env var** — é registro no console da Twilio.
 **Onde clicar:** Twilio Console → **Messaging → Regulatory Compliance → A2P 10DLC** → registrar Brand +
-Campaign (use a marca "Guileo"/Tribeca Global). Aprovação leva alguns dias.
+Campaign (use a marca "Guileo"/ORIGEM LTDA). Aprovação leva alguns dias.
 **Env var:** nenhuma nova — `TWILIO_ACCOUNT_SID`/`TWILIO_AUTH_TOKEN`/`TWILIO_FROM` já estão setados; o SMS
 liga sozinho quando a campanha for aprovada.
 **Prova:** eu mando um SMS de teste pelo caminho existente e confiro que sai sem erro 30034.

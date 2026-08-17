@@ -24,7 +24,7 @@ const ACTIV_KEYS = [
     proof: "client_stripe_lookup retorna acct_…; do_action invoice gera link real em vez de honestNoLink." },
   { id: "a2p", emoji: "📱", name: "A2P 10DLC (Twilio)", effort: "médio · aprovação leva dias",
     lights: "SMS destrava: survey, aviso do dono, missed-call text-back (hoje erro 30034)",
-    where: "Não é env var — é registro. Twilio Console → Messaging → Regulatory Compliance → A2P 10DLC → Brand + Campaign (marca Guileo / Tribeca Global).",
+    where: "Não é env var — é registro. Twilio Console → Messaging → Regulatory Compliance → A2P 10DLC → Brand + Campaign (marca Guileo / ORIGEM LTDA).",
     proof: "Twilio já setado — SMS liga sozinho quando a campanha aprovar; teste sai sem erro 30034." },
   { id: "whats", emoji: "💬", name: "WhatsApp + Instagram DM", effort: "médio",
     lights: "A Gui responde WhatsApp e IG DM — o canal nº1 do Brasil, mesmo cérebro do webchat",

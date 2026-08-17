@@ -8,7 +8,7 @@
 //
 // DUAS PERNAS, PORQUE A GUILEO VENDE NOS DOIS LADOS (Luis: "assinamos nacional e internacional"):
 //   • BR — ORIGEM LTDA assina o que é regido pela lei brasileira (foro de Cuiabá-MT, CAMARB).
-//   • US — a Inc. assina o que é regido pela lei americana. Um contrato entre duas partes
+//   • US — a Inc. (quando existir) assina o que é regido pela lei americana. Um contrato entre duas partes
 //     americanas, sobre serviço prestado nos EUA e cobrado em dólar, que manda resolver em Cuiabá,
 //     encarece e atrasa qualquer cobrança — e é o primeiro argumento do advogado do outro lado.
 //
@@ -51,12 +51,16 @@ export const ENTIDADES = {
   // constituída não deixa o contrato incompleto, deixa VAZIO. Não há quem se obrigue, não há quem
   // seja cobrado, e do outro lado sobra a alegação de que a contratada se apresentou como algo que
   // não é. Enquanto `constituida` for false, `entidadePorIdioma` devolve a ORIGEM em TODOS os
-  // idiomas — um contrato em inglês assinado pela ORIGEM é perfeitamente válido; um assinado por
+  // idiomas — um contrato em inglês assinado pela ORIGEM LTDA é perfeitamente válido; um assinado por
   // uma empresa inexistente não é.
+  // ⚠️ ESTE ARQUIVO É A MEMÓRIA DOS NOMES — e uma varredura global de "Tribeca Global Inc." →
+  // "ORIGEM LTDA" passou por aqui e apagou justamente o nome que ele existe para guardar, deixando
+  // escrito que "a ORIGEM ainda não foi aberta". Substituição em massa não pode tocar no cadastro:
+  // ao mudar nome de entidade, este arquivo se edita à mão.
   us: {
     id: "us",
     constituida: false,
-    razaoSocial: "Tribeca Global Inc.",
+    razaoSocial: "Tribeca Global Inc.", // planejada, NÃO constituída
     fantasia: null,
     marca: "Guileo",
     docTipo: "EIN",

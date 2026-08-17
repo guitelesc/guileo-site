@@ -1,4 +1,4 @@
-# A2P 10DLC — Pacote de Registro pronto pra colar (Guileo / Tribeca Global Inc.)
+# A2P 10DLC — Pacote de Registro pronto pra colar (Guileo / ORIGEM LTDA)
 
 > **O que é:** registro obrigatório pra mandar SMS nos EUA sem ser bloqueado/filtrado pelas operadoras.
 > **Onde:** Twilio Console → **Messaging → Regulatory Compliance → A2P 10DLC** (ou Trust Hub).
@@ -11,20 +11,39 @@
 
 | Campo | Valor |
 |---|---|
-| Legal business name | **Tribeca Global Inc.** |
+> 🚨 **ESTE REGISTRO É INTERNACIONAL (não-US), e isso muda o formulário.** A versão anterior deste
+> pacote declarava *Legal business name: Tribeca Global Inc.*, *Country: United States* e pedia um
+> **EIN** — só que a Tribeca **ainda não foi constituída** (Luis, 17/08/2026). Declarar à operadora
+> um nome legal e um tax ID de empresa inexistente não é imprecisão de marketing: é declaração falsa
+> em registro regulatório, e a verificação da Twilio cruza com base oficial — reprova na hora, e
+> reprovação repetida queima a reputação da marca. A entidade real é brasileira, então o registro é
+> o de **empresa estrangeira**, com CNPJ no lugar do EIN.
+
+| Campo | Valor |
+|---|---|
+| Legal business name | **ORIGEM LTDA** (exatamente como no cartão CNPJ) |
 | Brand / DBA | **Guileo** |
-| Business type | **[VOCÊ PREENCHE]** (Corporation / LLC — o que estiver no registro da empresa) |
-| EIN (US Tax ID) | **[VOCÊ PREENCHE]** |
-| Country of registration | United States |
-| Business address | **[VOCÊ PREENCHE — endereço de NY registrado]** |
+| Business type | **Private Company** · Sociedade Empresária Limitada (equivalente a LLC) |
+| Business registration ID type | **Other / CNPJ** (não é EIN — a empresa não é americana) |
+| Business registration number | **66.002.480/0001-38** |
+| Country of registration | **Brazil** 🇧🇷 |
+| Business address | **Rua Dez, nº 120, Dom Bosco, Cuiabá/MT, CEP 78.050-460, Brasil** |
 | Website | https://guileoai.com |
 | Business email | smart@guileoai.com |
-| Business phone | **[VOCÊ PREENCHE]** |
+| Business phone | **[VOCÊ PREENCHE]** — um telefone que atenda e receba verificação |
 | Industry / vertical | Technology / Professional Services |
 | Stock / public? | No (private) |
 | Authorized representative | Luis Teles · smart@guileoai.com · **[título, ex: Founder/CEO]** |
 
-> Dica: o nome legal + EIN + endereço têm que bater EXATAMENTE com o que está no IRS/registro da empresa, senão a verificação falha.
+> O nome legal + número de registro + endereço têm que bater **exatamente** com o cartão CNPJ,
+> incluindo pontuação do número. Divergência de um caractere reprova a verificação.
+
+> ⚠️ **O que esperar sendo empresa estrangeira, dito com honestidade:** marca não-US registra e
+> funciona, mas costuma receber **trust score menor** e, com isso, **limites de throughput mais
+> baixos** que uma marca americana verificada. Alguns tipos de campanha exigem presença nos EUA.
+> Para o volume da Guileo hoje isso não trava nada — e é infinitamente melhor que registrar em nome
+> de uma empresa que não existe. Quando a Inc. for aberta, dá pra registrar uma marca US e migrar a
+> campanha; até lá, este é o caminho verdadeiro.
 
 ---
 
