@@ -344,10 +344,23 @@ export default function HeroV2() {
               o luxo aqui é o contraste do número laranja contra muito silêncio em volta, não caixa
               pesada. O método vira rodapé DENTRO do painel, separado por um filete, porque é a
               legenda do número — não um bloco concorrente. */}
-          <div className="mt-7 max-w-[32rem] rounded-2xl border border-g-gold/15 px-5 py-4" style={{ background: "linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.012))" }}>
-            <div className="flex items-start gap-4">
-              <span className="shrink-0 font-semibold leading-none tracking-tight" style={{ fontSize: "clamp(2rem,3.4vw,2.6rem)", color: "#FF8A33", textShadow: "0 0 22px rgba(255,138,51,0.32)" }}>118h</span>
-              <span className="text-[14px] leading-snug text-g-ink">{HORAS[lang] || HORAS.en}</span>
+          <div className="mt-7 max-w-[32rem] rounded-2xl border border-g-gold/15 px-5 py-4.5" style={{ background: "linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.012))" }}>
+            {/* ⚠️ O NÚMERO TINHA PERDIDO PARA O TEXTO (ajuste 2026-08-17, 2ª passada).
+                Com o texto em três linhas de 14px ao lado de um número de 2.6rem, a MANCHA do
+                parágrafo ficava maior que a do número — e num painel de prova quem tem que mandar
+                é o número, porque é ele que a pessoa lembra depois de fechar a aba.
+                Três correções, todas de peso relativo:
+                  · o número subiu para 3.4rem e o "h" caiu para 0.52em — a unidade grudada no
+                    mesmo corpo do algarismo engorda o bloco sem acrescentar leitura;
+                  · o texto desceu para 13.5px com medida curta, virando coluna estreita ao lado;
+                  · `items-baseline` no lugar de `items-start`: com números grandes o topo da caixa
+                    fica bem acima do topo do algarismo (o espaço do acento), então alinhar por
+                    `start` fazia o número parecer flutuando acima da primeira linha do texto. */}
+            <div className="flex items-baseline gap-4">
+              <span className="shrink-0 font-semibold leading-none tracking-tight tabular-nums" style={{ fontSize: "clamp(2.4rem,4.2vw,3.4rem)", color: "#FF8A33", textShadow: "0 0 26px rgba(255,138,51,0.34)" }}>
+                118<span style={{ fontSize: "0.52em", fontWeight: 700, letterSpacing: "-0.01em" }}>h</span>
+              </span>
+              <span className="text-[13.5px] leading-[1.5] text-g-ink">{HORAS[lang] || HORAS.en}</span>
             </div>
             {/* ── UMA LINGUAGEM SÓ NO SITE INTEIRO (2026-08-17) ─────────────────────────────
                 Esta linha dizia "⚡ Performance → Sales → Growth" e a seção logo abaixo dizia
@@ -360,14 +373,25 @@ export default function HeroV2() {
                 serviços. Nome repetido é nome que gruda; três nomes concorrentes não grudam
                 nenhum. O ponto colorido é o mesmo elemento da listra — a repetição do sinal é o
                 que ensina o alfabeto Brain·AD·Build sem uma linha de legenda. */}
-            <div className="mt-3.5 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-g-gold/10 pt-3 text-[11.5px]">
+            {/* ⚠️ DOIS DEFEITOS TÉCNICOS AQUI, E O PRIMEIRO É O QUE O LUIS VIU (2026-08-17):
+                1. QUEBRA NO MEIO DO GRUPO. `flex-wrap` no container sem `whitespace-nowrap` nos
+                   filhos deixa o navegador partir entre "Brain" e "performance", ou entre o nome e
+                   o seu pontinho. Em telas estreitas a linha vira uma escada de palavras soltas —
+                   "Brain / performance / → / AD / growth" — que é exatamente como ele colou o
+                   texto pra mim. O par nome+dono é uma unidade de leitura: ou cabe inteiro na
+                   linha, ou desce inteiro. A seta é que pode ficar para trás.
+                2. PEQUENO DEMAIS PARA O QUE É. A 11.5px com o complemento em cinza-fraco, a linha
+                   virava borrão — e ela carrega os TRÊS nomes que a página inteira quer ensinar.
+                   Nome sobe para 12.5px, complemento para 12px e sai do cinza fraco: informação
+                   que a gente quer que gruda não pode ser a menor coisa da tela. */}
+            <div className="mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-2 border-t border-g-gold/10 pt-3.5 text-[12.5px]">
               {C.method.map((nome, i) => (
-                <span key={nome} className="flex items-center gap-2">
-                  {i > 0 && <span className="text-g-muted/70">→</span>}
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: PILAR_COR[i], boxShadow: `0 0 8px ${PILAR_COR[i]}` }} />
-                    <b className="font-black uppercase tracking-[0.14em]" style={{ color: PILAR_COR[i] }}>{nome}</b>
-                    <span className="font-semibold text-g-muted">{C.owns[i]}</span>
+                <span key={nome} className="flex items-center gap-2.5 whitespace-nowrap">
+                  {i > 0 && <span className="text-g-muted/60">→</span>}
+                  <span className="flex items-center gap-1.5 whitespace-nowrap">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: PILAR_COR[i], boxShadow: `0 0 8px ${PILAR_COR[i]}` }} />
+                    <b className="font-black uppercase tracking-[0.12em]" style={{ color: PILAR_COR[i] }}>{nome}</b>
+                    <span className="text-[12px] font-medium text-g-ink/75">{C.owns[i]}</span>
                   </span>
                 </span>
               ))}
