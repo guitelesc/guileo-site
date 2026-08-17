@@ -7,6 +7,11 @@
 # loader) with wasm allowed for the widget's audio engine; connections only to Supabase +
 # ElevenLabs; styles inline (React) + Google Fonts; no eval, no inline scripts, no wildcards.
 # JSON-LD <script type="application/ld+json"> is data (never executed) so CSP doesn't block it.
+# O ícone do app é lido por outra origem (o painel da Meta, no upload). É uma imagem pública e
+# sem credencial — liberar CORS nela não expõe nada, e é o único arquivo com essa exceção.
+/guileo-app-icon-1024.png
+  Access-Control-Allow-Origin: *
+
 /*
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
