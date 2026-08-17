@@ -9,6 +9,7 @@ import LeadForm from "../components/LeadForm.jsx";
 import StickyCtaMobile from "../components/StickyCtaMobile.jsx";
 import { Reveal, Magnetic, Accordion } from "../lib/ui.jsx";
 import HeroV2 from "../components/HeroV2";
+import ServicesMarquee from "../components/ServicesMarquee.jsx";
 import ResultsV2 from "../components/ResultsV2";
 import PillarsProducts from "../components/PillarsProducts.jsx";
 import LegsV2 from "../components/LegsV2";
@@ -111,6 +112,7 @@ export default function Home() {
 
       {/* ── Tightened single-buyer funnel: Hook → Problem/Result → Solution → How → Proof → Demo → Offer → Close ── */}
       <HeroV2 />              {/* Hook — never miss a call, a lead, or a sale */}
+      <ServicesMarquee />     {/* A LISTRA — o catálogo inteiro (site, apps, software, anúncios, automações…) na PRIMEIRA tela. O conteúdo já existia em PillarsProducts, duas seções abaixo; quem chega pelo anúncio decide o que a gente é antes de rolar. Lê de productSystem.js, então nunca diverge do catálogo real. */}
       <TrustStrip />          {/* Honest trust bar HIGH on the page — money-back · human-supervised · 7-day launch · 20+ langs */}
 
       {/* ── O SIMULADOR SAIU (Luis, 2026-08-11: "tá muito nada, ve") ──────────────────────────

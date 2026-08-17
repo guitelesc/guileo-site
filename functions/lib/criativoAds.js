@@ -157,7 +157,13 @@ export async function gerarPeca(env, { canal, ctx, lang, langName, objetivo, pub
   };
   // BLOQUEIO: promessa que os fatos não sustentam sai do kit como bloqueada, com o motivo. Entregar
   // a peça "com um aviso pequeno" seria a mesma coisa que entregá-la — alguém publica.
+  // BLOQUEIO TAMBÉM POR LIMITE DURO (2026-08-17). `duro` é onde a PLATAFORMA REJEITA, não onde ela
+  // trunca. A apara se recusa de propósito a cortar excesso grande (>3 chars) para não desfigurar o
+  // texto — então uma descrição de 97/90 sobrevive inteira. Chamar isso de `publicavel` é entregar
+  // ao time uma peça que o Google reprova no momento em que ele cola: o mesmo defeito que
+  // `camposFaltando` existe para evitar, e a única que passou no primeiro kit real.
   if (mentiras.length) { peca.bloqueado = mentiras; peca.publicavel = false; }
+  else if (duro.length) { peca.bloqueado = duro.map((d) => `passa do limite de rejeição da plataforma — ${d}`); peca.publicavel = false; }
   else peca.publicavel = faltando.length === 0;
   return peca;
 }
@@ -237,7 +243,9 @@ export async function gerarKitCampanha(env, email, opts = {}) {
   ));
 
   const bloqueadas = pecas.filter((p) => p.bloqueado?.length).length;
-  if (bloqueadas) avisos.push(`${bloqueadas} peça(s) bloqueada(s): a IA prometeu algo que os fatos do negócio não sustentam. Elas não saem para publicação — o motivo está em cada peça.`);
+  // O motivo VAI JUNTO da contagem: bloqueio agora tem duas causas (promessa sem lastro e limite de
+  // rejeição da plataforma), e um aviso que só cita uma manda o time procurar o defeito errado.
+  if (bloqueadas) avisos.push(`${bloqueadas} peça(s) bloqueada(s) — promessa que os fatos do negócio não sustentam, ou texto acima do limite em que a plataforma REJEITA. Elas não saem para publicação; o motivo está em cada peça, no campo "bloqueado".`);
 
   return {
     negocio: ctx.business || "", setor: ctx.industry || "", idioma: lang,

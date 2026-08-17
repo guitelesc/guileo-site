@@ -3,11 +3,44 @@ import mark from "../assets/guileo-mark.png";
 import { useLang } from "../i18n.jsx";
 
 // Hero copy that lives in the component (richer than the shared dict) — translated inline.
+//
+// ── REESCRITA 2026-08-17 ────────────────────────────────────────────────────────────────────────
+// O Luis olhou a tela e disse que este texto não estava bom. Ele estava certo, e o defeito não era
+// escolha de palavra: TUDO ABAIXO DO TÍTULO REPETIA O TÍTULO com palavras mais fracas.
+//   · "24/7" aparecia TRÊS vezes na mesma dobra: nesta frase, no número laranja e colado no botão.
+//   · Os mesmos três verbos, duas vezes: o h1 diz "answers, books & sells" e a frase logo abaixo
+//     dizia "answers, books, quotes and collects".
+//   · "never sleeps, never calls in sick" é o clichê mais batido da categoria — e estava idêntico
+//     nas 143 páginas de SEO, então nem era nosso.
+//   · "Real AI · real calls · real bookings": três "real" seguidos. Repetir que é real é a frase de
+//     quem está sendo acusado de não ser.
+// Repetição na dobra de cima não soa a ênfase, soa a quem só tem uma coisa pra dizer.
+//
+// O QUE ENTROU NO LUGAR — o subtítulo passou a dizer o que o título NÃO PODE dizer:
+//   · "at 2am, on a Sunday" no lugar de "24/7". A mesma informação, mas com hora e dia a pessoa VÊ
+//     a cena; "24/7" ela já leu em todo site de software e não vê nada.
+//   · A aritmética no lugar do clichê: aberto ~50h, o telefone toca 168, sobram 118. Qualquer dono
+//     confere de cabeça, e é a única frase desta página que nenhum concorrente está usando.
+//   · O botão passou a dizer o que ACONTECE ao clicar (ela liga em cerca de um minuto) em vez de
+//     jurar que é real. Promessa verificável, e verificada: o #try coleta o número e dispara a
+//     ligação na hora (DemoEngine "A Gui está te ligando agora").
+// "Você compra o resultado, não a ferramenta" FICOU: é o posicionamento contra quem vende software
+// — só saiu do fim de uma lista, onde ninguém lia, para o fim da frase, onde fecha o raciocínio.
 const HERO_COPY = {
-  en: { eyebrow:"AI · ads · creative — the agency that grows local businesses", sub:["We run the ads that fill your calendar — and "," answers every call 24/7 in 16 languages, books, quotes and collects. You buy the "," result, not the tools","."], method:["⚡ Performance","Sales","Growth"], cta:"Hear Gui work", sub2:"Real AI · real calls · real bookings." },
-  pt: { eyebrow:"AI · anúncios · criativo — a agência que faz o negócio local crescer", sub:["A gente roda os anúncios que enchem sua agenda — e a "," atende 24/7 em 16 idiomas, agenda, orça e cobra. Você compra o "," resultado, não a ferramenta","."], method:["⚡ Performance","Vendas","Crescimento"], cta:"Ouça a Gui trabalhar", sub2:"IA de verdade · ligações reais · agendamentos reais." },
-  es: { eyebrow:"IA · anuncios · creativo — la agencia que hace crecer al negocio local", sub:["Nosotros manejamos los anuncios que llenan tu agenda — y "," contesta 24/7 en 16 idiomas, agenda, cotiza y cobra. Compras el "," resultado, no la herramienta","."], method:["⚡ Rendimiento","Ventas","Crecimiento"], cta:"Escucha a Gui trabajar", sub2:"IA real · llamadas reales · reservas reales." },
-  hi: { eyebrow:"AI · विज्ञापन · क्रिएटिव — स्थानीय व्यवसाय बढ़ाने वाली एजेंसी", sub:["हम वो विज्ञापन चलाते हैं जो आपका कैलेंडर भरते हैं — और "," 16 भाषाओं में 24/7 जवाब देती, बुकिंग, कोटेशन और वसूली करती है। आप "," नतीजा खरीदते हैं, टूल नहीं","।"], method:["⚡ Performance","Sales","Growth"], cta:"Gui को काम करते सुनें", sub2:"असली AI · असली कॉल · असली बुकिंग।" },
+  en: { eyebrow:"AI · ads · creative — the agency that grows local businesses", sub:["We run the ads that make the phone ring. "," picks it up — in your customer's language, at 2am, on a Sunday — and turns that call into a booking on your calendar, or a deposit already paid. You buy the ","result, not the tools","."], method:["⚡ Performance","Sales","Growth"], cta:"Hear Gui work", sub2:"Leave your number — she calls in about a minute.", h1:["Work Smart.","Grow Faster.","Sleep Better."], promessa:"We bring the customers. The AI answers, books & sells. You grow." },
+  pt: { eyebrow:"AI · anúncios · criativo — a agência que faz o negócio local crescer", sub:["A gente roda os anúncios que fazem o telefone tocar. A "," atende — no idioma do seu cliente, às 2 da manhã, num domingo — e transforma a ligação em horário marcado na agenda, ou em sinal já pago. Você compra o ","resultado, não a ferramenta","."], method:["⚡ Performance","Vendas","Crescimento"], cta:"Ouça a Gui trabalhar", sub2:"Deixa seu número — ela liga em mais ou menos um minuto.", h1:["Trabalhe com inteligência.","Cresça mais rápido.","Durma melhor."], promessa:"A gente traz os clientes. A AI atende, agenda e vende. Você cresce." },
+  es: { eyebrow:"IA · anuncios · creativo — la agencia que hace crecer al negocio local", sub:["Nosotros manejamos los anuncios que hacen sonar el teléfono. "," contesta — en el idioma de tu cliente, a las 2 de la mañana, un domingo — y convierte esa llamada en una cita en tu agenda, o en un anticipo ya pagado. Compras el ","resultado, no la herramienta","."], method:["⚡ Rendimiento","Ventas","Crecimiento"], cta:"Escucha a Gui trabajar", sub2:"Deja tu número — te llama en un minuto.", h1:["Trabaja inteligente.","Crece más rápido.","Duerme mejor."], promessa:"Nosotros traemos los clientes. La IA contesta, agenda y vende. Tú creces." },
+  hi: { eyebrow:"AI · विज्ञापन · क्रिएटिव — स्थानीय व्यवसाय बढ़ाने वाली एजेंसी", sub:["हम वो विज्ञापन चलाते हैं जिनसे फ़ोन बजता है। "," उसे उठाती है — आपके ग्राहक की भाषा में, रात 2 बजे, रविवार को — और उस कॉल को आपके कैलेंडर की बुकिंग में, या चुकाए हुए एडवांस में बदल देती है। आप ","नतीजा खरीदते हैं, टूल नहीं","।"], method:["⚡ Performance","Sales","Growth"], cta:"Gui को काम करते सुनें", sub2:"अपना नंबर छोड़ें — वो लगभग एक मिनट में कॉल करती है।", h1:["होशियारी से काम।","तेज़ी से बढ़ें।","चैन से सोएँ।"], promessa:"ग्राहक हम लाते हैं। AI जवाब देती, बुक करती और बेचती है। आप बढ़ते हैं।" },
+};
+
+// A ARITMÉTICA QUE SUBSTITUIU O CLICHÊ. 168 horas tem a semana; uma loja aberta ~50 deixa 118 em
+// que o telefone toca e não tem ninguém. É checável de cabeça — e por isso convence sem precisar
+// de "confie em mim". O número fica FORA do dicionário porque é o mesmo nos 4 idiomas.
+const HORAS = {
+  en: "Open about 50 hours a week? The phone rings for 168. Gui works the other 118.",
+  pt: "Aberto umas 50 horas por semana? O telefone toca 168. A Gui cobre as outras 118.",
+  es: "¿Abierto unas 50 horas a la semana? El teléfono suena 168. Gui cubre las otras 118.",
+  hi: "हफ़्ते में करीब 50 घंटे खुले? फ़ोन 168 घंटे बजता है। बाकी 118 घंटे Gui संभालती है।",
 };
 
 // HeroV2 — TEST (/v2). Realistic, LIVING iPhone-2026 mockup of Gui working nonstop.
@@ -262,40 +295,74 @@ export default function HeroV2() {
           </div>
 
           <h1 className="mt-5 font-black leading-[0.92] tracking-tight" style={{ fontSize: "clamp(2.3rem,8.5vw,4.5rem)" }}>
-            <span className="block text-g-word" style={{ animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>{H.h1a || "Work Smart."}</span>
-            <span className="block bg-gradient-to-r from-g-green via-g-light to-g-green bg-clip-text pl-[0.12em] text-transparent" style={{ backgroundSize: "220% auto", animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .2s both, gshine 7s linear infinite" }}>{H.h1b || "Grow Faster."}</span>
-            <span className="block bg-gradient-to-r from-g-gold via-g-copper to-g-gold bg-clip-text pl-[0.24em] text-transparent" style={{ backgroundSize: "220% auto", animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .35s both, gshine 7s linear .6s infinite" }}>{H.h1c || "Sleep Better."}</span>
+            <span className="block text-g-word" style={{ animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>{C.h1[0]}</span>
+            <span className="block bg-gradient-to-r from-g-green via-g-light to-g-green bg-clip-text pl-[0.12em] text-transparent" style={{ backgroundSize: "220% auto", animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .2s both, gshine 7s linear infinite" }}>{C.h1[1]}</span>
+            <span className="block bg-gradient-to-r from-g-gold via-g-copper to-g-gold bg-clip-text pl-[0.24em] text-transparent" style={{ backgroundSize: "220% auto", animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .35s both, gshine 7s linear .6s infinite" }}>{C.h1[2]}</span>
           </h1>
 
-          <p className="mt-5 max-w-md text-[15.5px] leading-relaxed text-g-ink">
-            <span className="font-bold text-g-word">{C.sub[0]}</span> Gui{C.sub[1]}<span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text font-bold text-transparent">{C.sub[2]}</span>{C.sub[3]}
+          {/* ── A PONTE (2026-08-17, pedido do Luis: «podia voltar as 2 frases Work Smart Grow Faster
+              Sleep Better e aí embaixo escrito isso») ─────────────────────────────────────────────
+              O título voltou a ser a PROMESSA AO DONO — o que ele ganha na própria vida (trabalhar
+              com inteligência, crescer, dormir). Isso é o que vende para quem está exausto de
+              atender telefone, e é a frase que a marca já assinava (o rodapé PT sempre terminou
+              assim). Só que ela é emocional: sozinha, não diz o que a empresa FAZ.
+              Então "A gente traz os clientes. A AI atende, agenda e vende. Você cresce." desce um
+              degrau e vira a ponte — o modelo de negócio inteiro em três orações curtas, ligando a
+              promessa emocional lá em cima ao parágrafo concreto logo abaixo.
+              A escala desce de verdade: 4.5rem → 1.3rem → 1.03rem. Três tamanhos, três funções —
+              sentir, entender, decidir. Era esse degrau do meio que faltava quando os quatro
+              blocos brigavam com o mesmo peso. */}
+          <p className="mt-4 max-w-[32rem] text-[clamp(1.05rem,1.5vw,1.3rem)] font-semibold leading-snug tracking-tight text-g-word"
+             style={{ animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .5s both" }}>
+            {C.promessa}
           </p>
 
-          <div className="mt-6 flex items-center gap-2 text-[13px] font-black uppercase tracking-wider">
-            <span className="text-g-green">{C.method[0]}</span>
-            <span className="text-g-muted">→</span>
-            <span className="text-g-gold">{C.method[1]}</span>
-            <span className="text-g-muted">→</span>
-            <span className="text-g-copper">{C.method[2]}</span>
+          {/* ── COMPOSIÇÃO DA COLUNA (reescrita 2026-08-17) ───────────────────────────────────────
+              O Luis olhou e disse que estava "anormal". Estava: eram QUATRO blocos pequenos
+              empilhados — parágrafo, linha do método, linha do 24/7 e a fileira do botão — cada um
+              com peso, cor e espaçamento diferentes (mt-5, mt-6, mt-8, mt-7), e nenhum mandando.
+              Muitos elementos do mesmo tamanho, nenhum dominante: o olho não sabe onde pousar
+              depois do título e a dobra inteira perde a força que o h1 tinha acabado de ganhar.
+              Além disso, o texto de apoio estava em 12.5px cinza-fraco ao lado de um número grande,
+              e quebrava em duas linhas no meio de uma oração ("never / misses a sale").
+
+              Agora são TRÊS blocos com hierarquia descendente: PARÁGRAFO (leitura) → PAINEL DE PROVA
+              (o número, que é o pico visual da coluna) → BOTÃO (ação). O método e a estatística,
+              que antes eram duas linhas soltas, viraram UM painel: eles dizem a mesma coisa (como
+              trabalhamos / quanto tempo cobrimos), então competiam por ser blocos separados.
+              A medida do parágrafo subiu de max-w-md para 32rem e o corpo de 15.5 para 16.5px —
+              linha curta demais ao lado de um h1 de 4.5rem faz o texto parecer nota de rodapé. */}
+          <p className="mt-5 max-w-[32rem] text-[16.5px] leading-[1.65] text-g-ink">
+            <span className="font-bold text-g-word">{C.sub[0]}</span>Gui{C.sub[1]}<span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text font-bold text-transparent">{C.sub[2]}</span>{C.sub[3]}
+          </p>
+
+          {/* PAINEL DE PROVA — o pico visual da coluna. Hairline champanhe + fundo quase imperceptível:
+              o luxo aqui é o contraste do número laranja contra muito silêncio em volta, não caixa
+              pesada. O método vira rodapé DENTRO do painel, separado por um filete, porque é a
+              legenda do número — não um bloco concorrente. */}
+          <div className="mt-7 max-w-[32rem] rounded-2xl border border-g-gold/15 px-5 py-4" style={{ background: "linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.012))" }}>
+            <div className="flex items-start gap-4">
+              <span className="shrink-0 font-semibold leading-none tracking-tight" style={{ fontSize: "clamp(2rem,3.4vw,2.6rem)", color: "#FF8A33", textShadow: "0 0 22px rgba(255,138,51,0.32)" }}>118h</span>
+              <span className="text-[14px] leading-snug text-g-ink">{HORAS[lang] || HORAS.en}</span>
+            </div>
+            <div className="mt-3.5 flex items-center gap-2 border-t border-g-gold/10 pt-3 text-[11.5px] font-black uppercase tracking-[0.14em]">
+              <span className="text-g-green">{C.method[0]}</span>
+              <span className="text-g-muted/70">→</span>
+              <span className="text-g-gold">{C.method[1]}</span>
+              <span className="text-g-muted/70">→</span>
+              <span className="text-g-copper">{C.method[2]}</span>
+            </div>
           </div>
 
-          {/* Faena moment — restrained & editorial: a thin champagne hairline + a quiet orange accent.
-              Luxury is refinement, not size. */}
-          <div className="mt-8 flex items-center gap-3.5">
-            <span className="h-9 w-px shrink-0" style={{ background: "linear-gradient(180deg,transparent,rgba(214,194,154,0.6),transparent)" }} />
-            <span className="font-semibold leading-none tracking-tight shrink-0" style={{ fontSize: "clamp(1.3rem,2.3vw,1.65rem)", color: "#FF8A33", textShadow: "0 0 16px rgba(255,138,51,0.3)" }}>24/7</span>
-            <span className="max-w-[18rem] text-[12.5px] leading-snug text-g-muted">
-              {lang === "pt" ? "A Gui nunca dorme, nunca falta, nunca perde uma venda." : lang === "es" ? "Gui nunca duerme, nunca falta, nunca pierde una venta." : lang === "hi" ? "Gui कभी नहीं सोती, कभी नहीं चूकती, कोई बिक्री नहीं खोती।" : "Gui never sleeps, never calls in sick, never misses a sale."}
-            </span>
-          </div>
-
-          <div className="mt-7 flex flex-wrap items-center gap-3">
-            <a href="#try" className="group inline-flex items-center gap-2 rounded-full px-5 py-3 text-[14px] font-bold text-g-word ring-1 transition" style={{ background: "linear-gradient(180deg,#3a3a3a,#181818)", "--tw-ring-color": "rgba(255,138,51,0.32)", boxShadow: "0 14px 40px -14px rgba(0,0,0,0.8), 0 0 26px -6px rgba(255,138,51,0.30)" }}>
+          {/* AÇÃO — a linha de apoio foi para BAIXO do botão. Ao lado, ela lia como sobra de texto
+              e disputava a linha com o próprio botão; embaixo, vira a legenda que responde
+              "o que acontece se eu clicar?" — que é a dúvida que trava o clique. */}
+          <div className="mt-7">
+            <a href="#try" className="group inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-[15px] font-bold text-g-word ring-1 transition hover:brightness-110" style={{ background: "linear-gradient(180deg,#3a3a3a,#181818)", "--tw-ring-color": "rgba(255,138,51,0.32)", boxShadow: "0 14px 40px -14px rgba(0,0,0,0.8), 0 0 26px -6px rgba(255,138,51,0.30)" }}>
               <span className="grid h-6 w-6 place-items-center rounded-full text-xs" style={{ background: "linear-gradient(135deg,rgba(255,138,51,0.55),rgba(214,194,154,0.35))" }}>🌱</span>
               {C.cta}
-              <span style={{ color: "#FF8A33" }}>· 24/7</span>
             </a>
-            <span className="text-[12px] text-g-muted">{C.sub2}</span>
+            <p className="mt-3 text-[12.5px] text-g-muted">{C.sub2}</p>
           </div>
         </div>
 

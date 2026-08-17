@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLang } from "../i18n.jsx";
 import { Reveal, Stagger, Item } from "../lib/ui.jsx";
 import { productsForPilar } from "../data/productSystem.js";
@@ -46,9 +47,12 @@ import { productsForPilar } from "../data/productSystem.js";
 // honesta (o resto existe) sem transformar o card num inventário — e equilibra os três visualmente,
 // que era metade da confusão.
 const MAX_CHIPS = 4;
-const produtosDoPilar = (pilar, lang) => {
+// Rótulo do estado aberto. Fora do dicionário grande de propósito: é a única string que nasceu
+// com o botão, e mantê-la colada nele evita que a próxima pessoa mexa num sem lembrar do outro.
+const MENOS = { en: "− less", pt: "− menos", es: "− menos", hi: "− कम" };
+const produtosDoPilar = (pilar, lang, tudo = false) => {
   const todos = productsForPilar(pilar);
-  const itens = todos.slice(0, MAX_CHIPS).map((p) => {
+  const itens = (tudo ? todos : todos.slice(0, MAX_CHIPS)).map((p) => {
     const rm = p.resultMetric || {};
     const unidade = (rm.unit && (rm.unit[lang] || rm.unit.en)) || "";
     return {
@@ -134,6 +138,10 @@ const hexToRgb = (hex) => {
 export default function PillarsProducts() {
   const { lang } = useLang();
   const t = P[lang] || P.en;
+  // Qual pilar está aberto (um por vez). Um-por-vez e não vários: com dois cards expandidos as
+  // alturas divergem e a fileira perde o alinhamento do bloco 'O RESULTADO', que é o que ancora
+  // a leitura horizontal dos três.
+  const [aberto, setAberto] = useState(null);
   const toneLabel = (tone) => (tone === "hybrid" ? t.hybrid : tone === "dfy" ? t.dfy : t.ai);
 
   return (
@@ -185,18 +193,40 @@ export default function PillarsProducts() {
                   <p className="mt-4 text-[13px] leading-relaxed text-g-ink">{p.line}</p>
 
                   {/* the real products under this pillar */}
+                  {/* ── O "+N" VIROU BOTÃO (2026-08-17) ────────────────────────────────────────
+                      O Luis: «essa parte é a estrela do time, tem que estar perfeito» — e o pedido
+                      maior do dia era que o cliente entendesse TODOS os serviços.
+                      O "+3" trabalhava contra as duas coisas: dizia "existe mais" e não deixava ver,
+                      um beco sem saída num card cuja função é justamente mostrar amplitude. Pior:
+                      tem cara de botão (pílula, mesma família visual dos chips ao lado), então quem
+                      clicava não recebia nada — e um clique sem resposta ensina a não clicar mais
+                      nesta seção, inclusive nos chips que importam.
+                      Agora abre no lugar, sem sair da página e sem navegação: um clique revela o
+                      resto do pilar, outro recolhe. O teto de 4 continua sendo o estado de repouso
+                      (acima disso o olho para de ler item e passa a ver "lista") — a diferença é que
+                      agora é uma DOBRA, não um corte. */}
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {(() => { const { itens, resto } = produtosDoPilar(p.pilar, lang); return (<>
-                      {itens.map((it) => (
-                        <span key={it.nome} title={it.detalhe} className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold text-g-light" style={{ borderColor: `rgba(${rgb},0.3)`, background: `rgba(${rgb},0.07)` }}>
-                          {it.nome}
-                          {it.valor && <b className="font-black tabular-nums" style={{ color: `rgb(${rgb})` }}>{it.valor}</b>}
-                        </span>
-                      ))}
-                      {resto > 0 && (
-                        <span className="rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-g-muted">+{resto}</span>
-                      )}
-                    </>); })()}
+                    {(() => {
+                      const { itens, resto } = produtosDoPilar(p.pilar, lang, aberto === p.pilar);
+                      return (<>
+                        {itens.map((it) => (
+                          <span key={it.nome} title={it.detalhe} className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold text-g-light" style={{ borderColor: `rgba(${rgb},0.3)`, background: `rgba(${rgb},0.07)` }}>
+                            {it.nome}
+                            {it.valor && <b className="font-black tabular-nums" style={{ color: `rgb(${rgb})` }}>{it.valor}</b>}
+                          </span>
+                        ))}
+                        {(resto > 0 || aberto === p.pilar) && (
+                          <button
+                            type="button"
+                            onClick={() => setAberto(aberto === p.pilar ? null : p.pilar)}
+                            aria-expanded={aberto === p.pilar}
+                            className="rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-g-muted transition hover:border-white/25 hover:text-g-word"
+                          >
+                            {aberto === p.pilar ? (MENOS[lang] || MENOS.en) : `+${resto}`}
+                          </button>
+                        )}
+                      </>);
+                    })()}
                   </div>
 
                   {/* honest delivery tag */}
