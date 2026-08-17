@@ -15,6 +15,7 @@ import { json, corsHeaders, rateLimited } from "../lib/guard.js";
 import { webchatSentiment } from "../lib/cxEngine.js";
 import { svcRpc } from "../lib/sb.js";
 import { guardSystemPrompt } from "../lib/guiConstitution.js";
+import { licoesPara } from "../lib/licoes.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -208,7 +209,7 @@ export async function onRequestPost(context) {
     }
 
     // Same tenant-voice rules as twilio-inbound.js's profile branch, adapted to web chat.
-    let sys = `You are Gui, the AI web chat assistant on the website of ${t.business || "this business"}${t.industry ? ` (a ${t.industry} business)` : ""}. Reply in ${langName} unless the visitor clearly writes in another language — then mirror them. Keep it SHORT (2-4 sentences, this is a chat widget), warm and helpful: answer questions, help the visitor book or get what they need, and capture their request clearly. When the visitor wants to book, order or get a quote, ask for their name and phone number so the team can confirm. PRICES: the SERVICES & PRICES list below (when present) holds the business's CONFIRMED current prices — quote those numbers DIRECTLY and confidently (e.g. "A 60-minute massage is $118"). Only defer to the team for a service that is NOT in that list, or one shown without a price. Never invent a number that isn't in the list. Reply ONLY with the plain message text — no JSON, no markdown headers.`;
+    let sys = `You are Gui, the AI web chat assistant on the website of ${t.business || "this business"}${t.industry ? ` (a ${t.industry} business)` : ""}. Reply in ${langName} unless the visitor clearly writes in another language — then mirror them. Keep it SHORT (2-4 sentences, this is a chat widget), warm and helpful: answer questions, help the visitor book or get what they need, and capture their request clearly. When the visitor wants to book, order or get a quote, ask for their name and phone number so the team can confirm. PRICES: the SERVICES & PRICES list below (when present) holds the business's CONFIRMED current prices — quote those numbers DIRECTLY and confidently, copying the figure from the list character by character (if the list says "— $X" for a service, say exactly $X). ⚠️ A SERVICE SHOWN WITHOUT A PRICE HAS NO PRICE AT ALL: never borrow the number from another line, never estimate from a similar service, never round from duration — say a specialist confirms the exact price, and capture the booking anyway. Only defer to the team for a service that is NOT in that list, or one shown without a price. Never invent a number that isn't in the list. Reply ONLY with the plain message text — no JSON, no markdown headers.`;
     if (t.brain) sys += `\n\nBUSINESS KNOWLEDGE (answer precisely from this — never invent beyond it):\n${t.brain}`;
     // REAL MENU + PRICES — pull the tenant's structured services straight from the scheduling engine
     // (biz_services) so the chat quotes EXACT prices/durations instead of deferring to the team.
@@ -219,7 +220,12 @@ export async function onRequestPost(context) {
         const menu = await mr.json().catch(() => null);
         const svcs = (menu && Array.isArray(menu.services)) ? menu.services : [];
         const lines = svcs.filter((s) => s && s.name).map((s) => {
-          const price = (s.price_cents || s.price_cents === 0) && s.price_cents != null ? ` — $${(s.price_cents / 100).toFixed(0)}` : "";
+          // ⚠️ SERVIÇO SEM PREÇO PRECISA GRITAR (2026-08-17). Antes, a linha simplesmente NÃO TINHA
+          //    o sufixo de preço — visualmente idêntica às outras numa lista de 23 itens. Numa conversa
+          //    real com o cardápio do Natura, a Gui cotou $118 para 'Laser Hair Removal' (preço nulo):
+          //    $118 é o preço da Massage e do Facial, duas linhas acima. Ausência é fácil de não ver;
+          //    proibição escrita, não. Preço dito no telefone/chat é promessa que o dono paga no caixa.
+          const price = (s.price_cents != null) ? ` — $${(s.price_cents / 100).toFixed(0)}` : ` — ⚠️ NO PRICE ON FILE (never state a number for this one)`;
           const dur = s.duration_min ? ` (${s.duration_min} min)` : "";
           return `• ${s.name}${dur}${price}`;
         });
@@ -239,6 +245,24 @@ export async function onRequestPost(context) {
         if (kb) sys += `\n\nBUSINESS Q&A (the owner's own answers — use these VERBATIM when a visitor asks; never contradict them):\n${kb.slice(0, 1200)}`;
       }
     } catch { /* KB is best-effort — never break the reply */ }
+
+    // ── AS LIÇÕES, QUE TAMBÉM FALTAVAM AQUI (2026-08-17) ──────────────────────────────────
+    // Em 11/08 este widget foi descoberto como o ÚNICO agente sem a CONSTITUIÇÃO (o comentário
+    // logo abaixo conta). Hoje, caçando por que o caso `voice-price-unknown-service` reprovava
+    // no eval desde 06/08, apareceu o irmão gêmeo daquele achado: ele também era um dos dois
+    // agentes sem as LIÇÕES. `licoesPara()` só chegava ao prompt de VOZ (provision.js).
+    //
+    // A COINCIDÊNCIA NÃO É COINCIDÊNCIA: as duas vezes o defeito nasceu do mesmo lugar — este
+    // arquivo monta o system prompt SOZINHO, à mão, em vez de partir de uma base comum. Todo
+    // reforço central (constituição, lições, o que vier depois) precisa ser lembrado aqui de
+    // novo, e "lembrar de novo" é exatamente o que falha. Enquanto os três cérebros montarem
+    // prompt cada um do seu jeito, este arquivo vai ser o último a receber tudo.
+    //
+    // Por que importa em dinheiro: o visitante que pergunta preço de algo fora do cardápio é
+    // cliente pronto. Sem a lição "NENHUMA RECUSA É A ÚLTIMA FRASE", o widget respondia com
+    // honestidade e deixava a pessoa ir embora sem nome e sem telefone.
+    sys += `\n\n${licoesPara(t.industry)}`;
+
     if (t.stripe_link) sys += `\n\nWhen the visitor wants to pay or asks for the payment link, share exactly this link: ${t.stripe_link}`;
     if (t.phone) sys += `\n\nThe business phone number, if the visitor asks or prefers to call: ${t.phone}`;
 
