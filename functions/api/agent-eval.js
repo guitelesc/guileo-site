@@ -73,7 +73,7 @@ const EVAL_BUDGET_MS_DEFAULT = 20000;
 // banco mostra COMPLETANDO em produção (16/08: 2 invocações × 2 casos, 64s no total → ~16s por
 // caso). Com 3 seriam ~48s de wall-time numa invocação que hoje gasta ~32s, e um lote que morre no
 // meio com offset determinístico PULA casos em silêncio. Escolher o número já provado custa mais
-// saltos e zero risco. 49 casos ÷ 2 = 25 saltos, por isso o teto subiu para 40.
+// saltos e zero risco. 48 casos ÷ 2 = 24 saltos, por isso o teto subiu para 40.
 const LOTE_CADEIA = 2;
 
 async function rpc(env, fn, args) {
@@ -378,7 +378,7 @@ export async function onRequest(context) {
   // instante em que dispara. Já o salto 1 disparava o salto 2 na ÚLTIMA linha do handler — e nesse
   // instante o `fetch` de quem o chamou já resolveu (resolve nos HEADERS, não no corpo), ninguém
   // está mais lendo, o Cloudflare cancela a invocação e leva o `waitUntil` pendente junto.
-  // Resultado medido no banco: 2 lotes por noite, sempre. 4 casos de 49, desde 14/08, com nota
+  // Resultado medido no banco: 2 lotes por noite, sempre. 4 casos de 48, desde 14/08, com nota
   // bonita e 200 em todas as noites. É o defeito da casa outra vez — número verdadeiro sobre a
   // coisa errada ([[feedback_medir_a_coisa_certa]]).
   // Disparando no MEIO, todo elo fica igual ao elo que já funcionava: a invocação está viva,
@@ -389,7 +389,7 @@ export async function onRequest(context) {
   // `dispararProximo` leria `hops`/`MAX_HOPS` antes da declaração — e `const` em TDZ não é
   // `undefined`, é ReferenceError em tempo de execução. Ou seja: build verde, eval morto na
   // primeira invocação. É exatamente a família de erro de [[feedback_build_verde_nao_e_prova]].
-  const MAX_HOPS = 40; // 49 casos ÷ lote 2 = 25 saltos; 40 dá folga pra o conjunto crescer
+  const MAX_HOPS = 40; // 48 casos ÷ lote 2 = 24 saltos; 40 dá folga pra o conjunto crescer
   const hops = Math.max(0, Number(url.searchParams.get("hops") || body.hops || 0));
   let saltou = false;
   const dispararProximo = () => {

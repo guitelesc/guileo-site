@@ -25,6 +25,14 @@
 import { json, safeEq } from "../lib/guard.js";
 import { svcRpc } from "../lib/sb.js";
 import { evalReportEmail } from "../lib/emailTemplates.js";
+// ⚠️ O CONJUNTO DECLARADO — a única forma de saber que uma rodada foi PARCIAL. Sem isto o relatório
+// só sabe contar o que achou, e "achei 4" é indistinguível de "existem 4". Foi assim que ele
+// assinou "média 80,5" sobre 4 casos de 48 por duas semanas.
+import { AGENT_EVAL_CASES } from "../../src/data/agentEvalCases.js";
+import { VERTICAL_EVAL_CASES } from "../../src/data/verticalEvalCases.js";
+import { ACTION_EVAL_CASES } from "../../src/data/actionEvalCases.js";
+
+const TODOS_OS_CASOS = AGENT_EVAL_CASES.concat(VERTICAL_EVAL_CASES, ACTION_EVAL_CASES);
 
 const MAX_IDADE_H = 6; // acima disso a rodada não é "de hoje" e o e-mail passa a dizer isso
 
@@ -53,12 +61,17 @@ export async function onRequest(context) {
   if (!env.DIGEST_TOKEN || !safeEq(tok, env.DIGEST_TOKEN)) return json({ error: "unauthorized" }, 401);
 
   const seco = url.searchParams.get("seco") === "1"; // lê e devolve, sem mandar e-mail
-  const agente = (url.searchParams.get("agente") || "voice").toString().slice(0, 20);
+  // ⚠️ O PADRÃO ERA `voice` — e isso, sozinho, escondia 42 dos 48 casos. O eval mede voz, texto,
+  // suporte, review, os 13 verticais e as travas de dinheiro; o aviso noturno relatava UM agente e
+  // chamava aquilo de "a rodada". Agora o padrão é a RODADA INTEIRA, e `?agente=` segue existindo
+  // pra quem quiser recortar um só à mão.
+  const agente = (url.searchParams.get("agente") || "").toString().slice(0, 20).trim();
+  const rotuloAgente = agente || "todos os agentes";
 
   // 1) UM POR DIA. Sem a trava, o bloco horário do cron mandaria o mesmo aviso 24×.
   if (!seco) {
     try {
-      const cr = await svcRpc(env, "ops_run_claim", { p_secret: env.INGEST_SECRET || "", p_kind: `eval-report-${agente}`, p_hours: 20 });
+      const cr = await svcRpc(env, "ops_run_claim", { p_secret: env.INGEST_SECRET || "", p_kind: `eval-report-${agente || "todos"}`, p_hours: 20 });
       const cd = cr.ok ? await cr.json().catch(() => null) : null;
       if (cd === false || (cd && cd.ja_rodou_hoje)) return json({ ok: true, pulou: "ja_avisou_hoje" });
     } catch { /* sem a trava o pior caso é um aviso repetido — não bloqueia o aviso */ }
@@ -73,8 +86,8 @@ export async function onRequest(context) {
   //    mortos rodando 96×/dia. Lista ausente é ERRO, não rodada limpa.
   if (!Array.isArray(linhas)) return json({ ok: false, erro: "agent_evals_recent não devolveu lista" }, 502);
 
-  const doAgente = linhas.filter((l) => l && l.agent === agente && l.run_id);
-  if (!doAgente.length) return json({ ok: false, erro: `nenhuma linha para o agente ${agente}` }, 200);
+  const doAgente = linhas.filter((l) => l && l.run_id && (!agente || l.agent === agente));
+  if (!doAgente.length) return json({ ok: false, erro: `nenhuma linha para ${rotuloAgente}` }, 200);
 
   const porRun = new Map();
   for (const l of doAgente) {
@@ -110,10 +123,19 @@ export async function onRequest(context) {
     motivo: c.judge_notes || "(o juiz não escreveu motivo)",
   })).sort((x, y) => Number(x.passou) - Number(y.passou) || (x.nota - y.nota));
 
+  // ── COBERTURA: o que o conjunto declara menos o que esta rodada tocou ────────────────────────
+  // Nominal, não estatístico: eu quero os IDs. "45 casos não medidos" manda investigar; a LISTA
+  // manda consertar — e mostra na hora se o que faltou foi o fim do conjunto (corrente truncada) ou
+  // casos espalhados (pulados por falta de chave, que é outro problema).
+  const declarados = TODOS_OS_CASOS.filter((c) => c && c.id && (!agente || c.agent === agente));
+  const medidos = new Set(atual.casos.map((c) => c.case_id));
+  const naoMedidos = declarados.map((c) => c.id).filter((id) => !medidos.has(id));
+
   const { subject, html } = evalReportEmail({
     dateLabel: fmtNY(atual.quando),
     quandoRodou: fmtNY(atual.quando) + " (NY)",
-    agente, media: a.media, total: a.total, reprovados: a.reprovados, casos,
+    agente: rotuloAgente, media: a.media, total: a.total, reprovados: a.reprovados, casos,
+    esperado: declarados.length, naoMedidos,
     anterior: b ? { total: b.total, reprovados: b.reprovados, media: b.media } : null,
     lang: "pt",
   });
@@ -125,7 +147,8 @@ export async function onRequest(context) {
     : subject;
 
   const out = {
-    ok: true, agente, run_id: atual.run_id, quando_ny: fmtNY(atual.quando),
+    ok: true, agente: rotuloAgente, run_id: atual.run_id, quando_ny: fmtNY(atual.quando),
+    cobertura: `${a.total}/${declarados.length}`, nao_medidos: naoMedidos,
     idade_horas: Math.round(idadeH * 10) / 10, rodada_de_hoje: !velha,
     atual: a, anterior: b,
     reprovados: casos.filter((c) => !c.passou).map((c) => ({ id: c.id, nota: c.nota })),

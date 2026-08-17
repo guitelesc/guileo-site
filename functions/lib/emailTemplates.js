@@ -2166,7 +2166,15 @@ export function dunningEmail({ name = "there", business = "your business", amoun
 // ⚠️ REPROVADO VEM PRIMEIRO E COM O MOTIVO DO JUIZ. A tentação é abrir com a média — é o número
 // bonito. Mas média sobe com caso fácil: 12 passando e 1 reprovando dá 92 e esconde exatamente
 // o caso que está perdendo cliente. Primeiro o que falhou, depois a conta.
-export function evalReportEmail({ dateLabel = "", quandoRodou = "", agente = "voice", media = 0, total = 0, reprovados = 0, casos = [], anterior = null, lang = "pt" } = {}) {
+// ⚠️ `esperado` + `naoMedidos` EXISTEM PORQUE ESTE E-MAIL MENTIA SEM MENTIR (2026-08-17).
+// Ele dizia "4 casos ok · média 80,5" — verdade literal — sobre um conjunto de 49. Quem lê entende
+// "a Gui foi medida e está bem"; o que aconteceu foi "8% da Gui foi medida". Nota verdadeira sobre a
+// coisa errada é o defeito da casa (ver feedback_medir_a_coisa_certa), e um relatório de qualidade
+// que o comete é o pior lugar possível pra ele morar: é justamente o instrumento que deveria pegar.
+// Agora a COBERTURA vem no assunto, ao lado da nota — e caso não medido é nominal, não estatístico:
+// o e-mail LISTA quais ficaram de fora. "Não medido" é honesto tanto se a corrente truncou quanto se
+// o caso foi pulado por falta de chave; nos dois desfechos aquele comportamento não foi verificado.
+export function evalReportEmail({ dateLabel = "", quandoRodou = "", agente = "voice", media = 0, total = 0, reprovados = 0, casos = [], anterior = null, esperado = 0, naoMedidos = [], lang = "pt" } = {}) {
   const t = lang === "pt" ? {
     eyebrow: "Guileo · qualidade da Gui",
     h1: reprovados ? `${reprovados} caso${reprovados > 1 ? "s" : ""} reprovou` : "Todos os casos passaram",
@@ -2177,6 +2185,9 @@ export function evalReportEmail({ dateLabel = "", quandoRodou = "", agente = "vo
     rodou: "Rodada de", falharam: "O que reprovou", passaram: "Passaram",
     conta: "A conta", casosLabel: "casos", mediaLabel: "média", antes: "rodada anterior",
     nada: "Nenhum caso reprovou nesta rodada.",
+    coberturaLabel: "Cobertura",
+    incompletaH: "Esta rodada não mediu o conjunto inteiro",
+    incompletaP: "Os casos abaixo NÃO foram verificados nesta rodada — nem passaram, nem reprovaram. Enquanto estiverem nesta lista, o comportamento deles está sem prova:",
     rodape: "Este aviso sai do cron todas as noites, depois do eval. Se ele parar de chegar, o eval parou de rodar — e a ausência do aviso é o próprio alarme.",
   } : {
     eyebrow: "Guileo · Gui quality",
@@ -2186,8 +2197,25 @@ export function evalReportEmail({ dateLabel = "", quandoRodou = "", agente = "vo
     rodou: "Run of", falharam: "What failed", passaram: "Passed",
     conta: "The numbers", casosLabel: "cases", mediaLabel: "average", antes: "previous run",
     nada: "No case failed in this run.",
+    coberturaLabel: "Coverage",
+    incompletaH: "This run did not measure the whole set",
+    incompletaP: "The cases below were NOT verified in this run — they neither passed nor failed. While they sit on this list, their behaviour has no proof:",
     rodape: "This alert ships from cron every night, after the eval. If it stops arriving, the eval stopped running — the missing alert IS the alarm.",
   };
+  // COBERTURA — quantos dos casos declarados esta rodada realmente tocou.
+  const faltantes = Array.isArray(naoMedidos) ? naoMedidos.filter(Boolean) : [];
+  const incompleta = esperado > 0 && faltantes.length > 0;
+  // Assunto: a cobertura vem ANTES da nota quando a rodada é parcial. Uma média sobre 4 de 49 casos
+  // não é uma nota pior — é uma nota sobre outra coisa, e o assunto tem que dizer isso na 1ª palavra.
+  const subject = incompleta
+    ? (lang === "pt"
+        ? `⚠️ Gui · mediu ${total} de ${esperado} · ${reprovados} reprovou · média ${media} (${dateLabel})`
+        : `⚠️ Gui · measured ${total} of ${esperado} · ${reprovados} failed · avg ${media} (${dateLabel})`)
+    : t.subj;
+  // Lista nominal, com teto: 20 ids cobrem o diagnóstico; 45 viram parede que ninguém lê.
+  const TETO_LISTA = 20;
+  const listaFaltantes = faltantes.slice(0, TETO_LISTA).map((id) => esc(id)).join(" · ")
+    + (faltantes.length > TETO_LISTA ? ` <span style="opacity:.7;">(+${faltantes.length - TETO_LISTA})</span>` : "");
   const falhas = casos.filter((c) => !c.passou);
   const oks = casos.filter((c) => c.passou);
   const linhaFalha = (c) => `
@@ -2201,16 +2229,22 @@ export function evalReportEmail({ dateLabel = "", quandoRodou = "", agente = "vo
     <div style="font-family:'Inter','SF Pro Display',Helvetica,Arial,sans-serif;font-size:21px;font-weight:900;color:${B.ink};">${esc(t.h1)}</div>
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};margin-top:4px;">${esc(t.rodou)} ${esc(quandoRodou)} · ${esc(agente)}</div>
     <div style="height:16px;font-size:0;">&nbsp;</div>
+    ${incompleta ? `<div style="border:1px solid ${B.gold};border-radius:12px;padding:14px 16px;margin-bottom:18px;">
+      <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;font-weight:900;color:${B.ink};">⚠️ ${esc(t.incompletaH)} — ${total}/${esperado}</div>
+      <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12.5px;line-height:1.55;color:${B.ink2};margin-top:6px;">${esc(t.incompletaP)}</div>
+      <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11.5px;line-height:1.7;color:${B.muted};margin-top:8px;">${listaFaltantes}</div>
+    </div>` : ""}
     ${falhas.length ? `<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;font-weight:900;letter-spacing:0.14em;text-transform:uppercase;color:${B.muted};margin-bottom:10px;">${esc(t.falharam)}</div>${falhas.map(linhaFalha).join("")}`
       : `<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;color:${B.ink};">${esc(t.nada)}</div>`}
     <div style="height:6px;font-size:0;">&nbsp;</div>
     ${panel(`<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.7;color:${B.ink2};">
       <b style="color:${B.ink};">${esc(t.conta)}:</b> ${total} ${esc(t.casosLabel)} · ${reprovados} ✕ · ${esc(t.mediaLabel)} <b style="color:${B.ink};">${media}</b>
+      ${esperado > 0 ? `<br><span style="color:${incompleta ? B.gold : B.muted};">${esc(t.coberturaLabel)}: ${total}/${esperado}</span>` : ""}
       ${anterior ? `<br><span style="color:${B.muted};">${esc(t.antes)}: ${anterior.total} ${esc(t.casosLabel)} · ${anterior.reprovados} ✕ · ${esc(t.mediaLabel)} ${anterior.media}</span>` : ""}
     </div>`)}
     ${oks.length ? `<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11.5px;color:${B.muted};margin-top:14px;"><b>${esc(t.passaram)}:</b> ${oks.map((c) => esc(c.id)).join(" · ")}</div>` : ""}
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;line-height:1.6;color:${B.muted};margin-top:18px;">${esc(t.rodape)}</div>`;
-  return { subject: t.subj, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+  return { subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
 }
 
 export function npsEmail({ name = "there", business = "", voteUrlBase = "https://guileoai.com/api/nps", lang = "en" } = {}) {
