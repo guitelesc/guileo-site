@@ -26,19 +26,12 @@ import { useLang } from "../i18n.jsx";
 //     ligação na hora (DemoEngine "A Gui está te ligando agora").
 // "Você compra o resultado, não a ferramenta" FICOU: é o posicionamento contra quem vende software
 // — só saiu do fim de uma lista, onde ninguém lia, para o fim da frase, onde fecha o raciocínio.
-// ⚠️ APAGADA POR ACIDENTE E RESTAURADA (2026-08-17). Ao mover o texto do 118h para o ResultsV2,
-// minha fatia foi do comentário da aritmética até o fim de `HORAS` — e esta constante morava NO
-// MEIO. O build passou (referência a variável indefinida só quebra em execução) e o site subiu
-// com o ErrorBoundary na tela. Lição: `npm run build` verde não é prova de que a página abre;
-// a prova é abrir. Agora ela mora ANTES de tudo, sozinha, longe de qualquer bloco removível.
-// Cores dos três pilares — os MESMOS accents de productSystem.js / PillarsProducts / ServicesMarquee.
-const PILAR_COR = ["#FF8A33", "#4C9AFF", "#9AA0FF"];
 
 const HERO_COPY = {
-  en: { eyebrow:"AI · ads · creative — the agency that grows local businesses", sub:["A missed call doesn't leave a voicemail — it calls the next place on Google. "," answers in your customer's language and takes the deposit before they hang up. You buy the ","result, not the tools","."], method:["Brain","AD","Build"], owns:["performance","growth","foundation"], cta:"Hear Gui work", sub2:"Leave your number — she calls in about a minute.", h1:["We bring the customers.","AI answers, books & sells.","You grow."], promessa:"Work Smart. Grow Faster. Sleep Better." },
-  pt: { eyebrow:"AI · anúncios · criativo — a agência que faz o negócio local crescer", sub:["A ligação perdida não deixa recado — ela liga pro próximo da lista do Google. A "," atende no idioma do seu cliente e já pega o sinal antes de desligar. Você compra o ","resultado, não a ferramenta","."], method:["Brain","AD","Build"], owns:["performance","crescimento","fundação"], cta:"Ouça a Gui trabalhar", sub2:"Deixa seu número — ela liga em mais ou menos um minuto.", h1:["A gente traz os clientes.","A AI atende, agenda e vende.","Você cresce."], promessa:"Trabalhe com inteligência. Cresça mais rápido. Durma melhor." },
-  es: { eyebrow:"IA · anuncios · creativo — la agencia que hace crecer al negocio local", sub:["La llamada perdida no deja mensaje — llama al siguiente de la lista de Google. "," contesta en el idioma de tu cliente y cobra el anticipo antes de colgar. Compras el ","resultado, no la herramienta","."], method:["Brain","AD","Build"], owns:["rendimiento","crecimiento","base"], cta:"Escucha a Gui trabajar", sub2:"Deja tu número — te llama en un minuto.", h1:["Nosotros traemos los clientes.","La IA contesta, agenda y vende.","Tú creces."], promessa:"Trabaja inteligente. Crece más rápido. Duerme mejor." },
-  hi: { eyebrow:"AI · विज्ञापन · क्रिएटिव — स्थानीय व्यवसाय बढ़ाने वाली एजेंसी", sub:["छूटी हुई कॉल मैसेज नहीं छोड़ती — वो Google पर अगली दुकान को कॉल करती है। "," आपके ग्राहक की भाषा में जवाब देती है और फ़ोन रखने से पहले एडवांस ले लेती है। आप ","नतीजा खरीदते हैं, टूल नहीं","।"], method:["Brain","AD","Build"], owns:["परफ़ॉर्मेंस","ग्रोथ","नींव"], cta:"Gui को काम करते सुनें", sub2:"अपना नंबर छोड़ें — वो लगभग एक मिनट में कॉल करती है।", h1:["ग्राहक हम लाते हैं।","AI जवाब देती, बुक करती और बेचती है।","आप बढ़ते हैं।"], promessa:"होशियारी से काम। तेज़ी से बढ़ें। चैन से सोएँ।" },
+  en: { eyebrow:"AI · ads · creative — the agency that grows local businesses", sub:["A missed call doesn't leave a voicemail — it calls the next place on Google. "," answers in your customer's language and takes the deposit before they hang up. You buy the ","result, not the tools","."], cta:"Hear Gui work", sub2:"Leave your number — she calls in about a minute.", h1:["We bring the customers.","AI answers, books & sells.","You grow."], promessa:"Work Smart. Grow Faster. Sleep Better." },
+  pt: { eyebrow:"AI · anúncios · criativo — a agência que faz o negócio local crescer", sub:["A ligação perdida não deixa recado — ela liga pro próximo da lista do Google. A "," atende no idioma do seu cliente e já pega o sinal antes de desligar. Você compra o ","resultado, não a ferramenta","."], cta:"Ouça a Gui trabalhar", sub2:"Deixa seu número — ela liga em mais ou menos um minuto.", h1:["A gente traz os clientes.","A AI atende, agenda e vende.","Você cresce."], promessa:"Trabalhe com inteligência. Cresça mais rápido. Durma melhor." },
+  es: { eyebrow:"IA · anuncios · creativo — la agencia que hace crecer al negocio local", sub:["La llamada perdida no deja mensaje — llama al siguiente de la lista de Google. "," contesta en el idioma de tu cliente y cobra el anticipo antes de colgar. Compras el ","resultado, no la herramienta","."], cta:"Escucha a Gui trabajar", sub2:"Deja tu número — te llama en un minuto.", h1:["Nosotros traemos los clientes.","La IA contesta, agenda y vende.","Tú creces."], promessa:"Trabaja inteligente. Crece más rápido. Duerme mejor." },
+  hi: { eyebrow:"AI · विज्ञापन · क्रिएटिव — स्थानीय व्यवसाय बढ़ाने वाली एजेंसी", sub:["छूटी हुई कॉल मैसेज नहीं छोड़ती — वो Google पर अगली दुकान को कॉल करती है। "," आपके ग्राहक की भाषा में जवाब देती है और फ़ोन रखने से पहले एडवांस ले लेती है। आप ","नतीजा खरीदते हैं, टूल नहीं","।"], cta:"Gui को काम करते सुनें", sub2:"अपना नंबर छोड़ें — वो लगभग एक मिनट में कॉल करती है।", h1:["ग्राहक हम लाते हैं।","AI जवाब देती, बुक करती और बेचती है।","आप बढ़ते हैं।"], promessa:"होशियारी से काम। तेज़ी से बढ़ें। चैन से सोएँ।" },
 };
 
 
@@ -316,31 +309,14 @@ export default function HeroV2() {
             {C.promessa}
           </p>
 
-          {/* ── O CORTE (2026-08-17, Luis: «apaga isso ou coloca o que realmente vai
-              converter… e deixa só os 3») ────────────────────────────────────────────────────────
-              Saíram daqui o parágrafo de apoio e o painel do 118h. Ele está certo, e a razão é
-              aritmética: o título já diz o modelo do negócio em três orações, a linha logo abaixo
-              diz o que o dono ganha, e o telefone à direita MOSTRA a Gui trabalhando. Um parágrafo
-              depois disso não acrescenta argumento — acrescenta trabalho de leitura antes do
-              botão, e cada linha entre a promessa e o clique é uma chance de a pessoa sair.
-              Ficaram os três pilares, que são a única coisa que o título NÃO diz: o escopo. Numa
-              linha, o visitante aprende que não é só o telefone — tem marketing e tem construção.
-
-              O 118h foi REMOVIDO do site em 2026-08-17 (Luis). Ele existiu no herói e depois
-              no vazamento; nas duas posições o Luis leu como ruído. Fica registrado para ninguém
-              "resgatar" a estatística achando que ela sumiu por descuido. */}
-          <div className="mt-7 flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px]">
-            {C.method.map((nome, i) => (
-              <span key={nome} className="flex items-center gap-3 whitespace-nowrap">
-                {i > 0 && <span className="text-g-muted/60">→</span>}
-                <span className="flex items-center gap-1.5 whitespace-nowrap">
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: PILAR_COR[i], boxShadow: `0 0 8px ${PILAR_COR[i]}` }} />
-                  <b className="font-black uppercase tracking-[0.12em]" style={{ color: PILAR_COR[i] }}>{nome}</b>
-                  <span className="text-[12.5px] font-medium text-g-ink/75">{C.owns[i]}</span>
-                </span>
-              </span>
-            ))}
-          </div>
+          {/* ── O TRIO SAIU DAQUI (2026-08-17, 2ª decisão do Luis) ────────────────────────────
+              Brain·AD·Build viveu aqui por uma hora e mudou para o rótulo fixo da listra de
+              serviços, logo abaixo do herói (ServicesMarquee). Ganhou com a mudança: lá ele é a
+              LEGENDA de uma faixa que já está agrupada por pilar, então os dois se explicam
+              sozinhos — aqui era mais uma linha entre a promessa e o botão.
+              O que sobrou nesta coluna é o caminho mais curto entre entender e agir:
+              eyebrow → h1 → a promessa ao dono → botão → o que acontece ao clicar.
+              (Antes daqui já saíram, na mesma noite, o parágrafo de apoio e o painel do 118h.) */}
 
           {/* AÇÃO — a linha de apoio foi para BAIXO do botão. Ao lado, ela lia como sobra de texto
               e disputava a linha com o próprio botão; embaixo, vira a legenda que responde

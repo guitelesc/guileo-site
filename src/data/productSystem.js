@@ -131,16 +131,57 @@ export const PRODUCTS = [
     resultMetric: { value: "$0", unit: { en: "sale left on the table", pt: "venda perdida na mesa", es: "venta perdida", hi: "छूटी बिक्री" } },
     resultIsEstimate: false, credits: "call", activationKey: "stripe", plans: ["growth", "scale"],
   },
+  // ── O PILAR MAIS CARO ERA O QUE PARECIA MAIS MAGRO (2026-08-17) ──────────────────────────────
+  // O card do Build mostrava DOIS itens contra sete do Brain, enquanto o texto do próprio card
+  // promete "sites, apps, loja e software". Não era defeito de layout: a entrada `foundation`
+  // colapsava TRÊS entregas distintas ("Website · Apps · Store") numa linha só. Colapsado, o
+  // catálogo mentia para menos — e quem lê três chips entende três entregas, quem lê uma entende
+  // uma. Vender site, app e loja como um item só é cobrar por três e mostrar um.
+  //
+  // ⚠️ NADA AQUI FOI INVENTADO: nome e descrição vieram, palavra por palavra e nos quatro idiomas,
+  // de `serviceCatalog.js` (grupo "Guarda-chuva Guileo"), onde os quatro já estavam escritos com
+  // `pilar: "build"`. É o mesmo método da correção de 11/08 documentada acima — o atlas é a fonte,
+  // este arquivo é onde o pilar mora.
+  //
+  // `credits: null` e `resultIsEstimate: false` são deliberados: são entregas do TIME humano,
+  // orçadas por escopo. Fingir crédito ou número aqui seria a mentira que este arquivo previne.
   {
-    id: "foundation", pilar: "build", icon: "🌐", accent: "#9AA0FF", category: { en: "Built once", pt: "Construído uma vez", es: "Construido una vez", hi: "एक बार निर्मित" },
-    name: { en: "Website · Apps · Store", pt: "Site · Apps · Loja", es: "Web · Apps · Tienda", hi: "वेबसाइट · ऐप्स · स्टोर" },
+    id: "websites", pilar: "build", icon: "🖥️", accent: "#9AA0FF",
+    category: { en: "Built once", pt: "Construído uma vez", es: "Construido una vez", hi: "एक बार निर्मित" },
+    name: { en: "Websites", pt: "Sites", es: "Sitios web", hi: "वेबसाइट्स" },
     result: {
-      en: "The digital foundation Gui runs on — website, iOS/Android apps, online store — built once, working 24/7.",
-      pt: "A base digital onde a Gui roda — site, apps iOS/Android, loja online — construída uma vez, rodando 24/7.",
-      es: "La base digital donde corre Gui — web, apps iOS/Android, tienda — construida una vez, 24/7.",
-      hi: "वह डिजिटल नींव जिस पर गुई चलती है — वेबसाइट, ऐप्स, स्टोर — एक बार बनी, 24/7 चालू।",
+      en: "Fast, beautiful websites built to convert — with Gui already living inside them.",
+      pt: "Sites rápidos e bonitos feitos pra converter — com a Gui já morando dentro deles.",
+      es: "Sitios rápidos y hermosos hechos para convertir — con Gui ya viviendo dentro.",
+      hi: "तेज़, खूबसूरत वेबसाइट्स जो कन्वर्ट करने के लिए बनी हैं — जिनमें गुई पहले से बसती है।",
     },
     resultMetric: { value: "1×", unit: { en: "build, runs forever", pt: "build, roda pra sempre", es: "build, corre siempre", hi: "बिल्ड, हमेशा" } },
+    resultIsEstimate: false, credits: null, activationKey: null, plans: ["scale"],
+  },
+  {
+    id: "apps", pilar: "build", icon: "📱", accent: "#9AA0FF",
+    category: { en: "Built once", pt: "Construído uma vez", es: "Construido una vez", hi: "एक बार निर्मित" },
+    name: { en: "Apps", pt: "Apps", es: "Apps", hi: "ऐप्स" },
+    result: {
+      en: "Mobile apps for your customers or your team — designed and shipped end to end.",
+      pt: "Apps móveis pros seus clientes ou pro seu time — desenhados e entregues de ponta a ponta.",
+      es: "Apps móviles para tus clientes o tu equipo — diseñadas y entregadas de punta a punta.",
+      hi: "आपके ग्राहकों या टीम के लिए मोबाइल ऐप्स — डिज़ाइन से डिलीवरी तक।",
+    },
+    resultMetric: { value: "iOS + Android", unit: { en: "shipped", pt: "publicados", es: "publicadas", hi: "लाइव" } },
+    resultIsEstimate: false, credits: null, activationKey: null, plans: ["scale"],
+  },
+  {
+    id: "ecommerce", pilar: "build", icon: "🛒", accent: "#9AA0FF",
+    category: { en: "Built once", pt: "Construído uma vez", es: "Construido una vez", hi: "एक बार निर्मित" },
+    name: { en: "E-commerce", pt: "E-commerce", es: "E-commerce", hi: "ई-कॉमर्स" },
+    result: {
+      en: "Online stores with catalog, checkout and payments — ready to sell from day one.",
+      pt: "Lojas online com catálogo, checkout e pagamentos — prontas pra vender desde o dia um.",
+      es: "Tiendas online con catálogo, checkout y pagos — listas para vender desde el día uno.",
+      hi: "कैटलॉग, चेकआउट और पेमेंट के साथ ऑनलाइन स्टोर — पहले दिन से बिक्री के लिए तैयार।",
+    },
+    resultMetric: { value: "1×", unit: { en: "store, sells 24/7", pt: "loja, vende 24/7", es: "tienda, vende 24/7", hi: "स्टोर, 24/7" } },
     resultIsEstimate: false, credits: null, activationKey: null, plans: ["scale"],
   },
   // ── OS PRODUTOS QUE FALTAVAM (2026-08-11) — puxados do ATLAS, não inventados ──────────────────

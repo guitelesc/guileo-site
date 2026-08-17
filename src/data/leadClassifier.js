@@ -25,7 +25,7 @@ import { PRODUCTS } from "./productSystem.js";
 const SINAIS = [
   { pid: "answering", re: /fora do horário|after-hours|after hours|não atend|ninguém atende|voicemail|caixa postal|liga.*n[ãa]o.*respond|missed call|perde liga/i,
     dor: { pt: "ligação fora do horário morre", en: "after-hours calls die" } },
-  { pid: "foundation", re: /sem site|no website|site antigo|only.*instagram|só instagram|apenas.*facebook|linktree|no site public/i,
+  { pid: "websites", re: /sem site|no website|site antigo|only.*instagram|só instagram|apenas.*facebook|linktree|no site public/i,
     dor: { pt: "não tem site próprio", en: "no real website" } },
   { pid: "speedlead", re: /formul[áa]rio|contact form|fica parada|sits in|demora.*respond|slow to reply|lead.*espera/i,
     dor: { pt: "lead preenche formulário e espera", en: "leads fill a form and wait" } },

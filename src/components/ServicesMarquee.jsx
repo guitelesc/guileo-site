@@ -26,10 +26,20 @@ import { useLang } from "../i18n.jsx";
 // Brain · AD · Build por repetição, sem legenda, antes mesmo de a pessoa chegar na seção que
 // explica os três. É o mesmo alfabeto de cor que o resto da página usa.
 
+// Os MESMOS accents de productSystem.js / PillarsProducts / HeroV2.
+const COR = { brain: "#FF8A33", ad: "#4C9AFF", build: "#9AA0FF" };
+
 const PILAR_LABEL = {
   brain: { en: "Brain", pt: "Brain", es: "Brain", hi: "Brain" },
   ad: { en: "AD", pt: "AD", es: "AD", hi: "AD" },
   build: { en: "Build", pt: "Build", es: "Build", hi: "Build" },
+};
+
+// O que cada pilar é dono — as mesmas palavras que viviam no herói, que agora moram aqui.
+const OWNS = {
+  brain: { en: "performance", pt: "performance", es: "rendimiento", hi: "परफ़ॉर्मेंस" },
+  ad:    { en: "growth",      pt: "crescimento", es: "crecimiento", hi: "ग्रोथ" },
+  build: { en: "foundation",  pt: "fundação",    es: "base",        hi: "नींव" },
 };
 
 const INTRO = {
@@ -61,21 +71,15 @@ export default function ServicesMarquee() {
   const Faixa = ({ copia = false }) => (
     <div className="flex shrink-0 items-center gap-6 pr-6" aria-hidden={copia || undefined}>
       {itens.map((p, i) => {
-        const abreGrupo = i === 0 || itens[i - 1].pilar !== p.pilar;
+        // O cabeçalho de grupo que rolava aqui SAIU (2026-08-17): o trio agora é fixo à esquerda,
+        // e repetir "BRAIN / AD / BUILD" passando de novo seria a mesma palavra duas vezes na
+        // mesma faixa. A cor de cada item continua ensinando a que pilar ele pertence — o sinal
+        // que ficou é o que não compete com nada.
         return (
-          <span key={`${copia ? "b" : "a"}-${p.id}`} className="flex shrink-0 items-center gap-6 whitespace-nowrap">
-            {abreGrupo && (
-              <span className="flex shrink-0 items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: p.accent, boxShadow: `0 0 8px ${p.accent}` }} />
-                <span className="text-[10.5px] font-black uppercase tracking-[0.18em]" style={{ color: p.accent }}>
-                  {PILAR_LABEL[p.pilar]?.[L] || p.pilar}
-                </span>
-              </span>
-            )}
-            <span className="flex shrink-0 items-center gap-2">
-              <span className="text-[14px] leading-none">{p.icon}</span>
-              <span className="text-[13px] font-semibold tracking-tight text-g-ink">{p.name?.[L] || p.name?.en}</span>
-            </span>
+          <span key={`${copia ? "b" : "a"}-${p.id}`} className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+            <span className="text-[14px] leading-none">{p.icon}</span>
+            <span className="text-[13px] font-semibold tracking-tight text-g-ink">{p.name?.[L] || p.name?.en}</span>
+            <span className="h-1 w-1 shrink-0 rounded-full" style={{ background: p.accent, opacity: 0.85 }} />
           </span>
         );
       })}
@@ -98,9 +102,27 @@ export default function ServicesMarquee() {
       {/* Rótulo fixo à esquerda: sem ele a faixa parece um carrossel de logos de parceiro. Uma
           frase curta transforma a mesma lista em "isto é o nosso catálogo". Some no celular,
           onde rouba metade da largura da própria listra. */}
-      <div className="mx-auto flex max-w-6xl items-center gap-4 px-5">
-        <span className="hidden shrink-0 text-[10.5px] font-black uppercase tracking-[0.16em] text-g-gold/80 sm:block">
-          {INTRO[L] || INTRO.en}
+      <div className="mx-auto flex max-w-6xl flex-col gap-2 px-5 sm:flex-row sm:items-center sm:gap-5">
+        {/* ── O TRIO VIROU O RÓTULO DA LISTRA (2026-08-17, Luis) ─────────────────────────────
+            Ele estava no herói, solto acima do botão; aqui vira a LEGENDA da faixa — e a faixa
+            está agrupada por pilar, então os dois se explicam sem uma linha de texto extra.
+            Trocou "Everything we build and run for you", que era uma frase bonita dizendo o
+            óbvio; o trio diz a mesma coisa e ainda ensina os três nomes que a gente quer vender.
+            ⚠️ Em telas pequenas ele NÃO some (era `hidden sm:block` antes): vira uma linha
+            própria acima da faixa. Depois de sair do herói, esta é a única aparição de
+            Brain·AD·Build antes da seção dos pilares — escondê-la no celular apagaria o alfabeto
+            justamente onde o dono de negócio local navega. */}
+        <span className="flex shrink-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px]">
+          {["brain", "ad", "build"].map((k, i) => (
+            <span key={k} className="flex items-center gap-2.5 whitespace-nowrap">
+              {i > 0 && <span className="text-g-muted/60">→</span>}
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: COR[k], boxShadow: `0 0 8px ${COR[k]}` }} />
+                <b className="font-black uppercase tracking-[0.12em]" style={{ color: COR[k] }}>{PILAR_LABEL[k]?.[L] || k}</b>
+                <span className="text-[11px] font-medium text-g-ink/75">{OWNS[k]?.[L] || OWNS[k]?.en}</span>
+              </span>
+            </span>
+          ))}
         </span>
         <div className="gsvcs-wrap relative min-w-0 flex-1 overflow-hidden">
           {/* Máscara nas duas pontas — sem ela o texto nasce e morre com corte seco na borda, que
