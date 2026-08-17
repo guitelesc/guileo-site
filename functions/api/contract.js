@@ -53,6 +53,20 @@ export async function onRequestPost(context) {
       return json({ ok: true, ready: true, id });
     }
 
+    // ── QUAL CAMPANHA VIROU ASSINATURA (2026-08-17) ─────────────────────────────────────────────
+    // Fecha o ciclo do dinheiro: sem isto o motor de anúncio otimiza por LEAD, que é métrica de meio
+    // de funil. Duas campanhas com o mesmo custo por lead podem fechar em taxas 5× diferentes — e o
+    // reinvestimento escolhe a errada com dado verdadeiro na mão.
+    // ⚠️ NÃO usa `|| {}` no retorno: relatório ausente é ERRO, não "nenhuma venda". Um zero
+    // inventado aqui vira decisão de cortar a campanha que estava vendendo.
+    if (action === "performance") {
+      const r = await rpc("contract_performance", { p_secret: secret, p_email: email, p_days: Math.min(Math.max(parseInt(b.days, 10) || 90, 1), 730) });
+      if (!r.ok) return json({ ok: true, ready: false, note: "Cole db/contract_performance.sql para ativar o relatório por campanha." });
+      const rel = await r.json().catch(() => null);
+      if (!rel || typeof rel !== "object") return json({ ok: false, erro: "contract_performance não devolveu objeto" }, 502);
+      return json({ ok: true, ready: true, relatorio: rel });
+    }
+
     // default: list
     const r = await rpc("contract_list", { p_secret: secret, p_email: email, p_limit: Math.min(Math.max(parseInt(b.limit, 10) || 200, 1), 1000) });
     if (!r.ok) return json({ ok: true, ready: false, note: "Paste db/contracts.sql to activate contracts.", docs: [] });
