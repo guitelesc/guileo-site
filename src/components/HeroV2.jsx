@@ -27,20 +27,24 @@ import { useLang } from "../i18n.jsx";
 // "Você compra o resultado, não a ferramenta" FICOU: é o posicionamento contra quem vende software
 // — só saiu do fim de uma lista, onde ninguém lia, para o fim da frase, onde fecha o raciocínio.
 const HERO_COPY = {
-  en: { eyebrow:"AI · ads · creative — the agency that grows local businesses", sub:["We run the ads that make the phone ring. "," picks it up — in your customer's language, at 2am, on a Sunday — and turns that call into a booking on your calendar, or a deposit already paid. You buy the ","result, not the tools","."], method:["⚡ Performance","Sales","Growth"], cta:"Hear Gui work", sub2:"Leave your number — she calls in about a minute.", h1:["Work Smart.","Grow Faster.","Sleep Better."], promessa:"We bring the customers. The AI answers, books & sells. You grow." },
-  pt: { eyebrow:"AI · anúncios · criativo — a agência que faz o negócio local crescer", sub:["A gente roda os anúncios que fazem o telefone tocar. A "," atende — no idioma do seu cliente, às 2 da manhã, num domingo — e transforma a ligação em horário marcado na agenda, ou em sinal já pago. Você compra o ","resultado, não a ferramenta","."], method:["⚡ Performance","Vendas","Crescimento"], cta:"Ouça a Gui trabalhar", sub2:"Deixa seu número — ela liga em mais ou menos um minuto.", h1:["Trabalhe com inteligência.","Cresça mais rápido.","Durma melhor."], promessa:"A gente traz os clientes. A AI atende, agenda e vende. Você cresce." },
-  es: { eyebrow:"IA · anuncios · creativo — la agencia que hace crecer al negocio local", sub:["Nosotros manejamos los anuncios que hacen sonar el teléfono. "," contesta — en el idioma de tu cliente, a las 2 de la mañana, un domingo — y convierte esa llamada en una cita en tu agenda, o en un anticipo ya pagado. Compras el ","resultado, no la herramienta","."], method:["⚡ Rendimiento","Ventas","Crecimiento"], cta:"Escucha a Gui trabajar", sub2:"Deja tu número — te llama en un minuto.", h1:["Trabaja inteligente.","Crece más rápido.","Duerme mejor."], promessa:"Nosotros traemos los clientes. La IA contesta, agenda y vende. Tú creces." },
-  hi: { eyebrow:"AI · विज्ञापन · क्रिएटिव — स्थानीय व्यवसाय बढ़ाने वाली एजेंसी", sub:["हम वो विज्ञापन चलाते हैं जिनसे फ़ोन बजता है। "," उसे उठाती है — आपके ग्राहक की भाषा में, रात 2 बजे, रविवार को — और उस कॉल को आपके कैलेंडर की बुकिंग में, या चुकाए हुए एडवांस में बदल देती है। आप ","नतीजा खरीदते हैं, टूल नहीं","।"], method:["⚡ Performance","Sales","Growth"], cta:"Gui को काम करते सुनें", sub2:"अपना नंबर छोड़ें — वो लगभग एक मिनट में कॉल करती है।", h1:["होशियारी से काम।","तेज़ी से बढ़ें।","चैन से सोएँ।"], promessa:"ग्राहक हम लाते हैं। AI जवाब देती, बुक करती और बेचती है। आप बढ़ते हैं।" },
+  en: { eyebrow:"AI · ads · creative — the agency that grows local businesses", sub:["The calls you miss don't leave a voicemail — they call the next place on Google. "," answers every one, in your customer's language, and closes it: booked on your calendar, or deposit already paid. You buy the ","result, not the tools","."], method:["Brain","AD","Build"], owns:["performance","growth","foundation"], cta:"Hear Gui work", sub2:"Leave your number — she calls in about a minute.", h1:["Work Smart.","Grow Faster.","Sleep Better."], promessa:"We bring the customers. AI answers, books & sells. You grow." },
+  pt: { eyebrow:"AI · anúncios · criativo — a agência que faz o negócio local crescer", sub:["A ligação que ninguém atende não deixa recado — ela liga pro próximo da lista do Google. A "," atende todas, no idioma do seu cliente, e fecha: horário marcado na agenda, ou sinal já pago. Você compra o ","resultado, não a ferramenta","."], method:["Brain","AD","Build"], owns:["performance","crescimento","fundação"], cta:"Ouça a Gui trabalhar", sub2:"Deixa seu número — ela liga em mais ou menos um minuto.", h1:["Trabalhe com inteligência.","Cresça mais rápido.","Durma melhor."], promessa:"A gente traz os clientes. A AI atende, agenda e vende. Você cresce." },
+  es: { eyebrow:"IA · anuncios · creativo — la agencia que hace crecer al negocio local", sub:["La llamada que nadie contesta no deja mensaje — llama al siguiente de la lista de Google. "," contesta todas, en el idioma de tu cliente, y cierra: cita agendada, o anticipo ya pagado. Compras el ","resultado, no la herramienta","."], method:["Brain","AD","Build"], owns:["rendimiento","crecimiento","base"], cta:"Escucha a Gui trabajar", sub2:"Deja tu número — te llama en un minuto.", h1:["Trabaja inteligente.","Crece más rápido.","Duerme mejor."], promessa:"Nosotros traemos los clientes. La IA contesta, agenda y vende. Tú creces." },
+  hi: { eyebrow:"AI · विज्ञापन · क्रिएटिव — स्थानीय व्यवसाय बढ़ाने वाली एजेंसी", sub:["छूटी हुई कॉल मैसेज नहीं छोड़ती — वो Google पर अगली दुकान को कॉल करती है। "," हर कॉल उठाती है, आपके ग्राहक की भाषा में, और उसे बंद करती है: कैलेंडर में बुकिंग, या चुकाया हुआ एडवांस। आप ","नतीजा खरीदते हैं, टूल नहीं","।"], method:["Brain","AD","Build"], owns:["परफ़ॉर्मेंस","ग्रोथ","नींव"], cta:"Gui को काम करते सुनें", sub2:"अपना नंबर छोड़ें — वो लगभग एक मिनट में कॉल करती है।", h1:["होशियारी से काम।","तेज़ी से बढ़ें।","चैन से सोएँ।"], promessa:"ग्राहक हम लाते हैं। AI जवाब देती, बुक करती और बेचती है। आप बढ़ते हैं।" },
 };
 
 // A ARITMÉTICA QUE SUBSTITUIU O CLICHÊ. 168 horas tem a semana; uma loja aberta ~50 deixa 118 em
 // que o telefone toca e não tem ninguém. É checável de cabeça — e por isso convence sem precisar
 // de "confie em mim". O número fica FORA do dicionário porque é o mesmo nos 4 idiomas.
+// As cores dos três pilares — os MESMOS accents de productSystem.js / PillarsProducts /
+// ServicesMarquee. Ficam aqui como constante para o herói não virar a quarta versão da paleta.
+const PILAR_COR = ["#FF8A33", "#4C9AFF", "#9AA0FF"];
+
 const HORAS = {
-  en: "Open about 50 hours a week? The phone rings for 168. Gui works the other 118.",
-  pt: "Aberto umas 50 horas por semana? O telefone toca 168. A Gui cobre as outras 118.",
-  es: "¿Abierto unas 50 horas a la semana? El teléfono suena 168. Gui cubre las otras 118.",
-  hi: "हफ़्ते में करीब 50 घंटे खुले? फ़ोन 168 घंटे बजता है। बाकी 118 घंटे Gui संभालती है।",
+  en: "Your doors are open about 50 hours a week. The phone rings 168. Gui works the other 118 — nights, Sundays, the lunch rush.",
+  pt: "Sua porta abre umas 50 horas por semana. O telefone toca 168. A Gui cobre as outras 118 — noite, domingo, hora do almoço.",
+  es: "Tu puerta abre unas 50 horas por semana. El teléfono suena 168. Gui cubre las otras 118 — noche, domingo, hora del almuerzo.",
+  hi: "आपकी दुकान हफ़्ते में करीब 50 घंटे खुली रहती है। फ़ोन 168 घंटे बजता है। बाकी 118 घंटे Gui संभालती है — रात, रविवार, लंच का समय।",
 };
 
 // HeroV2 — TEST (/v2). Realistic, LIVING iPhone-2026 mockup of Gui working nonstop.
@@ -345,12 +349,28 @@ export default function HeroV2() {
               <span className="shrink-0 font-semibold leading-none tracking-tight" style={{ fontSize: "clamp(2rem,3.4vw,2.6rem)", color: "#FF8A33", textShadow: "0 0 22px rgba(255,138,51,0.32)" }}>118h</span>
               <span className="text-[14px] leading-snug text-g-ink">{HORAS[lang] || HORAS.en}</span>
             </div>
-            <div className="mt-3.5 flex items-center gap-2 border-t border-g-gold/10 pt-3 text-[11.5px] font-black uppercase tracking-[0.14em]">
-              <span className="text-g-green">{C.method[0]}</span>
-              <span className="text-g-muted/70">→</span>
-              <span className="text-g-gold">{C.method[1]}</span>
-              <span className="text-g-muted/70">→</span>
-              <span className="text-g-copper">{C.method[2]}</span>
+            {/* ── UMA LINGUAGEM SÓ NO SITE INTEIRO (2026-08-17) ─────────────────────────────
+                Esta linha dizia "⚡ Performance → Sales → Growth" e a seção logo abaixo dizia
+                "Brain · AD · Build" — DOIS modelos na mesma página, e incompatíveis: aqui Growth
+                era o terceiro passo de um funil, lá quem é dono do growth é o AD e o Build é a
+                fundação. Quem lesse os dois ia tentar casar e não conseguiria, e uma pessoa
+                confusa não compra — ela adia.
+                Agora é o nome do PILAR (o que a gente quer que ele saiba comprar) com o que cada
+                um é dono logo ao lado, e nas MESMAS cores da seção de pilares e da listra de
+                serviços. Nome repetido é nome que gruda; três nomes concorrentes não grudam
+                nenhum. O ponto colorido é o mesmo elemento da listra — a repetição do sinal é o
+                que ensina o alfabeto Brain·AD·Build sem uma linha de legenda. */}
+            <div className="mt-3.5 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-g-gold/10 pt-3 text-[11.5px]">
+              {C.method.map((nome, i) => (
+                <span key={nome} className="flex items-center gap-2">
+                  {i > 0 && <span className="text-g-muted/70">→</span>}
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: PILAR_COR[i], boxShadow: `0 0 8px ${PILAR_COR[i]}` }} />
+                    <b className="font-black uppercase tracking-[0.14em]" style={{ color: PILAR_COR[i] }}>{nome}</b>
+                    <span className="font-semibold text-g-muted">{C.owns[i]}</span>
+                  </span>
+                </span>
+              ))}
             </div>
           </div>
 
