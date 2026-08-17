@@ -66,6 +66,15 @@ const EVAL_BUSINESS = "Guileo Eval Sandbox Spa"; // nome de marca do tenant-sand
 // Orçamento de tempo (soft deadline) e tamanho de lote padrão do "run all", pra caber no
 // wall-time da Function. Ambos sobrescrevíveis por env / query. Ver bloco de chunking abaixo.
 const EVAL_BUDGET_MS_DEFAULT = 20000;
+// ⚠️ LOTE FIXO DA CORRENTE (2026-08-17). Quando `cadeia=1`, o lote NÃO pode terminar por
+// deadline: o próximo salto é disparado no MEIO do trabalho (ver "A CORRENTE"), e para isso o
+// offset seguinte precisa ser previsível — `OFFSET + LOTE`, não "onde deu tempo de chegar".
+// ⚠️ 2, E NÃO 3, POR EVIDÊNCIA — não por gosto: 2 é o único tamanho de lote que o histórico do
+// banco mostra COMPLETANDO em produção (16/08: 2 invocações × 2 casos, 64s no total → ~16s por
+// caso). Com 3 seriam ~48s de wall-time numa invocação que hoje gasta ~32s, e um lote que morre no
+// meio com offset determinístico PULA casos em silêncio. Escolher o número já provado custa mais
+// saltos e zero risco. 49 casos ÷ 2 = 25 saltos, por isso o teto subiu para 40.
+const LOTE_CADEIA = 2;
 
 async function rpc(env, fn, args) {
   try {
@@ -351,20 +360,66 @@ export async function onRequest(context) {
   const offParam = num(url.searchParams.get("offset") ?? body.offset);
   const OFFSET = offParam >= 0 ? offParam : 0;
   const limParam = num(url.searchParams.get("limit") ?? body.limit);
-  const HARD_CAP = limParam > 0 ? limParam : Infinity; // sem limite explícito → só o soft deadline segura
+  const cadeia = url.searchParams.get("cadeia") === "1" || body.cadeia === true;
+  // Em CORRENTE o lote é de tamanho FIXO (offset previsível). Fora dela — o QualityPanel, que tem
+  // gente do outro lado continuando o cursor — segue no soft deadline, que aproveita o wall-time
+  // inteiro da invocação.
+  const HARD_CAP = limParam > 0 ? limParam : (cadeia ? LOTE_CADEIA : Infinity);
   const budParam = num(url.searchParams.get("budget_ms") ?? body.budget_ms ?? env.EVAL_BUDGET_MS);
   const BUDGET_MS = budParam > 0 ? budParam : EVAL_BUDGET_MS_DEFAULT;
   const startedAt = Date.now();
   out.offset = OFFSET;
   out.processed = 0;
 
+  // ── O SALTO NASCE NO MEIO DO LOTE, NÃO NO FIM ────────────────────────────────────────────────
+  // Isto é o conserto de 2026-08-17, e o motivo dele é sutil: `waitUntil` estende a vida de uma
+  // invocação que EXISTE — não ressuscita uma que o cliente abandonou. O elo `cron → lote 0 →
+  // salto 1` sempre funcionou porque o cron AGUARDA a resposta: o lote 0 está vivo e conectado no
+  // instante em que dispara. Já o salto 1 disparava o salto 2 na ÚLTIMA linha do handler — e nesse
+  // instante o `fetch` de quem o chamou já resolveu (resolve nos HEADERS, não no corpo), ninguém
+  // está mais lendo, o Cloudflare cancela a invocação e leva o `waitUntil` pendente junto.
+  // Resultado medido no banco: 2 lotes por noite, sempre. 4 casos de 49, desde 14/08, com nota
+  // bonita e 200 em todas as noites. É o defeito da casa outra vez — número verdadeiro sobre a
+  // coisa errada ([[feedback_medir_a_coisa_certa]]).
+  // Disparando no MEIO, todo elo fica igual ao elo que já funcionava: a invocação está viva,
+  // conectada, e ainda tem trabalho pela frente quando o sucessor nasce. De brinde, os saltos se
+  // escalonam sozinhos (~1 a cada 10s) em vez de estourarem 17 invocações simultâneas no limite de
+  // taxa do modelo.
+  // ⚠️ ESTAS DUAS MORAVAM DEPOIS DO LAÇO e subiram junto com o disparo. Se ficassem lá embaixo, o
+  // `dispararProximo` leria `hops`/`MAX_HOPS` antes da declaração — e `const` em TDZ não é
+  // `undefined`, é ReferenceError em tempo de execução. Ou seja: build verde, eval morto na
+  // primeira invocação. É exatamente a família de erro de [[feedback_build_verde_nao_e_prova]].
+  const MAX_HOPS = 40; // 49 casos ÷ lote 2 = 25 saltos; 40 dá folga pra o conjunto crescer
+  const hops = Math.max(0, Number(url.searchParams.get("hops") || body.hops || 0));
+  let saltou = false;
+  const dispararProximo = () => {
+    if (saltou || !cadeia || dry || hops >= MAX_HOPS) return;
+    const proxOffset = OFFSET + HARD_CAP;              // determinístico: por isso o lote é fixo
+    if (proxOffset >= cases.length) return;            // nada depois deste lote
+    saltou = true;
+    const prox = new URL(url.origin + "/api/agent-eval");
+    prox.searchParams.set("cadeia", "1");
+    prox.searchParams.set("hops", String(hops + 1));
+    prox.searchParams.set("run_id", out.run_id);       // MESMA run: uma rodada, não 17
+    prox.searchParams.set("offset", String(proxOffset));
+    prox.searchParams.set("tenant", tenant);
+    prox.searchParams.set("token", tok);
+    context.waitUntil(fetch(prox.toString()).catch(() => {}));
+    out.corrente = { saltou_para: proxOffset, hop: hops + 1, teto: MAX_HOPS, quando: "meio do lote" };
+  };
+
   let idx = OFFSET;
   for (; idx < cases.length; idx++) {
     // para no limite de lote OU no soft deadline (sempre processa ≥1 caso pra garantir progresso)
     if (out.processed >= HARD_CAP) break;
-    if (out.processed > 0 && Date.now() - startedAt > BUDGET_MS) break;
+    // ⚠️ EM CORRENTE O DEADLINE NÃO PODE CORTAR O LOTE: se cortasse, `OFFSET + HARD_CAP` deixaria
+    // de ser onde o lote realmente parou e os casos do meio seriam PULADOS em silêncio — o pior
+    // desfecho possível num medidor. Fora da corrente ele segue segurando.
+    if (!cadeia && out.processed > 0 && Date.now() - startedAt > BUDGET_MS) break;
     const c = cases[idx];
     out.processed++;
+    // Depois do 1º caso concluído, com o handler ainda no meio do caminho: hora de gerar o próximo.
+    if (out.processed === 2) dispararProximo();
     const a = out.agents[c.agent] || (out.agents[c.agent] = { cases: 0, scored: 0, passed: 0, failed: 0, sum: 0, sum_safety: 0, avg: null, avg_safety: null, pending: false });
     a.cases++;
 
@@ -476,20 +531,11 @@ export async function onRequest(context) {
   //   3. `dry` não encadeia — ensaio não vira varredura paga por descuido.
   // Sem `await`: o salto seguinte não pode segurar a resposta deste lote. Se o salto falhar,
   // a corrente para e o histórico mostra a run incompleta — parar visível, não mentir completo.
-  const MAX_HOPS = 25;
-  const hops = Math.max(0, Number(url.searchParams.get("hops") || body.hops || 0));
-  const cadeia = url.searchParams.get("cadeia") === "1" || body.cadeia === true;
-  if (cadeia && out.more && !dry && hops < MAX_HOPS) {
-    const prox = new URL(url.origin + "/api/agent-eval");
-    prox.searchParams.set("cadeia", "1");
-    prox.searchParams.set("hops", String(hops + 1));
-    prox.searchParams.set("run_id", out.run_id);
-    prox.searchParams.set("offset", String(out.next_offset));
-    prox.searchParams.set("tenant", tenant);
-    prox.searchParams.set("token", tok);
-    context.waitUntil(fetch(prox.toString()).catch(() => {}));
-    out.corrente = { saltou_para: out.next_offset, hop: hops + 1, teto: MAX_HOPS };
-  } else if (out.more && !cadeia) {
+  // ⚠️ O SALTO JÁ NASCEU LÁ ATRÁS, no meio do lote (ver "O SALTO NASCE NO MEIO DO LOTE"). Aqui só
+  // se cobre o caso do lote de UM caso só, que nunca chega em `processed === 2` — e o único lote
+  // assim que ainda tem sucessor é quando alguém passou `limit=1` à mão.
+  dispararProximo();
+  if (out.more && !cadeia) {
     out.corrente = { saltou_para: null, motivo: "sem cadeia=1 — este lote para aqui e o resto do conjunto NÃO roda" };
   }
   return json(out);
