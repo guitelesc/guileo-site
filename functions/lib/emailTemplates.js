@@ -1121,7 +1121,7 @@ export function linksEmail({ name = "Luis", lang = "pt" } = {}) {
     <p class="g-intro" style="margin:0 0 18px 0;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:${B.ink2};">${pt ? "Tudo reunido em <b style='color:" + B.ink + "'>guileoai.com</b> — guarde este e-mail por perto." : "Everything gathered at <b style='color:" + B.ink + "'>guileoai.com</b> — keep this email close at hand."}</p>
     ${group(pt ? "🌐 Vender" : "🌐 Sell", [
       row(`${B.site}/pitch`, "🎤", pt ? "Pitch do cliente" : "Client pitch", pt ? "apresentação ≤20min" : "≤20-min deck"),
-      row(`${B.site}/proposta?to=Cliente&price=1497&recover=3900`, "📄", pt ? "Proposta" : "Proposal", pt ? "personalizada por link" : "URL-personalized"),
+      row(`${B.site}/proposta?to=Cliente&price=449&recover=3900`, "📄", pt ? "Proposta" : "Proposal", pt ? "personalizada por link" : "URL-personalized"),
       row(`${B.site}/parceiro`, "🤝", "Growth Partner", pt ? "deck de recrutamento" : "recruiting deck"),
     ].join(""))}
     <div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div>
@@ -1185,9 +1185,9 @@ export function partnerOnboardEmail({ name = "parceiro(a)", lang = "pt" } = {}) 
   ${panel(`
     <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:10.5px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:${B.gold};padding-bottom:8px;">💰 Quanto você ganha</div>
     <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:13.5px;line-height:1.8;color:${B.ink2};">
-      <b style="color:${B.ink}">Nível 1 · Agendador:</b> você marca a demo, o Luis fecha com você — <b style="color:${B.green}">10% por venda</b><br/>
-      <b style="color:${B.ink}">Nível 2 · Closer:</b> você conduz tudo — <b style="color:${B.green}">20% por venda</b><br/>
-      <span style="color:${B.muted};font-size:12.5px;">Pacote típico ($990 + 3×$1.497) → <b style="color:${B.gold}">~$1.096 por venda fechada</b>. Sem teto.</span>
+      <b style="color:${B.ink}">Nível 1 · Agendador:</b> <b style="color:${B.green}">10% RECORRENTE</b> da mensalidade de cada cliente que você agendou<br/>
+      <b style="color:${B.ink}">Nível 2 · Closer:</b> <b style="color:${B.green}">20% RECORRENTE</b> de toda a sua carteira, todo mês<br/>
+      <span style="color:${B.muted};font-size:12.5px;">Ex: 10 clientes no Personalized ($449/mês) → <b style="color:${B.gold}">~$900/mês pra você, enquanto pagarem</b>. Sem teto.</span>
     </div>`)}
   <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
   ${panel(`

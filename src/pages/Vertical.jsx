@@ -127,7 +127,7 @@ export default function Vertical() {
       serviceType: "AI voice agent, booking, lead capture and follow-up automation",
       areaServed: ["US", "BR"], provider: { "@type": "Organization", name: "Guileo", url: "https://guileoai.com" },
       description: L(v.seoDesc),
-      offers: { "@type": "Offer", priceCurrency: "USD", price: "149", description: "Self-service from $149/mo; done-for-you from $990 setup + $1,497/mo." },
+      offers: { "@type": "Offer", priceCurrency: "USD", price: "149", description: "Self-service from $149/mo; tailored done-for-you quoted per business." },
     };
     const faqItems = t?.faq?.items || [];
     const graph = faqItems.length

@@ -51,7 +51,7 @@ const T = {
     // 1 UNDERSTAND
     s1tag: "Passo 1 · Entenda",
     s1h: "O que é a Guileo — em uma frase",
-    sentence: "A Guileo instala um time de IA + marketing que atende, vende e faz crescer o negócio do cliente sozinho, 24/7 — ele escolhe o resultado, a gente entrega.",
+    sentence: "A Guileo instala um funcionário que nunca dorme: atende, agenda, vende e COBRA por você — e custa menos que um dia de garçom.",
     s1what: "O que o cliente recebe",
     legs: [
       ["🧠", "Guileo Brain", "Uma IA (a Gui) que atende ligações e mensagens, agenda, qualifica e fecha — 24h, qualquer idioma."],
@@ -68,8 +68,8 @@ const T = {
     // 2 THE OFFER
     s2tag: "Passo 3 · A oferta",
     s2h: "Dois trilhos. Saiba qual oferecer.",
-    trackA: { name: "Trilho A · Self-service", who: "Negócio pequeno, dono ocupado, quer começar simples", what: "Ele assina sozinho no site: Essential $149 · Personalized $449 · Full Operation $999/mês (créditos da Gui inclusos)", you: "Você indica com seu link e ganha 20% das 3 primeiras mensalidades", ex: "Ex: Personalized $449 → ~$269 pra você" },
-    trackB: { name: "Trilho B · Sob medida ⭐", who: "Negócio estabelecido (clínica, restaurante movimentado, imobiliária) que perde dinheiro real todo mês", what: "Pacote desenhado pro negócio: a partir de $990 setup + $1.497+/mês — IA + marketing + o que ele precisar", you: "Você conduz a venda e ganha 20% do contrato (setup + 3 meses)", ex: "Ex: pacote típico → ~$1.096 pra você POR VENDA" },
+    trackA: { name: "Trilho A · Self-service", who: "Negócio pequeno, dono ocupado, quer começar simples", what: "Ele assina sozinho no site: Essential $149 · Personalized $449 · Full Operation $999/mês (créditos da Gui inclusos)", you: "Você indica com seu link e ganha comissão RECORRENTE: 10–20% da mensalidade, todo mês, enquanto o cliente pagar", ex: "Ex: Personalized $449 → até $90/mês pra você, POR cliente, pra sempre" },
+    trackB: { name: "Trilho B · Sob medida ⭐", who: "Negócio estabelecido (clínica, restaurante movimentado, imobiliária) que perde dinheiro real todo mês", what: "Pacote desenhado pro negócio — SEM preço de tabela: cada proposta é cotada depois de estudar o negócio (guia interno típico: setup + $1.5k–3k/mês)", you: "Você conduz a venda e ganha 20% RECORRENTE sobre a mensalidade (+ 20% do setup, uma vez)", ex: "Ex: retainer de $1.500/mês → $300/mês pra você, todo mês" },
     trackRule: "Regra de bolso: dono que reclama de \"perder ligação/cliente\" e fatura > $20k/mês → Trilho B. Resto → Trilho A. Na dúvida, agenda a demo — a conversa revela.",
     // 3 LEARN
     s3tag: "Passo 4 · Aprenda",
@@ -126,9 +126,9 @@ const T = {
       ["Ter, 16:00", "Reunião de 15 min: 5 perguntas → Tony admite que perde ~10 ligações/dia no rush", "meet"],
       ["Ter, 16:07", "A Gui liga pro celular do Tony e anota um pedido completo com upsell. Tony ri sozinho", "demo"],
       ["Ter, 16:15", "Paula mostra o Cockpit e fecha o próximo passo: \"te mando a proposta hoje\"", "cock"],
-      ["Ter, 18:00", "Proposta personalizada no WhatsApp: $990 setup + $1.497/mês · recupera ~$3.900/mês", "prop"],
+      ["Ter, 18:00", "Proposta personalizada no WhatsApp: cotada pro negócio dele · recupera ~$3.900/mês", "prop"],
       ["Qui, 09:00", "Tony: \"e se não funcionar?\" — Paula: \"30 dias de garantia, o risco é nosso\" → ✅ ACEITO", "close"],
-      ["7 dias depois", "Sistema no ar. Paula recebe ~$1.096 de comissão. Tony vira o case dela pro próximo cliente", "win"],
+      ["7 dias depois", "Sistema no ar. Paula passa a receber comissão RECORRENTE todo mês enquanto o Tony for cliente. E ele vira o case dela", "win"],
     ],
     // 4 PRACTICE
     s4tag: "Passo 5 · Pratique",
@@ -145,13 +145,13 @@ const T = {
     // 5 LEVELS
     s5tag: "Passo 6 · Níveis",
     s5h: "Comece agendando. Cresça fechando.",
-    lvl1: { name: "Nível 1 · Agendador", what: "Você prospecta e agenda a demo. O Luis fecha com você junto (e você aprende vendo).", earn: "10% de cada venda fechada que você agendou", req: "Requisito: completar este Academy" },
-    lvl2: { name: "Nível 2 · Closer ⭐", what: "Você conduz a venda inteira: demo, proposta, fechamento.", earn: "20% de cada venda fechada (~$1.096 no pacote típico)", req: "Requisito: 3 vendas fechadas como Agendador + aprovação no treino" },
+    lvl1: { name: "Nível 1 · Agendador", what: "Você prospecta e agenda a demo. O Luis fecha com você junto (e você aprende vendo).", earn: "10% RECORRENTE da mensalidade de cada cliente que você agendou — todo mês, enquanto ele pagar", req: "Requisito: completar este Academy" },
+    lvl2: { name: "Nível 2 · Closer ⭐", what: "Você conduz a venda inteira: demo, proposta, fechamento.", earn: "20% RECORRENTE de toda a sua carteira (Personalized $449 → $90/mês por cliente; 10 clientes = $900/mês pra sempre)", req: "Requisito: 3 vendas fechadas como Agendador + aprovação no treino" },
     // 6 ACT
-    simH: "🧮 Simula seus ganhos",
-    simDeals: "Vendas fechadas / mês",
+    simH: "🧮 Simula sua renda RECORRENTE",
+    simDeals: "Clientes ativos na sua carteira",
     simLevel: "Seu nível",
-    simNote: "Base: pacote típico $990 setup + $1.497/mês (valor da venda = setup + 3 meses).",
+    simNote: "Base: plano Personalized $449/mês (o mais vendido). Comissão recorrente: paga todo mês enquanto o cliente pagar.",
     faqH: "❓ Dúvidas de parceiro (as que todo mundo tem)",
     faq: [
       ["Preciso pagar algo pra entrar?", "Não. Zero taxa, zero mensalidade. Você investe seu tempo; a Guileo investe o produto, a entrega e o treinamento."],
@@ -186,7 +186,7 @@ const T = {
       ["Dia 5-7", "Faça as demos com o Luis · primeira comissão a caminho"],
     ],
     kitH: "Seu arsenal",
-    kit: [["📊 Deck de vendas", "/deck"], ["📱 Cola de bolso", "/cola"], ["🎤 Pitch do cliente", "/pitch"], ["📄 Gerador de proposta", "/proposta?to=Cliente&price=1497&recover=3900"], ["🤝 Deck do parceiro", "/parceiro"], ["🎯 Quiz (lead frio)", "/quiz"], ["🧮 Calculadora", "/calculator"]],
+    kit: [["📊 Deck de vendas", "/deck"], ["📱 Cola de bolso", "/cola"], ["🎤 Pitch do cliente", "/pitch"], ["📄 Gerador de proposta", "/proposta?to=Cliente&price=449&recover=3900"], ["🤝 Deck do parceiro", "/parceiro"], ["🎯 Quiz (lead frio)", "/quiz"], ["🧮 Calculadora", "/calculator"]],
     cta: "🤝 Quero entrar — falar com o Luis",
     ctaMsg: "Oi Luis! Completei o Partner Academy e quero começar como Agendador.",
   },
@@ -227,7 +227,7 @@ const T = {
     cock: "Where the owner SEES everything: overview & daily leads · train the AI, analytics & insights · operations (orders, kitchen, schedule, deliveries) · conversations (calls, WhatsApp, SMS, social) · customers · grow revenue (payments, follow-ups, waitlist, recurring, reputation, loyalty, campaigns, audiences) · account & plan. ~30 screens. Showing the panel in the demo closes deals.",
     s1tag: "Step 1 · Understand",
     s1h: "What Guileo is — in one sentence",
-    sentence: "Guileo installs an AI + marketing team that answers, sells and grows the client's business on its own, 24/7 — they pick the result, we deliver it.",
+    sentence: "Guileo installs an employee that never sleeps: answers, books, sells and COLLECTS for you — for less than a day of one waiter's pay.",
     s1what: "What the client gets",
     legs: [
       ["🧠", "Guileo Brain", "An AI (Gui) that answers calls & messages, books, qualifies and closes — 24h, any language."],
@@ -243,8 +243,8 @@ const T = {
     honestWhy: "With a 30-day guarantee, overselling = refund + burned reputation. Honest selling = clients who stay and refer.",
     s2tag: "Step 3 · The offer",
     s2h: "Two tracks. Know which to offer.",
-    trackA: { name: "Track A · Self-service", who: "Small business, busy owner, wants to start simple", what: "They sign up on the site: Essential $149 · Personalized $449 · Full Operation $999/mo (Gui credits included)", you: "You refer with your link and earn 20% of the first 3 months", ex: "E.g.: Personalized $449 → ~$269 to you" },
-    trackB: { name: "Track B · Tailored ⭐", who: "Established business (clinic, busy restaurant, realty) leaking real money monthly", what: "A package designed for them: from $990 setup + $1,497+/mo — AI + marketing + whatever they need", you: "You run the sale and earn 20% of the contract (setup + 3 months)", ex: "E.g.: typical package → ~$1,096 to you PER SALE" },
+    trackA: { name: "Track A · Self-service", who: "Small business, busy owner, wants to start simple", what: "They sign up on the site: Essential $149 · Personalized $449 · Full Operation $999/mo (Gui credits included)", you: "You refer with your link and earn RECURRING commission: 10–20% of the monthly fee, every month, for as long as they pay", ex: "E.g.: Personalized $449 → up to $90/mo to you, PER client, forever" },
+    trackB: { name: "Track B · Tailored ⭐", who: "Established business (clinic, busy restaurant, realty) leaking real money monthly", what: "A package designed for them: NO list price — quoted after we study the business", you: "You run the sale and earn 20% RECURRING on the monthly (+ 20% of setup, once)", ex: "E.g.: a $1,500/mo retainer → $300/mo to you, every month" },
     trackRule: "Rule of thumb: an owner who complains about \"missing calls/clients\" and bills > $20k/mo → Track B. Everyone else → Track A. In doubt, book the demo — the conversation reveals it.",
     s3tag: "Step 4 · Learn",
     s3h: "Who to sell to — and what to say",
@@ -300,9 +300,9 @@ const T = {
       ["Tue, 4:00 PM", "15-min meeting: 5 questions → Tony admits losing ~10 calls/day in the rush", "meet"],
       ["Tue, 4:07 PM", "Gui calls Tony's phone and takes a full order with an upsell. Tony laughs out loud", "demo"],
       ["Tue, 4:15 PM", "Paula shows the Cockpit and locks the next step: \"proposal today\"", "cock"],
-      ["Tue, 6:00 PM", "Personalized proposal on WhatsApp: $990 setup + $1,497/mo · recovers ~$3,900/mo", "prop"],
+      ["Tue, 6:00 PM", "Personalized proposal on WhatsApp: quoted for his business · recovers ~$3,900/mo", "prop"],
       ["Thu, 9:00 AM", "Tony: \"what if it doesn't work?\" — Paula: \"30-day guarantee, the risk is ours\" → ✅ ACCEPTED", "close"],
-      ["7 days later", "System live. Paula earns ~$1,096 commission. Tony becomes her case study for the next client", "win"],
+      ["7 days later", "System live. Paula now earns RECURRING commission every month while Tony stays a client. And he becomes her case study", "win"],
     ],
     s4tag: "Step 5 · Practice",
     s4h: "Train against Gui — she'll be a tough customer",
@@ -317,12 +317,12 @@ const T = {
     ideal: "💡 Strong answer:",
     s5tag: "Step 6 · Levels",
     s5h: "Start by booking. Grow by closing.",
-    lvl1: { name: "Level 1 · Setter", what: "You prospect and book the demo. Luis closes with you in the room (you learn by watching).", earn: "10% of every closed sale you booked", req: "Requirement: complete this Academy" },
-    lvl2: { name: "Level 2 · Closer ⭐", what: "You run the whole sale: demo, proposal, close.", earn: "20% of every closed sale (~$1,096 on a typical package)", req: "Requirement: 3 closed sales as Setter + passing the training" },
-    simH: "🧮 Simulate your earnings",
-    simDeals: "Closed sales / month",
+    lvl1: { name: "Level 1 · Setter", what: "You prospect and book the demo. Luis closes with you in the room (you learn by watching).", earn: "10% RECURRING on the monthly fee of every client you booked — every month, while they pay", req: "Requirement: complete this Academy" },
+    lvl2: { name: "Level 2 · Closer ⭐", what: "You run the whole sale: demo, proposal, close.", earn: "20% RECURRING on your whole portfolio (Personalized $449 → $90/mo per client; 10 clients = $900/mo forever)", req: "Requirement: 3 closed sales as Setter + passing the training" },
+    simH: "🧮 Simulate your RECURRING income",
+    simDeals: "Active clients in your portfolio",
     simLevel: "Your level",
-    simNote: "Basis: typical package $990 setup + $1,497/mo (sale value = setup + 3 months).",
+    simNote: "Basis: Personalized plan $449/mo (best seller). Recurring: paid every month while the client pays.",
     faqH: "❓ Partner questions (the ones everyone has)",
     faq: [
       ["Do I pay anything to join?", "No. Zero fees, zero monthly. You invest your time; Guileo invests the product, delivery and training."],
@@ -357,7 +357,7 @@ const T = {
       ["Day 5-7", "Run the demos with Luis · first commission on its way"],
     ],
     kitH: "Your arsenal",
-    kit: [["📊 Sales deck", "/deck"], ["📱 Pocket card", "/cola"], ["🎤 Client pitch", "/pitch"], ["📄 Proposal builder", "/proposta?to=Client&price=1497&recover=3900"], ["🤝 Partner deck", "/parceiro"], ["🎯 Quiz (cold leads)", "/quiz"], ["🧮 Calculator", "/calculator"]],
+    kit: [["📊 Sales deck", "/deck"], ["📱 Pocket card", "/cola"], ["🎤 Client pitch", "/pitch"], ["📄 Proposal builder", "/proposta?to=Client&price=449&recover=3900"], ["🤝 Partner deck", "/parceiro"], ["🎯 Quiz (cold leads)", "/quiz"], ["🧮 Calculator", "/calculator"]],
     cta: "🤝 I'm in — talk to Luis",
     ctaMsg: "Hi Luis! I completed the Partner Academy and want to start as a Setter.",
   },
@@ -413,7 +413,7 @@ const ROUNDS = {
   ],
   en: [
     { gui: "Marcos: Hey… look, I'll be honest, I'm mid-lunch-rush here, the place is packed. I've got no time for tech talk.", hint: "Objection: time", good: [/15 ?min|quick|demo|call|hear|tuesday|wednesday|book/i, /time back|exactly why/i], ideal: "\"That's exactly why I reached out — Gui answers the phone while your floor is packed. It's 15 minutes and the demo is the AI calling you. Tuesday or Wednesday?\"" },
-    { gui: "Marcos: Hmm… how much does it cost? If it's expensive don't waste your time.", hint: "Objection: price too early", good: [/before price|show you first|what she does|worth|demo/i, /\$ ?49|depends on/i], ideal: "\"Depends on what your restaurant needs — starts at $149/mo. But before price, let me have Gui call you — then you tell me what never missing a 9 PM order is worth.\"" },
+    { gui: "Marcos: Hmm… how much does it cost? If it's expensive don't waste your time.", hint: "Objection: price too early", good: [/before price|show you first|what she does|worth|demo/i, /\$ ?149|depends on/i], ideal: "\"Depends on what your restaurant needs — starts at $149/mo. But before price, let me have Gui call you — then you tell me what never missing a 9 PM order is worth.\"" },
     { gui: "Marcos: A robot answering my customers? My crowd is picky — this will annoy everyone and I'll lose regulars.", hint: "Objection: AI fear", good: [/hear|demo|surprise|call/i, /human|supervis|transfer/i, /9 ?pm|overnight|nobody answers|over nobody/i], ideal: "\"Hear the demo first — everyone's surprised. And a human supervises: what Gui can't solve, she transfers. Your regulars prefer Gui at 9 PM over a phone ringing with nobody there.\"" },
     { gui: "Marcos: But I've had Cida at the counter for 12 years. She answers the phone. Why would I need this?", hint: "Objection: already covered", good: [/doesn'?t replace|covers|complement|alongside/i, /overnight|weekend|sunday|3 calls|at once|follow|after hours/i], ideal: "\"Gui doesn't replace Cida — she covers what Cida can't: Sunday, 10 PM, three calls at once during the rush, and following up with the customer who ordered once and vanished.\"" },
     { gui: "Marcos: Fine… send me a proposal on WhatsApp and I'll look when I get a minute.", hint: "Close: don't let it cool", good: [/demo|call|15 ?min|this week|tuesday|wednesday|thursday|book/i, /guarantee|30 days|risk/i], ideal: "\"Will do — personalized. But a proposal without the demo is just paper. Give me 15 min Thursday, Gui calls you live, and you'll read it knowing what you're buying. Plus 30-day guarantee — the risk is ours.\"" },
@@ -533,13 +533,13 @@ function Roleplay({ lang, t }) {
 }
 
 // Earnings simulator: deals/month slider × level (Setter 10% / Closer 20%).
-// Sale value = $990 setup + 3 × $1,497 (the locked comp basis).
+// Recurring model: pct × avg monthly ($449 Personalized) × active clients = monthly income.
 function EarnSim({ t }) {
   const [deals, setDeals] = useState(4);
   const [closer, setCloser] = useState(true);
-  const saleValue = 990 + 1497 * 3;
+  const avgMonthly = 449; // Personalized — best seller
   const pct = closer ? 0.2 : 0.1;
-  const monthly = Math.round(saleValue * pct * deals);
+  const monthly = Math.round(avgMonthly * pct * deals);
   return (
     <div className="rounded-xl3 border border-g-green/30 bg-white/[0.03] p-6 shadow-lift">
       <div className="text-[13px] font-black text-g-word">{t.simH}</div>
@@ -1230,7 +1230,7 @@ export default function Academia() {
             </Reveal>
             <Reveal className="mt-10 text-center">
               <a href={waLink(t.ctaMsg)} target="_blank" rel="noopener" className="btn-gold text-base">{t.cta}</a>
-              <p className="mt-4 text-[12px] text-g-muted">Guileo · ORIGEM LTDA · {lang === "pt" ? "comissões pagas por venda fechada" : "commissions paid per closed sale"}</p>
+              <p className="mt-4 text-[12px] text-g-muted">Guileo · ORIGEM LTDA · {lang === "pt" ? "comissão recorrente enquanto o cliente pagar" : "recurring commission while the client pays"}</p>
             </Reveal>
           </section>
 

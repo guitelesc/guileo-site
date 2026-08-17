@@ -68,7 +68,7 @@ export default function VerticalCity() {
         areaServed: { "@type": "City", name: c.areaServed },
         provider: { "@type": "Organization", name: "Guileo", url: "https://guileoai.com" },
         description: L(seoDesc),
-        offers: { "@type": "Offer", priceCurrency: "USD", price: "149", description: "Self-service from $149/mo; done-for-you from $990 setup + $1,497/mo." },
+        offers: { "@type": "Offer", priceCurrency: "USD", price: "149", description: "Self-service from $149/mo; tailored done-for-you quoted per business." },
       },
       {
         "@context": "https://schema.org", "@type": "BreadcrumbList",

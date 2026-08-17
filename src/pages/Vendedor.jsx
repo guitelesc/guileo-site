@@ -103,7 +103,7 @@ const T = {
     // Academy
     acadTitle: "Academia de bolso", acadSub: "O essencial pra qualquer reunião. Os links abaixo abrem o material completo.",
     q5: "As 5 perguntas (deixa ELE falar)", obj: "Objeções (1 linha cada)", plan: "Os 15 minutos", never: "Nunca prometa",
-    tracks: "Os dois caminhos", trackA: "Self-service (Track A)", trackADesc: "Planos mensais $49 / $149 / $399. Cliente assina e ativa sozinho. Você ganha % dos primeiros meses.", trackB: "Sob medida (Track B)", trackBDesc: "A partir de $990 setup + $1.497/mês. Você fecha, a gente entrega. Comissão maior.",
+    tracks: "Os dois caminhos", trackA: "Self-service (Track A)", trackADesc: "Planos mensais $149 / $449 / $999. Cliente assina e ativa sozinho. Comissão recorrente sobre a mensalidade.", trackB: "Sob medida (Track B)", trackBDesc: "Sem preço de tabela: cotado depois de estudar o negócio. Você fecha, a gente entrega. Comissão maior.",
     fullMaterial: "Material completo",
     // Support
     supTitle: "Suporte e contato", supSub: "Travou numa reunião? Precisa de algo? Fala com a gente.",
@@ -151,7 +151,7 @@ const T = {
     aiBiz: "Business name", aiCity: "City", aiNotes: "What you know about them (optional)", aiGo: "Generate pitch", aiGoing: "Writing…", aiErr: "Couldn't right now. Try again.", copy: "Copy", copied: "Copied ✓",
     acadTitle: "Pocket Academy", acadSub: "The essentials for any meeting. The links below open the full material.",
     q5: "The 5 questions (let THEM talk)", obj: "Objections (one line each)", plan: "The 15 minutes", never: "Never promise",
-    tracks: "The two paths", trackA: "Self-service (Track A)", trackADesc: "Monthly plans $49 / $149 / $399. Client subscribes and activates alone. You earn % of the first months.", trackB: "Tailored (Track B)", trackBDesc: "From $990 setup + $1,497/mo. You close, we deliver. Higher commission.",
+    tracks: "The two paths", trackA: "Self-service (Track A)", trackADesc: "Monthly plans $149 / $449 / $999. Client subscribes and activates alone. Recurring commission on the monthly fee.", trackB: "Tailored (Track B)", trackBDesc: "No list price: quoted after we study the business. You close, we deliver. Higher commission.",
     fullMaterial: "Full material",
     supTitle: "Support & contact", supSub: "Stuck in a meeting? Need something? Talk to us.",
     supLuis: "Message Luis", supLuisD: "Quick help, a question, or to enable a client.", supTeam: "Guileo Support", supTeamD: "Support team WhatsApp.", supEmail: "Email", supEmailD: CONTACT.email,
@@ -198,7 +198,7 @@ const T = {
     aiBiz: "Nombre del negocio", aiCity: "Ciudad", aiNotes: "Lo que sabes de él (opcional)", aiGo: "Generar pitch", aiGoing: "Escribiendo…", aiErr: "No pude ahora. Intenta de nuevo.", copy: "Copiar", copied: "Copiado ✓",
     acadTitle: "Academia de bolsillo", acadSub: "Lo esencial para cualquier reunión. Los enlaces abren el material completo.",
     q5: "Las 5 preguntas (deja que ÉL hable)", obj: "Objeciones (1 línea cada una)", plan: "Los 15 minutos", never: "Nunca prometas",
-    tracks: "Los dos caminos", trackA: "Autoservicio (Track A)", trackADesc: "Planes mensuales $49 / $149 / $399. El cliente se suscribe y activa solo. Ganas % de los primeros meses.", trackB: "A medida (Track B)", trackBDesc: "Desde $990 setup + $1,497/mes. Tú cierras, nosotros entregamos. Comisión mayor.",
+    tracks: "Los dos caminos", trackA: "Autoservicio (Track A)", trackADesc: "Planes mensuales $149 / $449 / $999. El cliente se suscribe y activa solo. Comisión recurrente sobre la mensualidad.", trackB: "A medida (Track B)", trackBDesc: "Sin precio de lista: cotizado tras estudiar el negocio. Tú cierras, nosotros entregamos. Comisión mayor.",
     fullMaterial: "Material completo",
     supTitle: "Soporte y contacto", supSub: "¿Trabado en una reunión? ¿Necesitas algo? Háblanos.",
     supLuis: "Hablar con Luis", supLuisD: "Ayuda rápida, una duda, o para habilitar un cliente.", supTeam: "Soporte Guileo", supTeamD: "WhatsApp del equipo de soporte.", supEmail: "Correo", supEmailD: CONTACT.email,

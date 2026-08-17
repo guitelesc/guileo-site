@@ -59,7 +59,7 @@ const ROUTES = {
   },
   "/consulting": {
     title: { en: "Guileo Consulting — done-for-you AI, tailored to your business", pt: "Consultoria Guileo — IA feita pra você, sob medida", es: "Consultoría Guileo — IA hecha para ti, a medida" },
-    description: { en: "A dedicated build: your own number, custom training, integrations and a team that operates it. From $990 setup + $1,497/mo.", pt: "Projeto dedicado: número próprio, treino sob medida, integrações e um time que opera. A partir de $990 de setup + $1.497/mês.", es: "Proyecto dedicado: número propio, entrenamiento a medida, integraciones y un equipo que lo opera. Desde $990 de setup + $1,497/mes." },
+    description: { en: "A dedicated build: your own number, custom training, integrations and a team that operates it. Quoted per business.", pt: "Projeto dedicado: número próprio, treino sob medida, integrações e um time que opera. Cotado por negócio.", es: "Proyecto dedicado: número propio, entrenamiento a medida, integraciones y un equipo que lo opera. Cotizado por negocio." },
   },
   "/quiz": {
     title: "Business Growth Quiz — where is your revenue leaking? | Guileo",

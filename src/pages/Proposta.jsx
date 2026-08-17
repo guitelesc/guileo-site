@@ -8,8 +8,8 @@ import { useLang } from "../i18n.jsx";
 // Growth Partner sends after the pitch. Everything is driven by URL query params,
 // so a personalized link is generated in seconds — no admin panel needed:
 //
-//   /proposta?to=Tony&biz=Tony's Pizza&pkg=Performance + Sales&price=1497
-//            &setup=990&credits=440&recover=3900&by=Luis
+//   /proposta?to=Tony&biz=Tony's Pizza&pkg=Personalized&price=449
+//            &setup=0&credits=2000&recover=3900&by=Luis
 //            &items=Voice AI 24/7,WhatsApp,Anúncios,Agenda&pay=https://buy.stripe.com/xxxx
 //
 // `pay` = a Stripe Payment Link the partner creates for THIS price (Luis's action —
@@ -93,7 +93,7 @@ export default function Proposta() {
   const to = p.get("to") || "";
   const biz = p.get("biz") || "";
   const pkg = p.get("pkg") || "Performance + Sales";
-  const price = p.get("price") || "1497";
+  const price = p.get("price") || "449";
   const setup = p.get("setup") || "";
   const credits = p.get("credits") || "440";
   const recover = p.get("recover") || "3900";

@@ -39,7 +39,7 @@ const D = {
         say: "“Tudo o que o Gui faz, você vê aqui: cada ligação, transcrição, sentimento, agendamento e lead — em tempo real.”",
         do: "Abra /portal. Mostra ligações + transcrições + agenda. ‘Isso é o que VOCÊ recebe no dia 1.’" },
       { n: "1:35", t: "A oferta + garantia + preço", c: "g-gold",
-        say: "“Dois caminhos. Self-service a partir de $149/mês — você paga e a Gui nasce em minutos, sozinha. Ou a gente monta tudo pra você: $990 de setup + $1.497/mês, no ar em 7 dias. Os dois com garantia de 30 dias — não gostou, devolvemos.”",
+        say: "“Dois caminhos. Self-service a partir de $149/mês — você paga e a Gui nasce em minutos, sozinha. Ou a gente monta tudo pra você, sob medida — a gente estuda o seu negócio e te passa o valor exato. No ar em 7 dias. Os dois com garantia de 30 dias — não gostou, devolvemos.”",
         do: "Ancore no done-for-you, ofereça o self-service como ‘entrada’. A garantia tira o risco da mesa." },
       { n: "1:55", t: "O fechamento", c: "g-green",
         say: "“Te mando a proposta agora, com seu número e o valor que você está perdendo. Fechamos hoje e o Gui está no ar essa semana. Topa?”",
@@ -72,7 +72,7 @@ const D = {
         say: "“Everything Gui does, you see here: every call, transcript, sentiment, booking and lead — in real time.”",
         do: "Open /portal. Show calls + transcripts + calendar. ‘This is what YOU get on day 1.’" },
       { n: "1:35", t: "The offer + guarantee + price", c: "g-gold",
-        say: "“Two ways. Self-serve from $149/mo — you pay and Gui is born in minutes, on its own. Or we build it all for you: $990 setup + $1,497/mo, live in 7 days. Both with a 30-day money-back guarantee — don't love it, we refund.”",
+        say: "“Two ways. Self-serve from $149/mo — you pay and Gui is born in minutes, on its own. Or we build it all for you, tailored — we study your business and quote the exact number. Live in 7 days. Both with a 30-day money-back guarantee — don't love it, we refund.”",
         do: "Anchor on done-for-you, offer self-serve as the ‘entry’. The guarantee takes risk off the table." },
       { n: "1:55", t: "The close", c: "g-green",
         say: "“I'll send the proposal right now, with your number and what you're losing. We close today and Gui is live this week. Deal?”",
@@ -105,7 +105,7 @@ const D = {
         say: "“Todo lo que Gui hace, lo ves aquí: cada llamada, transcripción, sentimiento, reserva y lead — en tiempo real.”",
         do: "Abre /portal. Muestra llamadas + transcripciones + agenda. ‘Esto es lo que TÚ recibes el día 1.’" },
       { n: "1:35", t: "La oferta + garantía + precio", c: "g-gold",
-        say: "“Dos caminos. Self-service desde $149/mes — pagas y Gui nace en minutos, sola. O lo montamos todo por ti: $990 de setup + $1.497/mes, en vivo en 7 días. Ambos con garantía de 30 días — si no te gusta, devolvemos.”",
+        say: "“Dos caminos. Self-service desde $149/mes — pagas y Gui nace en minutos, sola. O lo montamos todo por ti, a tu medida — estudiamos tu negocio y te pasamos el número exacto. En vivo en 7 días. Ambos con garantía de 30 días — si no te gusta, devolvemos.”",
         do: "Ancla en el done-for-you, ofrece el self-service como ‘entrada’. La garantía quita el riesgo de la mesa." },
       { n: "1:55", t: "El cierre", c: "g-green",
         say: "“Te envío la propuesta ahora, con tu número y lo que estás perdiendo. Cerramos hoy y Gui está en vivo esta semana. ¿Trato?”",
@@ -166,7 +166,7 @@ export default function Roteiro() {
 
         <div>
           <div className="mb-2 text-[11px] font-black uppercase tracking-wider text-g-muted">{t.toolsH}</div>
-          <a href="/proposta?to=Cliente&price=1497&recover=2000" className="mb-2 block rounded-xl border border-g-green/30 bg-g-green/[0.08] px-3 py-3 text-center text-[13px] font-black text-g-green">{t.tProp} · {t.propLabel}</a>
+          <a href="/proposta?to=Cliente&price=449&recover=2000" className="mb-2 block rounded-xl border border-g-green/30 bg-g-green/[0.08] px-3 py-3 text-center text-[13px] font-black text-g-green">{t.tProp} · {t.propLabel}</a>
           <div className="grid grid-cols-3 gap-2">
             <a href="/portal" className="rounded-xl border border-g-line bg-white/[0.04] px-3 py-2.5 text-center text-[12px] font-bold text-g-word">{t.tPortal}</a>
             <a href="/cola" className="rounded-xl border border-g-line bg-white/[0.04] px-3 py-2.5 text-center text-[12px] font-bold text-g-word">{t.tCola}</a>

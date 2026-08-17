@@ -159,7 +159,7 @@ export const BLOG_POSTS = [
 },
 {
 "t": "p",
-"x": "**How fast can I get this running?** Guileo can have your AI receptionist live in under 7 days. Self-serve plans start at $149/month, and done-for-you setups (where we build everything for you) start at $990 setup plus $1,497/month. There's a 30-day money-back guarantee, so you can test it against your own numbers."
+"x": "**How fast can I get this running?** Guileo can have your AI receptionist live in under 7 days. Self-serve plans start at $149/month, and done-for-you setups (where we build everything for you) are quoted after we study your business. There's a 30-day money-back guarantee, so you can test it against your own numbers."
 },
 {
 "t": "h2",
@@ -329,7 +329,7 @@ export const BLOG_POSTS = [
 },
 {
 "t": "p",
-"x": "**Em quanto tempo isso fica funcionando?** A Guileo pode deixar sua recepcionista de IA no ar em menos de 7 dias. Os planos self-service começam em $149/mês, e as configurações done-for-you (em que montamos tudo para você) começam em $990 de setup mais $1.497/mês. Há garantia de 30 dias com devolução do dinheiro, então você pode testar contra os seus próprios números."
+"x": "**Em quanto tempo isso fica funcionando?** A Guileo pode deixar sua recepcionista de IA no ar em menos de 7 dias. Os planos self-service começam em $149/mês, e as configurações done-for-you (em que montamos tudo para você) são cotadas depois de estudarmos o seu negócio. Há garantia de 30 dias com devolução do dinheiro, então você pode testar contra os seus próprios números."
 },
 {
 "t": "h2",

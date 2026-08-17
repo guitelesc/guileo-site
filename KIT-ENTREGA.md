@@ -3,7 +3,7 @@
 Mensagens prontas pra entregar os materiais a **colaboradores** e **clientes** — WhatsApp e e-mail.
 Links são "decks vivos": sempre atualizados, com a demo da Gui embutida. Preview no WhatsApp já sai com a imagem premium da marca.
 
-**Comissão padrão do Growth Partner: 20% por venda fechada** (decidido 2026-06-09). Pra negociar diferente, mude o link: `/parceiro?pct=25`.
+**Comissão do Growth Partner (modelo atual, RECORRENTE): 10% (Agendador) a 20% (Closer) da mensalidade de TODA a carteira, todo mês, enquanto o cliente pagar.** Ex: Personalized $449 → $90/mês por cliente no nível Closer.
 
 ---
 
@@ -12,17 +12,17 @@ Links são "decks vivos": sempre atualizados, com a demo da Gui embutida. Previe
 ### WhatsApp (frio ou indicação)
 > Oi {Nome}! Tô montando o time de vendas da **Guileo** — a gente instala um time de IA + marketing que atende, vende e cresce o negócio do cliente sozinho, 24/7.
 >
-> Procuro **Growth Partners**: você traz o cliente, a gente entrega tudo, e você ganha **20% por venda fechada** (num pacote típico, ~$1.000 por venda).
+> Procuro **Growth Partners**: você traz o cliente, a gente entrega tudo, e você ganha **comissão RECORRENTE de 10–20% da mensalidade, todo mês, enquanto o cliente pagar** (10 clientes no Personalized = ~$900/mês).
 >
 > A apresentação completa tá aqui (2 min): 👉 https://www.guileoai.com/parceiro
 >
 > Se fizer sentido, me chama que eu te coloco pra dentro essa semana.
 
 ### E-mail
-**Assunto:** Venda o que vende sozinho — 20% por venda
+**Assunto:** Venda o que vende sozinho — renda recorrente todo mês
 > Oi {Nome},
 >
-> A Guileo instala um time de IA + marketing que atende, vende e cresce o negócio do cliente 24/7. **Você traz o cliente — a gente entrega, e você ganha 20% de cada venda fechada.**
+> A Guileo instala um time de IA + marketing que atende, vende e cresce o negócio do cliente 24/7. **Você traz o cliente — a gente entrega, e você ganha 10–20% da mensalidade TODO MÊS, enquanto ele for cliente.**
 >
 > Você não fica sozinho: nosso time implementa tudo em 7 dias. Você prospecta, mostra a demo ao vivo (a própria IA liga pro prospect — ela faz metade do convencimento) e fecha.
 >
@@ -51,7 +51,7 @@ Apresente direto da tela: 👉 **https://www.guileoai.com/pitch** (navega com as
 
 ### Montar o link da proposta (30 segundos)
 ```
-https://www.guileoai.com/proposta?to=NOME&biz=EMPRESA&pkg=PACOTE&price=1497&setup=990&credits=440&recover=3900&by=SEU_NOME&pay=LINK_STRIPE
+https://www.guileoai.com/proposta?to=NOME&biz=EMPRESA&pkg=PACOTE&price=449&setup=0&credits=2000&recover=3900&by=SEU_NOME&pay=LINK_STRIPE
 ```
 - `price` = mensalidade · `setup` = entrada · `recover` = quanto ele recupera/mês (do quiz/calculadora)
 - `pay` = Payment Link do Stripe **pra esse preço** (se vazio, o botão cai no WhatsApp)

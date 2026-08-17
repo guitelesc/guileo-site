@@ -96,7 +96,7 @@ export default function LeadGeneration() {
         pt: "IA que capta e faz follow-up de cada lead 24/7 para negócios locais — retorno em 60s, texto em ligação perdida, recuperação.",
         es: "IA que capta y da seguimiento a cada lead 24/7 para negocios locales — devolución en 60s, texto en llamada perdida, recuperación.",
       }),
-      offers: { "@type": "Offer", priceCurrency: "USD", price: "149", description: "Self-service from $149/mo; done-for-you from $990 setup + $1,497/mo." },
+      offers: { "@type": "Offer", priceCurrency: "USD", price: "149", description: "Self-service from $149/mo; tailored done-for-you quoted per business." },
     };
     const s = document.createElement("script");
     s.type = "application/ld+json"; s.id = "leadgen-jsonld"; s.textContent = JSON.stringify(node);
