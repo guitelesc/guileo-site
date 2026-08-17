@@ -20,7 +20,7 @@ import { classificarCidade } from "../data/leadClassifier.js";
 
 const T = {
   pt: {
-    titulo: "Leads de Nova York", sub: "Já classificados: qual serviço cada um precisa e o que falar.",
+    cidade: "Cidade", leadsEm: (c) => `Leads · ${c}`, titulo: "Leads de Nova York", sub: "Já classificados: qual serviço cada um precisa e o que falar.",
     comProva: "com evidência no site", palpite: "palpite pelo setor",
     servico: "Serviço que ele precisa", tambem: "Também serve", falar: "O que falar, na ordem",
     ligar: "Ligar agora", site: "Ver o site", copiar: "Copiar o pitch", copiado: "Copiado ✓",
@@ -29,7 +29,7 @@ const T = {
     vazio: "Nenhum lead classificado — o motor não chuta quando não há sinal.",
   },
   en: {
-    titulo: "New York leads", sub: "Already sorted: which service each one needs and what to say.",
+    cidade: "City", leadsEm: (c) => `Leads · ${c}`, titulo: "New York leads", sub: "Already sorted: which service each one needs and what to say.",
     comProva: "evidence on their site", palpite: "guessed from the trade",
     servico: "Service they need", tambem: "Also fits", falar: "What to say, in order",
     ligar: "Call now", site: "Open site", copiar: "Copy the pitch", copiado: "Copied ✓",
@@ -46,7 +46,23 @@ export default function SellerLeadsNYC({ lang = "pt" }) {
   const [aberto, setAberto] = useState(null);
   const [copiado, setCopiado] = useState(null);
 
-  const lista = useMemo(() => classificarCidade(LEADS, "New York", lang), [lang]);
+  // ── O SELETOR DE CIDADE (2026-08-17, Luis: «a lista de leads tem que estar ali e ter uma
+  //    rolagem pra escolher a cidade») ────────────────────────────────────────────────────────
+  // Ao ligar isto apareceu o defeito de verdade: esta tela chamava `classificarCidade(LEADS,
+  // "New York")` com a cidade CRAVADA no código. A base tem 133 leads em 6 cidades — Miami (53),
+  // Nova York (34), Los Angeles (12), Chicago (12), Cuiabá (12), Várzea Grande (10). Ou seja,
+  // 99 leads existiam, estavam classificados, com telefone e pitch pronto, e NENHUM vendedor
+  // conseguia chegar neles. Não era falta de dado: era um filtro esquecido.
+  // Miami é a maior lista e é a praia-de-desembarque escolhida (med spa) — mas a cidade inicial
+  // continua sendo a MAIOR, calculada, não escrita: assim uma leva nova de outra cidade assume a
+  // frente sozinha, sem ninguém lembrar de editar esta linha de novo.
+  const cidades = useMemo(() => {
+    const c = new Map();
+    for (const l of LEADS) if (l && l.city) c.set(l.city, (c.get(l.city) || 0) + 1);
+    return [...c.entries()].sort((a, b) => b[1] - a[1]);
+  }, []);
+  const [cidade, setCidade] = useState(() => (cidades[0] ? cidades[0][0] : "New York"));
+  const lista = useMemo(() => classificarCidade(LEADS, cidade, lang), [cidade, lang]);
   const comProva = lista.filter((x) => !x.plano.porNicho).length;
 
   const copiar = (id, linhas) => {
@@ -58,7 +74,25 @@ export default function SellerLeadsNYC({ lang = "pt" }) {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-[19px] font-black tracking-tight text-g-word">{t.titulo}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-[19px] font-black tracking-tight text-g-word">{t.leadsEm(cidade)}</h2>
+          {/* Um <select> nativo de propósito: no celular ele abre a roda do iOS/Android, que é
+              exatamente a "rolagem" pedida — e um menu feito à mão nunca fica tão bom no dedo.
+              A contagem ao lado do nome evita o clique às cegas: o vendedor escolhe onde tem
+              mais gente para ligar sem precisar entrar para descobrir. */}
+          <label className="flex items-center gap-2 text-[12px] font-bold text-g-muted">
+            {t.cidade}
+            <select
+              value={cidade}
+              onChange={(e) => { setCidade(e.target.value); setAberto(null); }}
+              className="rounded-full border border-g-line bg-white/[0.06] px-3 py-1.5 text-[12.5px] font-bold text-g-word outline-none focus:border-g-green/60"
+            >
+              {cidades.map(([c, n]) => (
+                <option key={c} value={c}>{c} · {n}</option>
+              ))}
+            </select>
+          </label>
+        </div>
         <p className="mt-1 text-[13px] text-g-ink">{t.sub}</p>
         <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-bold">
           <span className="rounded-full border border-g-green/40 bg-g-green/10 px-2.5 py-1 text-g-green">{comProva} {t.comProva}</span>

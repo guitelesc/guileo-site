@@ -74,7 +74,15 @@ export default function ServicesMarquee() {
     <section className="relative overflow-hidden border-y border-g-gold/10 bg-white/[0.02] py-3">
       <style>{`
         @keyframes gsvcs{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-        .gsvcs-track{animation:gsvcs 34s linear infinite;will-change:transform}
+        /* ⚠️ SEM will-change, DE PROPOSITO (2026-08-17). Ele promove a faixa a uma camada grafica
+           PERMANENTE — e esta faixa anima pra sempre, inclusive fora da tela. will-change serve pra
+           avisar o navegador de uma mudanca que VEM, nao pra ficar ligado eternamente: numa pagina
+           de 42.900px com varias faixas animadas, cada camada dessas custa memoria de GPU e ajuda a
+           deixar a rolagem pesada. A animacao e de transform, que o compositor ja acelera sozinho.
+           ⚠️ ESTE BLOCO VIVE DENTRO DE UM TEMPLATE LITERAL: nenhum acento grave pode entrar aqui,
+           nem dentro de comentario — eu quebrei o build DUAS vezes seguidas escrevendo o nome da
+           propriedade entre acentos graves. Aspas simples, se precisar citar algo. */
+        .gsvcs-track{animation:gsvcs 34s linear infinite}
         /* Parar no hover é acessibilidade, não charme: em movimento contínuo não dá pra LER um
            item específico, e quem parou o mouse ali é justamente quem quis ler. */
         .gsvcs-wrap:hover .gsvcs-track{animation-play-state:paused}
