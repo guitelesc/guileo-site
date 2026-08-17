@@ -74,3 +74,7 @@ Quem clica cai DIRETO na pergunta 2 com banner "✓ Question 1 answered — keep
 - **A2P/caller-ID** (Luis, Twilio) → libera CTA "a Gui te liga" = conversão muito maior
 - **META_APP_SECRET** → WhatsApp/Messenger como canal de resposta
 - Orçamento $1k+ → campanha NYC/Miami dedicada com as landing pages /for/ locais + Google Search (intenção alta)
+
+
+## ⚠️ CORREÇÃO DE PREÇOS (auditoria na fonte, 2026-08-07)
+Preços canônicos: Essential $149 · Personalized $449 · Full Operation $999 (Stripe LIVE em /planos) · Pulse $49 · top-ups $49/$119 · add-ons $97–$297. Sob medida SEM preço público. Os antigos $49/$149/$399 e $990+$1.497 NÃO existem mais na vitrine — qualquer material citando esses números precisa de revisão (Academia/Parceiro/Proposta ainda citam: revisar antes de usar com gente nova).

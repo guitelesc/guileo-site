@@ -1,5 +1,14 @@
 # 📱 GUILEO — Máquina de Conteúdo (2 linhas editoriais)
 
+> ⚡ FONTE DA VERDADE (auditado no código 2026-08-07 — usar SEMPRE isto):
+> **Identidade:** AGÊNCIA de IA + ads + criativo que cresce negócios locais. A IA é a PROVA, não o produto ("Google e Meta sabem cliques, o dono sabe faturamento — o elo do meio é o TELEFONE, que só a Gui atende").
+> **A frase:** "Guileo installs an employee that never sleeps: answers, books, sells and COLLECTS for you — for less than a day of one waiter's pay."
+> **Hero do site:** "We bring the customers. / AI answers, books & sells. / You grow."
+> **Preços (únicos publicáveis):** Essential $149 · Personalized $449 · Full Operation $999 /mo · Pulse $49/mo · add-ons ($97–$297). SOB MEDIDA NÃO TEM PREÇO PÚBLICO ("we quote after we study your business"). ⚠️ NUNCA usar $49/$149/$399 nem $990+$1.497 em público (mortos/removidos da vitrine).
+> **Verticais prioritárias:** Home Services (fecha mais fácil, "You're first or you're nothing") · Salons/Spas · Medical/Dental (compliance) · Restaurants. Oceano azul: NossaGente (imigrante/bilíngue NY↔BR).
+> **Prova PUBLICÁVEL:** vitrine /vitrine/:token · demo /demo/:slug · linha demo +1 986 444 3334 · 505 capacidades em 13 playbooks · 885 páginas SEO · cockpit 64 abas (respeitar chip "Sample preview") · blog 20 posts.
+> **PROIBIDO:** citar Natura Spa sem OK do Luis · mostrar negócios-exemplo do cockpit como "clientes" (são fictícios — rotular 'sample') · depoimentos (zero aprovados) · números inventados ("500+ businesses" do brief antigo = aspiracional, NUNCA usar).
+
 > Objetivo: o cliente ENTENDER de fato o que somos em 3 segundos — e contratar.
 > Regra 1: todo post mostra COISA REAL (produto funcionando, site entregue, número verdadeiro). Nada de frase motivacional genérica.
 > **Regra 2 · IDIOMA: INGLÊS SEMPRE (mercado = NYC/US).** Preços em $. Cenários NYC (delivery no Brooklyn, clínica em Queens, brownstone em Manhattan). PT só se um dia abrirmos linha pra comunidade BR — decisão separada.
