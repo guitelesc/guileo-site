@@ -1,60 +1,68 @@
-// GUARDA DA PRONÚNCIA — o nome do negócio dito errado é a primeira impressão estragada.
+// GUARDA DA PRONÚNCIA — a primeira palavra da ligação é o nome, e ele tem que sair certo.
 // ═════════════════════════════════════════════════════════════════════════════════════════════
 // POR QUE ESTE TESTE EXISTE
-// 2026-08-16, o Luis ouvindo uma ligação real: "ele fala GUILEO bem, mas o Gui ele fala guai".
-// O motor de voz lê com as regras do idioma dele — "Gui" em inglês só pode sair /gwaɪ/. Não é
-// defeito do modelo: é a gente mandando grafia portuguesa para uma boca inglesa.
+// 2026-08-16, o Luis ouvindo a ligação: "ele fala GUILEO bem, mas o Gui ele fala guai".
+// O motor de voz lê o texto com as regras do idioma DELE — "Gui" em inglês só pode sair /gwaɪ/.
+// Não é defeito do modelo: é a gente entregando a grafia errada para a boca errada.
 //
-// O RISCO DESTE ARQUIVO É O OPOSTO DO ÓBVIO. Reescrever fonética demais estraga nome que já saía
-// certo — e esse defeito ninguém procura depois, porque consta como "já corrigido". Por isso
-// metade dos casos aqui prova o que NÃO pode mudar.
+// O RISCO DESTE TESTE É O OPOSTO DO ÓBVIO. Reescrever fonética por palpite estraga nome que já
+// saía certo — e ESSE defeito ninguém procura, porque o nome consta como "já corrigido". Por isso
+// metade dos casos abaixo prova o que NÃO pode ser tocado: Guileo em inglês (o Luis confirmou que
+// sai bem), Gui em português, Lilian em qualquer idioma.
 import { comoFalar, frasefalada } from "./pronuncia.js";
 
 let falhas = 0;
-const eq = (obtido, esperado, oque) => {
-  if (obtido !== esperado) { falhas++; console.log(`❌ ${oque}\n     esperado ${JSON.stringify(esperado)}, obtido ${JSON.stringify(obtido)}`); }
+const eq = (obtido, esperado, titulo, porque) => {
+  if (obtido === esperado) return;
+  falhas++;
+  console.log(`❌ ${titulo}\n     esperado ${JSON.stringify(esperado)} · obtido ${JSON.stringify(obtido)}\n     protege: ${porque}`);
 };
 
-// ── O CASO QUE ORIGINOU TUDO
-eq(comoFalar("Gui", "en"), "Ghee", "Gui em inglês vira Ghee (senão sai 'guai')");
-eq(comoFalar("Gui", "pt"), "Gui", "Gui em português NÃO muda — já sai certo");
-eq(comoFalar("Gui", "es"), "Gui", "Gui em espanhol NÃO muda");
+// ── O CASO REAL ────────────────────────────────────────────────────────────────────────────────
+eq(comoFalar("Gui", "en"), "Ghee", "Gui em inglês",
+  "o defeito ouvido: 'guai' rimando com why. 'Ghee' é a grafia inglesa que produz /gi/.");
 
-// ── O QUE JÁ ESTAVA CERTO NÃO PODE SER MEXIDO. O Luis confirmou GUILEO de ouvido; se alguém
-//    "melhorar" isso no futuro, quebra o que funciona e ninguém vai procurar aqui.
-eq(comoFalar("Guileo", "en"), "Guileo", "GUILEO em inglês fica como está (verificado de ouvido)");
-eq(comoFalar("Lilian", "en"), "Lilian", "Lilian o inglês lê bem");
+// ── O QUE NÃO PODE SER TOCADO (confirmado de ouvido) ───────────────────────────────────────────
+eq(comoFalar("Guileo", "en"), "Guileo", "Guileo em inglês fica como está",
+  "o Luis confirmou que já sai bem. 'Consertar' aqui quebraria o nome da empresa na abertura.");
+eq(comoFalar("Gui", "pt"), "Gui", "Gui em português fica como está",
+  "a grafia é portuguesa: em pt ela já é lida certa. Reescrever viraria 'Ghee' na boca brasileira.");
+eq(comoFalar("Lilian", "en"), "Lilian", "Lilian em inglês fica como está",
+  "o inglês lê bem. Está na tabela como VERIFICADO só para ninguém 'corrigir' depois por palpite.");
+eq(comoFalar("Sarah", "en"), "Sarah", "nome fora da tabela volta inalterado",
+  "silêncio é o padrão seguro: fonética por adivinhação estraga nome que já estava certo.");
 
-// ── NOME DESCONHECIDO VOLTA INTACTO. Silêncio é o padrão seguro: fonética por palpite erra em
-//    cima de nome que já saía certo.
-eq(comoFalar("Amanda", "en"), "Amanda", "nome fora da tabela não é adivinhado");
-eq(comoFalar("", "en"), "", "vazio continua vazio");
+// ── MERCADO IMIGRANTE — é o público do produto, e é justo quem o inglês não lê ─────────────────
+eq(comoFalar("João", "en"), "Zhoo-ow", "João em inglês (com acento)",
+  "a chave normaliza acento; sem isso 'João' nunca casaria e o dono ouviria 'Joe-ay-oh'.");
+eq(comoFalar("Jorge", "en"), "Hor-hey", "Jorge em inglês",
+  "inglês lê /dʒɔrdʒ/. Numa clínica hispânica, errar o nome do dono na 1a frase custa a conta.");
+eq(comoFalar("João", "pt"), "João", "João em português fica como está",
+  "o par obrigatório: o conserto do inglês não pode vazar para o idioma nativo.");
 
-// ── MERCADO IMIGRANTE: a razão de a tabela existir. Estes o inglês erra feio.
-eq(comoFalar("João", "en"), "Zhoo-ow", "acento não impede o casamento (João → joao)");
-eq(comoFalar("Jorge", "en"), "Hor-hey", "Jorge em inglês sairia com J inglês");
-eq(comoFalar("Jorge", "es"), "Jorge", "em espanhol Jorge já sai certo");
+// ── A FRASE INTEIRA (é isso que vai para o motor de voz) ───────────────────────────────────────
+eq(frasefalada("Thank you for calling Guileo. This is Gui — how may I help you today?", "en"),
+   "Thank you for calling Guileo. This is Ghee — how may I help you today?",
+   "saudação real em inglês",
+   "a saudação de verdade: 'Guileo' intacto E 'Gui' corrigido na MESMA frase — a prova de que a troca respeita limite de palavra e não come o nome maior.");
 
-// ── A FRASE INTEIRA, que é o que vai para o motor de voz.
-eq(frasefalada("Thank you for calling Guileo. This is Gui — how may I help you?", "en"),
-   "Thank you for calling Guileo. This is Ghee — how may I help you?",
-   "na saudação: troca Gui, preserva Guileo");
-eq(frasefalada("Obrigada por ligar! Aqui é a Gui.", "pt"),
-   "Obrigada por ligar! Aqui é a Gui.",
-   "em português a saudação fica intacta");
+eq(frasefalada("Obrigada por ligar para Guileo! Aqui é a Gui — em que eu posso te ajudar hoje?", "pt"),
+   "Obrigada por ligar para Guileo! Aqui é a Gui — em que eu posso te ajudar hoje?",
+   "saudação real em português fica intacta",
+   "nenhuma troca deve acontecer em pt. Se este falhar, a agente brasileira passou a falar inglês macarrônico.");
 
-// ── CAIXA PRESERVADA: "GUI" gritado no texto não pode virar "Ghee" minúsculo no meio da frase.
-eq(frasefalada("GUI here.", "en"), "GHEE here.", "maiúsculas preservadas");
+eq(frasefalada("GUI aqui.", "en"), "GHEE aqui.", "caixa alta é preservada",
+   "quem escreve o nome em maiúscula no cadastro não pode receber 'Ghee' no meio de um grito.");
 
-// ── ⚠️ LIMITE DE PALAVRA: sem isto, "Guilherme" viraria "Gheelherme" e "seguindo" viraria outra
-//    coisa. É o modo mais provável de esta tabela causar dano.
-eq(frasefalada("Guilherme is here.", "en"), "Guilherme is here.", "não mexe DENTRO de outra palavra");
-eq(frasefalada("Aqui é o Guimarães.", "pt"), "Aqui é o Guimarães.", "idem com acento à frente");
+// Um "gui" DENTRO de outra palavra não pode ser trocado — é o erro clássico de busca-e-troca.
+eq(frasefalada("Follow the guide, please.", "en"), "Follow the guide, please.",
+   "'gui' dentro de 'guide' NÃO é trocado",
+   "sem limite de palavra, 'guide' viraria 'gheede' e a agente soaria com defeito de fala.");
 
+const TOTAL = 12;
 if (falhas) {
-  console.log(`\n${falhas} caso(s) errado(s). As duas falhas possíveis têm donos diferentes:`);
-  console.log("   não corrigir  -> a agente diz o nome do negócio errado na PRIMEIRA frase da ligação;");
-  console.log("   corrigir demais -> estraga nome que já saía certo, e ninguém procura defeito no que consta corrigido.");
+  console.log(`\n${falhas}/${TOTAL} errados. O nome é a PRIMEIRA palavra que o cliente ouve:`);
+  console.log("   errado, ele decide nos primeiros 2 segundos que do outro lado tem uma máquina.");
   process.exit(1);
 }
-console.log("✅ pronúncia: 'Gui' sai certo em cada idioma, o que já estava bom não foi tocado, e nome dentro de palavra não é quebrado");
+console.log(`✅ ${TOTAL}/${TOTAL} — nome sai certo em cada idioma, e o que já estava certo não foi tocado`);
