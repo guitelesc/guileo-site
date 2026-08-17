@@ -210,9 +210,17 @@ export default function PillarsProducts() {
                       const { itens, resto } = produtosDoPilar(p.pilar, lang, aberto === p.pilar);
                       return (<>
                         {itens.map((it) => (
-                          <span key={it.nome} title={it.detalhe} className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold text-g-light" style={{ borderColor: `rgba(${rgb},0.3)`, background: `rgba(${rgb},0.07)` }}>
+                          // ⚠️ O NÚMERO SAIU DO CHIP (2026-08-17). O card do Brain trazia o chip
+                          // "24/7 AI Reception +$2k–11k" e, quatro linhas abaixo, "O RESULTADO
+                          // +$2k–11k /mês recuperado". O MESMO número duas vezes no mesmo card:
+                          // mostrado pequeno primeiro, ele chega gasto no lugar onde deveria
+                          // impressionar — e ainda enche o chip de ruído (21×, −10–20%, +★, −h,
+                          // unidades diferentes em pílulas de 11px, que o olho lê como sujeira).
+                          // Agora o chip diz só O QUE É (o serviço, que é o que a pessoa procura
+                          // quando varre a lista) e o número aparece UMA vez, grande, embaixo.
+                          // O valor completo continua no `title` para quem quiser o detalhe.
+                          <span key={it.nome} title={it.detalhe} className="inline-flex items-center rounded-full border px-3 py-1.5 text-[11.5px] font-semibold text-g-light" style={{ borderColor: `rgba(${rgb},0.3)`, background: `rgba(${rgb},0.07)` }}>
                             {it.nome}
-                            {it.valor && <b className="font-black tabular-nums" style={{ color: `rgb(${rgb})` }}>{it.valor}</b>}
                           </span>
                         ))}
                         {(resto > 0 || aberto === p.pilar) && (
@@ -229,11 +237,22 @@ export default function PillarsProducts() {
                     })()}
                   </div>
 
-                  {/* honest delivery tag */}
-                  <div className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-white/[0.04] px-2.5 py-1 text-[10.5px] font-semibold text-g-muted ring-1 ring-white/10">
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: p.accent, boxShadow: `0 0 7px ${p.accent}` }} />{toneLabel(p.tone)}
-                  </div>
 
+                  {/* ⚠️ O SELO DE ENTREGA DESCEU (2026-08-17). Ele ficava colado nos chips, e com
+                      isso todo o vazio do card sobrava no fim — que é exatamente o que fazia o card
+                      do Build (2 serviços no catálogo, contra 7 do Brain) parecer um card pela
+                      metade. Colado no resultado, o respiro passa a cair ENTRE dois blocos de
+                      leitura ("o que é" … "como entrega + quanto vale"), e vazio entre blocos lê
+                      como composição, não como falta.
+                      ⚠️ ISSO É REMENDO DE LAYOUT PARA UM BURACO DE CATÁLOGO: o Build entrega site,
+                      app, loja, software e automação, e o productSystem só tem DOIS itens dele.
+                      Enquanto isso não for resolvido na FONTE, o pilar mais caro será sempre o que
+                      parece o mais magro. */}
+                  <div className="mt-auto pt-5">
+                    <div className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-white/[0.04] px-2.5 py-1 text-[10.5px] font-semibold text-g-muted ring-1 ring-white/10">
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: p.accent, boxShadow: `0 0 7px ${p.accent}` }} />{toneLabel(p.tone)}
+                    </div>
+                  </div>
                   {/* the result — anchored at the foot */}
                   <div className="mt-auto pt-5">
                     <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-g-muted">{t.resultLabel}</div>

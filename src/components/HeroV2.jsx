@@ -26,6 +26,14 @@ import { useLang } from "../i18n.jsx";
 //     ligação na hora (DemoEngine "A Gui está te ligando agora").
 // "Você compra o resultado, não a ferramenta" FICOU: é o posicionamento contra quem vende software
 // — só saiu do fim de uma lista, onde ninguém lia, para o fim da frase, onde fecha o raciocínio.
+// ⚠️ APAGADA POR ACIDENTE E RESTAURADA (2026-08-17). Ao mover o texto do 118h para o ResultsV2,
+// minha fatia foi do comentário da aritmética até o fim de `HORAS` — e esta constante morava NO
+// MEIO. O build passou (referência a variável indefinida só quebra em execução) e o site subiu
+// com o ErrorBoundary na tela. Lição: `npm run build` verde não é prova de que a página abre;
+// a prova é abrir. Agora ela mora ANTES de tudo, sozinha, longe de qualquer bloco removível.
+// Cores dos três pilares — os MESMOS accents de productSystem.js / PillarsProducts / ServicesMarquee.
+const PILAR_COR = ["#FF8A33", "#4C9AFF", "#9AA0FF"];
+
 const HERO_COPY = {
   en: { eyebrow:"AI · ads · creative — the agency that grows local businesses", sub:["A missed call doesn't leave a voicemail — it calls the next place on Google. "," answers in your customer's language and takes the deposit before they hang up. You buy the ","result, not the tools","."], method:["Brain","AD","Build"], owns:["performance","growth","foundation"], cta:"Hear Gui work", sub2:"Leave your number — she calls in about a minute.", h1:["We bring the customers.","AI answers, books & sells.","You grow."], promessa:"Work Smart. Grow Faster. Sleep Better." },
   pt: { eyebrow:"AI · anúncios · criativo — a agência que faz o negócio local crescer", sub:["A ligação perdida não deixa recado — ela liga pro próximo da lista do Google. A "," atende no idioma do seu cliente e já pega o sinal antes de desligar. Você compra o ","resultado, não a ferramenta","."], method:["Brain","AD","Build"], owns:["performance","crescimento","fundação"], cta:"Ouça a Gui trabalhar", sub2:"Deixa seu número — ela liga em mais ou menos um minuto.", h1:["A gente traz os clientes.","A AI atende, agenda e vende.","Você cresce."], promessa:"Trabalhe com inteligência. Cresça mais rápido. Durma melhor." },
@@ -33,19 +41,6 @@ const HERO_COPY = {
   hi: { eyebrow:"AI · विज्ञापन · क्रिएटिव — स्थानीय व्यवसाय बढ़ाने वाली एजेंसी", sub:["छूटी हुई कॉल मैसेज नहीं छोड़ती — वो Google पर अगली दुकान को कॉल करती है। "," आपके ग्राहक की भाषा में जवाब देती है और फ़ोन रखने से पहले एडवांस ले लेती है। आप ","नतीजा खरीदते हैं, टूल नहीं","।"], method:["Brain","AD","Build"], owns:["परफ़ॉर्मेंस","ग्रोथ","नींव"], cta:"Gui को काम करते सुनें", sub2:"अपना नंबर छोड़ें — वो लगभग एक मिनट में कॉल करती है।", h1:["ग्राहक हम लाते हैं।","AI जवाब देती, बुक करती और बेचती है।","आप बढ़ते हैं।"], promessa:"होशियारी से काम। तेज़ी से बढ़ें। चैन से सोएँ।" },
 };
 
-// A ARITMÉTICA QUE SUBSTITUIU O CLICHÊ. 168 horas tem a semana; uma loja aberta ~50 deixa 118 em
-// que o telefone toca e não tem ninguém. É checável de cabeça — e por isso convence sem precisar
-// de "confie em mim". O número fica FORA do dicionário porque é o mesmo nos 4 idiomas.
-// As cores dos três pilares — os MESMOS accents de productSystem.js / PillarsProducts /
-// ServicesMarquee. Ficam aqui como constante para o herói não virar a quarta versão da paleta.
-const PILAR_COR = ["#FF8A33", "#4C9AFF", "#9AA0FF"];
-
-const HORAS = {
-  en: "You're open about 50 hours a week. The phone rings 168. Gui works the rest — nights, Sundays, the lunch rush.",
-  pt: "Você abre umas 50 horas por semana. O telefone toca 168. A Gui cobre o resto — noite, domingo, hora do almoço.",
-  es: "Abres unas 50 horas por semana. El teléfono suena 168. Gui cubre el resto — noche, domingo, hora del almuerzo.",
-  hi: "आप हफ़्ते में करीब 50 घंटे खुले रहते हैं। फ़ोन 168 घंटे बजता है। बाकी Gui संभालती है — रात, रविवार, लंच।",
-};
 
 // HeroV2 — TEST (/v2). Realistic, LIVING iPhone-2026 mockup of Gui working nonstop.
 // SMOOTH motion: the action feed is a continuous gliding marquee (no janky remounts),
@@ -331,11 +326,9 @@ export default function HeroV2() {
               Ficaram os três pilares, que são a única coisa que o título NÃO diz: o escopo. Numa
               linha, o visitante aprende que não é só o telefone — tem marketing e tem construção.
 
-              ⚠️ O 118h NÃO FOI JOGADO FORA, e não deve ser. É a única estatística da página que
-              nenhum concorrente usa e que o dono confere de cabeça. O lugar dela é a seção do
-              VAZAMENTO (ResultsV2), onde a página fala do problema — no herói ela chegava antes de
-              a pessoa aceitar que tem um problema, e prova sem problema não converte, cansa.
-              O texto está preservado na constante HORAS, logo acima, pronto para essa mudança. */}
+              O 118h foi REMOVIDO do site em 2026-08-17 (Luis). Ele existiu no herói e depois
+              no vazamento; nas duas posições o Luis leu como ruído. Fica registrado para ninguém
+              "resgatar" a estatística achando que ela sumiu por descuido. */}
           <div className="mt-7 flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px]">
             {C.method.map((nome, i) => (
               <span key={nome} className="flex items-center gap-3 whitespace-nowrap">

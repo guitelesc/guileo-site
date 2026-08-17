@@ -21,11 +21,25 @@ function IncludedProducts({ planKey, rgb, lang, t }) {
       </div>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {products.map((p) => (
-          <span key={p.id} className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold text-g-light"
+          // ── O NÚMERO SAIU DO CHIP (2026-08-17) ───────────────────────────────────────────
+          // Luis: «essa parte está bem confusa». Estava, e a causa era esta linha.
+          // Cada um dos 15 itens vinha carimbado com o seu `resultMetric.value`, e esses valores
+          // NÃO SÃO COMPARÁVEIS entre si: dinheiro (+$2k–11k), multiplicador (21×), porcentagem
+          // (−10–20%), contagem (16), símbolo (+★), seta (→), hora (−h)… tudo em pílulas de 11px,
+          // lado a lado. Quinze unidades diferentes na mesma fileira não informam: viram sujeira,
+          // e o olho desiste da lista inteira — que é justamente a lista que prova o tamanho do
+          // pacote.
+          // ⚠️ E TRÊS DELES MENTIAM AO CONTRÁRIO: "Close & Collect $0", "Social media managed 0",
+          // "CRM + branded email 1". Zero ao lado de um serviço incluso lê como "você não recebe
+          // nada disso". Um campo de sistema exibido cru não é neutro — ele fala, e às vezes fala
+          // o oposto do que a gente vende.
+          // A lista responde "o que eu levo?". Quanto vale é a pergunta do PLANO, e o plano já
+          // responde com um número grande, uma vez. O valor de cada item segue no `title`.
+          <span key={p.id} title={[p.resultMetric?.value, nm(p.resultMetric?.unit || {})].filter(Boolean).join(" ")}
+            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold text-g-light"
             style={{ borderColor: `rgba(${rgb},0.3)`, background: `rgba(${rgb},0.06)` }}>
             <span className="text-[13px]" aria-hidden>{p.icon}</span>
             <span className="text-g-word">{nm(p.name)}</span>
-            <span className="font-black tabular-nums" style={{ color: p.accent }}>{p.resultMetric?.value}</span>
           </span>
         ))}
       </div>

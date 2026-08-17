@@ -93,6 +93,7 @@ const LOC = { en: "en-US", pt: "pt-BR", es: "es-ES", hi: "en-IN" };
 const fmt = (n, lang = "en") =>
   (lang === "en" ? "$" : "US$ ") + Math.round(n).toLocaleString(LOC[lang] || "en-US");
 
+
 export default function ResultsV2() {
   const { lang } = useLang();
   const C = RV_COPY[lang] || RV_COPY.en;
@@ -137,6 +138,7 @@ export default function ResultsV2() {
         <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-g-ink" style={{ animation: "rvreveal .8s ease .3s both" }}>
           {C.intro[0]}<span className="font-semibold text-g-word">{C.intro[1]}</span>{C.intro[2]}<span className="font-semibold text-[#d8916e]">{C.intro[3]}</span>{C.intro[4]}
         </p>
+
       </div>
 
       {/* industries marquee — moving + clickable (pauses on hover) */}
