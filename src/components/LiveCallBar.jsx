@@ -72,7 +72,16 @@ export default function LiveCallBar({ source = "callbar", compacto = false }) {
                 passa da largura e o excedente é cortado. `min-w-0` autoriza o input a ceder;
                 `shrink-0` garante que quem cede é ele, nunca o botão.
                 Vale dinheiro: é o botão que dispara a ligação — o único ato que a landing pede. */}
-            <div className="flex w-full gap-2">
+            {/* ⚠️ EMPILHA NO ESTREITO (2026-08-17) — a mesma armadilha do comentário acima, agora
+                pelo LADO OPOSTO. `min-w-0` no input + `shrink-0` no botão decide QUEM cede quando a
+                soma não cabe: o input. Em português o botão diz "Quero que a Gui me ligue", e dentro
+                do herói em 375px isso não sobra NADA pro campo — ele virou uma tira de ~100px
+                mostrando "Se". Proteger o botão do corte transformou o input em inútil, o que é pior:
+                sem onde digitar, o botão não tem o que enviar.
+                Lado a lado só quando há largura (`sm:`). No celular, empilhado é também o formato que
+                converte melhor: campo de largura cheia, botão de largura cheia, nenhum dos dois
+                disputando pixel com o outro. */}
+            <div className="flex w-full flex-col gap-2 sm:flex-row">
               <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={C.placeholder}
                 className={`min-w-0 flex-1 ${compacto ? "" : "sm:w-52"} rounded-full border border-white/20 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70 transition`} />
               <button disabled={st === "calling" || !consent} aria-label={C.cta}

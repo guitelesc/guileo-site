@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import mark from "../assets/guileo-mark.png";
 import { useLang } from "../i18n.jsx";
+// O capturador de lead do herói. Import DIRETO (não lazy) de propósito: é o elemento da dobra que
+// converte tráfego pago — carregar depois é o mesmo que não ter.
+import LiveCallBar from "./LiveCallBar.jsx";
 
 // Hero copy that lives in the component (richer than the shared dict) — translated inline.
 //
@@ -342,7 +345,20 @@ export default function HeroV2() {
               <span className="grid h-6 w-6 place-items-center rounded-full text-xs" style={{ background: "linear-gradient(135deg,rgba(255,138,51,0.55),rgba(214,194,154,0.35))" }}>🌱</span>
               {C.cta}
             </a>
+            {/* ⚠️ O CAMPO SUBIU PRA CÁ (2026-08-17, antes de rodar anúncio) ────────────────────
+                Esta linha PROMETE "deixe seu número — ela liga em um minuto" desde sempre. Só que o
+                primeiro campo de telefone da página vivia a **9.674 px** daqui (medido no DOM, no
+                viewport de 375px): a pessoa que vem do anúncio lê a promessa e não tem onde digitar.
+                O único clicável da dobra era um pulo de âncora para `#try`.
+                Amplitude de catálogo pode esperar; o campo que captura o lead, não — tráfego pago
+                não rola 9 mil pixels procurando um input.
+                ⚠️ É O MESMO `LiveCallBar`, na variante que já existia, NUNCA um segundo caminho de
+                lead: consentimento TCPA, `/api/lead` (noCall) + `/api/call` com o portão de DNC e
+                teto, e a recusa REAL aparecendo na tela. Um caminho só, provado, três cascas.
+                `max-w-md` porque na coluna do herói (desktop) o campo esticado até a borda lê como
+                formulário de rodapé, não como o ato principal. */}
             <p className="mt-3 text-[12.5px] text-g-muted">{C.sub2}</p>
+            <div className="mt-3 max-w-md"><LiveCallBar compacto source="heroi" /></div>
           </div>
         </div>
 
