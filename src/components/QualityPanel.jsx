@@ -262,7 +262,23 @@ export default function QualityPanel({ token }) {
 
         {econ === null && <div className="mt-2 space-y-1.5"><Skeleton h={22} /><Skeleton h={22} /><Skeleton h={22} /></div>}
         {econ && econ.err && <ErrLine msg={econ.err} onRetry={loadEcon} />}
-        {econ && !econ.err && econ.clients.length === 0 && <Empty msg="🌱 Sem clientes com receita/custo apurados ainda." />}
+        {/* ⚠️ ERAM DOIS FATOS COM UMA ÚNICA FRASE (auditoria 2026-08-17). `notReady`, `note`,
+            `partial` e `missing` já eram GRAVADOS aqui e NUNCA renderizados — o unit-economics
+            devolve 200 com ready:false quando o cost_ledger não foi colado, e a tela dizia
+            "sem clientes com receita/custo apurados ainda". Ou seja: MEDIÇÃO QUE NUNCA EXISTIU
+            aparecia como medição feita e vazia. Isto decide PREÇO: acreditar que a margem está
+            apurada e vazia leva a cobrar errado com convicção.
+            E `partial` é o caso mais traiçoeiro: alguns provedores de custo faltando faz o número
+            aparecer como se fosse o total, quando é um PISO — margem otimista por omissão. */}
+        {econ && !econ.err && econ.notReady && (
+          <Empty msg={`⚠️ A margem por cliente NÃO está sendo medida — ${econ.note || "falta colar o cost_ledger"}. Isto não é "sem clientes": é sem medição.`} />
+        )}
+        {econ && !econ.err && !econ.notReady && econ.clients.length === 0 && <Empty msg="🌱 Sem clientes com receita/custo apurados ainda." />}
+        {econ && !econ.err && !econ.notReady && econ.partial && (
+          <div className="mt-2 rounded-lg border border-g-gold/40 bg-g-gold/10 px-2.5 py-1.5 text-[11px] font-bold text-g-gold">
+            ⚠️ Custo PARCIAL — faltam: {(econ.missing || []).join(", ") || "provedores não informados"}. A margem abaixo é um PISO, não o número final.
+          </div>
+        )}
 
         {econ && !econ.err && econ.clients.length > 0 && (() => {
           const red = econ.clients.filter((c) => c.margin < 0);

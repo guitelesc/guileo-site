@@ -325,6 +325,13 @@ function KitEmails({ t, copiedKey, setCopiedKey }) {
 // "já pronto pra ele só ligar e fechar."
 const LEADBOSS_TX = {
   pt: {
+    // ⚠️ CHAVE QUE FALTAVA (auditoria 2026-08-17): `t.copy` era usado na linha do botão
+    // de copiar a mensagem de WhatsApp PRONTA — em TODO lead — e não existia neste dicionário.
+    // Resultado: o botão renderizava com rótulo VAZIO. Ninguém clica num botão sem nome, então a
+    // mensagem que o motor já tinha escrito para cada um dos 133 leads não era usada. Chave
+    // ausente em JS não dá erro: devolve undefined, e o React desenha nada. O defeito mais caro
+    // desta auditoria em relação ao tamanho do conserto.
+    copy: "📋 Copiar",
     title: "Leads prontos", sub: "Leads reais já pesquisados e verificados. Ligue, mande o e-mail pronto e feche — o brief da call já está aqui.",
     ready: "prontos", closed: "fechados", verified: "verificado no site",
     call: "📞 Ligar", wa: "💬 WhatsApp", site: "🌐 Site", email: "✉️ E-mail",
@@ -341,6 +348,13 @@ const LEADBOSS_TX = {
     toFollowup: "➡️ Follow-up", toCadastro: "➕ Cadastrar", waReady: "💬 WhatsApp pronto", waSend: "Abrir no WhatsApp",
   },
   en: {
+    // ⚠️ CHAVE QUE FALTAVA (auditoria 2026-08-17): `t.copy` era usado na linha do botão
+    // de copiar a mensagem de WhatsApp PRONTA — em TODO lead — e não existia neste dicionário.
+    // Resultado: o botão renderizava com rótulo VAZIO. Ninguém clica num botão sem nome, então a
+    // mensagem que o motor já tinha escrito para cada um dos 133 leads não era usada. Chave
+    // ausente em JS não dá erro: devolve undefined, e o React desenha nada. O defeito mais caro
+    // desta auditoria em relação ao tamanho do conserto.
+    copy: "📋 Copy",
     title: "Ready leads", sub: "Real, pre-researched, verified leads. Call, send the ready email and close — the call brief is right here.",
     ready: "ready", closed: "closed", verified: "verified on site",
     call: "📞 Call", wa: "💬 WhatsApp", site: "🌐 Site", email: "✉️ Email",
@@ -357,6 +371,13 @@ const LEADBOSS_TX = {
     toFollowup: "➡️ Follow-up", toCadastro: "➕ Add client", waReady: "💬 WhatsApp ready", waSend: "Open in WhatsApp",
   },
   es: {
+    // ⚠️ CHAVE QUE FALTAVA (auditoria 2026-08-17): `t.copy` era usado na linha do botão
+    // de copiar a mensagem de WhatsApp PRONTA — em TODO lead — e não existia neste dicionário.
+    // Resultado: o botão renderizava com rótulo VAZIO. Ninguém clica num botão sem nome, então a
+    // mensagem que o motor já tinha escrito para cada um dos 133 leads não era usada. Chave
+    // ausente em JS não dá erro: devolve undefined, e o React desenha nada. O defeito mais caro
+    // desta auditoria em relação ao tamanho do conserto.
+    copy: "📋 Copiar",
     title: "Leads listos", sub: "Leads reales, ya investigados y verificados. Llama, envía el correo listo y cierra — el brief de la llamada está aquí.",
     ready: "listos", closed: "cerrados", verified: "verificado en el sitio",
     call: "📞 Llamar", wa: "💬 WhatsApp", site: "🌐 Sitio", email: "✉️ Correo",

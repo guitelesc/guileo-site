@@ -144,7 +144,17 @@ export default function Admin() {
           .limit(100);
         if (!alive) return;
         if (error) { setClientsState("err"); return; }
-        setClients(data || []); setClientsState("ok");
+        // ⚠️ ZERO LINHAS COM A CHAVE ANON NÃO PROVA ZERO CLIENTES (auditoria 2026-08-17).
+        // Esta leitura usa a chave pública; o RLS da tabela `clients` NEGA e o PostgREST devolve
+        // LISTA VAZIA SEM ERRO. O código então marcava "ok" e o tile imprimia 0 — o dono lia
+        // "não tenho cliente" no mesmo instante em que a carteira, ao lado, listava os pagantes.
+        // Dois números divergentes na MESMA página, e o errado com cara de certo.
+        // Não dá para distinguir "vazio" de "negado" por este caminho — então a resposta honesta
+        // é NÃO AFIRMAR: estado próprio, e o tile mostra "—" em vez de 0. A fonte com autoridade
+        // é a carteira (token-gated); enquanto o tile não for religado nela, ele se cala.
+        const linhas = data || [];
+        if (linhas.length === 0) { setClients([]); setClientsState("indeterminado"); return; }
+        setClients(linhas); setClientsState("ok");
       } catch { if (alive) setClientsState("err"); }
     };
     loadClients();
@@ -211,7 +221,21 @@ export default function Admin() {
   );
 
   // ── JORNADA — one board, the whole lead lifecycle: demo → onboarding → retenção (REAL RPC) ──
-  const JourneyBoard = ({ j }) => {
+  const JourneyBoard = ({ j, erro }) => {
+    // ⚠️ SEM DADO, ISTO DESENHAVA ZEROS (auditoria 2026-08-17). `j?.demo || {}` com `n ?? 0` faz a
+    // jornada inteira aparecer como "0 demos → 0 onboardings → 0 retidos" — que é uma afirmação,
+    // não uma ausência. E a RPC por trás termina em `exception when others then return null`, então
+    // qualquer tabela faltando devolve SUCESSO COM NULL: o funil parecia zerado quando estava
+    // ilegível. Zero é um número; "não sei" não é. Agora a tela diz qual dos dois.
+    if (erro || !j) {
+      return (
+        <div className="mt-5 rounded-2xl border border-g-gold/40 bg-g-gold/10 p-6 text-center text-[13px] font-semibold leading-relaxed text-g-gold">
+          {erro
+            ? <>⚠️ Não consegui LER a jornada (<span className="font-mono">admin_journey</span>).<br />Isto <b>não</b> quer dizer funil zerado — quer dizer sem leitura. Ela tenta de novo a cada 5s.</>
+            : <>Carregando a jornada…</>}
+        </div>
+      );
+    }
     const demo = j?.demo || {}, onb = j?.onboarding || {}, ret = j?.retention || {};
     const Step = ({ n, label, tone = "orange", sub }) => (
       <div className="flex-1 min-w-[120px] rounded-xl border bg-white/[0.04] p-3 text-center"
@@ -326,7 +350,10 @@ export default function Admin() {
                 { label: "Receita", value: "$" + revenue.toLocaleString("en-US"), tone: "amber" },
               ]} />
               <ColBanner tag="🟢 Clientes ao vivo" tone="green" tiles={[
-                { label: "Clientes", value: clientsState === "ok" ? clients.length : "—", tone: "blue" },
+                { label: "Clientes", value: clientsState === "ok" ? clients.length : "—",
+                  // "—" cobre loading, erro E o indeterminado do RLS. Melhor não dizer nada que
+                  // dizer zero: a carteira logo abaixo é a fonte com autoridade.
+                  tone: "blue" },
                 { label: "Eventos hoje", value: eventsToday, tone: "orange" },
                 { label: "Total eventos", value: realEvents.length, tone: "green" },
               ]} />
@@ -469,7 +496,7 @@ export default function Admin() {
         )}
 
         {/* ═════════════════════ 🧭 JORNADA (demo → onboarding → retenção) ═════════════════════ */}
-        {tab === "jornada" && <JourneyBoard j={journey} />}
+        {tab === "jornada" && <JourneyBoard j={journey} erro={feedErr === "admin_journey"} />}
 
         {/* ═════════════════════ 👥 CLIENTES & VENDAS ═════════════════════ */}
         {tab === "clientes" && (
@@ -748,9 +775,16 @@ export default function Admin() {
                   Clients registry not available with current policies — run <span className="font-mono text-g-word">db/clients.sql</span> and add an admin-read RLS policy to list all clients.
                 </div>
               )}
-              {clientsState === "ok" && clients.length === 0 && (
-                <div className="rounded-xl border border-g-line bg-white/[0.04] p-6 text-center text-sm text-g-muted">
-                  No clients visible yet — anon reads are blocked by RLS. Add an admin-read policy (or run <span className="font-mono text-g-word">db/clients.sql</span>) to populate this list.
+              {/* ⚠️ ESTA MENSAGEM JÁ DIZIA A VERDADE — e estava presa numa condição que nunca mais
+                  ia acontecer. Ela explicava "anon reads are blocked by RLS" quatrocentas linhas
+                  ABAIXO do tile que imprimia 0 clientes com cara de certeza. O texto honesto
+                  existia; só não estava onde o número estava. Agora ela responde ao estado
+                  `indeterminado` — o mesmo que faz o tile mostrar "—" em vez de zero. */}
+              {clientsState === "indeterminado" && (
+                <div className="rounded-xl border border-g-gold/40 bg-g-gold/10 p-6 text-center text-[13px] font-semibold leading-relaxed text-g-gold">
+                  ⚠️ Não consigo LER a lista de clientes por aqui — a chave pública é bloqueada pelo RLS e o banco devolve lista vazia SEM erro.<br />
+                  Isto <b>não</b> quer dizer que você não tem clientes: a <b>Carteira</b> logo acima é a fonte com autoridade.<br />
+                  <span className="font-normal opacity-80">Para esta lista funcionar: política de leitura para admin em <span className="font-mono">clients</span> (ou rodar <span className="font-mono">db/clients.sql</span>).</span>
                 </div>
               )}
               {clientsState === "ok" && clients.length > 0 && (
