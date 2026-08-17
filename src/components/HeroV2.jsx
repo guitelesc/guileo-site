@@ -286,10 +286,23 @@ export default function HeroV2() {
             <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#FF8A33", boxShadow: "0 0 10px 1px rgba(255,138,51,0.85)" }} /> {C.eyebrow}
           </div>
 
+          {/* ⚠️ AS DESCENDENTES ESTAVAM SENDO CORTADAS (Luis, 2026-08-17: "essa parte do You Grow
+              tá cortado"). O "g" de "grow" e o "y" de "You" perdiam a perna.
+              CAUSA, e são DUAS coisas somadas:
+                1. `leading-[0.92]` — entrelinha MENOR que 1 aperta a caixa da linha a ponto de ela
+                   ficar mais curta que o glifo. Em 4.5rem isso é uma faixa de vários pixels.
+                2. `bg-clip-text` + `text-transparent` — o gradiente é pintado DENTRO do recorte do
+                   texto, e esse recorte respeita a caixa da linha, não o desenho da letra. Sem o
+                   clip o corte só apareceria no overflow; com ele, a perna do "g" simplesmente não
+                   é pintada. Por isso a 3ª linha (dourada, com "g" e "y") era a mais visível.
+              CONSERTO SEM MEXER NO ESPAÇAMENTO: `pb-[0.14em]` dá altura pro glifo respirar e
+              `-mb-[0.14em]` devolve exatamente o mesmo espaço — o texto ganha ar de desenho e a
+              composição fica idêntica à que o Luis aprovou. Nada de afrouxar a entrelinha: era ela
+              que dava a força do título. */}
           <h1 className="mt-5 font-black leading-[0.92] tracking-tight" style={{ fontSize: "clamp(2.3rem,8.5vw,4.5rem)" }}>
-            <span className="block text-g-word" style={{ animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>{C.h1[0]}</span>
-            <span className="block bg-gradient-to-r from-g-green via-g-light to-g-green bg-clip-text pl-[0.12em] text-transparent" style={{ backgroundSize: "220% auto", animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .2s both, gshine 7s linear infinite" }}>{C.h1[1]}</span>
-            <span className="block bg-gradient-to-r from-g-gold via-g-copper to-g-gold bg-clip-text pl-[0.24em] text-transparent" style={{ backgroundSize: "220% auto", animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .35s both, gshine 7s linear .6s infinite" }}>{C.h1[2]}</span>
+            <span className="block pb-[0.14em] -mb-[0.14em] text-g-word" style={{ animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .05s both" }}>{C.h1[0]}</span>
+            <span className="block bg-gradient-to-r from-g-green via-g-light to-g-green bg-clip-text pb-[0.14em] -mb-[0.14em] pl-[0.12em] text-transparent" style={{ backgroundSize: "220% auto", animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .2s both, gshine 7s linear infinite" }}>{C.h1[1]}</span>
+            <span className="block bg-gradient-to-r from-g-gold via-g-copper to-g-gold bg-clip-text pb-[0.14em] -mb-[0.14em] pl-[0.24em] text-transparent" style={{ backgroundSize: "220% auto", animation: "greveal .8s cubic-bezier(.2,.7,.2,1) .35s both, gshine 7s linear .6s infinite" }}>{C.h1[2]}</span>
           </h1>
 
           {/* ── A PONTE (2026-08-17, pedido do Luis: «podia voltar as 2 frases Work Smart Grow Faster

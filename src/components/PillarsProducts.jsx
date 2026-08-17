@@ -20,7 +20,16 @@ import { productsForPilar } from "../data/productSystem.js";
 // que está vendo o mesmo Brain. Cor é nome sem palavra — trocar a cor troca o nome.
 // Venceu a paleta do LegsV2 (a que o Luis apontou): ela é a família quente do resto da marca,
 // enquanto o azul/violeta vinha de outro lugar e brigava com o cimento.
-//   Brain #3E9468 (rgb 62,148,104) · AD #D6C29A (214,194,154) · Build #C2A878 (194,168,120)
+//   Brain #3E9468 (rgb 62,148,104) · AD #D6C29A (214,194,154) · Build #BE7F35 (190,127,53)
+//
+// ⚠️ O BUILD FOI ESCURECIDO (2026-08-17, 2ª passada). Copiar a paleta do LegsV2 ao pé da letra
+// dava Build #C2A878 (194,168,120) — a DISTÂNCIA 47 do champanhe do AD no espaço RGB, ou seja,
+// perceptualmente a mesma cor. No LegsV2 isso não incomoda porque os três ficam longe um do outro,
+// com ilustração grande separando; aqui os três cards são LADO A LADO e o do meio e o da direita
+// liam como um só — o Luis olhou e perguntou "cadê as cores".
+// O cobre novo foi escolhido por MEDIÇÃO, não por gosto: distância 124 do AD (era 47), 139 do
+// verde do Brain, e contraste 5.46 contra o cimento #161512 — acima do mínimo de 4.5 da WCAG AA,
+// que importa porque este é o NOME do pilar, a coisa que a página inteira quer que grude.
 
 
 // ── A LANDING VOLTOU A LER O SISTEMA (2026-08-11) ───────────────────────────────────────────────
@@ -89,7 +98,7 @@ const P = {
     pillars: [
       { pilar: "brain", badge: "Guileo Brain", icon: "🧠", accent: "#3E9468", owns: "Your performance", line: "The AI employee that runs the front desk — answers every call & message, books, quotes, closes and collects. 24/7, 16 languages.", result: "+$2k–11k", unit: "/mo recovered", tone: "ai" },
       { pilar: "ad", badge: "Guileo AD", icon: "📈", accent: "#D6C29A", owns: "Your growth", line: "Marketing that runs every day so you reach more people, close more deals and waste less ad money.", result: "More leads", unit: "· less wasted ad spend", tone: "hybrid" },
-      { pilar: "build", badge: "Guileo Build", icon: "🏗️", accent: "#C2A878", owns: "Your foundation", line: "The websites, apps, store and software your whole operation runs on — built once, runs forever.", result: "1× build", unit: "· runs forever", tone: "dfy" },
+      { pilar: "build", badge: "Guileo Build", icon: "🏗️", accent: "#BE7F35", owns: "Your foundation", line: "The websites, apps, store and software your whole operation runs on — built once, runs forever.", result: "1× build", unit: "· runs forever", tone: "dfy" },
     ],
   },
   pt: {
@@ -104,7 +113,7 @@ const P = {
     pillars: [
       { pilar: "brain", badge: "Guileo Brain", icon: "🧠", accent: "#3E9468", owns: "Sua performance", line: "O funcionário-IA que cuida da recepção — atende toda ligação e mensagem, agenda, orça, fecha e cobra. 24/7, 16 idiomas.", result: "+R$10k–55k", unit: "/mês recuperado", tone: "ai" },
       { pilar: "ad", badge: "Guileo AD", icon: "📈", accent: "#D6C29A", owns: "Seu crescimento", line: "Marketing rodando todo dia pra você alcançar mais gente, fechar mais e desperdiçar menos em anúncio.", result: "Mais leads", unit: "· menos verba desperdiçada", tone: "hybrid" },
-      { pilar: "build", badge: "Guileo Build", icon: "🏗️", accent: "#C2A878", owns: "Sua fundação", line: "Os sites, apps, loja e software onde toda a operação roda — construído uma vez, roda pra sempre.", result: "1× build", unit: "· roda pra sempre", tone: "dfy" },
+      { pilar: "build", badge: "Guileo Build", icon: "🏗️", accent: "#BE7F35", owns: "Sua fundação", line: "Os sites, apps, loja e software onde toda a operação roda — construído uma vez, roda pra sempre.", result: "1× build", unit: "· roda pra sempre", tone: "dfy" },
     ],
   },
   es: {
@@ -119,7 +128,7 @@ const P = {
     pillars: [
       { pilar: "brain", badge: "Guileo Brain", icon: "🧠", accent: "#3E9468", owns: "Tu performance", line: "El empleado-IA que atiende la recepción — contesta cada llamada y mensaje, agenda, cotiza, cierra y cobra. 24/7, 16 idiomas.", result: "+$2k–11k", unit: "/mes recuperado", tone: "ai" },
       { pilar: "ad", badge: "Guileo AD", icon: "📈", accent: "#D6C29A", owns: "Tu crecimiento", line: "Marketing corriendo cada día para llegar a más gente, cerrar más y desperdiciar menos en anuncios.", result: "Más leads", unit: "· menos gasto perdido", tone: "hybrid" },
-      { pilar: "build", badge: "Guileo Build", icon: "🏗️", accent: "#C2A878", owns: "Tu base", line: "Las webs, apps, tienda y software donde corre toda tu operación — construido una vez, corre siempre.", result: "1× build", unit: "· corre siempre", tone: "dfy" },
+      { pilar: "build", badge: "Guileo Build", icon: "🏗️", accent: "#BE7F35", owns: "Tu base", line: "Las webs, apps, tienda y software donde corre toda tu operación — construido una vez, corre siempre.", result: "1× build", unit: "· corre siempre", tone: "dfy" },
     ],
   },
   hi: {
@@ -134,7 +143,7 @@ const P = {
     pillars: [
       { pilar: "brain", badge: "Guileo Brain", icon: "🧠", accent: "#3E9468", owns: "आपकी परफ़ॉर्मेंस", line: "AI कर्मचारी जो रिसेप्शन संभालता है — हर कॉल और मैसेज का जवाब, बुकिंग, कोटेशन, डील बंद और वसूली। 24/7, 16 भाषाएँ।", result: "+$2k–11k", unit: "/माह वापस", tone: "ai" },
       { pilar: "ad", badge: "Guileo AD", icon: "📈", accent: "#D6C29A", owns: "आपकी ग्रोथ", line: "मार्केटिंग जो हर दिन चलती है — ज़्यादा लोगों तक पहुँच, ज़्यादा डील, कम विज्ञापन बर्बादी।", result: "ज़्यादा लीड", unit: "· कम बर्बादी", tone: "hybrid" },
-      { pilar: "build", badge: "Guileo Build", icon: "🏗️", accent: "#C2A878", owns: "आपकी नींव", line: "वेबसाइट, ऐप, स्टोर और सॉफ़्टवेयर जिन पर पूरा ऑपरेशन चलता है — एक बार बनता है, हमेशा चलता है।", result: "1× बिल्ड", unit: "· हमेशा चलता है", tone: "dfy" },
+      { pilar: "build", badge: "Guileo Build", icon: "🏗️", accent: "#BE7F35", owns: "आपकी नींव", line: "वेबसाइट, ऐप, स्टोर और सॉफ़्टवेयर जिन पर पूरा ऑपरेशन चलता है — एक बार बनता है, हमेशा चलता है।", result: "1× बिल्ड", unit: "· हमेशा चलता है", tone: "dfy" },
     ],
   },
 };

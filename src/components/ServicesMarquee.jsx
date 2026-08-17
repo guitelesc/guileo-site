@@ -26,12 +26,54 @@ import { useLang } from "../i18n.jsx";
 // Brain · AD · Build por repetição, sem legenda, antes mesmo de a pessoa chegar na seção que
 // explica os três. É o mesmo alfabeto de cor que o resto da página usa.
 
-// Os MESMOS accents de productSystem.js / PillarsProducts / HeroV2.
-const COR = { brain: "#FF8A33", ad: "#4C9AFF", build: "#9AA0FF" };
+// ⚠️ ESTA CONSTANTE ESTAVA COM A PALETA VELHA (laranja/azul/violeta) — sobra de quando o trio
+// morava aqui e foi apagado. Constante órfã com valor errado é pior que constante ausente: ela
+// não quebra nada, só desenha a cor de ontem, e ninguém procura defeito no que "já foi trocado".
+// Agora são os MESMOS três dos cards, incluindo o cobre escurecido por medição (distância 124 do
+// champanhe do AD, contra os 47 que os deixavam indistinguíveis lado a lado).
+// ⚠️ APAGADO COMO ÓRFÃO E PRECISOU VOLTAR — 3ª vez hoje que este ciclo me pega (o PILAR_COR do
+// herói derrubou a produção do mesmo jeito). A lição não é "não limpe órfão": é que remover e
+// re-adicionar são a MESMA operação vista de dois lados, e o build passa nas duas — só a página
+// aberta reclama. Por isso este arquivo agora declara o rótulo ANTES de qualquer uso, no topo,
+// longe de bloco removível.
+const PILAR_LABEL = {
+  brain: { en: "Brain", pt: "Brain", es: "Brain", hi: "Brain" },
+  ad:    { en: "AD",    pt: "AD",    es: "AD",    hi: "AD" },
+  build: { en: "Build", pt: "Build", es: "Build", hi: "Build" },
+};
+
+const COR = { brain: "#3E9468", ad: "#D6C29A", build: "#BE7F35" };
 
 
 // O que cada pilar é dono — as mesmas palavras que viviam no herói, que agora moram aqui.
 
+
+
+// ── O RÓTULO VOLTOU, MAS COM A CONTAGEM (Luis, 2026-08-17: "essa parte tá faltando… ou algo assim")
+// A faixa ficou sem rótulo quando a frase "tudo o que a gente constrói e opera pra você" subiu pro
+// herói. Sem nada à esquerda ela lê como carrossel de logo de parceiro — o olho não sabe que aquilo
+// é o CATÁLOGO.
+// ⚠️ Mas repetir a mesma frase nos dois lugares seria o pecado que passei o dia consertando neste
+// arquivo e no herói: repetição na dobra de cima não soa a ênfase, soa a quem só tem uma coisa pra
+// dizer. Então o rótulo daqui carrega o NÚMERO — que o herói não diz e que é o argumento mais forte
+// que esta faixa tem: são 16 serviços, não três. O número vem do próprio catálogo, então ele nunca
+// mente sobre o tamanho da lista que está passando ao lado.
+const ROTULO = {
+  en: (n) => `${n} services`,
+  pt: (n) => `${n} serviços`,
+  es: (n) => `${n} servicios`,
+  hi: (n) => `${n} सेवाएँ`,
+};
+// ── O TRIO VOLTOU, JUNTO COM A CONTAGEM (Luis, 2026-08-17) ────────────────────────────────────
+// Ele viveu no herói, virou rótulo desta faixa, foi apagado por decisão do Luis, e volta agora —
+// no mesmo lugar, ao lado do número. Registro a ida e a volta porque isso é informação: quem
+// mexer nisto depois precisa saber que a linha já foi movida três vezes, e que o motivo de ela
+// existir é ser o ÚNICO ponto da primeira tela onde as três cores aparecem juntas. É assim que a
+// pessoa aprende o alfabeto Brain·AD·Build antes de chegar na seção que o explica.
+// Só o NOME entra aqui, sem o "performance/growth/foundation" que a versão do herói tinha: ao lado
+// de uma lista de 16 serviços passando, três palavras a mais viram ruído — e a seção dos pilares,
+// logo abaixo, já diz o que cada um é dono com espaço para isso.
+const PILARES_TRIO = ["brain", "ad", "build"];
 
 export default function ServicesMarquee() {
   const { lang } = useLang();
@@ -98,7 +140,21 @@ export default function ServicesMarquee() {
           A faixa ficou só com os serviços, e ganhou: sem rótulo fixo ela usa a largura inteira,
           então cabem mais nomes por passada — e o nome do serviço é o argumento; o rótulo era
           moldura. */}
-      <div className="mx-auto flex max-w-6xl items-center px-5">
+      <div className="mx-auto flex max-w-6xl flex-col gap-1.5 px-5 sm:flex-row sm:items-center sm:gap-5">
+        {/* Em telas pequenas vira linha própria em vez de sumir: era `hidden sm:block` antes, e
+            esconder o rótulo no celular deixava a faixa sem identidade justamente onde o dono de
+            negócio local navega. */}
+        <span className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 text-[10.5px] font-black uppercase tracking-[0.16em]">
+          {PILARES_TRIO.map((k, i) => (
+            <span key={k} className="flex items-center gap-1.5 whitespace-nowrap">
+              {i > 0 && <span className="text-g-muted/50">·</span>}
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: COR[k], boxShadow: `0 0 8px ${COR[k]}` }} />
+              <span style={{ color: COR[k] }}>{PILAR_LABEL[k]?.[L] || k}</span>
+            </span>
+          ))}
+          <span className="text-g-muted/50">—</span>
+          <span className="whitespace-nowrap text-g-gold/80">{(ROTULO[L] || ROTULO.en)(itens.length)}</span>
+        </span>
         <div className="gsvcs-wrap relative min-w-0 flex-1 overflow-hidden">
           {/* Máscara nas duas pontas — sem ela o texto nasce e morre com corte seco na borda, que
               é o detalhe que faz uma listra parecer amadora. */}
