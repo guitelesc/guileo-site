@@ -27,10 +27,10 @@ import { useLang } from "../i18n.jsx";
 // "Você compra o resultado, não a ferramenta" FICOU: é o posicionamento contra quem vende software
 // — só saiu do fim de uma lista, onde ninguém lia, para o fim da frase, onde fecha o raciocínio.
 const HERO_COPY = {
-  en: { eyebrow:"AI · ads · creative — the agency that grows local businesses", sub:["A missed call doesn't leave a voicemail — it calls the next place on Google. "," answers in your customer's language and takes the deposit before they hang up. You buy the ","result, not the tools","."], method:["Brain","AD","Build"], owns:["performance","growth","foundation"], cta:"Hear Gui work", sub2:"Leave your number — she calls in about a minute.", h1:["Work Smart.","Grow Faster.","Sleep Better."], promessa:"We bring the customers. AI answers, books & sells. You grow." },
-  pt: { eyebrow:"AI · anúncios · criativo — a agência que faz o negócio local crescer", sub:["A ligação perdida não deixa recado — ela liga pro próximo da lista do Google. A "," atende no idioma do seu cliente e já pega o sinal antes de desligar. Você compra o ","resultado, não a ferramenta","."], method:["Brain","AD","Build"], owns:["performance","crescimento","fundação"], cta:"Ouça a Gui trabalhar", sub2:"Deixa seu número — ela liga em mais ou menos um minuto.", h1:["Trabalhe com inteligência.","Cresça mais rápido.","Durma melhor."], promessa:"A gente traz os clientes. A AI atende, agenda e vende. Você cresce." },
-  es: { eyebrow:"IA · anuncios · creativo — la agencia que hace crecer al negocio local", sub:["La llamada perdida no deja mensaje — llama al siguiente de la lista de Google. "," contesta en el idioma de tu cliente y cobra el anticipo antes de colgar. Compras el ","resultado, no la herramienta","."], method:["Brain","AD","Build"], owns:["rendimiento","crecimiento","base"], cta:"Escucha a Gui trabajar", sub2:"Deja tu número — te llama en un minuto.", h1:["Trabaja inteligente.","Crece más rápido.","Duerme mejor."], promessa:"Nosotros traemos los clientes. La IA contesta, agenda y vende. Tú creces." },
-  hi: { eyebrow:"AI · विज्ञापन · क्रिएटिव — स्थानीय व्यवसाय बढ़ाने वाली एजेंसी", sub:["छूटी हुई कॉल मैसेज नहीं छोड़ती — वो Google पर अगली दुकान को कॉल करती है। "," आपके ग्राहक की भाषा में जवाब देती है और फ़ोन रखने से पहले एडवांस ले लेती है। आप ","नतीजा खरीदते हैं, टूल नहीं","।"], method:["Brain","AD","Build"], owns:["परफ़ॉर्मेंस","ग्रोथ","नींव"], cta:"Gui को काम करते सुनें", sub2:"अपना नंबर छोड़ें — वो लगभग एक मिनट में कॉल करती है।", h1:["होशियारी से काम।","तेज़ी से बढ़ें।","चैन से सोएँ।"], promessa:"ग्राहक हम लाते हैं। AI जवाब देती, बुक करती और बेचती है। आप बढ़ते हैं।" },
+  en: { eyebrow:"AI · ads · creative — the agency that grows local businesses", sub:["A missed call doesn't leave a voicemail — it calls the next place on Google. "," answers in your customer's language and takes the deposit before they hang up. You buy the ","result, not the tools","."], method:["Brain","AD","Build"], owns:["performance","growth","foundation"], cta:"Hear Gui work", sub2:"Leave your number — she calls in about a minute.", h1:["We bring the customers.","AI answers, books & sells.","You grow."], promessa:"Work Smart. Grow Faster. Sleep Better." },
+  pt: { eyebrow:"AI · anúncios · criativo — a agência que faz o negócio local crescer", sub:["A ligação perdida não deixa recado — ela liga pro próximo da lista do Google. A "," atende no idioma do seu cliente e já pega o sinal antes de desligar. Você compra o ","resultado, não a ferramenta","."], method:["Brain","AD","Build"], owns:["performance","crescimento","fundação"], cta:"Ouça a Gui trabalhar", sub2:"Deixa seu número — ela liga em mais ou menos um minuto.", h1:["A gente traz os clientes.","A AI atende, agenda e vende.","Você cresce."], promessa:"Trabalhe com inteligência. Cresça mais rápido. Durma melhor." },
+  es: { eyebrow:"IA · anuncios · creativo — la agencia que hace crecer al negocio local", sub:["La llamada perdida no deja mensaje — llama al siguiente de la lista de Google. "," contesta en el idioma de tu cliente y cobra el anticipo antes de colgar. Compras el ","resultado, no la herramienta","."], method:["Brain","AD","Build"], owns:["rendimiento","crecimiento","base"], cta:"Escucha a Gui trabajar", sub2:"Deja tu número — te llama en un minuto.", h1:["Nosotros traemos los clientes.","La IA contesta, agenda y vende.","Tú creces."], promessa:"Trabaja inteligente. Crece más rápido. Duerme mejor." },
+  hi: { eyebrow:"AI · विज्ञापन · क्रिएटिव — स्थानीय व्यवसाय बढ़ाने वाली एजेंसी", sub:["छूटी हुई कॉल मैसेज नहीं छोड़ती — वो Google पर अगली दुकान को कॉल करती है। "," आपके ग्राहक की भाषा में जवाब देती है और फ़ोन रखने से पहले एडवांस ले लेती है। आप ","नतीजा खरीदते हैं, टूल नहीं","।"], method:["Brain","AD","Build"], owns:["परफ़ॉर्मेंस","ग्रोथ","नींव"], cta:"Gui को काम करते सुनें", sub2:"अपना नंबर छोड़ें — वो लगभग एक मिनट में कॉल करती है।", h1:["ग्राहक हम लाते हैं।","AI जवाब देती, बुक करती और बेचती है।","आप बढ़ते हैं।"], promessa:"होशियारी से काम। तेज़ी से बढ़ें। चैन से सोएँ।" },
 };
 
 // A ARITMÉTICA QUE SUBSTITUIU O CLICHÊ. 168 horas tem a semana; uma loja aberta ~50 deixa 118 em
@@ -321,81 +321,32 @@ export default function HeroV2() {
             {C.promessa}
           </p>
 
-          {/* ── COMPOSIÇÃO DA COLUNA (reescrita 2026-08-17) ───────────────────────────────────────
-              O Luis olhou e disse que estava "anormal". Estava: eram QUATRO blocos pequenos
-              empilhados — parágrafo, linha do método, linha do 24/7 e a fileira do botão — cada um
-              com peso, cor e espaçamento diferentes (mt-5, mt-6, mt-8, mt-7), e nenhum mandando.
-              Muitos elementos do mesmo tamanho, nenhum dominante: o olho não sabe onde pousar
-              depois do título e a dobra inteira perde a força que o h1 tinha acabado de ganhar.
-              Além disso, o texto de apoio estava em 12.5px cinza-fraco ao lado de um número grande,
-              e quebrava em duas linhas no meio de uma oração ("never / misses a sale").
+          {/* ── O CORTE (2026-08-17, Luis: «apaga isso ou coloca o que realmente vai
+              converter… e deixa só os 3») ────────────────────────────────────────────────────────
+              Saíram daqui o parágrafo de apoio e o painel do 118h. Ele está certo, e a razão é
+              aritmética: o título já diz o modelo do negócio em três orações, a linha logo abaixo
+              diz o que o dono ganha, e o telefone à direita MOSTRA a Gui trabalhando. Um parágrafo
+              depois disso não acrescenta argumento — acrescenta trabalho de leitura antes do
+              botão, e cada linha entre a promessa e o clique é uma chance de a pessoa sair.
+              Ficaram os três pilares, que são a única coisa que o título NÃO diz: o escopo. Numa
+              linha, o visitante aprende que não é só o telefone — tem marketing e tem construção.
 
-              Agora são TRÊS blocos com hierarquia descendente: PARÁGRAFO (leitura) → PAINEL DE PROVA
-              (o número, que é o pico visual da coluna) → BOTÃO (ação). O método e a estatística,
-              que antes eram duas linhas soltas, viraram UM painel: eles dizem a mesma coisa (como
-              trabalhamos / quanto tempo cobrimos), então competiam por ser blocos separados.
-              A medida do parágrafo subiu de max-w-md para 32rem e o corpo de 15.5 para 16.5px —
-              linha curta demais ao lado de um h1 de 4.5rem faz o texto parecer nota de rodapé. */}
-          <p className="mt-5 max-w-[32rem] text-[16.5px] leading-[1.65] text-g-ink">
-            {C.sub[0]}<b className="font-semibold text-g-word">Gui</b>{C.sub[1]}<span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text font-bold text-transparent">{C.sub[2]}</span>{C.sub[3]}
-          </p>
-
-          {/* PAINEL DE PROVA — o pico visual da coluna. Hairline champanhe + fundo quase imperceptível:
-              o luxo aqui é o contraste do número laranja contra muito silêncio em volta, não caixa
-              pesada. O método vira rodapé DENTRO do painel, separado por um filete, porque é a
-              legenda do número — não um bloco concorrente. */}
-          <div className="mt-7 max-w-[32rem] rounded-2xl border border-g-gold/15 px-5 py-4.5" style={{ background: "linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.012))" }}>
-            {/* ⚠️ O NÚMERO TINHA PERDIDO PARA O TEXTO (ajuste 2026-08-17, 2ª passada).
-                Com o texto em três linhas de 14px ao lado de um número de 2.6rem, a MANCHA do
-                parágrafo ficava maior que a do número — e num painel de prova quem tem que mandar
-                é o número, porque é ele que a pessoa lembra depois de fechar a aba.
-                Três correções, todas de peso relativo:
-                  · o número subiu para 3.4rem e o "h" caiu para 0.52em — a unidade grudada no
-                    mesmo corpo do algarismo engorda o bloco sem acrescentar leitura;
-                  · o texto desceu para 13.5px com medida curta, virando coluna estreita ao lado;
-                  · `items-baseline` no lugar de `items-start`: com números grandes o topo da caixa
-                    fica bem acima do topo do algarismo (o espaço do acento), então alinhar por
-                    `start` fazia o número parecer flutuando acima da primeira linha do texto. */}
-            <div className="flex items-baseline gap-4">
-              <span className="shrink-0 font-semibold leading-none tracking-tight tabular-nums" style={{ fontSize: "clamp(2.4rem,4.2vw,3.4rem)", color: "#FF8A33", textShadow: "0 0 26px rgba(255,138,51,0.34)" }}>
-                118<span style={{ fontSize: "0.52em", fontWeight: 700, letterSpacing: "-0.01em" }}>h</span>
-              </span>
-              <span className="text-[13.5px] leading-[1.5] text-g-ink">{HORAS[lang] || HORAS.en}</span>
-            </div>
-            {/* ── UMA LINGUAGEM SÓ NO SITE INTEIRO (2026-08-17) ─────────────────────────────
-                Esta linha dizia "⚡ Performance → Sales → Growth" e a seção logo abaixo dizia
-                "Brain · AD · Build" — DOIS modelos na mesma página, e incompatíveis: aqui Growth
-                era o terceiro passo de um funil, lá quem é dono do growth é o AD e o Build é a
-                fundação. Quem lesse os dois ia tentar casar e não conseguiria, e uma pessoa
-                confusa não compra — ela adia.
-                Agora é o nome do PILAR (o que a gente quer que ele saiba comprar) com o que cada
-                um é dono logo ao lado, e nas MESMAS cores da seção de pilares e da listra de
-                serviços. Nome repetido é nome que gruda; três nomes concorrentes não grudam
-                nenhum. O ponto colorido é o mesmo elemento da listra — a repetição do sinal é o
-                que ensina o alfabeto Brain·AD·Build sem uma linha de legenda. */}
-            {/* ⚠️ DOIS DEFEITOS TÉCNICOS AQUI, E O PRIMEIRO É O QUE O LUIS VIU (2026-08-17):
-                1. QUEBRA NO MEIO DO GRUPO. `flex-wrap` no container sem `whitespace-nowrap` nos
-                   filhos deixa o navegador partir entre "Brain" e "performance", ou entre o nome e
-                   o seu pontinho. Em telas estreitas a linha vira uma escada de palavras soltas —
-                   "Brain / performance / → / AD / growth" — que é exatamente como ele colou o
-                   texto pra mim. O par nome+dono é uma unidade de leitura: ou cabe inteiro na
-                   linha, ou desce inteiro. A seta é que pode ficar para trás.
-                2. PEQUENO DEMAIS PARA O QUE É. A 11.5px com o complemento em cinza-fraco, a linha
-                   virava borrão — e ela carrega os TRÊS nomes que a página inteira quer ensinar.
-                   Nome sobe para 12.5px, complemento para 12px e sai do cinza fraco: informação
-                   que a gente quer que gruda não pode ser a menor coisa da tela. */}
-            <div className="mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-2 border-t border-g-gold/10 pt-3.5 text-[12.5px]">
-              {C.method.map((nome, i) => (
-                <span key={nome} className="flex items-center gap-2.5 whitespace-nowrap">
-                  {i > 0 && <span className="text-g-muted/60">→</span>}
-                  <span className="flex items-center gap-1.5 whitespace-nowrap">
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: PILAR_COR[i], boxShadow: `0 0 8px ${PILAR_COR[i]}` }} />
-                    <b className="font-black uppercase tracking-[0.12em]" style={{ color: PILAR_COR[i] }}>{nome}</b>
-                    <span className="text-[12px] font-medium text-g-ink/75">{C.owns[i]}</span>
-                  </span>
+              ⚠️ O 118h NÃO FOI JOGADO FORA, e não deve ser. É a única estatística da página que
+              nenhum concorrente usa e que o dono confere de cabeça. O lugar dela é a seção do
+              VAZAMENTO (ResultsV2), onde a página fala do problema — no herói ela chegava antes de
+              a pessoa aceitar que tem um problema, e prova sem problema não converte, cansa.
+              O texto está preservado na constante HORAS, logo acima, pronto para essa mudança. */}
+          <div className="mt-7 flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px]">
+            {C.method.map((nome, i) => (
+              <span key={nome} className="flex items-center gap-3 whitespace-nowrap">
+                {i > 0 && <span className="text-g-muted/60">→</span>}
+                <span className="flex items-center gap-1.5 whitespace-nowrap">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: PILAR_COR[i], boxShadow: `0 0 8px ${PILAR_COR[i]}` }} />
+                  <b className="font-black uppercase tracking-[0.12em]" style={{ color: PILAR_COR[i] }}>{nome}</b>
+                  <span className="text-[12.5px] font-medium text-g-ink/75">{C.owns[i]}</span>
                 </span>
-              ))}
-            </div>
+              </span>
+            ))}
           </div>
 
           {/* AÇÃO — a linha de apoio foi para BAIXO do botão. Ao lado, ela lia como sobra de texto
