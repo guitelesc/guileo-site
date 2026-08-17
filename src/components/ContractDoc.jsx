@@ -16,7 +16,12 @@ export default function ContractDoc({ body, signature }) {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 text-[13px] mb-5">
-        <div><div className="font-bold text-gray-400 text-[10px] uppercase tracking-wide">Prestador / Provider</div><div className="font-semibold">{body.provider?.name}</div></div>
+        {/* A QUALIFICAÇÃO DA PARTE, e não só o nome. Razão social + registro + endereço é o que
+            identifica quem responde; "Guileo" sozinho é marca, e marca não assina. Enquanto o
+            CNPJ/EIN não estiver preenchido, esta linha simplesmente não aparece — documento
+            incompleto de forma visível é melhor que documento completo e errado. */}
+        <div><div className="font-bold text-gray-400 text-[10px] uppercase tracking-wide">Prestador / Provider</div><div className="font-semibold">{body.provider?.name}</div>
+          {body.provider?.qualificacao && <div className="text-gray-500 text-[11.5px] leading-snug mt-0.5">{body.provider.qualificacao}</div>}</div>
         <div><div className="font-bold text-gray-400 text-[10px] uppercase tracking-wide">Contraparte / Counterparty</div><div className="font-semibold">{body.counterparty?.name || "—"}</div>{body.counterparty?.email && <div className="text-gray-500 text-[12px]">{body.counterparty.email}</div>}</div>
       </div>
 

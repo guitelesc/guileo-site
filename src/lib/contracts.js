@@ -1,6 +1,7 @@
 // Contract/quote BODY builder — turns a (scope, template, language, counterparty) into the frozen
 // JSON snapshot stored in the `contracts` row and rendered by <ContractDoc>. Trilingual (pt|en|es).
 import { CLAUSES, GUILEO_CLIENT, CLIENT_CUSTOMER, QUOTE, DISCLAIMER } from "../data/contractTemplates.js";
+import { entidadePorIdioma, qualificacao, pendencias } from "../data/empresa.js";
 
 export const L = (o, lang) => (o && (o[lang] || o.pt || o.en)) || "";
 export const TEMPLATES = { guileo_client: GUILEO_CLIENT, client_customer: CLIENT_CUSTOMER };
@@ -41,7 +42,24 @@ export function buildBody({ scope = "guileo_client", code, lang = "pt", kind = "
   return {
     scope, kind, template_code: t.code, icon: t.icon || "📄", lang, date,
     title: L(t.name, lang),
-    provider: { name: provider.name || "Tribeca Global Inc. · Guileo", ...provider },
+    // ── QUEM ASSINA, QUALIFICADO ──────────────────────────────────────────────────────────────
+    // Antes era só um NOME ("Tribeca Global Inc. · Guileo"). Contrato sem qualificação da parte
+    // parece completo e não identifica ninguém: na hora de cobrar, um nome solto sem registro e sem
+    // endereço é alegação, não parte. A ironia é que os modelos que a Guileo VENDE pro cliente usar
+    // com o consumidor dele já pedem [CNPJ]/[TAX ID]/[ENDEREÇO] — só o contrato da própria casa não
+    // tinha. Agora a entidade certa entra pelo idioma (pt → ORIGEM LTDA; en/es → a Inc.) e a linha
+    // de qualificação imprime SÓ o que existe de verdade: enquanto faltar CNPJ ou endereço, o
+    // documento fica incompleto de forma visível, nunca completo e errado.
+    provider: (() => {
+      const e = provider.entidade || entidadePorIdioma(lang);
+      return {
+        name: provider.name || `${e.razaoSocial}${e.fantasia ? " · " + e.fantasia : ""}`,
+        qualificacao: qualificacao(e, lang),
+        pendencias: pendencias(e),   // fica gravado no snapshot: dá pra auditar o que faltava no dia
+        entidade_id: e.id,
+        ...provider,
+      };
+    })(),
     counterparty,
     summary: L(t.summary, lang),
     deliverables: scope === "guileo_client" ? (L(t.deliverables, lang) || []).map((d) => fill(d, vals)) : null,
