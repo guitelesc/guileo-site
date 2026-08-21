@@ -63,6 +63,14 @@ const nyTime = () =>
     .format(new Date());
 
 const CSS = `
+.np-boro{position:relative;text-decoration:none}
+.np-boro:nth-child(odd){background:rgba(255,255,255,.045)}
+.np-boro:hover{background:rgba(23,198,255,.09)}
+.np-led{width:3px;height:22px;border-radius:99px;background:linear-gradient(180deg,#39d98a,rgba(57,217,138,.15));box-shadow:0 0 10px rgba(57,217,138,.45)}
+.np-boro-go{opacity:0;transform:translateX(-4px);transition:opacity .25s ease,transform .25s ease}
+.np-boro:hover .np-boro-go,.np-boro:focus-visible .np-boro-go{opacity:1;transform:none}
+@media (hover:none){.np-boro-go{opacity:.7;transform:none}}
+
 .np{--navy:#0c1a2e;--navy-2:#132741;--red:#d92a28;--red-d:#ab1f1d;--cyan:#17c6ff;--ink:#0c1a2e;--mut:#5a6b80;
  --line:rgba(12,26,46,.11);--paper:#f5f7fa;--stage:#fff;
  background:#fff;color:var(--ink);font-family:'Figtree',system-ui,sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased}
@@ -134,6 +142,9 @@ textarea.np-field{border-radius:22px;resize:vertical}
 export default function NonstopPlumbers() {
   const root = useRef(null);
   const [sent, setSent] = useState(false);
+  // Clicar num borough do quadro leva pro formulário JÁ preenchido — o quadro
+  // trabalha, não decora (Luis: "esse botão on call com cara de ai").
+  const [boro, setBoro] = useState("");
   const [still, setStill] = useState(false);
   const [clock, setClock] = useState(nyTime);
 
@@ -174,9 +185,12 @@ export default function NonstopPlumbers() {
     };
   }, []);
 
-  const OnCall = ({ dark }) => (
+  // Um único selo VIVO no site inteiro: diz a hora de NY agora, não repete
+  // "on call" cinco vezes como enfeite. (Luis: "esse botão on call com cara de ai".)
+  const DeskOpen = ({ dark }) => (
     <span className={`np-pill np-lab ${dark ? "np-pill-d" : ""}`} style={dark ? undefined : { background: "rgba(57,217,138,.1)", borderColor: "rgba(20,140,90,.28)", color: "#13603f" }}>
-      <span className="np-live" /> On call now
+      <span className="np-live" /> Desk open
+      <span className="mono ml-1.5" style={{ fontSize: 10.5, letterSpacing: ".06em", opacity: .85 }}>{clock} NYC</span>
     </span>
   );
 
@@ -212,7 +226,7 @@ export default function NonstopPlumbers() {
             <img src={`${A}hero-poster.webp`} alt="Nonstop Plumbers technicians on a New York job site"
               className="w-full h-full object-cover" />
           ) : (
-            <video className="w-full h-full object-cover" autoPlay muted loop playsInline preload="metadata"
+            <video className="w-full h-full object-cover" style={{ filter: "contrast(1.07) saturate(1.06) brightness(1.05)" }} autoPlay muted loop playsInline preload="metadata"
               poster={`${A}hero-poster.webp`} aria-hidden="true">
               <source src={`${A}hero-web.mp4`} type="video/mp4" />
             </video>
@@ -221,9 +235,9 @@ export default function NonstopPlumbers() {
         <div className="absolute inset-0 z-[1]" style={{
           background:
             "linear-gradient(180deg,rgba(6,14,25,.84) 0%,rgba(6,14,25,.55) 34%,rgba(6,14,25,.74) 74%,rgba(6,14,25,.96) 100%)," +
-            "linear-gradient(90deg,rgba(6,14,25,.88) 0%,rgba(6,14,25,.34) 62%,rgba(6,14,25,.18) 100%)",
+            "linear-gradient(90deg,rgba(6,14,25,.82) 0%,rgba(6,14,25,.26) 62%,rgba(6,14,25,.10) 100%)",
         }} />
-        <div className="relative z-10 np-w pt-14 pb-20 sm:pt-20 sm:pb-28 lg:pt-24 lg:pb-32">
+        <div className="relative z-10 np-w pt-10 pb-14 sm:pt-14 sm:pb-18 lg:pt-16 lg:pb-20">
           {/* announcement pill — real, dated, live */}
           <div className="np-rev flex flex-wrap items-center gap-2.5">
             <span className="np-pill np-lab" style={{ background: "var(--red)", borderColor: "transparent", color: "#fff" }}>
@@ -237,21 +251,21 @@ export default function NonstopPlumbers() {
           </div>
 
           <div className="max-w-3xl">
-            <h1 className="np-rev np-in-d1 mt-8 text-white text-[44px] sm:text-6xl lg:text-[82px]">
+            <h1 className="np-rev np-in-d1 mt-7 text-white text-[42px] sm:text-[56px] lg:text-[72px]">
               When it can&rsquo;t wait,<br />we don&rsquo;t <span style={{ color: "var(--red)" }}>stop.</span>
             </h1>
-            <p className="np-rev np-in-d2 mt-6 text-[17px] sm:text-lg leading-relaxed max-w-xl" style={{ color: "#cdd8e6" }}>
+            <p className="np-rev np-in-d2 mt-5 text-[16px] sm:text-[17px] leading-relaxed max-w-xl" style={{ color: "#cdd8e6" }}>
               Emergency plumbing, drain &amp; sewer, fire suppression and NYC compliance —
               Master Plumber and Master Fire Suppression licensed, fully insured, across
               Manhattan, Brooklyn, Queens, the Bronx and Staten Island. 24/7/365.
             </p>
 
-            <div className="np-rev np-in-d3 mt-10">
+            <div className="np-rev np-in-d3 mt-8">
               <div className="np-lab mb-4 max-w-md leading-relaxed" style={{ color: "#9fb2c8" }}>
                 Emergency dispatch — answered 24/7 by AI, dispatched in minutes
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
-                <a href={TEL} className="np-btn dsp text-2xl sm:text-[30px] !py-6 !px-9">
+                <a href={TEL} className="np-btn dsp text-2xl sm:text-[28px] !py-5 !px-8">
                   <Ic d={I.phone} s={26} /> {PHONE}
                 </a>
                 <a href="#services" className="np-btn-o">
@@ -266,7 +280,7 @@ export default function NonstopPlumbers() {
       {/* ── CREDENTIAL STATUS PILLS BAND ─────────────────────── */}
       <section style={{ background: "var(--navy)" }}>
         <div className="np-w py-6 flex flex-wrap items-center justify-center gap-2.5">
-          <OnCall dark />
+          <DeskOpen dark />
           {CREDS.map((c) => (
             <span key={c.t} className="np-pill np-pill-d np-lab">
               <span style={{ color: "var(--cyan)" }}><Ic d={c.ic} s={16} /></span>{c.t}
@@ -346,24 +360,23 @@ export default function NonstopPlumbers() {
             <div className="np-tk mt-9" style={{ background: "rgba(255,255,255,.05)", borderColor: "rgba(255,255,255,.16)" }}>
               <div className="px-5 py-3 flex items-center justify-between gap-3"
                 style={{ borderBottom: "1px solid rgba(255,255,255,.14)" }}>
-                <span className="np-lab" style={{ color: "#9fb2c8" }}>Borough dispatch board</span>
+                <span className="np-lab flex items-center gap-2" style={{ color: "#9fb2c8" }}>
+                  <span className="np-live" /> Dispatch desk open
+                </span>
                 <span className="mono text-[11px]" style={{ color: "var(--cyan)", letterSpacing: ".08em" }}>NYC {clock}</span>
               </div>
-              <div className="p-3 sm:p-4">
-                {BOROUGHS.map((b, i) => (
-                  <div key={b.b}
-                    className={`flex items-center justify-between gap-3 px-3 sm:px-4 py-3 rounded-full ${i % 2 ? "" : ""}`}
-                    style={{ background: i % 2 ? "transparent" : "rgba(255,255,255,.05)" }}>
-                    <span className="flex items-center gap-3 min-w-0">
-                      <span className="mono text-[11px] px-2 py-1 rounded-full shrink-0"
-                        style={{ background: "rgba(23,198,255,.14)", color: "var(--cyan)" }}>{b.c}</span>
-                      <span className="text-white font-semibold text-[15px] truncate">{b.b}</span>
+              <div className="p-2 sm:p-3">
+                {BOROUGHS.map((b) => (
+                  <a key={b.b} href="#contact" onClick={() => setBoro(b.b)}
+                    className="np-boro group flex items-center gap-3 rounded-full px-3 sm:px-4 py-3 transition">
+                    <span className="np-led shrink-0" aria-hidden="true" />
+                    <span className="mono text-[11px] px-2 py-1 rounded-full shrink-0"
+                      style={{ background: "rgba(23,198,255,.12)", color: "var(--cyan)" }}>{b.c}</span>
+                    <span className="min-w-0 flex-1 text-white font-semibold text-[15px] leading-tight truncate">{b.b}</span>
+                    <span className="np-boro-go shrink-0 flex items-center gap-1.5 np-lab" style={{ color: "var(--cyan)", fontSize: 10 }}>
+                      Start a ticket <Ic d={I.arrow} s={14} />
                     </span>
-                    <span className="np-pill np-lab shrink-0 !py-1.5 !px-3"
-                      style={{ background: "rgba(57,217,138,.12)", borderColor: "rgba(57,217,138,.32)", color: "#7ff0b8" }}>
-                      <span className="np-live" /> On call
-                    </span>
-                  </div>
+                  </a>
                 ))}
               </div>
             </div>
@@ -390,7 +403,7 @@ export default function NonstopPlumbers() {
               <article key={p.t} className={`np-tk np-rev ${i ? "np-in-d1" : ""} flex flex-col`}>
                 <div className="np-tk-head px-6 py-3.5 flex items-center justify-between gap-2">
                   <span className="mono text-[11px]" style={{ color: "var(--mut)", letterSpacing: ".08em" }}>{p.wo}</span>
-                  <OnCall />
+                  <span className="np-lab" style={{ color: "var(--red)", fontSize: 10 }}>Standing order</span>
                 </div>
                 <div className="p-7 flex-1 flex flex-col">
                   <h3 className="text-[25px]" style={{ color: "var(--navy)" }}>{p.t}</h3>
@@ -439,7 +452,7 @@ export default function NonstopPlumbers() {
                 <div className="np-lab" style={{ color: "#9fb2c8" }}>Emergency dispatch — answered 24/7 by AI, dispatched in minutes</div>
                 <a href={TEL} className="dsp mt-4 block text-[40px] sm:text-[52px] leading-none" style={{ color: "#fff" }}>{PHONE}</a>
                 <div className="mt-5 flex flex-wrap items-center gap-2.5">
-                  <OnCall dark />
+                  <DeskOpen dark />
                   <span className="np-pill np-pill-d np-lab"><Ic d={I.clock} s={15} />24/7/365</span>
                   <span className="np-pill np-pill-d np-lab"><Ic d={I.pin} s={15} />All five boroughs</span>
                 </div>
@@ -467,7 +480,7 @@ export default function NonstopPlumbers() {
                     <input className="np-field" placeholder="Phone" aria-label="Phone" type="tel" required />
                     <input className="np-field" placeholder="Email" aria-label="Email" type="email" />
                   </div>
-                  <input className="np-field" placeholder="Address or borough" aria-label="Address or borough" />
+                  <input className="np-field" placeholder="Address or borough" aria-label="Address or borough" value={boro} onChange={(e) => setBoro(e.target.value)} />
                   <select className="np-field" aria-label="Service needed" defaultValue="">
                     <option value="" disabled>Service needed</option>
                     {SERVICES.map((s) => <option key={s.t}>{s.t}</option>)}
@@ -507,7 +520,7 @@ export default function NonstopPlumbers() {
           <div>
             <div className="np-lab" style={{ color: "var(--navy)" }}>Emergency dispatch</div>
             <a href={TEL} className="dsp mt-4 block text-3xl" style={{ color: "var(--red)" }}>{PHONE}</a>
-            <div className="mt-3"><OnCall /></div>
+            <p className="mt-3 text-[13px]" style={{ color: "var(--mut)" }}>Answered every hour of every day — including holidays.</p>
           </div>
         </div>
         <div className="border-t" style={{ borderColor: "var(--line)" }}>
