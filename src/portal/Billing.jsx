@@ -373,6 +373,38 @@ function Billing({ V, real = null, onNav = () => {}, email = "" }) {
 
       {/* Plan tiers — the upgrade ladder */}
       <div>
+        {/* ── O GATILHO HONESTO DO CRÉDITO (2026-08-21) ────────────────────────────────────
+            Não é venda: é aritmética que ELE mesmo gerou. Quando passa de 80% do que o plano dá,
+            a tela diz o fato — quanto usou, de quanto tem, e quanto o degrau seguinte oferece.
+            🚨 SÓ APARECE COM NÚMERO REAL. Sem `usedPct` (plano não inferível) ou fora do modo
+            real, não desenha: um alerta de consumo calculado em cima de amostra é o tipo de susto
+            que faz o cliente ligar bravo — e descobrir que o número era inventado.
+            🚨 E SÓ SE HOUVER DEGRAU. No plano do topo isso viraria pressão sem saída. */}
+        {(() => {
+          const atual = planIdx >= 0 ? SELF_SERVE_PLANS[planIdx] : null;
+          const proximo = planIdx >= 0 ? SELF_SERVE_PLANS[planIdx + 1] : null;
+          if (!real || usedPct == null || usedPct < 80 || !atual || !proximo) return null;
+          const usados = Math.max(0, Math.round(atual.credits * (usedPct / 100)));
+          const link = proximo.url
+            ? `${proximo.url}?client_reference_id=${encodeURIComponent(email || "")}&prefilled_email=${encodeURIComponent(email || "")}`
+            : waLink(`I'd like the ${proximo.name} plan`);
+          return (
+            <div className="mb-3 rounded-2xl border border-g-gold/35 bg-g-gold/[0.07] px-4 py-3.5 backdrop-blur-sm">
+              <div className="text-[13px] font-bold text-g-word">
+                {tr("You've used")} <span className="tabular-nums">{usados.toLocaleString()}</span> {tr("of")}{" "}
+                <span className="tabular-nums">{atual.credits.toLocaleString()}</span> {tr("credits this month")}.
+              </div>
+              <div className="mt-1 text-[12px] text-g-muted">
+                {tr("On")} {proximo.name} {tr("you get")} <span className="tabular-nums text-g-word">{proximo.credits.toLocaleString()}</span> — {tr("and the AI never goes quiet mid-month")}.
+              </div>
+              <a href={link} target="_blank" rel="noopener"
+                className="mt-3 inline-flex min-h-[44px] items-center rounded-full bg-g-gold px-4 text-[12.5px] font-black text-black hover:opacity-90">
+                {proximo.name} · ${proximo.price}/{tr("mo")} →
+              </a>
+            </div>
+          );
+        })()}
+
         <div className="px-1 mb-2 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Plans")}</div>
         <div className="grid sm:grid-cols-3 gap-3">
           {PLANS.map((p) => {
@@ -385,9 +417,29 @@ function Billing({ V, real = null, onNav = () => {}, email = "" }) {
               <div className="text-sm font-extrabold text-g-word">{p.name}</div>
               <div className="mt-1 flex items-baseline gap-1"><span className={`text-2xl font-extrabold num ${isCur ? "text-g-gold gold-glow" : "text-g-word"}`}>${p.price}</span><span className="text-[11px] text-g-muted">/{tr("mo")}</span></div>
               <ul className="mt-3 space-y-1.5 text-[11px] text-g-word">{(UI_LANG === "es" ? p.featuresEs : UI_LANG === "pt" ? p.featuresPt : p.features).map((f, i) => <li key={i} className="flex gap-1.5"><span className="text-g-green">✓</span>{f}</li>)}</ul>
+              {/* ── SUBIR DE PLANO EM UM CLIQUE (2026-08-21) ────────────────────────────────
+                  Isto era um link de WhatsApp: o cliente pedia, alguém respondia, ele esperava.
+                  Entrar no Essential levava 2 minutos e um cartão; SUBIR levava uma conversa e a
+                  boa vontade de insistir — a porta de entrada era automática e a escada, manual.
+                  Agora vai direto para o MESMO link de pagamento que a /planos usa, com o e-mail
+                  dele carimbado para a atribuição não se perder. Quem quer pagar mais consegue,
+                  sozinho, às 23h de um domingo.
+                  🚨 SEM LINK, VOLTA O WHATSAPP. Botão que não leva a lugar nenhum é pior que um
+                  canal humano lento — a reserva existe e é declarada, nunca um clique morto. */}
               {isCur
                 ? <div className="mt-3 text-center text-[11px] font-bold text-g-muted">{tr("Your plan")}</div>
-                : <a href={waLink(`I'd like the ${p.name} plan ($${p.price}/mo)`)} target="_blank" rel="noopener" className={`mt-3 block text-center text-sm ${p.price > 199 ? "btn-bright" : "btn-ghost"}`}>{p.price > 199 ? tr("Upgrade →") : tr("Switch →")}</a>}
+                : (() => {
+                    const doPlano = SELF_SERVE_PLANS.find((sp) => sp.id === p.key);
+                    const alvo = doPlano?.url
+                      ? `${doPlano.url}?client_reference_id=${encodeURIComponent(email || "")}&prefilled_email=${encodeURIComponent(email || "")}`
+                      : waLink(`I'd like the ${p.name} plan ($${p.price}/mo)`);
+                    return (
+                      <a href={alvo} target="_blank" rel="noopener"
+                        className={`mt-3 block text-center text-sm ${p.price > 199 ? "btn-bright" : "btn-ghost"}`}>
+                        {p.price > 199 ? tr("Upgrade →") : tr("Switch →")}
+                      </a>
+                    );
+                  })()}
             </Card>
             );
           })}

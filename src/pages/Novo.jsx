@@ -27,11 +27,18 @@ export default function Novo() {
       </div>
     );
   }
-  const NAMES = { "clareza-dental": "Clareza Dental", "nonstop-plumbers": "Nonstop Plumbers" };
+  // Cada site tem sua IA com a marca E o mascote DO NEGÓCIO (nunca robozinho genérico).
+  const AI = {
+    "clareza-dental": { business: "Clareza Dental", label: "Ask Clareza", accent: "#0e6e6a",
+      mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0e6e6a" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5.5c-2.2-1.6-5.5-1.3-6.4 1.4-.8 2.4.4 4.6.9 7.2.3 1.7.4 3.9 1.8 3.9 1.3 0 1.4-2.3 2-4 .4-1.2 1.9-1.2 2.3 0 .6 1.7.7 4 2 4 1.4 0 1.5-2.2 1.8-3.9.5-2.6 1.7-4.8.9-7.2-.9-2.7-4.2-3-6.3-1.4Z"/></svg> },
+    "nonstop-plumbers": { business: "Nonstop Plumbers", label: "Ask Nonstop", accent: "#d92a28",
+      mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d92a28" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12.5" r="7.5"/><path d="M12 8.5v4.2l2.6 1.6M9 3.2h6"/></svg> },
+  };
+  const cfg = AI[slug] || { business: "this business", label: "Ask us", accent: "#3E9468" };
   return (
     <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-[#0e0d0b] text-[#948C7B]">…</div>}>
       <Page />
-      <GuiLayer business={NAMES[slug] || "this business"} />
+      <GuiLayer {...cfg} />
     </Suspense>
   );
 }

@@ -1,6 +1,12 @@
 // Portal UI translation (HI, हिन्दी) — keyed by the English string. Lazy chunk loaded
 // by loadDict('hi') in Portal.jsx; verbatim move of the former inline HI_UI object.
 export default {
+  "Runs on": "इस पर चलता है",
+  "you're on": "आप हैं",
+  "You've used": "आपने उपयोग किया",
+  "credits this month": "क्रेडिट इस महीने",
+  "you get": "आपको मिलते हैं",
+  "and the AI never goes quiet mid-month": "और AI महीने के बीच चुप नहीं होती",
   "Contact": "संपर्क",
   "Called": "कॉल किया",
   "Wrote": "लिखा",

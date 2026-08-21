@@ -11,6 +11,7 @@
    Backend (this slice): POST /api/packages + POST /api/giftcards with { action, token, email, ... }.
    Registration is the orchestrator's job (Portal.jsx) — it should pass real/email/dataKey like RiskRadar. */
 import { useState, useEffect } from "react";
+import NoSeuPlano from "./NoSeuPlano.jsx";
 import { FaIdCard, FaTicket, FaGift, FaPen, FaTrash, FaLink, FaPlus, FaRegCopy } from "react-icons/fa6";
 import { toast } from "../lib/portalApi.js";
 import { tr, Card, Empty, SectionSkeleton } from "../pages/Portal.jsx";
@@ -174,7 +175,9 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
   const mrr = (members || []).filter((m) => m.active !== false).reduce((s, m) => s + (m.interval === "year" ? (m.price_cents || 0) / 12 : (m.price_cents || 0)) * (Number(m.subscribers) || 0), 0);
 
   return (
-    <div className="space-y-5 stagger">
+    <>
+     <NoSeuPlano real={real} produto="close_collect" />
+   <div className="space-y-5 stagger">
       {/* Header */}
       <div className="rounded-2xl border border-g-gold/25 bg-gradient-to-br from-g-gold/[0.07] to-white/[0.02] p-5">
         <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-g-gold">
@@ -316,6 +319,7 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
 
       <p className="text-center text-[11px] text-g-muted">{tr("Recurring revenue is the most valuable revenue — your AI renews, reminds and rescues it automatically.")}</p>
     </div>
+   </>
   );
 }
 

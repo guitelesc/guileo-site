@@ -1,61 +1,100 @@
-import { useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import VoiceAgent from "../components/VoiceAgent.jsx";
 import { waLink } from "../data/contact.js";
 
+const GuiChat = lazy(() => import("../components/GuiChat.jsx"));
+
 // ─────────────────────────────────────────────────────────────────────────────
-// A CAMADA GUI DO MOTOR — montada pelo Novo.jsx em TODO site do /novo.
-// Dois pedaços: (1) o convite de voz/ligação REAL (VoiceAgent — voz no navegador
-// + "a Gui te liga", já com TCPA), e (2) o seletor "AI on this site": o cardápio
-// de IAs embutidas que o cliente marca na reunião — vira o pedido dele.
-// Decisão Luis 2026-08-21: modelo já vem com a IA dentro; o cliente escolhe.
+// A CAMADA DE IA DO MOTOR — montada pelo Novo.jsx em TODO site do /novo.
+//
+// Decisões do Luis (2026-08-21):
+//  · A IA usa a MARCA E O MASCOTE DO CLIENTE ("Ask Chigo" é a referência, não o
+//    molde) — o dono se vê dono. Crédito da Guileo fica discreto no rodapé.
+//  · Chat de TEXTO só no horário comercial: /api/gui-chat gasta Anthropic por
+//    visitante curioso, e foi por isso que ele saiu da landing. Fora do horário
+//    (e sempre, como alternativa) sobra o que não custa por visita: voz no
+//    navegador e a ligação de verdade.
+//  · Voz + ligação + formulário entram sempre.
+//
+// O mascote é desenhado por SITE (SVG passado via prop) — nunca um robozinho
+// genérico: ele sai do mundo do negócio (relógio pro plantão 24h, etc).
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FEATURES = [
-  ["📞", "AI answers every call", "24/7, in the business's name — books, quotes, sells."],
-  ["⚡", "AI calls new leads in 60s", "Form or missed call → the AI dials back before they cool."],
-  ["💬", "Missed-call text-back", "Instant SMS the second a call is missed."],
-  ["📅", "AI booking on the site", "This site's forms feed the AI — it confirms and reminds."],
-  ["⭐", "Review machine", "Asks, collects and answers 5★ reviews automatically."],
-  ["🧾", "Collects on the call", "Closed on the phone? Payment link by SMS right there."],
-];
+// Horário comercial no fuso de NY — o portão do chat de texto.
+function isBusinessHours() {
+  try {
+    const p = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hour12: false, weekday: "short" }).formatToParts(new Date());
+    const h = Number(p.find((x) => x.type === "hour")?.value);
+    const d = p.find((x) => x.type === "weekday")?.value;
+    return !["Sat", "Sun"].includes(d) && h >= 9 && h < 18;
+  } catch { return false; }
+}
 
-export default function GuiLayer({ business = "this business" }) {
-  const [open, setOpen] = useState(false);
+export default function GuiLayer({ business = "this business", mascot = null, accent = "#3E9468", label = "Ask us" }) {
+  const [openChat, setOpenChat] = useState(false);
+  const [openPicker, setOpenPicker] = useState(false);
   const [sel, setSel] = useState(() => new Set([0, 1]));
+  const hours = useMemo(isBusinessHours, []);
+
+  const FEATURES = [
+    ["AI answers every call", "24/7, in your name — books, quotes, sells."],
+    ["AI calls new leads in 60s", "Form or missed call → it dials back before they cool."],
+    ["Missed-call text-back", "Instant SMS the second a call is missed."],
+    ["AI booking on this site", "Every form here feeds the AI — it confirms and reminds."],
+    ["Review machine", "Asks, collects and answers 5★ reviews automatically."],
+    ["Collects on the call", "Closed on the phone? Payment link by SMS right there."],
+  ];
   const toggle = (i) => setSel((p) => { const n = new Set(p); n.has(i) ? n.delete(i) : n.add(i); return n; });
-  const chosen = FEATURES.filter((_, i) => sel.has(i)).map((f) => f[1]).join(", ");
-  const wa = waLink(`Hi Guileo! On the ${business} model I want: ${chosen}`);
+  const wa = waLink(`Hi Guileo! On the ${business} site I want: ${FEATURES.filter((_, i) => sel.has(i)).map((f) => f[0]).join(", ")}`);
 
   return (
     <>
-      {/* o convite real de voz/ligação — a prova viva dentro do modelo */}
+      {/* voz no navegador + "a IA te liga" — o que não custa por visitante */}
       <VoiceAgent />
 
-      {/* seletor "AI on this site" — canto inferior ESQUERDO pra não brigar com o VoiceAgent */}
-      <div className="fixed bottom-4 left-4 z-[95] font-sans">
-        {open && (
-          <div className="mb-2 w-[300px] rounded-2xl border border-white/12 bg-[#141310]/95 p-4 shadow-2xl backdrop-blur-xl">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#D6C29A]">AI built into this site</p>
-            <p className="mt-1 text-[11.5px] leading-snug text-[#948C7B]">Tap what {business} should have — every item is already built and running at Guileo.</p>
+      {/* chat de texto: só no horário comercial (custo por visita) */}
+      {hours && openChat && (
+        <Suspense fallback={null}><GuiChat /></Suspense>
+      )}
+
+      <div className="fixed bottom-4 left-4 z-[95] flex flex-col items-start gap-2 font-sans">
+        {openPicker && (
+          <div className="w-[300px] rounded-[26px] border border-white/12 bg-[#14161a]/95 p-4 shadow-2xl backdrop-blur-xl">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em]" style={{ color: accent }}>AI built into this site</p>
+            <p className="mt-1 text-[11.5px] leading-snug text-white/55">Tap what {business} should have — each one already runs in production.</p>
             <div className="mt-3 space-y-1.5">
               {FEATURES.map((f, i) => (
-                <button key={i} onClick={() => toggle(i)} className={`flex w-full items-start gap-2 rounded-xl border px-2.5 py-2 text-left transition ${sel.has(i) ? "border-[#3E9468]/60 bg-[#3E9468]/10" : "border-white/8 bg-white/[0.03]"}`}>
-                  <span className="text-[13px]">{f[0]}</span>
+                <button key={i} onClick={() => toggle(i)} className={`flex w-full items-start gap-2 rounded-2xl border px-3 py-2 text-left transition ${sel.has(i) ? "border-white/25 bg-white/10" : "border-white/8 bg-white/[0.03]"}`}>
                   <span className="min-w-0">
-                    <span className="block text-[12px] font-bold leading-tight text-[#EDE7DC]">{f[1]}</span>
-                    <span className="block text-[10.5px] leading-snug text-[#948C7B]">{f[2]}</span>
+                    <span className="block text-[12px] font-bold leading-tight text-white">{f[0]}</span>
+                    <span className="block text-[10.5px] leading-snug text-white/50">{f[1]}</span>
                   </span>
-                  <span className={`ml-auto mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] ${sel.has(i) ? "border-[#3E9468] bg-[#3E9468] text-white" : "border-white/20 text-transparent"}`}>✓</span>
+                  <span className="ml-auto mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[9px] text-white" style={sel.has(i) ? { background: accent, borderColor: accent } : { borderColor: "rgba(255,255,255,.25)", color: "transparent" }}>✓</span>
                 </button>
               ))}
             </div>
-            <a href={wa} target="_blank" rel="noreferrer" className="mt-3 block rounded-xl bg-[#3E9468] px-3 py-2.5 text-center text-[12.5px] font-black text-white">I want these on my site →</a>
+            <a href={wa} target="_blank" rel="noreferrer" className="mt-3 block rounded-full px-3 py-2.5 text-center text-[12.5px] font-black text-white" style={{ background: accent }}>I want these on my site →</a>
           </div>
         )}
-        <button onClick={() => setOpen(!open)} className="flex items-center gap-2 rounded-full border border-[#D6C29A]/30 bg-[#141310]/95 px-4 py-2.5 text-[12px] font-black text-[#EDE7DC] shadow-xl backdrop-blur-xl">
-          <span className="relative flex h-2 w-2"><span className="absolute h-full w-full animate-ping rounded-full bg-[#3E9468]/60" /><span className="relative h-2 w-2 rounded-full bg-[#3E9468]" /></span>
-          {open ? "Close" : "AI on this site"}
-        </button>
+
+        <div className="flex items-center gap-2">
+          {/* o mascote DO NEGÓCIO — a IA com a cara dele */}
+          <button
+            onClick={() => (hours ? setOpenChat((v) => !v) : setOpenPicker((v) => !v))}
+            className="group flex items-center gap-2.5 rounded-full border border-white/15 bg-[#14161a]/95 py-2 pl-2 pr-4 shadow-xl backdrop-blur-xl transition hover:scale-[1.03]">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: accent + "22", border: `1px solid ${accent}55` }}>
+              {mascot || <span className="h-2.5 w-2.5 rounded-full" style={{ background: accent }} />}
+            </span>
+            <span className="text-left leading-tight">
+              <span className="block text-[12.5px] font-black text-white">{label}</span>
+              <span className="block text-[10px] text-white/50">{hours ? "chat · voice · call" : "voice · call · 24/7"}</span>
+            </span>
+          </button>
+          <button onClick={() => setOpenPicker((v) => !v)} title="AI on this site"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-[#14161a]/95 text-white/70 shadow-xl backdrop-blur-xl transition hover:scale-[1.05] hover:text-white">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+          </button>
+        </div>
       </div>
     </>
   );

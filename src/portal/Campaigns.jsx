@@ -5,6 +5,7 @@
    no revenue/opened columns, so those figures are HIDDEN in real mode (not faked). The sample
    list + demo banner stay ONLY when the tab is not connected (demo/tour). */
 import { useEffect, useState } from "react";
+import NoSeuPlano from "./NoSeuPlano.jsx";
 import { toast, portalApi, loadDataKey } from "../lib/portalApi.js";
 import { waLink } from "../data/contact.js";
 import { loadCreated, genCampaigns, pushCreated, vnum, MiniStats, Card, tr, Empty, Drawer, SectionSkeleton } from "../pages/Portal.jsx";
@@ -281,7 +282,9 @@ function DemoCampaigns({ V, onNav }) {
   // impossível apresentado como métrica. Lista vazia = "—", que é a verdade.
   const open = rows.length ? Math.round(rows.reduce((s, c) => s + (Number(c.opened) || 0), 0) / rows.length) : null;
   return (
-    <div className="space-y-4 stagger">
+    <>
+     <NoSeuPlano real={real} produto="reactivation" />
+   <div className="space-y-4 stagger">
       <div className="rounded-xl border border-g-gold/25 bg-g-gold/[0.06] px-4 py-2.5 text-[11px] font-bold text-g-muted">{tr("Demo — sample data. Connect your account in Settings to see your real campaigns here.")}</div>
       <MiniStats items={[["Campaigns", `${rows.length}`], ["Messages sent", sent.toLocaleString()], ["Avg. open rate", open == null ? "—" : `${open}%`, "good"], ["Revenue", `$${rev.toLocaleString()}`, "good"]]} />
       <FlashCampaign V={V} />
@@ -310,6 +313,7 @@ function DemoCampaigns({ V, onNav }) {
         />
       )}
     </div>
+   </>
   );
 }
 

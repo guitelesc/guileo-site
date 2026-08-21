@@ -1,6 +1,12 @@
 // Portal UI translation (ES) — keyed by the English string. Lazy chunk loaded by
 // loadDict('es') in Portal.jsx; verbatim move of the former inline ES_UI object.
 export default {
+  "Runs on": "Funciona en",
+  "you're on": "estás en",
+  "You've used": "Usaste",
+  "credits this month": "créditos este mes",
+  "you get": "tienes",
+  "and the AI never goes quiet mid-month": "y la IA no se calla a mitad de mes",
   "Contact": "Contacto",
   "Called": "Llamó",
   "Wrote": "Escribió",

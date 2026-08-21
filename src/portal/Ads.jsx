@@ -32,6 +32,7 @@
    PRIVACIDADE DA SEMENTE: a lista de clientes do cliente NUNCA sai em texto puro. A
    API já devolve só SHA-256 — e é assim que fica na tela. */
 import { useState, useEffect, useCallback } from "react";
+import NoSeuPlano from "./NoSeuPlano.jsx";
 import { Card, tr, UI_LANG } from "../pages/Portal.jsx";
 
 const post = (corpo) =>
@@ -952,7 +953,7 @@ const EXEMPLO = {
   ],
 };
 
-function Ads({ email = "", dataKey = "" }) {
+function Ads({ email = "", dataKey = "" , real = null}) {
   const [d, setD] = useState(null);      // null = carregando
   const [erro, setErro] = useState("");
 
@@ -983,7 +984,9 @@ function Ads({ email = "", dataKey = "" }) {
   const custoPorCliente = gastoNum > 0 && clientesNovos > 0 ? `$${(gastoNum / clientesNovos).toFixed(2)}` : "—";
 
   return (
-    <div className="space-y-4 stagger">
+    <>
+     <NoSeuPlano real={real} produto="marketing_ads" />
+   <div className="space-y-4 stagger">
       {/* O SELO. Primeira coisa da tela, impossível de não ver — é o que separa
           "demonstração do produto" de "dado inventado passando por real". */}
       {d.ehExemplo ? (
@@ -1080,6 +1083,7 @@ function Ads({ email = "", dataKey = "" }) {
         </p>
       </Card>
     </div>
+   </>
   );
 }
 

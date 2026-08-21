@@ -6,11 +6,12 @@
 // cockpit e na boca da Gui. Um segundo lugar pra editar preço criaria duas verdades,
 // e a Gui passaria a falar um valor diferente do que o site mostra.
 import { useEffect, useState } from "react";
+import NoSeuPlano from "./NoSeuPlano.jsx";
 
 const slugify = (s) => (s || "").toString().toLowerCase().normalize("NFD")
   .replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50);
 
-export default function MeuSite({ V, email, dataKey }) {
+export default function MeuSite({ V, email, dataKey , real = null}) {
   const [site, setSite] = useState(null);
   const [form, setForm] = useState({ slug: "", headline: "", about: "", color: "#2F6F4E" });
   const [published, setPublished] = useState(false);
@@ -70,7 +71,9 @@ export default function MeuSite({ V, email, dataKey }) {
   };
 
   return (
-    <div>
+    <>
+     <NoSeuPlano real={real} produto="websites" />
+   <div>
       <h2 style={{ margin: "0 0 6px" }}>Meu site</h2>
       <p style={{ color: V?.dim || "#9a958a", marginTop: 0 }}>
         Seu site monta sozinho com o que já está aqui — serviços, preços, unidades e perguntas frequentes.
@@ -154,5 +157,6 @@ export default function MeuSite({ V, email, dataKey }) {
         ) : null}
       </div>
     </div>
+   </>
   );
 }
