@@ -28,7 +28,7 @@ export const SELF_SERVE_PLANS = [
     annualUrl: "",
   },
   {
-    id: "growth", name: "Personalized", price: 449, credits: 2000, popular: true,
+    id: "growth", name: "Personalized", price: 897, credits: 3000, popular: true,
     tagline: { en: "Most popular", pt: "Mais popular", es: "Más popular" },
     features: {
       en: ["Everything in Essential", "Speed-to-Lead (60s callback)", "Reviews machine + win-back", "3,000 Gui credits / month", "Weekly owner report"],

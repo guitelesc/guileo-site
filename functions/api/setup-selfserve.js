@@ -13,8 +13,8 @@ const PLANS = [
   // canonical names (= src/data/guileoPlans.js); legacyName renames the pre-existing Stripe
   // product in place on the next setup run — receipts flip to the new name, links stay valid.
   { id: "starter", name: "Guileo Essential", legacyName: "Guileo Starter", amount: 14900, credits: 500 },
-  { id: "growth", name: "Guileo Personalized", legacyName: "Guileo Growth", amount: 44900, credits: 2000 },
-  { id: "scale", name: "Guileo Full Operation", legacyName: "Guileo Scale", amount: 99900, credits: 6000 },
+  { id: "growth", name: "Guileo Personalized", legacyName: "Guileo Growth", amount: 89700, credits: 3000 },
+  { id: "scale", name: "Guileo Full Operation", legacyName: "Guileo Scale", amount: 199700, credits: 9000 },
 ];
 
 // One-time credit top-ups — mode=payment Payment Links (price has NO recurring interval,

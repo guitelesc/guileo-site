@@ -11,9 +11,7 @@ import GuiLayer from "../novo/GuiLayer.jsx";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const REGISTRY = {
-  "bella-forno": lazy(() => import("../novo/BellaForno.jsx")),      // restaurante italiano — modelo
   "clareza-dental": lazy(() => import("../novo/ClarezaDental.jsx")), // clínica dental — modelo
-  "maison-lume": lazy(() => import("../novo/MaisonLume.jsx")),       // salão/spa — modelo
   "nonstop-plumbers": lazy(() => import("../novo/NonstopPlumbers.jsx")), // PROSPECT REAL — reconstrução nonstopplumbers.com
 };
 
@@ -29,7 +27,7 @@ export default function Novo() {
       </div>
     );
   }
-  const NAMES = { "bella-forno": "Bella Forno", "clareza-dental": "Clareza Dental", "maison-lume": "Maison Lume", "nonstop-plumbers": "Nonstop Plumbers" };
+  const NAMES = { "clareza-dental": "Clareza Dental", "nonstop-plumbers": "Nonstop Plumbers" };
   return (
     <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-[#0e0d0b] text-[#948C7B]">…</div>}>
       <Page />

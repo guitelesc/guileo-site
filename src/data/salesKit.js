@@ -17,8 +17,8 @@ export const MASTER_SENTENCE = {
 export const PRICING = {
   selfServe: [
     { name: "Essential", price: 149 },
-    { name: "Personalized", price: 449 },
-    { name: "Full Operation", price: 999 },
+    { name: "Personalized", price: 897 },
+    { name: "Full Operation", price: 1997 },
   ],
   doneForYou: { setup: 990, monthly: 1497 },
   guaranteeDays: 30,

@@ -186,14 +186,14 @@ export const SERVICE_CONTRACTS = {
       es: "Guileo Personalized — Suscripción IA de voz + canales + ventas",
     },
     summary: {
-      pt: "Assinatura recorrente com a IA em todos os canais (voz, chat do site, WhatsApp, redes) vendendo, cobrando e reativando clientes, com 2.000 créditos/mês e suporte prioritário.",
-      en: "Recurring subscription with the AI on every channel (voice, site chat, WhatsApp, social) selling, collecting and winning back clients, with 2,000 credits/mo and priority support.",
-      es: "Suscripción recurrente con la IA en todos los canales (voz, chat del sitio, WhatsApp, redes) vendiendo, cobrando y reactivando clientes, con 2.000 créditos/mes y soporte prioritario.",
+      pt: "Assinatura recorrente com a IA em todos os canais (voz, chat do site, WhatsApp, redes) vendendo, cobrando e reativando clientes, com 3.000 créditos/mês e suporte prioritário.",
+      en: "Recurring subscription with the AI on every channel (voice, site chat, WhatsApp, social) selling, collecting and winning back clients, with 3,000 credits/mo and priority support.",
+      es: "Suscripción recurrente con la IA en todos los canales (voz, chat del sitio, WhatsApp, redes) vendiendo, cobrando y reactivando clientes, con 3.000 créditos/mes y soporte prioritario.",
     },
     deliverables: {
-      pt: ["Tudo do Essential", "IA de voz + chat no site + WhatsApp + redes sociais", "Fecha e cobra na ligação (link de pagamento), quando habilitado", "Campanhas automáticas: aniversário, reativação, datas", "Radar de faltas + confirmações inteligentes", "2.000 créditos/mês + suporte prioritário"],
-      en: ["Everything in Essential", "Voice AI + site chat + WhatsApp + social", "Closes and collects on the call (pay link), where enabled", "Auto campaigns: birthdays, win-back, key dates", "No-show radar + smart confirmations", "2,000 credits/mo + priority support"],
-      es: ["Todo lo de Essential", "IA de voz + chat del sitio + WhatsApp + redes", "Cierra y cobra en la llamada (link de pago), cuando esté habilitado", "Campañas automáticas: cumpleaños, reactivación, fechas", "Radar de ausencias + confirmaciones inteligentes", "2.000 créditos/mes + soporte prioritario"],
+      pt: ["Tudo do Essential", "IA de voz + chat no site + WhatsApp + redes sociais", "Fecha e cobra na ligação (link de pagamento), quando habilitado", "Campanhas automáticas: aniversário, reativação, datas", "Radar de faltas + confirmações inteligentes", "3.000 créditos/mês + suporte prioritário"],
+      en: ["Everything in Essential", "Voice AI + site chat + WhatsApp + social", "Closes and collects on the call (pay link), where enabled", "Auto campaigns: birthdays, win-back, key dates", "No-show radar + smart confirmations", "3,000 credits/mo + priority support"],
+      es: ["Todo lo de Essential", "IA de voz + chat del sitio + WhatsApp + redes", "Cierra y cobra en la llamada (link de pago), cuando esté habilitado", "Campañas automáticas: cumpleaños, reactivación, fechas", "Radar de ausencias + confirmaciones inteligentes", "3.000 créditos/mes + soporte prioritario"],
     },
   },
   scale: {
@@ -204,14 +204,14 @@ export const SERVICE_CONTRACTS = {
       es: "Guileo Full Operation — Suscripción de toda la operación con IA",
     },
     summary: {
-      pt: "Assinatura recorrente em que a Guileo roda a frente do seu negócio: todos os canais, campanhas e cupons com a sua marca, relatórios de valor gerado, 6.000 créditos/mês e time dedicado.",
-      en: "Recurring subscription where Guileo runs your front office: every channel, campaigns and coupons in your brand, generated-value reports, 6,000 credits/mo and a dedicated team.",
-      es: "Suscripción recurrente en la que Guileo maneja el frente de tu negocio: todos los canales, campañas y cupones con tu marca, reportes de valor generado, 6.000 créditos/mes y equipo dedicado.",
+      pt: "Assinatura recorrente em que a Guileo roda a frente do seu negócio: todos os canais, campanhas e cupons com a sua marca, relatórios de valor gerado, 9.000 créditos/mês e time dedicado.",
+      en: "Recurring subscription where Guileo runs your front office: every channel, campaigns and coupons in your brand, generated-value reports, 9,000 credits/mo and a dedicated team.",
+      es: "Suscripción recurrente en la que Guileo maneja el frente de tu negocio: todos los canales, campañas y cupones con tu marca, reportes de valor generado, 9.000 créditos/mes y equipo dedicado.",
     },
     deliverables: {
-      pt: ["Tudo do Personalized", "Campanhas e cupons com a SUA marca", "Pacotes, assinaturas e gift cards prontos pra vender", "Relatório periódico de valor gerado (ROI)", "Implantação profunda multi-unidades", "6.000 créditos/mês + time dedicado"],
-      en: ["Everything in Personalized", "Campaigns and coupons in YOUR brand", "Packages, memberships and gift cards ready to sell", "Periodic generated-value report (ROI)", "Deep multi-location implementation", "6,000 credits/mo + dedicated team"],
-      es: ["Todo lo de Personalized", "Campañas y cupones con TU marca", "Paquetes, membresías y gift cards listos para vender", "Reporte periódico de valor generado (ROI)", "Implementación profunda multi-sucursal", "6.000 créditos/mes + equipo dedicado"],
+      pt: ["Tudo do Personalized", "Campanhas e cupons com a SUA marca", "Pacotes, assinaturas e gift cards prontos pra vender", "Relatório periódico de valor gerado (ROI)", "Implantação profunda multi-unidades", "9.000 créditos/mês + time dedicado"],
+      en: ["Everything in Personalized", "Campaigns and coupons in YOUR brand", "Packages, memberships and gift cards ready to sell", "Periodic generated-value report (ROI)", "Deep multi-location implementation", "9,000 credits/mo + dedicated team"],
+      es: ["Todo lo de Personalized", "Campañas y cupones con TU marca", "Paquetes, membresías y gift cards listos para vender", "Reporte periódico de valor generado (ROI)", "Implementación profunda multi-sucursal", "9.000 créditos/mes + equipo dedicado"],
     },
   },
 };
