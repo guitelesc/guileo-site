@@ -8,6 +8,10 @@
 // src/data/guileoPlans.js (fonte canônica de planos) — se mudar lá, mude aqui.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// PREÇO NÃO MORA AQUI. Esta é a boca; a fonte é `guileoPlans.js`. Guardar cópia do preço numa
+// boca é como a Gui passa a cotar um número que o site já mudou.
+import { GUILEO_PLANS } from "../../src/data/guileoPlans.js";
+
 export const FACTS = {
   plans: {
     // = src/data/guileoPlans.js (Essential/Personalized/Full Operation)
