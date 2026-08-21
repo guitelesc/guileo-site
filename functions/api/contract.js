@@ -5,6 +5,7 @@
 import { json, rateLimited, safeEq } from "../lib/guard.js";
 // a venda tem que voltar para quem a fez: assinatura avisa o vendedor e o dono.
 import { emitFailure } from "../lib/failure.js";
+import { svcJson } from "../lib/sb.js";
 import { ownerAlertEmail } from "../lib/emailTemplates.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -90,6 +91,22 @@ export async function onRequestPost(context) {
       // primeiro cliente a pedir reembolso.
       // Best-effort DEPOIS de a assinatura já estar gravada: falha de e-mail não pode desfazer,
       // nem esconder, uma assinatura que o banco já aceitou.
+      // ── ASSINOU → O RASCUNHO DE ATIVAÇÃO JÁ NASCE ────────────────────────────────────────
+      // Antes daqui o funil parava: alguém tinha que REDIGITAR no /admin o nome, o e-mail e o
+      // plano que o contrato já continha. Entre assinar e o agente nascer havia uma pessoa
+      // lembrando de fazer uma coisa — e é aí que o cliente novo fica esperando.
+      // 🚨 RASCUNHO, NUNCA ATIVAÇÃO. Ativar cria agente, compra número e credita: dinheiro e
+      // recursos externos, que continuam exigindo o clique humano. Automatizamos a transcrição,
+      // não a decisão.
+      let rascunho = null;
+      try {
+        // 🚨 CHAVE DE SERVIÇO, NÃO `anon`. `rascunho_do_contrato` é REVOGADA do anon de propósito
+        // (ela escreve na fila de ativação). O helper `rpc` deste arquivo fala como anon — chamar
+        // por ele devolvia 401 silencioso e o rascunho simplesmente não nascia, com a assinatura
+        // dizendo "ok". Foi exatamente o que o primeiro teste mostrou: `rascunho: null`.
+        rascunho = await svcJson(env, "rascunho_do_contrato", { p_secret: env.INGEST_SECRET || "", p_contrato: rec.id });
+      } catch { /* o rascunho é conveniência; a assinatura já está gravada */ }
+
       try {
         await emitFailure(env, "contrato_assinado", rec.dono || "",
           `✍️ ${rec.cliente || "cliente"} assinou "${rec.titulo || ""}" — US$ ${rec.valor} · assinado por ${rec.assinante}`,
@@ -102,7 +119,13 @@ export async function onRequestPost(context) {
           const tpl = ownerAlertEmail({
             kind: "sale", business: rec.cliente || "", customer: rec.assinante || "",
             amount: `US$ ${rec.valor}`, when: rec.quando || new Date().toISOString(), lang: "pt",
-            details: `${rec.cliente} assinou "${rec.titulo}". Próximo passo: ativar o cliente no /admin para o agente nascer.`,
+            // a frase muda conforme o rascunho existir: mandar "vá criar" quando já está criado
+            // faz a pessoa procurar o que já está pronto — e desconfiar do aviso da próxima vez.
+            details: `${rec.cliente} assinou "${rec.titulo}". ${rascunho?.ok
+              ? (rascunho.ja_existia ? "O rascunho de ativação já estava no /admin — é só conferir e ativar."
+                                     : "O rascunho de ativação JÁ FOI CRIADO no /admin: confira e aperte ativar.")
+              : (rascunho?.motivo === "ja_e_cliente" ? "Este e-mail já é cliente — nada a ativar."
+                                                     : "Próximo passo: cadastrar e ativar o cliente no /admin.")}`,
           });
           const mr = await fetch("https://api.resend.com/emails", {
             method: "POST",
@@ -114,7 +137,7 @@ export async function onRequestPost(context) {
         }
       } catch { /* a assinatura já está gravada; o aviso é um extra que nunca a desfaz */ }
 
-      return json({ ok: true, signed: true, motivo: null });
+      return json({ ok: true, signed: true, motivo: null, rascunho: rascunho?.ok ? { id: rascunho.id, ja_existia: !!rascunho.ja_existia } : null });
     }
 
     // ── PORTÃO: VENDEDOR ou ADMIN ────────────────────────────────────────────────────────────────
