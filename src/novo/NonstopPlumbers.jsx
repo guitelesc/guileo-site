@@ -357,7 +357,7 @@ textarea.np-field{border-radius:22px;resize:vertical}
  background:rgba(245,247,250,.96);border-top:1px solid rgba(12,26,46,.10);
  box-shadow:0 -18px 40px -24px rgba(12,26,46,.45);backdrop-filter:blur(12px);
  transform:translateY(130%);transition:transform .38s cubic-bezier(.2,.7,.3,1)}
-.np-callbar.np-show{transform:none;pointer-events:auto}
+.np-callbar.np-bar-on{transform:none;pointer-events:auto}
 
 .np-err{border-color:rgba(217,42,40,.55)!important;box-shadow:0 0 0 3px rgba(217,42,40,.13)!important}
 @media(prefers-reduced-motion:reduce){.np-rev{opacity:1;transform:none;transition:none}
@@ -1153,7 +1153,7 @@ export default function NonstopPlumbers() {
       </section>
 
       {/* ── STICKY MOBILE CALL BAR — z-30, room kept for the AI widget ── */}
-      <div className={`np-callbar sm:hidden ${bar ? "np-show" : ""}`}>
+      <div className={`np-callbar sm:hidden ${bar ? "np-bar-on" : ""}`}>
         <div className="pr-24">
           <a href={TEL} className="np-btn w-full !py-4 !px-5 text-[16px]" aria-label={`Call Nonstop Plumbers dispatch at ${PHONE}`}>
             <Ic d={I.phone} s={19} /> Call 24/7 dispatch
