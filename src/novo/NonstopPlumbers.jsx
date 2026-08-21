@@ -357,8 +357,11 @@ textarea.np-field{border-radius:22px;resize:vertical}
 
 .np-err{border-color:rgba(217,42,40,.55)!important;box-shadow:0 0 0 3px rgba(217,42,40,.13)!important}
 @media(prefers-reduced-motion:reduce){.np-rev{opacity:1;transform:none;transition:none}
- .np-tk,.np-btn,.np-btn-o,.np-btn-n,.np-live,.np-slide,.np-dot,.np-callbar,.np-qi,.np-panel,.np-mg path,.np-mg text{transition:none;animation:none}
+ .np-tk,.np-btn,.np-btn-o,.np-btn-n,.np-btn-q,.np-qarrow,.np-live,.np-slide,.np-dot,.np-callbar,.np-qi,.np-panel,.np-mg path,.np-mg text{transition:none;animation:none}
  .np-btn::before,.np-btn-o::before,.np-btn-n::before{display:none}
+ /* the quote edge stops travelling but stays a metal border */
+ .np-btn-q::before{animation:none;background:linear-gradient(120deg,var(--cyan),#eaf8ff 45%,var(--cyan))}
+ .np-btn-q:hover::before{animation:none}
  .np-tk::after{display:none}}
 `;
 
@@ -786,8 +789,9 @@ export default function NonstopPlumbers() {
                                 <input className="np-field np-field-d" placeholder="Address" aria-label="Address" />
                                 <input className="np-field np-field-d" type="tel" placeholder="Phone" aria-label="Phone" />
                               </div>
-                              <button type="submit" className="np-btn w-full !py-4 mt-1">
-                                Open the ticket <Ic d={I.arrow} s={18} />
+                              <button type="submit" className="np-btn-q sm w-full mt-1">
+                                <span className="np-q-lab">Send my quote <span className="np-qarrow"><Ic d={I.arrow} s={17} /></span></span>
+                                <span className="np-q-sub">Answered by AI · your quote in minutes</span>
                               </button>
                             </form>
                             {bsent === b.c && (
@@ -1059,7 +1063,28 @@ export default function NonstopPlumbers() {
                   </select>
                   <textarea className="np-field" rows="3" placeholder="What's going on?" aria-label="What's going on?" />
                 </div>
-                <button type="submit" className="np-btn-n w-full mt-5">Send the work order <Ic d={I.arrow} s={18} /></button>
+                <button type="submit" className="np-btn-q w-full mt-5">
+                  <span className="np-q-lab">Send my quote <span className="np-qarrow"><Ic d={I.arrow} s={18} /></span></span>
+                  <span className="np-q-sub">Answered by AI · your quote in minutes</span>
+                </button>
+
+                <div className="mt-6 grid gap-4">
+                  {[
+                    ["You send the details", "What's going on, the address, and a number we can reach you on."],
+                    ["The AI calls you back", "It confirms access, timing and scope while the job is still fresh in your head."],
+                    ["Your quote arrives", "By text and email, with a link to approve it and put the crew on the calendar."],
+                  ].map(([lab, line], i) => (
+                    <div key={lab} className="np-step">
+                      <span className="np-stepn">{i + 1}</span>
+                      <span className="np-lab" style={{ color: "var(--navy)" }}>{lab}</span>
+                      <span className="text-[14.5px] leading-relaxed" style={{ color: "var(--mut)" }}>{line}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-4 text-[12.5px] leading-relaxed" style={{ color: "var(--mut)" }}>
+                  Quotes above a set amount are reviewed by the office before they go out.
+                </p>
+
                 <p className="mt-4 flex gap-2.5 text-[14px]" style={{ color: "var(--mut)" }}>
                   <span className="mt-[2px] shrink-0" style={{ color: "var(--cyan-d)" }}><Ic d={I.shield} s={15} /></span>
                   What happens next: dispatch triages what you sent, calls you back, and tells you what to do
