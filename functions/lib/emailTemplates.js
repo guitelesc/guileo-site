@@ -3393,7 +3393,7 @@ export function growthReportEmail({ business = "", agentName = "Gui", score = 0,
 // ─────────────────────────────────────────────────────────────────────────────
 export function websiteUpgradeEmail({
   name = "there", business = "your business", link = "", lang = "en",
-  incluso = [], addons = [], nota = "",
+  incluso = [], blocos = [], nota = "",
 } = {}) {
   business = esc(business); name = esc(name);
   const t = lang === "pt" ? {
@@ -3405,7 +3405,7 @@ export function websiteUpgradeEmail({
     cta: "Ver o site novo →",
     inclusoT: "O que já vem no modelo",
     addonT: "O que dá pra ligar em cima",
-    addonSub: "Cada módulo entra sozinho — você escolhe quais fazem sentido.",
+    addonSub: "Três frentes. Cada módulo entra sozinho — você escolhe quais fazem sentido.",
     foot: "Se fizer sentido, responde esse e-mail dizendo quais módulos você quer. Se não fizer, o link continua seu do mesmo jeito.",
   } : {
     subject: `${business}: we rebuilt your website — take a look`,
@@ -3416,7 +3416,7 @@ export function websiteUpgradeEmail({
     cta: "See the new site →",
     inclusoT: "What already comes in it",
     addonT: "What you can switch on",
-    addonSub: "Each module stands alone — you pick the ones that make sense.",
+    addonSub: "Three fronts. Each module stands alone — you pick the ones that make sense.",
     foot: "If it makes sense, reply telling us which modules you want. If it doesn't, the link stays yours anyway.",
   };
   const linhasInc = (incluso || []).map((i) => `
@@ -3424,16 +3424,36 @@ export function websiteUpgradeEmail({
       <span style="color:${B.green};font-weight:700;">✓</span>
       <span style="color:${B.ink};font-size:15px;">&nbsp;${esc(i)}</span>
     </td></tr>`).join("");
-  const linhasAdd = (addons || []).map((a) => `
-    <tr>
-      <td style="padding:11px 0;border-bottom:1px solid ${B.line};">
-        <div style="color:${B.ink};font-size:15px;font-weight:700;">${esc(a.t || "")}</div>
-        <div style="color:${B.muted};font-size:13px;line-height:1.6;margin-top:3px;">${esc(a.d || "")}</div>
-      </td>
-      <td align="right" valign="top" style="padding:11px 0 11px 12px;border-bottom:1px solid ${B.line};white-space:nowrap;">
-        <span style="color:${B.gold};font-size:14px;font-weight:800;">${esc(a.p || "")}</span>
-      </td>
-    </tr>`).join("");
+  // Três blocos visuais (Luis 2026-08-21: "separa o BRAIN, o AD e o BUILD pra ficar
+  // visual, com os emojis do site") — cada perna com sua cor e seus módulos.
+  const CORES = { BRAIN: B.green, AD: "#FF8A33", BUILD: B.gold };
+  const blocosHtml = (blocos || []).map((bl) => {
+    const cor = CORES[(bl.leg || "").toUpperCase()] || B.gold;
+    const itens = (bl.itens || []).map((a) => `
+      <tr>
+        <td width="30" valign="top" style="padding:11px 0;border-bottom:1px solid ${B.line};font-size:18px;line-height:1.2;">${a.e || ""}</td>
+        <td valign="top" style="padding:11px 0;border-bottom:1px solid ${B.line};">
+          <div style="color:${B.ink};font-size:15px;font-weight:700;">${esc(a.t || "")}</div>
+          <div style="color:${B.muted};font-size:13px;line-height:1.6;margin-top:3px;">${esc(a.d || "")}</div>
+        </td>
+        <td align="right" valign="top" style="padding:11px 0 11px 12px;border-bottom:1px solid ${B.line};white-space:nowrap;">
+          <span style="color:${B.gold};font-size:14px;font-weight:800;">${esc(a.p || "")}</span>
+        </td>
+      </tr>`).join("");
+    return `
+    <div style="margin-top:20px;border:1px solid ${B.line};border-radius:16px;overflow:hidden;background:${B.panel};">
+      <div style="padding:12px 16px;border-bottom:1px solid ${B.line};background:linear-gradient(180deg,${cor}1f,transparent);">
+        <span style="display:inline-block;padding:3px 10px;border-radius:999px;background:${cor}22;border:1px solid ${cor}55;color:${cor};font-size:11px;font-weight:800;letter-spacing:.14em;">${esc(bl.leg || "")}</span>
+        <span style="color:${B.ink2};font-size:14px;font-weight:700;">&nbsp;&nbsp;${esc(bl.titulo || "")}</span>
+        <div style="color:${B.muted};font-size:12.5px;margin-top:5px;">${esc(bl.sub || "")}</div>
+      </div>
+      <table role="presentation" width="100%" style="border-collapse:collapse;padding:0 16px;">
+        <tr><td style="padding:0 16px;">
+          <table role="presentation" width="100%" style="border-collapse:collapse;">${itens}</table>
+        </td></tr>
+      </table>
+    </div>`;
+  }).join("");
   const body = `
   <div style="font-size:26px;line-height:1.2;color:${B.ink2};font-weight:700;">${t.h1}</div>
   <div class="g-intro" style="font-size:16px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
@@ -3445,8 +3465,9 @@ export function websiteUpgradeEmail({
   <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
   <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.gold};font-weight:800;">${t.addonT}</div>
   <div style="color:${B.muted};font-size:13px;margin-top:5px;">${t.addonSub}</div>
-  <table role="presentation" width="100%" style="margin-top:8px;border-collapse:collapse;">${linhasAdd}</table>
-  ${nota ? `<div style="margin-top:16px;padding:12px 14px;border:1px solid ${B.line};border-radius:12px;color:${B.muted};font-size:13px;line-height:1.6;">${esc(nota)}</div>` : ""}
+  ${blocosHtml}
+  ${nota ? `<div style="margin-top:18px;padding:12px 14px;border:1px solid ${B.line};border-radius:12px;color:${B.muted};font-size:13px;line-height:1.6;">${esc(nota)}</div>` : ""}
   <div style="font-size:12.5px;color:${B.muted};text-align:center;margin-top:20px;line-height:1.65;">${t.foot}</div>`;
   return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
 }
+

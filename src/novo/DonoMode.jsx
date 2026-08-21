@@ -211,7 +211,7 @@ export default function DonoMode({
   if (!on) return null;
 
   const toggle = (k) => setSel((p) => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; });
-  const trans = calm ? "none" : "transform .18s cubic-bezier(.22,1,.36,1), opacity .18s";
+  const trans = "top .16s linear, left .16s linear, opacity .2s ease"; // transform fora: animar o -100% faz a etiqueta passar POR CIMA do botão no meio do caminho
   const allTags = [...ALWAYS.map(([leg, name, live, price, note]) => ({ leg, name, live, price, note })),
                    ...targets.current.map((t) => ({ leg: t.leg, name: t.name, live: t.live, price: t.price }))];
 
@@ -236,7 +236,7 @@ export default function DonoMode({
       {/* ── FITA: identifica a visão e nunca some — o dono precisa saber que o
              que ele vê não é o que o cliente dele vê. z abaixo da camada de IA. */}
       <div className="dm-mat fixed inset-x-0 top-0 flex h-10 items-center gap-2 px-3 font-sans sm:px-4"
-        style={{ zIndex: 35, borderRadius: 0, borderWidth: "0 0 1px 0" }}>
+        style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 60, borderRadius: 0, borderWidth: "0 0 1px 0" }}>
         <div className="dm-in flex w-full items-center gap-2">
           <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full"
             style={{ background: `${accent}22`, border: `1px solid ${accent}55` }}>{mascot}</span>
@@ -291,7 +291,7 @@ export default function DonoMode({
 
       {/* ── PAINEL: o cardápio das 3 pernas + o cockpit de amostra. */}
       {panel && (
-        <div className="fixed inset-0 flex items-end justify-center p-3 font-sans sm:items-center" style={{ zIndex: 36 }}>
+        <div className="fixed inset-0 flex items-end justify-center p-3 font-sans sm:items-center" style={{ zIndex: 61 }}>
           <button aria-label="Close" onClick={() => setPanel(false)}
             className="absolute inset-0 cursor-default" style={{ background: "rgba(0,0,0,.55)" }} />
           <div ref={panelRef} role="dialog" aria-modal="true" aria-label="The system behind this page"

@@ -58,6 +58,25 @@ export default function GuiLayer({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Luis 2026-08-21: "esse botão flutuante fica cobrindo parte da tela".
+  // Duas correções: (a) some quando a seção de contato/rodapé está à vista — lá o
+  // CTA de verdade já está na tela e o widget só atrapalha; (b) encolhe pro mascote
+  // sozinho depois de 5s parado, e volta ao tamanho normal no hover/foco.
+  const [tapado, setTapado] = useState(false);
+  const [mini, setMini] = useState(false);
+  useEffect(() => {
+    const alvo = document.querySelector("#contact") || document.querySelector("footer");
+    if (!alvo) return;
+    const io = new IntersectionObserver(([e]) => setTapado(e.isIntersecting), { threshold: 0.12 });
+    io.observe(alvo);
+    return () => io.disconnect();
+  }, []);
+  useEffect(() => {
+    if (open) { setMini(false); return; }
+    const t = setTimeout(() => setMini(true), 5000);
+    return () => clearTimeout(t);
+  }, [open, past]);
+
   // fecha no ESC e ao clicar fora — comportamento de painel de verdade
   useEffect(() => {
     if (!open) return;
@@ -155,9 +174,9 @@ export default function GuiLayer({
         <span className="relative grid h-9 w-9 place-items-center rounded-full" style={{ background: `${accent}1f`, border: `1px solid ${accent}66` }}>
           {mascot}
         </span>
-        <span className="relative text-left leading-tight">
-          <span className="block text-[12.5px] font-black text-white">{label}</span>
-          <span className="block text-[10px] text-white/55">{hours ? "chat · voice · call" : "voice · call · 24/7"}</span>
+        <span className={`relative text-left leading-tight transition-all duration-300 ${mini ? "max-w-0 overflow-hidden opacity-0" : "max-w-[200px] opacity-100"}`}>
+          <span className="block whitespace-nowrap text-[12.5px] font-black text-white">{label}</span>
+          <span className="block whitespace-nowrap text-[10px] text-white/55">{hours ? "chat · voice · call" : "voice · call · 24/7"}</span>
         </span>
       </button>
     </div>
