@@ -54,6 +54,7 @@ const XRAY = [
 ];
 const ALWAYS = [
   ["BUILD", "Website Upgrade", true, 0, "$500 one-time"],
+  ["BRAIN", "Guileo Pulse", false, 49],
   ["BRAIN", "AI on the site", true, 0, "included in this build"],
 ];
 

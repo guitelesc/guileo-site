@@ -48,6 +48,7 @@ const T = {
 
 // price = monthly anchor (USD). proof = live route/feature that shows it's real.
 const MODULES = [
+  { icon: "💗", price: 49, pt: ["Guileo Pulse", "Mede a experiência do cliente DELE a partir dos sinais que já captamos (ligação, review, agenda) — retenção, conversão de oferta e a avaliação de tudo, sem survey chato."], en: ["Guileo Pulse", "Measures HIS customers' experience from signals we already capture (calls, reviews, bookings) — retention, offer conversion and the score of everything, with no survey friction."], proof: "/pulse" },
   { icon: "🤖", price: 2500, pt: ["Recepcionista de Voz IA", "Atende toda ligação 24/7 no nome do negócio, agenda e responde como a melhor recepcionista — em 4 idiomas."], en: ["AI Voice Receptionist", "Answers every call 24/7 in the business's name, books and responds like your best front desk — in 4 languages."], proof: "/demo" },
   { icon: "📞", price: 500, pt: ["Missed-Call Text-Back + Retorno", "Perdeu a ligação? Texto na hora e a IA liga de volta sozinha. Nenhum cliente esfria."], en: ["Missed-Call Text-Back + Auto-Return", "Missed the call? Instant text and the AI calls back on its own. No lead goes cold."], proof: "/produtos" },
   { icon: "⭐", price: 750, pt: ["Máquina de Reviews", "Pede, coleta e responde avaliações 5★ no automático. Reputação vira funil."], en: ["Review Machine", "Requests, collects and answers 5★ reviews automatically. Reputation becomes a funnel."], proof: "/produtos" },

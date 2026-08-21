@@ -3397,7 +3397,7 @@ export function websiteUpgradeEmail({
 } = {}) {
   business = esc(business); name = esc(name);
   const t = lang === "pt" ? {
-    subject: `${business}: reconstruímos seu site — dá uma olhada`,
+    subject: `${business}: seu site novo está no ar — e o que cada peça soma em receita`,
     pre: "O site novo já está no ar. Nada pra instalar, nada pra assinar.",
     eyebrow: "Website Upgrade · pronto pra ver",
     h1: `${name}, refizemos o site do ${business}`,
@@ -3408,7 +3408,7 @@ export function websiteUpgradeEmail({
     addonSub: "Três frentes. Cada módulo entra sozinho — você escolhe quais fazem sentido.",
     foot: "Se fizer sentido, responde esse e-mail dizendo quais módulos você quer. Se não fizer, o link continua seu do mesmo jeito.",
   } : {
-    subject: `${business}: we rebuilt your website — take a look`,
+    subject: `${business}: your new site is live — and what each piece adds to revenue`,
     pre: "The new site is live. Nothing to install, nothing to sign.",
     eyebrow: "Website Upgrade · ready to view",
     h1: `${name}, we rebuilt the ${business} website`,
@@ -3435,6 +3435,7 @@ export function websiteUpgradeEmail({
         <td valign="top" style="padding:11px 0;border-bottom:1px solid ${B.line};">
           <div style="color:${B.ink};font-size:15px;font-weight:700;">${esc(a.t || "")}</div>
           <div style="color:${B.muted};font-size:13px;line-height:1.6;margin-top:3px;">${esc(a.d || "")}</div>
+          ${a.o ? `<div style="color:${cor};font-size:12.5px;font-weight:700;line-height:1.5;margin-top:5px;">→ ${esc(a.o)}</div>` : ""}
         </td>
         <td align="right" valign="top" style="padding:11px 0 11px 12px;border-bottom:1px solid ${B.line};white-space:nowrap;">
           <span style="color:${B.gold};font-size:14px;font-weight:800;">${esc(a.p || "")}</span>
