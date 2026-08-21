@@ -349,9 +349,13 @@ textarea.np-field{border-radius:22px;resize:vertical}
  .np-faqs>details{break-inside:avoid;margin-bottom:14px}}
 
 /* sticky mobile call bar — sits UNDER the floating AI widget (z-40) */
+/* A página RESERVA espaço: sem isso a barra fixa engole o fim do rodapé
+   (o Luis viu o botão gigante em cima dos escritórios). */
+@media (max-width:639px){ .np{padding-bottom:96px} }
 .np-callbar{position:fixed;left:0;right:0;bottom:0;z-index:30;pointer-events:none;
  padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));
- background:linear-gradient(180deg,rgba(245,247,250,0),rgba(245,247,250,.94) 42%);backdrop-filter:blur(10px);
+ background:rgba(245,247,250,.96);border-top:1px solid rgba(12,26,46,.10);
+ box-shadow:0 -18px 40px -24px rgba(12,26,46,.45);backdrop-filter:blur(12px);
  transform:translateY(130%);transition:transform .38s cubic-bezier(.2,.7,.3,1)}
 .np-callbar.np-show{transform:none;pointer-events:auto}
 

@@ -3466,6 +3466,25 @@ export function websiteUpgradeEmail({
   <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
   <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.gold};font-weight:800;">${t.addonT}</div>
   <div style="color:${B.muted};font-size:13px;margin-top:5px;">${t.addonSub}</div>
+  <table role="presentation" width="100%" style="margin-top:12px;border-collapse:separate;border-spacing:6px 0;">
+    <tr>
+      <td width="33%" align="center" style="padding:10px 6px;border:1px solid ${B.line};border-radius:12px;background:${B.panel};">
+        <div style="font-size:16px;line-height:1;">🧠</div>
+        <div style="color:${B.green};font-size:10.5px;font-weight:800;letter-spacing:.12em;margin-top:5px;">BRAIN</div>
+        <div style="color:${B.muted};font-size:11.5px;line-height:1.45;margin-top:3px;">answers the phone<br/>and closes</div>
+      </td>
+      <td width="33%" align="center" style="padding:10px 6px;border:1px solid ${B.line};border-radius:12px;background:${B.panel};">
+        <div style="font-size:16px;line-height:1;">📣</div>
+        <div style="color:#FF8A33;font-size:10.5px;font-weight:800;letter-spacing:.12em;margin-top:5px;">AD</div>
+        <div style="color:${B.muted};font-size:11.5px;line-height:1.45;margin-top:3px;">makes the phone<br/>ring</div>
+      </td>
+      <td width="33%" align="center" style="padding:10px 6px;border:1px solid ${B.line};border-radius:12px;background:${B.panel};">
+        <div style="font-size:16px;line-height:1;">🏗️</div>
+        <div style="color:${B.gold};font-size:10.5px;font-weight:800;letter-spacing:.12em;margin-top:5px;">BUILD</div>
+        <div style="color:${B.muted};font-size:11.5px;line-height:1.45;margin-top:3px;">the site and the<br/>system behind it</div>
+      </td>
+    </tr>
+  </table>
   ${blocosHtml}
   ${nota ? `<div style="margin-top:18px;padding:12px 14px;border:1px solid ${B.line};border-radius:12px;color:${B.muted};font-size:13px;line-height:1.6;">${esc(nota)}</div>` : ""}
   <div style="font-size:12.5px;color:${B.muted};text-align:center;margin-top:20px;line-height:1.65;">${t.foot}</div>`;
