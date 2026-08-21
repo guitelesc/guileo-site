@@ -69,8 +69,13 @@ export async function onRequestGet(context) {
 // the 3 canonical self-serve checkout URLs — the ONLY links that may stay active.
 const KEEP_URLS = new Set([
   "https://buy.stripe.com/bJe9AT9LldnecqjdzT3Nm0e", // Essential $149 (ex-Starter)
-  "https://buy.stripe.com/4gM7sL9Ll0AsgGz2Vf3Nm0f", // Personalized $449 (ex-Growth)
-  "https://buy.stripe.com/bJe00j6z94QI2PJ0N73Nm0g", // Full Operation $999 (ex-Scale)
+  // 🚨 OS ANTIGOS FICAM ATIVOS DE PROPÓSITO (repreço 2026-08-21). Quem assinou a $449/$999 renova
+  // por eles todo mês; desativá-los cancelaria a cobrança de cliente pagante — o pior desfecho
+  // possível de um reajuste. Os novos entram AO LADO, para quem compra a partir de agora.
+  "https://buy.stripe.com/4gM7sL9Ll0AsgGz2Vf3Nm0f", // Personalized $449 — LEGADO, assinantes ativos
+  "https://buy.stripe.com/bJe00j6z94QI2PJ0N73Nm0g", // Full Operation $999 — LEGADO, assinantes ativos
+  "https://buy.stripe.com/eVq9ATaPp4QIcqjdzT3Nm0l", // Personalized $897 (atual)
+  "https://buy.stripe.com/4gM8wP6z9gzqcqj2Vf3Nm0m", // Full Operation $1.997 (atual)
 ]);
 
 export async function onRequestPost(context) {

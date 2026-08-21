@@ -31,23 +31,23 @@ export const SELF_SERVE_PLANS = [
     id: "growth", name: "Personalized", price: 449, credits: 2000, popular: true,
     tagline: { en: "Most popular", pt: "Mais popular", es: "Más popular" },
     features: {
-      en: ["Everything in Essential", "Speed-to-Lead (60s callback)", "Reviews machine + win-back", "2,000 Gui credits / month", "Weekly owner report"],
-      pt: ["Tudo do Essential", "Speed-to-Lead (retorno em 60s)", "Máquina de reviews + win-back", "2.000 créditos do Gui / mês", "Relatório semanal do dono"],
-      es: ["Todo lo de Essential", "Speed-to-Lead (devolución en 60s)", "Máquina de reseñas + reconquista", "2.000 créditos de Gui / mes", "Reporte semanal del dueño"],
+      en: ["Everything in Essential", "Speed-to-Lead (60s callback)", "Reviews machine + win-back", "3,000 Gui credits / month", "Weekly owner report"],
+      pt: ["Tudo do Essential", "Speed-to-Lead (retorno em 60s)", "Máquina de reviews + win-back", "3.000 créditos do Gui / mês", "Relatório semanal do dono"],
+      es: ["Todo lo de Essential", "Speed-to-Lead (devolución en 60s)", "Máquina de reseñas + reconquista", "3.000 créditos de Gui / mes", "Reporte semanal del dueño"],
     },
-    url: "https://buy.stripe.com/4gM7sL9Ll0AsgGz2Vf3Nm0f",
+    url: "https://buy.stripe.com/eVq9ATaPp4QIcqjdzT3Nm0l",
     // annual Payment Link (2 months free: $4,490/yr) — to be minted; empty = no annual UI shown.
     annualUrl: "",
   },
   {
-    id: "scale", name: "Full Operation", price: 999, credits: 6000,
+    id: "scale", name: "Full Operation", price: 1997, credits: 9000,
     tagline: { en: "For busy operations", pt: "Pra operação movimentada", es: "Para operación con volumen" },
     features: {
-      en: ["Everything in Personalized", "Multi-channel: webchat + email live today; WhatsApp and SMS switch on when approved", "Campaigns + audiences", "6,000 Gui credits / month", "Priority support"],
-      pt: ["Tudo do Personalized", "Multicanal: webchat + e-mail já no ar; WhatsApp e SMS ligam quando aprovarem", "Campanhas + públicos", "6.000 créditos do Gui / mês", "Suporte prioritário"],
-      es: ["Todo lo de Personalized", "Multicanal: webchat + e-mail ya activos; WhatsApp y SMS se activan al aprobarse", "Campañas + audiencias", "6.000 créditos de Gui / mes", "Soporte prioritario"],
+      en: ["Everything in Personalized", "Multi-channel: webchat + email live today; WhatsApp and SMS switch on when approved", "Campaigns + audiences", "9,000 Gui credits / month", "Priority support"],
+      pt: ["Tudo do Personalized", "Multicanal: webchat + e-mail já no ar; WhatsApp e SMS ligam quando aprovarem", "Campanhas + públicos", "9.000 créditos do Gui / mês", "Suporte prioritário"],
+      es: ["Todo lo de Personalized", "Multicanal: webchat + e-mail ya activos; WhatsApp y SMS se activan al aprobarse", "Campañas + audiencias", "9.000 créditos de Gui / mes", "Soporte prioritario"],
     },
-    url: "https://buy.stripe.com/bJe00j6z94QI2PJ0N73Nm0g",
+    url: "https://buy.stripe.com/4gM8wP6z9gzqcqj2Vf3Nm0m",
     // annual Payment Link (2 months free: $9,990/yr) — to be minted; empty = no annual UI shown.
     annualUrl: "",
   },

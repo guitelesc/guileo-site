@@ -435,8 +435,8 @@ async function doEvent(env, b, kind, request, context) {
 // surface, so there is no new money code to audit here.
 const PLAN_LINKS = {
   starter: "https://buy.stripe.com/bJe9AT9LldnecqjdzT3Nm0e", // Essential  $149
-  growth:  "https://buy.stripe.com/4gM7sL9Ll0AsgGz2Vf3Nm0f", // Personalized $449 (default)
-  scale:   "https://buy.stripe.com/bJe00j6z94QI2PJ0N73Nm0g", // Full Operation $999
+  growth:  "https://buy.stripe.com/eVq9ATaPp4QIcqjdzT3Nm0l", // Personalized $897 (default) — repreço 2026-08-21
+  scale:   "https://buy.stripe.com/4gM8wP6z9gzqcqj2Vf3Nm0m", // Full Operation $1.997 — repreço 2026-08-21
 };
 
 // CHECKOUT: hand back the plan's Payment Link URL with the demo attribution stapled on.

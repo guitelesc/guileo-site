@@ -15,7 +15,7 @@ const ROUTES = {
   },
   "/planos": {
     title: { en: "Guileo Plans — start your AI from $149/mo", pt: "Planos Guileo — ative sua IA a partir de $149/mês", es: "Planes Guileo — activa tu IA desde $149/mes" },
-    description: { en: "Guileo self-service plans: Essential $149, Personalized $449, Full Operation $999/mo. AI that answers, books and sells 24/7. Live in minutes, 30-day money-back.", pt: "Planos de auto-serviço da Guileo: Essential $149, Personalized $449, Full Operation $999/mês. IA que atende, agenda e vende 24/7. No ar em minutos, 30 dias de garantia.", es: "Planes de autoservicio de Guileo: Essential $149, Personalized $449, Full Operation $999/mes. IA que atiende, agenda y vende 24/7. En marcha en minutos, 30 días de garantía." },
+    description: { en: "Guileo self-service plans: Essential $149, Personalized $897, Full Operation $1,997/mo. AI that answers, books and sells 24/7. Live in minutes, 30-day money-back.", pt: "Planos de auto-serviço da Guileo: Essential $149, Personalized $897, Full Operation $1.997/mês. IA que atende, agenda e vende 24/7. No ar em minutos, 30 dias de garantia.", es: "Planes de autoservicio de Guileo: Essential $149, Personalized $897, Full Operation $1.997/mes. IA que atiende, agenda y vende 24/7. En marcha en minutos, 30 días de garantía." },
   },
   "/servicos": {
     title: { en: "Guileo Services — everything we build for your business", pt: "Serviços Guileo — tudo que construímos pro seu negócio", es: "Servicios Guileo — todo lo que construimos para tu negocio" },
@@ -110,6 +110,11 @@ export async function onRequest(context) {
     "for", "get-paid", "go-live", "grader", "health-compliance", "hipaa", "home-services", "kit",
     "lead-generation", "leads", "live", "lp", "marketing", "sms", "nossa-gente", "parceiro", "partners", "pitch",
     "planos", "plans",
+    // 🚨 ROTA NOVA SEM ESTE NOME = 404 REAL EM PRODUÇÃO (o teste `rotas.test.mjs` pegou as duas).
+    // A página existe no App.jsx e abre no navegador em desenvolvimento; em produção o middleware
+    // devolve 404 porque o primeiro segmento não está nesta lista. É a armadilha que já mordeu
+    // este repositório antes — por isso o teste existe, e por isso ele roda antes de todo deploy.
+    "menu", "novo",
     // /pulse — página do produto de $49. A 4ª vez que uma rota nova quase nasceu 404: o teste
     // functions/lib/rotas.test.mjs compara App.jsx com esta lista, então ele pegaria — mas entrar
     // aqui no MESMO commit é o que faz o teste nunca precisar falhar.

@@ -438,7 +438,7 @@ export default function DemoEngine({ surface = "public", presetToken = null }) {
               <div className="mt-3 border-t border-g-line pt-3">
                 <div className="text-[11px] font-black uppercase tracking-wider text-g-muted">{t.pickPlan}</div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {[{ key: "starter", n: "Essential", p: "$149" }, { key: "growth", n: "Personalized", p: "$449" }, { key: "scale", n: "Full", p: "$999" }].map((pl) => (
+                  {[{ key: "starter", n: "Essential", p: "$149" }, { key: "growth", n: "Personalized", p: "$897" }, { key: "scale", n: "Full", p: "$1,997" }].map((pl) => (
                     <button key={pl.key} onClick={() => checkout(pl.key)} disabled={checkoutState === "go"}
                       className="rounded-lg border px-3 py-2 text-[12px] font-bold disabled:opacity-50"
                       style={pl.key === "growth"

@@ -24,7 +24,7 @@ export default function Planos() {
   const L = T[lang] || T.en;
   useSeo({
     title: lang === "pt" ? "Planos Guileo — ative sua IA a partir de US$ 149/mês" : lang === "es" ? "Planes Guileo — activa tu IA desde $149/mes" : "Guileo Plans — start your AI from $149/mo",
-    description: lang === "pt" ? "Planos de auto-serviço da Guileo: Essential US$ 149, Personalized US$ 449, Full Operation US$ 999/mês. IA que atende, agenda e vende 24/7. No ar em minutos, 30 dias de garantia." : "Guileo self-service plans: Essential $149, Personalized $449, Full Operation $999/mo. AI that answers, books and sells 24/7. Live in minutes, 30-day money-back.",
+    description: lang === "pt" ? "Planos de auto-serviço da Guileo: Essential US$ 149, Personalized US$ 897, Full Operation US$ 1.997/mês. IA que atende, agenda e vende 24/7. No ar em minutos, 30 dias de garantia." : "Guileo self-service plans: Essential $149, Personalized $897, Full Operation $1,997/mo. AI that answers, books and sells 24/7. Live in minutes, 30-day money-back.",
     path: "/planos",
   });
 

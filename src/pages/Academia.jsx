@@ -68,7 +68,7 @@ const T = {
     // 2 THE OFFER
     s2tag: "Passo 3 · A oferta",
     s2h: "Dois trilhos. Saiba qual oferecer.",
-    trackA: { name: "Trilho A · Self-service", who: "Negócio pequeno, dono ocupado, quer começar simples", what: "Ele assina sozinho no site: Essential $149 · Personalized $449 · Full Operation $999/mês (créditos da Gui inclusos)", you: "Você indica com seu link e ganha comissão RECORRENTE: 10–20% da mensalidade, todo mês, enquanto o cliente pagar", ex: "Ex: Personalized $449 → até $90/mês pra você, POR cliente, pra sempre" },
+    trackA: { name: "Trilho A · Self-service", who: "Negócio pequeno, dono ocupado, quer começar simples", what: "Ele assina sozinho no site: Essential $149 · Personalized $897 · Full Operation $1.997/mês (créditos da Gui inclusos)", you: "Você indica com seu link e ganha comissão RECORRENTE: 10–20% da mensalidade, todo mês, enquanto o cliente pagar", ex: "Ex: Personalized $897 → até $180/mês pra você, POR cliente, pra sempre" },
     trackB: { name: "Trilho B · Sob medida ⭐", who: "Negócio estabelecido (clínica, restaurante movimentado, imobiliária) que perde dinheiro real todo mês", what: "Pacote desenhado pro negócio — SEM preço de tabela: cada proposta é cotada depois de estudar o negócio (guia interno típico: setup + $1.5k–3k/mês)", you: "Você conduz a venda e ganha 20% RECORRENTE sobre a mensalidade (+ 20% do setup, uma vez)", ex: "Ex: retainer de $1.500/mês → $300/mês pra você, todo mês" },
     trackRule: "Regra de bolso: dono que reclama de \"perder ligação/cliente\" e fatura > $20k/mês → Trilho B. Resto → Trilho A. Na dúvida, agenda a demo — a conversa revela.",
     // 3 LEARN
@@ -146,12 +146,12 @@ const T = {
     s5tag: "Passo 6 · Níveis",
     s5h: "Comece agendando. Cresça fechando.",
     lvl1: { name: "Nível 1 · Agendador", what: "Você prospecta e agenda a demo. O Luis fecha com você junto (e você aprende vendo).", earn: "10% RECORRENTE da mensalidade de cada cliente que você agendou — todo mês, enquanto ele pagar", req: "Requisito: completar este Academy" },
-    lvl2: { name: "Nível 2 · Closer ⭐", what: "Você conduz a venda inteira: demo, proposta, fechamento.", earn: "20% RECORRENTE de toda a sua carteira (Personalized $449 → $90/mês por cliente; 10 clientes = $900/mês pra sempre)", req: "Requisito: 3 vendas fechadas como Agendador + aprovação no treino" },
+    lvl2: { name: "Nível 2 · Closer ⭐", what: "Você conduz a venda inteira: demo, proposta, fechamento.", earn: "20% RECORRENTE de toda a sua carteira (Personalized $897 → $180/mês por cliente; 10 clientes = $1.800/mês pra sempre)", req: "Requisito: 3 vendas fechadas como Agendador + aprovação no treino" },
     // 6 ACT
     simH: "🧮 Simula sua renda RECORRENTE",
     simDeals: "Clientes ativos na sua carteira",
     simLevel: "Seu nível",
-    simNote: "Base: plano Personalized $449/mês (o mais vendido). Comissão recorrente: paga todo mês enquanto o cliente pagar.",
+    simNote: "Base: plano Personalized $897/mês (o mais vendido). Comissão recorrente: paga todo mês enquanto o cliente pagar.",
     faqH: "❓ Dúvidas de parceiro (as que todo mundo tem)",
     faq: [
       ["Preciso pagar algo pra entrar?", "Não. Zero taxa, zero mensalidade. Você investe seu tempo; a Guileo investe o produto, a entrega e o treinamento."],
@@ -186,7 +186,7 @@ const T = {
       ["Dia 5-7", "Faça as demos com o Luis · primeira comissão a caminho"],
     ],
     kitH: "Seu arsenal",
-    kit: [["📊 Deck de vendas", "/deck"], ["📱 Cola de bolso", "/cola"], ["🎤 Pitch do cliente", "/pitch"], ["📄 Gerador de proposta", "/proposta?to=Cliente&price=449&recover=3900"], ["🤝 Deck do parceiro", "/parceiro"], ["🎯 Quiz (lead frio)", "/quiz"], ["🧮 Calculadora", "/calculator"]],
+    kit: [["📊 Deck de vendas", "/deck"], ["📱 Cola de bolso", "/cola"], ["🎤 Pitch do cliente", "/pitch"], ["📄 Gerador de proposta", "/proposta?to=Cliente&price=897&recover=3900"], ["🤝 Deck do parceiro", "/parceiro"], ["🎯 Quiz (lead frio)", "/quiz"], ["🧮 Calculadora", "/calculator"]],
     cta: "🤝 Quero entrar — falar com o Luis",
     ctaMsg: "Oi Luis! Completei o Partner Academy e quero começar como Agendador.",
   },
@@ -243,7 +243,7 @@ const T = {
     honestWhy: "With a 30-day guarantee, overselling = refund + burned reputation. Honest selling = clients who stay and refer.",
     s2tag: "Step 3 · The offer",
     s2h: "Two tracks. Know which to offer.",
-    trackA: { name: "Track A · Self-service", who: "Small business, busy owner, wants to start simple", what: "They sign up on the site: Essential $149 · Personalized $449 · Full Operation $999/mo (Gui credits included)", you: "You refer with your link and earn RECURRING commission: 10–20% of the monthly fee, every month, for as long as they pay", ex: "E.g.: Personalized $449 → up to $90/mo to you, PER client, forever" },
+    trackA: { name: "Track A · Self-service", who: "Small business, busy owner, wants to start simple", what: "They sign up on the site: Essential $149 · Personalized $897 · Full Operation $1,997/mo (Gui credits included)", you: "You refer with your link and earn RECURRING commission: 10–20% of the monthly fee, every month, for as long as they pay", ex: "E.g.: Personalized $897 → up to $180/mo to you, PER client, forever" },
     trackB: { name: "Track B · Tailored ⭐", who: "Established business (clinic, busy restaurant, realty) leaking real money monthly", what: "A package designed for them: NO list price — quoted after we study the business", you: "You run the sale and earn 20% RECURRING on the monthly (+ 20% of setup, once)", ex: "E.g.: a $1,500/mo retainer → $300/mo to you, every month" },
     trackRule: "Rule of thumb: an owner who complains about \"missing calls/clients\" and bills > $20k/mo → Track B. Everyone else → Track A. In doubt, book the demo — the conversation reveals it.",
     s3tag: "Step 4 · Learn",
@@ -318,11 +318,11 @@ const T = {
     s5tag: "Step 6 · Levels",
     s5h: "Start by booking. Grow by closing.",
     lvl1: { name: "Level 1 · Setter", what: "You prospect and book the demo. Luis closes with you in the room (you learn by watching).", earn: "10% RECURRING on the monthly fee of every client you booked — every month, while they pay", req: "Requirement: complete this Academy" },
-    lvl2: { name: "Level 2 · Closer ⭐", what: "You run the whole sale: demo, proposal, close.", earn: "20% RECURRING on your whole portfolio (Personalized $449 → $90/mo per client; 10 clients = $900/mo forever)", req: "Requirement: 3 closed sales as Setter + passing the training" },
+    lvl2: { name: "Level 2 · Closer ⭐", what: "You run the whole sale: demo, proposal, close.", earn: "20% RECURRING on your whole portfolio (Personalized $897 → $180/mo per client; 10 clients = $1,800/mo forever)", req: "Requirement: 3 closed sales as Setter + passing the training" },
     simH: "🧮 Simulate your RECURRING income",
     simDeals: "Active clients in your portfolio",
     simLevel: "Your level",
-    simNote: "Basis: Personalized plan $449/mo (best seller). Recurring: paid every month while the client pays.",
+    simNote: "Basis: Personalized plan $897/mo (best seller). Recurring: paid every month while the client pays.",
     faqH: "❓ Partner questions (the ones everyone has)",
     faq: [
       ["Do I pay anything to join?", "No. Zero fees, zero monthly. You invest your time; Guileo invests the product, delivery and training."],
@@ -357,7 +357,7 @@ const T = {
       ["Day 5-7", "Run the demos with Luis · first commission on its way"],
     ],
     kitH: "Your arsenal",
-    kit: [["📊 Sales deck", "/deck"], ["📱 Pocket card", "/cola"], ["🎤 Client pitch", "/pitch"], ["📄 Proposal builder", "/proposta?to=Client&price=449&recover=3900"], ["🤝 Partner deck", "/parceiro"], ["🎯 Quiz (cold leads)", "/quiz"], ["🧮 Calculator", "/calculator"]],
+    kit: [["📊 Sales deck", "/deck"], ["📱 Pocket card", "/cola"], ["🎤 Client pitch", "/pitch"], ["📄 Proposal builder", "/proposta?to=Client&price=897&recover=3900"], ["🤝 Partner deck", "/parceiro"], ["🎯 Quiz (cold leads)", "/quiz"], ["🧮 Calculator", "/calculator"]],
     cta: "🤝 I'm in — talk to Luis",
     ctaMsg: "Hi Luis! I completed the Partner Academy and want to start as a Setter.",
   },
@@ -533,11 +533,14 @@ function Roleplay({ lang, t }) {
 }
 
 // Earnings simulator: deals/month slider × level (Setter 10% / Closer 20%).
-// Recurring model: pct × avg monthly ($449 Personalized) × active clients = monthly income.
+// Recurring model: pct × avg monthly (Personalized, lido de guileoPlans) × active clients = monthly income.
 function EarnSim({ t }) {
   const [deals, setDeals] = useState(4);
   const [closer, setCloser] = useState(true);
-  const avgMonthly = 449; // Personalized — best seller
+  // 🚨 O NÚMERO VEM DA FONTE (2026-08-21). Era `449` escrito à mão — no dia do reajuste o
+  // simulador prometeria ao vendedor uma comissão calculada sobre um preço que não existe mais.
+  // Promessa de ganho errada é a que faz o vendedor sair.
+  const avgMonthly = planByKey("growth").amount; // Personalized — o mais vendido
   const pct = closer ? 0.2 : 0.1;
   const monthly = Math.round(avgMonthly * pct * deals);
   return (
