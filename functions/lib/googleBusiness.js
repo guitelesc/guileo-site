@@ -167,7 +167,10 @@ export async function vizinhos(env, { tipo, endereco, excluirNome = "", excluirS
         // do vendedor, e uma fila sem telefone é uma lista de leitura: o botão de ligar não tem
         // pra onde apontar. O Google já devolve os dois na MESMA consulta que a gente já paga —
         // pedir depois seria uma segunda chamada cobrada pelo dado que estava na mão.
-        "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.regularOpeningHours.weekdayDescriptions,places.websiteUri,places.nationalPhoneNumber,places.formattedAddress",
+        // COORDENADA JUNTO (2026-08-21): a fila do vendedor passa a ordenar por DISTÂNCIA — ele
+        // trabalha uma rota, não uma lista aleatória. `places.location` vem na MESMA consulta que
+        // já pagamos; pedir depois seria pagar duas vezes pelo mesmo fato.
+        "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.regularOpeningHours.weekdayDescriptions,places.websiteUri,places.nationalPhoneNumber,places.formattedAddress,places.location",
       },
       body: JSON.stringify({ textQuery: q, maxResultCount: 10 }),
     });

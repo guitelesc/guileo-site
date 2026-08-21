@@ -104,6 +104,8 @@ const Cola = lazyRetry(() => import("./pages/Cola")); // partner pocket card —
 const Roteiro = lazyRetry(() => import("./pages/Roteiro")); // 2-min live-demo script — partner reads it before/during the meeting
 const Prospects = lazyRetry(() => import("./pages/Prospects")); // first-sales kit — 10 best prospect types + cold-approach message + 3-step path
 const Deck = lazyRetry(() => import("./pages/Deck")); // collaborator sales deck — navigable web presentation
+const Menu = lazyRetry(() => import("./pages/Menu")); // done-for-you module menu — pitch weapon (unlisted)
+const Novo = lazyRetry(() => import("./pages/Novo")); // website-porta engine — rebuilt client sites / vertical showcase models
 const Vendedor = lazyRetry(() => import("./pages/Vendedor")); // logged-in seller hub — playbook + pitch cards (lib+AI) + quote generator + support
 const Equipe = lazyRetry(() => import("./pages/Equipe")); // internal team hub — 🛠 tech support queue + 📊 marketing/ads performance
 const ConectarPagamento = lazyRetry(() => import("./pages/ConectarPagamento")); // client connects their own Stripe → Gui charges land in THEIR account
@@ -205,6 +207,8 @@ export default function App() {
             <Route path="/prospects" element={<Prospects />} />
             <Route path="/prospeccao" element={<Navigate to="/prospects" replace />} />
             <Route path="/deck" element={<Deck />} />
+            <Route path="/menu" element={<Menu />} />
+            <Route path="/novo/:slug" element={<Novo />} />
             <Route path="/vendedor" element={<Vendedor />} />
             {/* Hub interno da equipe — /tecnico e /marketing abrem a mesma página na aba certa */}
             <Route path="/equipe" element={<Equipe />} />

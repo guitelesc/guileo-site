@@ -8,6 +8,7 @@
 // seller can only ever read/write/delete their OWN prospects (enforced again seller-side in the
 // SECURITY DEFINER RPCs, db/seller_prospects.sql). Same SB/ANON + json() pattern as onboard-draft.js.
 import { json, sameOrigin, rateLimited, safeEq } from "../lib/guard.js";
+import { svcJson } from "../lib/sb.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -105,6 +106,15 @@ export async function onRequestPost(context) {
       if (!r.ok) return json({ error: "save failed (paste db/seller_prospects.sql)" }, 500);
       const row = await r.json().catch(() => null);
       if (!row) return json({ error: "not found" }, 404); // update matched nothing (not the seller's row)
+
+      // ── A COORDENADA, QUANDO VEM ─────────────────────────────────────────────────────────
+      // É ela que transforma a fila numa ROTA. Vai por uma RPC separada de propósito: `sp_upsert`
+      // é o caminho que o vendedor usa a cada nota salva, e acrescentar campo lá seria arriscar o
+      // fluxo principal por um dado opcional. Aqui, falhar em gravar a coordenada não pode
+      // desfazer o prospect que já foi salvo — por isso é best-effort e vem DEPOIS.
+      if (typeof p.lat === "number" && typeof p.lng === "number") {
+        await svcJson(env, "prospect_geo_set", { p_secret: ING, p_id: row.id, p_lat: p.lat, p_lng: p.lng }).catch(() => {});
+      }
       return json({ ok: true, prospect: row });
     }
 

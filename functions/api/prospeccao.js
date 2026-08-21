@@ -180,6 +180,8 @@ export async function onRequest({ request, env }) {
         avaliacoes: typeof p?.userRatingCount === "number" ? p.userRatingCount : null,
         telefone: p?.nationalPhoneNumber || "",
         endereco: p?.formattedAddress || "",
+        lat: typeof p?.location?.latitude === "number" ? p.location.latitude : null,
+        lng: typeof p?.location?.longitude === "number" ? p.location.longitude : null,
         // sem site não dá para medir: o X-Ray lê o site. Fica declarado, não sumido.
         mensuravel: !!p?.websiteUri,
       })),
@@ -217,6 +219,9 @@ export async function onRequest({ request, env }) {
         site: p?.websiteUri || "",
         telefone: p?.nationalPhoneNumber || "",
         endereco: p?.formattedAddress || "",
+        // a coordenada viaja junto do resto da ficha: é ela que vira ROTA na fila do vendedor
+        lat: typeof p?.location?.latitude === "number" ? p.location.latitude : null,
+        lng: typeof p?.location?.longitude === "number" ? p.location.longitude : null,
         nota: typeof p?.rating === "number" ? p.rating : null,
         avaliacoes: typeof p?.userRatingCount === "number" ? p.userRatingCount : null,
         mensuravel: !!p?.websiteUri,
@@ -366,6 +371,7 @@ export async function onRequest({ request, env }) {
         // o telefone vem da MESMA linha que trouxe o nome e os números — nunca de outra consulta.
         // Foi juntar duas fontes que colou "Bon Bon Salon" nos números do MK Salon.
         telefone: s(x?.telefone, 40), endereco: s(x?.endereco, 240),
+        lat: typeof x?.lat === "number" ? x.lat : null, lng: typeof x?.lng === "number" ? x.lng : null,
         nota: typeof x?.nota === "number" ? x.nota : null,
         avaliacoes: typeof x?.avaliacoes === "number" ? x.avaliacoes : null,
       }))
@@ -431,6 +437,7 @@ export async function onRequest({ request, env }) {
             : (daVizinhanca ? entrada.nome : dom),
           telefone: entrada.telefone || null,
           endereco: entrada.endereco || null,
+          lat: entrada.lat ?? null, lng: entrada.lng ?? null,
           fonte_da_ficha: av.minha_ficha ? "busca direta" : (daVizinhanca ? "listagem da vizinhança" : null),
           nome_confirmado: confirmado,
           nome_no_site: confirmado ? null : (av.business || null),

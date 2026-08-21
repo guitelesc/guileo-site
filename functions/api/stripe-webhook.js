@@ -3,6 +3,9 @@
 // email is credited (1 credit per USD) in client_credits, which the portal reads live.
 // Signature-verified with STRIPE_WEBHOOK_SECRET (whsec_…). Works in test & live mode.
 import { json, safeEq } from "../lib/guard.js";
+// 🚨 PREÇO E CRÉDITOS: FONTE ÚNICA. Valor escrito à mão aqui é o caminho para o cliente pagar o
+// preço novo e receber crédito de "amount desconhecido" — pagou e não recebeu, sem erro na tela.
+import { GUILEO_PLANS } from "../../src/data/guileoPlans.js";
 import { welcomeSelfServeEmail, ownerAlertEmail, dunningEmail, sellerCommissionEmail, teamKickoffBriefEmail } from "../lib/emailTemplates.js";
 import { provisionClientAgent, buyAndBindNumber, forwardingInstructions, buildDefaultSchedulePayload } from "../lib/provision.js";
 import { svcRpc } from "../lib/sb.js";
@@ -97,7 +100,12 @@ export async function onRequestPost(context) {
         // matches a plan/top-up price exactly; a partial refund falls through to a conservative
         // per-dollar estimate (never over-deducts; `least(cur,want)` clamps ≥0). Idempotent by the
         // refund/dispute object id so a Stripe retry can never double-deduct.
-        const PLAN_CREDITS = { 14900: 500, 44900: 2000, 99900: 6000 };
+        // mesma fonte do bloco principal — duas tabelas de preço no mesmo arquivo é como elas
+        // se desencontram no dia do reajuste, e o estorno devolveria crédito errado.
+        const PLAN_CREDITS = Object.fromEntries([
+          ...GUILEO_PLANS.map((p) => [Math.round(Number(p.amount) * 100), Number(p.credits)]),
+          [44900, 2000], [99900, 6000],
+        ]);
         const TOPUP_CREDITS = { 4900: 500, 11900: 1500 };
         const revoke = PLAN_CREDITS[refundedCents] || TOPUP_CREDITS[refundedCents] || Math.round(refundedCents / 100);
         let balanceAfter = null;
@@ -290,8 +298,21 @@ export async function onRequestPost(context) {
       // plain — no metadata needed): $149→500cr, $449→2,000cr, $999→6,000cr. Any other
       // amount falls back to 1 credit per USD. Metadata NEVER decides credits (see below);
       // the PLAN_CREDITS exact-amount mapping is the source of truth.
-      const PLAN_CREDITS = { 14900: 500, 44900: 2000, 99900: 6000 };
-      const PLAN_NAME = { 14900: "Essential", 44900: "Personalized", 99900: "Full Operation" };
+      // 🚨 A TABELA DE PREÇOS VEM DA FONTE (2026-08-21). Estes valores eram escritos à mão aqui.
+      // No dia do reajuste ($449→$897, $999→$1.997) um pagamento novo cairia FORA da tabela e o
+      // cliente teria pago recebendo `cents/100` créditos em vez do plano — pagou e não recebeu,
+      // sem erro nenhum na tela. Preço vive em `src/data/guileoPlans.js`; aqui ele é LIDO.
+      // Os valores ANTIGOS continuam mapeados de propósito: quem já assinou paga o que assinou, e
+      // a renovação dele não pode virar "amount desconhecido" no mês seguinte ao reajuste.
+      const PLANOS_ANTIGOS = { 44900: { credits: 2000, name: "Personalized" }, 99900: { credits: 6000, name: "Full Operation" } };
+      const PLAN_CREDITS = Object.fromEntries([
+        ...GUILEO_PLANS.map((p) => [Math.round(Number(p.amount) * 100), Number(p.credits)]),
+        ...Object.entries(PLANOS_ANTIGOS).map(([c, v]) => [Number(c), v.credits]),
+      ]);
+      const PLAN_NAME = Object.fromEntries([
+        ...GUILEO_PLANS.map((p) => [Math.round(Number(p.amount) * 100), p.name]),
+        ...Object.entries(PLANOS_ANTIGOS).map(([c, v]) => [Number(c), v.name]),
+      ]);
       // SECURITY: credits derive ONLY from the amount actually paid — NEVER from Stripe metadata
       // (price/line metadata is editable and could grant 100k credits for $0.01). Metadata = plan label only.
       const credits = PLAN_CREDITS[cents] || Math.round(cents / 100);

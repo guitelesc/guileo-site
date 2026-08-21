@@ -123,7 +123,7 @@ const D = {
     stages: { abordado: "Approached", conversa: "Talking", demo: "Demo", proposta: "Proposal", fechado: "Closed", perdido: "Lost" },
     addFunil: "➕ Add to funnel", adding: "Adding…", inFunil: "In the funnel",
     lastUpdate: "Last update", summary: "What they said",
-    aCall: "📞 Call", aWa: "💬 WhatsApp", aMail: "✉️ Email", aReport: "📄 Report", aCopy: "📋 Copy link", copied: "Copied ✓", aNoWay: "No phone or email on this lead — ask for it on the call", aMeasure: "🩻 Measure with X-Ray", fones: "📞 Fill in phone + email", aGmail: "📧 Gmail", aCopiarMail: "📋 Copy the email", aCopiadoMail: "Copied ✓", aQuote: "🧾 Quote", aContract: "📄 Contract", logMail: "email sent · promised $50 credit on month 1",
+    aCall: "📞 Call", aWa: "💬 WhatsApp", aMail: "✉️ Email", aReport: "📄 Report", aCopy: "📋 Copy link", copied: "Copied ✓", aNoWay: "No phone or email on this lead — ask for it on the call", aMeasure: "🩻 Measure with X-Ray", fones: "📞 Fill in phone + email", perto: "📍 Nearest me", pertoOn: "📍 By distance", geoNegado: "you did not allow location — the queue stays in arrival order", geoIndisp: "this device has no location", semLocal: "location unknown", aGmail: "📧 Gmail", aCopiarMail: "📋 Copy the email", aCopiadoMail: "Copied ✓", aQuote: "🧾 Quote", aContract: "📄 Contract", logMail: "email sent · promised $50 credit on month 1",
     waMsg: (n, b) => `Hi ${n || "there"}! This is Guileo${b ? ` — about ${b}` : ""}. You reached out about the AI receptionist that answers every call and books for you. Do you have 2 minutes?`,
     mailSubj: (b) => `${b || "Your business"} — I measured what your neighbors publish`,
     mailHi: (n) => `Hi ${n || "there"},`,
@@ -166,7 +166,7 @@ const D = {
     stages: { abordado: "Abordado", conversa: "Conversa", demo: "Demo", proposta: "Proposta", fechado: "Fechado", perdido: "Perdido" },
     addFunil: "➕ Colocar no funil", adding: "Colocando…", inFunil: "No funil",
     lastUpdate: "Última atualização", summary: "O que ele falou",
-    aCall: "📞 Ligar", aWa: "💬 WhatsApp", aMail: "✉️ E-mail", aReport: "📄 Relatório", aCopy: "📋 Copiar link", copied: "Copiado ✓", aNoWay: "Sem telefone nem e-mail — peça na ligação", aMeasure: "🩻 Medir no X-Ray", fones: "📞 Completar telefone + e-mail", aGmail: "📧 Gmail", aCopiarMail: "📋 Copiar o e-mail", aCopiadoMail: "Copiado ✓", aQuote: "🧾 Orçamento", aContract: "📄 Contrato", logMail: "e-mail enviado · prometido $50 de crédito no 1º mês",
+    aCall: "📞 Ligar", aWa: "💬 WhatsApp", aMail: "✉️ E-mail", aReport: "📄 Relatório", aCopy: "📋 Copiar link", copied: "Copiado ✓", aNoWay: "Sem telefone nem e-mail — peça na ligação", aMeasure: "🩻 Medir no X-Ray", fones: "📞 Completar telefone + e-mail", perto: "📍 Mais perto de mim", pertoOn: "📍 Por distância", geoNegado: "você não permitiu a localização — a fila fica na ordem de chegada", geoIndisp: "este aparelho não tem localização", semLocal: "sem local conhecido", aGmail: "📧 Gmail", aCopiarMail: "📋 Copiar o e-mail", aCopiadoMail: "Copiado ✓", aQuote: "🧾 Orçamento", aContract: "📄 Contrato", logMail: "e-mail enviado · prometido $50 de crédito no 1º mês",
     waMsg: (n, b) => `Oi ${n || ""}! Aqui é da Guileo${b ? ` — sobre o ${b}` : ""}. Você chamou a gente sobre a recepcionista de IA que atende toda ligação e agenda por você. Tem 2 minutinhos?`,
     mailSubj: (b) => `${b || "Seu negócio"} — medi o que os seus vizinhos publicam`,
     mailHi: (n) => `Oi ${n || ""},`,
@@ -209,7 +209,7 @@ const D = {
     stages: { abordado: "Abordado", conversa: "Conversación", demo: "Demo", proposta: "Propuesta", fechado: "Cerrado", perdido: "Perdido" },
     addFunil: "➕ Poner en el embudo", adding: "Agregando…", inFunil: "En el embudo",
     lastUpdate: "Última actualización", summary: "Lo que dijo",
-    aCall: "📞 Llamar", aWa: "💬 WhatsApp", aMail: "✉️ Correo", aReport: "📄 Informe", aCopy: "📋 Copiar enlace", copied: "Copiado ✓", aNoWay: "Sin teléfono ni correo — pídelo en la llamada", aMeasure: "🩻 Medir con X-Ray", fones: "📞 Completar teléfono + correo", aGmail: "📧 Gmail", aCopiarMail: "📋 Copiar el correo", aCopiadoMail: "Copiado ✓", aQuote: "🧾 Presupuesto", aContract: "📄 Contrato", logMail: "correo enviado · prometido $50 de crédito en el 1er mes",
+    aCall: "📞 Llamar", aWa: "💬 WhatsApp", aMail: "✉️ Correo", aReport: "📄 Informe", aCopy: "📋 Copiar enlace", copied: "Copiado ✓", aNoWay: "Sin teléfono ni correo — pídelo en la llamada", aMeasure: "🩻 Medir con X-Ray", fones: "📞 Completar teléfono + correo", perto: "📍 Más cerca de mí", pertoOn: "📍 Por distancia", geoNegado: "no permitiste la ubicación — la fila queda en orden de llegada", geoIndisp: "este equipo no tiene ubicación", semLocal: "sin ubicación conocida", aGmail: "📧 Gmail", aCopiarMail: "📋 Copiar el correo", aCopiadoMail: "Copiado ✓", aQuote: "🧾 Presupuesto", aContract: "📄 Contrato", logMail: "correo enviado · prometido $50 de crédito en el 1er mes",
     waMsg: (n, b) => `¡Hola ${n || ""}! Somos de Guileo${b ? ` — sobre ${b}` : ""}. Nos escribiste por la recepcionista de IA que contesta cada llamada y agenda por ti. ¿Tienes 2 minutos?`,
     mailSubj: (b) => `${b || "Tu negocio"} — medí lo que publican tus vecinos`,
     mailHi: (n) => `Hola ${n || ""},`,
@@ -252,7 +252,7 @@ const D = {
     stages: { abordado: "संपर्क किया", conversa: "बातचीत", demo: "डेमो", proposta: "प्रस्ताव", fechado: "बंद", perdido: "खोया" },
     addFunil: "➕ फ़नल में डालें", adding: "जोड़ा जा रहा…", inFunil: "फ़नल में",
     lastUpdate: "अंतिम अपडेट", summary: "उसने क्या कहा",
-    aCall: "📞 कॉल", aWa: "💬 WhatsApp", aMail: "✉️ ईमेल", aReport: "📄 रिपोर्ट", aCopy: "📋 लिंक कॉपी", copied: "कॉपी ✓", aNoWay: "फ़ोन या ईमेल नहीं — कॉल पर माँगें", aMeasure: "🩻 X-Ray से मापें", fones: "📞 फ़ोन + ईमेल भरें", aGmail: "📧 Gmail", aCopiarMail: "📋 ईमेल कॉपी करें", aCopiadoMail: "कॉपी ✓", aQuote: "🧾 कोटेशन", aContract: "📄 अनुबंध", logMail: "ईमेल भेजा · पहले महीने $50 क्रेडिट का वादा",
+    aCall: "📞 कॉल", aWa: "💬 WhatsApp", aMail: "✉️ ईमेल", aReport: "📄 रिपोर्ट", aCopy: "📋 लिंक कॉपी", copied: "कॉपी ✓", aNoWay: "फ़ोन या ईमेल नहीं — कॉल पर माँगें", aMeasure: "🩻 X-Ray से मापें", fones: "📞 फ़ोन + ईमेल भरें", perto: "📍 मेरे पास", pertoOn: "📍 दूरी से", geoNegado: "आपने स्थान की अनुमति नहीं दी — सूची आगमन क्रम में रहेगी", geoIndisp: "इस डिवाइस में स्थान नहीं है", semLocal: "स्थान अज्ञात", aGmail: "📧 Gmail", aCopiarMail: "📋 ईमेल कॉपी करें", aCopiadoMail: "कॉपी ✓", aQuote: "🧾 कोटेशन", aContract: "📄 अनुबंध", logMail: "ईमेल भेजा · पहले महीने $50 क्रेडिट का वादा",
     waMsg: (n, b) => `Hi ${n || "there"}! This is Guileo${b ? ` — about ${b}` : ""}. You reached out about the AI receptionist that answers every call and books for you. Do you have 2 minutes?`,
     mailSubj: (b) => `${b || "आपका व्यवसाय"} — मैंने मापा कि आपके पड़ोसी क्या दिखाते हैं`,
     mailHi: (n) => `Hi ${n || "there"},`,
@@ -310,6 +310,16 @@ const anexaApontamento = (notaAtual, texto, locale) => {
   const linha = `• ${carimbo} — ${t2.replace(/\n+/g, " ")}`;
   const antigo = String(notaAtual || "").trim();
   return antigo ? `${linha}\n${antigo}` : linha;
+};
+
+// Distância em linha reta (Haversine). Não é a distância de CARRO — e é honesto que não seja:
+// para ordenar uma rota a pé/de carro num bairro, a linha reta acerta a vizinhança e não custa
+// uma chamada paga de rotas a cada lead. O número aparece arredondado, sem falsa precisão.
+const kmEntre = (a, b) => {
+  const R = 6371, r = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
 };
 
 const siteDaNota = (nota) => {
@@ -486,6 +496,10 @@ export default function SellerLeads({ lang = "pt", seller, market = "us", nav, h
         // removido. O prospect carrega o link do relatório na nota desde a importação: o id está
         // ali, escrito. Ler dali é reconectar o que já existe — não inventar dado.
         avaliacaoId: avalIdDaNota(p.note),
+        // ONDE FICA — é o que transforma a fila numa ROTA. `null` = não sei onde fica, e isso
+        // manda o prospect para o FIM da lista com o motivo dito, nunca para o começo.
+        lat: typeof p.lat === "number" ? p.lat : null,
+        lng: typeof p.lng === "number" ? p.lng : null,
         stage: p.stage || STAGES[0],
         note: p.note || "",
         nextAt: p.next_at || "",
@@ -535,9 +549,18 @@ export default function SellerLeads({ lang = "pt", seller, market = "us", nav, h
 
     // ⏱️ ORDEM = RECÊNCIA. Sem "score", sem probabilidade, sem heurística de prioridade: só existe
     // evidência forte para o TEMPO. Quem não tem hora de chegada vai para o fim (não some).
-    itens.sort((a, b) => (b.chegou ?? -Infinity) - (a.chegou ?? -Infinity));
+    // ── A ORDEM: rota quando ele pediu, chegada quando não ────────────────────────────────
+    // 🚨 SEM COORDENADA VAI PARA O FIM, NUNCA PARA O COMEÇO. `null` é "não sei onde fica", e um
+    // desconhecido no topo da rota faz o vendedor atravessar o bairro atrás de um endereço que
+    // ninguém mediu. Ausência não compete com medição — a mesma regra do buraco na fila de ataque.
+    if (meuLocal) {
+      for (const it of itens) it.distanciaKm = (it.lat != null && it.lng != null) ? kmEntre(meuLocal, it) : null;
+      itens.sort((a, b) => (a.distanciaKm ?? Infinity) - (b.distanciaKm ?? Infinity));
+    } else {
+      itens.sort((a, b) => (b.chegou ?? -Infinity) - (a.chegou ?? -Infinity));
+    }
     return itens;
-  }, [inbox, funil, market]);
+  }, [inbox, funil, market, meuLocal]);
 
   const visiveis = useMemo(() => {
     let l = fila;
@@ -671,12 +694,25 @@ export default function SellerLeads({ lang = "pt", seller, market = "us", nav, h
               {buscandoFone ? `${buscandoFone.feitos}/${buscandoFone.total} · ${buscandoFone.achados} ✓` : t.fones}
             </button>
           )}
+          {/* 📍 A ROTA. A localização é PEDIDA, nunca tomada: só quando ele aperta, e o próprio
+              navegador mostra o pedido. Negar não quebra nada — a fila volta à ordem de chegada. */}
+          <button type="button" onClick={pedirLocal} disabled={geoEstado === "pedindo"}
+            className={`inline-flex min-h-[48px] items-center rounded-full px-4 text-[12.5px] font-bold ring-1 transition ${
+              meuLocal ? "bg-g-green/15 text-g-green ring-g-green/40" : "bg-white/[0.04] text-g-muted ring-white/15 hover:text-g-word"}`}>
+            {geoEstado === "pedindo" ? "…" : meuLocal ? t.pertoOn : t.perto}
+          </button>
           <button type="button" onClick={recarrega}
             className="inline-flex min-h-[48px] shrink-0 items-center rounded-full border border-white/15 px-4 text-[12.5px] font-bold text-g-muted hover:text-g-word">
             {t.refresh}
           </button>
         </div>
       </div>
+
+      {(geoEstado === "negado" || geoEstado === "indisponivel") && (
+        <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-[12px]" style={{ color: NOT_MEASURED }}>
+          {geoEstado === "negado" ? t.geoNegado : t.geoIndisp}
+        </div>
+      )}
 
       {/* ── CONTADORES — só desenham o que veio medido. `null` fica cinza, nunca 0. ─────────── */}
       {(inbox.estado === "ok" || funil.estado === "ok") && (
@@ -818,6 +854,23 @@ function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, sal
   const [copiado, setCopiado] = useState(false);
   const [mailCopiado, setMailCopiado] = useState(false);
   const [apontamento, setApontamento] = useState("");
+  // ── PERTO DE MIM (2026-08-21) ─────────────────────────────────────────────────────────────
+  // A fila vinha por ordem de chegada — o pior roteiro possível na rua: o vendedor atravessa o
+  // bairro, volta, atravessa de novo. Ordenar por distância é a diferença entre 6 visitas e 12
+  // no mesmo dia.
+  // 🚨 A LOCALIZAÇÃO É PEDIDA, NUNCA TOMADA. Só quando ele aperta o botão, e o navegador mostra
+  // o próprio pedido. Negar não quebra nada: a fila volta à ordem de sempre, com o motivo dito.
+  const [meuLocal, setMeuLocal] = useState(null);      // {lat,lng}
+  const [geoEstado, setGeoEstado] = useState("idle");  // idle | pedindo | ok | negado | indisponivel
+  const pedirLocal = () => {
+    if (!navigator.geolocation) { setGeoEstado("indisponivel"); return; }
+    setGeoEstado("pedindo");
+    navigator.geolocation.getCurrentPosition(
+      (p) => { setMeuLocal({ lat: p.coords.latitude, lng: p.coords.longitude }); setGeoEstado("ok"); },
+      () => setGeoEstado("negado"),
+      { timeout: 10000, maximumAge: 300000 },
+    );
+  };
   // A nota segue o BANCO quando o banco muda, e SÓ então — o padrão "ajustar estado quando uma
   // prop muda", em render, sem efeito. Com um `useEffect([item.note])` cada refetch de 60s
   // reescreveria o campo; aqui `notaBase` só se move quando o valor gravado realmente mudou, então
@@ -955,6 +1008,9 @@ function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, sal
           {/* PESO DE MANCHETE, não legenda de canto: o achado mais bem sustentado da pesquisa. */}
           <span className="block text-[17px] font-black leading-none tabular-nums" style={{ color: u.hex }}>{relogio}</span>
           <span className="mt-1 block text-[10px] font-bold uppercase tracking-wider" style={{ color: u.hex, opacity: 0.85 }}>{selo}</span>
+          {item.distanciaKm != null && (
+            <span className="mt-1 block text-[10.5px] font-bold tabular-nums text-g-muted">📍 {item.distanciaKm < 1 ? `${Math.round(item.distanciaKm * 1000)} m` : `${item.distanciaKm.toFixed(1)} km`}</span>
+          )}
         </span>
       </button>
 

@@ -21,6 +21,24 @@
 // dizer DE QUEM depende — nunca "em breve", nunca data inventada.
 // ⚠️ Quando aprovar, tire a ressalva em `productFacts.js`, `selfServePlans.js`, `ARQUITETURA.md`
 // e AQUI, no mesmo commit. Os quatro são lidos como lei e não podem discordar.
+// ═══ REPREÇO 2026-08-21 ═════════════════════════════════════════════════════════════════════
+// Personalized $449 → $897 · Full Operation $999 → $1.997. A entrada ($149) NÃO muda: é a cunha.
+//
+// POR QUÊ: o mercado cobra por AUTOMAÇÃO, não por pacote. As dez automações que os concorrentes
+// vendem separadas somam US$ 14.750/mês; o Full Operation entregava 18 produtos por US$ 999 — um
+// desconto de 93%. Desconto desse tamanho não lê como oportunidade, lê como defeito escondido:
+// o dono não conclui "barato", conclui "o que falta aí?".
+//
+// E o preço baixo não machucava o cliente — machucava o CANAL. Com 50% de comissão, o vendedor
+// ganhava US$ 224/mês por cliente fechado. A US$ 897 ganha US$ 448, pelo mesmo esforço de venda.
+// Vendedor trabalha onde o dinheiro está; preço baixo demais deixa a empresa sem quem venda.
+//
+// 🚨 OS CRÉDITOS SOBEM JUNTO (2.000→3.000 e 6.000→9.000). Subir preço sem subir entrega é o que
+// transforma reajuste em motivo de cancelamento. Mesmo assim continuamos ~7× abaixo do mercado.
+//
+// 🚨 CLIENTE ATUAL FICA NA CONDIÇÃO ANTIGA. O preço vive aqui e vale para quem ENTRA; quem já
+// paga tem o valor gravado em `client_credits`. Mexer no que já foi vendido é a única coisa pior
+// que cobrar pouco.
 export const GUILEO_PLANS = [
   {
     key: "starter", name: "Essential", price: "$149/mo", amount: 149, priceBR: "US$ 149/mês", amountBR: 149, credits: 500,
@@ -33,23 +51,23 @@ export const GUILEO_PLANS = [
     },
   },
   {
-    key: "growth", name: "Personalized", price: "$449/mo", amount: 449, priceBR: "US$ 449/mês", amountBR: 449, credits: 2000, featured: true,
+    key: "growth", name: "Personalized", price: "$897/mo", amount: 897, priceBR: "US$ 897/mês", amountBR: 897, credits: 3000, featured: true,
     tag: { pt: "Mais popular", en: "Most popular", es: "Más popular", hi: "सबसे लोकप्रिय" },
     feats: {
-      pt: ["Voz + chat já no ar; WhatsApp e redes ligam quando Meta/operadora aprovarem", "Vendas & marketing automáticos", "2.000 créditos/mês", "Suporte prioritário"],
-      en: ["Voice + chat live today; WhatsApp and social switch on when Meta/carrier approve", "Automated sales & marketing", "2,000 credits/mo", "Priority support"],
-      es: ["Voz + chat ya activos; WhatsApp y redes se activan al aprobar Meta/operadora", "Ventas & marketing automáticos", "2.000 créditos/mes", "Soporte prioritario"],
-      hi: ["वॉइस + चैट अभी लाइव; WhatsApp और सोशल Meta/ऑपरेटर की मंज़ूरी पर चालू", "ऑटो सेल्स & मार्केटिंग", "2,000 क्रेडिट/माह", "प्राथमिकता सपोर्ट"],
+      pt: ["Voz + chat já no ar; WhatsApp e redes ligam quando Meta/operadora aprovarem", "Vendas & marketing automáticos", "3.000 créditos/mês", "Suporte prioritário"],
+      en: ["Voice + chat live today; WhatsApp and social switch on when Meta/carrier approve", "Automated sales & marketing", "3,000 credits/mo", "Priority support"],
+      es: ["Voz + chat ya activos; WhatsApp y redes se activan al aprobar Meta/operadora", "Ventas & marketing automáticos", "3.000 créditos/mes", "Soporte prioritario"],
+      hi: ["वॉइस + चैट अभी लाइव; WhatsApp और सोशल Meta/ऑपरेटर की मंज़ूरी पर चालू", "ऑटो सेल्स & मार्केटिंग", "3,000 क्रेडिट/माह", "प्राथमिकता सपोर्ट"],
     },
   },
   {
-    key: "scale", name: "Full Operation", price: "$999/mo", amount: 999, priceBR: "US$ 999/mês", amountBR: 999, credits: 6000,
+    key: "scale", name: "Full Operation", price: "$1,997/mo", amount: 1997, priceBR: "US$ 1.997/mês", amountBR: 1997, credits: 9000,
     tag: { pt: "Operação completa", en: "We run it all", es: "Operación completa", hi: "पूरा संचालन" },
     feats: {
-      pt: ["Todos os canais que já estão no ar + campanhas (WhatsApp/SMS entram na aprovação)", "6.000 créditos/mês", "Implantação profunda", "Time dedicado"],
-      en: ["Every channel that's live + campaigns (WhatsApp/SMS join at approval)", "6,000 credits/mo", "Deep implementation", "Dedicated team"],
-      es: ["Todos los canales ya activos + campañas (WhatsApp/SMS entran al aprobarse)", "6.000 créditos/mes", "Implementación profunda", "Equipo dedicado"],
-      hi: ["हर लाइव चैनल + कैंपेन (WhatsApp/SMS मंज़ूरी पर जुड़ेंगे)", "6,000 क्रेडिट/माह", "गहरा इम्प्लीमेंटेशन", "समर्पित टीम"],
+      pt: ["Todos os canais que já estão no ar + campanhas (WhatsApp/SMS entram na aprovação)", "9.000 créditos/mês", "Implantação profunda", "Time dedicado"],
+      en: ["Every channel that's live + campaigns (WhatsApp/SMS join at approval)", "9,000 credits/mo", "Deep implementation", "Dedicated team"],
+      es: ["Todos los canales ya activos + campañas (WhatsApp/SMS entran al aprobarse)", "9.000 créditos/mes", "Implementación profunda", "Equipo dedicado"],
+      hi: ["हर लाइव चैनल + कैंपेन (WhatsApp/SMS मंज़ूरी पर जुड़ेंगे)", "9,000 क्रेडिट/माह", "गहरा इम्प्लीमेंटेशन", "समर्पित टीम"],
     },
   },
 ];

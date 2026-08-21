@@ -11,7 +11,11 @@
 export const FACTS = {
   plans: {
     // = src/data/guileoPlans.js (Essential/Personalized/Full Operation)
-    selfServe: "Self-service plans: Essential $149/mo (500 credits) · Personalized $449/mo (2,000 credits) · Full Operation $999/mo (6,000 credits). Brazil: R$799 / R$2.499 / R$5.499. 30-day money-back, cancel anytime, no setup fee.",
+    // 🚨 A FRASE QUE A AGENTE FALA É MONTADA DA FONTE (2026-08-21). Ela era escrita à mão aqui —
+    // e no dia do reajuste a Gui cotaria $449 AO TELEFONE enquanto o site cobrava $897. O cliente
+    // confere, acha a diferença, e a venda morre na primeira conferência: parece que alguém mentiu.
+    // Preço tem UMA fonte e várias bocas; a boca nunca guarda a própria cópia.
+    selfServe: `Self-service plans: ${GUILEO_PLANS.map((p) => `${p.name} ${p.price} (${p.credits.toLocaleString("en-US")} credits)`).join(" · ")}. 30-day money-back, cancel anytime, no setup fee.`,
     doneForYou: "Done-for-you (sold by a rep, tailored): from $990 one-time setup + $1,497/month.",
     credits: "Usage is metered in credits — roughly one task Gui does (an answered call ≈ 5 credits, a follow-up, a message). Plans renew credits monthly; one-time top-ups exist (500/$49, 1500/$119).",
   },
