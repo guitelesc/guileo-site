@@ -220,10 +220,45 @@ const CSS = `
 .np-btn-o:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
 /* SECONDARY on light surfaces — navy steel, same depth system, never competes
    with the one red emergency pill in the view */
-.np-btn-n{gap:11px;padding:17px 26px;border:0;font-weight:800;letter-spacing:-.01em;color:#fff;background:linear-gradient(180deg,#22406a 0%,#152b47 46%,#0c1a2e 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.35),0 14px 30px -18px rgba(12,26,46,.85)}
-.np-btn-n:hover{transform:translateY(-3px);filter:brightness(1.1);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 0 1px rgba(23,198,255,.4),0 0 28px rgba(23,198,255,.2),0 22px 44px -18px rgba(12,26,46,.9)}
+.np-btn-n{gap:11px;padding:17px 26px;border:0;font-weight:800;letter-spacing:-.01em;color:#fff;background:linear-gradient(180deg,#22406a 0%,#152b47 46%,#0c1a2e 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.35),0 0 0 1px rgba(23,198,255,.22),0 14px 30px -18px rgba(12,26,46,.85)}
+.np-btn-n:hover{transform:translateY(-3px);filter:brightness(1.1);box-shadow:inset 0 1px 0 rgba(255,255,255,.34),0 0 0 1px rgba(23,198,255,.7),0 0 30px rgba(23,198,255,.26),0 24px 46px -18px rgba(12,26,46,.92)}
 .np-btn-n:active{transform:scale(.98)}
 .np-btn-n:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+
+/* ══ THE QUOTE BUTTON — its own species. Not red (red is the phone), not navy
+   (navy is secondary): a machined object with a living metal edge. One per view. ══ */
+@property --np-a{syntax:"<angle>";inherits:false;initial-value:0deg}
+@keyframes np-edge{to{--np-a:360deg}}
+.np-btn-q{position:relative;isolation:isolate;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+ border:0;border-radius:999px;padding:15px 30px;cursor:pointer;font-family:inherit;color:#fff;text-decoration:none;text-align:center;
+ background:linear-gradient(180deg,#17324f 0%,#0a1a2d 48%,#03080f 100%);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.26),inset 0 -1px 0 rgba(0,0,0,.65),0 12px 26px -14px rgba(3,8,15,.9),0 28px 54px -26px rgba(3,8,15,.95);
+ transition:transform .24s cubic-bezier(.2,.7,.3,1),box-shadow .34s,filter .24s}
+/* the travelling edge: a conic gradient masked down to a 1.5px ring */
+.np-btn-q::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;
+ background:conic-gradient(from var(--np-a,0deg),rgba(23,198,255,.16),var(--cyan) 11%,#eaf8ff 22%,var(--cyan) 34%,rgba(23,198,255,.14) 52%,rgba(23,198,255,.55) 76%,rgba(23,198,255,.16) 100%);
+ -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+ mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;
+ animation:np-edge 6s linear infinite}
+/* top reflection — the button reads as a lit machined surface */
+.np-btn-q::after{content:"";position:absolute;left:7%;right:7%;top:2px;height:44%;border-radius:999px;pointer-events:none;z-index:0;
+ background:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.04) 58%,transparent)}
+.np-btn-q:hover{transform:translateY(-3px);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.34),inset 0 -1px 0 rgba(0,0,0,.65),0 0 36px rgba(23,198,255,.34),0 16px 30px -14px rgba(3,8,15,.9),0 30px 58px -26px rgba(3,8,15,.95)}
+.np-btn-q:hover::before{animation-duration:3.2s}
+.np-btn-q:active{transform:scale(.98)}
+.np-btn-q:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.np-q-lab{position:relative;z-index:1;display:inline-flex;align-items:center;gap:11px;font-weight:800;font-size:17px;letter-spacing:-.012em}
+.np-qarrow{display:inline-flex;transition:transform .28s cubic-bezier(.2,.7,.3,1)}
+.np-btn-q:hover .np-qarrow{transform:translateX(5px)}
+.np-q-sub{position:relative;z-index:1;font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(214,233,250,.55)}
+.np-btn-q.sm{padding:13px 22px;gap:3px}
+.np-btn-q.sm .np-q-lab{font-size:15.5px;gap:9px}
+.np-btn-q.sm .np-q-sub{font-size:9.5px;letter-spacing:.12em}
+/* the three steps that follow the quote button */
+.np-step{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:start}
+.np-stepn{grid-row:span 2;width:22px;height:22px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
+ font-size:11px;font-weight:800;color:var(--navy);background:rgba(23,198,255,.16);box-shadow:inset 0 0 0 1px rgba(23,198,255,.4)}
 /* nav pills — same family, light surface */
 .np-navp{box-shadow:inset 0 1px 0 rgba(255,255,255,.85);transition:transform .24s cubic-bezier(.2,.7,.3,1),box-shadow .3s,border-color .3s,color .3s}
 .np-navp:hover{transform:translateY(-2px);border-color:rgba(23,198,255,.65);color:var(--navy)!important;box-shadow:inset 0 1px 0 #fff,0 0 0 3px rgba(23,198,255,.1),0 10px 20px -12px rgba(12,26,46,.55)}

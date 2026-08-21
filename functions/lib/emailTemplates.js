@@ -3382,3 +3382,71 @@ export function growthReportEmail({ business = "", agentName = "Gui", score = 0,
     }),
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WEBSITE UPGRADE — o e-mail que leva o site reconstruído pro dono do negócio.
+// A chave da venda (Luis 2026-08-21): mostra (1) o link do site novo DELE, já no ar,
+// (2) o que JÁ vem incluído no modelo, sem custo de decidir agora, e (3) o cardápio
+// de automações que ele PODE somar, com preço por módulo — ele responde escolhendo.
+// A joia do cardápio é o Motor de Orçamento: a IA liga, coleta os dados e manda o
+// orçamento por SMS+e-mail; acima de um teto, o escritório aprova antes de sair.
+// ─────────────────────────────────────────────────────────────────────────────
+export function websiteUpgradeEmail({
+  name = "there", business = "your business", link = "", lang = "en",
+  incluso = [], addons = [], nota = "",
+} = {}) {
+  business = esc(business); name = esc(name);
+  const t = lang === "pt" ? {
+    subject: `${business}: reconstruímos seu site — dá uma olhada`,
+    pre: "O site novo já está no ar. Nada pra instalar, nada pra assinar.",
+    eyebrow: "Website Upgrade · pronto pra ver",
+    h1: `${name}, refizemos o site do ${business}`,
+    intro: `Pegamos o que já é de vocês — o vídeo, a marca, as fotos da equipe, os serviços — e reconstruímos numa página feita pra converter. <strong style="color:${B.ink};">Está no ar agora</strong>, é só abrir:`,
+    cta: "Ver o site novo →",
+    inclusoT: "O que já vem no modelo",
+    addonT: "O que dá pra ligar em cima",
+    addonSub: "Cada módulo entra sozinho — você escolhe quais fazem sentido.",
+    foot: "Se fizer sentido, responde esse e-mail dizendo quais módulos você quer. Se não fizer, o link continua seu do mesmo jeito.",
+  } : {
+    subject: `${business}: we rebuilt your website — take a look`,
+    pre: "The new site is live. Nothing to install, nothing to sign.",
+    eyebrow: "Website Upgrade · ready to view",
+    h1: `${name}, we rebuilt the ${business} website`,
+    intro: `We took what is already yours — the video, the brand, the crew photos, the services — and rebuilt it as a page built to convert. <strong style="color:${B.ink};">It is live right now</strong>, just open it:`,
+    cta: "See the new site →",
+    inclusoT: "What already comes in it",
+    addonT: "What you can switch on",
+    addonSub: "Each module stands alone — you pick the ones that make sense.",
+    foot: "If it makes sense, reply telling us which modules you want. If it doesn't, the link stays yours anyway.",
+  };
+  const linhasInc = (incluso || []).map((i) => `
+    <tr><td style="padding:8px 0;border-bottom:1px solid ${B.line};">
+      <span style="color:${B.green};font-weight:700;">✓</span>
+      <span style="color:${B.ink};font-size:15px;">&nbsp;${esc(i)}</span>
+    </td></tr>`).join("");
+  const linhasAdd = (addons || []).map((a) => `
+    <tr>
+      <td style="padding:11px 0;border-bottom:1px solid ${B.line};">
+        <div style="color:${B.ink};font-size:15px;font-weight:700;">${esc(a.t || "")}</div>
+        <div style="color:${B.muted};font-size:13px;line-height:1.6;margin-top:3px;">${esc(a.d || "")}</div>
+      </td>
+      <td align="right" valign="top" style="padding:11px 0 11px 12px;border-bottom:1px solid ${B.line};white-space:nowrap;">
+        <span style="color:${B.gold};font-size:14px;font-weight:800;">${esc(a.p || "")}</span>
+      </td>
+    </tr>`).join("");
+  const body = `
+  <div style="font-size:26px;line-height:1.2;color:${B.ink2};font-weight:700;">${t.h1}</div>
+  <div class="g-intro" style="font-size:16px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
+  <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(t.cta, link)}</div>
+  <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
+  <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.gold};font-weight:800;">${t.inclusoT}</div>
+  <table role="presentation" width="100%" style="margin-top:8px;border-collapse:collapse;">${linhasInc}</table>
+  <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
+  <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.gold};font-weight:800;">${t.addonT}</div>
+  <div style="color:${B.muted};font-size:13px;margin-top:5px;">${t.addonSub}</div>
+  <table role="presentation" width="100%" style="margin-top:8px;border-collapse:collapse;">${linhasAdd}</table>
+  ${nota ? `<div style="margin-top:16px;padding:12px 14px;border:1px solid ${B.line};border-radius:12px;color:${B.muted};font-size:13px;line-height:1.6;">${esc(nota)}</div>` : ""}
+  <div style="font-size:12.5px;color:${B.muted};text-align:center;margin-top:20px;line-height:1.65;">${t.foot}</div>`;
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+}
