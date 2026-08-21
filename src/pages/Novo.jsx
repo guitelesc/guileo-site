@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import GuiLayer from "../novo/GuiLayer.jsx";
+import DonoMode from "../novo/DonoMode.jsx"; // raio-X do dono (?dono=1) — invisível pro cliente final
 
 // ─────────────────────────────────────────────────────────────────────────────
 // /novo/:slug — o MOTOR WEBSITE-PORTA. Cada slug é um site reconstruído
@@ -52,6 +53,7 @@ export default function Novo() {
     <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-[#0e0d0b] text-[#948C7B]">…</div>}>
       <Page />
       <GuiLayer {...cfg} />
+      <DonoMode business={cfg.business} accent={cfg.accent} surface={cfg.surface} mascot={cfg.mascot} upgradeUrl={typeof window !== "undefined" ? window.location.href.split("?")[0] : ""} />
     </Suspense>
   );
 }
