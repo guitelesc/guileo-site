@@ -52,10 +52,10 @@ const SERVICES = [
   { ic: I.pipe, wo: "WO-2408", t: "Service Plans", tag: "Ongoing", d: ["Building service plans", "Home plumbing memberships"] },
 ];
 const CREDS = [
-  { ic: I.shield, t: "Master Plumber Licensed" },
-  { ic: I.flame, t: "Master Fire Suppression Licensed" },
+  { ic: I.shield, t: "Master Plumber" },
+  { ic: I.flame, t: "Fire Suppression" },
   { ic: I.clip, t: "Fully Insured" },
-  { ic: I.clock, t: "24/7 Emergency Dispatch" },
+  { ic: I.clock, t: "24/7 Dispatch" },
 ];
 const BOROUGHS = [
   { b: "Manhattan", c: "MN", d: "Leaks, drain backups, gas piping compliance and high-rise service from Harlem to the Financial District." },
@@ -64,6 +64,16 @@ const BOROUGHS = [
   { b: "Bronx", c: "BX", d: "Multifamily emergencies, drain and sewer issues, code corrections and plumbing compliance support." },
   { b: "Staten Island", c: "SI", d: "Water-main work, gas piping, fixture upgrades, drain issues and emergency plumbing support." },
 ];
+/* Hand-drawn NYC — stylized silhouettes in their real relative positions.
+   Decorative: it lights the borough you are reading, it never claims data. */
+const MAP = [
+  { c: "BX", p: "M264.5 19.0L272.9 22.1L277.0 14.5L284.2 20.7L286.4 27.5L311.7 35.3L312.5 38.4L310.1 43.2L306.4 47.5L305.1 47.2L308.0 50.5L314.2 39.2L316.0 37.8L317.3 39.6L319.5 46.5L314.7 48.4L314.0 54.5L312.9 57.7L310.0 60.1L309.3 64.5L307.2 61.2L306.2 53.5L304.7 56.2L300.8 51.9L299.3 54.1L300.9 54.6L298.8 61.7L299.5 66.0L301.0 65.4L300.4 66.4L301.5 67.1L301.8 66.0L301.7 67.2L302.0 66.0L300.6 68.7L298.2 67.7L300.6 71.6L299.3 73.0L300.1 78.2L301.5 80.6L303.3 80.8L301.2 81.6L301.9 83.0L300.8 84.1L305.1 83.1L306.8 88.5L310.9 90.3L307.6 93.6L305.2 90.3L306.2 93.0L308.1 95.5L315.1 98.0L314.6 100.3L306.9 96.7L303.5 93.4L299.1 92.5L291.1 94.7L289.6 99.7L286.7 98.9L284.7 94.5L285.5 85.7L283.4 80.5L285.5 76.3L284.7 72.0L285.2 75.6L282.9 79.4L284.6 87.7L281.0 95.0L278.0 92.0L275.6 92.3L279.3 93.9L279.5 99.9L274.6 99.8L273.0 98.6L273.1 95.6L272.9 97.1L262.4 90.6L265.3 93.0L265.0 103.1L261.2 101.5L257.1 102.0L254.2 98.9L250.5 98.4L246.6 99.7L241.7 105.7L239.5 106.3L231.0 101.0L228.4 97.4L227.5 75.5L234.0 60.6L241.5 49.7L243.7 41.6L241.6 39.6L236.9 42.2L232.8 39.6L241.0 11.1L263.4 18.6Z M315.4 56.2L316.7 57.0L316.8 60.3L321.0 64.3L319.6 68.3L321.7 68.1L319.7 68.4L321.5 68.2L320.2 69.6L321.5 69.6L319.2 73.9L314.4 65.4L315.5 61.3L313.4 61.4L315.3 60.7L313.8 61.0L314.9 59.9L313.6 57.9L315.4 56.2Z", x: 295.5, y: 66.2 },
+  { c: "MN", p: "M231.7 40.7L234.1 41.4L234.7 44.3L235.7 44.0L235.1 42.5L236.4 44.3L240.2 43.9L241.5 45.9L236.0 56.0L234.7 54.9L235.3 56.7L226.4 75.1L226.8 95.2L229.8 102.0L229.9 107.1L221.1 117.6L222.0 122.4L221.1 124.9L204.3 148.8L203.1 155.8L202.1 155.7L203.1 155.9L202.2 156.3L203.8 163.7L201.0 175.0L196.8 177.0L187.3 178.1L185.0 181.0L184.2 180.4L184.3 181.7L183.1 181.3L183.8 182.4L182.5 181.7L183.0 182.8L180.8 183.2L181.1 184.4L177.4 184.6L174.7 179.1L176.2 169.7L178.4 169.5L177.5 168.4L179.3 163.8L177.1 163.2L179.6 159.4L180.0 153.7L178.7 151.8L180.6 151.8L180.8 150.0L179.0 149.2L180.9 149.2L179.2 147.8L180.8 146.9L179.5 145.3L182.9 138.7L182.1 136.8L184.2 136.4L185.3 134.3L184.5 132.3L186.7 133.1L187.4 131.7L186.0 129.5L188.6 129.6L189.6 126.5L188.5 125.3L190.2 125.6L188.8 124.8L190.3 125.2L192.3 121.9L193.3 120.2L191.8 120.2L193.3 119.8L194.4 115.7L212.2 85.5L211.3 84.5L214.7 80.6L219.6 68.1L219.0 62.8L222.2 60.0L231.0 41.5Z M234.8 103.0L237.8 105.6L238.4 110.4L233.7 117.2L230.4 119.1L225.9 116.9L226.0 115.3L229.6 110.7L231.9 110.9L230.5 109.9L231.4 103.7L234.0 102.2Z", x: 177.9, y: 118.2 },
+  { c: "QN", p: "M296.8 102.9L301.0 106.1L302.0 105.2L312.7 107.8L313.8 112.8L320.6 110.9L321.2 108.5L319.7 107.8L324.0 106.8L327.3 112.8L324.9 114.3L329.8 120.1L331.3 125.6L343.4 138.9L337.0 130.0L336.7 126.9L338.1 125.4L336.8 121.8L340.0 117.9L369.9 142.2L370.7 151.5L367.3 159.9L363.6 162.9L352.4 166.7L354.3 176.2L355.1 200.8L353.5 211.3L355.3 221.9L345.4 229.0L345.3 237.6L345.5 235.2L344.0 234.3L342.0 236.0L341.7 230.7L337.2 227.1L341.7 232.3L340.9 237.2L330.9 242.0L327.5 249.6L326.7 246.9L324.8 250.1L326.7 246.9L324.6 244.1L322.2 243.8L318.5 249.8L321.1 254.7L315.0 259.7L309.0 256.2L312.7 247.7L316.0 247.3L318.7 244.3L318.2 239.9L315.1 238.2L310.6 240.6L314.7 238.0L313.8 236.7L298.3 228.4L296.4 226.1L295.6 217.8L297.8 216.4L302.4 216.6L297.9 215.6L295.0 217.1L295.1 227.0L293.3 225.3L293.2 226.7L291.8 226.0L290.3 223.5L291.5 220.4L289.6 221.7L291.4 219.9L290.8 217.4L291.3 219.7L289.7 221.4L289.2 218.8L290.3 226.4L288.1 226.9L285.6 215.3L287.0 229.2L279.0 230.1L277.2 228.0L279.0 224.2L275.0 224.3L271.7 220.1L274.4 210.3L267.6 192.0L260.5 192.0L254.6 197.3L251.5 196.7L250.2 198.8L244.8 188.0L233.1 173.4L235.3 171.8L232.5 166.5L235.4 165.6L224.5 160.1L222.3 155.7L219.7 154.4L223.1 152.1L223.7 149.9L220.0 153.8L214.8 152.5L209.5 153.4L211.9 146.9L214.3 145.9L213.4 144.8L220.4 133.8L226.4 127.1L225.7 122.2L231.7 121.3L240.7 112.0L246.3 112.2L250.1 114.9L246.5 119.7L251.4 116.5L250.3 117.4L250.8 118.6L252.3 117.6L252.5 122.0L253.0 123.8L254.0 122.2L254.2 125.0L257.3 124.1L257.2 119.9L260.7 119.4L260.5 117.7L266.8 115.1L266.3 120.3L275.5 126.6L273.6 127.7L274.8 128.9L270.9 130.6L273.4 134.5L274.4 132.8L274.6 134.8L273.4 134.6L278.4 136.5L285.0 130.4L281.8 131.7L279.9 130.5L279.5 127.5L277.9 126.6L279.3 121.5L277.2 120.3L278.9 120.0L277.7 119.9L279.0 119.8L279.1 118.1L275.4 118.3L272.9 115.4L276.8 113.4L275.7 113.0L277.0 110.9L276.4 108.6L279.4 109.0L280.0 107.1L282.6 107.8L283.0 106.2L283.8 107.4L285.8 105.0L284.8 106.2L286.6 108.6L286.5 112.6L289.2 113.0L292.3 109.4L291.3 106.3L294.1 105.8L296.8 103.2Z M329.9 254.3L330.9 256.1L333.4 256.7L333.0 258.6L342.0 256.4L347.3 267.3L345.2 268.7L347.2 268.4L347.7 270.4L342.2 270.5L337.8 273.3L333.0 272.6L323.6 273.9L301.1 279.3L270.9 293.1L251.0 300.7L243.3 302.1L223.2 312.2L223.3 302.9L232.1 297.0L240.5 293.6L243.8 296.1L246.7 296.0L252.3 291.4L261.9 291.1L279.5 280.4L285.3 280.4L291.2 278.4L297.6 275.7L303.5 271.1L305.9 273.4L306.8 272.5L304.5 270.6L305.7 269.5L307.6 271.9L308.0 270.4L306.2 268.6L307.6 266.8L314.2 265.9L317.8 263.3L315.3 266.7L315.7 270.1L316.2 267.4L319.6 263.7L319.3 261.8L322.4 258.2L325.3 258.8L325.0 259.9L324.1 258.5L325.0 262.4L320.5 267.2L321.6 268.4L324.6 264.5L325.9 267.6L329.0 267.7L327.1 266.4L328.5 258.3L325.3 256.2L325.8 254.8L329.8 254.3Z", x: 303.3, y: 198.0 },
+  { c: "BK", p: "M214.5 153.1L219.0 154.7L219.0 156.9L219.9 155.1L221.6 155.9L225.3 161.2L229.8 162.5L232.7 169.7L228.1 172.7L227.4 175.7L229.2 177.7L228.9 172.7L233.2 170.5L234.5 177.2L245.0 188.1L247.2 194.6L250.3 198.7L251.5 196.8L255.2 196.7L260.6 191.9L267.6 192.5L274.7 211.5L273.7 215.6L270.5 219.7L274.3 225.0L274.1 230.6L271.5 231.1L269.1 234.5L260.6 221.6L267.2 234.8L264.2 236.5L253.4 225.9L261.2 235.1L261.4 237.8L258.4 240.3L258.6 243.0L255.4 243.0L250.5 247.6L237.2 240.4L246.2 246.0L247.5 248.4L250.1 248.5L250.4 254.0L253.5 255.5L251.6 256.8L254.2 256.9L252.0 260.5L248.2 261.5L247.8 257.7L242.7 251.9L242.9 253.2L242.0 252.5L246.5 257.4L246.8 261.3L244.7 261.9L242.5 260.5L242.7 262.3L239.4 262.5L237.5 258.8L239.2 253.9L235.9 259.6L239.7 264.1L242.5 264.6L257.4 261.6L262.2 278.1L258.7 282.8L250.7 284.8L248.6 276.0L244.1 275.6L240.9 277.2L240.5 270.3L238.7 267.0L234.7 264.4L232.6 266.1L228.9 262.7L228.6 264.3L239.2 274.6L236.3 277.2L232.6 277.5L230.8 275.6L233.0 272.9L230.2 275.1L229.1 274.0L229.5 270.7L228.0 270.0L229.7 276.0L228.7 276.4L232.8 278.4L239.7 277.2L240.3 279.4L237.4 279.6L240.8 280.7L233.5 279.3L218.7 279.3L215.1 280.0L227.9 281.2L228.5 283.6L226.5 285.8L207.9 287.4L197.3 289.0L196.6 290.2L185.3 290.0L178.8 285.5L179.4 282.1L184.0 280.7L194.1 282.9L194.5 281.1L191.4 280.8L192.4 278.5L189.3 280.3L186.3 279.6L187.1 276.9L190.0 275.3L186.3 276.9L188.0 272.7L186.4 273.1L186.8 271.6L179.7 265.3L167.4 261.6L164.3 258.3L161.5 253.2L160.7 246.8L162.6 233.8L164.3 233.2L165.3 230.4L169.8 229.3L170.7 224.2L173.3 224.6L172.2 223.0L175.0 222.5L175.0 219.0L183.8 215.9L181.7 213.4L184.2 215.0L186.4 214.1L185.4 211.8L187.2 207.8L185.6 210.5L182.2 212.4L183.2 209.5L182.1 210.3L174.9 208.3L176.6 212.8L179.2 208.6L175.4 206.0L174.4 201.9L180.2 198.1L184.3 193.2L189.7 181.4L199.4 179.9L201.5 182.3L201.4 185.2L202.6 183.6L204.4 184.7L203.3 179.8L205.3 179.9L206.5 171.4L210.2 164.4L212.3 164.8L210.0 163.8L209.8 156.7L214.3 153.1Z", x: 214.6, y: 242.4 },
+  { c: "SI", p: "M135.9 226.8L139.4 227.8L143.2 231.4L141.6 234.6L143.1 235.8L141.5 237.7L142.6 247.2L153.4 261.1L154.2 266.0L141.0 281.9L141.4 283.4L140.4 282.9L135.8 287.5L121.8 303.9L120.9 303.1L119.1 304.5L117.0 308.3L111.5 310.4L101.6 323.0L100.1 318.4L104.1 318.2L108.0 313.4L106.8 310.0L104.9 309.1L102.4 310.7L101.5 309.8L101.3 311.8L100.6 311.1L100.2 313.0L98.9 312.8L99.6 316.8L77.3 331.4L75.1 330.2L73.2 331.1L66.4 338.9L63.6 337.7L64.0 336.5L60.3 337.0L57.2 338.6L52.7 344.3L44.3 345.5L38.8 349.0L33.2 349.8L30.8 347.0L29.3 340.6L32.4 333.9L35.1 333.9L34.6 333.1L38.9 330.5L37.1 329.6L37.7 319.5L35.6 317.1L34.2 311.7L44.6 302.0L52.1 302.6L56.0 299.9L60.8 279.1L60.7 274.7L65.0 268.5L61.8 258.7L63.0 241.3L66.7 235.8L72.6 230.2L73.5 231.6L73.9 229.6L76.3 229.4L76.0 231.9L79.2 229.3L81.1 231.2L80.1 233.1L81.1 231.8L85.3 232.3L88.4 235.2L89.5 234.4L92.5 235.8L103.0 232.1L108.3 233.7L108.8 232.5L114.2 232.1L119.6 228.9L129.2 228.6L134.6 226.4Z", x: 88.1, y: 287.0 },
+];
+
 const PLANS = [
   { wo: "WO-BSP", t: "Building Service Plans", s: "For managed buildings & commercial properties",
     from: "From $1,199 / month",
@@ -123,19 +133,49 @@ const nyTime = () =>
     .format(new Date());
 
 const CSS = `
-.np-boro{position:relative;text-decoration:none}
-.np-boro:nth-child(odd){background:rgba(255,255,255,.045)}
+/* ── THE BOROUGH BOARD — hand-drawn map + in-place ticket accordion ── */
+.np-map{display:block;width:100%;height:auto;max-width:520px;margin:0 auto;overflow:visible}
+.np-mg{cursor:pointer}
+.np-mg path{fill:rgba(255,255,255,.055);stroke:rgba(255,255,255,.2);stroke-width:1.4;stroke-linejoin:round;transition:fill .5s cubic-bezier(.2,.7,.3,1),stroke .5s,filter .5s}
+.np-mg:hover path{fill:rgba(255,255,255,.115);stroke:rgba(255,255,255,.34)}
+.np-mg.np-on path{fill:var(--red);stroke:rgba(255,255,255,.6);filter:drop-shadow(0 0 12px rgba(217,42,40,.8)) drop-shadow(0 0 34px rgba(217,42,40,.45))}
+.np-mg text{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:600;letter-spacing:.14em;fill:rgba(255,255,255,.4);pointer-events:none;transition:fill .5s}
+.np-mg.np-on text{fill:#fff}
+.np-mapcap{text-align:center;color:#7f93aa}
+
+.np-boro{position:relative;display:flex;width:100%;text-align:left;align-items:flex-start;gap:14px;border:0;cursor:pointer;background:transparent;font-family:inherit;border-radius:26px;padding:18px;transition:background .3s ease}
 .np-boro:hover{background:rgba(23,198,255,.09)}
-.np-led{width:3px;height:22px;border-radius:99px;background:linear-gradient(180deg,#39d98a,rgba(57,217,138,.15));box-shadow:0 0 10px rgba(57,217,138,.45)}
-.np-boro-go{opacity:0;transform:translateX(-4px);transition:opacity .25s ease,transform .25s ease}
-.np-boro:hover .np-boro-go,.np-boro:focus-visible .np-boro-go{opacity:1;transform:none}
-@media (hover:none){.np-boro-go{opacity:.7;transform:none}}
+.np-boro:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
+.np-boro[aria-expanded="true"]{background:rgba(217,42,40,.15)}
+.np-brow+.np-brow{border-top:1px solid rgba(255,255,255,.07)}
+.np-led{flex:none;margin-top:7px;width:3px;height:30px;border-radius:99px;transition:background .35s,box-shadow .35s;background:linear-gradient(180deg,#39d98a,rgba(57,217,138,.15));box-shadow:0 0 10px rgba(57,217,138,.45)}
+.np-boro[aria-expanded="true"] .np-led{background:linear-gradient(180deg,#ff6f5f,rgba(217,42,40,.2));box-shadow:0 0 12px rgba(217,42,40,.7)}
+.np-bc{flex:none;margin-top:3px;font-size:11px;padding:5px 9px;border-radius:999px;background:rgba(23,198,255,.12);color:var(--cyan);letter-spacing:.1em}
+.np-boro[aria-expanded="true"] .np-bc{background:rgba(217,42,40,.22);color:#ffb9b3}
+.np-bn{display:block;color:#fff;font-weight:800;font-size:20px;line-height:1.2;letter-spacing:-.015em}
+.np-bd{display:block;margin-top:7px;color:#9fb2c8;font-size:14px;line-height:1.62}
+.np-boro-go{flex:none;display:inline-flex;align-items:center;gap:7px;margin-top:4px;color:var(--cyan);font-size:10px;opacity:.55;transition:opacity .25s ease,color .25s ease}
+.np-boro:hover .np-boro-go,.np-boro:focus-visible .np-boro-go{opacity:1}
+.np-boro-go svg{transition:transform .35s cubic-bezier(.2,.7,.3,1)}
+.np-boro[aria-expanded="true"] .np-boro-go{opacity:1;color:#ff9a92}
+.np-boro[aria-expanded="true"] .np-boro-go svg{transform:rotate(45deg)}
+@media(max-width:639px){.np-boro-go span{display:none}}
+.np-panel{animation:npOpen .42s cubic-bezier(.2,.7,.3,1) both}
+@keyframes npOpen{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.np-field.np-field-d{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.22);color:#fff}
+.np-field.np-field-d::placeholder{color:rgba(255,255,255,.46)}
+.np-field.np-field-d:focus{background:rgba(255,255,255,.1);border-color:var(--cyan)}
 
 .np{--navy:#0c1a2e;--navy-2:#132741;--red:#d92a28;--red-d:#ab1f1d;--cyan:#17c6ff;--ink:#0c1a2e;--mut:#5a6b80;
  --line:rgba(12,26,46,.11);--paper:#f5f7fa;--stage:#fff;
- background:#fff;color:var(--ink);font-family:'Figtree',system-ui,sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+ background:#fff;color:var(--ink);font-family:'Inter Tight','Inter',system-ui,sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased}
 .np *{box-sizing:border-box}
-.np h1,.np h2,.np h3,.np .dsp{font-family:'Figtree',system-ui,sans-serif;letter-spacing:-.03em;line-height:1.02;font-weight:900}
+/* display = Archivo, signage weight and a touch of extra width */
+.np h1,.np h2,.np h3,.np h4,.np .dsp{font-family:'Archivo',system-ui,sans-serif;font-weight:800;
+ font-variation-settings:'wdth' 112,'wght' 800;letter-spacing:-.024em;line-height:1.06}
+.np h1{letter-spacing:-.034em;line-height:1.0}
+.np .dsp{letter-spacing:-.03em;line-height:1.02}
+.np p,.np li,.np address{letter-spacing:-.004em}
 .np .mono{font-family:'JetBrains Mono','Space Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
 .np-w{max-width:1200px;margin:0 auto;padding:0 20px}
 @media(min-width:768px){.np-w{padding:0 36px}}
@@ -149,16 +189,32 @@ const CSS = `
 .np-pill{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:8px 15px;
  border:1px solid var(--line);background:#fff;color:var(--navy);white-space:nowrap}
 .np-pill-d{border-color:rgba(255,255,255,.22);background:rgba(255,255,255,.09);color:#fff;backdrop-filter:blur(6px)}
-.np-btn{display:inline-flex;align-items:center;justify-content:center;gap:12px;background:var(--red);color:#fff;
- padding:18px 30px;border-radius:999px;font-weight:800;letter-spacing:-.01em;border:0;cursor:pointer;
- box-shadow:0 1px 0 rgba(255,255,255,.3) inset,0 18px 38px -16px rgba(217,42,40,.85);
- transition:transform .22s cubic-bezier(.2,.7,.3,1),filter .22s,box-shadow .22s;text-decoration:none}
-.np-btn:hover{filter:brightness(1.06);transform:translateY(-3px);box-shadow:0 1px 0 rgba(255,255,255,.32) inset,0 26px 50px -16px rgba(217,42,40,.9)}
-.np-btn:active{transform:translateY(0)}
-.np-btn-o{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:17px 26px;border-radius:999px;font-weight:700;
- border:1px solid rgba(255,255,255,.3);color:#fff;text-decoration:none;background:rgba(255,255,255,.07);
- transition:background .25s,border-color .25s,transform .22s}
-.np-btn-o:hover{background:rgba(255,255,255,.14);border-color:rgba(23,198,255,.7);transform:translateY(-3px)}
+/* ── BUTTON SYSTEM — gradient depth, lit top edge, glow, sheen sweep, press ── */
+.np-btn,.np-btn-o{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;text-decoration:none;cursor:pointer;font-family:inherit;transition:transform .24s cubic-bezier(.2,.7,.3,1),box-shadow .3s,border-color .3s,background .3s,filter .24s}
+.np-btn::before,.np-btn-o::before{content:"";position:absolute;top:0;left:0;width:44%;height:100%;pointer-events:none;background:linear-gradient(105deg,transparent,rgba(255,255,255,.32),transparent);transform:translateX(-190%) skewX(-14deg);transition:transform .8s ease}
+.np-btn:hover::before,.np-btn-o:hover::before{transform:translateX(330%) skewX(-14deg)}
+.np-btn{gap:12px;padding:18px 30px;border:0;font-weight:800;letter-spacing:-.012em;color:#fff;background:linear-gradient(180deg,#ec4442 0%,var(--red) 46%,var(--red-d) 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.38),inset 0 -1px 0 rgba(0,0,0,.24),0 0 0 1px rgba(217,42,40,.4),0 18px 38px -18px rgba(217,42,40,.9)}
+.np-btn:hover{transform:translateY(-3px);filter:brightness(1.04);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -1px 0 rgba(0,0,0,.24),0 0 0 1px rgba(23,198,255,.35),0 0 34px rgba(217,42,40,.4),0 26px 52px -18px rgba(217,42,40,.95)}
+.np-btn:active{transform:scale(.98)}
+.np-btn:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.np-btn-o{gap:10px;padding:17px 26px;font-weight:700;letter-spacing:-.008em;color:#fff;backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.3);background:linear-gradient(180deg,rgba(255,255,255,.15),rgba(255,255,255,.05));box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 14px 30px -20px rgba(0,0,0,.9)}
+.np-btn-o:hover{transform:translateY(-3px);border-color:rgba(23,198,255,.75);background:linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,.08));box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 0 30px rgba(23,198,255,.28),0 20px 40px -20px rgba(0,0,0,.9)}
+.np-btn-o:active{transform:scale(.98)}
+.np-btn-o:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+/* nav pills — same family, light surface */
+.np-navp{box-shadow:inset 0 1px 0 rgba(255,255,255,.85);transition:transform .24s cubic-bezier(.2,.7,.3,1),box-shadow .3s,border-color .3s,color .3s}
+.np-navp:hover{transform:translateY(-2px);border-color:rgba(23,198,255,.65);color:var(--navy)!important;box-shadow:inset 0 1px 0 #fff,0 0 0 3px rgba(23,198,255,.1),0 10px 20px -12px rgba(12,26,46,.55)}
+.np-navp:active{transform:scale(.98)}
+.np-navp:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+/* ── CREDENTIAL STRIP — one tidy line at 1200px+, balanced rows below ── */
+.np-creds{border-top:1px solid rgba(255,255,255,.1)}
+.np-credrow{display:grid;grid-template-columns:repeat(2,minmax(0,auto));justify-content:center;align-items:center;gap:14px 30px}
+.np-credrow>:first-child{grid-column:1/-1;justify-self:center}
+.np-cred{display:inline-flex;align-items:center;gap:9px;white-space:nowrap;color:#c6d3e3;font-size:10.5px;letter-spacing:.19em}
+.np-cred svg{color:var(--cyan);flex:none}
+@media(max-width:479px){.np-credrow{grid-template-columns:minmax(0,auto)}}
+@media(min-width:1200px){.np-credrow{grid-template-columns:repeat(5,auto);justify-content:space-between;gap:0 18px}.np-credrow>:first-child{grid-column:auto;justify-self:start}}
 
 /* THE DISPATCH TICKET — punched notches + perforation, generous radius */
 .np-tk{position:relative;background:#fff;border:1px solid var(--line);border-radius:28px;overflow:hidden;
@@ -218,7 +274,8 @@ textarea.np-field{border-radius:22px;resize:vertical}
 
 .np-err{border-color:rgba(217,42,40,.55)!important;box-shadow:0 0 0 3px rgba(217,42,40,.13)!important}
 @media(prefers-reduced-motion:reduce){.np-rev{opacity:1;transform:none;transition:none}
- .np-tk,.np-btn,.np-live,.np-callbar,.np-qi{transition:none;animation:none}}
+ .np-tk,.np-btn,.np-btn-o,.np-live,.np-callbar,.np-qi,.np-panel,.np-mg path,.np-mg text{transition:none;animation:none}
+ .np-btn::before,.np-btn-o::before{display:none}}
 `;
 
 /* ── ONLINE PRESENCE: head tags + structured data, all cleaned up on unmount ── */
@@ -296,6 +353,21 @@ export default function NonstopPlumbers() {
   // Clicar num borough do quadro leva pro formulário JÁ preenchido — o quadro
   // trabalha, não decora (Luis: "esse botão on call com cara de ai").
   const [boro, setBoro] = useState("");
+  // O quadro dos boroughs: um aberto por vez, e o mapa acende o que você está lendo.
+  // ?boro=BK (ou ?boro=brooklyn) já abre o ticket daquele bairro: um anúncio do
+  // Brooklyn cai direto no pedido do Brooklyn, sem procurar nada na página.
+  const [openB, setOpenB] = useState(() => {
+    try {
+      const q = (new URLSearchParams(window.location.search).get("boro") || "").trim().toLowerCase();
+      if (!q) return "";
+      const hit = BOROUGHS.find((b) => b.c.toLowerCase() === q || b.b.toLowerCase() === q || b.b.toLowerCase().startsWith(q));
+      return hit ? hit.c : "";
+    } catch { return ""; }
+  });
+  const [hovB, setHovB] = useState("");
+  const [bsent, setBsent] = useState("");
+  const lit = hovB || openB;
+  const toggleB = (c) => { setBsent(""); setOpenB((p) => (p === c ? "" : c)); };
   const [still, setStill] = useState(false);
   const [clock, setClock] = useState(nyTime);
   const [bar, setBar] = useState(false);
@@ -344,7 +416,7 @@ export default function NonstopPlumbers() {
       Object.assign(document.createElement("link"), { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" }),
       Object.assign(document.createElement("link"), {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap",
       }),
     ];
     links.forEach((l) => document.head.appendChild(l));
@@ -393,7 +465,7 @@ export default function NonstopPlumbers() {
           </a>
           <nav className="hidden lg:flex items-center gap-1.5 np-lab">
             {[["#services", "Services"], ["#crew", "Boroughs"], ["#plans", "Service plans"], ["#about", "About"], ["#faq", "FAQ"], ["#contact", "Contact"]].map(([h, t]) => (
-              <a key={h} href={h} className="np-pill hover:border-[color:var(--cyan)] transition-colors"
+              <a key={h} href={h} className="np-pill np-navp"
                 style={{ color: "var(--mut)", background: "var(--paper)" }}>{t}</a>
             ))}
           </nav>
@@ -441,7 +513,7 @@ export default function NonstopPlumbers() {
             <h1 className="np-rev np-in-d1 mt-7 text-white text-[42px] sm:text-[56px] lg:text-[72px]">
               When it can&rsquo;t wait,<br />we don&rsquo;t <span style={{ color: "var(--red)" }}>stop.</span>
             </h1>
-            <p className="np-rev np-in-d2 mt-5 text-[16px] sm:text-[17px] leading-relaxed max-w-xl" style={{ color: "#cdd8e6" }}>
+            <p className="np-rev np-in-d2 mt-5 text-[16px] sm:text-[17.5px] leading-relaxed max-w-xl" style={{ color: "#cdd8e6" }}>
               Emergency plumbing, drain &amp; sewer, fire suppression and NYC compliance —
               Master Plumber and Master Fire Suppression licensed, fully insured, across
               Manhattan, Brooklyn, Queens, the Bronx and Staten Island. 24/7/365.
@@ -465,14 +537,14 @@ export default function NonstopPlumbers() {
       </section>
 
       {/* ── CREDENTIAL STATUS PILLS BAND ─────────────────────── */}
-      <section style={{ background: "var(--navy)" }}>
-        <div className="np-w py-6 flex flex-wrap items-center justify-center gap-2.5">
-          <DeskOpen dark />
-          {CREDS.map((c) => (
-            <span key={c.t} className="np-pill np-pill-d np-lab">
-              <span style={{ color: "var(--cyan)" }}><Ic d={c.ic} s={16} /></span>{c.t}
-            </span>
-          ))}
+      <section className="np-creds" style={{ background: "var(--navy)" }}>
+        <div className="np-w py-5">
+          <div className="np-credrow">
+            <DeskOpen dark />
+            {CREDS.map((c) => (
+              <span key={c.t} className="np-cred np-lab"><Ic d={c.ic} s={15} />{c.t}</span>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -485,7 +557,7 @@ export default function NonstopPlumbers() {
               The board
             </div>
             <h2 className="mt-5 text-4xl sm:text-5xl">Every ticket we take.</h2>
-            <p className="mt-4 text-[17px] leading-relaxed" style={{ color: "var(--mut)" }}>
+            <p className="mt-4 text-[17.5px] leading-relaxed" style={{ color: "var(--mut)" }}>
               One licensed crew for the emergency at 3 AM and the compliance inspection on the calendar.
             </p>
           </div>
@@ -537,39 +609,79 @@ export default function NonstopPlumbers() {
             <h2 className="mt-5 text-4xl sm:text-[46px] text-white">
               A licensed crew and a marked van.
             </h2>
-            <p className="mt-4 text-[17px] leading-relaxed" style={{ color: "#bccadb" }}>
+            <p className="mt-4 text-[17.5px] leading-relaxed" style={{ color: "#bccadb" }}>
               The call is answered 24/7 and dispatched in minutes — then real people arrive:
               Master Plumber and Master Fire Suppression licensed, fully insured, working in
               New York buildings every day of the year.
             </p>
 
-            {/* the borough dispatch board */}
+            {/* THE BOROUGH BOARD — hand-drawn map + tickets that open in place */}
             <div className="np-tk mt-9" style={{ background: "rgba(255,255,255,.05)", borderColor: "rgba(255,255,255,.16)" }}>
-              <div className="px-5 py-3 flex items-center justify-between gap-3"
-                style={{ borderBottom: "1px solid rgba(255,255,255,.14)" }}>
+              <div className="px-5 py-3.5 flex items-center justify-between gap-3" style={{ borderBottom: "1px solid rgba(255,255,255,.14)" }}>
                 <span className="np-lab flex items-center gap-2" style={{ color: "#9fb2c8" }}>
                   <span className="np-live" /> Dispatch desk open
                 </span>
                 <span className="mono text-[11px]" style={{ color: "var(--cyan)", letterSpacing: ".08em" }}>NYC {clock}</span>
               </div>
-              <div className="p-2 sm:p-3">
-                {BOROUGHS.map((b) => (
-                  <a key={b.b} href="#contact" onClick={() => setBoro(b.b)}
-                    className="np-boro group flex items-start gap-3 rounded-[26px] px-3 sm:px-4 py-3 transition">
-                    <span className="np-led shrink-0 mt-[3px]" aria-hidden="true" />
-                    <span className="mono text-[11px] px-2 py-1 rounded-full shrink-0"
-                      style={{ background: "rgba(23,198,255,.12)", color: "var(--cyan)" }}>{b.c}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2">
-                        <span className="text-white font-semibold text-[15px] leading-tight">{b.b}</span>
-                        <span className="np-boro-go shrink-0 flex items-center gap-1.5 np-lab" style={{ color: "var(--cyan)", fontSize: 10 }}>
-                          Start a ticket <Ic d={I.arrow} s={14} />
+
+              {/* the map: it lights the borough you are hovering or reading */}
+              <div className="px-5 pt-6 pb-2">
+                <svg className="np-map" viewBox="0 0 400 360" role="img" aria-label="Stylized map of the five New York City boroughs">
+                  {MAP.map((m) => (
+                    <g key={m.c} className={`np-mg ${lit === m.c ? "np-on" : ""}`} onClick={() => toggleB(m.c)}
+                      onMouseEnter={() => setHovB(m.c)} onMouseLeave={() => setHovB("")}>
+                      <path d={m.p} />
+                      <text x={m.x} y={m.y} textAnchor="middle">{m.c}</text>
+                    </g>
+                  ))}
+                </svg>
+                <div className="np-mapcap np-lab mt-3 text-[10px]">Five boroughs · one dispatch desk</div>
+              </div>
+
+              <div className="p-2 sm:p-3" style={{ borderTop: "1px solid rgba(255,255,255,.09)" }}>
+                {BOROUGHS.map((b) => {
+                  const on = openB === b.c;
+                  return (
+                    <div key={b.b} className="np-brow" onMouseEnter={() => setHovB(b.c)} onMouseLeave={() => setHovB("")}>
+                      <button type="button" className="np-boro" id={`np-b-${b.c}`} aria-expanded={on}
+                        aria-controls={`np-p-${b.c}`} onClick={() => toggleB(b.c)}>
+                        <span className="np-led" aria-hidden="true" />
+                        <span className="np-bc mono np-lab" aria-hidden="true">{b.c}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="np-bn">{b.b}</span>
+                          <span className="np-bd">{b.d}</span>
                         </span>
-                      </span>
-                      <span className="block mt-1 text-[13px] leading-snug" style={{ color: "#9fb2c8" }}>{b.d}</span>
-                    </span>
-                  </a>
-                ))}
+                        <span className="np-boro-go np-lab">
+                          <span>{on ? "Close" : "Open a ticket"}</span><Ic d={I.plus} s={15} />
+                        </span>
+                      </button>
+
+                      {on && (
+                        <div className="np-panel px-4 sm:px-5 pb-5" id={`np-p-${b.c}`} role="region" aria-labelledby={`np-b-${b.c}`}>
+                          <div className="np-perf-d pt-5">
+                            <div className="np-lab" style={{ color: "var(--cyan)" }}>New ticket · {b.b}</div>
+                            <form className="mt-4 grid gap-2.5" noValidate
+                              onSubmit={(e) => { e.preventDefault(); setBsent(b.c); }}>
+                              <input className="np-field np-field-d" placeholder="What's going on?" aria-label={`What's going on in ${b.b}`} />
+                              <div className="grid sm:grid-cols-2 gap-2.5">
+                                <input className="np-field np-field-d" placeholder="Address" aria-label="Address" />
+                                <input className="np-field np-field-d" type="tel" placeholder="Phone" aria-label="Phone" />
+                              </div>
+                              <button type="submit" className="np-btn w-full !py-4 mt-1">
+                                Open the ticket <Ic d={I.arrow} s={18} />
+                              </button>
+                            </form>
+                            {bsent === b.c && (
+                              <p className="mt-3.5 text-[13px] leading-relaxed px-4 py-3 rounded-2xl" role="status" style={{ background: "rgba(23,198,255,.1)", border: "1px solid rgba(23,198,255,.35)", color: "#e6f0fa" }}>
+                                This is a demonstration rebuild — on the live site this reaches dispatch in seconds.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -585,7 +697,7 @@ export default function NonstopPlumbers() {
               Standing orders
             </div>
             <h2 className="mt-5 text-4xl sm:text-5xl">Before it becomes an emergency.</h2>
-            <p className="mt-4 text-[17px] leading-relaxed" style={{ color: "var(--mut)" }}>
+            <p className="mt-4 text-[17.5px] leading-relaxed" style={{ color: "var(--mut)" }}>
               Two ways to keep us on your building&rsquo;s board all year — for property managers and for homes.
             </p>
           </div>
@@ -641,12 +753,12 @@ export default function NonstopPlumbers() {
               <h2 id="about-h" className="mt-5 text-4xl sm:text-5xl">
                 The crews NYC buildings trust when the work has to be done right.
               </h2>
-              <p className="mt-5 text-[17px] leading-relaxed" style={{ color: "var(--mut)" }}>
+              <p className="mt-5 text-[17.5px] leading-relaxed" style={{ color: "var(--mut)" }}>
                 New York&rsquo;s premier residential and commercial buildings, institutions and private schools
                 rely on Nonstop Plumbers CORP for a reason: since 1992 the reputation has been built on
                 high-quality, fairly priced service and impeccable attention to detail.
               </p>
-              <p className="mt-4 text-[17px] leading-relaxed" style={{ color: "var(--mut)" }}>
+              <p className="mt-4 text-[17.5px] leading-relaxed" style={{ color: "var(--mut)" }}>
                 We believe in doing a job right the first time, and doing it neatly, without excuses. With over
                 60 trained professionals and live plumbers answering the phone, customers get immediate access to
                 real help — and with locations in Astoria, Brooklyn and Manhattan, we can always be there fast.
@@ -731,7 +843,7 @@ export default function NonstopPlumbers() {
               Before you call
             </div>
             <h2 id="faq-h" className="mt-5 text-4xl sm:text-5xl">Plumbing questions from NYC owners and managers.</h2>
-            <p className="mt-4 text-[17px] leading-relaxed" style={{ color: "var(--mut)" }}>
+            <p className="mt-4 text-[17.5px] leading-relaxed" style={{ color: "var(--mut)" }}>
               Direct answers about emergency response, drain and sewer issues, permits, compliance work
               and what to expect before a licensed NYC plumber arrives.
             </p>
@@ -770,7 +882,7 @@ export default function NonstopPlumbers() {
               Dispatch
             </div>
             <h2 className="mt-5 text-4xl sm:text-5xl">One number, any hour.</h2>
-            <p className="mt-4 text-[17px] leading-relaxed" style={{ color: "var(--mut)" }}>
+            <p className="mt-4 text-[17.5px] leading-relaxed" style={{ color: "var(--mut)" }}>
               Water where it shouldn&rsquo;t be, no heat, a violation to clear, a sprinkler inspection due —
               the same line takes all of it.
             </p>
@@ -866,7 +978,7 @@ export default function NonstopPlumbers() {
             <h2 id="careers-h" className="mt-5 text-3xl sm:text-[42px] text-white">
               We hire licensed NYC plumbers.
             </h2>
-            <p className="mt-4 text-[16.5px] leading-relaxed max-w-xl" style={{ color: "#bccadb" }}>
+            <p className="mt-4 text-[17px] leading-relaxed max-w-xl" style={{ color: "#bccadb" }}>
               Licensed plumbers, drain and sewer specialists, helpers, apprentices and operations support
               who want steady work, clear expectations and real NYC field experience. We look for people
               who communicate clearly, respect customers and job sites, and treat timing seriously.
