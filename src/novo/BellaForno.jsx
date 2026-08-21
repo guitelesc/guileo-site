@@ -176,7 +176,7 @@ export default function BellaForno() {
           Left 1–8: oversized Fraunces display overlapping a glass panel, the
           oven rendered as a glowing arch of light INSIDE the composition.
           Right 9–12: tabular info column (hours / address / line) with rules. */}
-      <header id="top" className="relative mx-auto grid max-w-6xl grid-cols-12 items-end gap-y-12 px-5 pb-20 pt-32 sm:px-8 md:min-h-[92svh] md:gap-x-8 md:pt-40">
+      <header id="top" className="relative mx-auto grid max-w-6xl grid-cols-12 items-center gap-y-12 px-5 pb-24 pt-28 sm:px-8 md:min-h-[86svh] md:gap-x-8 md:pt-32">
         <div className="relative col-span-12 md:col-span-8">
           {/* the oven: an arch of warm light behind the type — integrated, not floating */}
           <div className="pointer-events-none absolute -left-10 bottom-[-5rem] h-[30rem] w-[36rem] max-w-[110vw]" aria-hidden="true">
