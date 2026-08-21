@@ -35,7 +35,9 @@ function useReveal() {
       { threshold: 0.12 }
     );
     document.querySelectorAll(".bf-reveal").forEach((el) => io.observe(el));
-    return () => io.disconnect();
+    // fail-open: if the observer never fires (headless, quirks), reveal everything
+    const t = setTimeout(() => document.querySelectorAll(".bf-reveal").forEach((el) => el.classList.add("bf-in")), 1400);
+    return () => { clearTimeout(t); io.disconnect(); };
   }, []);
 }
 
