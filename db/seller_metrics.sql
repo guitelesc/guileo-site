@@ -65,7 +65,7 @@ begin
     from gui_actions g
     where g.action = 'lead'
       and g.contact like '%@%'
-      and g.details like ('%👤ref:' || v_ref || '%')
+      and substring(g.details from '👤ref:([^\s·]+)') = v_ref
       and g.created_at >= now() - interval '30 days';
 
     with leads as (
@@ -73,7 +73,7 @@ begin
       select distinct lower(trim(g.contact)) as email
       from gui_actions g
       where g.action = 'lead' and g.contact like '%@%'
-        and g.details like ('%👤ref:' || v_ref || '%')
+        and substring(g.details from '👤ref:([^\s·]+)') = v_ref
       union
       -- path 2: checkouts carrying seller_ref (attribution client_event)
       select distinct lower(trim(e2.client_email)) as email
@@ -94,7 +94,7 @@ begin
       select distinct lower(trim(g.contact)) as email
       from gui_actions g
       where g.action = 'lead' and g.contact like '%@%'
-        and g.details like ('%👤ref:' || v_ref || '%')
+        and substring(g.details from '👤ref:([^\s·]+)') = v_ref
       union
       select distinct lower(trim(e2.client_email)) as email
       from client_events e2
@@ -145,7 +145,7 @@ begin
             select distinct lower(trim(g.contact)) as email
             from gui_actions g
             where g.action = 'lead' and g.contact like '%@%'
-              and g.details like ('%👤ref:' || s.ref_slug || '%')
+              and substring(g.details from '👤ref:([^\s·]+)') = s.ref_slug
             union
             select distinct lower(trim(e2.client_email)) as email
             from client_events e2

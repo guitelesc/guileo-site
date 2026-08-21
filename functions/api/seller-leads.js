@@ -3,8 +3,15 @@
 // seller's status/notes/activity-log for the seeded prospect bench so it survives across devices
 // (localStorage stays as an offline cache/fallback client-side).
 //
+// AÇÕES:
+//   • list/save   → o quadro do Lead Boss (bench semeado) do vendedor
+//   • inbound     → 📥 A CAIXA DE ENTRADA: os leads que CHEGARAM pra ele (gui_actions, atribuídos
+//                   pelo `👤ref:` por EXTRAÇÃO EXATA — db/seller_inbound_leads.sql). Era o buraco
+//                   nº 1 da plataforma: nenhuma tela mostrava ao vendedor o lead que entrou.
+//   • all/motors  → agregados de admin (token)
+//
 // AUTH:
-//   • seller actions (list/save) → sellerAuthFull (SAME roster + team-code gate as onboard-draft /
+//   • seller actions (list/save/inbound) → sellerAuthFull (SAME roster + team-code gate as onboard-draft /
 //     seller-prospects). The AUTHENTICATED seller.email is the ONLY scope passed to the RPC — a
 //     seller can only ever read/write their OWN board.
 //   • admin action (all) → blitz_stats(token) admin gate (same as seller-admin) → aggregate view.
@@ -75,11 +82,15 @@ export async function onRequestPost(context) {
     // ADMIN aggregate — never touches per-seller identity.
     if (action === "all") {
       if (!await adminOk(b.token)) return json({ error: "unauthorized" }, 401);
+      // ERRO NUNCA VIRA VAZIO: "ok:true, rows:[]" depois de uma falha de leitura lê como "não há
+      // nada", e quem olha a tela para de olhar. Falhou → diz que falhou, com o motivo.
       try {
         const r = await svcRpc(env, "seller_lead_crm_all", { p_secret: ING });
-        const rows = r.ok ? await r.json().catch(() => []) : [];
-        return json({ ok: true, rows: Array.isArray(rows) ? rows : [] });
-      } catch { return json({ ok: true, rows: [] }); }
+        if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 502);
+        const rows = await r.json().catch(() => null);
+        if (!Array.isArray(rows)) return json({ ok: false, motivo: "resposta do banco nao e lista" }, 502);
+        return json({ ok: true, rows });
+      } catch (e) { return json({ ok: false, motivo: String(e).slice(0, 140) }, 502); }
     }
 
     // ADMIN — platform-wide stats for the motors built this session (email suppression/campaigns +
@@ -88,9 +99,11 @@ export async function onRequestPost(context) {
       if (!await adminOk(b.token)) return json({ error: "unauthorized" }, 401);
       try {
         const r = await svcRpc(env, "platform_motor_stats", { p_secret: ING });
-        const stats = r.ok ? await r.json().catch(() => ({})) : {};
-        return json({ ok: true, stats: stats && typeof stats === "object" ? stats : {} });
-      } catch { return json({ ok: true, stats: {} }); }
+        if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 502);
+        const stats = await r.json().catch(() => null);
+        if (!stats || typeof stats !== "object") return json({ ok: false, motivo: "resposta do banco vazia/nao-JSON" }, 502);
+        return json({ ok: true, stats });
+      } catch (e) { return json({ ok: false, motivo: String(e).slice(0, 140) }, 502); }
     }
 
     // SELLER actions — the authenticated email is the ONLY scope.
@@ -105,13 +118,49 @@ export async function onRequestPost(context) {
     if ((action === "list" || action === "save") && !seller.roster) {
       return json(action === "list" ? { ok: true, crm: {}, local: true } : { ok: true, local: true });
     }
+    // A caixa de entrada é DADO DE OUTRO VENDEDOR se o ref não for identidade provada: o código de
+    // TIME aceita qualquer e-mail digitado, então o `ref` derivado dele não prova nada. Recusa —
+    // com o motivo EXATO (`team_code`, igual seller-prospects.js), pra tela dizer "peça seu código
+    // pessoal" em vez de um "não autorizado" genérico que faz o vendedor achar que perdeu o login.
+    if (action === "inbound" && !seller.roster) return json({ error: "team_code" }, 401);
 
     if (action === "list") {
       try {
         const r = await svcRpc(env, "seller_lead_crm_list", { p_secret: ING, p_seller_email: seller.email });
-        const crm = r.ok ? await r.json().catch(() => ({})) : {};
-        return json({ ok: true, crm: crm && typeof crm === "object" ? crm : {} });
-      } catch { return json({ ok: true, crm: {} }); }
+        if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 502);
+        const crm = await r.json().catch(() => null);
+        if (!crm || typeof crm !== "object") return json({ ok: false, motivo: "resposta do banco vazia/nao-JSON" }, 502);
+        return json({ ok: true, crm });
+      } catch (e) { return json({ ok: false, motivo: String(e).slice(0, 140) }, 502); }
+    }
+
+    // ── 📥 CAIXA DE ENTRADA DO VENDEDOR — os leads que CHEGARAM pra ele ────────────────────────
+    // Lead entra por 3 portas (/raio-x público, formulários do site, speed-to-lead) e todas param
+    // em gui_actions. Até hoje só o /admin enxergava: o vendedor trabalhava às cegas, e lead pago
+    // em anúncio que ninguém trabalha é receita descartada. Aqui ele finalmente vê o que é dele.
+    //
+    // ESCOPO: o ref vem da SESSÃO autenticada (seller.ref), NUNCA do corpo — senão qualquer
+    // vendedor leria a caixa do vizinho só trocando uma string. A RPC casa o ref por extração
+    // EXATA (db/seller_inbound_leads.sql), nunca por prefixo.
+    if (action === "inbound") {
+      if (!ING) return json({ ok: false, motivo: "INGEST_SECRET ausente no ambiente" }, 500);
+      const dias = Math.max(1, Math.min(parseInt(b.dias, 10) || 30, 365));
+      const limite = Math.max(1, Math.min(parseInt(b.limit, 10) || 200, 500));
+      const ref = (seller.ref || "").toString().trim();
+      if (!ref) return json({ ok: false, motivo: "vendedor sem ref cadastrado" }, 400);
+      try {
+        const r = await svcRpc(env, "seller_inbound_leads", { p_secret: ING, p_ref: ref, p_dias: dias, p_limit: limite });
+        if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 502);
+        const d = await r.json().catch(() => null);
+        // A RPC devolve {ok:false, motivo} quando ela mesma falha — repassar é o contrato honesto.
+        if (!d || typeof d !== "object") return json({ ok: false, motivo: "resposta do banco vazia/nao-JSON" }, 502);
+        if (d.ok !== true) return json({ ok: false, motivo: (d.motivo || "leitura nao confirmada").toString().slice(0, 200) }, 502);
+        return json({
+          ok: true, ref: d.ref || ref, dias,
+          rows: Array.isArray(d.rows) ? d.rows : [],
+          contagens: d.contagens && typeof d.contagens === "object" ? d.contagens : null,
+        });
+      } catch (e) { return json({ ok: false, motivo: String(e).slice(0, 140) }, 502); }
     }
 
     if (action === "save") {
@@ -124,9 +173,10 @@ export async function onRequestPost(context) {
         const r = await svcRpc(env, "seller_lead_crm_upsert", {
           p_secret: ING, p_seller_email: seller.email, p_lead_id: leadId, p_status: status, p_notes: notes, p_log: log,
         });
-        const ok = r.ok && !!(await r.json().catch(() => null));
-        return json({ ok });
-      } catch { return json({ ok: false }); }
+        if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 502);
+        const gravou = !!(await r.json().catch(() => null));
+        return json(gravou ? { ok: true } : { ok: false, motivo: "o banco nao confirmou a gravacao" }, gravou ? 200 : 502);
+      } catch (e) { return json({ ok: false, motivo: String(e).slice(0, 140) }, 502); }
     }
 
     return json({ error: "unknown action" }, 400);

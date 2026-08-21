@@ -548,8 +548,8 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
                           <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${a.level === "danger" ? "bg-red-400" : a.level === "warn" ? "bg-g-gold" : "bg-sky-400"}`} />
                           <span className="flex-1 min-w-0 text-xs text-g-light leading-snug">{a.text}</span>
                           <div className="flex items-center gap-1.5 shrink-0">
-                            {target && <button onClick={() => onNav(target.view)} className="text-[11px] font-bold text-g-muted hover:text-g-word transition px-2 py-1 rounded-lg hover:bg-white/[0.05] opacity-0 group-hover:opacity-100">{target.label} →</button>}
-                            <button onClick={() => resolveAlert(i)} className="text-[11px] font-bold text-g-green border border-g-green/25 hover:bg-g-green/10 transition px-2.5 py-1 rounded-lg">{tr("Resolve")}</button>
+                            {target && <button onClick={() => onNav(target.view)} className="text-[11px] font-bold text-g-muted hover:text-g-word transition px-2 py-1 rounded-lg hover:bg-white/[0.05] opacity-0 group-hover:opacity-100 min-h-[44px] inline-flex items-center">{target.label} →</button>}
+                            <button onClick={() => resolveAlert(i)} className="text-[11px] font-bold text-g-green border border-g-green/25 hover:bg-g-green/10 transition px-2.5 py-1 rounded-lg min-h-[44px] inline-flex items-center">{tr("Resolve")}</button>
                           </div>
                         </div>
                       );

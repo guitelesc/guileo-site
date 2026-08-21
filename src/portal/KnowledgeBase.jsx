@@ -124,7 +124,7 @@ export default function KnowledgeBase({ V, real = null, email = "", dataKey = ""
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {templates.map((q, i) => (
               <button key={i} onClick={() => setDraft((d) => ({ ...d, question: q }))}
-                className="rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1 text-[11.5px] text-g-muted hover:text-g-word hover:border-[#FF8A33]/40 transition">
+                className="rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1 text-[11.5px] text-g-muted hover:text-g-word hover:border-[#FF8A33]/40 transition min-h-[44px] inline-flex items-center">
                 {q}
               </button>
             ))}
@@ -153,10 +153,10 @@ export default function KnowledgeBase({ V, real = null, email = "", dataKey = ""
                         <input type="checkbox" checked={r.active !== false} onChange={(e) => patchLocal(r.id, { active: e.target.checked })} className="accent-[#FF8A33]" />
                         {tr("Ativa (a Gui usa)")}
                       </label>
-                      <button onClick={() => addOrSave(r)} disabled={savingId === r.id} className="inline-flex items-center gap-1.5 rounded-lg border border-g-green/40 bg-g-green/[0.10] px-2.5 py-1 text-[12px] font-black text-g-word hover:bg-g-green/20 transition disabled:opacity-40">
+                      <button onClick={() => addOrSave(r)} disabled={savingId === r.id} className="inline-flex items-center gap-1.5 rounded-lg border border-g-green/40 bg-g-green/[0.10] px-2.5 py-1 text-[12px] font-black text-g-word hover:bg-g-green/20 transition disabled:opacity-40 min-h-[44px] inline-flex items-center">
                         <FaFloppyDisk size={10} /> {tr("Salvar")}
                       </button>
-                      <button onClick={() => remove(r)} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-[12px] font-bold text-g-muted hover:text-[#EF4444] hover:border-[#EF4444]/40 transition ml-auto">
+                      <button onClick={() => remove(r)} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1 text-[12px] font-bold text-g-muted hover:text-[#EF4444] hover:border-[#EF4444]/40 transition ml-auto min-h-[44px] inline-flex items-center">
                         <FaTrash size={10} /> {tr("Remover")}
                       </button>
                     </div>

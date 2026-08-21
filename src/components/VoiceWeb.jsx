@@ -1,7 +1,12 @@
 // src/components/VoiceWeb.jsx — o botão que faz a Gui ATENDER POR VOZ no navegador.
 //
-// Mora no site do CLIENTE (marca dele), então o estilo é inline e usa a cor dele — o cimento
-// quente do cockpit não se aplica aqui, de propósito (mesma regra do ClientSite.jsx).
+// Nasceu para o site do CLIENTE (marca dele), então o estilo é inline e usa a cor dele — o
+// cimento quente do cockpit não se aplica lá, de propósito (mesma regra do ClientSite.jsx).
+//
+// DESDE 2026-08-18 ELE TAMBÉM ATENDE A PRÓPRIA GUILEO (convite flutuante da landing, com
+// `slug="guileo"` e `tema="escuro"`). Duas peles, um componente: o caminho do cliente não mudou
+// em nada — `tema` é opcional e o padrão continua sendo a caixa branca. Um segundo componente
+// de voz seria um segundo lugar pra corrigir quando o protocolo ou um motivo de recusa mudar.
 //
 // A REGRA QUE MANDA NESTA TELA: nunca um botão que não faz nada. Todo caminho que não termina
 // em conversa termina em uma frase que explica o motivo e deixa telefone/formulário à mão:
@@ -119,12 +124,64 @@ const T = {
       padrao: "No pude abrir la voz ahora. Usa el formulario o llámanos.",
     },
   },
+  // hi entrou em 2026-08-18 junto com a voz na landing da Guileo: a lei da casa é 4 idiomas em
+  // TODA superfície, e a landing fala hindi. Antes, um visitante em hindi caía no dicionário pt.
+  hi: {
+    titulo: "अभी आवाज़ से बात करें",
+    sub: "ब्राउज़र में ही आवाज़ से बातचीत — किसी फ़ोन कॉल की ज़रूरत नहीं।",
+    botao: "🎙️ बात करें",
+    conectando: "जुड़ रहे हैं…",
+    mic: "माइक्रोफ़ोन की अनुमति दें…",
+    ouvindo: "बोलिए, मैं सुन रही हूँ",
+    falando: "बोल रही हूँ…",
+    encerrar: "समाप्त करें",
+    fim: "बातचीत समाप्त हुई।",
+    denovo: "फिर से बात करें",
+    tempo: "बातचीत का समय पूरा हुआ। आगे बढ़ना चाहते हैं? नीचे का फ़ॉर्म भरें या हमें कॉल करें।",
+    voce: "आप",
+    restante: "शेष",
+    motivos: {
+      inseguro: "आवाज़ केवल सुरक्षित (https) कनेक्शन पर काम करती है।",
+      sem_ws: "यह ब्राउज़र आवाज़ की बातचीत नहीं चला सकता — नीचे का फ़ॉर्म भरें या हमें कॉल करें।",
+      sem_audio: "यह ब्राउज़र ऑडियो सपोर्ट नहीं करता — नीचे का फ़ॉर्म भरें या हमें कॉल करें।",
+      sem_mic: "यह ब्राउज़र माइक्रोफ़ोन की अनुमति नहीं देता — नीचे का फ़ॉर्म भरें या हमें कॉल करें।",
+      mic_negado: "माइक्रोफ़ोन के बिना मैं आपको सुन नहीं सकती। ब्राउज़र सेटिंग्स में माइक चालू करके फिर कोशिश करें — या नीचे का फ़ॉर्म भरें।",
+      no_key: "आवाज़ अभी उपलब्ध नहीं है। नीचे का फ़ॉर्म भरें या हमें कॉल करें।",
+      no_agent: "इस व्यवसाय के लिए आवाज़ अभी चालू नहीं हुई है। नीचे का फ़ॉर्म भरें या हमें कॉल करें।",
+      no_site: "इस व्यवसाय के लिए आवाज़ अभी चालू नहीं हुई है।",
+      disabled: "आवाज़ इस समय बंद है। नीचे का फ़ॉर्म भरें।",
+      rate_limited: "आपने अभी कई बातचीत शुरू की हैं। कुछ मिनट बाद कोशिश करें, या नीचे का फ़ॉर्म भरें।",
+      ip_cap: "आपने आज कई बार आवाज़ का उपयोग किया है। नीचे का फ़ॉर्म भरें — हम आपसे संपर्क करेंगे।",
+      daily_minutes: "आवाज़ सेवा आज की सीमा तक पहुँच गई। नीचे का फ़ॉर्म भरें — हम आपसे संपर्क करेंगे।",
+      daily_sessions: "आवाज़ सेवा आज की सीमा तक पहुँच गई। नीचे का फ़ॉर्म भरें — हम आपसे संपर्क करेंगे।",
+      platform_daily: "आवाज़ सेवा आज की सीमा तक पहुँच गई। नीचे का फ़ॉर्म भरें — हम आपसे संपर्क करेंगे।",
+      platform_off: "आवाज़ अस्थायी रूप से बंद है। नीचे का फ़ॉर्म भरें।",
+      quota_unavailable: "आवाज़ अभी उपलब्ध नहीं है। नीचे का फ़ॉर्म भरें या हमें कॉल करें।",
+      provider: "मैं अभी आवाज़ की लाइन नहीं खोल सकी। नीचे का फ़ॉर्म भरें या हमें कॉल करें।",
+      erro: "बातचीत कट गई। फिर से कोशिश करें, या नीचे का फ़ॉर्म भरें।",
+      padrao: "मैं अभी आवाज़ नहीं खोल सकी। नीचे का फ़ॉर्म भरें या हमें कॉल करें।",
+    },
+  },
+};
+
+// AS DUAS PELES. `claro` é a original e continua sendo o padrão — o site do cliente é branco e
+// nada lá pode mudar por causa desta adição. `escuro` existe porque a landing da Guileo é cimento
+// quente (#161512) e uma caixa branca no canto dela parece um pop-up de outro site.
+// Só CORES mudam entre as duas; estrutura, estados e frases são os mesmos.
+const PELES = {
+  claro: { borda: "#e8e8e8", fundo: "#fff", titulo: "#1a1a1a", sub: "#777", texto: "#333", quem: "#666",
+           painel: "#fafafa", estado: "#444", tempo: "#999", btnTexto: "#fff", btnFundo: "",
+           avisoCor: "#8a5a00", avisoFundo: "#fff8e6", avisoBorda: "#ffe2a8" },
+  escuro: { borda: "#2B2720", fundo: "#1C1A16", titulo: "#EDE7DC", sub: "#948C7B", texto: "#C5BEB0", quem: "#948C7B",
+            painel: "#161512", estado: "#C5BEB0", tempo: "#948C7B", btnTexto: "#12100D", btnFundo: "",
+            avisoCor: "#D6C29A", avisoFundo: "rgba(214,194,154,0.10)", avisoBorda: "rgba(214,194,154,0.35)" },
 };
 
 const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
-export default function VoiceWeb({ slug, brand = "#2F6F4E", business = "", lang = "pt", phone = "" }) {
+export default function VoiceWeb({ slug, brand = "#2F6F4E", business = "", lang = "pt", phone = "", tema = "claro" }) {
   const t = T[(lang || "pt").slice(0, 2)] || T.pt;
+  const P = PELES[tema] || PELES.claro;
   const [estado, setEstado] = useState("idle");   // idle | pedindo_mic | conectando | ouvindo | falando | fim
   const [aviso, setAviso] = useState("");         // frase honesta quando não dá pra falar
   const [linhas, setLinhas] = useState([]);       // transcrição ao vivo (as últimas)
@@ -179,17 +236,17 @@ export default function VoiceWeb({ slug, brand = "#2F6F4E", business = "", lang 
   const ativo = ["pedindo_mic", "conectando", "ouvindo", "falando"].includes(estado);
 
   const S = {
-    caixa: { border: "1px solid #e8e8e8", borderRadius: 16, padding: "20px 20px 18px", background: "#fff", maxWidth: 460, margin: "0 auto" },
-    titulo: { fontWeight: 700, fontSize: "1.05rem", margin: 0, color: "#1a1a1a" },
-    sub: { color: "#777", fontSize: ".88rem", margin: "6px 0 16px", lineHeight: 1.5 },
-    btn: { width: "100%", padding: "14px", borderRadius: 12, border: 0, background: brand, color: "#fff", fontSize: "1rem", fontWeight: 650, cursor: "pointer" },
-    btnFim: { width: "100%", padding: "12px", borderRadius: 12, border: `1px solid ${brand}`, background: "#fff", color: brand, fontSize: ".95rem", fontWeight: 650, cursor: "pointer" },
-    estado: { display: "flex", alignItems: "center", gap: 10, justifyContent: "center", color: "#444", fontWeight: 600, fontSize: ".95rem", padding: "10px 0 14px" },
+    caixa: { border: `1px solid ${P.borda}`, borderRadius: 16, padding: "20px 20px 18px", background: P.fundo, maxWidth: 460, margin: "0 auto" },
+    titulo: { fontWeight: 700, fontSize: "1.05rem", margin: 0, color: P.titulo },
+    sub: { color: P.sub, fontSize: ".88rem", margin: "6px 0 16px", lineHeight: 1.5 },
+    btn: { width: "100%", padding: "14px", borderRadius: 12, border: 0, background: brand, color: P.btnTexto, fontSize: "1rem", fontWeight: 650, cursor: "pointer" },
+    btnFim: { width: "100%", padding: "12px", borderRadius: 12, border: `1px solid ${brand}`, background: "transparent", color: brand, fontSize: ".95rem", fontWeight: 650, cursor: "pointer" },
+    estado: { display: "flex", alignItems: "center", gap: 10, justifyContent: "center", color: P.estado, fontWeight: 600, fontSize: ".95rem", padding: "10px 0 14px" },
     ponto: { width: 9, height: 9, borderRadius: "50%", background: brand, display: "inline-block" },
-    linhas: { maxHeight: 168, overflowY: "auto", margin: "0 0 14px", padding: "12px 14px", background: "#fafafa", borderRadius: 12, fontSize: ".9rem", lineHeight: 1.5 },
+    linhas: { maxHeight: 168, overflowY: "auto", margin: "0 0 14px", padding: "12px 14px", background: P.painel, borderRadius: 12, fontSize: ".9rem", lineHeight: 1.5 },
     quem: { fontWeight: 700, color: brand },
-    aviso: { color: "#8a5a00", background: "#fff8e6", border: "1px solid #ffe2a8", borderRadius: 12, padding: "11px 13px", fontSize: ".88rem", lineHeight: 1.5, margin: "0 0 12px" },
-    tempo: { textAlign: "center", color: "#999", fontSize: ".78rem", marginTop: 10 },
+    aviso: { color: P.avisoCor, background: P.avisoFundo, border: `1px solid ${P.avisoBorda}`, borderRadius: 12, padding: "11px 13px", fontSize: ".88rem", lineHeight: 1.5, margin: "0 0 12px" },
+    tempo: { textAlign: "center", color: P.tempo, fontSize: ".78rem", marginTop: 10 },
   };
 
   // Navegador incapaz: uma frase honesta + o telefone, se houver. Nunca o botão.
@@ -221,10 +278,10 @@ export default function VoiceWeb({ slug, brand = "#2F6F4E", business = "", lang 
             <div style={S.linhas}>
               {linhas.map((l, i) => (
                 <div key={i} style={{ marginBottom: 6 }}>
-                  <span style={l.quem === "gui" ? S.quem : { fontWeight: 700, color: "#666" }}>
+                  <span style={l.quem === "gui" ? S.quem : { fontWeight: 700, color: P.quem }}>
                     {l.quem === "gui" ? (business || "Gui") : t.voce}:
                   </span>{" "}
-                  <span style={{ color: "#333" }}>{l.texto}</span>
+                  <span style={{ color: P.texto }}>{l.texto}</span>
                 </div>
               ))}
             </div>

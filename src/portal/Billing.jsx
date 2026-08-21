@@ -139,6 +139,12 @@ function Billing({ V, real = null, onNav = () => {}, email = "" }) {
     : pct;
   // Which plan tier is the client actually on (real) — drives the "Current" badge honestly.
   const currentPlanId = real ? (planIdx >= 0 ? SELF_SERVE_PLANS[planIdx].id : null) : "growth";
+  // Ele JÁ ASSINA quando estamos em modo real E deu para identificar o plano dele. Fora disso
+  // (demo, ou plano não inferível) o caminho seguro é o link de pagamento — mandar alguém sem
+  // assinatura para o portal da Stripe só produz o beco "no_customer".
+  // ⚠️ `real` sozinho não basta: cliente real com plano não identificado não pode ser tratado
+  // como assinante, senão o botão vira uma porta que não abre.
+  const jaAssina = !!(real && currentPlanId);
   // ── #18 Return on your Gui credits — a REAL multiplier, or nothing at all (never a fake "—").
   // value = money Gui actually collected this month (preferred) or its benchmarked estimate; both
   // come from money_proof (real). spend = credits consumed × the client's own plan rate — which
@@ -273,11 +279,28 @@ function Billing({ V, real = null, onNav = () => {}, email = "" }) {
                     {/* annual option — only when its Payment Link actually exists (no fake promises) */}
                     {p.annualUrl && <a href={real ? withEmail(p.annualUrl) : "/planos"} target={real ? "_blank" : "_self"} rel="noopener" className="text-[10px] font-bold text-g-gold underline decoration-g-gold/40 underline-offset-2 hover:text-g-word transition">{tr("annual (2 months free)")}</a>}
                   </div>
-                  <a href={linkFor(p)} target={real && p.url ? "_blank" : "_self"} rel="noopener" className="btn-bright text-sm shrink-0">{tr("Upgrade now →")}</a>
+                  {/* 🚨 ASSINATURA DUPLA (auditoria 2026-08-20). "Upgrade now" abria um Payment Link
+                      NOVO sem cancelar nem fazer proporcional: o cliente passava a pagar OS DOIS
+                      planos no mesmo mês, e o texto abaixo só falava dos créditos somados. Quem já
+                      assina vai para o portal da Stripe — que é exatamente onde a troca de plano com
+                      proporcional é feita, e que este arquivo JÁ sabe abrir (openBillingPortal).
+                      Link de pagamento novo só para quem ainda NÃO tem assinatura. */}
+                  {jaAssina ? (
+                    <button type="button" onClick={openBillingPortal} disabled={portalBusy}
+                      className="btn-bright text-sm shrink-0 disabled:opacity-60">
+                      {portalBusy ? tr("Opening…") : tr("Switch to this plan →")}
+                    </button>
+                  ) : (
+                    <a href={linkFor(p)} target={real && p.url ? "_blank" : "_self"} rel="noopener" className="btn-bright text-sm shrink-0">{tr("Upgrade now →")}</a>
+                  )}
                 </div>
               ))}
             </div>
-            <p className="mt-2 text-[10px] text-g-muted">{tr("Upgrade activates instantly — the new plan's credits are added on top of your current balance as soon as the payment lands.")}</p>
+            <p className="mt-2 text-[10px] text-g-muted">
+              {jaAssina
+                ? tr("Switching opens your billing portal, where the change is prorated — you're never charged for two plans at once. Your credit balance carries over.")
+                : tr("Upgrade activates instantly — the new plan's credits are added on top of your current balance as soon as the payment lands.")}
+            </p>
           </Card>
         );
       })()}

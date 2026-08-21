@@ -25,6 +25,10 @@ const CAMPOS = [
   "places.displayName", "places.formattedAddress", "places.internationalPhoneNumber",
   "places.websiteUri", "places.rating", "places.userRatingCount",
   "places.regularOpeningHours.weekdayDescriptions", "places.businessStatus",
+  // categoria: o Google já classificou o negócio ("Day spa", "Hair salon"). É ela que define
+  // QUEM é concorrente. Sem ela a busca de vizinhos caía no NOME do próprio negócio — ver a
+  // nota grande em vizinhos() logo abaixo.
+  "places.primaryTypeDisplayName", "places.primaryType",
 ].join(",");
 
 /**
@@ -71,6 +75,10 @@ export async function fichaDoGoogle(env, consulta) {
       horarios: dias.join(" · "),
       dias_declarados: dias.filter((l) => !/closed|fechado/i.test(l)).length,
       status: p?.businessStatus || "",
+      // categoria como o Google a escreve, no idioma da conta ("Day spa"); `tipo` é a chave
+      // técnica ("day_spa"), que serve de reserva quando o rótulo não vem.
+      categoria: p?.primaryTypeDisplayName?.text || "",
+      tipo: p?.primaryType || "",
     };
   } catch (e) { return { ok: false, motivo: String(e).slice(0, 120) }; }
 }
@@ -125,15 +133,29 @@ export function achadoDeAvaliacoes(f) {
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 import { horasFechadas } from "./horario.js";
 
-export async function vizinhos(env, { tipo, endereco, excluirNome = "", cidade = false }) {
+export async function vizinhos(env, { tipo, endereco, excluirNome = "", excluirSite = "", cidade = false }) {
   const chave = env.GOOGLE_PLACES_KEY || "";
   if (!chave) return { ok: false, motivo: "sem GOOGLE_PLACES_KEY" };
+
+  // 🚨 O DEFEITO QUE MATOU A ANÁLISE DE CONCORRENTE (2026-08-19, achado no relatório da Natura).
+  // Quem chamava passava `tipo: negocio || perfil.nome`. `negocio` é uma DICA opcional e quase
+  // sempre vem vazia — então o `||` trocava, calado, a pergunta inteira: em vez de "quem são os
+  // salões perto dela", o Google recebia "Natura Spa | Hair Salon & Spa in New York, NY" e
+  // devolvia UM resultado, um xará dela. Um vizinho é menos que o piso de 3, então a comparação
+  // de prova social nem nasceu — e nada disso apareceu como erro. É a lição do fallback que
+  // esconde o erro: o `||` não falhou, ele respondeu outra pergunta com cara de sucesso.
+  // Agora o tipo tem que ser CATEGORIA. Se o que chegou for o próprio nome, recusamos com motivo.
+  const cat = String(tipo || "").trim();
+  const ehONome = cat && excluirNome && cat.toLowerCase() === String(excluirNome).trim().toLowerCase();
+  if (!cat || ehONome) {
+    return { ok: false, motivo: "sem a categoria do negócio — buscar vizinho pelo nome dele acha xará, não concorrente" };
+  }
   // ⚠️ RUA E NÚMERO ESTREITAM DEMAIS. A 1ª versão buscava "med spa near 1501 South Miami Avenue
   // #201, Miami, FL" e voltou DOIS vizinhos — abaixo do piso de 3, então o achado não nasceu e a
   // comparação morreu sem erro nenhum. O "#201" é ruído: o Google trata como texto da consulta.
   // Cortar até a cidade/estado devolve a vizinhança de verdade, que é o que a comparação quer.
   const local = cidade ? String(endereco || "").split(",").slice(-2).join(",").trim() : endereco;
-  const q = `${tipo || "business"} in ${local || endereco || ""}`.trim().slice(0, 200);
+  const q = `${cat} in ${local || endereco || ""}`.trim().slice(0, 200);
   if (!endereco) return { ok: false, motivo: "sem endereço do prospect — não dá pra achar vizinho de verdade" };
 
   try {
@@ -141,15 +163,30 @@ export async function vizinhos(env, { tipo, endereco, excluirNome = "", cidade =
       method: "POST",
       headers: {
         "Content-Type": "application/json", "X-Goog-Api-Key": chave,
-        "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.regularOpeningHours.weekdayDescriptions",
+        // 🚨 TELEFONE E ENDEREÇO ENTRAM NA MÁSCARA (2026-08-20). Esta busca alimenta a FILA DE ATAQUE
+        // do vendedor, e uma fila sem telefone é uma lista de leitura: o botão de ligar não tem
+        // pra onde apontar. O Google já devolve os dois na MESMA consulta que a gente já paga —
+        // pedir depois seria uma segunda chamada cobrada pelo dado que estava na mão.
+        "X-Goog-FieldMask": "places.displayName,places.rating,places.userRatingCount,places.regularOpeningHours.weekdayDescriptions,places.websiteUri,places.nationalPhoneNumber,places.formattedAddress",
       },
       body: JSON.stringify({ textQuery: q, maxResultCount: 10 }),
     });
     if (!r.ok) return { ok: false, motivo: `Google HTTP ${r.status}` };
     const d = await r.json().catch(() => ({}));
-    const lista = (Array.isArray(d?.places) ? d.places : [])
-      .filter((p) => (p?.displayName?.text || "").toLowerCase() !== excluirNome.toLowerCase());
-    return { ok: true, lista };
+    // Auto-exclusão: o próprio negócio SEMPRE aparece na busca da própria categoria. Comparar
+    // alguém consigo mesmo infla a amostra e mente na mediana. Dois testes EXATOS, nada de
+    // adivinhação por semelhança de nome (que cortaria concorrente de verdade): nome normalizado
+    // igual, ou MESMO domínio de site — dois endereços do mesmo negócio compartilham o site.
+    const norm = (x) => String(x || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+    const dominio = (u) => { try { return new URL(u).hostname.replace(/^www\./, "").toLowerCase(); } catch { return ""; } };
+    const meuNome = norm(excluirNome), meuDominio = dominio(excluirSite);
+    const bruta = Array.isArray(d?.places) ? d.places : [];
+    const lista = bruta.filter((p) => {
+      if (meuNome && norm(p?.displayName?.text) === meuNome) return false;
+      if (meuDominio && dominio(p?.websiteUri) === meuDominio) return false;
+      return true;
+    });
+    return { ok: true, lista, consulta: q, brutos: bruta.length };
   } catch (e) { return { ok: false, motivo: String(e).slice(0, 120) }; }
 }
 

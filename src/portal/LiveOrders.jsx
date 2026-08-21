@@ -2,13 +2,41 @@
 import { useState } from "react";
 import { toast } from "../lib/portalApi.js";
 import { waTo } from "../data/contact.js";
-import { loadCreated, Card, tr, Drawer, logImpact } from "../pages/Portal.jsx";
+import { loadCreated, Card, tr, Drawer, logImpact , FaixaAmostra} from "../pages/Portal.jsx";
 
-function LiveOrders({ V }) {
-  const rows = [...loadCreated(V.label, "liveorders"), ...(V.liveOrders || [])];
+function LiveOrders({ V, real }) {
+  // ── OS PEDIDOS DE VERDADE (2026-08-20) ────────────────────────────────────────────────────
+  // O webhook de entregas (`functions/api/delivery-webhook.js`) grava cada pedido do Uber Eats /
+  // DoorDash / iFood como um evento `type:"order"` — e o cockpit JÁ carrega os eventos no `real`.
+  // O dado estava a um filtro de distância e a tela desenhava pedidos inventados por cima dele.
+  // Não precisou de RPC nova: precisou parar de ignorar o que já chegava.
+  // 🚨 O VALOR VEM DO CAMPO `amount`, NÃO DO TEXTO. O resumo tem "($42.5)" escrito dentro, e
+  // raspar número de frase é como o "$118 de outro serviço" nasceu neste repositório. `amount` é
+  // o campo que o webhook preencheu; a frase é para o humano ler.
+  const pedidosReais = real && Array.isArray(real.events)
+    ? real.events.filter((e) => e && e.type === "order").map((e, i) => ({
+        id: (e.payload?.ref || `#${i + 1}`).toString().slice(0, 12),
+        customer: e.payload?.customer || tr("Customer"),
+        // o resumo traz "🛵 DoorDash order ($42.5): 1× Family Combo" — o que interessa aqui é o
+        // que vem DEPOIS dos dois pontos; sem isso, repetiríamos plataforma e preço na linha.
+        items: (String(e.summary || "").split(":").slice(1).join(":").trim()) || String(e.summary || ""),
+        channel: e.channel || e.payload?.platform || "",
+        total: Number(e.amount) || 0,
+        status: tr("Received"), color: "#3E9468",
+        real: true,
+      }))
+    : null;
+  const rows = pedidosReais || [...loadCreated(V.label, "liveorders"), ...(V.liveOrders || [])];
   const [sel, setSel] = useState(null);
   return (
     <>
+      <FaixaAmostra real={real && !pedidosReais} />
+      {pedidosReais && pedidosReais.length === 0 && (
+        <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-[12px] text-g-muted">
+          {tr("No delivery orders yet. As soon as a platform sends one, it lands here.")}
+        </div>
+      )}
+      <>
     <Card className="p-0 overflow-hidden">
       <div className="px-5 py-3 border-b border-white/10 flex justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Live orders")}</span><span className="text-[11px] text-g-muted inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{rows.length} active</span></div>
       <div className="divide-y divide-white/[0.06]">
@@ -33,6 +61,7 @@ function LiveOrders({ V }) {
         onClose={() => setSel(null)}
       />
     )}
+    </>
     </>
   );
 }

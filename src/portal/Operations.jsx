@@ -98,9 +98,9 @@ function RealOps({ email, dataKey }) {
                   <span className="text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap" style={{ background: col + "22", color: col }}>{j.status}</span>
                   {!done && (
                     <div className="flex gap-1 shrink-0">
-                      {j.status !== "in_progress" && <button disabled={busy[j.id]} onClick={() => setStatus(j, "in_progress")} className="text-[10px] font-bold px-2 py-1 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-50" style={{ color: GUI }}>▶ {T("start")}</button>}
-                      <button disabled={busy[j.id]} onClick={() => setStatus(j, "completed")} className="text-[10px] font-bold px-2 py-1 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-50" style={{ color: OK }}>✓ {T("finish")}</button>
-                      <button disabled={busy[j.id]} onClick={() => setStatus(j, "no_show")} className="text-[10px] font-bold px-2 py-1 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-50" style={{ color: ALERT }}>{T("noshowBtn")}</button>
+                      {j.status !== "in_progress" && <button disabled={busy[j.id]} onClick={() => setStatus(j, "in_progress")} className="text-[10px] font-bold px-2 py-1 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-50 min-h-[44px] inline-flex items-center" style={{ color: GUI }}>▶ {T("start")}</button>}
+                      <button disabled={busy[j.id]} onClick={() => setStatus(j, "completed")} className="text-[10px] font-bold px-2 py-1 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-50 min-h-[44px] inline-flex items-center" style={{ color: OK }}>✓ {T("finish")}</button>
+                      <button disabled={busy[j.id]} onClick={() => setStatus(j, "no_show")} className="text-[10px] font-bold px-2 py-1 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-50 min-h-[44px] inline-flex items-center" style={{ color: ALERT }}>{T("noshowBtn")}</button>
                     </div>
                   )}
                 </div>

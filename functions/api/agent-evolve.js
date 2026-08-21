@@ -24,6 +24,9 @@
 import { json, safeEq } from "../lib/guard.js";
 import { svcJson, sbKey, SB_URL } from "../lib/sb.js";
 import { CEREBRO_VERSAO, buildPlatformSettings } from "../lib/provision.js";
+// a MESMA norma que /api/agente-config?padrao=1 usa — uma regra, dois leitores.
+import { conferePadrao } from "../lib/padraoAgente.js";
+import { emitFailure } from "../lib/failure.js";
 
 async function evoluir(request, env) {
   const url = new URL(request.url);
@@ -38,6 +41,10 @@ async function evoluir(request, env) {
   // Mesmo padrão já usado em platform-status.js e admin-blitz.js — `_admin_ok` levanta exceção com
   // senha errada, então !ok = recusado. Nenhum caminho novo de autenticação foi inventado.
   let autorizado = !!env.DIGEST_TOKEN && safeEq(tok, env.DIGEST_TOKEN);
+  // PORTA DE SERVIÇO (2026-08-18): o INGEST_SECRET também entra — é ele quem já reescreve o
+  // cérebro inteiro via /api/sync-agent, então recusá-lo aqui só impedia INSTALAR o webhook de
+  // identidade que o mesmo segredo pode desfazer por outro caminho. Fail-closed: env antes do safeEq.
+  if (!autorizado) autorizado = !!env.INGEST_SECRET && safeEq(tok, env.INGEST_SECRET);
   if (!autorizado && tok) {
     const a = await svcJson(env, "_admin_ok", { p_token: tok }).catch(() => null);
     autorizado = a === true || a?.ok === true;
@@ -601,7 +608,7 @@ async function evoluir(request, env) {
   if (!lista.length) return json({ ok: true, versao_atual: CEREBRO_VERSAO, atualizados: 0, nota: "frota inteira já está na versão atual" });
 
   const origem = url.origin;
-  const atualizados = [], falhas = [];
+  const atualizados = [], falhas = [], forasDaNorma = [];
   // SEQUENCIAL de propósito. Em paralelo, um rate-limit da ElevenLabs derrubaria vários syncs de uma
   // vez e as falhas viriam todas juntas sem dizer se o problema era o cliente ou o volume.
   for (const item of lista) {
@@ -621,6 +628,32 @@ async function evoluir(request, env) {
       // aceitar. Se `cerebro_versao` não voltou, alguma coisa passou sem atualizar de verdade.
       if (sr.ok && corpo?.ok && corpo?.cerebro_versao === CEREBRO_VERSAO) {
         atualizados.push({ cliente, de: item.versao, para: CEREBRO_VERSAO });
+        // ── A NORMA RODA AQUI (2026-08-21) ────────────────────────────────────────────────
+        // Os 17 itens existiam numa rota que só roda quando alguém digita a URL à mão — e
+        // ninguém digita à mão. Um agente podia estar fora do padrão por semanas, e só se
+        // descobria quando o dono do negócio ouvia algo errado ao telefone.
+        // Sincronizar já releu o agente da ElevenLabs; conferir custa uma chamada e devolve o
+        // veredito. Sync sem conferência é dizer "atualizei" sem saber para o quê.
+        try {
+          const gp = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${item.agente}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+          if (gp.ok) {
+            const pd = conferePadrao(await gp.json().catch(() => ({})));
+            forasDaNorma.push({ cliente, placar: `${pd.passou}/${pd.total}`, conforme: pd.conforme, falhas: pd.falhas });
+            if (!pd.conforme) {
+              // 🚨 UMA VEZ POR DIA, POR AGENTE. A varredura roda de hora em hora: sem a trava,
+              // um agente fora do padrão geraria 24 alarmes por dia e a caixa viraria ruído —
+              // e alarme ignorado é alarme que não existe no dia em que importa.
+              const pode = await svcJson(env, "alarme_uma_vez", {
+                p_secret: env.INGEST_SECRET || "", p_chave: `fora_da_norma:${cliente}`, p_minutos: 1440,
+              }).catch(() => false);
+              if (pode === true) {
+                await emitFailure(env, "agente_fora_da_norma", cliente,
+                  `${pd.passou}/${pd.total} · falhou: ${pd.falhas.map((f) => f.item).join(" | ").slice(0, 200)}`,
+                  { falhas: pd.falhas }).catch(() => {});
+              }
+            }
+          }
+        } catch { /* a conferência nunca pode derrubar a varredura que já atualizou */ }
       } else {
         falhas.push({ cliente, http: sr.status, motivo: (corpo?.error || corpo?.detail || "sync não carimbou a versão").toString().slice(0, 160) });
       }
@@ -638,6 +671,10 @@ async function evoluir(request, env) {
     atualizados: atualizados.length,
     detalhe: atualizados,
     falhas,
+    // o veredito da NORMA vem junto: "atualizei 3" sem dizer se os 3 estão dentro do padrão é
+    // meia notícia, e é a metade que não protege o cliente.
+    norma: forasDaNorma,
+    fora_da_norma: forasDaNorma.filter((x) => !x.conforme).length,
     restam: Math.max(0, Number(r.total_atrasados || 0) - atualizados.length),
   });
 }

@@ -216,7 +216,7 @@ function LoyaltyDemo({ V }) {
                   <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{r.name}</div><div className="text-[11px] text-g-muted truncate">{isJoined ? "referred a friend who joined" : r.note}</div></div>
                   {isJoined
                     ? <span className="text-[10px] font-black uppercase text-g-green">{tr("Joined")}</span>
-                    : <button onClick={() => convert(r, i)} className="text-[11px] font-bold rounded-full border border-g-green/40 bg-g-green/[0.1] px-2.5 py-1 text-g-green hover:bg-g-green/20 transition">{tr("Mark joined")}</button>}
+                    : <button onClick={() => convert(r, i)} className="text-[11px] font-bold rounded-full border border-g-green/40 bg-g-green/[0.1] px-2.5 py-1 text-g-green hover:bg-g-green/20 transition min-h-[44px] inline-flex items-center">{tr("Mark joined")}</button>}
                 </div>
               );
             })}

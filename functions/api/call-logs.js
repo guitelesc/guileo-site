@@ -32,7 +32,12 @@ export async function onRequestPost(context) {
   const email = (body.email || "").toString().trim().toLowerCase();
   const key = (body.key || "").toString().trim();
   if (!email || !key) return json({ error: "missing email/key" }, 400);
-  if (!env.SCHED_SECRET) return json({ calls: [] });
+  // 🚨 NUNCA devolver lista vazia quando a verdade é "não consegui ler".
+  // Para a dona do negócio, `calls: []` significa "a Gui não atendeu ninguém" — e ela vai
+  // acreditar. Um ambiente sem SCHED_SECRET, um RPC fora do ar ou um erro de rede viram, os três,
+  // a MESMA tela de "nenhuma ligação". É o defeito que mais custa confiança de cliente pagante,
+  // e é a lição do repo sobre fallback que esconde erro. Agora cada falha se identifica.
+  if (!env.SCHED_SECRET) return json({ calls: [], nao_deu_pra_ler: true, motivo: "sem SCHED_SECRET neste ambiente" });
 
   if (!(await validClient(email, key))) return json({ error: "unauthorized" }, 401);
 
@@ -42,8 +47,8 @@ export async function onRequestPost(context) {
       headers: { "Content-Type": "application/json", apikey: SCHED_ANON, Authorization: `Bearer ${SCHED_ANON}` },
       body: JSON.stringify({ p_secret: env.SCHED_SECRET, p_email: email, p_limit: 100 }),
     });
-    if (!r.ok) return json({ calls: [] });
+    if (!r.ok) return json({ calls: [], nao_deu_pra_ler: true, motivo: `a base de ligações respondeu HTTP ${r.status}` });
     const d = await r.json();
     return json({ calls: Array.isArray(d?.calls) ? d.calls : [] });
-  } catch { return json({ calls: [] }); }
+  } catch (e) { return json({ calls: [], nao_deu_pra_ler: true, motivo: `falha de rede lendo as ligações: ${(e && e.message) || e}` }); }
 }

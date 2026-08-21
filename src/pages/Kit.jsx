@@ -1,13 +1,13 @@
 import { useParams, Link } from "react-router-dom";
 import { useLang } from "../i18n.jsx";
 import { useSeo } from "../lib/seo.js";
-import { PITCH_NICHES, PITCH_CARDS } from "../data/pitchCards.js";
+import { PITCH_NICHES, PITCH_CARDS } from "../data/cartasDePitch.js";
 
 // Print-optimized "field kit" one-pager per niche, built from the pitch-card data.
 // A seller opens /kit/:niche, prints / saves as PDF, or screenshots it to send.
 // Screen chrome (picker + buttons) is hidden in print; only the white sheet prints.
 
-// Chrome + section labels in pt/en/es/hi (card CONTENT from pitchCards.js falls back en→pt).
+// Chrome + section labels in pt/en/es/hi (card CONTENT from cartasDePitch.js falls back en→pt).
 const UI = {
   pt: {
     seoTitle: "Kit de campo — Guileo",

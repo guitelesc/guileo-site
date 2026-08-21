@@ -4,10 +4,11 @@ import { useLang } from "../i18n.jsx";
 import { useSeo } from "../lib/seo.js";
 import logo from "../assets/guileo-mark.png";
 import { waLink, CONTACT } from "../data/contact.js";
-import { PITCH_NICHES, PITCH_CARDS } from "../data/pitchCards.js";
+import { PITCH_NICHES, PITCH_CARDS } from "../data/cartasDePitch.js";
 import SellerQuote from "../components/SellerQuote.jsx";
 import OnboardWizard from "../components/OnboardWizard.jsx";
 import SellerClients from "../components/SellerClients.jsx";
+import SellerGoogle from "../components/GoogleConnect.jsx";
 import ActivationRunbook from "../components/ActivationRunbook.jsx";
 import SellerProspect from "../components/SellerProspect.jsx";
 // A lista de NY já classificada (serviço + pitch). Motor em data/leadClassifier.js — existir sem
@@ -15,12 +16,22 @@ import SellerProspect from "../components/SellerProspect.jsx";
 import SellerLeadsNYC from "../components/SellerLeadsNYC.jsx";
 import SellerDashboard from "../components/SellerDashboard.jsx";
 import SellerFollowup from "../components/SellerFollowup.jsx";
+import SellerLeads from "../components/SellerLeads.jsx";
 import SellerSupport from "../components/SellerSupport.jsx";
 import SellerCloser from "../components/SellerCloser.jsx";
 import SellerIdeas from "../components/SellerIdeas.jsx";
 import SellerContract from "../components/SellerContract.jsx";
 import SellerFinance from "../components/SellerFinance.jsx";
 import DemoEngine from "../components/DemoEngine.jsx";
+// GUILEO X-RAY — o produto de entrada, agora gerável pelo próprio vendedor (era só à mão do Luis).
+import SellerXray from "../components/SellerXray.jsx";
+import SellerProspeccao from "../components/SellerProspeccao.jsx";
+import SellerRelacionamento from "../components/SellerRelacionamento.jsx";
+import SellerProdutos from "../components/SellerProdutos.jsx";
+import SellerVertical from "../components/SellerVertical.jsx";
+// PROCESSO POR GUILEO — a entrega (3 pernas → produtos → prazo) que só existia em dado.
+import SellerProcesso from "../components/SellerProcesso.jsx";
+import SellerPitch from "../components/SellerPitch.jsx";
 import { ACTIVATION_STEPS, ACTIVATION_SECTORS, pickL } from "../data/activation.js";
 
 // Shared hub-wide CSS: the AI-CTA glow (Gui orange #FF8A33, subtle pulse — cement design stays
@@ -63,8 +74,8 @@ const T = {
     loginTitle: "Entrar no Hub", loginSub: "Sua central pra vender com a Guileo — playbook, pitches, orçamentos e suporte, tudo num lugar.",
     nameField: "Seu nome", email: "Seu email", code: "Código de acesso (do time)", enter: "Entrar", entering: "Entrando…",
     invalid: "Email ou código inválido. Fala com o Luis pra liberar seu acesso.", needBoth: "Preencha email e código.",
-    logout: "Sair", hi: "Olá",
-    nav: { start: "Início", painel: "📊 Painel", alvos: "🎯 Alvos do dia", followup: "🗓️ Follow-up", fechar: "💰 Fechar", demo: "🎬 Demo", cards: "Pitch Cards", quote: "Orçamento", contrato: "📄 Contrato", financeiro: "🧾 Financeiro", cadastro: "➕ Cadastrar cliente", academy: "Academia", metas: "Minhas Metas", treino: "Treino", ativ: "Ativação", jogadas: "💡 Jogadas", support: "Suporte" },
+    logout: "Sair", mercado: "Mercado", idioma: "Idioma", hi: "Olá",
+    nav: { start: "Início", painel: "📊 Painel", alvos: "🎯 Alvos do dia", followup: "🗓️ Follow-up", fechar: "💰 Fechar", demo: "🎬 Demo", cards: "🎤 Pitch", quote: "Orçamento", contrato: "📄 Contrato", financeiro: "🧾 Financeiro", cadastro: "➕ Cadastrar cliente", academy: "Academia", metas: "Minhas Metas", treino: "Treino", ativ: "Ativação", jogadas: "💡 Jogadas", support: "Suporte" },
     cadTitle: "Cadastrar cliente", cadSub: "Preencha o cadastro completo do cliente — negócio, agente, unidades, serviços e canais. Salva um rascunho; o Luis aprova e a Gui dedicada nasce.",
     cadMine: "Meus cadastros", cadNone: "Nenhum cadastro ainda — preencha o formulário acima pra criar o primeiro.", cadErr: "⚠️ Não consegui LER seus cadastros (rede ou sessão). Isso NÃO significa que estão vazios — não cadastre de novo. Toque em Atualizar.", cadDraft: "rascunho", cadLive: "no ar", cadRefresh: "↻ Atualizar",
     ativTitle: "Ativação do cliente", ativSub: "Passo a passo pra deixar a Gui do cliente no ar depois que ele paga. Siga em ordem.",
@@ -115,7 +126,7 @@ const T = {
     nameField: "Your name", email: "Your email", code: "Access code (from your team)", enter: "Sign in", entering: "Signing in…",
     invalid: "Invalid email or code. Ask Luis to enable your access.", needBoth: "Enter email and code.",
     logout: "Sign out", hi: "Hi",
-    nav: { start: "Start", painel: "📊 Panel", alvos: "🎯 Targets", followup: "🗓️ Follow-up", fechar: "💰 Close", demo: "🎬 Demo", cards: "Pitch Cards", quote: "Quote", contrato: "📄 Contract", financeiro: "🧾 Finance", cadastro: "➕ Add client", academy: "Academy", metas: "My Goals", treino: "Practice", ativ: "Activation", jogadas: "💡 Plays", support: "Support" },
+    nav: { start: "Start", painel: "📊 Panel", alvos: "🎯 Targets", followup: "🗓️ Follow-up", fechar: "💰 Close", demo: "🎬 Demo", cards: "🎤 Pitch", quote: "Quote", contrato: "📄 Contract", financeiro: "🧾 Finance", cadastro: "➕ Add client", academy: "Academy", metas: "My Goals", treino: "Practice", ativ: "Activation", jogadas: "💡 Plays", support: "Support" },
     cadTitle: "Add client", cadSub: "Fill the full client intake — business, agent, locations, services and channels. It saves a draft; Luis approves and the dedicated Gui is born.",
     cadMine: "My intakes", cadNone: "No intakes yet — fill the form above to create the first one.", cadErr: "⚠️ Couldn't READ your intakes (network or session). This does NOT mean they're empty — don't re-register. Tap Refresh.", cadDraft: "draft", cadLive: "live", cadRefresh: "↻ Refresh",
     ativTitle: "Client activation", ativSub: "Step by step to get the client's Gui live after they pay. Follow in order.",
@@ -161,8 +172,8 @@ const T = {
     loginTitle: "Entrar al Hub", loginSub: "Tu base para vender con Guileo — playbook, pitches, presupuestos y soporte, todo en un lugar.",
     nameField: "Tu nombre", email: "Tu correo", code: "Código de acceso (del equipo)", enter: "Entrar", entering: "Entrando…",
     invalid: "Correo o código inválido. Pídele a Luis que habilite tu acceso.", needBoth: "Completa correo y código.",
-    logout: "Salir", hi: "Hola",
-    nav: { start: "Inicio", painel: "📊 Panel", alvos: "🎯 Objetivos", followup: "🗓️ Seguimiento", fechar: "💰 Cerrar", demo: "🎬 Demo", cards: "Pitch Cards", quote: "Presupuesto", contrato: "📄 Contrato", financeiro: "🧾 Finanzas", cadastro: "➕ Alta cliente", academy: "Academia", metas: "Mis Metas", treino: "Práctica", ativ: "Activación", jogadas: "💡 Jugadas", support: "Soporte" },
+    logout: "Salir", mercado: "Mercado", idioma: "Idioma", hi: "Hola",
+    nav: { start: "Inicio", painel: "📊 Panel", alvos: "🎯 Objetivos", followup: "🗓️ Seguimiento", fechar: "💰 Cerrar", demo: "🎬 Demo", cards: "🎤 Pitch", quote: "Presupuesto", contrato: "📄 Contrato", financeiro: "🧾 Finanzas", cadastro: "➕ Alta cliente", academy: "Academia", metas: "Mis Metas", treino: "Práctica", ativ: "Activación", jogadas: "💡 Jugadas", support: "Soporte" },
     cadTitle: "Alta de cliente", cadSub: "Completa el alta del cliente — negocio, agente, sucursales, servicios y canales. Guarda un borrador; Luis aprueba y nace la Gui dedicada.",
     cadMine: "Mis altas", cadNone: "Sin altas aún — completa el formulario de arriba para crear la primera.", cadErr: "⚠️ No pude LEER tus altas (red o sesión). Esto NO significa que estén vacías — no des de alta otra vez. Toca Actualizar.", cadDraft: "borrador", cadLive: "en vivo", cadRefresh: "↻ Actualizar",
     ativTitle: "Activación del cliente", ativSub: "Paso a paso para dejar la Gui del cliente en vivo después de que paga. Sigue en orden.",
@@ -204,6 +215,16 @@ const T = {
     supLuis: "Hablar con Luis", supLuisD: "Ayuda rápida, una duda, o para habilitar un cliente.", supTeam: "Soporte Guileo", supTeamD: "WhatsApp del equipo de soporte.", supEmail: "Correo", supEmailD: CONTACT.email,
   },
 };
+
+// 🚨 O BOTÃO 🇮🇳 QUEBRAVA O IDIOMA DO SITE INTEIRO (corrigido 2026-08-20).
+// `LANGS` oferece 4 bandeiras, mas `T` tem pt/en/es. Sem `hi`, a linha
+// `useEffect(() => { if (!T[gLang]) setLang("pt") })` disparava e reescrevia a chave GLOBAL
+// `guileo_lang` para português — ou seja, tocar na bandeira da Índia não só não traduzia nada,
+// como jogava o vendedor E TODA outra superfície do site para o português. Um botão que estraga
+// o estado de outras telas é pior que um botão que não faz nada.
+// Reserva é INGLÊS, nunca o português do autor. Um bloco `hi` traduzido de verdade são 60+ chaves
+// e é trabalho de tradução, não de código — fica declarado como pendente, não fingido.
+T.hi = T.en;
 T.hi = { ...T.en, eyebrow: "विक्रेता क्षेत्र", logout: "साइन आउट", hi: "नमस्ते" };
 
 // Pocket-academy content (sales copy reused from the field cards). pt/en/es; hi falls back to en.
@@ -1028,19 +1049,55 @@ function Cadastro({ t, lang, seller, go, handoff }) {
 // um vendedor com a interface em espanhol via duas palavras em português/inglês no meio da nav.
 // A regra do dono é "nada de texto EN numa tela PT, em toda superfície"; a nav é a superfície mais
 // vista de todas.
+// ═══ HUB MASTER — navegação para MIL vendedores, não para seis ═══════════════════════════════
+// Luis (2026-08-20): «esse hub é onde mais de mil vendedores estarão ao mesmo tempo vendendo».
+// Isso muda a régua. Com 6 colaboradores, 21 abas é um menu; com 1.000 vira um labirinto onde
+// cada um se perde de um jeito diferente e ninguém consegue ser treinado.
+//
+// A LEI DESTA NAVEGAÇÃO: o hub responde UMA pergunta em zero clique — "pra quem eu ligo agora?".
+// Por isso o 1º grupo é 🔥 AGORA e a 1ª aba é LEADS (quem chegou), não uma tela de boas-vindas.
+// `start` custava um clique × 1.000 pessoas × todo dia e não movia venda nenhuma; foi para
+// Aprender, que é onde material de primeira-vez pertence.
+//
+// A ORDEM DENTRO DE CADA GRUPO É A ORDEM DA CONVERSA REAL:
+//   🔥 Agora   — quem chegou · quem vence hoje · quem caçar
+//   🎯 Vender  — pitch → raio-X → orçamento → contrato (a sequência de uma reunião)
+//   🤝 Cliente — do "sim" até no ar
+//
+// DUAS ABAS SAÍRAM DA NAVEGAÇÃO (os arquivos ficam no repo — tirar do menu é reversível,
+// apagar não é):
+//   • `demo` — pedido direto do Luis. O Motor de Demo continua existindo e funcionando.
+//   • `nyc`  — era lista FALSA (src/data/leadBoss.js, zero backend) com OS MESMOS leads da aba
+//              Alvos, só que sem memória. Duas abas com os mesmos leads, uma amnésica, faz o
+//              vendedor ligar duas vezes para o mesmo dono. A aba `leads`, que lê leads DE
+//              VERDADE, toma o lugar dela.
 const GRUPOS = [
-  { id: "vender",   ico: "🎯", rot: { pt: "Vender",   en: "Sell",     es: "Vender",   hi: "बेचें" },   abas: ["start", "alvos", "nyc", "followup", "fechar"] },
-  { id: "material", ico: "📄", rot: { pt: "Material", en: "Material", es: "Material", hi: "सामग्री" }, abas: ["cards", "quote", "contrato", "demo"] },
-  { id: "cliente",  ico: "🤝", rot: { pt: "Cliente",  en: "Client",   es: "Cliente",  hi: "क्लाइंट" },  abas: ["cadastro", "ativ"] },
+  // Luis (2026-08-20): «junta leads e follow-up numa coisa só».
+  // Está certo: um lead que CHEGOU e um prospect que você ADICIONOU são a mesma coisa em etapas
+  // diferentes da mesma vida. Duas abas obrigavam o vendedor a decidir "onde essa pessoa mora?"
+  // antes de decidir "o que eu faço com ela" — e a resposta certa some no meio da pergunta errada.
+  // Agora `leads` é a vida inteira: chegou → trabalhado → etapa → fechado, sem trocar de tela.
+  { id: "agora",    ico: "🔥", rot: { pt: "Agora",    en: "Now",      es: "Ahora",    hi: "अभी" },     abas: ["leads", "prospec"] },
+  { id: "vender",   ico: "🎯", rot: { pt: "Vender",   en: "Sell",     es: "Vender",   hi: "बेचें" },   abas: ["cards", "produtos", "vertical", "raiox", "quote", "contrato", "alvos", "fechar"] },
+  { id: "cliente",  ico: "🤝", rot: { pt: "Cliente",  en: "Client",   es: "Cliente",  hi: "क्लाइंट" },  abas: ["cadastro", "relacao", "ativ", "google"] },
   { id: "meu",      ico: "💰", rot: { pt: "Meu",      en: "Mine",     es: "Mío",      hi: "मेरा" },    abas: ["painel", "financeiro", "metas"] },
-  { id: "aprender", ico: "🎓", rot: { pt: "Aprender", en: "Learn",    es: "Aprender", hi: "सीखें" },   abas: ["treino", "jogadas", "academy"] },
+  { id: "aprender", ico: "🎓", rot: { pt: "Aprender", en: "Learn",    es: "Aprender", hi: "सीखें" },   abas: ["processo", "start", "treino", "jogadas", "academy"] },
   { id: "ajuda",    ico: "🚨", rot: { pt: "Ajuda",    en: "Help",     es: "Ayuda",    hi: "मदद" },     abas: ["suporte", "support"] },
 ];
 // Rótulo de cada aba nos 4 idiomas quando o dicionário não tem (eram os 3 literais).
 const ABA_EXTRA = {
+  leads:   { pt: "📥 Leads",     en: "📥 Leads",     es: "📥 Leads",     hi: "📥 लीड्स" },
+  produtos:{ pt: "🧰 Produtos",  en: "🧰 Products",  es: "🧰 Productos",  hi: "🧰 प्रोडक्ट" },
+  relacao: { pt: "🤝 Relacionamento", en: "🤝 Relationship", es: "🤝 Relación", hi: "🤝 रिश्ता" },
+  followup:{ pt: "📥 Leads",     en: "📥 Leads",     es: "📥 Leads",     hi: "📥 लीड्स" },
   nyc:     { pt: "🗽 Leads NYC", en: "🗽 NYC leads", es: "🗽 Leads NYC", hi: "🗽 NYC लीड्स" },
   suporte: { pt: "🚨 Urgente",   en: "🚨 Urgent",    es: "🚨 Urgente",   hi: "🚨 अर्जेंट" },
   demo:    { pt: "🎬 Demo",      en: "🎬 Demo",      es: "🎬 Demo",      hi: "🎬 डेमो" },
+  raiox:   { pt: "🩻 X-Ray",     en: "🩻 X-Ray",     es: "🩻 X-Ray",     hi: "🩻 X-Ray" },
+  prospec: { pt: "🎯 Fila de ataque", en: "🎯 Attack queue", es: "🎯 Fila de ataque", hi: "🎯 अटैक क्यू" },
+  processo: { pt: "🧬 Processo", en: "🧬 Process", es: "🧬 Proceso", hi: "🧬 प्रक्रिया" },
+  google:   { pt: "🔗 Google do cliente", en: "🔗 Client's Google", es: "🔗 Google del cliente", hi: "🔗 क्लाइंट का Google" },
+  vertical: { pt: "🧭 Vertical", en: "🧭 Vertical", es: "🧭 Vertical", hi: "🧭 वर्टिकल" },
 };
 
 export default function Vendedor() {
@@ -1048,7 +1105,10 @@ export default function Vendedor() {
   const lang = T[gLang] ? gLang : "pt";
   const t = T[lang] || T.pt;
   const [seller, setSeller] = useState(loadSeller);
-  const [tab, setTab] = useState("start");
+  // Abre na fila de quem chegou: ver "pra quem eu ligo agora" não pode custar um clique.
+  // Volta do login do Google (callback → /vendedor?google=…): abre a aba do Google do cliente,
+  // que é onde o estado REAL aparece. Cair no Leads faria o vendedor achar que deu certo.
+  const [tab, setTab] = useState(() => { try { return new URLSearchParams(window.location.search).get("google") ? "google" : "leads"; } catch { return "leads"; } });
   // GLOBAL MARKET — one selector in the header drives the WHOLE hub (prices, scripts, currency).
   const [market, setMarket] = useState(() => { try { return localStorage.getItem("guileo_seller_market") === "br" ? "br" : "us"; } catch { return "us"; } });
   const setMarketG = (m) => { const v = m === "br" ? "br" : "us"; setMarket(v); try { localStorage.setItem("guileo_seller_market", v); } catch { /* */ } };
@@ -1078,14 +1138,24 @@ export default function Vendedor() {
             <div className="hidden sm:block text-[11px] text-g-muted truncate">{t.hi}, {seller.name} 👋</div>
           </div>
           <div className="ml-auto flex items-center gap-1.5">
-            {/* GLOBAL market — flips the whole hub (prices, scripts, currency) between US and Brazil */}
-            <div className="mr-1 flex items-center rounded-full border border-white/10 bg-white/[0.04] p-0.5">
+            {/* 🚨 DOIS SELETORES, DOIS SIGNIFICADOS — antes eram duas fileiras de BANDEIRA CRUA,
+                   lado a lado: 🇺🇸🇧🇷 | 🇧🇷🇺🇸🇪🇸🇮🇳. Pareciam a mesma coisa duplicada, e não são.
+                   MERCADO decide preço, moeda e roteiro (US ou Brasil). IDIOMA decide a interface.
+                   Um vendedor no Brasil vendendo para os EUA precisa de mercado US e idioma PT —
+                   e com bandeira sem rótulo ele troca o errado e cota na moeda errada, que é o
+                   defeito de "moeda ambígua" que já custou caro nesta plataforma.
+                   A palavra na frente é o que separa os dois. */}
+            <div className="mr-1 flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-1.5 py-0.5 backdrop-blur-xl">
+              <span className="text-[9px] font-black uppercase tracking-wider text-g-muted">{t.mercado || "Mercado"}</span>
               {[["us", "🇺🇸"], ["br", "🇧🇷"]].map(([m, f]) => (
                 <button key={m} onClick={() => setMarketG(m)} aria-label={`Mercado ${m.toUpperCase()}`} aria-pressed={market === m}
-                  className={`rounded-full px-2 py-1 text-[13px] transition ${market === m ? "bg-g-green/20 ring-1 ring-g-green/40" : "opacity-45 hover:opacity-80"}`}>{f}</button>
+                  className={`rounded-full px-1.5 py-1 text-[13px] transition ${market === m ? "bg-g-green/20 ring-1 ring-g-green/40" : "opacity-40 hover:opacity-80"}`}>{f}</button>
               ))}
             </div>
-            {LANGS.map(([c, f]) => <button key={c} onClick={() => setLang(c)} aria-label={`Idioma ${c.toUpperCase()}`} aria-pressed={lang === c} className={`h-7 w-7 rounded-full text-sm ${lang === c ? "bg-g-green/15 ring-1 ring-g-green/30" : "opacity-45"}`}>{f}</button>)}
+            <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-1.5 py-0.5 backdrop-blur-xl">
+              <span className="text-[9px] font-black uppercase tracking-wider text-g-muted">{t.idioma || "Idioma"}</span>
+              {LANGS.map(([c, f]) => <button key={c} onClick={() => setLang(c)} aria-label={`Idioma ${c.toUpperCase()}`} aria-pressed={lang === c} className={`h-6 w-6 rounded-full text-[13px] ${lang === c ? "bg-g-green/15 ring-1 ring-g-green/30" : "opacity-40"}`}>{f}</button>)}
+            </div>
             <button onClick={logout} className="ml-1 rounded-full border border-white/15 px-3 py-1.5 text-[12px] font-bold text-g-muted hover:text-g-word">{t.logout}</button>
           </div>
         </div>
@@ -1133,19 +1203,35 @@ export default function Vendedor() {
           {tab === "start" && <Start t={t} go={nav} />}
           {tab === "painel" && <SellerDashboard lang={lang} seller={seller} market={market} nav={nav} />}
           {tab === "alvos" && <SellerProspect lang={lang} seller={seller} market={market} nav={nav} />}
-          {tab === "nyc" && <SellerLeadsNYC lang={lang} />}
           {tab === "suporte" && <SellerSupport lang={lang} seller={seller} />}
-          {tab === "followup" && <SellerFollowup lang={lang} seller={seller} market={market} nav={nav} handoff={handoff} />}
+          {/* ── TRÊS ROTAS REMOVIDAS EM 2026-08-20, E POR QUÊ ────────────────────────────────
+              `demo`     → o Luis pediu para tirar a seção de Demos do hub.
+              `followup` → fundida na fila única de `leads`: um lead que CHEGOU e um alvo que o
+                           vendedor ADICIONOU são o mesmo negócio em etapas diferentes.
+              `nyc`      → fundida pelo mesmo motivo, e por um defeito concreto: com duas listas
+                           o vendedor ligava DUAS VEZES para o mesmo dono, porque o mesmo negócio
+                           aparecia nas duas. A dedupe por telefone > e-mail > nome vive em
+                           `SellerLeads` e existe justamente por causa disso.
+              Os componentes CONTINUAM no repositório de propósito: `SellerFollowup` exporta
+              `STAGES`, que a fila importa. Apagar o arquivo quebraria a fila — e código órfão foi
+              o que me fez achar, hoje, que algo tinha sido apagado quando não tinha. */}
+          {tab === "leads" && <SellerLeads lang={lang} seller={seller} market={market} nav={nav} handoff={handoff} />}
+          {tab === "produtos" && <SellerProdutos lang={lang} />}
+          {tab === "relacao" && <SellerRelacionamento lang={lang} seller={seller} />}
           {tab === "fechar" && <SellerCloser lang={lang} seller={seller} market={market} nav={nav} handoff={handoff} />}
-          {tab === "demo" && <DemoEngine surface="seller" />}
+          {tab === "raiox" && <SellerXray lang={lang} seller={seller} sid={sellerSid()} market={market} handoff={handoff} />}
+          {tab === "prospec" && <SellerProspeccao lang={lang} sid={sellerSid()} seller={seller} market={market} />}
+          {tab === "vertical" && <SellerVertical lang={lang} />}
+          {tab === "processo" && <SellerProcesso lang={lang} />}
           {tab === "jogadas" && <SellerIdeas lang={lang} seller={seller} market={market} nav={nav} />}
-          {tab === "cards" && <PitchCards t={t} lang={lang} seller={seller} />}
-          {tab === "quote" && <SellerQuote lang={lang} sellerName={seller.name} sellerEmail={seller.email} onQuote={() => logSellerEvent(seller, "quote")} handoff={handoff} market={market} />}
+          {tab === "cards" && <SellerPitch lang={lang} seller={seller} sid={sellerSid()} nav={nav} market={market} />}
+          {tab === "quote" && <SellerQuote lang={lang} sellerName={seller.name} sellerEmail={seller.email} sid={sellerSid()} onQuote={() => logSellerEvent(seller, "quote")} handoff={handoff} market={market} />}
           {tab === "contrato" && <SellerContract lang={lang} seller={seller} market={market} handoff={handoff} />}
           {tab === "financeiro" && <SellerFinance lang={lang} seller={seller} market={market} nav={nav} />}
           {tab === "cadastro" && <Cadastro t={t} lang={lang} seller={seller} go={nav} handoff={handoff} />}
           {tab === "treino" && <Treino t={t} lang={lang} seller={seller} handoff={handoff} />}
           {tab === "ativ" && <Ativacao t={t} lang={lang} seller={seller} />}
+          {tab === "google" && <SellerGoogle lang={lang} seller={seller} />}
           {tab === "metas" && <Metas t={t} seller={seller} />}
           {tab === "academy" && <Academy t={t} lang={lang} />}
           {tab === "support" && <Support t={t} />}

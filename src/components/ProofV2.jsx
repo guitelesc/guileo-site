@@ -18,8 +18,8 @@ export default function ProofV2() {
   const P = PV_COPY[lang] || PV_COPY.en;
   return (
     <section className="relative overflow-hidden px-5 py-20">
-      <style>{`@keyframes pvreveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}@keyframes pvfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}`}</style>
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(640px_300px_at_50%_20%,rgba(62,148,104,0.09),transparent)]" />
+      <style>{`@keyframes pvreveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}@keyframes pvfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}`}</style>
 
       <div className="mx-auto max-w-5xl text-center">
         <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold" style={{ animation: "pvreveal .7s ease both" }}>{P.eyebrow}</div>

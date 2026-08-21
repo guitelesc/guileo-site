@@ -19,6 +19,7 @@ import { useState, useEffect, useCallback } from "react";
 import { FaCircleCheck, FaCalendarCheck, FaClock, FaTriangleExclamation } from "react-icons/fa6";
 import { toast } from "../lib/portalApi.js";
 import { Card, GuiMark, UI_LANG } from "../pages/Portal.jsx";
+import { GoogleConnectCard } from "../components/GoogleConnect.jsx";
 
 // ── self-contained 4-language strings (en·pt·es·hi) — no dict edits needed ──
 const STR = {
@@ -62,10 +63,6 @@ const L = (k, ...a) => { const v = (STR[k] && (STR[k][UI_LANG] || STR[k].en)); r
 //   store  → same form, but the API isn't live; we store creds honestly (Booksy)
 //   soon   → nothing wired yet; card is informational only (Vagaro)
 const SYSTEMS = [
-  {
-    key: "gcal", icon: "📅", name: "Google Calendar", color: "#4285F4", mode: "oauth",
-    tag: { en: "Your team's calendar", pt: "A agenda da sua equipe", es: "El calendario de tu equipo", hi: "आपकी टीम का कैलेंडर" },
-  },
   {
     key: "square", icon: "🟩", name: "Square Appointments", color: "#3E9468", mode: "form",
     endpoint: "/api/square-appointments", provider: "square",
@@ -149,13 +146,6 @@ function ScheduleSync({ V, real = null, email = "", dataKey = "" }) { // eslint-
 
   const setField = (provider, name, value) => setForm((f) => ({ ...f, [provider]: { ...(f[provider] || {}), [name]: value } }));
 
-  // Google Calendar — open the OAuth consent window (real accounts).
-  const connectOAuth = () => {
-    if (demo) { toast(L("demo_note")); return; }
-    window.open(`https://guileoai.com/api/gcal-connect?email=${encodeURIComponent(email)}`, "_blank", "noopener");
-    toast(L("open_window"));
-  };
-
   // Square / MindBody / Booksy — submit the inline credential form.
   const submitForm = async (sys) => {
     if (demo) { toast(L("demo_note")); return; }
@@ -204,6 +194,12 @@ function ScheduleSync({ V, real = null, email = "", dataKey = "" }) { // eslint-
         </div>
       </Card>
 
+      {/* ── GOOGLE — o login único (agenda + avaliações). Substitui o antigo cartão "Google
+             Calendar" desta lista, que abria /api/gcal-connect sem o portão do tenant e pedia
+             só o escopo de calendário. Aqui o estado é LIDO do servidor e diz, item a item, o
+             que o Google realmente concedeu. ── */}
+      <GoogleConnectCard lang={UI_LANG} email={email} dataKey={dataKey} focus="calendar" />
+
       {/* ── One card per booking system ── */}
       {SYSTEMS.map((sys) => {
         const st = fetched[sys.key] || { state: baseState(sys) };
@@ -221,8 +217,6 @@ function ScheduleSync({ V, real = null, email = "", dataKey = "" }) { // eslint-
               {/* Action control */}
               {isSoon ? (
                 <span className="text-[11px] text-g-muted italic shrink-0">{L("no_api")}</span>
-              ) : sys.mode === "oauth" ? (
-                <button onClick={connectOAuth} disabled={demo} className={`text-[12px] px-3.5 py-1.5 shrink-0 ${demo ? "btn-ghost opacity-60" : "btn-bright"}`}>{isConnected ? L("reconnect") : L("connect")}</button>
               ) : (
                 <button onClick={() => setOpen(showForm ? "" : sys.key)} disabled={demo} className={`text-[12px] px-3.5 py-1.5 shrink-0 ${demo ? "btn-ghost opacity-60" : (isConnected ? "btn-ghost" : "btn-bright")}`}>{showForm ? L("cancel") : (isConnected ? L("reconnect") : L("connect"))}</button>
               )}

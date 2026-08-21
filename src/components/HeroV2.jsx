@@ -30,11 +30,28 @@ import LiveCallBar from "./LiveCallBar.jsx";
 // "Você compra o resultado, não a ferramenta" FICOU: é o posicionamento contra quem vende software
 // — só saiu do fim de uma lista, onde ninguém lia, para o fim da frase, onde fecha o raciocínio.
 
+// ── "GESTÃO" ENTROU NA DOBRA (2026-08-20, auditoria de posicionamento) ─────────────────────────
+// O Luis foi explícito: «tem que estar claro que somos uma business/marketing AI, automação,
+// SOFTWARE, MANAGEMENT». A palavra GESTÃO não aparecia em lugar nenhum da dobra nem do menu — quem
+// procura "management AI" não se reconhecia aqui.
+// ⚠️ NÃO É PROMESSA NOVA. A evidência é o cockpit do cliente, que já existe e já está no ar:
+// `src/portal/` tem 69 arquivos de tela, e o `src/pages/Portal.jsx` monta como abas reais
+// CRM360.jsx (CRM 360), ScheduleScreen.jsx (agenda), FinanceDept.jsx + Payments.jsx + Billing.jsx
+// (financeiro), Team.jsx (equipe), Operations.jsx (operação) e MyCompanyOS.jsx (os 8 departamentos
+// do Company OS do cliente). Isso É gestão; só não estava sendo DITO.
+// BISTURI, NÃO MARRETA — a dobra é a peça mais delicada do site, então foram DUAS palavras e zero
+// mudança de layout:
+//   1. o eyebrow ganhou um quarto termo na enumeração que já existia (AI · anúncios · criativo ·
+//      GESTÃO). É a linha de 3 segundos, é onde a busca por "management" precisa bater;
+//   2. a linha `tudo` passou de "constrói e OPERA" para "constrói, opera e GERENCIA" — o verbo que
+//      faltava na frase que já respondia "isso é só o telefone ou é a operação inteira?".
+// NÃO foi para o menu: o seletor de idioma já foi refeito uma vez porque um rótulo a mais soterrava
+// o "Blog" em 1280px (ver Navbar.jsx). Item novo lá reabre esse defeito para ganhar menos.
 const HERO_COPY = {
-  en: { eyebrow:"AI · ads · creative — the agency that grows local businesses", sub:["A missed call doesn't leave a voicemail — it calls the next place on Google. "," answers in your customer's language and takes the deposit before they hang up. You buy the ","result, not the tools","."], cta:"Hear Gui work", sub2:"Leave your number — she calls in about a minute.", h1:["We bring the customers.","AI answers, books & sells.","You grow."], promessa:"Work Smart. Grow Faster. Sleep Better." , tudo:"Everything we build and run for you" },
-  pt: { eyebrow:"AI · anúncios · criativo — a agência que faz o negócio local crescer", sub:["A ligação perdida não deixa recado — ela liga pro próximo da lista do Google. A "," atende no idioma do seu cliente e já pega o sinal antes de desligar. Você compra o ","resultado, não a ferramenta","."], cta:"Ouça a Gui trabalhar", sub2:"Deixa seu número — ela liga em mais ou menos um minuto.", h1:["A gente traz os clientes.","A AI atende, agenda e vende.","Você cresce."], promessa:"Trabalhe com inteligência. Cresça mais rápido. Durma melhor." , tudo:"Tudo o que a gente constrói e opera pra você" },
-  es: { eyebrow:"IA · anuncios · creativo — la agencia que hace crecer al negocio local", sub:["La llamada perdida no deja mensaje — llama al siguiente de la lista de Google. "," contesta en el idioma de tu cliente y cobra el anticipo antes de colgar. Compras el ","resultado, no la herramienta","."], cta:"Escucha a Gui trabajar", sub2:"Deja tu número — te llama en un minuto.", h1:["Nosotros traemos los clientes.","La IA contesta, agenda y vende.","Tú creces."], promessa:"Trabaja inteligente. Crece más rápido. Duerme mejor." , tudo:"Todo lo que construimos y operamos para ti" },
-  hi: { eyebrow:"AI · विज्ञापन · क्रिएटिव — स्थानीय व्यवसाय बढ़ाने वाली एजेंसी", sub:["छूटी हुई कॉल मैसेज नहीं छोड़ती — वो Google पर अगली दुकान को कॉल करती है। "," आपके ग्राहक की भाषा में जवाब देती है और फ़ोन रखने से पहले एडवांस ले लेती है। आप ","नतीजा खरीदते हैं, टूल नहीं","।"], cta:"Gui को काम करते सुनें", sub2:"अपना नंबर छोड़ें — वो लगभग एक मिनट में कॉल करती है।", h1:["ग्राहक हम लाते हैं।","AI जवाब देती, बुक करती और बेचती है।","आप बढ़ते हैं।"], promessa:"होशियारी से काम। तेज़ी से बढ़ें। चैन से सोएँ।" , tudo:"वह सब जो हम आपके लिए बनाते और चलाते हैं" },
+  en: { eyebrow:"AI · ads · creative · management — the agency that grows local businesses", sub:["A missed call doesn't leave a voicemail — it calls the next place on Google. "," answers in your customer's language and takes the deposit before they hang up. You buy the ","result, not the tools","."], cta:"Hear Gui work", sub2:"Leave your number — she calls in about a minute.", h1:["We bring the customers.","AI answers, books & sells.","You grow."], promessa:"Work Smart. Grow Faster. Sleep Better." , tudo:"Everything we build, run and manage for you" },
+  pt: { eyebrow:"AI · anúncios · criativo · gestão — a agência que faz o negócio local crescer", sub:["A ligação perdida não deixa recado — ela liga pro próximo da lista do Google. A "," atende no idioma do seu cliente e já pega o sinal antes de desligar. Você compra o ","resultado, não a ferramenta","."], cta:"Ouça a Gui trabalhar", sub2:"Deixa seu número — ela liga em mais ou menos um minuto.", h1:["A gente traz os clientes.","A AI atende, agenda e vende.","Você cresce."], promessa:"Trabalhe com inteligência. Cresça mais rápido. Durma melhor." , tudo:"Tudo o que a gente constrói, opera e gerencia pra você" },
+  es: { eyebrow:"IA · anuncios · creativo · gestión — la agencia que hace crecer al negocio local", sub:["La llamada perdida no deja mensaje — llama al siguiente de la lista de Google. "," contesta en el idioma de tu cliente y cobra el anticipo antes de colgar. Compras el ","resultado, no la herramienta","."], cta:"Escucha a Gui trabajar", sub2:"Deja tu número — te llama en un minuto.", h1:["Nosotros traemos los clientes.","La IA contesta, agenda y vende.","Tú creces."], promessa:"Trabaja inteligente. Crece más rápido. Duerme mejor." , tudo:"Todo lo que construimos, operamos y gestionamos para ti" },
+  hi: { eyebrow:"AI · विज्ञापन · क्रिएटिव · प्रबंधन — स्थानीय व्यवसाय बढ़ाने वाली एजेंसी", sub:["छूटी हुई कॉल मैसेज नहीं छोड़ती — वो Google पर अगली दुकान को कॉल करती है। "," आपके ग्राहक की भाषा में जवाब देती है और फ़ोन रखने से पहले एडवांस ले लेती है। आप ","नतीजा खरीदते हैं, टूल नहीं","।"], cta:"Gui को काम करते सुनें", sub2:"अपना नंबर छोड़ें — वो लगभग एक मिनट में कॉल करती है।", h1:["ग्राहक हम लाते हैं।","AI जवाब देती, बुक करती और बेचती है।","आप बढ़ते हैं।"], promessa:"होशियारी से काम। तेज़ी से बढ़ें। चैन से सोएँ।" , tudo:"वह सब जो हम आपके लिए बनाते, चलाते और मैनेज करते हैं" },
 };
 
 

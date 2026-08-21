@@ -106,8 +106,21 @@ const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 // in client_integrations, read via gcal_token_lookup, INGEST-gated), drop the booking straight into
 // their Google Calendar so the spa SEES it in the tool they already use — no MindBody needed.
 // Best-effort: no keys / not connected / bad token → silent no-op. NEVER blocks the booking.
+// ⚠️ DOIS APPS OAuth podem ter emitido este refresh_token: o antigo de calendário
+// (GOOGLE_CLIENT_ID, fluxo /api/gcal-connect) e o unificado (GOOGLE_BUSINESS_CLIENT_ID, o login
+// único que liga agenda + avaliações). Um refresh_token só é renovável pelo MESMO client que o
+// emitiu — refrescar com o app errado devolve invalid_client e o push morre em silêncio, com a
+// tela dizendo "conectado". Por isso tentamos os dois apps configurados, nesta ordem.
+function gcalApps(env) {
+  const list = [];
+  if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) list.push({ id: env.GOOGLE_CLIENT_ID, secret: env.GOOGLE_CLIENT_SECRET });
+  if (env.GOOGLE_BUSINESS_CLIENT_ID && env.GOOGLE_BUSINESS_CLIENT_SECRET) list.push({ id: env.GOOGLE_BUSINESS_CLIENT_ID, secret: env.GOOGLE_BUSINESS_CLIENT_SECRET });
+  return list;
+}
+
 async function gcalPush(env, email, ev) {
-  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.INGEST_SECRET) return;
+  const apps = gcalApps(env);
+  if (!apps.length || !env.INGEST_SECRET) return;
   try {
     const lr = await fetch(`${SB}/rest/v1/rpc/gcal_token_lookup`, {
       method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
@@ -115,12 +128,16 @@ async function gcalPush(env, email, ev) {
     });
     const refresh = lr.ok ? ((await lr.json()) || "").toString() : "";
     if (!refresh || refresh.length < 10) return; // not connected
-    const tr = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ client_id: env.GOOGLE_CLIENT_ID, client_secret: env.GOOGLE_CLIENT_SECRET, refresh_token: refresh, grant_type: "refresh_token" }),
-    });
-    if (!tr.ok) return;
-    const at = ((await tr.json()) || {}).access_token;
+    let at = "";
+    for (const a of apps) {
+      const tr = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ client_id: a.id, client_secret: a.secret, refresh_token: refresh, grant_type: "refresh_token" }),
+      });
+      if (!tr.ok) continue;                       // app errado → tenta o próximo
+      at = (((await tr.json()) || {}).access_token) || "";
+      if (at) break;
+    }
     if (!at) return;
     const startMs = Date.parse(ev.startIso);
     if (!isFinite(startMs)) return;

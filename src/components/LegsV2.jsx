@@ -77,6 +77,7 @@ export default function LegsV2() {
 
   return (
     <section className="relative overflow-hidden px-5 py-20">
+        <div className="pointer-events-none absolute inset-x-0 -top-8 h-64 bg-[radial-gradient(720px_280px_at_50%_30%,rgba(62,148,104,0.08),transparent)]" />
       <style>{`
         @keyframes lreveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
         @keyframes lshine{to{background-position:220% center}}
@@ -111,7 +112,8 @@ export default function LegsV2() {
       {/* STATION SCENE — Guileo's own identity: sonar energy, breathing platforms, light ticks */}
       <div className="relative mx-auto mt-10 max-w-5xl">
         {/* calm aurora wash behind the scene — presence without stealing the text */}
-        <div className="pointer-events-none absolute inset-x-0 -top-8 h-64 bg-[radial-gradient(720px_280px_at_50%_30%,rgba(62,148,104,0.08),transparent)]" />
+        {/* ⛔ brilho ancorado na borda REMOVIDO — nascia na força máxima na 1ª linha da seção e
+          desenhava a costura horizontal. A luz agora vem da camada contínua em Home.jsx. */}
         <div className="relative grid grid-cols-3 gap-2 sm:gap-6">
           {/* (traço horizontal removido a pedido do Luis — ficava solto/feio; a conexão fica pelas setas Performance → Sales → Growth) */}
 
@@ -139,8 +141,15 @@ export default function LegsV2() {
                   <div className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-wider" style={{ borderColor: `rgba(${st.rgb},0.45)`, color: `rgb(${st.rgb})`, background: `rgba(${st.rgb},0.08)`, boxShadow: `0 0 18px rgba(${st.rgb},0.18)` }}>{st.sIcon} {s.badge}</div>
                   <div className="mt-2 text-[11px] font-black uppercase tracking-[0.16em] text-g-word/85">{s.owns}</div>
                   <h3 className="mt-1.5 font-black leading-[1.06] tracking-tight text-g-word" style={{ fontSize: "clamp(1.3rem,2.3vw,1.7rem)", textShadow: `0 0 30px rgba(${st.rgb},0.3)` }}>{s.title}</h3>
-                  <p className="mx-auto mt-2.5 max-w-[16.5rem] text-[13px] leading-relaxed text-g-ink sm:text-[14px]">{s.desc}</p>
-                  <div className="mt-3.5 inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-bold" style={{ borderColor: `rgba(${st.rgb},0.35)`, background: `rgba(${st.rgb},0.07)`, color: `rgb(${st.rgb})` }}>✓ {s.tag}</div>
+                  {/* ⛔ O PARÁGRAFO LONGO SAIU (Luis, 2026-08-20): «remover esse tanto de texto do meio».
+                      Três blocos de ~25 palavras lado a lado forçavam LEITURA numa dobra que é para ser
+                      RECONHECIDA em meio segundo. O que o olho precisa aqui é: de quem é o trabalho
+                      (o selo colorido), o que ele faz (o título) e o resultado (o ✓). O detalhe vive
+                      logo abaixo, em PillarsProducts, para quem rolou até lá querendo detalhe. */}
+                  <div className="mt-4 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-black tracking-tight"
+                    style={{ borderColor: `rgba(${st.rgb},0.5)`, background: `rgba(${st.rgb},0.10)`, color: `rgb(${st.rgb})`, boxShadow: `0 0 26px rgba(${st.rgb},0.18)` }}>
+                    <span aria-hidden="true">✓</span>{s.tag}
+                  </div>
                 </div>
               </div>
             );
@@ -200,6 +209,41 @@ export default function LegsV2() {
             </a>
           </div>
         </div>
+
+        {/* ═══ O FIO DE SAÍDA — pedido do Luis (2026-08-20) ═══════════════════════════════════
+            «os 3 descendo ali na logo, e da logo o fio sai POR BAIXO e conecta nesse novo motor
+             de marketing — só está lindo a conexão».
+            Os três fios ENTRAM na planta (o svg acima). Este SAI dela, por baixo, e desce para a
+            próxima seção. É o que emenda a página: sem ele, o motor de marketing parece outro
+            assunto começando; com ele, é a MESMA planta continuando a crescer.
+            A cometa desce (não sobe) de propósito: energia saindo do negócio para o motor girar. */}
+        {/* ⚠️ AS MARGENS SÃO O CONSERTO E FORAM MEDIDAS, NÃO CHUTADAS.
+            Medição no preview: logo 2697→2867 · botão CTA 2943→2988 · motor começava em 3198.
+            O buraco DE BAIXO (79px) era real e `-mb-20` fecha: o fio agora morre exatamente onde o
+            EngineV2 começa (medido: 0px).
+            O buraco DE CIMA era ILUSÃO minha — não estava vazio, o BOTÃO estava dentro dele. Minha
+            1ª tentativa (`-mt-24`) subiu o fio para 2892 e o fez atravessar o CTA no meio. Uma
+            linha riscando o botão de conversão é pior que uma emenda folgada.
+            Por isso `mt-2`: o fio nasce logo abaixo do botão — lendo como saindo do bloco da
+            planta — e cai direto no motor. */}
+        <svg viewBox="0 0 1000 120" className="pointer-events-none mx-auto mt-2 -mb-20 block w-full" fill="none" aria-hidden="true">
+          <defs>
+            {/* 🚨 userSpaceOnUse É OBRIGATÓRIO AQUI (bug real, 2026-08-20).
+                O fio é uma reta PERFEITAMENTE VERTICAL, então sua caixa delimitadora tem
+                LARGURA ZERO — e gradiente em `objectBoundingBox` (o padrão) não pinta em caixa
+                degenerada: o navegador não consegue calcular a rampa. O traço saía INVISÍVEL e
+                só a cometa aparecia, solta, embaixo do botão. Foi o "faltou a linha" que o Luis
+                viu na tela. Com coordenadas no espaço do usuário o gradiente pinta normalmente. */}
+            <linearGradient id="legsOut" gradientUnits="userSpaceOnUse" x1="500" y1="0" x2="500" y2="120">
+              <stop offset="0%" stopColor="rgba(62,148,104,0.55)" />
+              <stop offset="100%" stopColor="rgba(214,194,154,0.30)" />
+            </linearGradient>
+          </defs>
+          <path d="M500,0 C500,52 500,74 500,120" stroke="url(#legsOut)" strokeWidth="2.5" strokeLinecap="round" />
+          <circle r="5" fill="#D6C29A" opacity="0.95" style={{ filter: "drop-shadow(0 0 10px rgba(214,194,154,0.9))" }}>
+            <animateMotion dur="3.4s" repeatCount="indefinite" path="M500,0 C500,52 500,74 500,120" />
+          </circle>
+        </svg>
       </div>
     </section>
   );

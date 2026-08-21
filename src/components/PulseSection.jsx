@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLang } from "../i18n.jsx";
 import ConsentText from "./ConsentText.jsx";
+import guileoMark from "../assets/guileo-mark.png";
 
 // Live platform CX — real aggregate from the XM engine (/api/pulse-stat → cx_platform_pulse).
 // Only surfaces once it's backed by enough real data; otherwise the section stays fully static.
@@ -48,7 +49,10 @@ const LIVE_COUNT = {
 // nenhum. O selo "ao vivo" desta seção continua sendo a única coisa que fala de dados reais, e ele
 // só aparece acima do piso (ver PISO_NEGOCIOS/PISO_SINAIS). Painel de demonstração e alegação de
 // resultado são coisas diferentes; misturar as duas é como o "40%" que saiu daqui.
-const PAINEL = {
+// EXPORTADO (2026-08-18): o Growth Report (/apresentacao/:id) desenha o MESMO termômetro, as
+// MESMAS estrelas e a MESMA pesquisa — Luis: «trazer aquele mesmo termômetro… tem que ser melhor
+// que a Qualtrics». Reescrever os rótulos lá seria a segunda fonte de sempre; aqui é a única.
+export const PAINEL = {
   en: { tag: "What you get, every week", score: "Your CX score", ex: "example panel",
         stars: "Where the score comes from", ask: "What your customer is asked", q: "How was your visit today?", send: "Tap to answer" },
   pt: { tag: "O que você recebe, toda semana", score: "Sua nota de satisfação", ex: "painel de exemplo",
@@ -70,8 +74,19 @@ const VER_MAIS = {
   en: "See how Pulse works →", pt: "Veja como o Pulse funciona →",
   es: "Mira cómo funciona Pulse →", hi: "देखें Pulse कैसे काम करता है →",
 };
-const ESTRELAS = [{ n: 5, pct: 68 }, { n: 4, pct: 21 }, { n: 3, pct: 6 }, { n: 2, pct: 3 }, { n: 1, pct: 2 }];
-const NOTA = 86;
+// ── POR QUE OS NÚMEROS DE EXEMPLO SAÍRAM DO PAINEL (2026-08-20) ─────────────────────────────────
+// O painel ANTES era estático: nota 86 e a distribuição 68/21/6/3/2. Agora ele SE MOVE (o arco
+// enche e esvazia, as barras cascateiam, a carinha segue a leitura) — é a versão que o Luis
+// aprovou no relatório. E aí um número fixo ao lado de uma forma que muda vira mentira sozinho:
+// enquanto o arco passa por "terrível", o 86 continua lá dizendo o contrário; enquanto a barra de
+// 5★ esvazia, o "68%" ao lado dela afirma o que a barra está negando.
+// Então o instrumento fala por forma: a CARINHA é a leitura do arco, as barras não têm percentual.
+// O selo "painel de exemplo" (PAINEL.ex) CONTINUA — junto com o selo ▶ simulação e a frase
+// `simNote` —, porque quem chega aqui é desconhecido e precisa saber que aquilo não é medição de
+// ninguém. Ver a mesma trava, com o motivo inverso, em RelatorioEspelho.jsx → PulsePresente.
+// Zero contador numérico: aba em segundo plano congela o rAF e imprime número falso (já aconteceu
+// neste repo). Aqui só há keyframe CSS de FORMA — congelar uma forma não inventa dado.
+const GOLD = "#D6C29A", GOLD_RGB = "214,194,154";
 
 const PISO_NEGOCIOS = 10;   // abaixo disso "N negócios" conta contra nós
 const PISO_SINAIS = 500;    // idem para o volume de experiências medidas
@@ -80,7 +95,10 @@ const PISO_SINAIS = 500;    // idem para o volume de experiências medidas
 // "the Qualtrics of the small business, run by AI". It MEASURES the satisfaction of the
 // customer-of-the-customer from signals Gui already captures (call sentiment + reviews,
 // passive) plus NPS/CSAT/CES (active), computes a CX score + drivers + detractors, and
-// CLOSES THE LOOP on unhappy customers. Wedge = a FLAT $49/mo (R$149 in BR) vs the
+// 🚨 MOEDA: DÓLAR SEMPRE (2026-08-20). O R$149 saiu junto com os planos: não existe checkout em
+// real no site inteiro — quem clicasse era cobrado em dólar pelo Stripe. Preço sem caminho de
+// pagamento é intenção, não preço. Volta quando o checkout em BRL existir.
+// CLOSES THE LOOP on unhappy customers. Wedge = a FLAT $49/mo vs the
 // per-location incumbents (Birdeye/Podium) and enterprise (Medallia/Qualtrics).
 //
 // Self-contained: local dict keyed by `lang` from useLang() (same pattern as GrowthV2 /
@@ -128,6 +146,13 @@ export const PULSE_COPY = {
     consent: "I agree to get one call from Gui (Guileo). Rates may apply; reply STOP to opt out.",
     consentErr: "Please check the box so Gui can call you.",
     foot: "No surveys to build · live in minutes · cancel anytime",
+    // ── o mesmo argumento e os dois caminhos do relatório (ver a nota do componente) ──
+    why: "Qualtrics has to send a survey and hope someone answers. Pulse reads how the customer felt in the conversations that already happened — every call the agent takes — and turns that into one number.",
+    sim: "simulation",
+    simNote: "The dial and the bars are moving to SHOW YOU THE INSTRUMENT — an example panel, not the reading of any real business.",
+    ways: "Two ways in — you get both",
+    way1: ["🎧", "Reads the conversations that already happened", "Every call the agent takes is scored for sentiment — nobody has to answer anything."],
+    way2: ["✉️", "And it also sends the survey", "After the visit, a 1-tap survey goes out in your brand, capturing what the customer asked for and how it ended — and the result reports back to you."],
   },
   pt: {
     eyebrow: "GUILEO PULSE",
@@ -146,13 +171,13 @@ export const PULSE_COPY = {
     statText: "dos clientes que pararam de responder disseram que foi porque nada aconteceu da última vez que deram um feedback.",
     statPunch: "Fechar o ciclo é o jogo inteiro. O Pulse faz isso por você.",
     compare: "Gestão de experiência enterprise. Preço de pequeno negócio.",
-    us: "Pulse — R$149/mês, fixo",
+    us: "Pulse — US$ 49/mês, fixo",
     usSub: "todas as unidades incluídas",
     rivals: [
       { n: "Birdeye · Podium", p: "US$300–600 / unidade / mês" },
       { n: "Medallia · Qualtrics", p: "US$20K+ / ano" },
     ],
-    price: "R$149",
+    price: "US$ 49",
     per: "/mês · fixo, todas as unidades",
     ctaLine: "Veja seu score Pulse — a Gui te liga agora.",
     placeholder: "Seu número de telefone",
@@ -162,6 +187,12 @@ export const PULSE_COPY = {
     consent: "Concordo em receber uma ligação da Gui (Guileo). Podem incidir tarifas; responda STOP pra sair.",
     consentErr: "Marque a caixa pra Gui poder te ligar.",
     foot: "Sem pesquisa pra montar · no ar em minutos · cancele quando quiser",
+    why: "A Qualtrics precisa mandar uma pesquisa e torcer pra alguém responder. O Pulse lê como o cliente se sentiu nas conversas que JÁ aconteceram — em toda ligação que a agente atende — e transforma isso numa nota só.",
+    sim: "simulação",
+    simNote: "O ponteiro e as barras estão se movendo para MOSTRAR O INSTRUMENTO — é um painel de exemplo, não a medição de negócio nenhum.",
+    ways: "Dois caminhos — você tem os dois",
+    way1: ["🎧", "Lê as conversas que já aconteceram", "Toda ligação que a agente atende é pontuada por sentimento — ninguém precisa responder nada."],
+    way2: ["✉️", "E também manda a pesquisa", "Depois do atendimento, sai uma pesquisa de 1 toque com a sua marca, capturando o que o cliente pediu e como terminou — e o resultado volta pra você."],
   },
   es: {
     eyebrow: "GUILEO PULSE",
@@ -196,6 +227,12 @@ export const PULSE_COPY = {
     consent: "Acepto recibir una llamada de Gui (Guileo). Pueden aplicar tarifas; responde STOP para salir.",
     consentErr: "Marca la casilla para que Gui pueda llamarte.",
     foot: "Sin encuestas que armar · en marcha en minutos · cancela cuando quieras",
+    why: "Qualtrics tiene que mandar una encuesta y esperar que alguien responda. Pulse lee cómo se sintió el cliente en las conversaciones que YA ocurrieron — en cada llamada que atiende la agente — y lo convierte en una sola nota.",
+    sim: "simulación",
+    simNote: "La aguja y las barras se mueven para MOSTRARTE EL INSTRUMENTO — es un panel de ejemplo, no la medición de ningún negocio real.",
+    ways: "Dos caminos — tienes los dos",
+    way1: ["🎧", "Lee las conversaciones que ya ocurrieron", "Cada llamada que atiende la agente se puntúa por sentimiento — nadie tiene que responder nada."],
+    way2: ["✉️", "Y también manda la encuesta", "Después de la visita sale una encuesta de 1 toque con tu marca, capturando lo que pidió el cliente y cómo terminó — y el resultado vuelve a ti."],
   },
   hi: {
     eyebrow: "GUILEO PULSE",
@@ -230,6 +267,12 @@ export const PULSE_COPY = {
     consent: "मैं Gui (Guileo) से एक कॉल पाने के लिए सहमत हूँ। शुल्क लागू हो सकते हैं; ऑप्ट-आउट के लिए STOP भेजें।",
     consentErr: "बॉक्स चेक करें ताकि Gui आपको कॉल कर सके।",
     foot: "कोई सर्वे नहीं बनाना · मिनटों में लाइव · कभी भी रद्द करें",
+    why: "Qualtrics को सर्वे भेजकर उम्मीद करनी पड़ती है कि कोई जवाब देगा। Pulse उन बातचीतों से पढ़ता है जो पहले ही हो चुकी हैं — हर उस कॉल से जो एजेंट उठाती है — और उसे एक स्कोर में बदल देता है।",
+    sim: "सिमुलेशन",
+    simNote: "डायल और बार सिर्फ़ यंत्र दिखाने के लिए चल रहे हैं — यह उदाहरण पैनल है, किसी असली व्यवसाय की माप नहीं।",
+    ways: "दो रास्ते — दोनों आपको मिलते हैं",
+    way1: ["🎧", "पहले हो चुकी बातचीत को पढ़ता है", "एजेंट जो भी कॉल उठाती है, उसका भाव स्कोर होता है — किसी को कुछ जवाब नहीं देना पड़ता।"],
+    way2: ["✉️", "और सर्वे भी भेजता है", "सेवा के बाद आपके ब्रांड वाला 1-टैप सर्वे जाता है, जो ग्राहक की माँग और अंतिम अनुभव दर्ज करता है — और नतीजा आपके पास लौटता है।"],
   },
 };
 
@@ -281,153 +324,218 @@ export default function PulseSection() {
 
   return (
     <section id="pulse" className="relative overflow-hidden px-5 py-20">
-      <style>{`@keyframes pureveal{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}@keyframes pushine{to{background-position:220% center}}@keyframes puring{to{stroke-dashoffset:47}}@keyframes pudot{0%,100%{opacity:.55}50%{opacity:1}}@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}`}</style>
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(720px_380px_at_50%_0%,rgba(62,148,104,0.15),transparent),radial-gradient(680px_360px_at_82%_100%,rgba(214,194,154,0.12),transparent)]" />
+      {/* MOVIMENTO: só FORMA e CARINHA. Sem contador — ver a nota do bloco GOLD lá em cima.
+          `prefers-reduced-motion` congela tudo e devolve o painel legível e parado. */}
+      <style>{`
+        @keyframes pureveal{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pushine{to{background-position:220% center}}
+        @keyframes pudot{0%,100%{opacity:.55}50%{opacity:1}}
+        @keyframes gpArc{0%{stroke-dashoffset:157}18%{stroke-dashoffset:118}
+                         42%{stroke-dashoffset:63}62%{stroke-dashoffset:16}
+                         78%{stroke-dashoffset:55}100%{stroke-dashoffset:157}}
+        @keyframes gpLo{0%,14%{opacity:1}26%,72%{opacity:0}92%,100%{opacity:1}}
+        @keyframes gpMid{0%,16%{opacity:0}30%,44%{opacity:1}58%{opacity:0}
+                         72%,84%{opacity:1}94%,100%{opacity:0}}
+        @keyframes gpHi{0%,46%{opacity:0}58%,70%{opacity:1}80%,100%{opacity:0}}
+        @keyframes gpBar{0%{transform:scaleX(.04)}50%{transform:scaleX(1)}100%{transform:scaleX(.04)}}
+        .gp-sim .gp-arc{animation:gpArc 9s cubic-bezier(.45,0,.35,1) infinite}
+        .gp-sim .gp-lo{animation:gpLo 9s linear infinite}
+        .gp-sim .gp-mid{animation:gpMid 9s linear infinite}
+        .gp-sim .gp-hi{animation:gpHi 9s linear infinite}
+        .gp-sim .gp-bar{transform-origin:left center;animation:gpBar 9s cubic-bezier(.45,0,.35,1) infinite}
+        @media (prefers-reduced-motion: reduce){
+          *{animation-duration:.001ms !important}
+          .gp-sim .gp-arc,.gp-sim .gp-lo,.gp-sim .gp-mid,.gp-sim .gp-hi,.gp-sim .gp-bar{animation:none !important}
+          .gp-sim .gp-bar{transform:scaleX(1) !important;opacity:.4}
+          .gp-sim .gp-lo,.gp-sim .gp-hi{opacity:0 !important}
+          .gp-sim .gp-mid{opacity:1 !important}
+        }
+      `}</style>
 
-      {/* header */}
-      <div className="mx-auto max-w-3xl text-center">
-        <div className="inline-flex items-center gap-2 rounded-full border border-g-gold/40 bg-g-gold/10 px-4 py-1.5 text-[12px] font-black uppercase tracking-[0.24em] text-g-gold" style={{ animation: "pureveal .7s ease both" }}>
-          <span className="h-1.5 w-1.5 rounded-full bg-g-gold shadow-[0_0_8px_rgba(214,194,154,0.9)]" style={{ animation: "pudot 2.2s ease-in-out infinite" }} />
-          {G.eyebrow}
-        </div>
-        <div className="mt-3 text-[12.5px] font-bold uppercase tracking-[0.18em] text-g-ink" style={{ animation: "pureveal .8s ease .06s both" }}>{G.category}</div>
-        {liveText && (
-          <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-g-green/40 bg-g-green/[0.1] px-4 py-1.5 text-[12.5px] font-bold text-g-light" style={{ animation: "pureveal .8s ease .14s both" }}>
-            <span className="h-2 w-2 rounded-full bg-g-green" style={{ animation: "pudot 1.6s ease-in-out infinite", boxShadow: "0 0 10px rgba(62,148,104,0.9)" }} />
-            {liveText}
+      {/* ════════════════════════════════════════════════════════════════════════════════════
+          O CARTÃO DO PRODUTO — o MESMO acabamento que o Luis aprovou no relatório
+          (RelatorioEspelho.jsx → PulsePresente), com UMA diferença deliberada:
+          🚨 BORDA SÓLIDA, não tracejada. Lá o tracejado significa PRESENTE/oferta; aqui o Pulse é
+          um produto que se COMPRA, e um visual de brinde diria "de graça" mesmo sem a palavra.
+          Pelo mesmo motivo não existe aqui nenhum "incluído/sem custo/on us" e o $49 aparece como
+          PREÇO — nunca riscado. Riscar o preço da coisa que estamos vendendo é anunciar desconto
+          que não existe. ═══════════════════════════════════════════════════════════════════════ */}
+      <div className="gp-sim relative mx-auto max-w-4xl overflow-hidden rounded-xl3 border-2 p-6 shadow-lift backdrop-blur sm:p-9"
+        style={{ borderColor: `rgba(${GOLD_RGB},0.55)`, background: `linear-gradient(135deg, rgba(${GOLD_RGB},0.10), transparent 68%)`, animation: "pureveal .8s ease both" }}>
+        <span aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full blur-3xl" style={{ background: `rgba(${GOLD_RGB},0.16)` }} />
+
+        {/* IDENTIDADE CENTRALIZADA (Luis, 2026-08-20: «esse deveria ir igual na landing»):
+            logo → nome → categoria → preço, numa descida só. O nome do produto é o herói. */}
+        <div className="flex flex-col items-center text-center">
+          <img src={guileoMark} alt="Guileo" className="h-12 w-12 shrink-0 object-contain" />
+          <h2 className="mt-2.5 text-[26px] font-black leading-none tracking-tight text-g-word sm:text-[32px]">Guileo Pulse</h2>
+          <div className="mt-2 text-[11.5px] font-bold uppercase tracking-[0.18em]" style={{ color: GOLD }}>{G.category}</div>
+          {/* O PREÇO, como preço. Moeda e formato vêm do dicionário do idioma (PULSE_COPY[lang]),
+              nunca de "$" cravado — pt mostra R$149/mês, en/es/hi mostram $49/mo. */}
+          <div className="mt-3.5 flex items-end justify-center gap-1.5">
+            <span className="bg-gradient-to-r from-g-gold via-g-light to-g-gold bg-clip-text text-[40px] font-black leading-none tracking-tight tabular-nums text-transparent sm:text-[46px]"
+              style={{ backgroundSize: "220% auto", animation: "pushine 6s linear infinite" }}>{G.price}</span>
+            <span className="pb-1 text-[12.5px] font-bold text-g-ink">{G.per}</span>
           </div>
-        )}
-        {/* O título de 3 linhas e o parágrafo saíram: DEPOIS do preço, esta seção não abre nada —
-            ela fecha. Quem chega aqui já leu a landing inteira e já viu $149–$999; não precisa de
-            outro herói, precisa da razão de ser $49. Uma frase de contexto e o número bastam. */}
-        <p className="mx-auto mt-3 max-w-lg text-[14.5px] leading-relaxed text-g-ink" style={{ animation: "pureveal .8s ease .2s both" }}>{G.sub}</p>
-      </div>
-
-      {/* Os 4 cartões de benefício saíram daqui (Luis: "tá confuso, é grande"). Eram 4 blocos de
-          texto explicando COMO o Pulse funciona — explicação é trabalho de página de produto, não
-          de um bloco que existe para capturar quem não comprou o plano. O texto continua vivo em
-          `G.benefits` e é o conteúdo pronto para /pulse quando ela existir. */}
-
-      {/* A faixa "40%" saiu: é um argumento de POR QUE medir experiência importa — convence quem
-          ainda não quer o produto. Aqui embaixo, quem sobrou já foi convencido pela landing toda;
-          o que falta é o preço bater. Mantida em `G.statBig/statText/statPunch` para /pulse. */}
-
-      {/* ── PAINEL: termômetro · estrelas · pesquisa (ver a nota do topo) ─────────────────── */}
-      <div className="mx-auto mt-10 max-w-4xl">
-        <div className="mb-4 flex items-center justify-center gap-2 text-[11.5px] font-black uppercase tracking-[0.2em] text-g-gold">
-          {PN.tag}
-          <span className="rounded-full border border-white/15 bg-white/[0.05] px-2 py-0.5 text-[9.5px] font-bold normal-case tracking-normal text-g-muted">{PN.ex}</span>
+          {liveText && (
+            <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-g-gold/40 bg-g-gold/[0.1] px-4 py-1.5 text-[12.5px] font-bold text-g-light">
+              <span className="h-2 w-2 rounded-full bg-g-gold" style={{ animation: "pudot 1.6s ease-in-out infinite", boxShadow: "0 0 10px rgba(214,194,154,0.9)" }} />
+              {liveText}
+            </div>
+          )}
         </div>
-        <div className="grid gap-4 sm:grid-cols-3">
 
-          {/* 1. TERMÔMETRO — arco 0-100, a cor segue a nota (vermelho→âmbar→verde) */}
-          <div className="rounded-2xl border border-g-green/25 bg-g-green/[0.06] p-5 text-center">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-g-muted">{PN.score}</div>
-            <svg viewBox="0 0 120 68" className="mx-auto mt-2 w-full max-w-[190px]" role="img" aria-label={`${PN.score}: ${NOTA}`}>
-              <path d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="10" strokeLinecap="round" />
-              <path d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke="url(#pulseGrad)" strokeWidth="10" strokeLinecap="round"
-                strokeDasharray="157" strokeDashoffset={157 - (157 * NOTA) / 100} style={{ transition: "stroke-dashoffset 1.2s cubic-bezier(.2,.7,.2,1)" }} />
-              <defs>
-                <linearGradient id="pulseGrad" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#e0855f" /><stop offset="55%" stopColor="#FFC23D" /><stop offset="100%" stopColor="#3E9468" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <div className="-mt-4 text-[34px] font-black leading-none tabular-nums text-g-word">{NOTA}</div>
+        {/* o argumento que vende: por que isto é melhor que mandar pesquisa */}
+        <p className="mx-auto mt-6 max-w-2xl text-center text-[14px] font-semibold leading-relaxed text-g-word">{G.why}</p>
+
+        {/* ── O PAINEL: termômetro · estrelas · a pesquisa ────────────────────────────────── */}
+        <div className="mt-7">
+          <div className="mb-3 flex flex-wrap items-center justify-center gap-2 text-center">
+            <span className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: GOLD }}>📈 {PN.tag}</span>
+            {/* os DOIS selos: "painel de exemplo" (o que já existia) + ▶ simulação */}
+            <span className="rounded-full border border-white/15 bg-white/[0.05] px-2 py-0.5 text-[9.5px] font-bold normal-case tracking-normal text-g-muted">{PN.ex}</span>
+            <span className="rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider"
+              style={{ borderColor: `rgba(${GOLD_RGB},0.5)`, color: GOLD, background: `rgba(${GOLD_RGB},0.08)` }}>▶ {G.sim}</span>
           </div>
+          <div className="grid gap-4 sm:grid-cols-3">
 
-          {/* 2. DE ONDE A NOTA VEM — 1 a 5 estrelas */}
-          <div className="rounded-2xl border border-g-gold/25 bg-g-gold/[0.05] p-5">
-            <div className="text-center text-[11px] font-bold uppercase tracking-wider text-g-muted">{PN.stars}</div>
-            <div className="mt-3 flex flex-col gap-1.5">
-              {ESTRELAS.map((e) => (
-                <div key={e.n} className="flex items-center gap-2">
-                  <span className="w-8 shrink-0 text-right text-[11px] font-bold tabular-nums text-g-ink">{e.n}★</span>
-                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.07]">
-                    <span className="block h-full rounded-full" style={{ width: `${e.pct}%`, background: e.n >= 4 ? "#3E9468" : e.n === 3 ? "#FFC23D" : "#e0855f" }} />
-                  </span>
-                  <span className="w-8 shrink-0 text-[11px] tabular-nums text-g-muted">{e.pct}%</span>
+            {/* 1. TERMÔMETRO — o arco enche e esvazia e a CARINHA acompanha a faixa.
+                   A carinha É a leitura: nenhum número fixo ao lado de uma forma que muda. */}
+            <div className="relative rounded-2xl border p-5 text-center backdrop-blur"
+              style={{ borderColor: `rgba(${GOLD_RGB},0.28)`, background: `rgba(${GOLD_RGB},0.05)` }}>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-g-muted">{PN.score}</div>
+              <div className="relative mx-auto mt-2 w-full max-w-[190px]">
+                <svg viewBox="0 0 120 68" className="w-full" role="img" aria-label={`${PN.score} — ${G.sim}`}>
+                  <path d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="10" strokeLinecap="round" />
+                  <path d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke={`rgba(${GOLD_RGB},0.30)`} strokeWidth="10" strokeLinecap="round" strokeDasharray="4 9" />
+                  <path className="gp-arc" d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke="url(#pulseGrad)" strokeWidth="10"
+                    strokeLinecap="round" strokeDasharray="157" strokeDashoffset="157" />
+                  <defs>
+                    <linearGradient id="pulseGrad" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#e0855f" /><stop offset="55%" stopColor="#FFC23D" /><stop offset="100%" stopColor="#3E9468" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                {/* AS CARINHAS: três empilhadas, só uma visível em cada faixa do arco */}
+                <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 grid h-9 place-items-center text-[26px] leading-none">
+                  <span className="gp-lo col-start-1 row-start-1" style={{ opacity: 1 }}>😞</span>
+                  <span className="gp-mid col-start-1 row-start-1" style={{ opacity: 0 }}>😐</span>
+                  <span className="gp-hi col-start-1 row-start-1" style={{ opacity: 0 }}>😃</span>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 3. A PESQUISA — o que o cliente do cliente vê */}
-          <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-5">
-            <div className="text-center text-[11px] font-bold uppercase tracking-wider text-g-muted">{PN.ask}</div>
-            <div className="mt-3 rounded-xl border border-white/10 bg-[#0e0d0b] p-4">
-              <div className="text-[12.5px] font-semibold leading-snug text-g-word">{PN.q}</div>
-              <div className="mt-3 flex justify-between text-[22px]">
-                {[1,2,3,4,5].map((n) => <span key={n} style={{ opacity: n <= 4 ? 0.35 : 1 }}>★</span>)}
               </div>
-              <div className="mt-2 text-center text-[10.5px] text-g-muted">{PN.send}</div>
+            </div>
+
+            {/* 2. DE ONDE A NOTA VEM — as 5 faixas enchendo e esvaziando em cascata, SEM percentual */}
+            <div className="rounded-2xl border p-5 backdrop-blur" style={{ borderColor: `rgba(${GOLD_RGB},0.28)`, background: `rgba(${GOLD_RGB},0.05)` }}>
+              <div className="text-center text-[11px] font-bold uppercase tracking-wider text-g-muted">{PN.stars}</div>
+              <div className="mt-3 flex flex-col gap-1.5">
+                {[5, 4, 3, 2, 1].map((n, i) => (
+                  <div key={n} className="flex items-center gap-2">
+                    <span className="w-8 shrink-0 text-right text-[11px] font-bold tabular-nums text-g-ink">{n}★</span>
+                    <span className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.07]">
+                      <span className="gp-bar block h-full w-full rounded-full"
+                        style={{
+                          background: n >= 4 ? "linear-gradient(90deg,#3E9468,rgba(62,148,104,0.35))"
+                            : n === 3 ? "linear-gradient(90deg,#FFC23D,rgba(255,194,61,0.35))"
+                              : "linear-gradient(90deg,#e0855f,rgba(224,133,95,0.35))",
+                          animationDelay: `${i * 0.5}s`,
+                          opacity: 0.9 - i * 0.1,
+                        }} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. A PESQUISA — o que o cliente do cliente vê */}
+            <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-5 backdrop-blur">
+              <div className="text-center text-[11px] font-bold uppercase tracking-wider text-g-muted">{PN.ask}</div>
+              <div className="mt-3 rounded-xl border border-white/10 bg-[#0e0d0b] p-4">
+                <div className="text-[12.5px] font-semibold leading-snug text-g-word">{PN.q}</div>
+                <div className="mt-3 flex justify-between text-[22px]" aria-hidden="true">
+                  {[1, 2, 3, 4, 5].map((n) => <span key={n} style={{ opacity: n <= 4 ? 0.35 : 1 }}>★</span>)}
+                </div>
+                <div className="mt-2 text-center text-[10.5px] text-g-muted">{PN.send}</div>
+              </div>
             </div>
           </div>
-
+          <p className="mt-3 text-center text-[11.5px] leading-snug text-g-muted">▶ {G.simNote}</p>
         </div>
+
+        {/* ── OS DOIS CAMINHOS — os dois existem no código (leitura passiva da conversa +
+               /api/cx-survey mandando a pesquisa de 1 toque). Um não substitui o outro. ────── */}
+        <div className="mt-7">
+          <div className="text-center text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: GOLD }}>🔀 {G.ways}</div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {[G.way1, G.way2].map(([icon, t, b]) => (
+              <div key={t} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur">
+                <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[16px]"
+                  style={{ background: `rgba(${GOLD_RGB},.13)`, boxShadow: `inset 0 0 0 1px rgba(${GOLD_RGB},.4)` }}>{icon}</span>
+                <div className="min-w-0">
+                  <div className="text-[13px] font-bold leading-tight text-g-word">{t}</div>
+                  <p className="mt-1 text-[12px] leading-snug text-g-ink">{b}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── MELHOR QUE QUALTRICS — a comparação de preço aprovada.
+               ⚠️ Os NOMES ficam (Qualtrics · Birdeye · Medallia · Podium): o Luis já reverteu uma
+               remoção minha disso. Âncora com nome é o que dá tamanho ao $49; categoria genérica
+               não ancora nada. Fonte única: PULSE_COPY. ─────────────────────────────────────── */}
+        <div className="mt-7 border-t pt-5" style={{ borderColor: `rgba(${GOLD_RGB},0.22)` }}>
+          <div className="text-center text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: GOLD }}>{G.compare}</div>
+          <div className="mt-3 flex flex-col gap-2.5 sm:flex-row sm:items-stretch sm:justify-center">
+            <div className="rounded-2xl border px-5 py-3.5 backdrop-blur"
+              style={{ borderColor: `rgba(${GOLD_RGB},0.55)`, background: `rgba(${GOLD_RGB},0.12)` }}>
+              <div className="text-[15px] font-black text-g-word">✅ {G.us}</div>
+              <div className="mt-0.5 text-[11.5px] font-semibold" style={{ color: GOLD }}>{G.usSub}</div>
+            </div>
+            {G.rivals.map((r) => (
+              <div key={r.n} className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3.5 opacity-80 backdrop-blur">
+                <div className="text-[13.5px] font-bold text-g-ink line-through decoration-g-copper/50">{r.n}</div>
+                <div className="mt-0.5 text-[12px] font-semibold text-g-muted">{r.p}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── O FECHAMENTO: a ligação da Gui (o mesmo funil /api/lead noCall + /api/call) ───── */}
+        <div className="mt-7 rounded-2xl border p-5 backdrop-blur sm:p-6" style={{ borderColor: `rgba(${GOLD_RGB},0.35)`, background: "rgba(255,255,255,0.04)" }}>
+          <p className="text-center text-[14.5px] font-semibold text-g-word">{G.ctaLine}</p>
+          {st === "done" ? (
+            <div className="mt-4 rounded-2xl border border-g-green/40 bg-g-green/15 px-5 py-4 text-center text-[15px] font-bold text-g-light">{G.done}</div>
+          ) : (
+            <form onSubmit={submit} className="mt-4 space-y-3">
+              <div className="flex flex-col gap-2.5 sm:flex-row">
+                {/* 16px é obrigatório: abaixo disso o iOS dá zoom no foco e quebra a página no telefone */}
+                <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={G.placeholder} aria-label={G.placeholder}
+                  className="min-h-[48px] flex-1 rounded-full border border-white/20 bg-black/20 px-5 py-3.5 text-[16px] text-g-word placeholder:text-g-muted outline-none transition focus:border-g-green/70" />
+                <button type="submit" disabled={st === "calling"} aria-label={G.cta}
+                  className="group relative inline-flex min-h-[48px] items-center justify-center gap-2 overflow-hidden rounded-full px-7 py-3.5 text-[15px] font-extrabold text-[#1a1a1a] ring-1 ring-white/40 shadow-[0_16px_42px_-12px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.85)] transition-transform hover:scale-[1.03] active:scale-95 disabled:opacity-60"
+                  style={{ background: "linear-gradient(180deg,#f5f6f8 0%,#dde1e7 42%,#bcc2cc 100%)" }}>
+                  <span aria-hidden="true" className="pointer-events-none absolute inset-0 -translate-x-[120%] bg-gradient-to-r from-transparent via-white/80 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-[120%]" />
+                  <span className="relative">📞 {st === "calling" ? G.calling : G.cta}</span>
+                </button>
+              </div>
+              <label className={`flex min-h-[48px] items-center gap-2 text-[11px] leading-snug ${err && !consent ? "text-g-gold" : "text-g-muted"}`}>
+                <input type="checkbox" required checked={consent} onChange={(e) => { setConsent(e.target.checked); if (e.target.checked) setErr(false); }} className="h-5 w-5 shrink-0 accent-g-green" />
+                <span><ConsentText lang={lang} /></span>
+              </label>
+              {err && (!phone.trim() || !consent) && <p role="alert" className="text-center text-[12px] font-semibold text-g-gold">{G.consentErr}</p>}
+            </form>
+          )}
+          <p className="mt-4 text-center text-[11.5px] font-semibold text-g-muted">{G.foot}</p>
+        </div>
+
+        {/* a porta para /pulse — página que não se alcança é página que não existe */}
         <div className="mt-5 text-center">
-          <a href="/pulse" className="inline-flex items-center gap-1.5 rounded-full border border-g-green/40 bg-g-green/[0.09] px-5 py-2.5 text-[13px] font-bold text-g-light transition hover:bg-g-green/[0.16]">
+          <a href="/pulse" className="inline-flex min-h-[48px] items-center gap-1.5 rounded-full border border-g-green/40 bg-g-green/[0.09] px-5 py-3 text-[13px] font-bold text-g-light transition hover:bg-g-green/[0.16]">
             {VER_MAIS[lang] || VER_MAIS.en}
           </a>
         </div>
-      </div>
-
-      {/* comparison */}
-      <div className="mx-auto mt-10 max-w-3xl text-center">
-        <div className="text-[12px] font-black uppercase tracking-[0.2em] text-g-gold" style={{ animation: "pureveal .7s ease both" }}>{G.compare}</div>
-        <div className="mt-5 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-          {/* us */}
-          <div className="relative overflow-hidden rounded-2xl border border-g-green/50 bg-g-green/[0.12] px-6 py-4 shadow-gold" style={{ animation: "pureveal .7s ease .1s both" }}>
-            <span className="pointer-events-none absolute -right-4 -top-4 h-16 w-16 rounded-full bg-g-green/20 blur-2xl" />
-            <div className="text-[17px] font-black text-g-word">✅ {G.us}</div>
-            <div className="mt-0.5 text-[12px] font-semibold text-g-light">{G.usSub}</div>
-          </div>
-          <span className="hidden text-lg font-black text-g-gold/60 sm:inline">vs</span>
-          {/* rivals */}
-          {G.rivals.map((r, i) => (
-            <div key={r.n} className="rounded-2xl border border-g-line bg-white/[0.03] px-6 py-4 opacity-80" style={{ animation: `pureveal .7s ease ${0.2 + i * 0.08}s both` }}>
-              <div className="text-[14.5px] font-bold text-g-ink line-through decoration-g-copper/50">{r.n}</div>
-              <div className="mt-0.5 text-[12.5px] font-semibold text-g-muted">{r.p}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* price + CTA (AI calls you) */}
-      <div className="mx-auto mt-10 max-w-2xl overflow-hidden rounded-xl3 border border-g-gold/35 bg-white/[0.04] p-7 shadow-lift backdrop-blur-xl sm:p-9" style={{ animation: "pureveal .8s ease .3s both" }}>
-        <div className="pointer-events-none absolute -z-10 h-40 w-40 rounded-full bg-g-gold/10 blur-3xl" />
-        <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <div className="text-center sm:text-left">
-            <div className="flex items-end justify-center gap-1.5 sm:justify-start">
-              <span className="bg-gradient-to-r from-g-green via-g-light to-g-gold bg-clip-text text-[46px] font-black leading-none tracking-tight text-transparent tabular-nums" style={{ backgroundSize: "220% auto", animation: "pushine 6s linear infinite" }}>{G.price}</span>
-              <span className="pb-1 text-[13px] font-bold text-g-ink">{G.per}</span>
-            </div>
-            <p className="mt-3 text-[14.5px] font-semibold text-g-word">{G.ctaLine}</p>
-          </div>
-        </div>
-
-        {st === "done" ? (
-          <div className="mt-6 rounded-2xl border border-g-green/40 bg-g-green/15 px-5 py-4 text-center text-[15px] font-bold text-g-light">{G.done}</div>
-        ) : (
-          <form onSubmit={submit} className="mt-6 space-y-3">
-            <div className="flex flex-col gap-2.5 sm:flex-row">
-              <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={G.placeholder} aria-label={G.placeholder}
-                className="flex-1 rounded-full border border-white/20 bg-black/20 px-5 py-3.5 text-[15px] text-g-word placeholder:text-g-muted outline-none transition focus:border-g-green/70" />
-              <button type="submit" disabled={st === "calling"} aria-label={G.cta}
-                className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full px-7 py-3.5 text-[15px] font-extrabold text-[#1a1a1a] ring-1 ring-white/40 shadow-[0_16px_42px_-12px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.85)] transition-transform hover:scale-[1.03] active:scale-95 disabled:opacity-60"
-                style={{ background: "linear-gradient(180deg,#f5f6f8 0%,#dde1e7 42%,#bcc2cc 100%)" }}>
-                <span aria-hidden className="pointer-events-none absolute inset-0 -translate-x-[120%] bg-gradient-to-r from-transparent via-white/80 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-[120%]" />
-                <span className="relative">📞 {st === "calling" ? G.calling : G.cta}</span>
-              </button>
-            </div>
-            <label className={`flex items-start gap-2 text-[11px] leading-snug ${err && !consent ? "text-g-gold" : "text-g-muted"}`}>
-              <input type="checkbox" required checked={consent} onChange={(e) => { setConsent(e.target.checked); if (e.target.checked) setErr(false); }} className="mt-0.5 h-4 w-4 shrink-0 accent-g-green" />
-              <span><ConsentText lang={lang} /></span>
-            </label>
-            {err && (!phone.trim() || !consent) && <p role="alert" className="text-center text-[12px] font-semibold text-g-gold">{G.consentErr}</p>}
-          </form>
-        )}
-        <p className="mt-4 text-center text-[11.5px] font-semibold text-g-muted">{G.foot}</p>
       </div>
     </section>
   );

@@ -135,6 +135,41 @@ const PRODUCTS = [
   { id: "email",   icon: "✉️", label: { en: "Email / content",      pt: "E-mail / conteúdo",    es: "Email / contenido",    hi: "ईमेल / कंटेंट" } },
 ];
 
+// One-line "what it delivers" blurb per product card, shown under the name in the picker grid.
+// Local dictionary, same self-contained en/pt/es/hi pattern as VOICE_LBL further down.
+const PRODUCT_DESC = {
+  website: { en: "Answers on your site, 24/7", pt: "Atende no seu site 24/7", es: "Atiende en tu sitio 24/7", hi: "आपकी साइट पर 24/7 जवाब" },
+  app:     { en: "Your app, on your brand",     pt: "Seu app na sua marca",    es: "Tu app, con tu marca",    hi: "आपका ऐप, आपकी ब्रांड में" },
+  social:  { en: "Replies to DMs instantly",    pt: "Responde DM na hora",     es: "Responde DM al instante", hi: "DM का तुरंत जवाब" },
+  voice:   { en: "Picks up every call",         pt: "Atende toda ligação",     es: "Contesta cada llamada",   hi: "हर कॉल उठाती है" },
+  ads:     { en: "Ready-to-run ad creative",    pt: "Anúncio pronto pra rodar", es: "Anuncio listo para usar", hi: "चलाने के लिए तैयार विज्ञापन" },
+  seo:     { en: "Ranks you on Google",         pt: "Ranqueia você no Google", es: "Te posiciona en Google",  hi: "गूगल पर रैंक करती है" },
+  email:   { en: "Writes in your tone",         pt: "Escreve no seu tom",      es: "Escribe en tu tono",      hi: "आपके अंदाज़ में लिखती है" },
+};
+
+// Local copy for the three previews elevated 2026-08-17 (Luis: "bem mais elaborado") — WebsitePreview,
+// AppPreview, SocialPreview. Same self-contained en/pt/es/hi pattern as VOICE_LBL further down.
+const WEBSITE_LBL = {
+  en: { greetPre: "Hi! I'm", greetPost: "— how can I help?", askPre: "How much is", askPost: "?", bookPitch: "I can book you right now — want me to?", yes: "Yes, book me!", bookedTitle: "Booked ✨", bookedSub: "Confirmation sent instantly", online: "online now" },
+  pt: { greetPre: "Oi! Aqui é a", greetPost: "— como posso ajudar?", askPre: "Quanto custa", askPost: "?", bookPitch: "Posso agendar agora mesmo — quer que eu agende?", yes: "Quero, agenda pra mim!", bookedTitle: "Agendado ✨", bookedSub: "Confirmação enviada na hora", online: "on-line agora" },
+  es: { greetPre: "¡Hola! Soy", greetPost: "— ¿en qué puedo ayudarle?", askPre: "¿Cuánto cuesta", askPost: "?", bookPitch: "Puedo agendarle ahora mismo — ¿quiere que lo haga?", yes: "¡Sí, resérveme!", bookedTitle: "Agendado ✨", bookedSub: "Confirmación enviada al instante", online: "en línea ahora" },
+  hi: { greetPre: "नमस्ते! मैं हूँ", greetPost: "— मैं कैसे मदद कर सकती हूँ?", askPre: "कीमत क्या है", askPost: "की?", bookPitch: "मैं अभी बुक कर सकती हूँ — क्या बुक कर दूँ?", yes: "हाँ, बुक कर दीजिए!", bookedTitle: "बुक हुआ ✨", bookedSub: "पुष्टि तुरंत भेज दी गई", online: "अभी ऑनलाइन" },
+};
+
+const APP_LBL = {
+  en: { nextAppt: "Next appointment", today: "Today", navHome: "Home", navBook: "Book", navChat: "Chat", navYou: "You" },
+  pt: { nextAppt: "Próximo agendamento", today: "Hoje", navHome: "Início", navBook: "Agendar", navChat: "Chat", navYou: "Você" },
+  es: { nextAppt: "Próxima cita", today: "Hoy", navHome: "Inicio", navBook: "Reservar", navChat: "Chat", navYou: "Tú" },
+  hi: { nextAppt: "अगली अपॉइंटमेंट", today: "आज", navHome: "होम", navBook: "बुक करें", navChat: "चैट", navYou: "आप" },
+};
+
+const SOCIAL_LBL = {
+  en: { followers: "followers", dmLabel: "DM · answered instantly", askPre: "Do you have", askPost: "available?", replyPitch: "Yes! I can book you right now ✨", yes: "Book me!", bookedTitle: "Booked via DM", follow: "Follow" },
+  pt: { followers: "seguidores", dmLabel: "DM · respondido na hora", askPre: "Vocês têm", askPost: "disponível?", replyPitch: "Temos sim! Posso agendar agora mesmo ✨", yes: "Agenda pra mim!", bookedTitle: "Agendado pelo DM", follow: "Seguir" },
+  es: { followers: "seguidores", dmLabel: "DM · respondido al instante", askPre: "¿Tienen", askPost: "disponible?", replyPitch: "¡Sí! Puedo agendarle ahora mismo ✨", yes: "¡Resérveme!", bookedTitle: "Agendado por DM", follow: "Seguir" },
+  hi: { followers: "फ़ॉलोअर्स", dmLabel: "DM · तुरंत जवाब", askPre: "क्या आपके पास", askPost: "उपलब्ध है?", replyPitch: "हाँ! मैं अभी बुक कर सकती हूँ ✨", yes: "मुझे बुक करें!", bookedTitle: "DM से बुक हुआ", follow: "फ़ॉलो करें" },
+};
+
 const FALLBACK_ACCENT = "#FF8A33"; // Gui orange (signal palette)
 
 // Normalize whatever colors shape the backend returns into { primary, accent }.
@@ -322,17 +357,31 @@ export default function DemoEngine({ surface = "public", presetToken = null }) {
 
           {/* product picker */}
           <div>
-            <div className="text-[11px] font-black uppercase tracking-wider text-g-muted">{t.pick}</div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {PRODUCTS.map((p) => {
+            <div className="text-[14px] font-bold text-g-word">{t.pick}</div>
+            <div className="stagger mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+              {PRODUCTS.map((p, i) => {
                 const on = product === p.id;
+                const desc = PRODUCT_DESC[p.id]?.[lang] || PRODUCT_DESC[p.id]?.en || "";
                 return (
-                  <button key={p.id} onClick={() => openProduct(p.id)}
-                    className="rounded-full border px-3 py-1.5 text-[12px] font-bold transition"
-                    style={on
-                      ? { borderColor: colors.accent, background: colors.accent + "22", color: "var(--g-word,#efe9df)" }
-                      : { borderColor: "rgba(255,255,255,.12)", color: "#9a9186" }}>
-                    {p.icon} {p.label[lang] || p.label.en}
+                  <button
+                    key={p.id}
+                    onClick={() => openProduct(p.id)}
+                    style={{ animationDelay: `${i * 40}ms`, ...(on ? { borderColor: colors.accent, background: colors.accent + "14", boxShadow: `0 0 0 1px ${colors.accent}55, 0 6px 20px -8px ${colors.accent}66` } : {}) }}
+                    className={
+                      "group relative flex min-w-0 flex-col items-start gap-1 rounded-2xl border p-3 text-left transition-all duration-200 " +
+                      (on
+                        ? "border-transparent"
+                        : "border-g-line bg-white/[0.02] hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]")
+                    }
+                  >
+                    <span className="text-[22px] leading-none">{p.icon}</span>
+                    <span
+                      className="mt-1 truncate w-full text-[13px] font-bold"
+                      style={{ color: on ? colors.accent : "var(--g-word,#efe9df)" }}
+                    >
+                      {p.label[lang] || p.label.en}
+                    </span>
+                    <span className="truncate w-full text-[11px] text-g-muted">{desc}</span>
                   </button>
                 );
               })}
@@ -501,43 +550,82 @@ function Logo({ brand, colors, size = 40 }) {
 // ── preview switchboard ──────────────────────────────────────────────────────
 function Preview({ product, brand, colors, t, lang }) {
   switch (product) {
-    case "website": return <WebsitePreview brand={brand} colors={colors} t={t} />;
-    case "app": return <AppPreview brand={brand} colors={colors} t={t} />;
+    case "website": return <WebsitePreview brand={brand} colors={colors} t={t} lang={lang} />;
+    case "app": return <AppPreview brand={brand} colors={colors} t={t} lang={lang} />;
     case "social": return <SocialPreview brand={brand} colors={colors} t={t} lang={lang} />;
     case "voice": return <VoicePreview brand={brand} colors={colors} t={t} lang={lang} />;
-    case "ads": return <AdsPreview brand={brand} colors={colors} t={t} />;
-    case "seo": return <SeoPreview brand={brand} colors={colors} t={t} />;
-    case "email": return <EmailPreview brand={brand} colors={colors} t={t} />;
+    case "ads": return <AdsPreview brand={brand} colors={colors} t={t} lang={lang} />;
+    case "seo": return <SeoPreview brand={brand} colors={colors} t={t} lang={lang} />;
+    case "email": return <EmailPreview brand={brand} colors={colors} t={t} lang={lang} />;
     default: return null;
   }
 }
 
 const Frame = ({ children }) => <div className="overflow-hidden rounded-xl border border-g-line bg-[#0f0e0c]">{children}</div>;
 
-// Website assistant → browser-frame mock of their site + Gui chat widget overlay.
-function WebsitePreview({ brand, colors, t }) {
+// Website assistant → browser-frame mock of their site + a chat widget that REVEALS the
+// conversation step by step (typing dots, then booked) instead of sitting static. 2026-08-17
+// (Luis: "bem mais elaborado"). Every line is built from brand data — no invented facts.
+function WebsitePreview({ brand, colors, t, lang }) {
+  const L = WEBSITE_LBL[lang] || WEBSITE_LBL.en;
+  const agentName = brand?.agent_name || "Gui";
+  const svc = firstPricedService(brand);
+  const services = Array.isArray(brand.services) ? brand.services.slice(0, 3) : [];
+
+  const script = useMemo(() => ([
+    { who: "a", text: `${L.greetPre} ${agentName} ${L.greetPost}` },
+    { who: "u", text: `${L.askPre} ${svc.name || brand.name}${L.askPost}` },
+    { who: "a", text: `${svc.name ? svc.name + " — " : ""}${L.bookPitch}` },
+    { who: "u", text: L.yes },
+  ]), [L, agentName, svc.name, brand.name]);
+  const [step, setStep] = useState(0);
+  const done = step >= script.length;
+  const chatRef = useRef(null);
+  useEffect(() => { setStep(0); }, [script]);
+  useEffect(() => {
+    if (done) return;
+    const id = setTimeout(() => setStep((n) => n + 1), step === 0 ? 500 : 1300);
+    return () => clearTimeout(id);
+  }, [step, done, script]);
+  useEffect(() => { if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [step]);
+
   return (
     <Frame>
+      {/* browser chrome */}
       <div className="flex items-center gap-1.5 border-b border-white/10 bg-white/[0.04] px-3 py-2">
         <span className="h-2.5 w-2.5 rounded-full bg-red-400/70" /><span className="h-2.5 w-2.5 rounded-full bg-yellow-400/70" /><span className="h-2.5 w-2.5 rounded-full bg-green-400/70" />
         <div className="ml-2 flex-1 truncate rounded-md bg-black/30 px-2 py-1 text-[11px] text-g-muted">🔒 {domainOf(brand)}</div>
       </div>
-      <div className="relative min-h-[220px] p-6" style={{ background: `linear-gradient(135deg, ${colors.primary}14, ${colors.accent}0a)` }}>
+      <div className="relative min-h-[260px] p-5 sm:p-6" style={{ background: `linear-gradient(135deg, ${colors.primary}1c, ${colors.accent}0a)` }}>
         <Logo brand={brand} colors={colors} size={38} />
-        <div className="mt-4 text-[20px] font-black leading-tight text-white">{brand.name}</div>
-        {brand.tagline && <div className="mt-1 max-w-sm text-[13px] text-white/70">{brand.tagline}</div>}
-        <button className="mt-4 rounded-lg px-3.5 py-2 text-[12px] font-bold text-black" style={{ background: colors.accent }}>{(brand.services && brand.services[0]) || "Book now"}</button>
-
-        {/* Gui chat widget overlay, themed to accent */}
-        <div className="absolute bottom-3 right-3 w-[210px] overflow-hidden rounded-xl border border-white/15 bg-[#161512] shadow-xl">
-          <div className="flex items-center gap-2 px-3 py-2" style={{ background: colors.accent }}>
-            <span className="grid h-6 w-6 place-items-center rounded-full bg-black/20 text-[12px]">💬</span>
-            <span className="text-[12px] font-black text-black">{brand.name}</span>
+        <div className="mt-4 max-w-[60%] text-[19px] font-black leading-tight text-white sm:max-w-none">{brand.name}</div>
+        {brand.tagline && <div className="mt-1 max-w-[60%] text-[12.5px] text-white/70 sm:max-w-sm">{brand.tagline}</div>}
+        {services.length > 0 && (
+          <div className="mt-3 flex max-w-[62%] flex-wrap gap-1.5 sm:max-w-none">
+            {services.map((s, i) => <span key={i} className="truncate rounded-full border px-2 py-1 text-[10.5px] font-bold text-white/85" style={{ borderColor: colors.accent + "40", background: colors.accent + "12" }}>{s}</span>)}
           </div>
-          <div className="space-y-1.5 p-2.5">
-            <Bubble side="a" c={colors.accent}>{t.chat.hi}</Bubble>
-            <Bubble side="u">{t.chat.u}</Bubble>
-            <Bubble side="a" c={colors.accent}>{t.chat.a}</Bubble>
+        )}
+        <button className="mt-4 rounded-lg px-3.5 py-2 text-[12px] font-bold text-black" style={{ background: colors.accent }}>{services[0] || t.tapToBook}</button>
+
+        {/* Gui chat widget overlay — revealing the conversation live */}
+        <div className="absolute bottom-3 right-3 w-[calc(100%-1.5rem)] max-w-[220px] overflow-hidden rounded-xl border border-white/15 bg-[#161512] shadow-xl">
+          <div className="flex items-center gap-2 px-3 py-2" style={{ background: colors.accent }}>
+            <span className="relative grid h-6 w-6 shrink-0 place-items-center rounded-full bg-black/20 text-[12px]">💬</span>
+            <span className="min-w-0 truncate text-[12px] font-black text-black">{agentName} · {brand.name}</span>
+            <span className="ml-auto h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-black/50" title={L.online} />
+          </div>
+          <div ref={chatRef} className="max-h-[170px] space-y-1.5 overflow-y-auto p-2.5">
+            {script.slice(0, step).map((m, i) => <Bubble key={i} side={m.who} c={colors.accent}>{m.text}</Bubble>)}
+            {!done && (
+              <div className="flex gap-1 pl-1 pt-0.5">
+                {[0, 1, 2].map((i) => <span key={i} className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/40" style={{ animationDelay: `${i * 140}ms` }} />)}
+              </div>
+            )}
+            {done && (
+              <div className="mt-1 flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.06] px-2 py-1.5 text-[10.5px] text-white/85" style={{ animation: "rise .4s ease both" }}>
+                <span>✅</span><span className="min-w-0 truncate font-bold">{L.bookedTitle}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -550,61 +638,156 @@ function Bubble({ side, c, children }) {
   return <div className={`max-w-[85%] rounded-lg px-2.5 py-1.5 text-[11px] ${a ? "" : "ml-auto bg-white/10 text-white/80"}`} style={a ? { background: (c || "#FF8A33") + "26", color: "#fff" } : undefined}>{children}</div>;
 }
 
-// App/software → phone mockup themed in their brand.
-function AppPreview({ brand, colors, t }) {
-  const items = (brand.services && brand.services.length ? brand.services : ["Home", "Bookings", "Offers", "Account"]).slice(0, 4);
+// App/software → phone mockup themed in their brand: status bar, header, priced service cards,
+// a "next appointment" card (when a priced service exists), bottom nav with a pulsing chat badge.
+// 2026-08-17 (Luis: "bem mais elaborado"). Only real brand.services/tagline render — never invented.
+function AppPreview({ brand, colors, t, lang }) {
+  const L = APP_LBL[lang] || APP_LBL.en;
+  const items = (brand.services && brand.services.length ? brand.services : []).slice(0, 3);
+  const svc = firstPricedService(brand);
+  const nav = [["🏠", L.navHome, true], ["📅", L.navBook, false], ["💬", L.navChat, false], ["👤", L.navYou, false]];
   return (
     <div className="grid place-items-center rounded-xl border border-g-line bg-white/[0.03] p-5">
-      <div className="w-[190px] overflow-hidden rounded-[26px] border-[5px] border-black bg-[#0f0e0c] shadow-2xl">
-        <div className="px-4 pb-4 pt-3" style={{ background: `linear-gradient(160deg, ${colors.primary}, ${colors.accent})` }}>
+      <div className="w-[200px] overflow-hidden rounded-[26px] border-[5px] border-black bg-[#0f0e0c] shadow-2xl">
+        {/* status bar */}
+        <div className="flex items-center justify-between px-3.5 pt-2 text-[9.5px] font-bold text-white/70">
+          <span>9:41</span>
+          <span className="flex items-center gap-1"><span>📶</span><span>🔋</span></span>
+        </div>
+        {/* header */}
+        <div className="px-4 pb-4 pt-2" style={{ background: `linear-gradient(160deg, ${colors.primary}, ${colors.accent})` }}>
           <div className="flex items-center gap-2">
             <Logo brand={brand} colors={colors} size={26} />
-            <span className="text-[12px] font-black text-black">{brand.name}</span>
+            <span className="min-w-0 truncate text-[12px] font-black text-black">{brand.name}</span>
+            <span className="relative ml-auto grid h-6 w-6 shrink-0 place-items-center rounded-full bg-black/15 text-[11px]">
+              🔔<span className="absolute -right-0.5 -top-0.5 h-2 w-2 animate-pulse rounded-full bg-red-500 ring-1 ring-white" />
+            </span>
           </div>
-          <div className="mt-2 text-[10px] font-bold text-black/70">{t.appHint}</div>
+          <div className="mt-2 truncate text-[10px] font-bold text-black/70">{brand.tagline || t.appHint}</div>
         </div>
+        {/* body */}
         <div className="space-y-1.5 p-3">
-          {items.map((it, i) => (
+          {svc.name && (
+            <div className="rounded-lg border px-2.5 py-2" style={{ borderColor: colors.accent + "55", background: colors.accent + "14" }}>
+              <div className="text-[8.5px] font-black uppercase tracking-wide" style={{ color: colors.accent }}>{L.today} · {L.nextAppt}</div>
+              <div className="mt-0.5 min-w-0 truncate text-[11px] font-bold text-white">{svc.name}</div>
+            </div>
+          )}
+          {(items.length ? items : [t.tapToBook]).map((it, i) => (
             <div key={i} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.05] px-2.5 py-2">
-              <span className="text-[11px] text-white/85">{it}</span>
-              <span className="text-[10px]" style={{ color: colors.accent }}>›</span>
+              <span className="min-w-0 truncate text-[11px] text-white/85">{it}</span>
+              <span className="shrink-0 text-[10px]" style={{ color: colors.accent }}>›</span>
             </div>
           ))}
           <button className="mt-1 w-full rounded-lg py-2 text-[11px] font-black text-black" style={{ background: colors.accent }}>{t.tapToBook}</button>
+        </div>
+        {/* bottom nav */}
+        <div className="flex items-center justify-around border-t border-white/10 bg-black/40 px-2 py-2">
+          {nav.map(([ic, lbl, active], i) => (
+            <div key={i} className="relative flex flex-col items-center gap-0.5">
+              <span className="text-[13px]" style={{ opacity: active ? 1 : 0.5, color: active ? colors.accent : undefined }}>{ic}</span>
+              <span className="text-[7.5px] font-bold" style={{ color: active ? colors.accent : "rgba(255,255,255,.4)" }}>{lbl}</span>
+              {i === 2 && <span className="absolute -top-0.5 right-0.5 h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />}
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-// Instagram/social → IG-style card skinned with their @/logo + a DM answered by "their brain".
+// Instagram/social → IG-style card skinned with their @/logo + a DM that REVEALS the reply step by
+// step, like a real conversation landing. Follower count only renders when brand.facts actually has
+// one (never invented). 2026-08-17 (Luis: "bem mais elaborado").
 function SocialPreview({ brand, colors, t, lang }) {
-  const dm = (brand.facts && brand.facts[0]) || (brand.tagline || "");
+  const L = SOCIAL_LBL[lang] || SOCIAL_LBL.en;
+  const agentName = brand?.agent_name || "Gui";
+  const svc = firstPricedService(brand);
+  const followerFact = Array.isArray(brand.facts) ? brand.facts.find((f) => /[\d,.]+\s*(k|m)?\s*(followers?|seguidores?)/i.test(f)) : null;
+  const followerCount = followerFact ? (followerFact.match(/[\d,.]+\s*[km]?/i)?.[0] || null) : null;
+
+  const script = useMemo(() => ([
+    { who: "u", text: `${L.askPre} ${svc.name || brand.name} ${L.askPost}` },
+    { who: "a", text: L.replyPitch },
+    { who: "u", text: L.yes },
+  ]), [L, svc.name, brand.name]);
+  const [step, setStep] = useState(0);
+  const done = step >= script.length;
+  useEffect(() => { setStep(0); }, [script]);
+  useEffect(() => {
+    if (done) return;
+    const id = setTimeout(() => setStep((n) => n + 1), step === 0 ? 500 : 1300);
+    return () => clearTimeout(id);
+  }, [step, done, script]);
+
   return (
     <Frame>
       <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2.5">
-        <Logo brand={brand} colors={colors} size={30} />
-        <div className="leading-tight">
-          <div className="text-[12px] font-black text-white">{handleOf(brand)}</div>
-          <div className="text-[10px] text-g-muted">{brand.name}</div>
+        <Logo brand={brand} colors={colors} size={32} />
+        <div className="min-w-0 leading-tight">
+          <div className="truncate text-[12px] font-black text-white">{handleOf(brand)}</div>
+          <div className="mt-0.5 flex min-w-0 items-center gap-1 text-[10px] text-g-muted">
+            <span className="truncate">{brand.name}</span>
+            {followerCount && <span className="shrink-0">· <b className="text-white/70">{followerCount}</b> {L.followers}</span>}
+          </div>
         </div>
-        <span className="ml-auto rounded-md px-2 py-1 text-[10px] font-bold text-black" style={{ background: colors.accent }}>Follow</span>
+        <span className="ml-auto shrink-0 rounded-md px-2.5 py-1 text-[10px] font-bold text-black" style={{ background: colors.accent }}>{L.follow}</span>
       </div>
       <div className="grid grid-cols-3 gap-0.5 p-0.5">
-        {[0, 1, 2].map((i) => <div key={i} className="aspect-square" style={{ background: `linear-gradient(135deg, ${colors.primary}${i === 1 ? "cc" : "66"}, ${colors.accent}${i === 1 ? "66" : "22"})` }} />)}
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="relative aspect-square" style={{ background: `linear-gradient(135deg, ${colors.primary}${i % 3 === 1 ? "cc" : "55"}, ${colors.accent}${i % 3 === 1 ? "66" : "22"})` }}>
+            {i === 1 && <span className="absolute inset-0 grid place-items-center text-[15px]">✨</span>}
+          </div>
+        ))}
       </div>
       <div className="border-t border-white/10 p-2.5">
-        <div className="mb-1 text-[10px] font-bold uppercase tracking-wide" style={{ color: colors.accent }}>💬 DM · {t.dm}</div>
+        <div className="mb-1.5 flex min-w-0 items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide" style={{ color: colors.accent }}>
+          <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full" style={{ background: colors.accent }} />
+          <span className="truncate">{L.dmLabel} · {agentName}</span>
+        </div>
         <div className="space-y-1.5">
-          <Bubble side="u">{t.chat.u}</Bubble>
-          <Bubble side="a" c={colors.accent}>{dm ? `${t.chat.a} (${dm})` : t.chat.a}</Bubble>
+          {script.slice(0, step).map((m, i) => <Bubble key={i} side={m.who} c={colors.accent}>{m.text}</Bubble>)}
+          {!done && (
+            <div className="flex gap-1 pl-1 pt-0.5">
+              {[0, 1, 2].map((i) => <span key={i} className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/40" style={{ animationDelay: `${i * 140}ms` }} />)}
+            </div>
+          )}
+          {done && (
+            <div className="mt-1 flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.06] px-2 py-1.5 text-[10.5px] text-white/85" style={{ animation: "rise .4s ease both" }}>
+              <span>✅</span><span className="min-w-0 truncate font-bold">{L.bookedTitle}</span>
+            </div>
+          )}
         </div>
       </div>
     </Frame>
   );
 }
 
-// Voice → call-card mock "Gui answering for {brand}".
+// Voice → CENA DE LIGAÇÃO, não cartão parado (2026-08-17, pedido do Luis: "o preview do produto
+// bem mais elaborado"). O que vende voz é VER a conversa acontecer: a agente atende com o nome
+// dela, cota o preço REAL por unidade vindo do cadastro, o cliente troca de idioma no meio e a
+// agente troca junto (voz nativa — o recurso que nenhum concorrente mostra), fecha o agendamento
+// e embaixo aparecem os COMPROVANTES que caem no cockpit. Roteiro montado dos dados do cliente:
+// nada de "Acme": se o cadastro tem "Massage $118 Astoria · $132 UES", é isso que a cena fala.
+const VOICE_LBL = {
+  en: { live: "LIVE CALL — simulation", answers: "answering for", switch: "switched to Portuguese · native voice", switchEs: "switched to Spanish · native voice", afterTitle: "what lands in your cockpit — instantly", art1: "Booking confirmed", art2: "CRM updated · caller remembered", art3: "Branded confirmation sent", replay: "↺ Replay the call", c1: "Hi! How much is", c1b: "?", a2: "Which location works better for you?", c3: "Ah, você fala português?!", c3es: "Ah, ¿habla español?!", a3: "Falo, sim! Posso agendar agora — amanhã às 14h está ótimo?", a3es: "¡Claro que sí! Puedo agendarle ahora — ¿mañana a las 2pm le parece bien?", c4: "Perfeito! Meu nome é Ana.", c4es: "¡Perfecto! Mi nombre es Ana.", a5: "Agendado, Ana! A confirmação já está no seu celular. Até amanhã! ✨", a5es: "¡Agendado, Ana! La confirmación ya está en su celular. ¡Hasta mañana! ✨" },
+  pt: { live: "LIGAÇÃO AO VIVO — simulação", answers: "atendendo pela", switch: "trocou para inglês · voz nativa", switchEs: "trocou para espanhol · voz nativa", afterTitle: "o que cai no seu cockpit — na hora", art1: "Agendamento confirmado", art2: "CRM atualizado · cliente lembrado", art3: "Confirmação com a sua marca enviada", replay: "↺ Ver a ligação de novo", c1: "Oi! Quanto custa", c1b: "?", a2: "Qual unidade fica melhor pra você?", c3: "Oh, do you speak English?!", c3es: "Ah, ¿habla español?!", a3: "Of course! I can book you right now — tomorrow at 2pm works?", a3es: "¡Claro que sí! Puedo agendarle ahora — ¿mañana a las 2pm?", c4: "Perfect! My name is Ana.", c4es: "¡Perfecto! Mi nombre es Ana.", a5: "Booked, Ana! The confirmation is on your phone. See you tomorrow! ✨", a5es: "¡Agendado, Ana! La confirmación ya está en su celular. ✨" },
+  es: { live: "LLAMADA EN VIVO — simulación", answers: "atendiendo por", switch: "cambió a portugués · voz nativa", switchEs: "cambió a inglés · voz nativa", afterTitle: "lo que llega a su cockpit — al instante", art1: "Cita confirmada", art2: "CRM actualizado · cliente recordado", art3: "Confirmación con su marca enviada", replay: "↺ Ver la llamada de nuevo", c1: "¡Hola! ¿Cuánto cuesta", c1b: "?", a2: "¿Qué ubicación le queda mejor?", c3: "Ah, você fala português?!", c3es: "Oh, do you speak English?!", a3: "Falo, sim! Posso agendar agora — amanhã às 14h?", a3es: "Of course! Tomorrow at 2pm works?", c4: "Perfeito! Meu nome é Ana.", c4es: "Perfect! My name is Ana.", a5: "Agendado, Ana! A confirmação já está no seu celular. ✨", a5es: "Booked, Ana! The confirmation is on your phone. ✨" },
+  hi: { live: "LIVE CALL — simulation", answers: "answering for", switch: "switched language · native voice", switchEs: "switched language · native voice", afterTitle: "what lands in your cockpit — instantly", art1: "Booking confirmed", art2: "CRM updated", art3: "Branded confirmation sent", replay: "↺ Replay the call", c1: "Hi! How much is", c1b: "?", a2: "Which location works better?", c3: "Ah, você fala português?!", c3es: "¿Habla español?", a3: "Falo, sim! Amanhã às 14h?", a3es: "¡Claro! ¿Mañana a las 2pm?", c4: "Meu nome é Ana.", c4es: "Mi nombre es Ana.", a5: "Agendado, Ana! ✨", a5es: "¡Agendado, Ana! ✨" },
+};
+
+// nome + preço do 1º serviço COM preço do cadastro (aceita string ou {name, price}).
+function firstPricedService(brand) {
+  const list = Array.isArray(brand?.services) ? brand.services : [];
+  for (const it of list) {
+    const name = typeof it === "string" ? it : it?.name || "";
+    const price = typeof it === "string" ? "" : it?.price || "";
+    if (name && /\$|R\$|€|\d/.test(String(price))) return { name, price: String(price) };
+  }
+  const f = list[0];
+  return f ? { name: typeof f === "string" ? f : f?.name || "", price: "" } : { name: "", price: "" };
+}
+
 function VoicePreview({ brand, colors, t, lang }) {
   // A REAL call — the hardened /api/call gate (per-IP caps + DNC + E.164) dials the visitor and
   // Gui greets AS this brand via dynamic variables ({{business}}/{{need}}). Not a mock.
@@ -621,10 +804,12 @@ function VoicePreview({ brand, colors, t, lang }) {
   useEffect(() => () => { if (audioRef.current) { try { audioRef.current.pause(); audioRef.current.src = ""; } catch { /* */ } } }, []);
   const greeting = () => {
     const n = brand?.name || (lang === "en" ? "your business" : lang === "es" ? "su negocio" : "seu negócio");
-    return lang === "en" ? `Hi! This is Gui, answering for ${n}. How can I help you today?`
-      : lang === "es" ? `¡Hola! Soy Gui, atendiendo por ${n}. ¿Cómo puedo ayudarle hoy?`
-      : lang === "hi" ? `नमस्ते! मैं Gui हूँ, ${n} के लिए बात कर रही हूँ। मैं आपकी कैसे मदद कर सकती हूँ?`
-      : `Oi! Aqui é a Gui, atendendo pela ${n}. Como posso te ajudar hoje?`;
+    // a voz real cumprimenta com o NOME da agente deste cliente (Lilian…), não um "Gui" genérico
+    const g = brand?.agent_name || "Gui";
+    return lang === "en" ? `Hi! This is ${g}, answering for ${n}. How can I help you today?`
+      : lang === "es" ? `¡Hola! Soy ${g}, atendiendo por ${n}. ¿Cómo puedo ayudarle hoy?`
+      : lang === "hi" ? `नमस्ते! मैं ${g} हूँ, ${n} के लिए बात कर रही हूँ। मैं आपकी कैसे मदद कर सकती हूँ?`
+      : `Oi! Aqui é a ${g}, atendendo pela ${n}. Como posso te ajudar hoje?`;
   };
   const playVoice = async (voice) => {
     setVVoice(voice); setVSt("go");
@@ -670,20 +855,102 @@ function VoicePreview({ brand, colors, t, lang }) {
       else setSt("err");
     } catch { setSt("err"); }
   };
+  // ── A CENA ────────────────────────────────────────────────────────────────
+  // Roteiro montado dos DADOS deste cliente: agente com o nome dela, serviço e preço do cadastro,
+  // troca de idioma no meio (pra ES no site em espanhol; pra PT nos demais). Revela passo a passo.
+  const L = VOICE_LBL[lang] || VOICE_LBL.en;
+  const agentName = brand?.agent_name || "Gui";
+  const svc = firstPricedService(brand);
+  const toEs = lang === "es"; // roteiro troca PARA a língua que falta demonstrar
+  const script = useMemo(() => {
+    const greet = lang === "es" ? `${brand.name}, ¡hola! Soy ${agentName} — ¿cómo puedo ayudarle?`
+      : lang === "pt" ? `${brand.name}, oi! Aqui é a ${agentName} — como posso ajudar?`
+      : `${brand.name}, hi! This is ${agentName} — how can I help?`;
+    const priceLine = svc.price
+      ? `${svc.name} — ${svc.price}. ${L.a2}`
+      : `${svc.name || "Sure"} — ${L.a2}`;
+    return [
+      { who: "a", text: greet },
+      { who: "c", text: `${L.c1} ${svc.name || "a massage"}${L.c1b}` },
+      { who: "a", text: priceLine },
+      { who: "c", text: toEs ? L.c3es : L.c3 },
+      { who: "s", text: toEs ? `🌐 ${L.switchEs}` : `🌐 ${L.switch}` },
+      { who: "a", text: toEs ? L.a3es : L.a3 },
+      { who: "c", text: toEs ? L.c4es : L.c4 },
+      { who: "a", text: toEs ? L.a5es : L.a5 },
+    ];
+  }, [lang, brand?.name, agentName, svc.name, svc.price, toEs]); // eslint-disable-line
+  const [step, setStep] = useState(0);
+  const done = step >= script.length;
+  const chatRef = useRef(null);
+  useEffect(() => { setStep(0); }, [script]);
+  useEffect(() => {
+    if (done) return;
+    const id = setTimeout(() => setStep((n) => n + 1), step === 0 ? 700 : 1500);
+    return () => clearTimeout(id);
+  }, [step, done, script]);
+  useEffect(() => { // acompanha a conversa sem rolar a página inteira
+    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
+  }, [step]);
+  const speaking = !done && script[step - 1]?.who === "a";
+
   return (
-    <div className="grid place-items-center rounded-xl border border-g-line p-6" style={{ background: `radial-gradient(circle at 50% 0%, ${colors.accent}1e, transparent 70%)` }}>
-      <div className="w-full max-w-[320px] rounded-2xl border border-white/10 bg-[#0f0e0c] p-5 text-center">
-        <div className="mx-auto grid h-14 w-14 place-items-center rounded-full" style={{ background: colors.accent }}>
-          <span className="text-[22px]">📞</span>
+    <div className="grid place-items-center rounded-xl border border-g-line p-4 sm:p-6" style={{ background: `radial-gradient(circle at 50% 0%, ${colors.accent}1e, transparent 70%)` }}>
+      <div className="w-full max-w-[360px] rounded-2xl border border-white/10 bg-[#0f0e0c] p-4 text-center sm:p-5">
+        {/* topo da ligação: avatar pulsando enquanto a agente fala */}
+        <div className="flex items-center gap-3 text-left">
+          <div className="relative">
+            <div className="grid h-12 w-12 place-items-center rounded-full text-[19px]" style={{ background: colors.accent }}>📞</div>
+            {speaking && <span className="absolute inset-0 animate-ping rounded-full opacity-30" style={{ background: colors.accent }} />}
+          </div>
+          <div className="min-w-0 flex-1 leading-tight">
+            <div className="truncate text-[13px] font-black text-white">{agentName} · {L.answers} {brand.name}</div>
+            <div className="mt-0.5 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide" style={{ color: colors.accent }}>
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: colors.accent }} /> {L.live}
+            </div>
+          </div>
+          {/* forma de onda viva só quando a agente está falando */}
+          <div className="flex h-7 items-end gap-[3px]">
+            {[8, 16, 11, 22, 14].map((h, i) => (
+              <span key={i} className="w-1 rounded-full transition-all duration-300"
+                style={{ height: speaking ? h : 4, background: colors.accent, opacity: speaking ? 0.5 + (i % 3) * 0.22 : 0.25 }} />
+            ))}
+          </div>
         </div>
-        <div className="mt-3 text-[13px] font-black text-white">{t.callFor} {brand.name}</div>
-        <div className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold" style={{ color: colors.accent }}>
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: colors.accent }} /> {t.ringing}
+
+        {/* a conversa acontecendo */}
+        <div ref={chatRef} className="mt-3 max-h-[240px] space-y-1.5 overflow-y-auto rounded-xl border border-white/[0.07] bg-black/30 p-2.5 text-left">
+          {script.slice(0, step).map((m, i) => m.who === "s" ? (
+            <div key={i} className="my-1 text-center">
+              <span className="inline-block rounded-full border px-2.5 py-1 text-[9.5px] font-black uppercase tracking-wide"
+                style={{ borderColor: colors.accent + "66", color: colors.accent, background: colors.accent + "14" }}>{m.text}</span>
+            </div>
+          ) : (
+            <Bubble key={i} side={m.who} c={colors.accent}>{m.text}</Bubble>
+          ))}
+          {!done && (
+            <div className="flex gap-1 pl-1 pt-0.5">
+              {[0, 1, 2].map((i) => <span key={i} className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/40" style={{ animationDelay: `${i * 140}ms` }} />)}
+            </div>
+          )}
         </div>
-        <div className="mt-3 flex items-end justify-center gap-1">
-          {[10, 20, 14, 26, 18, 30, 16, 22, 12].map((h, i) => <span key={i} className="w-1.5 rounded-full" style={{ height: h, background: colors.accent, opacity: 0.4 + (i % 3) * 0.25 }} />)}
-        </div>
-        <div className="mt-3 rounded-lg bg-white/[0.05] px-3 py-2 text-left text-[11px] text-white/80">“{brand.name}, {t.chat.hi} {t.chat.a}”</div>
+
+        {/* fechou a ligação → os COMPROVANTES no cockpit + replay */}
+        {done && (
+          <div className="mt-3 text-left">
+            <div className="text-[9.5px] font-black uppercase tracking-wider text-white/45">{L.afterTitle}</div>
+            <div className="mt-1.5 grid gap-1.5">
+              {[["✅", L.art1], ["📇", L.art2], ["✉️", L.art3]].map(([ic, txt], i) => (
+                <div key={i} className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.04] px-2.5 py-1.5 text-[11px] text-white/85"
+                  style={{ animation: `rise .4s ease ${i * 0.15}s both` }}>
+                  <span>{ic}</span><span className="font-bold">{txt}</span>
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full" style={{ background: colors.accent }} />
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setStep(0)} className="mt-2 w-full rounded-lg border border-white/15 py-1.5 text-[11px] font-bold text-white/70 hover:text-white">{L.replay}</button>
+          </div>
+        )}
 
         {/* REAL neural voice — hear Gui greet AS this brand, Victoria (♀) or Bruno (♂).
             Hidden entirely if TTS isn't wired (501) — never a dead button that fakes success. */}
@@ -725,62 +992,190 @@ function VoicePreview({ brand, colors, t, lang }) {
   );
 }
 
-// Ads → branded preview cards.
-function AdsPreview({ brand, colors, t }) {
-  const svc = (brand.services && brand.services[0]) || brand.name;
+// Local i18n dict for the elevated Ads/SEO/Email scenes (2026-08-17, pedido do Luis:
+// "100%, bem mais elaborado"). Placed here (not at file top) to keep the edit surgical
+// while VoicePreview/WebsitePreview/AppPreview/SocialPreview are edited in parallel.
+// Only real brand data (name/tagline/services/facts/logo/agent_name) fills the copy —
+// no invented metrics (clicks/traffic/searches/ratings). Structural chrome (format
+// names, generic sitelink words) is UI, not a claim about the client's data.
+const ADS_LBL = {
+  en: { sim: "simulation", google: "Google Search", meta: "Instagram / Meta", remarketing: "Retargeting", sponsored: "Sponsored", ad: "Ad", learnMore: "Learn more", shopNow: "Shop now", bookNow: "Book now", youViewed: "You recently viewed", site1: "Prices", site2: "Book now", site3: "Reviews", site4: "Contact", results: "results", profile: "Business profile", website: "Website", services: "Services", inbox: "Inbox", now: "now", yourAppt: "Booking details", service: "Service", signedBy: "with", poweredBy: "powered by Guileo", scene1: "Search ad", scene2: "Feed ad", scene3: "Retargeting card" },
+  pt: { sim: "simulação", google: "Google (busca)", meta: "Instagram / Meta", remarketing: "Retargeting", sponsored: "Patrocinado", ad: "Anúncio", learnMore: "Saiba mais", shopNow: "Comprar agora", bookNow: "Agendar", youViewed: "Você viu recentemente", site1: "Preços", site2: "Agendar", site3: "Avaliações", site4: "Contato", results: "resultados", profile: "Perfil do negócio", website: "Site", services: "Serviços", inbox: "Caixa de entrada", now: "agora", yourAppt: "Detalhes do agendamento", service: "Serviço", signedBy: "por", poweredBy: "powered by Guileo", scene1: "Anúncio de busca", scene2: "Anúncio no feed", scene3: "Cartão de retargeting" },
+  es: { sim: "simulación", google: "Google (búsqueda)", meta: "Instagram / Meta", remarketing: "Retargeting", sponsored: "Patrocinado", ad: "Anuncio", learnMore: "Saber más", shopNow: "Comprar ahora", bookNow: "Reservar", youViewed: "Viste recientemente", site1: "Precios", site2: "Reservar", site3: "Reseñas", site4: "Contacto", results: "resultados", profile: "Perfil del negocio", website: "Sitio web", services: "Servicios", inbox: "Bandeja de entrada", now: "ahora", yourAppt: "Detalles de la cita", service: "Servicio", signedBy: "por", poweredBy: "powered by Guileo", scene1: "Anuncio de búsqueda", scene2: "Anuncio en el feed", scene3: "Tarjeta de retargeting" },
+  hi: { sim: "अनुकरण", google: "Google खोज", meta: "Instagram / Meta", remarketing: "रीटार्गेटिंग", sponsored: "प्रायोजित", ad: "विज्ञापन", learnMore: "और जानें", shopNow: "अभी खरीदें", bookNow: "बुक करें", youViewed: "आपने हाल ही में देखा", site1: "कीमतें", site2: "बुक करें", site3: "समीक्षाएं", site4: "संपर्क", results: "परिणाम", profile: "व्यवसाय प्रोफ़ाइल", website: "वेबसाइट", services: "सेवाएं", inbox: "इनबॉक्स", now: "अभी", yourAppt: "बुकिंग विवरण", service: "सेवा", signedBy: "द्वारा", poweredBy: "powered by Guileo", scene1: "खोज विज्ञापन", scene2: "फ़ीड विज्ञापन", scene3: "रीटार्गेटिंग कार्ड" },
+};
+
+// Ads → three RECOGNIZABLE formats (Google Search / Meta feed / retargeting), each
+// built from the real first priced service — never invented traffic/click numbers.
+function AdsPreview({ brand, colors, t, lang }) {
+  const L = ADS_LBL[lang] || ADS_LBL.en;
+  const svc = firstPricedService(brand);
+  const svcLabel = svc.name || brand.name;
+  const blurb = brand.tagline || (brand.facts && brand.facts[0]) || "";
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="overflow-hidden rounded-xl border border-g-line bg-[#0f0e0c]">
-          <div className="grid h-20 place-items-center" style={{ background: `linear-gradient(135deg, ${colors.primary}, ${colors.accent})` }}>
-            <Logo brand={brand} colors={colors} size={30} />
+    <div className="grid gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        {/* 1 — Google Search ad */}
+        <div className="min-w-0 rounded-xl border border-g-line bg-[#0f0e0c] p-3" style={{ animation: "rise .4s ease both" }}>
+          <div className="mb-1.5 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wide text-g-muted">
+            <span className="rounded px-1 py-0.5 text-black" style={{ background: colors.accent }}>{L.ad}</span>
+            <span className="truncate">{L.google}</span>
           </div>
-          <div className="p-2.5">
-            <div className="text-[11px] font-black text-white">{brand.name}</div>
-            <div className="mt-0.5 line-clamp-2 text-[10.5px] text-white/70">{["✨ " + svc, "📍 " + (brand.tagline || svc), "⭐ " + svc][i]}</div>
-            <button className="mt-2 w-full rounded-md py-1.5 text-[10px] font-black text-black" style={{ background: colors.accent }}>Learn more</button>
+          <div className="truncate text-[11px] text-white/50">{domainOf(brand)}</div>
+          <div className="truncate text-[14px] font-bold leading-tight" style={{ color: colors.accent }}>{brand.name}{svcLabel ? ` — ${svcLabel}` : ""}{svc.price ? ` · ${svc.price}` : ""}</div>
+          {blurb && <div className="mt-0.5 line-clamp-2 text-[11px] text-white/70">{blurb}</div>}
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 border-t border-white/10 pt-2 text-[10px]" style={{ color: colors.accent }}>
+            <span className="truncate">{L.site1}</span><span className="truncate">{L.site2}</span><span className="truncate">{L.site3}</span><span className="truncate">{L.site4}</span>
           </div>
         </div>
-      ))}
-      <div className="sm:col-span-3 text-center text-[11px] font-bold" style={{ color: colors.accent }}>3 {t.adCard} · {brand.name}</div>
+
+        {/* 2 — Meta / Instagram feed ad */}
+        <div className="min-w-0 overflow-hidden rounded-xl border border-g-line bg-[#0f0e0c]" style={{ animation: "rise .4s ease .06s both" }}>
+          <div className="flex items-center gap-2 px-2.5 py-2">
+            <Logo brand={brand} colors={colors} size={22} />
+            <div className="min-w-0 leading-tight">
+              <div className="truncate text-[10.5px] font-black text-white">{handleOf(brand)}</div>
+              <div className="text-[9px] text-g-muted">{L.sponsored}</div>
+            </div>
+          </div>
+          <div className="grid h-24 place-items-center px-3 text-center" style={{ background: `linear-gradient(135deg, ${colors.primary}, ${colors.accent})` }}>
+            <div className="text-[12px] font-black text-black">{svcLabel}{svc.price ? ` · ${svc.price}` : ""}</div>
+          </div>
+          <div className="p-2.5">
+            {blurb && <div className="line-clamp-2 text-[10.5px] text-white/70">{blurb}</div>}
+            <button className="mt-2 w-full rounded-md py-1.5 text-[10px] font-black text-black" style={{ background: colors.accent }}>{L.shopNow}</button>
+          </div>
+        </div>
+      </div>
+
+      {/* 3 — compact retargeting card */}
+      <div className="flex min-w-0 items-center gap-2.5 rounded-xl border border-g-line bg-[#0f0e0c] p-2.5" style={{ animation: "rise .4s ease .12s both" }}>
+        <Logo brand={brand} colors={colors} size={30} />
+        <div className="min-w-0 flex-1">
+          <div className="text-[9px] font-black uppercase tracking-wide text-g-muted">{L.youViewed}</div>
+          <div className="truncate text-[11.5px] font-bold text-white">{svcLabel}{svc.price ? ` · ${svc.price}` : ""}</div>
+        </div>
+        <button className="shrink-0 rounded-md px-2.5 py-1.5 text-[10px] font-black text-black" style={{ background: colors.accent }}>{L.bookNow}</button>
+      </div>
+
+      <div className="text-center text-[10px] font-black uppercase tracking-wide" style={{ color: colors.accent }}>{L.scene1} · {L.scene2} · {L.scene3} — {L.sim}</div>
     </div>
   );
 }
 
-// SEO → branded ranking-page card.
-function SeoPreview({ brand, colors, t }) {
+// SEO → richer results page: real query, brand result #1 with sitelinks, blurred
+// anonymous competitors, and a business-profile side card. No invented rank/volume.
+function SeoPreview({ brand, colors, t, lang }) {
+  const L = ADS_LBL[lang] || ADS_LBL.en;
   const city = (brand.facts && brand.facts.find((f) => /,|city|city:/i.test(f))) || "";
+  const svc = firstPricedService(brand);
+  const query = [svc.name || brand.name, city].filter(Boolean).join(" ");
   return (
     <Frame>
-      <div className="p-4">
-        <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: colors.accent }}>🔎 {t.seoCard} {city || domainOf(brand)}</div>
-        <div className="mt-2 space-y-2">
-          <div className="rounded-lg border p-2.5" style={{ borderColor: colors.accent + "55", background: colors.accent + "10" }}>
-            <div className="text-[11px] text-white/60">{domainOf(brand)}</div>
-            <div className="text-[13px] font-black" style={{ color: colors.accent }}>{brand.name} — {(brand.services && brand.services[0]) || brand.tagline || ""}</div>
-            <div className="text-[11px] text-white/70">⭐⭐⭐⭐⭐ · {brand.tagline || brand.name}</div>
-            <span className="mt-1 inline-block rounded-full px-2 py-0.5 text-[9px] font-black text-black" style={{ background: colors.accent }}>#1</span>
+      <div className="flex flex-col gap-3 p-4 sm:flex-row">
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5">
+            <span className="text-[11px] text-g-muted">🔎</span>
+            <span className="truncate text-[11.5px] text-white/85">{query}</span>
           </div>
-          {[2, 3].map((n) => <div key={n} className="rounded-lg border border-white/10 p-2 opacity-50"><div className="text-[10px] text-white/40">competitor{n}.com</div><div className="h-2 w-2/3 rounded bg-white/10" /></div>)}
+          <div className="mt-2 text-[9.5px] text-white/30">{t.seoCard} {city || domainOf(brand)}</div>
+
+          <div className="mt-3 min-w-0 rounded-lg border p-2.5" style={{ borderColor: colors.accent + "55", background: colors.accent + "10", animation: "rise .4s ease both" }}>
+            <span className="mb-1 inline-block rounded-full px-1.5 py-0.5 text-[8px] font-black text-black" style={{ background: colors.accent }}>#1</span>
+            <div className="truncate text-[11px] text-white/60">{domainOf(brand)}</div>
+            <div className="truncate text-[13px] font-black" style={{ color: colors.accent }}>{brand.name}{svc.name ? ` — ${svc.name}` : brand.tagline ? ` — ${brand.tagline}` : ""}</div>
+            {brand.tagline && <div className="line-clamp-2 text-[11px] text-white/70">{brand.tagline}</div>}
+            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px]" style={{ color: colors.accent }}>
+              <span className="truncate">{L.site1}</span><span className="truncate">{L.site2}</span><span className="truncate">{L.site3}</span><span className="truncate">{L.site4}</span>
+            </div>
+          </div>
+
+          <div className="mt-2 space-y-1.5">
+            {[2, 3].map((n) => (
+              <div key={n} className="rounded-lg border border-white/10 p-2 opacity-40">
+                <div className="h-2 w-1/3 rounded bg-white/10" />
+                <div className="mt-1 h-2 w-2/3 rounded bg-white/10" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="w-full shrink-0 rounded-xl border border-white/10 bg-white/[0.03] p-3 sm:w-[150px]" style={{ animation: "rise .4s ease .08s both" }}>
+          <div className="text-[9px] font-black uppercase tracking-wide text-g-muted">{L.profile}</div>
+          <div className="mt-2 flex items-center gap-2">
+            <Logo brand={brand} colors={colors} size={30} />
+            <div className="min-w-0 leading-tight">
+              <div className="truncate text-[11px] font-black text-white">{brand.name}</div>
+              {brand.tagline && <div className="truncate text-[9.5px] text-white/50">{brand.tagline}</div>}
+            </div>
+          </div>
+          {Array.isArray(brand.services) && brand.services.length > 0 && (
+            <div className="mt-2 border-t border-white/10 pt-2">
+              <div className="text-[9px] font-black uppercase tracking-wide text-g-muted">{L.services}</div>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {brand.services.slice(0, 3).map((s, i) => (
+                  <span key={i} className="truncate rounded-full border border-white/10 px-1.5 py-0.5 text-[9.5px] text-white/70">{typeof s === "string" ? s : s?.name}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="mt-2 truncate border-t border-white/10 pt-2 text-[9.5px] text-white/40">🌐 {L.website} · {domainOf(brand)}</div>
         </div>
       </div>
+      <div className="border-t border-white/10 px-4 py-2 text-center text-[10px] font-black uppercase tracking-wide" style={{ color: colors.accent }}>{L.sim}</div>
     </Frame>
   );
 }
 
-// Email/content → branded email preview.
-function EmailPreview({ brand, colors, t }) {
+// Email/content → a real inbox row + the branded email itself, with a booking-details
+// block signed by the client's own agent_name when the brand has one.
+function EmailPreview({ brand, colors, t, lang }) {
+  const L = ADS_LBL[lang] || ADS_LBL.en;
+  const svc = firstPricedService(brand);
+  const subject = svc.name || brand.tagline || brand.name;
+  const preview = brand.tagline || (brand.facts && brand.facts[0]) || "";
   return (
     <Frame>
-      <div className="border-b border-white/10 px-4 py-2.5 text-[11px] text-g-muted">
-        <div><span className="text-white/50">From:</span> <span className="text-white/85">{brand.name} &lt;hello@{domainOf(brand)}&gt;</span></div>
-        <div><span className="text-white/50">Subject:</span> <span className="font-bold text-white">✨ {(brand.services && brand.services[0]) || brand.tagline || brand.name}</span></div>
+      <div className="border-b border-white/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-wide text-g-muted">📥 {L.inbox}</div>
+      <div className="flex min-w-0 items-center gap-2 border-b border-white/10 bg-white/[0.03] px-3 py-2.5" style={{ animation: "rise .35s ease both" }}>
+        <Logo brand={brand} colors={colors} size={30} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-[11.5px] font-black text-white">{brand.name}</span>
+            <span className="ml-auto shrink-0 text-[9.5px] text-white/30">{L.now}</span>
+          </div>
+          <div className="truncate text-[11px] font-bold text-white/85">✨ {subject}</div>
+          {preview && <div className="truncate text-[10.5px] text-white/40">{preview}</div>}
+        </div>
       </div>
-      <div className="p-4" style={{ background: `linear-gradient(180deg, ${colors.primary}0f, transparent)` }}>
-        <div className="flex items-center gap-2"><Logo brand={brand} colors={colors} size={28} /><span className="text-[13px] font-black" style={{ color: colors.accent }}>{brand.name}</span></div>
-        <div className="mt-3 text-[12px] leading-relaxed text-white/80">{t.emailCard} — {brand.tagline || brand.name}.</div>
-        <button className="mt-3 rounded-lg px-3.5 py-2 text-[11px] font-black text-black" style={{ background: colors.accent }}>{(brand.services && brand.services[0]) || "Book now"}</button>
-        <div className="mt-3 text-[9px] text-white/30">powered by Guileo</div>
+
+      <div className="px-4 pt-2.5 text-[10px] text-g-muted">
+        <span className="text-white/50">{lang === "pt" ? "De" : lang === "es" ? "De" : lang === "hi" ? "प्रेषक" : "From"}:</span> <span className="text-white/70">{brand.name} &lt;hello@{domainOf(brand)}&gt;</span>
+      </div>
+
+      <div className="p-4" style={{ animation: "rise .35s ease .08s both" }}>
+        <div className="overflow-hidden rounded-xl border border-white/10">
+          <div className="flex items-center gap-2 px-3.5 py-3" style={{ background: `linear-gradient(135deg, ${colors.primary}, ${colors.accent})` }}>
+            <Logo brand={brand} colors={colors} size={26} />
+            <span className="truncate text-[13px] font-black text-black">{brand.name}</span>
+          </div>
+          <div className="bg-[#151310] p-3.5">
+            <div className="text-[12px] leading-relaxed text-white/80">{t.emailCard} — {brand.tagline || brand.name}.</div>
+
+            <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.04] p-2.5">
+              <div className="text-[9px] font-black uppercase tracking-wide" style={{ color: colors.accent }}>{L.yourAppt}</div>
+              <div className="mt-1 flex items-center justify-between gap-2 text-[11px]">
+                <span className="text-white/50">{L.service}</span>
+                <span className="truncate font-bold text-white/90">{svc.name || brand.name}{svc.price ? ` · ${svc.price}` : ""}</span>
+              </div>
+            </div>
+
+            <button className="mt-3 w-full rounded-lg py-2 text-[11px] font-black text-black" style={{ background: colors.accent }}>{svc.name || L.bookNow}</button>
+
+            {brand.agent_name && <div className="mt-3 text-[10.5px] text-white/40">— {brand.agent_name}, {L.signedBy} {brand.name}</div>}
+            <div className="mt-3 border-t border-white/10 pt-2 text-[9px] text-white/30">{L.poweredBy}</div>
+          </div>
+        </div>
       </div>
     </Frame>
   );

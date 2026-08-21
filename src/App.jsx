@@ -133,6 +133,8 @@ const SetupAgenda = lazyRetry(() => import("./pages/SetupAgenda")); // admin onb
 const Sign = lazyRetry(() => import("./pages/Sign")); // public contract e-signature page (/sign?t=token)
 const DemoLink = lazyRetry(() => import("./pages/DemoLink")); // seller's personalized demo link (/demo/:slug?n=&v=&s=) — Gui calls the prospect already knowing their business
 const DemoPage = lazyRetry(() => import("./pages/DemoPage")); // public "vitrine" — any product rendered in the client's brand (/vitrine/:token?)
+const Apresentacao = lazyRetry(() => import("./pages/Apresentacao")); // owner-facing growth report / quote (/apresentacao/:id — id = uuid da avaliação)
+const RaioX = lazyRetry(() => import("./pages/RaioX")); // /raio-x — pedido PÚBLICO do Guileo X-Ray (quiz → relatório medido → call de 15 min)
 
 // Privacy-first visit beacon → /api/hit (page + referrer host + lang only; no cookies,
 // no IDs). Fires once per pageload + on SPA route changes via history patching.
@@ -222,6 +224,16 @@ export default function App() {
             <Route path="/pulse" element={<Pulse />} />
             <Route path="/plans" element={<Navigate to="/planos" replace />} />
             <Route path="/precos" element={<Navigate to="/planos" replace />} />
+            {/* Rótulos do menu ("Setores"/"Demonstração" e seus equivalentes) que alguém digita como
+                URL. O `public/_redirects` já devolve 301 no servidor; estas rotas cobrem o mesmo
+                caminho DENTRO da SPA (dev server e navegação client-side), onde o _redirects não
+                roda. Sem elas a URL óbvia caía no NotFound. */}
+            <Route path="/setores" element={<Navigate to="/#industries" replace />} />
+            <Route path="/industries" element={<Navigate to="/#industries" replace />} />
+            <Route path="/sectores" element={<Navigate to="/#industries" replace />} />
+            <Route path="/demonstracao" element={<Navigate to="/#try" replace />} />
+            <Route path="/demo" element={<Navigate to="/#try" replace />} />
+            <Route path="/demostracion" element={<Navigate to="/#try" replace />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/sms" element={<SmsOptIn />} />
             <Route path="/terms" element={<Terms />} />
@@ -250,6 +262,10 @@ export default function App() {
             <Route path="/demo/:slug" element={<DemoLink />} />
             <Route path="/vitrine" element={<DemoPage />} />
             <Route path="/vitrine/:token" element={<DemoPage />} />
+            <Route path="/apresentacao/:id" element={<Apresentacao />} />
+            <Route path="/raio-x" element={<RaioX />} />
+            <Route path="/x-ray" element={<RaioX />} />
+            <Route path="/xray" element={<Navigate to="/raio-x" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

@@ -1,20 +1,50 @@
 /* Split out of Portal.jsx (performance): Team tab view — code moved verbatim. */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FaUsers, FaUserPlus } from "react-icons/fa6";
-import { toast } from "../lib/portalApi.js";
+import { toast, fetchEquipe } from "../lib/portalApi.js";
 import { waLink } from "../data/contact.js";
-import { loadCreated, genTeam, pushCreated, TEAM_ROLE, Card, tr, MiniStats, Drawer } from "../pages/Portal.jsx";
+import { loadCreated, genTeam, pushCreated, TEAM_ROLE, Card, tr, MiniStats, Drawer , FaixaAmostra} from "../pages/Portal.jsx";
 
 // Team & staff — manage the people, see who the AI is feeding work to.
-function Team({ V }) {
-  const rows = [...loadCreated(V.label, "team"), ...genTeam(V)];
+function Team({ V, real, email, dataKey }) {
+  // ── A EQUIPE DE VERDADE (2026-08-20) ──────────────────────────────────────────────────────
+  // Esta tela desenhava gente gerada enquanto `biz_professionals` já guardava os profissionais
+  // REAIS do negócio (a Natura tem 3 cadastrados). Cliente pagante vendo nome inventado no lugar
+  // da própria equipe é o tipo de erro que ele descobre sozinho — e aí duvida de todo o resto.
+  // 🚨 `null` = NÃO CONSEGUI LER; `[]` = a equipe está vazia mesmo. São coisas diferentes, e a
+  // tela diz qual das duas. Só caio na amostra quando NÃO estou em modo real.
+  const [equipe, setEquipe] = useState({ estado: "carregando", dados: null, motivo: null });
+  useEffect(() => {
+    let vivo = true;
+    if (!real || !email || !dataKey) { setEquipe({ estado: "amostra", dados: null, motivo: null }); return () => { vivo = false; }; }
+    fetchEquipe(email, dataKey).then((r) => { if (vivo) setEquipe({ estado: r.dados ? "ok" : "err", dados: r.dados, motivo: r.motivo }); });
+    return () => { vivo = false; };
+  }, [real, email, dataKey]);
+
+  const reais = equipe.estado === "ok" && Array.isArray(equipe.dados)
+    ? equipe.dados.map((p) => ({ name: p.nome, role: p.cargo || (p.tipo === "resource" ? tr("Resource") : tr("Team member")), status: p.ativo ? "Active" : "Inactive", handled: 0, revenue: 0, rating: 0, real: true }))
+    : null;
+  const rows = reais || [...loadCreated(V.label, "team"), ...genTeam(V)];
   const active = rows.filter((r) => r.status === "Active");
   const totalRev = active.reduce((s, r) => s + (r.revenue || 0), 0);
   const avgRating = active.length ? (active.reduce((s, r) => s + (r.rating || 0), 0) / active.length).toFixed(1) : "—";
   const [sel, setSel] = useState(null);
   const invite = () => { pushCreated(V.label, "team", { name: "New teammate", role: TEAM_ROLE[V.label] || "Team member", status: "Invited", handled: 0, revenue: 0, rating: 0 }); toast("Invite link sent ✓ — they'll appear once they join"); };
   return (
-    <div className="space-y-4 stagger">
+    <>
+      {/* a faixa só aparece quando a tela ainda está na amostra: com equipe real ela some sozinha */}
+      <FaixaAmostra real={real && !reais} />
+      {equipe.estado === "err" && (
+        <div className="mb-3 rounded-xl border border-[#e0855f]/40 bg-[#e0855f]/[0.08] px-3.5 py-2.5 text-[12px] text-[#e0855f]">
+          {tr("Couldn't read your team")} — {equipe.motivo}
+        </div>
+      )}
+      {reais && reais.length === 0 && (
+        <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-[12px] text-g-muted">
+          {tr("No one on your team yet — add the first person and Gui starts routing work to them.")}
+        </div>
+      )}
+      <div className="space-y-4 stagger">
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaUsers className="text-g-green" /> {tr("Team & staff")}</div><div className="text-xs text-g-muted mt-0.5">{tr("Your AI routes bookings, calls and chats to the right person — and tracks who's performing.")}</div></div>
@@ -46,6 +76,7 @@ function Team({ V }) {
         />
       )}
     </div>
+    </>
   );
 }
 

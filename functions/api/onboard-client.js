@@ -8,6 +8,9 @@
 //      SMS + Voice webhooks to Gui automatically
 //   5. returns the connection code, agent id and number so Luis hands them over.
 import { json } from "../lib/guard.js";
+// preço canônico por plano — o MESMO arquivo que a landing, o hub e o orçamento leem. Ler daqui
+// é o que garante que "US$50" vira a mesma coisa nos três lugares.
+import { GUILEO_PLANS } from "../../src/data/guileoPlans.js";
 import { buildConversationConfig, forwardingInstructions, buildDefaultSchedulePayload, elevenBindNumber } from "../lib/provision.js";
 import { resolveNativeVoices } from "../lib/voiceLibrary.js";
 import { emitFailure } from "../lib/failure.js";
@@ -211,6 +214,28 @@ export async function onRequestPost(context) {
     if (!email.includes("@") || !b.business) return json({ error: "email + business required" }, 400);
 
     const ING = env.INGEST_SECRET || "";
+
+    // 🚨 TRAVA DE CLIENTE JÁ EXISTENTE (2026-08-20). O agente e o número deste fluxo são
+    // idempotentes — mas `add_client_credits` SOMA (credits = credits + novos) e sobrescreve o
+    // plano. Rodar isto de novo num cliente vivo não dá erro: dá crédito a mais e troca o plano
+    // dele em silêncio. Quase aconteceu com a primeira cliente real, por um e-mail digitado no
+    // formulário de cima em vez do de baixo. Fail-closed: só passa com `reativar: true` explícito.
+    if (!(b.reativar === true || b.reativar === "true")) {
+      const jr = await rpc("client_ja_existe", { p_secret: ING, p_email: email });
+      if (jr.ok) {
+        const j = await jr.json().catch(() => null);
+        if (j && j.existe === true) {
+          return json({
+            error: "cliente_ja_existe",
+            motivo: `${email} já é cliente (plano ${j.plano || "—"}, ${j.creditos} créditos). Ativar de novo SOMARIA créditos e trocaria o plano. Para reenviar o acesso use "Reenviar e-mail de acesso"; para ativar mesmo assim, marque reativar.`,
+            plano: j.plano || "", creditos: j.creditos,
+          }, 409);
+        }
+      }
+      // jr.ok falso = não consegui perguntar. Não sigo no escuro: escrever aqui é irreversível.
+      else return json({ error: "checagem_falhou", motivo: `não consegui verificar se ${email} já é cliente (HTTP ${jr.status}) — não vou ativar no escuro` }, 502);
+    }
+
     const business = b.business.toString().slice(0, 160);
     const lang = ["pt", "es", "en"].includes(b.lang) ? b.lang : "en";
     // agent_name lets a client white-label the voice (e.g. "Sofia"); empty → defaults to the Guileo brand "Gui".
@@ -302,7 +327,39 @@ export async function onRequestPost(context) {
     try {
       // credits are what the client PAID for — check the RPC actually landed (fetch doesn't throw on
       // non-2xx, so the old unchecked await could report "ok" while storing nothing = paid-but-nothing).
-      const cr = await rpc("add_client_credits", { p_secret: ING, p_email: email, p_credits: Number(b.credits) || 0, p_plan: (b.plan || "").toString().slice(0, 80) });
+      // ── O $50 PROMETIDO AO LEAD, HONRADO SOZINHO (2026-08-20) ──────────────────────────────
+      // O e-mail do vendedor promete "$50 de crédito no primeiro mês" e o hub grava a promessa na
+      // ficha do lead, com data. Sem este bloco, honrar dependia de alguém lembrar de somar
+      // créditos à mão na ativação — e promessa que depende de memória humana é promessa quebrada
+      // na frente do cliente que acabou de pagar.
+      // 🚨 O VALOR É CALCULADO, NÃO CHUTADO. O crédito custa diferente por plano ($0,298 no
+      // Essential, $0,225 no Personalized, $0,167 no Full Operation). Dar um número fixo daria
+      // $50 em um plano e outra coisa em outro — e a conta do cliente não bateria com a promessa.
+      let bonus = 0, promessa = null;
+      try {
+        const pr = await rpc("promessa_do_lead", { p_secret: ING, p_email: email, p_business: business });
+        if (pr.ok) {
+          const pd = await pr.json().catch(() => null);
+          if (pd?.tem === true) {
+            const plano = GUILEO_PLANS.find((x) => x.key === (b.plan || "")) || null;
+            const precoNum = plano ? parseFloat(String(plano.price).replace(/[^0-9.]/g, "")) : 0;
+            const porCredito = plano && plano.credits > 0 && precoNum > 0 ? precoNum / plano.credits : 0;
+            // sem preço confiável do plano, NÃO invento crédito: registro a promessa e deixo visível.
+            bonus = porCredito > 0 ? Math.round(50 / porCredito) : 0;
+            promessa = { ...pd, bonus_creditos: bonus, plano: b.plan || "" };
+          }
+        }
+      } catch { /* a promessa não pode derrubar a ativação; ela aparece no resultado como não-lida */ }
+
+      const cr = await rpc("add_client_credits", { p_secret: ING, p_email: email, p_credits: (Number(b.credits) || 0) + bonus, p_plan: (b.plan || "").toString().slice(0, 80) });
+      if (promessa) {
+        result.steps.promessa_50 = bonus > 0
+          ? `honrada: +${bonus} créditos (US$50 no plano ${promessa.plano})`
+          : "promessa encontrada mas SEM preço de plano — some os créditos à mão";
+        await emitFailure(env, "promessa_50_honrada", email,
+          `US$50 prometido por ${promessa.vendedor} ao lead ${promessa.negocio} — ${bonus > 0 ? `+${bonus} créditos aplicados` : "NÃO aplicado, sem preço de plano"}`,
+          { prospect: promessa.prospect, bonus }).catch(() => {});
+      }
       const kr = await rpc("admin_get_client_key", { p_token: token, p_email: email });
       result.connection_code = kr.ok ? await kr.json() : null;
       result.steps.credits = cr.ok ? "ok" : "err: credits NOT stored — re-run";
@@ -605,7 +662,11 @@ export async function onRequestPost(context) {
         if (seller && seller.email) {
           const { subject, html } = sellerClientLiveEmail({
             sellerName: seller.name || "", business: (b.business || "").toString() || email.split("@")[0],
-            clientEmail: email, lang: "pt",
+            // ⚠️ O IDIOMA VEM DO VENDEDOR, não cravado (2026-08-20). Era `lang:"pt"` fixo, então
+            // kendall — que cobre Baltimore, DC e Philadelphia — recebia em português a notícia de
+            // que o cliente dele entrou no ar. `seller_of_client` agora devolve `lang`, e NULL no
+            // banco já vira 'en' lá dentro: reserva é o idioma da plataforma, não o do autor.
+            clientEmail: email, lang: seller.lang || "en",
           });
           const mr = await fetch("https://api.resend.com/emails", {
             method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },

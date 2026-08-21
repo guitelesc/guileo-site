@@ -33,6 +33,27 @@ import { emitFailure } from "../lib/failure.js";
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/;
 const AGENT_RE = /^agent_[a-zA-Z0-9]+$/;
+
+// ── A GUILEO COMO INQUILINA DE SI MESMA (2026-08-18) ────────────────────────────────────────
+// A landing vendia agente de voz e não tinha um. Este slug RESERVADO é como o guileoai.com fala
+// pela mesma porta que o site do cliente já usa — sem um segundo endpoint, sem um segundo
+// medidor, sem um segundo caminho de erro pra manter em dia.
+//
+// Por que um slug reservado e não um site de cliente com slug "guileo": a Guileo não tem linha
+// em `client_sites` nem em `client_agents`, então `client_site_owner` devolveria vazio e a
+// pessoa veria "voz não ativada para este negócio". O atalho acontece ANTES do lookup, o que
+// também impede que um cliente publique um site com slug "guileo" e herde o agente de demo.
+//
+// O agente é o de DEMO da plataforma (mesma constante de call.js/twilio-voice.js — a linha
+// +19864443334 aponta pra ele). O tenant do medidor é interno: a cota da Guileo é da Guileo,
+// nunca sai do teto de um cliente pagante.
+const PLATFORM_SLUG = "guileo";
+const PLATFORM_AGENT = "agent_5901ktdkev68f5kb161fmeax1rdm";
+const platformEmail = (env) => (env.VOICE_WEB_PLATFORM_EMAIL || "demo@guileoai.com").toString().trim().toLowerCase();
+const platformAgent = (env) => {
+  const id = (env.ELEVENLABS_AGENT_ID || PLATFORM_AGENT).toString().trim();
+  return AGENT_RE.test(id) ? id : "";
+};
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const CORS = {
@@ -160,10 +181,12 @@ export async function onRequestPost(context) {
     if (!env.ELEVENLABS_API_KEY) return out({ ok: false, reason: "no_key" });
     if (!env.INGEST_SECRET) return out({ ok: false, reason: "no_key" });
 
-    const email = await donoDoSlug(env, slug);
+    // O atalho da PRÓPRIA Guileo vem antes do lookup de cliente (ver PLATFORM_SLUG acima).
+    const plataforma = slug === PLATFORM_SLUG;
+    const email = plataforma ? platformEmail(env) : await donoDoSlug(env, slug);
     if (!email) return out({ ok: false, reason: "no_site" }, 404);
 
-    const agentId = await agenteDoTenant(env, email);
+    const agentId = plataforma ? platformAgent(env) : await agenteDoTenant(env, email);
     if (!agentId) return out({ ok: false, reason: "no_agent" });
 
     // COTA — no banco, atômica, e FECHADA por padrão: se o livro-caixa não responder
@@ -192,7 +215,10 @@ export async function onRequestPost(context) {
       return out({ ok: false, reason: "provider" });
     }
 
-    const marca = await marcaDoSlug(env, slug);
+    // A marca sai de `client_sites`; a Guileo não tem linha lá, então a landing manda a dela.
+    // Inventar um nome de negócio aqui seria escrever "Guileo" num campo que existe pra dizer
+    // o nome do CLIENTE — melhor devolver vazio e deixar a página decidir.
+    const marca = plataforma ? {} : await marcaDoSlug(env, slug);
     return out({
       ok: true,
       session_id: res.session_id,

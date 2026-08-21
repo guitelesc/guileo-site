@@ -37,6 +37,14 @@ function cabecaDoApp(html, site, extra) {
     `<link rel="apple-touch-icon" href="${p.icone192}" />`);
   // 2. Favicon da aba/atalho — mesmo motivo.
   html = html.replace(/<link\s+rel="icon"[^>]*>/gi, "");
+  // 2b. O MANIFESTO DA GUILEO. A casca declara /manifest.webmanifest (o app do cockpit, escopo
+  //     /portal). Se ele sobrar aqui, o <head> do site do cliente sai com DOIS manifestos e o
+  //     celular escolhe o primeiro — instalando o app do negócio dele com o nome, a cor e o ícone
+  //     da Guileo. Some antes de pendurar o manifesto do tenant, logo abaixo.
+  html = html.replace(/<link\s+rel="manifest"[^>]*>/gi, "");
+  // 2c. As metas de app do iOS (nome/cor da barra) também são nossas na casca — o bloco abaixo
+  //     reescreve todas com a identidade do negócio, então as originais precisam sair primeiro.
+  html = html.replace(/<meta\s+name="(apple-mobile-web-app-(capable|title|status-bar-style)|mobile-web-app-capable|application-name)"[^>]*>/gi, "");
   // 3. Cor do tema: a barra do navegador e a moldura do app instalado ficam na cor da marca dele.
   html = html.replace(/<meta\s+name="theme-color"[^>]*>/i,
     `<meta name="theme-color" content="${attr(site.cor)}" />`);

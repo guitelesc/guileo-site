@@ -422,9 +422,9 @@ export const CATS = [
           "es": "Gestión de redes sociales"
         },
         "desc": {
-          "en": "We run your Instagram and Facebook end to end. Gui replies to every comment and DM and turns them into bookings.",
-          "pt": "Cuidamos do seu Instagram e Facebook de ponta a ponta. O Gui responde todo comentário e DM e transforma em agendamento.",
-          "es": "Manejamos tu Instagram y Facebook de punta a punta. Gui responde cada comentario y DM y los convierte en reservas."
+          "en": "We run your Instagram and Facebook end to end: posts written, scheduled and published on your accounts. Gui drafts the answer to every comment and DM in your unified inbox — auto-sending those replies back to Instagram and Messenger is coded and switches on the moment Meta approves the app for your accounts.",
+          "pt": "Cuidamos do seu Instagram e Facebook de ponta a ponta: posts escritos, agendados e publicados nas suas contas. O Gui escreve a resposta de todo comentário e DM na sua caixa unificada — o envio automático dessas respostas de volta pro Instagram e Messenger já está codificado e entra no ar assim que a Meta aprovar o app pras suas contas.",
+          "es": "Manejamos tu Instagram y Facebook de punta a punta: posts escritos, programados y publicados en tus cuentas. Gui redacta la respuesta de cada comentario y DM en tu bandeja unificada — el envío automático de esas respuestas a Instagram y Messenger ya está programado y se activa en cuanto Meta apruebe la app para tus cuentas."
         },
         "deliver": {
           "en": "Admin access to your social accounts and your Gui agent connected for replies.",
@@ -1010,9 +1010,9 @@ export const CATS = [
           "es": "Motor de reseñas: 5 estrellas en automático"
         },
         "desc": {
-          "en": "Right after each visit, Gui texts or calls your happy customers and walks them straight to your Google review, so 5-star ratings keep stacking up without you lifting a finger.",
-          "pt": "Logo após cada visita, a Gui chama seus clientes satisfeitos no WhatsApp ou por ligação e os leva direto à avaliação no Google, fazendo as 5 estrelas crescerem sem você fazer nada.",
-          "es": "Justo después de cada visita, Gui escribe o llama a tus clientes satisfechos y los lleva directo a tu reseña de Google, para que las 5 estrellas crezcan sin que muevas un dedo."
+          "en": "Right after each visit, Gui calls or emails your happy customers and walks them straight to your Google review, so 5-star ratings keep stacking up without you lifting a finger (WhatsApp and SMS reach-out are coded and switch on when the Meta sender and the carrier A2P are approved). Publishing replies needs your Google Business Profile connected.",
+          "pt": "Logo após cada visita, a Gui liga ou manda e-mail pros clientes satisfeitos e os leva direto à avaliação no Google, fazendo as 5 estrelas crescerem sem você fazer nada (o contato por WhatsApp e SMS já está codificado e entra no ar quando o remetente da Meta e o A2P da operadora forem aprovados). Publicar as respostas depende do seu Perfil da Empresa no Google conectado.",
+          "es": "Justo después de cada visita, Gui llama o envía un correo a tus clientes satisfechos y los lleva directo a tu reseña de Google, para que las 5 estrellas crezcan sin que muevas un dedo (el contacto por WhatsApp y SMS ya está programado y se activa cuando se aprueben el remitente de Meta y el A2P de la operadora). Publicar las respuestas requiere tu Perfil de Empresa de Google conectado."
         },
         "deliver": {
           "en": "Access to your Google Business Profile, plus how customer contacts reach us (CRM, POS or booking tool).",
@@ -1045,19 +1045,19 @@ export const CATS = [
       },
       {
         "name": {
-          "en": "Listings sync across 50+ directories",
-          "pt": "Sincronização em 50+ diretórios",
-          "es": "Sincronización en 50+ directorios"
+          "en": "One source of truth for your name, address, phone & hours",
+          "pt": "Uma fonte só pro seu nome, endereço, telefone e horários",
+          "es": "Una sola fuente para tu nombre, dirección, teléfono y horarios"
         },
         "desc": {
-          "en": "We lock your name, address, phone and hours into Google, Apple Maps, Yelp, Bing and 50+ directories, so customers and search engines never hit the wrong info.",
-          "pt": "Travamos seu nome, endereço, telefone e horários no Google, Apple Maps, Yelp, Bing e mais de 50 diretórios, para clientes e buscadores nunca caírem em informação errada.",
-          "es": "Fijamos tu nombre, dirección, teléfono y horarios en Google, Apple Maps, Yelp, Bing y más de 50 directorios, para que clientes y buscadores nunca den con información equivocada."
+          "en": "Your name, address, phone and hours live in ONE place and go out from there: onto your Google Business Profile, and published as structured data (schema.org) on your Guileo site so Google AND AI assistants read the same facts. We keep them in sync month to month, and hand you the exact text to paste anywhere else you are listed. We do NOT push to Apple Maps, Yelp or Bing — there is no automatic feed to them.",
+          "pt": "Seu nome, endereço, telefone e horários ficam num lugar SÓ e saem de lá: pro seu Perfil da Empresa no Google e publicados como dado estruturado (schema.org) no seu site Guileo, pro Google E os assistentes de IA lerem os mesmos fatos. A gente mantém isso em dia mês a mês e te entrega o texto exato pra colar em qualquer outra ficha. A gente NÃO publica no Apple Maps, Yelp ou Bing — não existe envio automático pra eles.",
+          "es": "Tu nombre, dirección, teléfono y horarios viven en UN solo lugar y salen de ahí: a tu Perfil de Empresa de Google y publicados como dato estructurado (schema.org) en tu sitio Guileo, para que Google Y los asistentes de IA lean los mismos datos. Lo mantenemos al día mes a mes y te entregamos el texto exacto para pegar en cualquier otra ficha. NO publicamos en Apple Maps, Yelp ni Bing — no existe un envío automático a ellos."
         },
         "deliver": {
-          "en": "Your exact name, address, phone, hours and website, plus any logins to listings you already control.",
-          "pt": "Seu nome, endereço, telefone, horários e site exatos, além de logins de fichas que você já controla.",
-          "es": "Tu nombre, dirección, teléfono, horarios y sitio web exactos, además de accesos a fichas que ya controlas."
+          "en": "Your exact name, address, phone, hours and website, plus manager access to your Google Business Profile (that connection is what makes the sync automatic).",
+          "pt": "Seu nome, endereço, telefone, horários e site exatos, além de acesso de gerente ao seu Perfil da Empresa no Google (é essa conexão que torna a sincronização automática).",
+          "es": "Tu nombre, dirección, teléfono, horarios y sitio web exactos, además de acceso de administrador a tu Perfil de Empresa de Google (esa conexión es la que hace automática la sincronización)."
         },
         "br": "R$390/mês",
         "us": "$99/mo",
@@ -1222,9 +1222,9 @@ export const CATS = [
           "es": "Central de WhatsApp y mensajería"
         },
         "desc": {
-          "en": "WhatsApp, SMS and DMs in one inbox where Gui answers in seconds and saves every chat to the right customer — no message ignored again.",
-          "pt": "WhatsApp, SMS e DMs numa caixa só, com o Gui respondendo em segundos e salvando cada conversa no cliente certo — nenhuma mensagem ignorada.",
-          "es": "WhatsApp, SMS y DMs en una sola bandeja, con Gui respondiendo en segundos y guardando cada chat en el cliente correcto — ningún mensaje ignorado."
+          "en": "One inbox for every written conversation, with Gui answering in seconds and saving every chat to the right customer. Sending today: webchat on your site and email. WhatsApp, SMS and Instagram/Messenger DMs are already wired and captured in the inbox — outbound on those three switches on as each approval lands (WhatsApp sender and Meta app from Meta, SMS from the US carrier A2P 10DLC).",
+          "pt": "Uma caixa só pra toda conversa escrita, com o Gui respondendo em segundos e salvando cada conversa no cliente certo. Enviando hoje: webchat no seu site e e-mail. WhatsApp, SMS e DMs de Instagram/Messenger já estão ligados e são capturados na caixa — a saída nesses três acende conforme cada aprovação sai (remetente de WhatsApp e app na Meta, SMS no A2P 10DLC da operadora).",
+          "es": "Una sola bandeja para toda conversación escrita, con Gui respondiendo en segundos y guardando cada chat en el cliente correcto. Enviando hoy: webchat en tu sitio y correo. WhatsApp, SMS y DMs de Instagram/Messenger ya están conectados y se capturan en la bandeja — la salida en esos tres se activa a medida que llega cada aprobación (remitente de WhatsApp y app en Meta, SMS en el A2P 10DLC de la operadora)."
         },
         "deliver": {
           "en": "The number and channels you use with customers, plus access to approve the WhatsApp connection.",

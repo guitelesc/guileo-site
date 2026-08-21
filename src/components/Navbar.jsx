@@ -17,7 +17,7 @@ const SERVICES = [
   ["🎬", "Video production", "Produção de vídeo", "Producción de video", "वीडियो प्रोडक्शन"],
   ["📱", "Social media mgmt", "Gestão de redes", "Gestión de redes", "सोशल मीडिया प्रबंधन"],
   ["🤖", "AI automation", "Automação com IA", "Automatización con IA", "AI ऑटोमेशन"],
-  ["⭐", "Reviews & reputation", "Reviews & reputação", "Reseñas & reputación", "रिव्यू & प्रतिष्ठा"],
+  ["⭐", "Reviews & reputation", "Avaliações & reputação", "Reseñas & reputación", "रिव्यू & प्रतिष्ठा"],
 ];
 const PRODUCTS = [
   ["🌐", "Websites", "Sites", "Sitios web", "वेबसाइट"],

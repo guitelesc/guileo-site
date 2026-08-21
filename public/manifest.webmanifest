@@ -1,0 +1,24 @@
+{
+  "id": "/portal",
+  "name": "Guileo",
+  "short_name": "Guileo",
+  "description": "Your business in one place: what your AI did today, your schedule, your calls, your customers and your money.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/portal?tab=hoje&src=app",
+  "scope": "/portal",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#161512",
+  "background_color": "#161512",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "/guileo-app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/guileo-app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Today", "url": "/portal?tab=hoje" },
+    { "name": "Schedule", "url": "/portal?tab=schedule" },
+    { "name": "Calls", "url": "/portal?tab=calllogs" }
+  ]
+}

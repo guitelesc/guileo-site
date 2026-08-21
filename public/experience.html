@@ -115,7 +115,11 @@
     <span class="eyebrow"><b></b>Try it on yourself</span>
     <h2>Let our AI <span class="greenc">call you</span> — now.</h2>
     <p class="sub">This is the product, working live. Enter your number on the site and your phone rings in seconds.</p>
-    <a class="cta" href="/#results">📞 Get a call from our AI</a>
+    <!-- âncora quebrada: apontava para /#results, id que NUNCA existiu na Home. O botão diz
+         "get a call from our AI" — a seção que faz isso é `id="try"` (Home.jsx → <LiveCall/>).
+         Corrigi o LINK, não o id: "try" é usado em 6 páginas (Home, Vertical, GeoCity, LeadGeneration,
+         VerticalCity, CampaignLP) e no botão do próprio herói; "results" em nenhuma. -->
+    <a class="cta" href="/#try">📞 Get a call from our AI</a>
     <a class="cta gold" href="/" style="margin-left:10px">Explore Guileo →</a>
   </div></section>
 </div>

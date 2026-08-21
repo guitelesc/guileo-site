@@ -715,7 +715,7 @@ function Reinvestir({ email, dataKey, recarga }) {
         <div className="flex-1" />
         {JANELAS.map(([n, rot]) => (
           <button key={n} onClick={() => setDias(n)} disabled={busy}
-            className="text-[10px] font-bold px-2.5 py-1 rounded-full border transition disabled:opacity-40"
+            className="text-[10px] font-bold px-2.5 py-1 rounded-full border transition disabled:opacity-40 min-h-[44px] inline-flex items-center"
             style={dias === n ? { background: "#C8A24A22", borderColor: "#C8A24A", color: "#C8A24A" } : { borderColor: "rgba(255,255,255,.12)", color: "#9A8F82" }}>
             {t(rot)}
           </button>

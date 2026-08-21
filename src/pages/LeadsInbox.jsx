@@ -39,6 +39,23 @@ export default function LeadsInbox() {
         <span className="rounded-full border border-g-green/30 bg-g-green/10 px-3 py-1 text-[12px] font-bold text-g-green">⚡ {credits} Gui credits</span>
       </div>
 
+      {/* 🚨 SELO DE DEMONSTRAÇÃO — obrigatório e visível (2026-08-20).
+          Esta rota é PÚBLICA (App.jsx) e os leads são inventados ("Maria Souza", "Dr. Alves").
+          O único aviso de que era demo estava num COMENTÁRIO no código — e ninguém lê comentário.
+          Um prospect que abrisse este link via números falsos com a nossa marca em cima, que é
+          exatamente o oposto da promessa que sustenta o X-Ray: aqui nada se afirma sem medida.
+          O selo fica ANTES do conteúdo, não em rodapé: aviso que aparece depois já chegou tarde. */}
+      <div className="mx-auto mt-6 max-w-2xl px-5">
+        <div className="rounded-xl border border-dashed border-g-gold/50 bg-g-gold/[0.07] px-4 py-3 text-center">
+          <div className="text-[12.5px] font-black uppercase tracking-wider text-g-gold">▶ Exemplo · Example · Ejemplo</div>
+          <p className="mt-1 text-[12px] leading-relaxed text-g-muted">
+            Os leads desta tela são fictícios, para mostrar como a caixa de entrada funciona.
+            Nenhum número aqui foi medido. · The leads on this screen are fictional, to show how the
+            inbox works. Nothing here was measured.
+          </p>
+        </div>
+      </div>
+
       <div className="mx-auto max-w-2xl px-5 py-10">
         {/* daily digest */}
         <div className="rounded-2xl border border-g-gold/30 bg-gradient-to-b from-g-gold/[0.08] to-white/[0.02] p-5" style={{ animation: "lifade .5s ease both" }}>

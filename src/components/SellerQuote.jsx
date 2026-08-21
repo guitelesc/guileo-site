@@ -33,7 +33,7 @@ const U = {
 // One helper so the chips, the initial amount and any future price echo stay consistent.
 const planPrice = (p, market) => (market === "br" ? p.priceBR : p.price);
 
-export default function SellerQuote({ lang = "pt", sellerName = "", sellerEmail = "", onQuote, handoff = null, market = "us" }) {
+export default function SellerQuote({ lang = "pt", sellerName = "", sellerEmail = "", sid = "", onQuote, handoff = null, market = "us" }) {
   const t = U[lang] || U.pt;
   const list = TEMPLATES.guileo_client || [];
   // Default to the PRODUCT (Guileo Personalized), not agency work — sellers sell the receptionist.
@@ -55,7 +55,10 @@ export default function SellerQuote({ lang = "pt", sellerName = "", sellerEmail 
     const cur = GUILEO_PLANS.find((p) => ["GUI-ESSENTIAL", "GUI-PRO", "GUI-FULL"][GUILEO_PLANS.indexOf(p)] === code) || GUILEO_PLANS[1];
     if (wasPlanPrice) setAmount(planPrice(cur, market));
   }, [market]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [phone, setPhone] = useState("");
+  // 🚨 O TELEFONE VEM DO LEAD (corrigido 2026-08-21). O lead manda `phone` no handoff desde que
+  // os atalhos foram criados, e este campo nascia vazio — então o vendedor, com o cliente na
+  // linha, redigitava um número que o hub já tinha. Redigitar é onde ele desiste do documento.
+  const [phone, setPhone] = useState(() => (handoff?.phone || "").toString());
   const [copied, setCopied] = useState(false);
   // Email-to-self state: idle | sending | sent | error (forward model — recipient is the seller's own inbox).
   const [emailState, setEmailState] = useState("idle");
@@ -90,13 +93,15 @@ export default function SellerQuote({ lang = "pt", sellerName = "", sellerEmail 
 
   // Email the quote to the SELLER'S OWN inbox (sellerEmail) so they can forward it on to the client.
   const emailMe = async () => {
-    if (!sellerEmail || emailState === "sending") return;
+    if (!sid || emailState === "sending") return;
     setEmailState("sending");
     try {
       const r = await fetch("/api/quote-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: sellerEmail, sellerName, clientName: client, summary, lang }),
+        // O destinatário NÃO vai mais no corpo: o servidor lê o e-mail do crachá assinado.
+        // Mandar `to` daqui era o que transformava o endpoint num relé de e-mail com a marca.
+        body: JSON.stringify({ sid, sellerName, clientName: client, summary, lang }),
       });
       const j = await r.json().catch(() => ({}));
       setEmailState(r.ok && j.ok ? "sent" : "error");

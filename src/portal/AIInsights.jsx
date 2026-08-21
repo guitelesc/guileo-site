@@ -59,7 +59,7 @@ function AIInsights({ V, onNav, sections = [], real = null }) {
                 <div className="flex-1 min-w-0 text-sm font-bold text-g-word truncate">{name}</div>
                 {real
                   ? <span className="text-[11px] font-bold rounded-full border border-white/10 px-2.5 py-1 text-g-muted cursor-default" title={tr("Available when connected")}>{tr("Available when connected")}</span>
-                  : <button onClick={() => toast(`Taken care of — I've sent ${name} a deposit request and a gentle reminder.`)} className="text-[11px] font-bold rounded-full border border-white/15 px-2.5 py-1 text-g-word hover:border-g-gold/40 transition">{tr("Secure")}</button>}
+                  : <button onClick={() => toast(`Taken care of — I've sent ${name} a deposit request and a gentle reminder.`)} className="text-[11px] font-bold rounded-full border border-white/15 px-2.5 py-1 text-g-word hover:border-g-gold/40 transition min-h-[44px] inline-flex items-center">{tr("Secure")}</button>}
               </div>
             )) : <Empty icon="✅" text={tr("No high-risk bookings — your AI's reminders are keeping no-shows low.")} />}
           </div>

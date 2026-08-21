@@ -13,6 +13,7 @@ import { useState, useEffect } from "react";
 import { FaLocationDot, FaStar, FaChartLine, FaBullhorn, FaCircleCheck, FaArrowRotateRight } from "react-icons/fa6";
 import { portalApi, toast } from "../lib/portalApi.js";
 import { genReviews, Card, Empty, SectionSkeleton, UI_LANG } from "../pages/Portal.jsx";
+import { GoogleConnectCard } from "../components/GoogleConnect.jsx";
 
 // ── local 4-language copy (self-contained; keeps dict files untouched) ──
 const t = (o) => o[UI_LANG] || o.en;
@@ -50,7 +51,6 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
   const demo = !real;
   // real backend state: null = loading, else { connected, apiReady, reviews:[] }
   const [gb, setGb] = useState(null);
-  const [connecting, setConnecting] = useState(false);
   // Ad request lives in local state (honest: it's the OWNER's intent) + is POSTed to the team.
   const key = `${email || V.label}:google_ads_req`;
   const [adReq, setAdReq] = useState(() => portalApi.loadState(key, null));
@@ -85,22 +85,6 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
     })();
     return () => { alive = false; };
   }, [real, email, dataKey]);
-
-  // Connect: kick the OAuth/connect flow. Real self-serve OAuth lights up with GOOGLE_BUSINESS_*;
-  // until then we honestly capture the intent and tell the owner the team finishes the link.
-  const connect = async () => {
-    setConnecting(true);
-    toast(t({ en: "Linking your Google Business Profile…", pt: "Conectando seu Perfil do Google…", es: "Conectando tu Perfil de Google…", hi: "आपकी Google प्रोफ़ाइल जोड़ी जा रही है…" }));
-    const r = await apiPost("/api/google-business", { action: "status", email, token: dataKey });
-    setConnecting(false);
-    if (r?.connected) {
-      setGb((s) => ({ ...(s || {}), connected: true, apiReady: !!r.ready, reviews: s?.reviews || [] }));
-      toast(r.ready ? t({ en: "Connected ✓", pt: "Conectado ✓", es: "Conectado ✓", hi: "कनेक्टेड ✓" }) : t({ en: "Saved ✓ — reviews turn on when Google approves the API", pt: "Salvo ✓ — as avaliações ligam quando o Google aprova a API", es: "Guardado ✓ — las reseñas se activan cuando Google aprueba la API", hi: "सहेजा ✓" }));
-    } else {
-      // Honest: no live self-serve OAuth yet → route to the team to finish the connection.
-      toast(t({ en: "Almost there — our team finishes the secure connection with you.", pt: "Quase lá — nossa equipe conclui a conexão segura com você.", es: "Casi listo — nuestro equipo completa la conexión segura contigo.", hi: "लगभग तैयार — हमारी टीम कनेक्शन पूरा करेगी।" }));
-    }
-  };
 
   /* ── O PEDIDO DE ANÚNCIOS ───────────────────────────────────────────────────
      O DEFEITO (corrigido 2026-08-11): o pedido era marcado como `status:"requested"`
@@ -186,6 +170,12 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
         </div>
       )}
 
+      {/* LOGIN ÚNICO DO GOOGLE — o MESMO consentimento que liga a agenda liga as avaliações
+          (escopos calendar.events + business.manage no mesmo client OAuth). Antes havia aqui um
+          botão "Conectar meu Google" que só relia o status e avisava que a equipe terminaria a
+          conexão à mão; agora a conexão acontece de verdade e o estado é lido do servidor. */}
+      <GoogleConnectCard lang={UI_LANG} email={email} dataKey={dataKey} focus="reviews" />
+
       {/* (a) 📍 Perfil no Google */}
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -197,11 +187,6 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
               <div className="mt-2"><StatusChip state={state} /></div>
             </div>
           </div>
-          {!connected && (
-            <button onClick={connect} disabled={connecting} className="btn-bright text-sm shrink-0 disabled:opacity-60">
-              {connecting ? "…" : t({ en: "Connect my Google", pt: "Conectar meu Google", es: "Conectar mi Google", hi: "मेरा Google जोड़ें" })}
-            </button>
-          )}
         </div>
         {connected && !apiReady && (
           <div className="mt-3 rounded-xl border border-g-gold/25 bg-g-gold/[0.06] px-3 py-2 text-[11px] text-g-gold leading-snug">

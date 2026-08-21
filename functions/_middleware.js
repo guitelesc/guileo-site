@@ -96,7 +96,9 @@ const ROUTES = {
 
 export async function onRequest(context) {
   const { request } = context;
-  if (request.method !== "GET") return context.next();
+  // HEAD também: `curl -I` num asset ausente devolvia 200 com HTML e podia semear o cache —
+  // a sonda que eu usei pra "provar" a correção estava furando a própria correção.
+  if (request.method !== "GET" && request.method !== "HEAD") return context.next();
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/$/, "") || "/";
   // Every valid first path segment (static routes + dynamic prefixes in src/App.jsx). Keep in sync
@@ -113,6 +115,10 @@ export async function onRequest(context) {
     // aqui no MESMO commit é o que faz o teste nunca precisar falhar.
     "pulse", "portal", "precos", "privacy", "proposta", "prospeccao", "prospects", "quiz",
     "receber", "refunds", "roteiro", "seller", "servicos", "setup-agenda", "sign", "terms", "v2", "vendedor",
+    // Rótulos do menu que viraram URL: "Setores"/"Demonstração" (e os equivalentes EN/ES) existiam
+    // só como âncora, então a URL óbvia — a que sai num print ou num anúncio — dava 404. Cada um
+    // redireciona para a âncora real (/#industries e /#try) em public/_redirects + App.jsx.
+    "setores", "industries", "sectores", "demonstracao", "demostracion",
     // hubs internos da equipe (suporte técnico + marketing/performance) — rotas reais, não indexáveis
     "equipe", "tecnico", "marketing-hub",
     // site REAL do cliente (produto foundation) — /site/:slug
@@ -131,6 +137,19 @@ export async function onRequest(context) {
     // deixou de ser "lembrar" e virou teste: functions/lib/rotas.test.mjs compara os
     // path="/x" do App.jsx com esta lista e falha se alguma sobrar de fora.
     "heroi",
+    // /apresentacao/:id — o Growth Report/quote que o dono do negócio abre (motor de avaliação).
+    // QUINTO caso da rota-que-nasce-404. A lista continua sendo a porta; o teste rotas.test.mjs
+    // compara com o App.jsx — se você está lendo isto porque deu 404, a rota ficou de fora DAQUI.
+    "apresentacao",
+    // /raio-x (+ /x-ray, /xray) — o PEDIDO PÚBLICO do Guileo X-Ray: destino de anúncio onde o dono
+    // do negócio pede o relatório dele. Rota pública e paga em tráfego: um 404 aqui queima anúncio.
+    "raio-x", "x-ray", "xray",
+    // link curto por cliente (/natura → o Growth Report dela). O middleware roda ANTES do
+    // _redirects estático: sem entrar aqui, o soft-404 mata o atalho antes de ele existir.
+    "natura",
+    // versão em PORTUGUÊS do mesmo Growth Report (payload próprio, escrito pelo motor em pt —
+    // não é a mesma página traduzida na moldura: as evidências e premissas nascem em pt).
+    "natura-pt",
   ]);
   const meta = ROUTES[path];
   if (meta) {
@@ -149,7 +168,35 @@ export async function onRequest(context) {
   // every dynamic prefix — so a valid page can never be wrongly 404'd. Assets, /api,
   // /.well-known and anything with a file extension pass straight through.
   const first = path.split("/")[1] || "";
-  const isAssetish = first === "" || first === "api" || first === "assets" || first === ".well-known" || /\.[a-z0-9]{2,5}$/i.test(path);
+  // ⚠️ A RÉGUA DA EXTENSÃO ERA CURTA DEMAIS (corrigido 2026-08-20).
+  // Era `/\.[a-z0-9]{2,5}$/` — de 2 a 5 letras, escrita quando .html/.json/.png eram o mundo
+  // inteiro. `manifest.WEBMANIFEST` tem 11, não coube, caiu na rota desconhecida e voltou 404
+  // servindo o conteúdo CERTO com o status ERRADO — e navegador não instala PWA em cima de 404.
+  // Agora até 12, e os arquivos de raiz do app entram por nome, que é à prova de régua.
+  const RAIZ = new Set(["manifest.webmanifest", "sw.js", "robots.txt", "sitemap.xml", "favicon.ico"]);
+  const isAssetish = first === "" || first === "api" || first === "assets" || first === ".well-known"
+    || RAIZ.has(first) || /\.[a-z0-9]{2,12}$/i.test(path);
+  // 🚨 ARQUIVO QUE NÃO EXISTE EM /assets NUNCA PODE VOLTAR 200 COM HTML (2026-08-20).
+  // Foi assim que o HUB DO VENDEDOR ficou com a tela preta em produção: pedi um
+  // /assets/<chunk>.js ANTES do deploy propagar, o Pages respondeu com o index.html da SPA
+  // (200, text/html), e `public/_headers` marca /assets/* como `immutable` — o Cloudflare
+  // congelou aquele HTML naquele endereço. Todo navegador que pediu o módulo depois recebeu
+  // HTML, o import quebrou e o React não montou. Uma consulta feita cedo demais destruiu o
+  // endereço por um ano.
+  // 404 + no-store fecha a porta na origem: não existe mais resposta cacheável para um asset
+  // ausente, então nem uma consulta antecipada nem um pedido durante a propagação envenenam nada.
+  if (first === "assets") {
+    const res = await context.next();
+    const ct = res.headers.get("content-type") || "";
+    if (ct.includes("text/html")) {
+      return new Response("asset not found", {
+        status: 404,
+        headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
+      });
+    }
+    return res;
+  }
+
   if (!isAssetish && !KNOWN_SEGMENTS.has(first)) {
     const res = await context.next();
     // Serve the exact same shell body/headers, but with a 404 status for crawlers.

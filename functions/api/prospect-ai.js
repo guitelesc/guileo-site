@@ -6,6 +6,7 @@
 // the UI builds (Google Maps / Yelp). Returns a structured JSON object the UI renders section by
 // section: { perfil, dores[], gancho, objecao, resposta, script }.
 import { json, sameOrigin, rateLimited } from "../lib/guard.js";
+import { verifySession } from "../lib/sellerSession.js";
 
 // One hardened Claude call for every request — mirrors pitch-ai.js:
 // (1) drop any leading non-user turns (Anthropic requires the first message to be role:"user");
@@ -69,6 +70,15 @@ export async function onRequestPost(context) {
     if (!sameOrigin(request)) return json({ error: "forbidden" }, 403);
     if (await rateLimited(request, env, "prospect-ai", 15)) return json({ error: "too many requests" }, 429);
     const b = await request.json().catch(() => ({}));
+
+    // 🚨 CRACHÁ DE VENDEDOR, ANTES DE QUALQUER COISA (2026-08-21).
+    // Este endpoint gasta crédito da ANTHROPIC a cada chamada e estava aberto: só `sameOrigin` e
+    // limite de taxa. `sameOrigin` é um cabeçalho que qualquer script forja; limite de taxa
+    // atrasa o abuso, não o impede. O irmão dele (`pitch-ai`) — mesma família, mesmo custo — já
+    // exigia sessão desde sempre. Porta cara aberta é conta de terceiro pagando IA nossa.
+    // E o portão vem ANTES de validar campo: sonda sem crachá vê 401, nunca "falta o campo X".
+    const quem = await verifySession(env, (b.sid || "").toString());
+    if (!quem) return json({ error: "auth_required", message: "Entre de novo no /vendedor pra usar as ferramentas de IA." }, 401);
 
     const niche = (b.niche || "").toString().slice(0, 60).trim();
     const city = (b.city || "").toString().slice(0, 80).trim();

@@ -82,16 +82,23 @@ const AO_COPY = {
     sub: "Comece enxuto e adicione power-ups quando estiver pronto — cada um se paga sozinho.",
     badge: "🔥 melhor primeiro passo",
     champBadge: "🔥 fecha mais",
+    // 🚨 MOEDA EXPLÍCITA NO BLOCO PT (2026-08-20). Os planos da home em português renderizam em
+    // REAIS (R$ 799 / R$ 2.499 / R$ 5.499, de guileoPlans.js `priceBR`) e estes add-ons estavam
+    // com o preço cravado como "$197", "$497". Um brasileiro lê "$197" como R$197 e o add-on
+    // parece 5× mais barato do que é — exatamente a armadilha de "moeda ambígua" que já custou
+    // caro nesta plataforma. O dicionário PT foi traduzido; os PREÇOS não foram localizados.
+    // Não invento preço em real: marco a moeda. Se você quiser add-on em BRL, é decisão de
+    // negócio — aí entra `priceBR` aqui, como os planos já têm.
     cta: "Adicionar ao meu pacote",
     partnerCta: "Seja parceiro",
     items: [
-      { pid: "noshow", e: "💳", n: "Depósito anti-falta", p: "O Gui cobra um depósito em cada agendamento — a falta paga a si mesma.", pr: "+$97/mês", tg: "salões · clínicas · dentistas" },
-      { pid: "speedlead", e: "⚡", n: "Resposta em 60 segundos", p: "Todo lead de anúncio e de marketplace (Yelp, Angi, Thumbtack…) recebe uma ligação do Gui em 60 segundos — seja o primeiro, feche a venda.", pr: "+$197/mês", tg: "acaba com o follow-up lento" },
-      { real: "catálogo: Blitz de reativação em massa", e: "♻️", n: "Blitz de Reativação", p: "Sua lista de clientes sumidos, reativada em uma semana. Você só atende quem voltar.", pr: "a partir de $497 · único", tg: "ROI imediato" },
-      { pid: "reputation", e: "⭐", n: "Máquina de Reputação", p: "Avaliações pedidas e respondidas no seu tom; nota baixa alerta na hora.", pr: "+$147/mês", tg: "SEO local" },
-      { pid: "content", e: "🎬", n: "Conteúdo no Automático", p: "4 posts por semana na voz da sua marca — seu Instagram nunca dorme.", pr: "+$197/mês", tg: "Guileo.AD" },
-      { real: "WhatsApp Cloud ligado (entrada provada)", e: "📲", n: "WhatsApp Oficial", p: "WhatsApp Business verificado com selo + o Gui dentro.", pr: "setup $297", tg: "selo de confiança" },
-      { real: "página /compliance", e: "🛡️", n: "Compliance TCPA/A2P", p: "Registro A2P, consentimento e opt-out automático — mensagem nunca bloqueada, você nunca multado.", pr: "setup $297", tg: "escudo legal EUA", href: "/compliance" },
+      { pid: "noshow", e: "💳", n: "Depósito anti-falta", p: "O Gui cobra um depósito em cada agendamento — a falta paga a si mesma.", pr: "+US$97/mês", tg: "salões · clínicas · dentistas" },
+      { pid: "speedlead", e: "⚡", n: "Resposta em 60 segundos", p: "Todo lead de anúncio e de marketplace (Yelp, Angi, Thumbtack…) recebe uma ligação do Gui em 60 segundos — seja o primeiro, feche a venda.", pr: "+US$197/mês", tg: "acaba com o follow-up lento" },
+      { real: "catálogo: Blitz de reativação em massa", e: "♻️", n: "Blitz de Reativação", p: "Sua lista de clientes sumidos, reativada em uma semana. Você só atende quem voltar.", pr: "a partir de US$497 · único", tg: "ROI imediato" },
+      { pid: "reputation", e: "⭐", n: "Máquina de Reputação", p: "Avaliações pedidas e respondidas no seu tom; nota baixa alerta na hora.", pr: "+US$147/mês", tg: "SEO local" },
+      { pid: "content", e: "🎬", n: "Conteúdo no Automático", p: "4 posts por semana na voz da sua marca — seu Instagram nunca dorme.", pr: "+US$197/mês", tg: "Guileo.AD" },
+      { real: "WhatsApp Cloud ligado (entrada provada)", e: "📲", n: "WhatsApp Oficial", p: "WhatsApp Business verificado com selo + o Gui dentro.", pr: "setup US$297", tg: "selo de confiança" },
+      { real: "página /compliance", e: "🛡️", n: "Compliance TCPA/A2P", p: "Registro A2P, consentimento e opt-out automático — mensagem nunca bloqueada, você nunca multado.", pr: "setup US$297", tg: "escudo legal EUA", href: "/compliance" },
       { real: "página /nossa-gente", e: "🌎", n: "Nossa Gente", p: "Gui em português/espanhol/inglês — feito pra negócios da nossa comunidade.", pr: "incluso", tg: "vantagem bilíngue", href: "/nossa-gente" },
     ],
     wl: { n: "White-label para agências", p: "Revenda o Gui com a sua marca. A gente roda o motor, você fica com o relacionamento — e a margem." },
@@ -107,13 +114,13 @@ const AO_COPY = {
     cta: "Añadir a mi paquete",
     partnerCta: "Sé socio",
     items: [
-      { pid: "noshow", e: "💳", n: "Escudo anti-plantón", p: "Gui cobra un depósito en cada reserva — la ausencia se paga sola.", pr: "+$97/mes", tg: "salones · clínicas · dental" },
-      { pid: "speedlead", e: "⚡", n: "Respuesta en 60 segundos", p: "Cada lead de anuncio y de marketplace (Yelp, Angi, Thumbtack…) recibe una llamada de Gui en 60 segundos — sé el primero, cierra la venta.", pr: "+$197/mes", tg: "acaba con el follow-up lento" },
-      { real: "catálogo: Blitz de reativação em massa", e: "♻️", n: "Blitz de Reactivación", p: "Tu lista de clientes dormidos, reactivada en una semana. Solo atiendes a quien vuelve.", pr: "desde $497 · único", tg: "ROI inmediato" },
-      { pid: "reputation", e: "⭐", n: "Máquina de Reputación", p: "Reseñas pedidas y respondidas en tu tono; nota baja alerta al instante.", pr: "+$147/mes", tg: "SEO local" },
-      { pid: "content", e: "🎬", n: "Contenido en Automático", p: "4 posts por semana con la voz de tu marca — tu Instagram nunca duerme.", pr: "+$197/mes", tg: "Guileo.AD" },
-      { real: "WhatsApp Cloud ligado (entrada provada)", e: "📲", n: "WhatsApp Oficial", p: "WhatsApp Business verificado con sello + Gui dentro.", pr: "setup $297", tg: "sello de confianza" },
-      { real: "página /compliance", e: "🛡️", n: "Compliance TCPA/A2P", p: "Registro A2P, consentimiento y opt-out automático — mensaje nunca bloqueado, tú nunca multado.", pr: "setup $297", tg: "escudo legal EE.UU.", href: "/compliance" },
+      { pid: "noshow", e: "💳", n: "Escudo anti-plantón", p: "Gui cobra un depósito en cada reserva — la ausencia se paga sola.", pr: "+US$97/mes", tg: "salones · clínicas · dental" },
+      { pid: "speedlead", e: "⚡", n: "Respuesta en 60 segundos", p: "Cada lead de anuncio y de marketplace (Yelp, Angi, Thumbtack…) recibe una llamada de Gui en 60 segundos — sé el primero, cierra la venta.", pr: "+US$197/mes", tg: "acaba con el follow-up lento" },
+      { real: "catálogo: Blitz de reativação em massa", e: "♻️", n: "Blitz de Reactivación", p: "Tu lista de clientes dormidos, reactivada en una semana. Solo atiendes a quien vuelve.", pr: "desde US$497 · único", tg: "ROI inmediato" },
+      { pid: "reputation", e: "⭐", n: "Máquina de Reputación", p: "Reseñas pedidas y respondidas en tu tono; nota baja alerta al instante.", pr: "+US$147/mes", tg: "SEO local" },
+      { pid: "content", e: "🎬", n: "Contenido en Automático", p: "4 posts por semana con la voz de tu marca — tu Instagram nunca duerme.", pr: "+US$197/mes", tg: "Guileo.AD" },
+      { real: "WhatsApp Cloud ligado (entrada provada)", e: "📲", n: "WhatsApp Oficial", p: "WhatsApp Business verificado con sello + Gui dentro.", pr: "setup US$297", tg: "sello de confianza" },
+      { real: "página /compliance", e: "🛡️", n: "Compliance TCPA/A2P", p: "Registro A2P, consentimiento y opt-out automático — mensaje nunca bloqueado, tú nunca multado.", pr: "setup US$297", tg: "escudo legal EE.UU.", href: "/compliance" },
       { real: "página /nossa-gente", e: "🌎", n: "Nuestra Gente", p: "Gui en portugués/español/inglés — hecho para negocios de nuestra comunidad.", pr: "incluido", tg: "ventaja bilingüe", href: "/nossa-gente" },
     ],
     wl: { n: "White-label para agencias", p: "Revende a Gui con tu marca. Nosotros movemos el motor, tú te quedas con la relación — y el margen." },
@@ -195,8 +202,8 @@ export default function AddOnsV2() {
 
   return (
     <section className="relative overflow-hidden px-5 py-14">
-      <style>{`@keyframes aoreveal{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}@keyframes aoshine{to{background-position:220% center}}@keyframes aofloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-6px) rotate(3deg)}}@keyframes aospark{0%,100%{opacity:0}5%{opacity:1}13%{opacity:1}22%{opacity:0}}@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}`}</style>
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(700px_360px_at_20%_0%,rgba(214,194,154,0.10),transparent),radial-gradient(700px_360px_at_85%_100%,rgba(62,148,104,0.12),transparent)]" />
+      <style>{`@keyframes aoreveal{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}@keyframes aoshine{to{background-position:220% center}}@keyframes aofloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-6px) rotate(3deg)}}@keyframes aospark{0%,100%{opacity:0}5%{opacity:1}13%{opacity:1}22%{opacity:0}}@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}`}</style>
 
       <div className="mx-auto max-w-5xl">
         {/* header — locked pattern: champagne eyebrow → font-black h2 with one shimmer phrase → greige sub */}

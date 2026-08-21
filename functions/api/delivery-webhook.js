@@ -115,6 +115,21 @@ export async function onRequestPost(context) {
 
     // 3) Inbox event — so it also surfaces in the portal feed.
     try {
+      // ── O PEDIDO COMO OBJETO VIVO, além do evento histórico (2026-08-20) ────────────────
+      // O evento `type:"order"` continua sendo o REGISTRO do que aconteceu — não se mexe nele.
+      // `biz_orders` é o estado que MUDA: é dele que a Cozinha lê as colunas novo→preparando→pronto.
+      // Antes desta linha o dono arrastava o cartão, fechava a aba, e o pedido voltava pro começo.
+      // Best-effort: se a gravação do estado falhar, o evento histórico já entrou e o pedido não
+      // some do painel — o inverso (perder o registro por causa do estado) seria pior.
+      try {
+        await svcRpc(env, "biz_order_upsert", {
+          p_secret: env.INGEST_SECRET || "", p_email: email,
+          p_ref: ref || "", p_platform: platform, p_customer: customer || "",
+          p_contact: "", p_items: itemsText || "",
+          p_total_cents: Math.round((Number(total) || 0) * 100),
+        });
+      } catch { /* o estado vivo é um extra; o registro histórico abaixo é o que não pode faltar */ }
+
       await svcRpc(env, "ingest_client_event", { p_secret: env.INGEST_SECRET || "", p_email: email, p_type: "order", p_channel: platform, p_summary: `🛵 ${platform} order${total ? ` ($${total})` : ""}: ${itemsText || customer}`.slice(0, 300), p_amount: total || 0, p_payload: { platform, ref, customer } });
     } catch { /* additive */ }
 

@@ -295,7 +295,7 @@ function MarketplaceLeads({ V, real = null, email = "", dataKey = "" }) {
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold text-g-green px-2.5 py-1 shrink-0 whitespace-nowrap">📞 {tr("Ligando…")}</span>
                     ) : (
                       <button onClick={() => redial(r)} title={tr("Gui liga este lead agora")}
-                        className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black text-[#161512] shrink-0 whitespace-nowrap transition hover:opacity-90"
+                        className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black text-[#161512] shrink-0 whitespace-nowrap transition hover:opacity-90 min-h-[44px] inline-flex items-center"
                         style={{ background: "#FF8A33" }}>
                         📞 {tr("Gui liga agora")}
                       </button>
@@ -305,7 +305,7 @@ function MarketplaceLeads({ V, real = null, email = "", dataKey = "" }) {
                     <div className="flex items-center gap-1 shrink-0 flex-wrap">
                       {STATUSES.map((s) => (
                         <button key={s} onClick={() => setStatus(r, s)}
-                          className="rounded-full px-2.5 py-1 text-[10px] font-black transition hover:opacity-80"
+                          className="rounded-full px-2.5 py-1 text-[10px] font-black transition hover:opacity-80 min-h-[44px] inline-flex items-center"
                           style={{ color: STATUS_META[s].color, background: `${STATUS_META[s].color}1e`, boxShadow: s === st ? `inset 0 0 0 1px ${STATUS_META[s].color}` : `inset 0 0 0 1px ${STATUS_META[s].color}40` }}>
                           {STATUS_META[s].label()}
                         </button>
@@ -313,7 +313,7 @@ function MarketplaceLeads({ V, real = null, email = "", dataKey = "" }) {
                     </div>
                   ) : (
                     <button onClick={() => setStatusFor(r.id)} title={tr("Trocar status")}
-                      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black whitespace-nowrap shrink-0 transition hover:opacity-80"
+                      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black whitespace-nowrap shrink-0 transition hover:opacity-80 min-h-[44px] inline-flex items-center"
                       style={{ color: meta.color, background: `${meta.color}1e`, boxShadow: `inset 0 0 0 1px ${meta.color}40` }}>
                       {meta.label()} <FaChevronDown size={8} />
                     </button>

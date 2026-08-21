@@ -12,7 +12,7 @@ import { useLang } from "../i18n.jsx";
 import { useSeo } from "../lib/seo.js";
 import { getSeoVertical } from "../data/seoVerticals.js";
 import { VERTICAL_SUPERPOWERS } from "../data/verticalSuperpowers.js";
-import { PITCH_CARDS } from "../data/pitchCards.js";
+import { PITCH_CARDS } from "../data/cartasDePitch.js";
 import mark from "../assets/guileo-mark.png";
 
 // Maps each SEO vertical slug to its seller pitch-card id, so the public niche page
@@ -199,7 +199,7 @@ export default function Vertical() {
         </Reveal>
       </section>
 
-      {/* WHY THIS NICHE GROWS WITH GUILEO — the seller pitch-card narrative, live from pitchCards.js */}
+      {/* WHY THIS NICHE GROWS WITH GUILEO — the seller pitch-card narrative, live from cartasDePitch.js */}
       {SLUG_TO_PITCH[v.slug] && PITCH_CARDS[SLUG_TO_PITCH[v.slug]] && (() => {
         const pc = PITCH_CARDS[SLUG_TO_PITCH[v.slug]];
         return (

@@ -13,6 +13,7 @@ import ServicesMarquee from "../components/ServicesMarquee.jsx";
 import ResultsV2 from "../components/ResultsV2";
 import PillarsProducts from "../components/PillarsProducts.jsx";
 import LegsV2 from "../components/LegsV2";
+import EngineV2 from "../components/EngineV2.jsx";
 import ChannelsStrip from "../components/ChannelsStrip.jsx";
 import MethodV2 from "../components/MethodV2";
 import ProofV2 from "../components/ProofV2";
@@ -112,7 +113,6 @@ export default function Home() {
 
       {/* ── Tightened single-buyer funnel: Hook → Problem/Result → Solution → How → Proof → Demo → Offer → Close ── */}
       <HeroV2 />              {/* Hook — never miss a call, a lead, or a sale */}
-      <ServicesMarquee />     {/* A LISTRA — o catálogo inteiro (site, apps, software, anúncios, automações…) na PRIMEIRA tela. O conteúdo já existia em PillarsProducts, duas seções abaixo; quem chega pelo anúncio decide o que a gente é antes de rolar. Lê de productSystem.js, então nunca diverge do catálogo real. */}
       <TrustStrip />          {/* Honest trust bar HIGH on the page — money-back · human-supervised · 7-day launch · 20+ langs */}
 
       {/* ── O SIMULADOR SAIU (Luis, 2026-08-11: "tá muito nada, ve") ──────────────────────────
@@ -126,6 +126,30 @@ export default function Home() {
 
       <ResultsV2 />          {/* Problem + promise — you buy results; here's the leak (id=industries anchor) */}
       <LegsV2 />             {/* The WHY — the 3 pillars own performance / sales / growth (the emotional spine) */}
+
+      {/* ═══ O MOTOR DE MARKETING — de volta à Home, PRESO no fio que sai da planta ═══════════
+          Luis (2026-08-20): «o motor marketing tá horrível! o texto tá lindo mas precisa ser algo
+          único... talvez um motor de círculo do marketing — tinha antes, algo bem legal».
+          Tinha mesmo: EngineV2 existia, funcionava e estava FORA da Home (foi feito para o /v2 e
+          nunca voltou). «Cada conversa se acumula: ligação vira dado, dado vira marketing mais
+          esperto, marketing vira recompra — num ciclo.»
+          A POSIÇÃO É O PONTO: entra IMEDIATAMENTE depois do LegsV2 porque o fio que sai por baixo
+          da logo desce e morre exatamente aqui. Qualquer seção entre os dois quebra a emenda e a
+          página volta a parecer três assuntos empilhados em vez de uma planta crescendo. */}
+      <EngineV2 />
+
+      {/* ═══ A LISTRA DOS 18 SERVIÇOS — MUDOU DE LUGAR (Luis, 2026-08-20) ═══════════════════
+          «essa parte Brain · AD · Build — 18 services … vai no meio ali, transfere ela e adapta».
+          Ficava logo abaixo do herói. Agora fica entre o MOTOR e os TRÊS PILARES, e a ordem passa
+          a contar uma história em vez de listar coisas:
+             o motor mostra COMO funciona → a listra mostra TUDO que existe → os pilares AGRUPAM e
+             entregam o resultado.
+          Também preenche o vazio que havia entre as duas seções, que era o que parecia buraco.
+          ⚠️ CUSTO DECLARADO: a amplitude do catálogo sai da PRIMEIRA tela. Existe uma regra antiga
+          na casa dizendo que ela deve estar acima da dobra — quem chega por anúncio decidia ali o
+          que a Guileo é. Foi decisão explícita do dono; se o topo esfriar, é aqui que se volta. */}
+      <ServicesMarquee />
+
       <PillarsProducts />    {/* The WHAT — each pillar's REAL products → result → value (replaces WholePicture + old ProductResults; aligns landing to the platform) */}
       <ChannelsStrip />      {/* Reach — a slim logo strip (folded from the old full ChannelsV2 phone section) */}
 

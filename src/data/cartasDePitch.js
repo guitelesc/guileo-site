@@ -1,3 +1,12 @@
+// 🚨 ENDEREÇO QUEIMADO EM 2026-08-20 — POR QUE ESTE ARQUIVO MUDOU DE HASH.
+// Conferi `/assets/pitchCards-<hash>.js` em produção ANTES do deploy terminar de propagar. O
+// caminho ainda não existia, o Pages respondeu com o index.html da SPA (200, text/html), e o
+// `public/_headers` marca /assets/* como `immutable` — o Cloudflare congelou esse HTML naquele
+// endereço. Resultado: o navegador pediu o módulo, recebeu HTML, o import quebrou e o HUB DO
+// VENDEDOR ficou com a tela preta em produção.
+// A LIÇÃO: conferir cedo demais NÃO é neutro. O curl CRIA a entrada de cache. Com `immutable`,
+// verificar um endereço antes da hora é o mesmo que destruí-lo.
+// Só se conferem assets DEPOIS do deploy responder, e sempre pelo caminho que o navegador usa.
 // Pitch-card library for the Guileo seller hub. Voice: problem→solution→gain→beat-competition,
 // consultative + non-aggressive. Each niche reuses Guileo's real capabilities only. PT/EN/ES.
 // The "universal" master card + newest cards pull THE sentence and the objection killers
@@ -13,6 +22,10 @@ const K_LATER = killer("later");
 export const PITCH_NICHES = [
   { id: "universal",   emoji: "🌱", name: { pt: "Pitch mestre · qualquer negócio", en: "Master pitch · any business", es: "Pitch maestro · cualquier negocio" } },
   { id: "ads",         emoji: "📣", name: { pt: "Anúncios · vender RESULTADO", en: "Ads · sell the RESULT", es: "Anuncios · vender RESULTADO" } },
+  { id: "website",     emoji: "🖥️", name: { pt: "Site · a casa que vende sozinha", en: "Website · the house that sells itself", es: "Sitio · la casa que vende sola" } },
+  { id: "app",         emoji: "📱", name: { pt: "App · o ícone na tela do cliente", en: "App · the icon on the customer's screen", es: "App · el ícono en la pantalla del cliente" } },
+  { id: "store",       emoji: "🛒", name: { pt: "Loja online · receber sem estar lá", en: "Online store · get paid without being there", es: "Tienda online · cobrar sin estar" } },
+  { id: "automation",  emoji: "⚙️", name: { pt: "Automação · o trabalho que some", en: "Automation · the work that disappears", es: "Automatización · el trabajo que desaparece" } },
   { id: "restaurant",  emoji: "🍽️", name: { pt: "Restaurantes",       en: "Restaurants",        es: "Restaurantes" } },
   { id: "dental",      emoji: "🦷", name: { pt: "Consultórios odontológicos", en: "Dental offices", es: "Consultorios dentales" } },
   { id: "clinic",      emoji: "🩺", name: { pt: "Clínicas",            en: "Clinics",            es: "Clínicas" } },
@@ -119,6 +132,184 @@ export const PITCH_CARDS = {
            en: "Fair — and that's why when we DON'T know, the dashboard says so instead of showing zero. If a campaign's spend wasn't entered, its return shows blank with the reason. And the customer count isn't an estimate: it's a booking that exists in your calendar, with a name and a time. You can check them one by one.",
            es: "Justo — por eso cuando NO sabemos, el panel lo dice en vez de mostrar cero. Si no se cargó el gasto de una campaña, su retorno aparece en blanco con el motivo. Y el número de clientes no es estimación: es una reserva que existe en tu agenda, con nombre y hora. Puedes verificarlas una por una." },
     },
+  },
+
+  // ── AS QUATRO CARTAS DO PILAR BUILD (2026-08-20) ────────────────────────────────────────────
+  // Existiam 16 cartas e só DUAS eram por produto (voz e anúncios). O vendedor sabia vender a Gui
+  // e não sabia abrir a boca sobre site, app, loja e automação — metade do catálogo, sem argumento.
+  //
+  // 🚨 REGRA DE HONESTIDADE DESTE BLOCO: cada linha aqui é o que `productSystem.js` entrega DE
+  // VERDADE hoje, e o que é projeto à parte está dito como projeto à parte, com o preço real de
+  // `services.js`. Prometer app de loja dentro do plano é reembolso marcado; dizer que o nativo é
+  // separado transforma a mesma frase num upsell. Preço sempre em dólar.
+  website: {
+    pain: {
+      pt: "Seu cliente pesquisa você no celular antes de ligar. Se acha um site que demora, sem preço e sem horário, ele volta pro Google e clica no concorrente — e você nunca fica sabendo que ele existiu.",
+      en: "Your customer looks you up on their phone before calling. If they find a slow site with no prices and no hours, they go back to Google and tap the competitor — and you never learn they existed.",
+      es: "Tu cliente te busca en el celular antes de llamar. Si encuentra un sitio lento, sin precios y sin horarios, vuelve a Google y toca al competidor — y nunca te enteras de que existió.",
+    },
+    leak: {
+      pt: "É a perda que ninguém consegue contar: não entra como ligação perdida, não aparece em lugar nenhum. Some.",
+      en: "It is the loss nobody can count: it does not show up as a missed call, it shows up nowhere. It just vanishes.",
+      es: "Es la pérdida que nadie puede contar: no entra como llamada perdida, no aparece en ningún lado. Desaparece.",
+    },
+    solution: {
+      pt: "A gente gera o seu site a partir do que você já nos contou — seu nome, seus serviços, seus preços, seus horários — e a Gui fica atendendo dentro dele. Você edita no seu painel, sem depender de ninguém.",
+      en: "We generate your site from what you already told us — your name, your services, your prices, your hours — with Gui answering inside it. You edit it in your dashboard, without depending on anyone.",
+      es: "Generamos tu sitio con lo que ya nos contaste — tu nombre, tus servicios, tus precios, tus horarios — con Gui atendiendo adentro. Lo editas en tu panel, sin depender de nadie.",
+    },
+    gain: [
+      { pt: "Preço e horário na tela: quem chega já sabe, e liga decidido", en: "Prices and hours on screen: whoever arrives already knows, and calls decided", es: "Precio y horario en pantalla: quien llega ya sabe, y llama decidido" },
+      { pt: "A Gui atende DENTRO do site — visita vira conversa, não vira saída", en: "Gui answers INSIDE the site — a visit becomes a conversation, not an exit", es: "Gui atiende DENTRO del sitio — la visita se vuelve conversación, no salida" },
+      { pt: "Você mesmo muda preço e serviço no painel, no mesmo dia", en: "You change prices and services yourself in the dashboard, same day", es: "Tú mismo cambias precio y servicio en el panel, el mismo día" },
+    ],
+    edge: {
+      pt: "O concorrente tem um site parado que ninguém atualiza há dois anos. O seu responde perguntas e agenda enquanto ele dorme.",
+      en: "The competitor has a frozen site nobody has updated in two years. Yours answers questions and books while he sleeps.",
+      es: "El competidor tiene un sitio congelado que nadie actualiza hace dos años. El tuyo responde preguntas y agenda mientras él duerme.",
+    },
+    opener: {
+      pt: "Deixa eu te perguntar: quando alguém procura o seu negócio no celular agora, o que aparece — e dá pra ver o preço?",
+      en: "Let me ask you: when someone looks your business up on their phone right now, what shows up — and can they see the price?",
+      es: "Déjame preguntarte: cuando alguien busca tu negocio en el celular ahora, ¿qué aparece — y se ve el precio?",
+    },
+    discovery: [
+      { pt: "Quem mexe no seu site hoje quando muda um preço — e quanto tempo demora?", en: "Who touches your site today when a price changes — and how long does it take?", es: "¿Quién toca tu sitio hoy cuando cambia un precio — y cuánto tarda?" },
+      { pt: "Quantas pessoas você acha que abrem seu site por semana sem nunca ligar?", en: "How many people do you figure open your site each week and never call?", es: "¿Cuánta gente crees que abre tu sitio cada semana y nunca llama?" },
+    ],
+    objection: { q: { pt: K_LATER.q.pt, en: K_LATER.q.en, es: K_LATER.q.es }, a: { pt: K_LATER.a.pt, en: K_LATER.a.en, es: K_LATER.a.es } },
+  },
+
+  app: {
+    pain: {
+      pt: "Pra te achar de novo, seu cliente precisa lembrar do seu nome, digitar no Google e passar por três concorrentes que pagaram anúncio antes de chegar em você.",
+      en: "To find you again, your customer has to remember your name, type it into Google, and walk past three competitors who paid for ads before reaching you.",
+      es: "Para encontrarte de nuevo, tu cliente tiene que recordar tu nombre, escribirlo en Google y pasar por tres competidores que pagaron anuncios antes de llegar a ti.",
+    },
+    leak: {
+      pt: "Cliente fiel se perde na busca. Você paga anúncio pra reconquistar quem já era seu.",
+      en: "A loyal customer gets lost in search. You pay for ads to win back someone who was already yours.",
+      es: "El cliente fiel se pierde en la búsqueda. Pagas anuncios para reconquistar a quien ya era tuyo.",
+    },
+    solution: {
+      pt: "Seu negócio vira um app na tela inicial do cliente: seu nome, seu ícone, abrindo sem barra de navegador. É gerado pra você — sem fila de aprovação de loja, sem espera. Ele te acha num toque.",
+      en: "Your business becomes an app on the customer's home screen: your name, your icon, opening with no browser bar. It is generated for you — no store review queue, no waiting. They find you in one tap.",
+      es: "Tu negocio se vuelve una app en la pantalla de inicio del cliente: tu nombre, tu ícono, abriendo sin barra de navegador. Se genera para ti — sin cola de revisión de tienda, sin esperar. Te encuentra en un toque.",
+    },
+    gain: [
+      { pt: "Seu ícone na tela dele, do lado do WhatsApp — lembrança sem pagar anúncio", en: "Your icon on their screen, next to WhatsApp — recall without paying for ads", es: "Tu ícono en su pantalla, al lado de WhatsApp — recuerdo sin pagar anuncios" },
+      { pt: "Agenda e pedido a um toque, com a Gui dentro", en: "Booking and ordering one tap away, with Gui inside", es: "Agenda y pedido a un toque, con Gui adentro" },
+      { pt: "No ar hoje — não depende de aprovação da Apple nem do Google", en: "Live today — it does not wait on Apple or Google approval", es: "En el aire hoy — no depende de aprobación de Apple ni de Google" },
+    ],
+    edge: {
+      pt: "Nenhum concorrente do seu tamanho tem app. Não porque não querem: porque acham que custa $10 mil e seis meses.",
+      en: "No competitor your size has an app. Not because they don't want one: because they think it costs $10k and six months.",
+      es: "Ningún competidor de tu tamaño tiene app. No porque no quieran: porque creen que cuesta $10 mil y seis meses.",
+    },
+    opener: {
+      pt: "Você já imaginou o seu negócio como um ícone na tela do celular do seu cliente — do lado do WhatsApp?",
+      en: "Have you ever pictured your business as an icon on your customer's phone screen — right next to WhatsApp?",
+      es: "¿Alguna vez imaginaste tu negocio como un ícono en la pantalla del celular de tu cliente — al lado de WhatsApp?",
+    },
+    discovery: [
+      { pt: "Quantos dos seus clientes voltam sozinhos, sem você gastar pra lembrar deles?", en: "How many of your customers come back on their own, without you spending to remind them?", es: "¿Cuántos de tus clientes vuelven solos, sin que gastes para recordarles?" },
+      { pt: "Se ele te achasse num toque, quantas vezes a mais ele te procuraria por mês?", en: "If they found you in one tap, how many more times a month would they reach out?", es: "Si te encontrara en un toque, ¿cuántas veces más al mes te buscaría?" },
+    ],
+    // ⚠️ A HONESTIDADE É O ARGUMENTO: o que entra no plano é o app instalável. O app NATIVO
+    // publicado na App Store e na Play Store é projeto à parte — $6.000 a $20.000, `services.js`.
+    // Dizer isso ANTES do cliente perguntar é o que transforma promessa quebrada em upsell.
+    objection: {
+      q: { pt: "Isso é um app de verdade, daqueles da App Store?", en: "Is this a real app, the App Store kind?", es: "¿Esto es una app de verdad, de las de App Store?" },
+      a: {
+        pt: "Pergunta certa, e vou ser reto: o que entra no seu plano é o app instalável — o cliente aperta 'adicionar à tela inicial' e ele fica lá com o seu ícone, abrindo sem barra de navegador. Faz tudo que agenda, pede e paga, e está no ar hoje. App nativo publicado nas duas lojas é outro projeto, de $6.000 a $20.000, e a gente faz quando fizer sentido pra você. Eu prefiro te entregar o que funciona esta semana.",
+        en: "Fair question, and I'll be straight: what your plan includes is the installable app — the customer taps 'add to home screen' and it sits there with your icon, opening without a browser bar. It books, orders and takes payment, and it's live today. A native app published on both stores is a separate project, $6,000 to $20,000, and we build that when it makes sense for you. I'd rather hand you what works this week.",
+        es: "Buena pregunta, y voy directo: lo que incluye tu plan es la app instalable — el cliente toca 'agregar a pantalla de inicio' y queda ahí con tu ícono, abriendo sin barra de navegador. Agenda, pide y cobra, y está en el aire hoy. Una app nativa publicada en ambas tiendas es otro proyecto, de $6.000 a $20.000, y lo hacemos cuando tenga sentido para ti. Prefiero entregarte lo que funciona esta semana.",
+      },
+    },
+  },
+
+  store: {
+    pain: {
+      pt: "Você só recebe quando está lá. Fechou a porta, acabou o dinheiro do dia — e quem quis comprar às dez da noite não tinha como te pagar.",
+      en: "You only get paid when you're there. Door closed, day's money over — and whoever wanted to buy at ten at night had no way to pay you.",
+      es: "Solo cobras cuando estás ahí. Puerta cerrada, se acabó el dinero del día — y quien quiso comprar a las diez de la noche no tenía cómo pagarte.",
+    },
+    leak: {
+      pt: "Todo 'depois eu passo aí pra pagar' que nunca acontece é uma venda que você já tinha ganhado e perdeu.",
+      en: "Every \"I'll swing by later to pay\" that never happens is a sale you had already won and lost.",
+      es: "Cada \"después paso a pagar\" que nunca ocurre es una venta que ya habías ganado y perdiste.",
+    },
+    solution: {
+      pt: "Seu catálogo com preço e link de pagamento no ar: pacote, assinatura e gift card. O dinheiro cai no SEU Stripe desde o dia um — não passa pela nossa conta.",
+      en: "Your priced catalog with pay links live: packages, memberships and gift cards. The money lands in YOUR Stripe from day one — it never passes through our account.",
+      es: "Tu catálogo con precio y enlace de pago en el aire: paquetes, membresías y gift cards. El dinero llega a TU Stripe desde el día uno — no pasa por nuestra cuenta.",
+    },
+    gain: [
+      { pt: "Recebe de madrugada e no domingo, sem você estar lá", en: "Get paid at 2am and on Sunday, without you being there", es: "Cobras de madrugada y el domingo, sin estar ahí" },
+      { pt: "Pacote e assinatura: o cliente paga várias vezes de uma vez só", en: "Packages and memberships: the customer pays for many visits at once", es: "Paquete y membresía: el cliente paga varias veces de una vez" },
+      { pt: "Na própria ligação a Gui manda o link e fecha — venda fechada é venda PAGA", en: "On the call itself Gui sends the link and closes — a closed sale is a PAID sale", es: "En la misma llamada Gui manda el link y cierra — venta cerrada es venta PAGADA" },
+    ],
+    edge: {
+      pt: "O concorrente ainda anota no caderno e cobra depois. Você já recebeu antes do cliente chegar na porta.",
+      en: "The competitor still writes it in a notebook and collects later. You've already been paid before the customer reaches the door.",
+      es: "El competidor todavía anota en el cuaderno y cobra después. Tú ya cobraste antes de que el cliente llegue a la puerta.",
+    },
+    opener: {
+      pt: "Quando o cliente decide comprar de você às dez da noite, ele consegue te pagar naquela hora?",
+      en: "When a customer decides to buy from you at ten at night, can they actually pay you right then?",
+      es: "Cuando el cliente decide comprarte a las diez de la noche, ¿puede pagarte en ese momento?",
+    },
+    discovery: [
+      { pt: "Quanto do seu faturamento é 'eu pago quando eu for aí'?", en: "How much of your revenue is \"I'll pay when I come by\"?", es: "¿Cuánto de tu facturación es \"pago cuando pase\"?" },
+      { pt: "Se o cliente pudesse pagar três visitas de uma vez, quantos topariam?", en: "If a customer could pay for three visits at once, how many would take it?", es: "Si el cliente pudiera pagar tres visitas de una vez, ¿cuántos aceptarían?" },
+    ],
+    // Loja completa com estoque, frete e variação de produto é projeto à parte ($2.200–$6.000).
+    objection: {
+      q: { pt: "E se eu precisar de estoque, frete, tamanho e cor?", en: "What if I need inventory, shipping, size and color?", es: "¿Y si necesito inventario, envío, talla y color?" },
+      a: {
+        pt: "Aí a gente está falando de loja completa, e isso é um projeto à parte — de $2.200 a $6.000, feito sob medida. O que entra no seu plano já vende serviço, pacote e gift card com pagamento no seu Stripe. Meu conselho: começa cobrando pelo que já dá pra cobrar esta semana, e a loja completa a gente monta quando o volume pedir.",
+        en: "Then we're talking about a full store, and that's a separate project — $2,200 to $6,000, built to fit. What your plan includes already sells services, packages and gift cards with payment into your Stripe. My advice: start collecting on what you can collect this week, and we build the full store when volume calls for it.",
+        es: "Ahí hablamos de tienda completa, y eso es un proyecto aparte — de $2.200 a $6.000, hecho a medida. Lo que incluye tu plan ya vende servicio, paquete y gift card con pago en tu Stripe. Mi consejo: empieza cobrando lo que ya se puede cobrar esta semana, y la tienda completa la armamos cuando el volumen lo pida.",
+      },
+    },
+  },
+
+  automation: {
+    pain: {
+      pt: "Você fecha a porta e começa o segundo expediente: passar agendamento pra planilha, mandar lembrete um por um, responder a mesma pergunta pela décima vez. Duas horas por dia que ninguém te paga.",
+      en: "You close the door and start the second shift: copying bookings into a spreadsheet, sending reminders one by one, answering the same question for the tenth time. Two hours a day nobody pays you for.",
+      es: "Cierras la puerta y empieza el segundo turno: pasar reservas a la planilla, mandar recordatorios uno por uno, responder la misma pregunta por décima vez. Dos horas al día que nadie te paga.",
+    },
+    leak: {
+      pt: "Duas horas por dia é um mês inteiro de trabalho por ano — o seu, o mais caro da casa, no serviço mais barato que existe.",
+      en: "Two hours a day is a full month of work a year — yours, the most expensive in the house, doing the cheapest job there is.",
+      es: "Dos horas al día es un mes entero de trabajo al año — el tuyo, el más caro de la casa, en la tarea más barata que existe.",
+    },
+    solution: {
+      pt: "A gente conecta as suas ferramentas e transforma essas rotinas em automação: o que hoje você faz na mão passa a acontecer sozinho, com registro de tudo no painel.",
+      en: "We wire your tools together and turn those routines into automation: what you do by hand today starts happening on its own, with everything logged in the dashboard.",
+      es: "Conectamos tus herramientas y convertimos esas rutinas en automatización: lo que hoy haces a mano pasa a ocurrir solo, con registro de todo en el panel.",
+    },
+    gain: [
+      { pt: "As horas voltam pra você — as repetitivas, não as que dão dinheiro", en: "The hours come back to you — the repetitive ones, not the ones that make money", es: "Las horas vuelven a ti — las repetitivas, no las que dan dinero" },
+      { pt: "Nada mais depende de alguém lembrar: o lembrete e o retorno saem sozinhos", en: "Nothing depends on someone remembering anymore: the reminder and the follow-up go out on their own", es: "Nada depende ya de que alguien recuerde: el recordatorio y el retorno salen solos" },
+      { pt: "Tudo registrado — dá pra ver o que rodou, quando e pra quem", en: "Everything logged — you can see what ran, when and for whom", es: "Todo registrado — puedes ver qué corrió, cuándo y para quién" },
+    ],
+    edge: {
+      pt: "O concorrente contrata mais uma pessoa pra fazer o repetitivo. Você não precisa contratar: o repetitivo simplesmente deixa de existir.",
+      en: "The competitor hires one more person to do the repetitive work. You don't need to hire: the repetitive work simply stops existing.",
+      es: "El competidor contrata a una persona más para lo repetitivo. Tú no necesitas contratar: lo repetitivo simplemente deja de existir.",
+    },
+    opener: {
+      pt: "Qual é a tarefa que você faz toda semana, sempre igual, e que você odeia fazer?",
+      en: "What's the task you do every week, always the same, that you hate doing?",
+      es: "¿Cuál es la tarea que haces cada semana, siempre igual, y que odias hacer?",
+    },
+    discovery: [
+      { pt: "Quanto tempo por dia some em coisa repetitiva que não é atender cliente?", en: "How much time a day disappears into repetitive work that isn't serving a customer?", es: "¿Cuánto tiempo al día se va en trabajo repetitivo que no es atender cliente?" },
+      { pt: "Se essa hora voltasse pra você, você usaria pra vender ou pra descansar?", en: "If that hour came back to you, would you use it to sell or to rest?", es: "Si esa hora volviera a ti, ¿la usarías para vender o para descansar?" },
+    ],
+    objection: { q: { pt: K_WRONG.q.pt, en: K_WRONG.q.en, es: K_WRONG.q.es }, a: { pt: K_WRONG.a.pt, en: K_WRONG.a.en, es: K_WRONG.a.es } },
   },
 
   restaurant: {

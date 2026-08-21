@@ -118,6 +118,7 @@ export default function ResultsV2() {
 
   return (
     <section id="industries" className="relative overflow-hidden scroll-mt-20 px-5 py-20">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(900px_420px_at_50%_-10%,rgba(62,148,104,0.08),transparent)]" />
       <style>{`
         @keyframes rvreveal{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
         @keyframes rvshine{to{background-position:220% center}}
@@ -127,7 +128,6 @@ export default function ResultsV2() {
         @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}
       `}</style>
 
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(900px_420px_at_50%_-10%,rgba(62,148,104,0.08),transparent)]" />
 
       <div className="mx-auto max-w-5xl text-center">
         <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold" style={{ animation: "rvreveal .7s ease both" }}>{C.eyebrow}</div>

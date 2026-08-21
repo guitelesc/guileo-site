@@ -112,6 +112,9 @@ export default function ServicesMarquee() {
     </div>
   );
 
+  // ⚠️ SEM border-y E SEM FUNDO PRÓPRIO (2026-08-20). A listra nascia logo abaixo do herói, onde
+  // duas linhas douradas eram a moldura da 1ª dobra. Ao mover para o MEIO da página, essas mesmas
+  // linhas viraram DUAS COSTURAS horizontais atravessando o cimento.
   return (
     <section className="relative overflow-hidden border-y border-g-gold/10 bg-white/[0.02] py-3">
       <style>{`

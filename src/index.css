@@ -155,3 +155,19 @@ body::after {
    never on mouse click, so it adds zero visual change for pointer users while making the whole
    site keyboard-navigable for screen-reader / a11y users. */
 :focus-visible { outline: 2px solid rgba(62,148,104,.75); outline-offset: 2px; border-radius: 6px; }
+
+
+/* ── ZOOM DO SAFARI iOS — a regra que vale mais que 28 consertos ────────────────────────────────
+   Uma auditoria achou 28 campos com fonte abaixo de 16px, começando nos TRÊS do onboarding do
+   cliente (Portal.jsx:1866-1868) — a primeira tela de quem acabou de pagar. No Safari do iPhone,
+   input com fonte < 16px faz a página DAR ZOOM a cada foco: o layout salta, o teclado cobre o
+   campo, e o dono conclui que o app é quebrado antes de ver um número sequer.
+   Consertar campo a campo garante que o próximo nasça errado — é a lição que este repositório já
+   escreveu em twilio.js:41. Então a regra é de CLASSE, não de caso.
+   Só no celular: no desktop não existe o zoom e a densidade tipográfica das tabelas continua.
+   `!important` porque os utilitários de tamanho (text-xs/text-sm) são classes e venceriam. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select { font-size: 16px !important; }
+}

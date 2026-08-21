@@ -23,8 +23,14 @@ export default function Footer() {
           <div className="md:col-span-2">
             <div className="text-xs font-bold uppercase tracking-wide text-g-light mb-3">{t.footer.company}</div>
             <ul className="space-y-2 text-sm text-white/70">
-              <li><a href="/#industries" className="inline-block hover:text-white hover:translate-x-1 transition-all">{t.footer.solutions}</a></li>
-              <li><a href="/servicos" className="inline-block hover:text-white hover:translate-x-1 transition-all">{t.footer.svc}</a></li>
+              {/* ⚠️ UM DESTINO, UM NOME. O rodapé chamava /#industries de "Soluções" e /servicos de
+                  "Serviços & Preços"; o menu chama as MESMAS páginas de "Setores" e "Serviços".
+                  Dois nomes para o mesmo lugar fazem o visitante procurar uma terceira página que
+                  não existe. Ficaram os nomes do MENU (é o rótulo que a pessoa vê primeiro e o que
+                  sai nos prints/anúncios), lidos do MESMO dicionário do Navbar — não de uma cópia
+                  em `footer.*` que voltaria a divergir. Reserva explícita em `en`, nunca em pt. */}
+              <li><a href="/#industries" className="inline-block hover:text-white hover:translate-x-1 transition-all">{t.nav?.industries || "Industries"}</a></li>
+              <li><a href="/servicos" className="inline-block hover:text-white hover:translate-x-1 transition-all">{t.nav?.services || "Services"}</a></li>
               <li><a href="/lead-generation" className="inline-block hover:text-white hover:translate-x-1 transition-all">🧲 {tx("Lead generation","Geração de leads","Generación de leads","लीड जनरेशन")}</a></li>
               <li><a href="/calculator" className="inline-block hover:text-white hover:translate-x-1 transition-all">🧮 {tx("Lost-lead calculator","Calculadora de leads perdidos","Calculadora de leads perdidos","खोए-लीड कैलकुलेटर")}</a></li>
               <li><a href="/blog" className="inline-block hover:text-white hover:translate-x-1 transition-all">Blog</a></li>
@@ -39,7 +45,7 @@ export default function Footer() {
 
           {/* By industry — internal links to every vertical SEO page (crawlable from every page) */}
           <div className="md:col-span-3">
-            <div className="text-xs font-bold uppercase tracking-wide text-g-light mb-3">{tx("By industry","Por setor","Por sector","उद्योग अनुसार")}</div>
+            <div className="text-xs font-bold uppercase tracking-wide text-g-light mb-3">{tx("By industry","Por setor","Por industria","उद्योग अनुसार")}</div>
             <ul className="grid grid-cols-1 gap-y-2 text-sm text-white/70 sm:grid-cols-2 md:grid-cols-1">
               {SEO_VERTICALS.map((v) => (
                 <li key={v.slug}><a href={`/for/${v.slug}`} className="inline-flex items-center gap-1.5 hover:text-white hover:translate-x-1 transition-all"><span>{v.icon}</span> {vName(v)}</a></li>

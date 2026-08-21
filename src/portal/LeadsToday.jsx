@@ -188,7 +188,7 @@ function LeadsToday({ V, onNav, real = null, email = "", dataKey = "" }) {
                           const cs = (statusMap[r.id] || {}).s || "novo"; const col = (CLS[cs] || CLS.novo).c;
                           return (
                             <button onClick={() => advanceStatus(r)} title={tr("Tap to advance: New → Contacted → Won")}
-                              className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ring-1 transition hover:brightness-125" style={{ background: col + "22", color: col, borderColor: col + "55" }}>
+                              className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ring-1 transition hover:brightness-125 min-h-[44px] inline-flex items-center" style={{ background: col + "22", color: col, borderColor: col + "55" }}>
                               {clsLabel(cs)}
                             </button>
                           );

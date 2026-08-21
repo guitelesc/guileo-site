@@ -22,7 +22,7 @@ const dfyComm = Math.round(dfyContract * 0.2);
 const growthComm = Math.round(growth.price * 3 * 0.2);
 
 // ── Chrome (page furniture) per language ────────────────────────────────────
-const UI = {
+export const UI = {
   seoTitle: { en: "Collaborator Deck · Guileo", pt: "Deck do Colaborador · Guileo", es: "Deck del Colaborador · Guileo", hi: "सहयोगी डेक · Guileo" },
   seoDesc: {
     en: "The kit to refer, sell and earn commission with Guileo — no tech skills needed. The sentence, the demo, the 2 tracks, the 5 questions, the objections and the 15-minute script.",
@@ -67,10 +67,10 @@ const SLIDES_PT = [
     body: [["ul", ["Você não explica a Gui. Você deixa ela se apresentar.", "No meio da reunião: a Gui liga pro celular do prospect.", "Você fica em silêncio e deixa ele ouvir.", "Vende sozinho. Sempre."]], ["hi", "guileoai.com → o visitante coloca o telefone e a Gui liga na hora."]],
     note: "Essa é a jogada que separa a Guileo de qualquer concorrente. Treine UMA coisa: ficar quieto enquanto a Gui fala. Sua boca fechada é seu melhor argumento." },
   { tag: "Modelo", title: "Os 2 trilhos + sua comissão",
-    body: [["h", "Trilho A — Self-service (começar simples)"], ["ul", [`Essential $${starter.price} / Personalized $${growth.price} / Full Operation $${scale.price} por mês (créditos inclusos).`, "Sua comissão: 20% das 3 primeiras mensalidades."]], ["h", "Trilho B — Done-for-you (negócio que perde dinheiro real)"], ["ul", [`A partir de $${dfy.setup} setup + $${dfy.monthly.toLocaleString("en-US")}+/mês.`, `Sua comissão: 20% do contrato (setup + 3 meses) ≈ ~$${dfyComm.toLocaleString("en-US")} por venda.`]]],
+    body: [["h", "Trilho A — Self-service (começar simples)"], ["ul", [`Essential $${starter.price} / Personalized $${growth.price} / Full Operation $${scale.price} por mês (créditos inclusos).`, "Sua comissão: RECORRENTE — 10% a 20% da mensalidade, todo mês, enquanto o cliente pagar."]], ["h", "Trilho B — Done-for-you (negócio que perde dinheiro real)"], ["ul", ["SEM preço de tabela: a proposta é cotada depois de estudar o negócio (guia interno típico: setup + $1.5k–3k/mês).", "Sua comissão: 20% RECORRENTE da mensalidade (+ 20% do setup, uma vez)."]]],
     note: "Dois trilhos = você atende qualquer negócio. O pequeno entra pelo A. O grande, que sangra dinheiro, vai pro B — e é ali que sua comissão fica gorda." },
   { tag: "$$$", title: "Quanto você ganha",
-    body: [["h", `Trilho A — Growth $${growth.price}/mês`], ["ul", [`20% × 3 meses = 20% × $${(growth.price * 3).toLocaleString("en-US")} = ~$${growthComm} por venda.`, `Fechou 5 no mês? ~$${(growthComm * 5).toLocaleString("en-US")}.`]], ["h", `Trilho B — setup $${dfy.setup} + $${dfy.monthly.toLocaleString("en-US")}/mês`], ["ul", [`Contrato (setup + 3 meses) = $${dfyContract.toLocaleString("en-US")}.`, `20% = ~$${dfyComm.toLocaleString("en-US")} por venda.`, `Fechou 2 no mês? ~$${(dfyComm * 2).toLocaleString("en-US")}.`]], ["hi", "Regra de bolso: reclama de ligação perdida + fatura > $20k/mês → Trilho B. Resto → Trilho A. Na dúvida, agenda a demo."]],
+    body: [["h", `Trilho A — Personalized $${growth.price}/mês (o mais vendido)`], ["ul", [`Closer (20%): $${Math.round(growth.price * 0.2)}/mês POR cliente, todo mês, enquanto ele pagar.`, `10 clientes na carteira = ~$${Math.round(growth.price * 0.2 * 10).toLocaleString("en-US")}/mês recorrentes.`]], ["h", "Trilho B — sob medida (cotado por negócio)"], ["ul", ["Ex: retainer de $1.500/mês → $300/mês pra você, todo mês.", "Mais 20% do setup, uma vez."]], ["hi", "Regra de bolso: reclama de ligação perdida + fatura > $20k/mês → Trilho B. Resto → Trilho A. Na dúvida, agenda a demo."]],
     note: "Não force trilho. Deixa o tamanho do problema escolher. Clínica cheia que perde 10 ligações/dia é Trilho B. Barbearia começando é Trilho A. A demo resolve a dúvida." },
   { tag: "Descoberta", title: "As 5 perguntas de ouro",
     body: [["p", "Faça essas 5 e deixe ELE falar:"], ["ol", ["Quantas ligações vocês perdem por dia — almoço, noite, domingo?", "Quem responde o WhatsApp quando vocês fecham?", "O que acontece com quem pede orçamento e some?", "Quantos clientes deixam de voltar porque ninguém chamou de volta?", "Se cada ligação perdida vale uns $50–100… quanto vaza por mês?"]]],
@@ -225,9 +225,9 @@ const HI_META = [
 ];
 const SLIDES_HI = SLIDES_EN.map((s, i) => ({ ...s, tag: HI_META[i][0], title: HI_META[i][1] }));
 
-const SLIDES_BY_LANG = { pt: SLIDES_PT, en: SLIDES_EN, es: SLIDES_ES, hi: SLIDES_HI };
+export const SLIDES_BY_LANG = { pt: SLIDES_PT, en: SLIDES_EN, es: SLIDES_ES, hi: SLIDES_HI };
 
-function Block({ b }) {
+export function Block({ b }) {
   const [kind, payload] = b;
   if (kind === "p") return <p className="text-base sm:text-lg text-g-light/90 leading-relaxed">{payload}</p>;
   if (kind === "h") return <p className="text-sm font-black uppercase tracking-wide text-g-gold mt-3">{payload}</p>;

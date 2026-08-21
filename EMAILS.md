@@ -127,7 +127,7 @@ A gente instala uma IA que atende, agenda e vende 24/7 pro seu tipo de negócio 
 
 Oi {Nome},
 
-A Guileo instala um time de IA + marketing que atende, vende e cresce o negócio do cliente 24/7. **Você traz o cliente — a gente entrega, e você ganha % por venda fechada.**
+A Guileo instala um time de IA + marketing que atende, vende e cresce o negócio do cliente 24/7. **Você traz o cliente — a gente entrega, e você ganha 10–20% da mensalidade TODO MÊS, enquanto ele for cliente.**
 
 Você não fica sozinho: nosso time implementa tudo em 7 dias. Você prospecta, mostra a demo ao vivo (a Gui faz metade do trabalho) e fecha.
 

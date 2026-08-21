@@ -11,7 +11,8 @@ import { motion, AnimatePresence } from "framer-motion";
 // + on tab focus. Design follows the hub: cement + Gui signal colors. Props { lang, seller }.
 
 // ── the 6 pipeline stages (canonical keys match the SQL) + a signal color each ──────────────────
-const STAGES = ["abordado", "conversa", "demo", "proposta", "fechado", "perdido"];
+// exportado: SellerFunnelButton lê STAGES[0] daqui (o começo do funil) em vez de redigitar a etapa
+export const STAGES = ["abordado", "conversa", "demo", "proposta", "fechado", "perdido"];
 const STAGE_HEX = {
   abordado: "#948C7B", // taupe — just made contact
   conversa: "#5B9BD5", // info blue — a real conversation is going

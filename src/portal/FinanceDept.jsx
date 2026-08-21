@@ -135,13 +135,13 @@ function Receivables({ demo, email, dataKey, V, fmtMoney }) {
                 <button
                   onClick={() => markPaid(iv)}
                   disabled={payBusy === iv.id}
-                  className="rounded-full px-2.5 py-0.5 text-[10.5px] font-black border border-g-green/50 bg-g-green/15 text-g-green hover:bg-g-green/25 transition disabled:opacity-50"
+                  className="rounded-full px-2.5 py-0.5 text-[10.5px] font-black border border-g-green/50 bg-g-green/15 text-g-green hover:bg-g-green/25 transition disabled:opacity-50 min-h-[44px] inline-flex items-center"
                   title={`${tr("Confirm: mark")} ${iv.number || iv.contact_name || ""} ${tr("of")} ${fmtMoney(iv.amount_cents)} ${tr("as paid?")}`}
                 >{payBusy === iv.id ? "…" : `✓ ${tr("Confirm")}`}</button>
                 <button
                   onClick={() => setConfirmId(null)}
                   disabled={payBusy === iv.id}
-                  className="rounded-full px-2 py-0.5 text-[10.5px] font-bold border border-white/10 text-g-muted hover:text-g-word transition disabled:opacity-50"
+                  className="rounded-full px-2 py-0.5 text-[10.5px] font-bold border border-white/10 text-g-muted hover:text-g-word transition disabled:opacity-50 min-h-[44px] inline-flex items-center"
                 >{tr("Cancel")}</button>
               </span>
             ) : (
@@ -268,20 +268,20 @@ function FinanceDept({ V, onNav, email = "", dataKey = "" }) {
                     <button
                       onClick={() => collectNow(iv)}
                       disabled={collectBusy === iv.id}
-                      className="rounded-full px-2.5 py-0.5 text-[10.5px] font-black border border-g-green/50 bg-g-green/15 text-g-green hover:bg-g-green/25 transition disabled:opacity-50"
+                      className="rounded-full px-2.5 py-0.5 text-[10.5px] font-black border border-g-green/50 bg-g-green/15 text-g-green hover:bg-g-green/25 transition disabled:opacity-50 min-h-[44px] inline-flex items-center"
                       title={`${tr("Send a polite payment reminder to")} ${iv.contact_name || tr("this customer")}?`}
                     >{collectBusy === iv.id ? "…" : `✓ ${tr("Send reminder")}`}</button>
                     <button
                       onClick={() => setCollectId(null)}
                       disabled={collectBusy === iv.id}
-                      className="rounded-full px-2 py-0.5 text-[10.5px] font-bold border border-white/10 text-g-muted hover:text-g-word transition disabled:opacity-50"
+                      className="rounded-full px-2 py-0.5 text-[10.5px] font-bold border border-white/10 text-g-muted hover:text-g-word transition disabled:opacity-50 min-h-[44px] inline-flex items-center"
                     >{tr("Cancel")}</button>
                   </span>
                 ) : (
                   <button
                     onClick={() => { setCollectToast(null); setCollectId(iv.id); }}
                     title={`${tr("Collect")} ${iv.number || ""}`}
-                    className="rounded-full px-2.5 py-0.5 text-[10.5px] font-bold border shrink-0 border-white/12 text-g-muted hover:border-g-green/40 hover:text-g-green transition"
+                    className="rounded-full px-2.5 py-0.5 text-[10.5px] font-bold border shrink-0 border-white/12 text-g-muted hover:border-g-green/40 hover:text-g-green transition min-h-[44px] inline-flex items-center"
                   >💳 {tr("Collect now")}</button>
                 )
               )}

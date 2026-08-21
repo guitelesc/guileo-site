@@ -79,7 +79,7 @@ begin
     from gui_actions g
     where g.action = 'lead' and g.contact like '%@%'
       and v_ref is not null and v_ref <> ''
-      and g.details like ('%👤ref:' || v_ref || '%')
+      and substring(g.details from '👤ref:([^\s·]+)') = v_ref
     union
     select distinct lower(trim(e2.client_email)) as email
     from client_events e2

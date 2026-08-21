@@ -2,14 +2,26 @@
 // price carries metadata { plan, credits } so the webhook grants the right monthly credits
 // and emails the client their connection code automatically. Until the live links exist,
 // url stays "" and the UI shows a "talk to us" fallback (WhatsApp) so nothing dead-ends.
+// 🚨 CANAL QUE AINDA NÃO ENTREGA VAI ROTULADO — NUNCA OMITIDO, NUNCA PROMETIDO SECO (2026-08-20).
+// A auditoria cruzou estes planos com `functions/lib/productFacts.js`, que declara o estado REAL
+// dos canais: **SMS (A2P 10DLC) e WhatsApp estão PENDENTES de aprovação externa**, com o código
+// pronto e ligando sozinho quando aprovarem. E estes planos vendiam "Missed-call text-back — the moment the carrier approves A2P (code is ready)" no
+// Essential e "Multicanal: webchat + e-mail ya activos; WhatsApp y SMS se activan al aprobarse" no Full Operation — dois recursos que o cliente
+// paga hoje e NÃO recebe. Toda venda feita nessa promessa é um reembolso marcado, e é justo a
+// manchete do produto.
+// A correção NÃO é apagar: o recurso existe e é real. É dizer a verdade do prazo — o mesmo padrão
+// de "condição" que o Processo já usa ("depende de: aprovação da Meta"). Recurso rotulado ainda
+// vende; recurso prometido e não entregue destrói a conta e a reputação de envio.
+// ⚠️ Quando o A2P e o WhatsApp forem aprovados, tire o sufixo AQUI e em `productFacts.js` juntos —
+// os dois arquivos são lidos como lei e não podem discordar.
 export const SELF_SERVE_PLANS = [
   {
     id: "starter", name: "Essential", price: 149, credits: 500,
     tagline: { en: "Get started fast", pt: "Comece rápido", es: "Empieza rápido" },
     features: {
-      en: ["AI answers calls & messages 24/7", "Missed-call text-back", "Booking + reminders", "500 Gui credits / month", "Self-managed dashboard"],
-      pt: ["IA atende ligações e mensagens 24/7", "Texto automático em ligação perdida", "Agendamento + lembretes", "500 créditos do Gui / mês", "Painel autogerido"],
-      es: ["IA atiende llamadas y mensajes 24/7", "Texto automático en llamada perdida", "Reservas + recordatorios", "500 créditos de Gui / mes", "Panel autogestionado"],
+      en: ["AI answers calls & messages 24/7", "Missed-call text-back — the moment the carrier approves A2P (code is ready)", "Booking + reminders", "500 Gui credits / month", "Self-managed dashboard"],
+      pt: ["IA atende ligações e mensagens 24/7", "Texto automático em ligação perdida — assim que a operadora aprovar o A2P (código pronto)", "Agendamento + lembretes", "500 créditos do Gui / mês", "Painel autogerido"],
+      es: ["IA atiende llamadas y mensajes 24/7", "Texto automático en llamada perdida — en cuanto la operadora apruebe el A2P (código listo)", "Reservas + recordatorios", "500 créditos de Gui / mes", "Panel autogestionado"],
     },
     url: "https://buy.stripe.com/bJe9AT9LldnecqjdzT3Nm0e",
     // annual Payment Link (2 months free: $1,490/yr) — to be minted; empty = no annual UI shown.
@@ -31,9 +43,9 @@ export const SELF_SERVE_PLANS = [
     id: "scale", name: "Full Operation", price: 999, credits: 6000,
     tagline: { en: "For busy operations", pt: "Pra operação movimentada", es: "Para operación con volumen" },
     features: {
-      en: ["Everything in Personalized", "Multi-channel (WhatsApp, SMS, social)", "Campaigns + audiences", "6,000 Gui credits / month", "Priority support"],
-      pt: ["Tudo do Personalized", "Multicanal (WhatsApp, SMS, social)", "Campanhas + públicos", "6.000 créditos do Gui / mês", "Suporte prioritário"],
-      es: ["Todo lo de Personalized", "Multicanal (WhatsApp, SMS, social)", "Campañas + audiencias", "6.000 créditos de Gui / mes", "Soporte prioritario"],
+      en: ["Everything in Personalized", "Multi-channel: webchat + email live today; WhatsApp and SMS switch on when approved", "Campaigns + audiences", "6,000 Gui credits / month", "Priority support"],
+      pt: ["Tudo do Personalized", "Multicanal: webchat + e-mail já no ar; WhatsApp e SMS ligam quando aprovarem", "Campanhas + públicos", "6.000 créditos do Gui / mês", "Suporte prioritário"],
+      es: ["Todo lo de Personalized", "Multicanal: webchat + e-mail ya activos; WhatsApp y SMS se activan al aprobarse", "Campañas + audiencias", "6.000 créditos de Gui / mes", "Soporte prioritario"],
     },
     url: "https://buy.stripe.com/bJe00j6z94QI2PJ0N73Nm0g",
     // annual Payment Link (2 months free: $9,990/yr) — to be minted; empty = no annual UI shown.

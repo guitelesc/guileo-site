@@ -83,7 +83,15 @@ export default function HeroiEscolha() {
                   A Gui atende, agenda, orça e cobra — e a gente traz o movimento que faz o telefone tocar.{" "}
                   <b style={{ color: "#EDE7DC", fontWeight: 600 }}>A AI é a prova. O que entregamos é crescimento.</b>
                 </p>
-                <a href="#" onClick={(e) => e.preventDefault()} style={{ display: "inline-flex", alignItems: "center", gap: 10,
+                {/* ⚠️ ESTE BOTÃO ERA `href="#"` + preventDefault() — ou seja, NÃO FAZIA NADA, nas duas
+                    variantes, bem no CTA principal. Botão morto é pior que botão ausente: a pessoa
+                    clica, nada acontece, e conclui que o site está quebrado.
+                    Agora aponta para `/#try` — a MESMA demo de voz ao vivo que a Home usa
+                    (Home.jsx `<section id="try">` → `<LiveCall />`, o caminho provado com
+                    consentimento TCPA + /api/lead + /api/call com portão de DNC). Nenhum segundo
+                    caminho de lead foi criado: esta é uma página de DECISÃO de tema, o que ela
+                    compara é o desenho do botão, não um formulário próprio. */}
+                <a href="/#try" style={{ display: "inline-flex", alignItems: "center", gap: 10, minHeight: 48,
                   background: "#FF8A33", color: "#160E05", fontWeight: 800, fontSize: 15, padding: "15px 26px",
                   borderRadius: 999, textDecoration: "none", boxShadow: "0 10px 34px rgba(255,138,51,.30)" }}>
                   Ouça a Gui atender — agora
@@ -133,7 +141,7 @@ export default function HeroiEscolha() {
                   A Gui atende 24/7, agenda e cobra. Os anúncios enchem a agenda. O criativo faz a marca aparecer.{" "}
                   <b style={{ color: "#100F0C", fontWeight: 700 }}>Um time inteiro, sem folha de pagamento.</b>
                 </p>
-                <a href="#" onClick={(e) => e.preventDefault()} style={{ display: "inline-flex", alignItems: "center", gap: 10,
+                <a href="/#try" style={{ display: "inline-flex", alignItems: "center", gap: 10, minHeight: 48,
                   background: "#100F0C", color: "#F4EFE5", fontWeight: 800, fontSize: 15, padding: "15px 27px",
                   borderRadius: 12, textDecoration: "none", boxShadow: "0 12px 30px rgba(16,15,12,.22)" }}>
                   Ouça a Gui atender — agora

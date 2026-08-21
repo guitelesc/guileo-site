@@ -155,8 +155,8 @@ function RiskRadar({ V, real = null, email = "", dataKey = "" }) {
                       <span className="text-xs font-bold text-g-word">{tr("Mark as no-show?")}</span>
                       <span className="text-[10px] text-g-muted hidden sm:inline">{tr("This trains the radar — the next prediction gets smarter.")}</span>
                       <span className="flex-1" />
-                      <button onClick={() => doNoshow(r)} className="rounded-full bg-red-500/85 px-3 py-1 text-[11px] font-black text-white hover:bg-red-500 transition">{tr("Yes, mark it")}</button>
-                      <button onClick={() => setAsking(null)} className="rounded-full border border-white/15 px-3 py-1 text-[11px] font-bold text-g-muted hover:text-g-word transition">{tr("Cancel")}</button>
+                      <button onClick={() => doNoshow(r)} className="rounded-full bg-red-500/85 px-3 py-1 text-[11px] font-black text-white hover:bg-red-500 transition min-h-[44px] inline-flex items-center">{tr("Yes, mark it")}</button>
+                      <button onClick={() => setAsking(null)} className="rounded-full border border-white/15 px-3 py-1 text-[11px] font-bold text-g-muted hover:text-g-word transition min-h-[44px] inline-flex items-center">{tr("Cancel")}</button>
                     </div>
                   )}
                 </div>

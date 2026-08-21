@@ -57,8 +57,8 @@ function SellLink({ url, onClose }) {
     <div className="mt-2.5 flex items-center gap-2 rounded-xl2 border border-g-green/25 bg-g-green/[0.06] px-3.5 py-2">
       <FaLink size={11} className="text-g-green shrink-0" />
       <span className="text-[11px] text-g-word font-mono truncate flex-1 min-w-0">{url}</span>
-      <button onClick={() => copy(url)} className="rounded-full border border-white/15 bg-white/[0.04] px-2.5 py-1 text-[11px] font-bold text-g-word hover:border-g-green/40 transition inline-flex items-center gap-1.5"><FaRegCopy size={10} /> {tr("Copy")}</button>
-      <a href={url} target="_blank" rel="noopener" className="rounded-full bg-g-green/85 px-2.5 py-1 text-[11px] font-black text-white hover:bg-g-green transition">{tr("Open")}</a>
+      <button onClick={() => copy(url)} className="rounded-full border border-white/15 bg-white/[0.04] px-2.5 py-1 text-[11px] font-bold text-g-word hover:border-g-green/40 transition inline-flex items-center gap-1.5 min-h-[44px] inline-flex items-center"><FaRegCopy size={10} /> {tr("Copy")}</button>
+      <a href={url} target="_blank" rel="noopener" className="rounded-full bg-g-green/85 px-2.5 py-1 text-[11px] font-black text-white hover:bg-g-green transition min-h-[44px] inline-flex items-center">{tr("Open")}</a>
       <button onClick={onClose} className="text-g-muted hover:text-g-word text-sm px-1">×</button>
     </div>
   );
@@ -197,7 +197,7 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wide text-g-gold inline-flex items-center gap-2"><FaTicket size={11} /> {tr("Session packages")}</span>
-          <button onClick={() => setPForm({ id: null, name: "", service: "", sessions: 10, price: "", active: true })} className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-[11px] font-bold text-g-word hover:border-g-gold/40 transition inline-flex items-center gap-1.5"><FaPlus size={9} /> {tr("New package")}</button>
+          <button onClick={() => setPForm({ id: null, name: "", service: "", sessions: 10, price: "", active: true })} className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-[11px] font-bold text-g-word hover:border-g-gold/40 transition inline-flex items-center gap-1.5 min-h-[44px] inline-flex items-center"><FaPlus size={9} /> {tr("New package")}</button>
         </div>
         {pForm && (
           <div className="px-5 py-4 border-b border-white/10 bg-white/[0.015] grid gap-3 sm:grid-cols-2">
@@ -237,7 +237,7 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wide text-g-gold inline-flex items-center gap-2"><FaIdCard size={11} /> {tr("Memberships & clubs")}</span>
-          <button onClick={() => setMForm({ id: null, name: "", price: "", interval: "month", perks: "", active: true })} className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-[11px] font-bold text-g-word hover:border-g-gold/40 transition inline-flex items-center gap-1.5"><FaPlus size={9} /> {tr("New membership")}</button>
+          <button onClick={() => setMForm({ id: null, name: "", price: "", interval: "month", perks: "", active: true })} className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-[11px] font-bold text-g-word hover:border-g-gold/40 transition inline-flex items-center gap-1.5 min-h-[44px] inline-flex items-center"><FaPlus size={9} /> {tr("New membership")}</button>
         </div>
         {mForm && (
           <div className="px-5 py-4 border-b border-white/10 bg-white/[0.015] grid gap-3 sm:grid-cols-2">
@@ -283,7 +283,7 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wide text-g-gold inline-flex items-center gap-2"><FaGift size={11} /> {tr("Gift cards")}</span>
-          <button onClick={() => setCForm({ amount: "", recipient: "", purchaser: "", code: "" })} className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-[11px] font-bold text-g-word hover:border-g-gold/40 transition inline-flex items-center gap-1.5"><FaPlus size={9} /> {tr("New gift card")}</button>
+          <button onClick={() => setCForm({ amount: "", recipient: "", purchaser: "", code: "" })} className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-[11px] font-bold text-g-word hover:border-g-gold/40 transition inline-flex items-center gap-1.5 min-h-[44px] inline-flex items-center"><FaPlus size={9} /> {tr("New gift card")}</button>
         </div>
         {cForm && (
           <div className="px-5 py-4 border-b border-white/10 bg-white/[0.015] grid gap-3 sm:grid-cols-2">

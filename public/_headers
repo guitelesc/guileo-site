@@ -12,6 +12,33 @@
 /guileo-app-icon-1024.png
   Access-Control-Allow-Origin: *
 
+# O service worker decide o que o app inteiro enxerga: servir uma versão velha dele prende o
+# cockpit num deploy antigo. Nunca de cache.
+/sw.js
+  Cache-Control: no-cache, max-age=0, must-revalidate
+  Service-Worker-Allowed: /portal
+
+# 🚨 ASSETS COM HASH NO NOME SÃO IMUTÁVEIS — E O CACHE DE 4 HORAS ERA UMA ARMADILHA (2026-08-20).
+# O Vite gera `Portal-CLL_1PVr.js`: o hash é do CONTEÚDO, então esse arquivo nunca muda. Mesmo
+# assim o header padrão vinha `public, max-age=14400, must-revalidate` — 4 horas.
+# Era o pior dos dois mundos: curto demais para imutável (revalida à toa a cada 4h) e longo o
+# bastante para ENVENENAR. Uma auditoria provou que durante a janela de um deploy o CDN devolveu
+# `500 size=0` e depois um corpo TRUNCADO com status 200 para o mesmo arquivo. Quem carregou o site
+# naquele momento ficou 4 HORAS com um pedaço quebrado em cache: página branca, sem erro no
+# console, sem nada no monitor. Isso viola a regra de zero downtime da casa.
+# `immutable` resolve a revalidação inútil E encurta a janela de risco: o navegador não pergunta de
+# novo por um arquivo que, por construção, não pode ter mudado — e um deploy novo troca o HASH,
+# então o arquivo velho simplesmente deixa de ser pedido. Nada fica preso.
+# ⚠️ A recuperação de `import()` que falha já existe em src/App.jsx (retry + reload com trava).
+# Ela NÃO cobre este caso: corpo truncado com status 200 não lança erro nenhum — o navegador
+# executa código pela metade. Por isso o conserto tem que ser no cache, não no app.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/manifest.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8
+  Cache-Control: public, max-age=3600
+
 /*
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff

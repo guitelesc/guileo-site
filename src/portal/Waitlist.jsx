@@ -1,11 +1,29 @@
 /* Split out of Portal.jsx (performance): Waitlist tab view — code moved verbatim. */
 import { useState, useEffect } from "react";
-import { portalApi, toast } from "../lib/portalApi.js";
+import { portalApi, toast, fetchFilaEspera } from "../lib/portalApi.js";
 import { waLink } from "../data/contact.js";
-import { genWaitlist, convoAction, pushCreated, MiniStats, vnum, Card, tr, Drawer } from "../pages/Portal.jsx";
+import { genWaitlist, convoAction, pushCreated, MiniStats, vnum, Card, tr, Drawer , FaixaAmostra} from "../pages/Portal.jsx";
 
-function Waitlist({ V }) {
-  const rows = genWaitlist(V);
+function Waitlist({ V, real, email, dataKey }) {
+  // ── A FILA DE ESPERA DE VERDADE (2026-08-20) ──────────────────────────────────────────────
+  // `biz_waitlist` já tinha motor de ENTRADA (`biz_waitlist_add`, que a Gui chama quando o
+  // horário pedido está cheio) e nenhuma leitura — então a tela desenhava uma fila inventada
+  // enquanto a real ficava invisível. Fila de espera com nome falso é pior que fila vazia: o dono
+  // liga para alguém que nunca pediu nada.
+  // 🚨 Fila real VAZIA é resultado legítimo, e a tela diz isso — não cai na amostra por estar sem
+  // ninguém. Só a FALHA de leitura mantém a amostra, e ela vem declarada.
+  const [fila, setFila] = useState({ estado: "carregando", dados: null, motivo: null });
+  useEffect(() => {
+    let vivo = true;
+    if (!real || !email || !dataKey) { setFila({ estado: "amostra", dados: null, motivo: null }); return () => { vivo = false; }; }
+    fetchFilaEspera(email, dataKey).then((r) => { if (vivo) setFila({ estado: r.dados ? "ok" : "err", dados: r.dados, motivo: r.motivo }); });
+    return () => { vivo = false; };
+  }, [real, email, dataKey]);
+
+  const reais = fila.estado === "ok" && Array.isArray(fila.dados)
+    ? fila.dados.map((w) => ({ name: w.nome || w.contato || tr("Customer"), want: w.servico || "", ch: "WhatsApp", when: w.quando, contact: w.contato || "", real: true }))
+    : null;
+  const rows = reais || genWaitlist(V);
   const [filled, setFilled] = useState(() => portalApi.loadState(`${V.label}:wait`, []));
   const [sel, setSel] = useState(null);
   useEffect(() => { setFilled(portalApi.loadState(`${V.label}:wait`, [])); }, [V.label]);
@@ -24,7 +42,19 @@ function Waitlist({ V }) {
     }
   };
   return (
-    <div className="space-y-4 stagger">
+    <>
+      <FaixaAmostra real={real && !reais} />
+      {fila.estado === "err" && (
+        <div className="mb-3 rounded-xl border border-[#e0855f]/40 bg-[#e0855f]/[0.08] px-3.5 py-2.5 text-[12px] text-[#e0855f]">
+          {tr("Couldn't read your waitlist")} — {fila.motivo}
+        </div>
+      )}
+      {reais && reais.length === 0 && (
+        <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-[12px] text-g-muted">
+          {tr("Nobody waiting right now. When Gui hits a full slot, whoever asks goes on this list automatically.")}
+        </div>
+      )}
+      <div className="space-y-4 stagger">
       <MiniStats items={[["Waiting now", `${open.length}`], ["Filled today", `${vnum(V.label, "filled", 5, 16)}`, "good"], ["No-shows saved", `${vnum(V.label, "noshow", 3, 11)}`, "good"], ["Revenue recovered", `$${vnum(V.label, "wrev", 800, 2600).toLocaleString()}`, "good"]]} />
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Waitlist · turn empty slots into revenue")}</div>
@@ -50,6 +80,7 @@ function Waitlist({ V }) {
         />
       )}
     </div>
+    </>
   );
 }
 

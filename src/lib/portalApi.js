@@ -57,18 +57,74 @@ const DATA_KEY_LS = "guileo_data_key";
  *  Returns { credits, plan, events:[{id,created_at,type,channel,summary,amount}] }
  *  or null on ANY failure (wrong key, network, malformed) — never throws to the UI. */
 export async function fetchRealData(email, key) {
-  if (!email || !key) return null;
+  const r = await fetchRealDataDetalhado(email, key);
+  return r.data;                                   // contrato antigo, intacto para quem já chama
+}
+
+/* 🚨 POR QUE ESTA VERSÃO EXISTE (2026-08-20, auditoria da área do cliente).
+   A original devolvia `null` em QUALQUER falha — rede caída, 500 do banco, JSON quebrado e chave
+   ERRADA eram indistinguíveis. E `null` desliga a camada de honestidade INTEIRA do cockpit de uma
+   vez: os KPIs voltam a ser `V.kpis`, a receita vira `V.impact.total`, a agenda vira exemplo, e os
+   selos vermelhos reaparecem. Ou seja, UM PISCAR DE REDE fazia um cliente PAGANTE ler números
+   fabricados como se fossem dele — e o aviso ainda o culpava: "cole seu código de conexão", para
+   quem já tinha colado.
+   Agora o motivo vem junto. Quem chama decide o que dizer: chave errada é uma conversa,
+   rede caída é outra, e nenhuma das duas é "seus números são estes". */
+export async function fetchRealDataDetalhado(email, key) {
+  if (!email || !key) return { data: null, motivo: "sem_credencial" };
   try {
     const r = await fetch(`${DATA_SB_URL}/rest/v1/rpc/get_client_data`, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: DATA_SB_ANON, Authorization: `Bearer ${DATA_SB_ANON}` },
       body: JSON.stringify({ p_email: email, p_key: key }),
     });
-    if (!r.ok) return null; // includes 'unauthorized' (400/28000) when the key doesn't match
+    // 400/401/403 = a chave não confere. 5xx = o banco caiu. São problemas DIFERENTES.
+    if (!r.ok) return { data: null, motivo: r.status >= 500 ? "servidor" : "chave_invalida", http: r.status };
     const data = await r.json();
-    if (!data || typeof data !== "object" || !Array.isArray(data.events)) return null;
-    return data;
-  } catch { return null; }
+    if (!data || typeof data !== "object" || !Array.isArray(data.events)) return { data: null, motivo: "resposta_estranha" };
+    return { data, motivo: null };
+  } catch (e) { return { data: null, motivo: "rede", detalhe: String(e).slice(0, 120) }; }
+}
+
+/* ── EQUIPE E FILA DE ESPERA REAIS (2026-08-20) ────────────────────────────────────────────────
+   Duas telas do cockpit desenhavam gente gerada enquanto o banco já tinha a coisa real:
+   `biz_professionals` (11 profissionais cadastrados) e `biz_waitlist` (com motor de entrada).
+   🚨 DEVOLVEM {dados, motivo}, nunca `[]` seco. "Não consegui ler" e "não tem ninguém" são
+   estados DIFERENTES: o primeiro pede tentar de novo, o segundo é a verdade do negócio. Foi o
+   `|| []` juntando os dois que já produziu cinco diagnósticos falsos neste repositório. */
+async function _bizLista(rpc, email, key) {
+  if (!email || !key) return { dados: null, motivo: "sem_credencial" };
+  try {
+    const r = await fetch(`${DATA_SB_URL}/rest/v1/rpc/${rpc}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: DATA_SB_ANON, Authorization: `Bearer ${DATA_SB_ANON}` },
+      body: JSON.stringify({ p_email: email, p_key: key }),
+    });
+    if (!r.ok) return { dados: null, motivo: r.status >= 500 ? "servidor" : "chave_invalida" };
+    const d = await r.json();
+    return Array.isArray(d) ? { dados: d, motivo: null } : { dados: null, motivo: "resposta_estranha" };
+  } catch { return { dados: null, motivo: "rede" }; }
+}
+export const fetchEquipe   = (email, key) => _bizLista("biz_team_list", email, key);
+export const fetchFilaEspera = (email, key) => _bizLista("biz_waitlist_list", email, key);
+export const fetchPedidos  = (email, key) => _bizLista("biz_orders_list", email, key);
+export const fetchCatalogo = (email, key) => _bizLista("biz_catalogo_list", email, key);
+export const fetchCanais   = (email, key) => _bizLista("biz_canais_list", email, key);
+
+/** Move um pedido de coluna na Cozinha. Devolve {ok, motivo} — nunca um boolean solto: "não
+ *  gravou" e "gravou" precisam chegar diferentes na tela, senão o cartão anda sem lastro. */
+export async function setPedidoStatus(email, key, id, status) {
+  if (!email || !key || !id) return { ok: false, motivo: "sem_credencial" };
+  try {
+    const r = await fetch(`${DATA_SB_URL}/rest/v1/rpc/biz_order_status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: DATA_SB_ANON, Authorization: `Bearer ${DATA_SB_ANON}` },
+      body: JSON.stringify({ p_email: email, p_key: key, p_id: id, p_status: status }),
+    });
+    if (!r.ok) return { ok: false, motivo: `HTTP ${r.status}` };
+    const d = await r.json().catch(() => null);
+    return d?.ok === true ? { ok: true } : { ok: false, motivo: d?.motivo || "não gravou" };
+  } catch (e) { return { ok: false, motivo: String(e).slice(0, 80) }; }
 }
 
 // ── REAL INBOX (client_messages) — four RPCs on the same gui_actions data project,

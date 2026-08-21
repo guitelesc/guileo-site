@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { portalApi, CONNECTED, toast, onToast, fetchRealData, loadDataKey, saveDataKey } from "../lib/portalApi.js";
+import { portalApi, CONNECTED, toast, onToast, fetchRealData, fetchRealDataDetalhado, loadDataKey, saveDataKey } from "../lib/portalApi.js";
 import {
   FaGaugeHigh, FaComments, FaBullhorn, FaUsers, FaHeadset, FaFileLines, FaListCheck,
   FaArrowLeft, FaArrowTrendUp, FaWhatsapp, FaInstagram, FaPhone, FaFacebook, FaTiktok, FaGoogle,
@@ -572,9 +572,11 @@ import { waLink } from "../data/contact.js";
 import { VERTICALS, VERTICAL_KEYS } from "../data/verticals.js";
 
 /* Heavy tab views split into lazy chunks (performance) — code unchanged, just moved to src/portal/. */
+const Hoje = lazy(() => import("../portal/Hoje.jsx")); // Hoje — a primeira tela do app: o dia inteiro em 3 respostas
 const Overview = lazy(() => import("../portal/Overview.jsx"));
 const Deliveries = lazy(() => import("../portal/Deliveries.jsx"));
 const Support = lazy(() => import("../portal/Support.jsx"));
+const Relacionamento = lazy(() => import("../portal/Relacionamento.jsx")); // Relacionamento — chamados com a thread visível + meu consultor + a nota (sem o nome)
 const CommandCenter = lazy(() => import("../portal/CommandCenter.jsx"));
 const CRM360 = lazy(() => import("../portal/CRM360.jsx"));
 const CallLogs = lazy(() => import("../portal/CallLogs.jsx"));
@@ -717,6 +719,9 @@ function sectionsFor(vid, V) {
     const i = list.findIndex((s) => s[0] === afterKey);
     const out = list.slice(); out.splice(i >= 0 ? i + 1 : out.length, 0, [key, label]); return out;
   };
+  // A tela HOJE é a porta do app e vem SEMPRE primeiro — inclusive no restaurante, que traz uma
+  // nav própria de verticals.js. Sem isto o app abriria numa das 61 telas de profundidade.
+  const ensureHoje = (list) => (list.some((x) => x[0] === "hoje") ? list : [["hoje", "Today"], ...list]);
   const ensureCRM = (list) => {
     let l = inject(list, "mycompany", "Minha Empresa", "overview"); // flagship overview — the client's OWN 8 departments
     l = inject(l, "command", "Command Center", "overview");
@@ -740,6 +745,7 @@ function sectionsFor(vid, V) {
     l = inject(l, "timeline", "Linha do tempo", "experience"); // Do fornecedor ao cliente — custo→lucro→risco numa timeline só
     l = inject(l, "retention", "Growth & Retention", "marketing");
     l = inject(l, "documents", "Documents", "billing");
+    l = inject(l, "relacionamento", "Relationship", "documents"); // Relacionamento — suporte com resposta visível + consultor + nota
     l = inject(l, "riskradar", "Risk Radar", "schedule"); // no-show radar rides with Operations everywhere
     l = inject(l, "schedulesync", "Conectar agenda", "schedule"); // connect MindBody/Square/Google Cal
     l = inject(l, "googlehub", "Google", "reputation"); // GBP reviews + SEO + ads
@@ -758,12 +764,12 @@ function sectionsFor(vid, V) {
     return l;
   };
   if (V.sections) { // restaurant has a bespoke nav from its reference tool — still inject Leads after Overview
-    if (V.sections.some((s) => s[0] === "leads")) return ensureCRM(V.sections);
+    if (V.sections.some((s) => s[0] === "leads")) return ensureHoje(ensureCRM(V.sections));
     const i = V.sections.findIndex((s) => s[0] === "overview");
-    const out = V.sections.slice(); out.splice(i >= 0 ? i + 1 : 0, 0, ["leads", "Leads · Daily"]); return ensureCRM(out);
+    const out = V.sections.slice(); out.splice(i >= 0 ? i + 1 : 0, 0, ["leads", "Leads · Daily"]); return ensureHoje(ensureCRM(out));
   }
   const sec = SECTOR_NAV[vid] || [["operations", "Operations"]];
-  return ensureCRM([
+  return ensureHoje(ensureCRM([
     ["overview", "Overview"], ["leads", "Leads · Daily"], ["impact", "Guileo Impact"], ["brain", "Train your AI"], ["analytics", "AI Analytics"], ["insights", "AI Insights"], ["integrations", "Integrations"],
     ...sec,
     ["deliveries", deliveryTab(V)],
@@ -771,15 +777,15 @@ function sectionsFor(vid, V) {
     // into the Finance/Marketing/Growth dept views (DeptTabs) — reachable there, off the sidebar.
     ["customers", "Customers"], ["crm", "CRM 360"],
     ["inbox", "Inbox"], ["calllogs", "Call Logs"], ["dialer", "Call Dialer"], ["whatsapp", "WhatsApp"], ["sms", "SMS"], ["social", "Social"],
-    ["grow", "Everything you have"], ["locations", "Locations"], ["team", "Team"], ["billing", "Billing & Plan"], ["support", "Support"], ["settings", "Settings"],
-  ]);
+    ["grow", "Everything you have"], ["locations", "Locations"], ["team", "Team"], ["billing", "Billing & Plan"], ["relacionamento", "Relationship"], ["settings", "Settings"],
+  ]));
 }
 // Red notification counts per menu item — drives urgency badges in the sidebar
 // Views that render REAL tenant data when connected — ONLY these earn the LIVE badge.
 // Everything else shows an honest "Sample preview" chip even when the account is linked.
-const REAL_VIEWS = new Set(["overview", "impact", "billing", "inbox", "calllogs", "convos", "whatsapp", "sms",
+const REAL_VIEWS = new Set(["hoje", "overview", "impact", "billing", "inbox", "calllogs", "convos", "whatsapp", "sms",
   "mycompany", "crm", "command", "finance", "leadstoday", "dates", "coupons", "growthintel", "capture", "experience", "timeline", "mktleads", "storm", "meusite",
-  "riskradar", "emergency", "locations", "recurring", "kb", "brain", "settings", "support", "trainer", "grow", "documents", "schedulesync", "googlehub", "socialhub", "operations"]);
+  "riskradar", "emergency", "locations", "recurring", "kb", "brain", "settings", "support", "relacionamento", "trainer", "grow", "documents", "schedulesync", "googlehub", "socialhub", "operations"]);
 
 function notifFor(key, V, real = null) {
   // For a connected client, these channels have no real backing data yet — don't show
@@ -806,11 +812,11 @@ function notifFor(key, V, real = null) {
   }
 }
 const SECTION_ICON = {
-  overview: FaGaugeHigh, operations: FaListCheck, schedule: FaListCheck, catalog: FaBookOpen, brain: FaBrain, analytics: FaChartLine, insights: FaWandMagicSparkles, integrations: FaPlug, liveorders: FaReceipt,
+  hoje: FaCalendarDays, overview: FaGaugeHigh, operations: FaListCheck, schedule: FaListCheck, catalog: FaBookOpen, brain: FaBrain, analytics: FaChartLine, insights: FaWandMagicSparkles, integrations: FaPlug, liveorders: FaReceipt,
   kitchen: FaUtensils, menu: FaBookOpen, deliveries: FaTruck, customers: FaUsers, campaigns: FaBullhorn, audiences: FaBullseye,
   inbox: FaComments, calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, social: FaShareNodes, grow: FaStore, billing: FaCreditCard,
   impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock, recurring: FaIdCard, reputation: FaStar, loyalty: FaGift, payments: FaReceipt,
-  channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, docs: FaFileLines, settings: FaGear, team: FaUsers, locations: FaLocationDot,
+  channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, relacionamento: FaHeadset, docs: FaFileLines, settings: FaGear, team: FaUsers, locations: FaLocationDot,
   crm: FaIdCard, command: FaGaugeHigh, finance: FaCreditCard, marketing: FaBullhorn, retention: FaArrowsRotate, documents: FaFileLines,
   riskradar: FaTriangleExclamation, emergency: FaBell, schedulesync: FaCalendarDays, googlehub: FaGoogle, socialhub: FaShareNodes, leadstoday: FaUsers, dates: FaGift, coupons: FaTag, growthintel: FaChartLine, capture: FaListCheck, experience: FaFaceSmile, timeline: FaChartLine, mktleads: FaBullseye, storm: FaBell, meusite: FaGlobe,
   trainer: FaGraduationCap, kb: FaBrain, mycompany: FaBuilding,
@@ -821,13 +827,13 @@ const NAV_GROUPS = [
   // "grow" = "Everything you have" — the discovery screen. Second item of the top group, right
   // under Overview: it answers the question every owner asks (website? app? ads? software?), so
   // it can NOT live buried inside "Your AI ✨" where nobody shopping for a website would look.
-  ["", ["overview", "grow", "mycompany", "leads", "leadstoday", "mktleads", "meusite"]],
+  ["", ["hoje", "overview", "grow", "mycompany", "leads", "leadstoday", "mktleads", "meusite"]],
   ["Your AI ✨", ["command", "trainer", "brain", "kb", "analytics", "insights"]],
   ["Operations", ["liveorders", "kitchen", "menu", "schedule", "riskradar", "storm", "catalog", "deliveries", "operations"]],
   ["Conversations", ["inbox", "calllogs", "dialer", "whatsapp", "sms", "social"]],
   ["Customers", ["crm"]],
   ["Grow revenue", ["impact", "finance", "marketing", "dates", "coupons", "growthintel", "capture", "experience", "timeline", "retention", "integrations"]],
-  ["Account", ["locations", "team", "billing", "documents", "support", "settings"]],
+  ["Account", ["locations", "team", "billing", "documents", "relacionamento", "support", "settings"]],
 ];
 // Portal UI translations (PT/ES/HI) — each dictionary now lives in its own lazy
 // chunk (src/portal/dict-*.js, ~60KB each) so the main Portal bundle doesn't carry
@@ -945,6 +951,47 @@ const EXTRA_ROWS = [
   ["Reminders you set here: Gui prepares and records them in this cockpit — they do not send anything on their own.", "Lembretes que você definiu aqui: a Gui prepara e registra neste painel — eles não enviam nada sozinhos.", "Recordatorios que definiste aquí: Gui los prepara y registra en este panel — no envían nada por sí solos.", "यहाँ आपके द्वारा तय किए गए रिमाइंडर: Gui इन्हें इस कॉकपिट में तैयार और दर्ज करती है — ये स्वयं कुछ नहीं भेजते।"],
   ["See what runs on the server →", "Ver o que roda no servidor →", "Ver lo que corre en el servidor →", "देखें सर्वर पर क्या चलता है →"],
   ["▶ Prepare now", "▶ Preparar agora", "▶ Preparar ahora", "▶ अभी तैयार करें"],
+  // ── credit meter honesty (Gui assistant) ─────────────────────────────────────────────────────
+  ["Couldn't read your balance", "Não consegui ler seu saldo", "No pude leer tu saldo", "आपका बैलेंस नहीं पढ़ पाया"],
+  ["Top up in Billing →", "Recarregar em Cobrança →", "Recargar en Facturación →", "बिलिंग में टॉप-अप करें →"],
+  // ── follow-ups honesty ───────────────────────────────────────────────────────────────────────
+  ["Closed here. Your real revenue is counted from what's actually collected.", "Fechado aqui. A sua receita real é contada pelo que foi de fato recebido.", "Cerrado aquí. Tus ingresos reales se cuentan por lo que realmente se cobró.", "यहाँ बंद कर दिया। आपकी असली आमदनी उसी से गिनी जाती है जो वास्तव में वसूल हुआ।"],
+  ["Heads up: this list is still a sample layout — there's no live follow-up feed behind it yet. Your real contacts that went quiet are in CRM 360.", "Atenção: esta lista ainda é um layout de amostra — não existe um feed de follow-up ao vivo por trás dela. Os seus contatos reais que sumiram estão no CRM 360.", "Atención: esta lista todavía es una maqueta — aún no hay un feed de seguimiento en vivo detrás. Tus contactos reales que se apagaron están en CRM 360.", "ध्यान दें: यह सूची अभी नमूना है — इसके पीछे कोई लाइव फ़ॉलो-अप फ़ीड नहीं है। आपके असली शांत पड़े संपर्क CRM 360 में हैं।"],
+  // ── Hoje (the app's first screen) ────────────────────────────────────────────────────────────
+  ["Today", "Hoje", "Hoy", "आज"],
+  ["What your AI did for you today", "O que a sua IA fez por você hoje", "Lo que tu IA hizo por ti hoy", "आज आपकी AI ने आपके लिए क्या किया"],
+  ["Bookings made", "Agendamentos", "Reservas", "बुकिंग"],
+  ["Messages answered", "Mensagens respondidas", "Mensajes respondidos", "जवाब दिए संदेश"],
+  ["New contacts", "Novos contatos", "Nuevos contactos", "नए संपर्क"],
+  ["What it was worth", "Quanto isso valeu", "Cuánto valió", "इसका कितना मूल्य रहा"],
+  ["Collected today", "Recebido hoje", "Cobrado hoy", "आज वसूल"],
+  ["Collected this month", "Recebido no mês", "Cobrado este mes", "इस महीने वसूल"],
+  ["Only money actually collected is counted here.", "Só entra aqui dinheiro que foi de fato recebido.", "Aquí solo entra el dinero realmente cobrado.", "यहाँ केवल वही पैसा गिना जाता है जो वास्तव में मिला।"],
+  ["Not measured yet", "Ainda não medido", "Aún no medido", "अभी मापा नहीं गया"],
+  ["Needs you", "Pedindo você", "Requiere tu atención", "आपकी ज़रूरत"],
+  ["Nothing is waiting on you right now.", "Nada está esperando por você agora.", "Nada está esperando por ti ahora.", "अभी कुछ भी आपका इंतज़ार नहीं कर रहा।"],
+  ["unhappy customer waiting", "cliente insatisfeito esperando", "cliente insatisfecho esperando", "असंतुष्ट ग्राहक इंतज़ार में"],
+  ["unhappy customers waiting", "clientes insatisfeitos esperando", "clientes insatisfechos esperando", "असंतुष्ट ग्राहक इंतज़ार में"],
+  ["booking at risk of a no-show", "agendamento com risco de falta", "reserva con riesgo de ausencia", "बुकिंग जिसमें ग़ैरहाज़िरी का जोखिम"],
+  ["bookings at risk of a no-show", "agendamentos com risco de falta", "reservas con riesgo de ausencia", "बुकिंग जिनमें ग़ैरहाज़िरी का जोखिम"],
+  ["Go deeper", "Ir mais fundo", "Ir más a fondo", "और गहराई में"],
+  ["My schedule", "Agenda", "Agenda", "शेड्यूल"],
+  ["Calls", "Ligações", "Llamadas", "कॉल"],
+  ["Customers", "Clientes", "Clientes", "ग्राहक"],
+  ["Pulse", "Pulse", "Pulse", "Pulse"],
+  ["My site", "Meu site", "Mi sitio", "मेरी साइट"],
+  ["Money", "Dinheiro", "Dinero", "पैसा"],
+  ["I couldn't load your day", "Não consegui carregar o seu dia", "No pude cargar tu día", "मैं आपका दिन लोड नहीं कर पाया"],
+  ["The read failed, so I'm not going to show you numbers I don't have.", "A leitura falhou, então não vou te mostrar números que eu não tenho.", "La lectura falló, así que no voy a mostrarte números que no tengo.", "पढ़ना विफल रहा, इसलिए मैं वे आँकड़े नहीं दिखाऊँगा जो मेरे पास नहीं हैं।"],
+  ["Connect your account", "Conecte a sua conta", "Conecta tu cuenta", "अपना खाता कनेक्ट करें"],
+  ["Add your connection code in Settings and today's real numbers show up here.", "Coloque o seu código de conexão em Configurações e os números reais de hoje aparecem aqui.", "Pon tu código de conexión en Ajustes y los números reales de hoy aparecen aquí.", "सेटिंग्स में अपना कनेक्शन कोड डालें और आज के असली आँकड़े यहाँ दिखेंगे।"],
+  ["Open Settings →", "Abrir Configurações →", "Abrir Ajustes →", "सेटिंग्स खोलें →"],
+  ["Showing what I last read at", "Mostrando o que li pela última vez às", "Mostrando lo último que leí a las", "पिछली बार पढ़ा गया, समय"],
+  ["offline", "offline", "sin conexión", "ऑफ़लाइन"],
+  ["Read at", "Lido às", "Leído a las", "पढ़ा गया"],
+  ["I couldn't read this one", "Não consegui ler esta parte", "No pude leer esta parte", "यह हिस्सा मैं नहीं पढ़ पाया"],
+  ["Refresh", "Atualizar", "Actualizar", "रीफ़्रेश"],
+  ["the server refused the read", "o servidor recusou a leitura", "el servidor rechazó la lectura", "सर्वर ने पढ़ने से मना कर दिया"],
 ];
 const EXTRA_DICTS = { pt: {}, es: {}, hi: {} };
 EXTRA_ROWS.forEach(([en, pt, es, hi]) => { EXTRA_DICTS.pt[en] = pt; EXTRA_DICTS.es[en] = es; EXTRA_DICTS.hi[en] = hi; });
@@ -1017,6 +1064,26 @@ export function relTime(iso) {
 }
 /** Subtle honesty chip for sections that still show sample data while real mode is on. */
 export const EstChip = () => <span className="text-[9px] font-bold uppercase tracking-wide text-g-muted/70 border border-white/10 rounded-full px-1.5 py-px">{tr("estimate")}</span>;
+
+/** ── FAIXA DE AMOSTRA (2026-08-20) ─────────────────────────────────────────────────────────────
+ *  Onze telas do cockpit ainda desenham dado gerado (fila de espera, equipe, cozinha, pedidos ao
+ *  vivo, leads…). Enquanto o motor real não existe para elas, o cliente PAGANTE via números com
+ *  cara de operação dele — e é aí que nasce o pedido de reembolso: não por faltar recurso, mas por
+ *  ter parecido que existia. A faixa não conserta o motor; ela impede a mentira.
+ *  🚨 SÓ APARECE EM MODO REAL. Em demonstração o cockpit inteiro é declaradamente amostra, e
+ *  repetir o aviso ali seria ruído sobre algo que a pessoa já sabe. */
+export function FaixaAmostra({ real, oQue }) {
+  if (!real) return null;
+  return (
+    <div className="mb-3 flex items-start gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 backdrop-blur-sm">
+      <span className="mt-[1px] text-[13px] leading-none">🧪</span>
+      <p className="text-[11.5px] leading-relaxed text-g-muted">
+        {tr("This screen still shows a sample layout — there is no live feed behind it yet.")}
+        {oQue ? ` ${oQue}` : ""}
+      </p>
+    </div>
+  );
+}
 
 // Per-tone accent moment for panels: a soft top tick + faint wash so each major
 // panel reads in its semantic color (green = money, gold = premium) without neon.
@@ -1983,7 +2050,68 @@ function approvalSummary(intent, pt) {
   const d = UI_LANG === "es" ? esd : pt ? ptd : en;
   return d[intent] || (UI_LANG === "es" ? "ejecutar la acción" : pt ? "executar a ação" : "run the action");
 }
-function guiPlan(text, V, ctx = {}) {
+// ── HONESTY GATE — the intents Gui has NO engine for ────────────────────────────────────────────
+// These branches used to answer "Done ✓ / Consider it handled ✓" and DEBIT credits for work nobody
+// ever performed. Their only side effect was pushCreated(), which writes to THIS browser's
+// localStorage — and portalApi.js deliberately keeps ":created:" out of the cloud sync, so nothing
+// ever left the device: no message sent, no customer contacted, no invoice issued. Worse, the
+// counts inside the sentence came from genPayments() — invented invoices, invented names, invented
+// amounts — so a paying client read "I sent reminders to 4 customers" about four people who do not
+// exist. The lesson was already learned one branch above ("Promising 'automatically, from now on'
+// was the old lie"); this applies it to the neighbours.
+//
+// RULE: no engine → Gui does not claim it acted, does not charge, creates no record. It says what
+// will happen and who does it, and opens the screen where the work really lives. Demo keeps its
+// sample flow (it is an openly-labelled sample cockpit); REAL accounts never see a false receipt.
+// [view, en, pt, es]
+const SEM_MOTOR = {
+  chaseall: ["finance",
+    "I don't have a sending engine for that, so I'm not going to tell you it's done. Here's your real A/R in Finance — the open invoices, with the amount and who owes it. Send from there and it's logged for real.",
+    "Não tenho motor de envio pra isso, então não vou te dizer que está feito. Aqui está o seu contas-a-receber de verdade, em Finanças — as faturas em aberto, com valor e quem deve. Enviando por ali, fica registrado de verdade.",
+    "No tengo un motor de envío para eso, así que no te voy a decir que está hecho. Aquí está tu cuenta por cobrar real, en Finanzas — las facturas abiertas, con importe y quién debe. Si envías desde ahí, queda registrado de verdad."],
+  invoice: ["finance",
+    "I can't issue that invoice myself — so I won't claim I sent it. I opened Finance with your real invoices and payment links; create it there and the payment is tracked.",
+    "Não consigo emitir essa fatura sozinha — então não vou dizer que enviei. Abri Finanças com as suas faturas reais e os links de pagamento; crie por ali que o pagamento fica rastreado.",
+    "No puedo emitir esa factura por mi cuenta — así que no voy a decir que la envié. Abrí Finanzas con tus facturas reales y los enlaces de pago; créala ahí y el pago queda rastreado."],
+  review: ["experience",
+    "Review requests go out from the Pulse screen, not from me — so no, I haven't asked anyone yet. I opened it: it shows who's happy enough to ask.",
+    "Os pedidos de avaliação saem da tela do Pulse, não de mim — então não, ainda não pedi pra ninguém. Abri pra você: ela mostra quem está satisfeito o bastante pra receber o pedido.",
+    "Las solicitudes de reseña salen desde la pantalla de Pulse, no desde mí — así que no, todavía no le pedí a nadie. La abrí: muestra quién está lo bastante contento para pedírselo."],
+  deliver: ["operations",
+    "I can't dispatch a delivery on my own — nothing was sent. I opened Operations; dispatch it there and the courier gets the real job.",
+    "Não consigo despachar uma entrega sozinha — nada foi enviado. Abri Operações; despache por ali que o entregador recebe o serviço de verdade.",
+    "No puedo despachar un reparto por mi cuenta — no se envió nada. Abrí Operaciones; despáchalo ahí y el repartidor recibe el trabajo real."],
+  book: ["schedule",
+    "I'm not going to say it's booked when it isn't — booking happens on the schedule, not in this chat. I opened your agenda: book it there and the customer gets the real confirmation.",
+    "Não vou dizer que está agendado se não está — o agendamento acontece na agenda, não neste chat. Abri a sua agenda: marque por ali que o cliente recebe a confirmação de verdade.",
+    "No voy a decir que está agendado si no lo está — la reserva ocurre en la agenda, no en este chat. Abrí tu agenda: resérvalo ahí y el cliente recibe la confirmación real."],
+  followup: ["crm",
+    "No follow-up has started — I don't have an engine that sends it. I opened your CRM with the contacts that went quiet; the win-back goes out from there.",
+    "Nenhum follow-up começou — não tenho motor que envie isso. Abri o seu CRM com os contatos que sumiram; a reconquista sai de lá.",
+    "No empezó ningún seguimiento — no tengo un motor que lo envíe. Abrí tu CRM con los contactos que se apagaron; la recuperación sale de ahí."],
+  audience: ["marketing",
+    "I didn't build an audience — that lives in Marketing, on top of your real contact list. I opened it so you segment from real data instead of a made-up one.",
+    "Não montei público nenhum — isso mora em Marketing, em cima da sua lista real de contatos. Abri pra você segmentar com dado real, não com um inventado.",
+    "No armé ninguna audiencia — eso vive en Marketing, sobre tu lista real de contactos. La abrí para que segmentes con datos reales, no inventados."],
+  social: ["socialhub",
+    "Nothing was posted — I don't publish on my own. I opened Social Hub, wired to your real accounts; schedule the post there.",
+    "Nada foi publicado — eu não publico sozinha. Abri o Social Hub, ligado nas suas contas reais; agende o post por ali.",
+    "No se publicó nada — yo no publico sola. Abrí el Social Hub, conectado a tus cuentas reales; programa la publicación ahí."],
+  books: ["integrations",
+    "I haven't synced anything — that pipe doesn't run on my side. I opened Integrations; QuickBooks syncs from there once it's really connected.",
+    "Não sincronizei nada — esse cano não existe do meu lado. Abri Integrações; o QuickBooks sincroniza de lá quando estiver conectado de verdade.",
+    "No sincronicé nada — esa conexión no corre de mi lado. Abrí Integraciones; QuickBooks sincroniza desde ahí cuando esté realmente conectado."],
+};
+/** In REAL mode → an honest zero-cost plan for an engine-less intent. In demo → null (sample flow). */
+function semMotor(intent, real, pt, ctx) {
+  if (!real) return null;
+  const row = SEM_MOTOR[intent];
+  if (!row) return null;
+  const [view, en, ptStr, es] = row;
+  return { cost: 0, ctx, reply: UI_LANG === "es" ? es : (UI_LANG === "pt" || pt) ? ptStr : en, run: (onNav) => onNav?.(view) };
+}
+
+function guiPlan(text, V, ctx = {}, real = null) {
   const s = text.toLowerCase();
   const act = convoAction(V);
   const customers = (V.customers || genCustomers(V));
@@ -2010,8 +2138,8 @@ function guiPlan(text, V, ctx = {}) {
     return { cost: 0, ctx, reply: because };
   }
   // R5 — act ACROSS the connected stack (the differentiator).
-  if (/(instagram|\bpost\b|publica|story|stories|\bfeed\b|social)/.test(s)) { const ok = connected("Instagram"); return { intent: "social", cost: ok ? 5 : 0, ctx, reply: ok ? L("Posted ✓ — your AI scheduled an on-brand post to Instagram & Facebook, timed for when your audience is most active. It's in Social.", "Publicado ✓ — sua IA agendou um post na cara da marca pro Instagram e Facebook, na hora de pico do seu público. Está em Social.") : L("Instagram isn't connected yet — connect it in Integrations and I'll post for you.", "O Instagram ainda não está conectado — conecte em Integrações que eu publico por você."), next: ok ? undefined : [{ label: L("🔌 Open Integrations", "🔌 Abrir Integrações"), cmd: "open integrations" }], run: (onNav) => onNav?.(ok ? "social" : "integrations") }; }
-  if (/(quickbooks|accounting|contabil|sync.*(book|nota)|nota fiscal|bookkeep)/.test(s)) { const ok = connected("QuickBooks"); return { cost: ok ? 3 : 0, ctx, reply: ok ? L("Synced ✓ — every sale and invoice is flowing into QuickBooks automatically. Your books stay current with zero data entry.", "Sincronizado ✓ — cada venda e fatura entra no QuickBooks automaticamente. Sua contabilidade fica em dia sem digitar nada.") : L("QuickBooks isn't connected — connect it in Integrations and I'll keep your books in sync.", "O QuickBooks não está conectado — conecte em Integrações que eu mantenho a contabilidade sincronizada."), next: ok ? undefined : [{ label: L("🔌 Open Integrations", "🔌 Abrir Integrações"), cmd: "open integrations" }], run: (onNav) => onNav?.(ok ? "payments" : "integrations") }; }
+  if (/(instagram|\bpost\b|publica|story|stories|\bfeed\b|social)/.test(s)) { const sm = semMotor("social", real, pt, ctx); if (sm) return sm; const ok = connected("Instagram"); return { intent: "social", cost: ok ? 5 : 0, ctx, reply: ok ? L("Posted ✓ — your AI scheduled an on-brand post to Instagram & Facebook, timed for when your audience is most active. It's in Social.", "Publicado ✓ — sua IA agendou um post na cara da marca pro Instagram e Facebook, na hora de pico do seu público. Está em Social.") : L("Instagram isn't connected yet — connect it in Integrations and I'll post for you.", "O Instagram ainda não está conectado — conecte em Integrações que eu publico por você."), next: ok ? undefined : [{ label: L("🔌 Open Integrations", "🔌 Abrir Integrações"), cmd: "open integrations" }], run: (onNav) => onNav?.(ok ? "social" : "integrations") }; }
+  if (/(quickbooks|accounting|contabil|sync.*(book|nota)|nota fiscal|bookkeep)/.test(s)) { const sm = semMotor("books", real, pt, ctx); if (sm) return sm; const ok = connected("QuickBooks"); return { cost: ok ? 3 : 0, ctx, reply: ok ? L("Synced ✓ — every sale and invoice is flowing into QuickBooks automatically. Your books stay current with zero data entry.", "Sincronizado ✓ — cada venda e fatura entra no QuickBooks automaticamente. Sua contabilidade fica em dia sem digitar nada.") : L("QuickBooks isn't connected — connect it in Integrations and I'll keep your books in sync.", "O QuickBooks não está conectado — conecte em Integrações que eu mantenho a contabilidade sincronizada."), next: ok ? undefined : [{ label: L("🔌 Open Integrations", "🔌 Abrir Integrações"), cmd: "open integrations" }], run: (onNav) => onNav?.(ok ? "payments" : "integrations") }; }
   if (/(integration|integra[çc]|connect|conect|stack|my tools|minhas ferramentas)/.test(s)) return { cost: 0, ctx, reply: L("Here's your connected stack — toggle any tool and I start acting through it.", "Aqui está seu stack conectado — ligue qualquer ferramenta e eu começo a agir através dela."), run: (onNav) => onNav?.("integrations") };
   if (/(open|go to|abrir?|ver)\s+(overview|home|in[íi]cio|dashboard|automa)/.test(s)) return { cost: 0, ctx, reply: L("Here's your Overview — your automations and weekly recap are here.", "Aqui está seu Overview — suas automações e o resumo da semana estão aqui."), run: (onNav) => onNav?.("overview") };
   if (/(billing|cobran|plano|fatur.*plano|top.?up|recarregar|recarga|cr[ée]dito)/.test(s)) return { cost: 0, ctx, reply: L("Opening Billing — top up your Gui credits and manage your plan here.", "Abrindo Plano e cobrança — recarregue seus créditos do Gui e gerencie o plano aqui."), run: (onNav) => onNav?.("billing") };
@@ -2031,18 +2159,18 @@ function guiPlan(text, V, ctx = {}) {
     // list ("Everything you have" tab). Promising "automatically, from now on" was the old lie.
     return { cost: 3, ctx, reply: L(`Saved ✓ — I put "${what} ${day}" on your plan, on the Overview under Automations. Heads up, so there's no confusion: this is your plan inside this cockpit — I prepare it and log it here, I don't send it out on my own. What our servers DO send by themselves (reminders, review requests, win-backs) is listed under "Everything you have".`, `Anotado ✓ — coloquei "${what} ${day}" no seu plano, lá no Overview em Automações. Só pra não ter confusão: isso é o seu plano dentro deste painel — eu preparo e registro aqui, eu não disparo sozinha. O que os nossos servidores mandam sozinhos (lembretes, avaliações, reconquista) está na aba "Tudo que você tem".`), next: [{ label: L("⚙️ See automations", "⚙️ Ver automações"), cmd: "open overview" }], run: (onNav) => { addAutomation(V.label, { what: what.charAt(0).toUpperCase() + what.slice(1), when, ic }); onNav?.("overview"); } };
   }
-  if (/(remind|chase|collect all|chase all|overdue|atrasad|cobrar todos|all unpaid)/.test(s)) { const open = genPayments(V).filter((p) => p.status !== "Paid"); return { intent: "chaseall", cost: 5, ctx, reply: L(`Done ✓ — I sent payment reminders to ${open.length} customer${open.length !== 1 ? "s" : ""} with open invoices. They're in Payments.`, `Pronto ✓ — enviei lembretes de pagamento para ${open.length} cliente${open.length !== 1 ? "s" : ""} com faturas em aberto. Estão em Pagamentos.`), next: [{ label: L("⭐ Ask them for reviews too", "⭐ Pedir avaliações também"), cmd: "request reviews from my recent customers" }], run: (onNav) => onNav?.("payments") }; }
-  if (/(invoice|charge|bill|cobr|fatur|payment|receb)/.test(s)) return { intent: "invoice", cost: 5, ctx: C(target), reply: L(`Consider it handled — I've sent ${target} the invoice with a payment link, and I'll keep an eye on it until it's paid. It's in Payments.`, `Deixa comigo — enviei a fatura para ${target} com o link de pagamento, e fico de olho até ser paga. Está em Pagamentos.`), next: [{ label: L(`📅 Book ${target} too`, `📅 Agendar ${target} também`), cmd: `book them` }, { label: L("⭐ Request a review", "⭐ Pedir avaliação"), cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: target, amount: vnum(V.label, "guiinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); onNav?.("payments"); return undoer([{ view: "payments", id }], "payments"); } };
-  if (/(review|avalia|rating|estrela)/.test(s)) return { cost: 5, ctx: C(who || ctx.customer), reply: L(`With pleasure — I've requested reviews${who ? ` from ${target}` : " from your happiest recent customers"}. It's all tracked in Reputation.`, `Com prazer — pedi as avaliações${who ? ` para ${target}` : " aos seus clientes mais satisfeitos"}. Deixei tudo registrado em Reputação.`), next: [{ label: L("📣 Turn 5★ reviews into ads", "📣 Virar avaliações 5★ em anúncios"), cmd: "launch a promo" }], run: (onNav) => { const rows = (who ? [{ name: target, channel: "WhatsApp" }] : customers.slice(0, 3)).map((c) => ({ view: "reviewreq", id: pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel }) })); onNav?.("reputation"); return undoer(rows, "reputation"); } };
-  if (/(deliver|entrega|dispatch|despach)/.test(s)) return { intent: "deliver", cost: 5, ctx: C(who || ctx.customer), reply: L(`Done ✓ — sent${forTxt} to ${deliveryTab(V).toLowerCase()}. I'll text live updates.`, `Pronto ✓ — enviado${forPt} para ${deliveryTab(V).toLowerCase()}. Vou mandar atualizações ao vivo.`), next: [{ label: L("⭐ Ask for a review on arrival", "⭐ Pedir avaliação na entrega"), cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "deliveries", recordFor("deliveries", target, "Gui", V)); onNav?.("deliveries"); return undoer([{ view: "deliveries", id }], "deliveries"); } };
+  if (/(remind|chase|collect all|chase all|overdue|atrasad|cobrar todos|all unpaid)/.test(s)) { const sm = semMotor("chaseall", real, pt, ctx); if (sm) return sm; const open = genPayments(V).filter((p) => p.status !== "Paid"); return { intent: "chaseall", cost: 5, ctx, reply: L(`Done ✓ — I sent payment reminders to ${open.length} customer${open.length !== 1 ? "s" : ""} with open invoices. They're in Payments.`, `Pronto ✓ — enviei lembretes de pagamento para ${open.length} cliente${open.length !== 1 ? "s" : ""} com faturas em aberto. Estão em Pagamentos.`), next: [{ label: L("⭐ Ask them for reviews too", "⭐ Pedir avaliações também"), cmd: "request reviews from my recent customers" }], run: (onNav) => onNav?.("payments") }; }
+  if (/(invoice|charge|bill|cobr|fatur|payment|receb)/.test(s)) return semMotor("invoice", real, pt, ctx) || { intent: "invoice", cost: 5, ctx: C(target), reply: L(`Consider it handled — I've sent ${target} the invoice with a payment link, and I'll keep an eye on it until it's paid. It's in Payments.`, `Deixa comigo — enviei a fatura para ${target} com o link de pagamento, e fico de olho até ser paga. Está em Pagamentos.`), next: [{ label: L(`📅 Book ${target} too`, `📅 Agendar ${target} também`), cmd: `book them` }, { label: L("⭐ Request a review", "⭐ Pedir avaliação"), cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: target, amount: vnum(V.label, "guiinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); onNav?.("payments"); return undoer([{ view: "payments", id }], "payments"); } };
+  if (/(review|avalia|rating|estrela)/.test(s)) return semMotor("review", real, pt, ctx) || { cost: 5, ctx: C(who || ctx.customer), reply: L(`With pleasure — I've requested reviews${who ? ` from ${target}` : " from your happiest recent customers"}. It's all tracked in Reputation.`, `Com prazer — pedi as avaliações${who ? ` para ${target}` : " aos seus clientes mais satisfeitos"}. Deixei tudo registrado em Reputação.`), next: [{ label: L("📣 Turn 5★ reviews into ads", "📣 Virar avaliações 5★ em anúncios"), cmd: "launch a promo" }], run: (onNav) => { const rows = (who ? [{ name: target, channel: "WhatsApp" }] : customers.slice(0, 3)).map((c) => ({ view: "reviewreq", id: pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel }) })); onNav?.("reputation"); return undoer(rows, "reputation"); } };
+  if (/(deliver|entrega|dispatch|despach)/.test(s)) return semMotor("deliver", real, pt, ctx) || { intent: "deliver", cost: 5, ctx: C(who || ctx.customer), reply: L(`Done ✓ — sent${forTxt} to ${deliveryTab(V).toLowerCase()}. I'll text live updates.`, `Pronto ✓ — enviado${forPt} para ${deliveryTab(V).toLowerCase()}. Vou mandar atualizações ao vivo.`), next: [{ label: L("⭐ Ask for a review on arrival", "⭐ Pedir avaliação na entrega"), cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "deliveries", recordFor("deliveries", target, "Gui", V)); onNav?.("deliveries"); return undoer([{ view: "deliveries", id }], "deliveries"); } };
   if (/(campaign|promo|an[úu]nci|\bad\b|marketing)/.test(s)) return { cost: 0, ctx, reply: L("Let's launch a real one — I've opened Campaigns. Type your offer in ⚡ Flash Campaign, preview exactly who'll get it, then send for real.", "Vamos lançar de verdade — abri Campanhas. Escreva sua oferta no ⚡ Flash Campaign, veja exatamente quem vai receber e envie de verdade."), next: [{ label: L("👥 Build an audience first", "👥 Criar um público antes"), cmd: "build an audience from my best customers" }], run: (onNav) => onNav?.("campaigns") };
-  if (/(order|pedido|book|appointment|agend|marcar|reserv|schedule)/.test(s)) return { cost: 5, ctx: C(target), reply: L(`${act.done}${forTxt} ✓ — it's in the right tab now.`, `${act.done}${forPt} ✓ — já está na aba certa.`), next: [{ label: L("💳 Send the invoice too", "💳 Enviar a fatura também"), cmd: `send an invoice to them` }], run: (onNav) => { const rec = recordFor(act.view, target, "Gui", V); const id = rec ? pushCreated(V.label, act.view, rec) : null; onNav?.(act.view); return id ? undoer([{ view: act.view, id }], act.view) : undefined; } };
-  if (/(follow|nudge|win-?back|lapse|reativ)/.test(s)) return { cost: 3, ctx, reply: L("Consider it handled — I've started a warm follow-up sequence to win them back. You'll find it under Follow-ups.", "Deixa comigo — comecei uma sequência de follow-up pra reconquistá-los. Está na aba Follow-ups."), run: (onNav) => onNav?.("followups") };
-  if (/(audience|p[úu]blico|segment)/.test(s)) return { cost: 5, ctx, reply: L("Built ✓ — an audience of your most engaged customers is ready in Ad Audiences.", "Pronto ✓ — um público com seus clientes mais engajados está pronto em Públicos de Anúncio."), run: (onNav) => { const id = pushCreated(V.label, "audiences", { name: "Gui · best customers", size: vnum(V.label, "guiaud", 1200, 9000), source: "CRM" }); onNav?.("audiences"); return undoer([{ view: "audiences", id }], "audiences"); } };
+  if (/(order|pedido|book|appointment|agend|marcar|reserv|schedule)/.test(s)) return semMotor("book", real, pt, ctx) || { cost: 5, ctx: C(target), reply: L(`${act.done}${forTxt} ✓ — it's in the right tab now.`, `${act.done}${forPt} ✓ — já está na aba certa.`), next: [{ label: L("💳 Send the invoice too", "💳 Enviar a fatura também"), cmd: `send an invoice to them` }], run: (onNav) => { const rec = recordFor(act.view, target, "Gui", V); const id = rec ? pushCreated(V.label, act.view, rec) : null; onNav?.(act.view); return id ? undoer([{ view: act.view, id }], act.view) : undefined; } };
+  if (/(follow|nudge|win-?back|lapse|reativ)/.test(s)) return semMotor("followup", real, pt, ctx) || { cost: 3, ctx, reply: L("Consider it handled — I've started a warm follow-up sequence to win them back. You'll find it under Follow-ups.", "Deixa comigo — comecei uma sequência de follow-up pra reconquistá-los. Está na aba Follow-ups."), run: (onNav) => onNav?.("followups") };
+  if (/(audience|p[úu]blico|segment)/.test(s)) return semMotor("audience", real, pt, ctx) || { cost: 5, ctx, reply: L("Built ✓ — an audience of your most engaged customers is ready in Ad Audiences.", "Pronto ✓ — um público com seus clientes mais engajados está pronto em Públicos de Anúncio."), run: (onNav) => { const id = pushCreated(V.label, "audiences", { name: "Gui · best customers", size: vnum(V.label, "guiaud", 1200, 9000), source: "CRM" }); onNav?.("audiences"); return undoer([{ view: "audiences", id }], "audiences"); } };
   if (/(hour|open|close|price|cost|where|location|menu|service)/.test(s)) { const kb = portalApi.loadKB(V.label, seedKB(V, portalApi.loadProfile(V.label, defProfile(V)))); return { cost: 1, ctx, reply: aiAnswer(text, V, kb) }; }
   return { cost: 0, ctx, reply: L("I can create orders & bookings, send invoices, request reviews, launch promos, start follow-ups, build audiences, or push to delivery. Try: \"send an invoice to my top customer\" — then \"book them too\".", "Eu crio pedidos e agendamentos, envio faturas, peço avaliações, lanço promoções, inicio follow-ups, monto públicos ou mando pra entrega. Tente: \"manda uma fatura pro meu melhor cliente\" — depois \"agenda ele também\"."), next: [{ label: L("💳 Send an invoice", "💳 Enviar fatura"), cmd: "send an invoice to my top customer" }, { label: L("⭐ Request reviews", "⭐ Pedir avaliações"), cmd: "request reviews" }, { label: L("📣 Launch a promo", "📣 Lançar promoção"), cmd: "launch a promo" }] };
 }
-function Gui({ V, onNav }) {
+function Gui({ V, onNav, real = null }) {
   const [open, setOpen] = useState(false);
   const [credits, setCredits] = useState(() => portalApi.loadState("gui_credits", 250));
   const alerts = useMemo(() => guiAlerts(V), [V]);     // proactive radar — real pending items
@@ -2074,7 +2202,20 @@ function Gui({ V, onNav }) {
   useEffect(() => { const h = (e) => { setOpen(true); const cmd = e?.detail?.cmd; if (cmd) setTimeout(() => runRef.current?.(cmd), 80); }; window.addEventListener("gui:open", h); return () => window.removeEventListener("gui:open", h); }, []);
   useEffect(() => { const h = () => setCredits(portalApi.loadState("gui_credits", 250)); window.addEventListener("gui:credits", h); return () => window.removeEventListener("gui:credits", h); }, []);
   const setC = (n) => { setCredits(n); portalApi.saveState("gui_credits", n); window.dispatchEvent(new Event("gui:credits")); };
-  const recharge = () => { setC(credits + 250); toast("250 credits added ✓ — pay-as-you-go, billed to your account"); };
+  // ── ONE BALANCE, AND IT'S THE SERVER'S ────────────────────────────────────────────────────────
+  // `credits` above is a localStorage counter that seeds the SAMPLE cockpit. On a real account the
+  // sidebar already shows the true balance from get_client_data, so rendering this one too put TWO
+  // DIFFERENT balances in front of the same paying client. Worse, recharge() handed out 250 free
+  // credits and printed "billed to your account" — a receipt for a charge that never happened.
+  // Same gate Billing.jsx:195 already uses (`real ? "hidden" : ""`): in real mode the number comes
+  // from the server, the local counter is never touched, and topping up goes through Billing —
+  // the path that actually charges.
+  const realCredits = real && Number.isFinite(Number(real.credits)) ? Number(real.credits) : null;
+  // Ausência ≠ zero: a real account whose balance didn't come back shows "—", never "0 left".
+  const shownCredits = real ? (realCredits == null ? null : realCredits) : credits;
+  const budget = real ? (realCredits == null ? Infinity : realCredits) : credits; // what a cost is checked against
+  const charge = (n) => { if (real || !n) return; setC(credits - n); };            // never debit a server-held balance
+  const recharge = () => { if (real) { onNav?.("billing"); setOpen(false); return; } setC(credits + 250); toast("250 credits added ✓ — pay-as-you-go, billed to your account"); };
   const remember = (t) => { setHistory((h) => { const next = [t, ...h.filter((x) => x !== t)].slice(0, 12); portalApi.saveState("gui_history", next); return next; }); };
   const isPt = (t) => /[ãõçáàâéêíóôú]|\b(cobr|fatur|entreg|agend|marc|reserv|avali|promo|cliente|atrasad|envi|mand|cria|fa[çc]a?|desfaz|quero|pedido|preciso)/i.test(t);
   const doUndo = () => {
@@ -2087,7 +2228,7 @@ function Gui({ V, onNav }) {
   const execute = (res, t) => {
     const undo = res.run ? res.run(onNav) : undefined;
     lastUndo.current = typeof undo === "function" ? undo : null;
-    setC(credits - res.cost);
+    charge(res.cost);
     logUsage(res.cost, t || "");
     setMsgs((m) => [...m, { from: "gui", text: res.reply, cost: res.cost, next: res.next, canUndo: typeof undo === "function" }]);
   };
@@ -2095,7 +2236,7 @@ function Gui({ V, onNav }) {
     if (!pending) return;
     const { res, t } = pending; setPending(null);
     setMsgs((m) => [...m, { from: "you", text: pending.pt ? "✓ Confirmar" : "✓ Confirm" }]);
-    if (res.cost > credits) { setMsgs((m) => [...m, { from: "gui", text: pending.pt ? "Acabaram os créditos — recarregue e eu já faço." : "Out of credits — top up and I'll do it.", lowCredit: true }]); return; }
+    if (res.cost > budget) { setMsgs((m) => [...m, { from: "gui", text: pending.pt ? "Acabaram os créditos — recarregue e eu já faço." : "Out of credits — top up and I'll do it.", lowCredit: true }]); return; }
     execute(res, t);
   };
   const cancelPending = () => { if (!pending) return; const p = pending.pt; setPending(null); setMsgs((m) => [...m, { from: "gui", text: p ? "Cancelado — não enviei nada. Sem cobrança." : "Cancelled — I didn't send anything. No charge." }]); };
@@ -2104,9 +2245,9 @@ function Gui({ V, onNav }) {
     setShowHist(false); setPending(null); lastPt.current = isPt(t);
     if (/^(undo|desfaz|desfazer|cancela|reverte|revert)/i.test(t)) { setMsgs((m) => [...m, { from: "you", text: t }]); setQ(""); doUndo(); return; }
     setMsgs((m) => [...m, { from: "you", text: t }]); setQ(""); remember(t);
-    const res = guiPlan(t, V, ctx);
+    const res = guiPlan(t, V, ctx, real);
     if (res.ctx) setCtx(res.ctx);
-    if (res.cost > credits) { setMsgs((m) => [...m, { from: "gui", text: lastPt.current ? "Você ficou sem créditos pra essa — recarregue e eu já faço." : "You're out of credits for that one — top up and I'll get right on it.", lowCredit: true }]); return; }
+    if (res.cost > budget) { setMsgs((m) => [...m, { from: "gui", text: lastPt.current ? "Você ficou sem créditos pra essa — recarregue e eu já faço." : "You're out of credits for that one — top up and I'll get right on it.", lowCredit: true }]); return; }
     // Approval gate: a money/customer-facing action waits for one-tap Confirm.
     const approvalOn = portalApi.loadState(`${V.label}:settings`, {}).require_approval !== false;
     if (approvalOn && res.intent && HIGH_STAKES.has(res.intent) && res.run) {
@@ -2131,8 +2272,8 @@ function Gui({ V, onNav }) {
     rec.onend = () => setListening(false);
     rec.start();
   };
-  const pct = Math.max(0, Math.min(100, Math.round((credits / 250) * 100)));
-  const low = credits < 30;
+  const pct = shownCredits == null ? 0 : Math.max(0, Math.min(100, Math.round((shownCredits / 250) * 100)));
+  const low = shownCredits != null && shownCredits < 30;
   // Voice presence — one soft spoken hello per session, and ONLY on the click that opens
   // the panel (the user gesture browsers require). sessionStorage guards repeats.
   const greetOnce = () => {
@@ -2162,9 +2303,9 @@ function Gui({ V, onNav }) {
           </div>
           {/* credit meter */}
           <div className="px-4 py-2 border-b border-white/[0.06] shrink-0">
-            <div className="flex items-center justify-between text-[10px] mb-1"><span className="text-g-muted font-bold uppercase tracking-wide">{tr("Credits")}</span><span className={`font-bold ${low ? "text-red-400" : "text-g-word"}`}>{credits} {tr("left")}</span></div>
+            <div className="flex items-center justify-between text-[10px] mb-1"><span className="text-g-muted font-bold uppercase tracking-wide">{tr("Credits")}</span><span className={`font-bold ${low ? "text-red-400" : "text-g-word"}`}>{shownCredits == null ? <span className="text-g-muted" title={tr("Couldn't read your balance")}>—</span> : <>{shownCredits} {tr("left")}</>}</span></div>
             <div className="h-1.5 rounded-full bg-white/10 overflow-hidden"><div className={`h-full rounded-full ${low ? "bg-red-500" : "bg-gradient-to-r from-g-green to-g-gold"}`} style={{ width: `${pct}%` }} /></div>
-            <div className="mt-1 flex items-center justify-between text-[10px] text-g-muted"><span>{tr("Pay-as-you-go · ~5 credits per task")}</span><button onClick={recharge} className="font-bold text-g-gold hover:underline">{tr("+ Recharge")}</button></div>
+            <div className="mt-1 flex items-center justify-between text-[10px] text-g-muted"><span>{tr("Pay-as-you-go · ~5 credits per task")}</span><button onClick={recharge} className="font-bold text-g-gold hover:underline">{real ? tr("Top up in Billing →") : tr("+ Recharge")}</button></div>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-2.5" role="log" aria-live="polite" aria-label={tr("Gui assistant conversation")}>
             {msgs.map((m, i) => (
@@ -2173,7 +2314,7 @@ function Gui({ V, onNav }) {
                   {m.from === "gui" && <div className="text-[9px] font-black uppercase mb-0.5" style={{ color: "#FF8A33" }}>Gui</div>}
                   {m.text}
                   {m.cost > 0 && <span className="ml-1.5 text-[9px] text-g-muted">−{m.cost} cr</span>}
-                  {m.lowCredit && <button onClick={recharge} className="block mt-1.5 text-[11px] font-bold text-g-gold hover:underline">{tr("+ Recharge credits")}</button>}
+                  {m.lowCredit && <button onClick={recharge} className="block mt-1.5 text-[11px] font-bold text-g-gold hover:underline">{real ? tr("Top up in Billing →") : tr("+ Recharge credits")}</button>}
                   {m.canUndo && i === msgs.length - 1 && <button onClick={doUndo} className="block mt-1.5 text-[11px] font-bold text-g-muted hover:text-g-word">{tr("↩ Undo this")}</button>}
                   {m.confirm && pending && i === msgs.length - 1 && (
                     <div className="mt-2 flex gap-1.5">
@@ -2214,7 +2355,10 @@ function Gui({ V, onNav }) {
 export default function Portal() {
   const [authed, setAuthed] = useState(false);
   const [booting, setBooting] = useState(true);
-  const [view, _setView] = useState(() => { try { return new URLSearchParams(window.location.search).get("tab") || "overview"; } catch { return "overview"; } });
+  // VOLTA DO GOOGLE — o callback do login único devolve o dono em /portal?google=…; abrir a aba
+  // da Agenda é o que faz ele VER o estado real (e o aviso vermelho quando o escopo da agenda
+  // não foi concedido). Sem isto, ele cairia no Hoje e acreditaria que deu certo.
+  const [view, _setView] = useState(() => { try { const q = new URLSearchParams(window.location.search); return (q.get("google") ? "schedulesync" : null) || q.get("tab") || "hoje"; } catch { return "hoje"; } });
   // Keep the active section in the URL (?tab=) so Back works and any view is shareable/deep-linkable.
   const setView = useCallback((v) => { _setView(v); try { const u = new URL(window.location.href); u.searchParams.set("tab", v); window.history.replaceState({}, "", u); } catch { /* */ } }, []);
   const [period, setPeriod] = useState("30 days");
@@ -2243,7 +2387,20 @@ export default function Portal() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [me, setMe] = useState(null);            // current session (real or demo) — drives the sidebar identity
-  const [onboarded, setOnboarded] = useState(() => { try { return !!localStorage.getItem("guileo_onboarded"); } catch { return true; } });
+  // 🚨 CLIENTE PAGANTE NÃO É VISITANTE (2026-08-20). Isto olhava SÓ a marca no navegador, então a
+  // dona do negócio clicava no link do próprio e-mail de boas-vindas e caía no assistente de
+  // demonstração: escolhe um nicho, digita o nome do negócio, informa um contato — tudo que já
+  // está na conta dela. Pior: enquanto ela não terminava, o cockpit mostrava um spa INVENTADO
+  // ("Lumière Spa · Miami") com números de mentira, com cara de conta dela.
+  // Quem chega com a chave — no link (`?code=`) ou já salva — está identificado. Não se pergunta
+  // a alguém identificado o que já sabemos: entra direto, nos dados REAIS dela.
+  const [onboarded, setOnboarded] = useState(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get("code")) return true;
+      if (loadDataKey()) return true;
+      return !!localStorage.getItem("guileo_onboarded");
+    } catch { return true; }
+  });
   const [tourDone, setTourDone] = useState(() => { try { return !!localStorage.getItem("guileo_tour_done"); } catch { return true; } });
   const [fvDone, setFvDone] = useState(true);   // first-value guided path — only fires right after a fresh wizard
   const finishFV = () => { setFvDone(true); try { localStorage.setItem("guileo_firstvalue_done", "1"); } catch { /* */ } };
@@ -2268,14 +2425,27 @@ export default function Portal() {
   // Demo stays 100% intact: `real` only becomes truthy when the RPC returns data.
   const [real, setReal] = useState(null);
   const [realLoading, setRealLoading] = useState(false);
+  const [realFalha, setRealFalha] = useState(null);   // motivo da última falha de leitura, ou null
   const realSeq = useRef(0);
   const refreshReal = useCallback(async () => {
     const key = loadDataKey();
     const seq = ++realSeq.current;                  // claim the latest-request slot FIRST…
     if (!me?.email || me.demo || !key) { if (seq === realSeq.current) setReal(null); return; } // …so a late clear can't wipe fresh data from a still-in-flight fetch
     setRealLoading(true);
-    const data = await fetchRealData(me.email, key); // null on any error — never throws
-    if (seq === realSeq.current) { setReal(data); setRealLoading(false); }
+    // 🚨 UM PISCAR DE REDE APAGAVA A CONTA INTEIRA (auditoria 2026-08-20).
+    // `setReal(null)` desliga a camada de honestidade toda de uma vez: KPIs voltam a ser amostra,
+    // receita vira `V.impact.total`, agenda vira exemplo, selos vermelhos reaparecem. Um cliente
+    // PAGANTE lia números fabricados como se fossem dele — e o aviso ainda o culpava.
+    // Agora: falha de LEITURA preserva o que já estava na tela (o padrão que SellerDashboard.jsx:156
+    // já usava e que nunca chegou aqui) e guarda o MOTIVO; só credencial ausente/errada zera.
+    const res = await fetchRealDataDetalhado(me.email, key);
+    if (seq !== realSeq.current) return;
+    setRealFalha(res.data ? null : res.motivo);
+    if (res.data) setReal(res.data);
+    else if (res.motivo === "chave_invalida" || res.motivo === "sem_credencial") setReal(null);
+    // rede/servidor/resposta_estranha → mantém o `real` anterior. Dado velho é melhor que dado
+    // inventado, desde que a tela DIGA que não conseguiu atualizar (é o que o aviso faz agora).
+    setRealLoading(false);
   }, [me]);
   // SELF-SERVE ACTIVATION LINK — the welcome email's CTA lands on /portal?code=<key>. Auto-apply
   // the connection code once on boot (same setter + event Settings uses), then strip it from the URL
@@ -2291,6 +2461,19 @@ export default function Portal() {
     } catch { /* private mode / bad URL — code stays visible as email fallback */ }
   }, []);
   useEffect(() => { refreshReal(); }, [refreshReal]); // on boot / session change
+  // ── GUILEO APP — registra o service worker (public/sw.js) com escopo "/portal" e SÓ aqui.
+  // Escopo apertado de propósito: a landing e os sites de cliente em /site/* (que têm o worker
+  // deles, por tenant) nunca ficam sob este. O worker cacheia SÓ a casca estática — /api/** é
+  // rede pura, porque cockpit de cliente pagante mostrando o número de ontem com cara de hoje é
+  // pior que tela em branco. Falha de registro é silenciosa: o app vira site, e site funciona.
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    if (window.location.protocol !== "https:" && window.location.hostname !== "localhost") return;
+    const t = setTimeout(() => {
+      navigator.serviceWorker.register("/sw.js", { scope: "/portal" }).catch(() => { /* sem app offline; o cockpit segue normal */ });
+    }, 1500); // depois da primeira pintura — instalar worker nunca pode atrasar o primeiro número na tela
+    return () => clearTimeout(t);
+  }, []);
   const lastRealFetch = useRef(0);
   useEffect(() => {
     // staleness gate: alt-tab spam must not turn into a burst of get_client_data RPCs
@@ -2338,6 +2521,15 @@ export default function Portal() {
     // Assisted-trial personalization: a /demo/:slug prospect arrives with pending_onboard
     // {extra:{name}} seeded — show THEIR business name over the sample one while in demo mode,
     // so the cockpit feels like theirs before they ever pay. Real accounts use their profile.
+    // 🚨 CONTA REAL USA A IDENTIDADE REAL (2026-08-20). O comentário acima já prometia isto — e o
+    // código NUNCA cumpriu: com `real` preenchido ele devolvia `base`, o negócio de AMOSTRA. Foi
+    // assim que a primeira cliente pagante abriu o cockpit dela e leu "Lumière Spa · Miami".
+    // Agora `get_client_data` sobe `identity` (nome, atendente, logo, cor, número) e ela manda.
+    // O endereço da amostra é APAGADO junto: negócio certo com cidade errada é pior que sem cidade.
+    const ident = real?.identity;
+    if (ident?.business) {
+      return { ...base, business: { ...base.business, name: String(ident.business).slice(0, 80), place: "" } };
+    }
     if (!real) {
       try {
         const pend = portalApi.loadState("pending_onboard", null);
@@ -2433,6 +2625,7 @@ export default function Portal() {
   // Lazy view registry: each entry is a thunk so ONLY the active view's element tree
   // is built per render (was instantiating all ~40 components on every toast/lang/period change).
   const views = {
+    hoje: () => <Hoje V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} onRefresh={refreshReal} refreshing={realLoading} />,
     overview: () => <Overview V={V} onNav={setView} sections={sections} period={period} real={real} onRefresh={refreshReal} refreshing={realLoading} autoSpeak={speakWeekly} onAutoSpoke={() => setSpeakWeekly(false)} email={me?.email} dataKey={loadDataKey()} />,
     leads: () => <LeadsDigest V={V} onNav={setView} lang={lang} real={real} />,
     leadstoday: () => <LeadsToday V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
@@ -2440,13 +2633,16 @@ export default function Portal() {
     deliveries: () => <Deliveries V={V} />,
     inbox: () => <Inbox V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
     impact: () => <GuileoImpact V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
-    followups: () => <Followups V={V} />,
-    waitlist: () => <Waitlist V={V} />,
+    // Followups.jsx:9 gates its REAL sender on `real && email && dataKey`. Mounting it with only
+    // {V} left `live` permanently false: the /api/growth-intel "reengage" call was dead code and every
+    // Nudge fell through to the demo toast "Done — I've nudged X for you." without contacting anyone.
+    followups: () => <Followups V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    waitlist: () => <Waitlist V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     recurring: () => <Recurring V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     reputation: () => <Reputation V={V} onNav={setView} />,
     loyalty: () => <Loyalty V={V} />,
     payments: () => <Payments V={V} />,
-    team: () => <Team V={V} />,
+    team: () => <Team V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     locations: () => <Locations V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     operations: () => <Operations V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     schedule: () => <ScheduleScreen V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
@@ -2455,14 +2651,14 @@ export default function Portal() {
     googlehub: () => <GoogleHub V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     socialhub: () => <SocialHub V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     emergency: () => <EmergencyLog V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
-    catalog: () => <CatalogScreen V={V} />,
+    catalog: () => <CatalogScreen V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     social: () => <SocialInbox V={V} />,
     analytics: () => <AIAnalytics V={V} onNav={setView} sections={sections} real={real} email={me?.email} dataKey={loadDataKey()} />,
     insights: () => <AIInsights V={V} real={real} onNav={setView} sections={sections} />,
     integrations: () => <Integrations V={V} onNav={setView} lang={lang} me={me} />,
-    liveorders: () => <LiveOrders V={V} />,
-    kitchen: () => <Kitchen V={V} />,
-    menu: () => <MenuView V={V} />,
+    liveorders: () => <LiveOrders V={V} real={real} />,
+    kitchen: () => <Kitchen V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    menu: () => <MenuView V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     customers: () => <Customers V={V} onNav={setView} />,
     crm: () => <CRM360 V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
     command: () => <CommandCenter V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
@@ -2482,12 +2678,13 @@ export default function Portal() {
     campaigns: () => <Campaigns V={V} onNav={setView} />,
     audiences: () => <Audiences V={V} onNav={setView} />,
     calllogs: () => <CallLogs V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
-    dialer: () => <Dialer />,
+    dialer: () => <Dialer real={real} />,
     whatsapp: () => <Convos V={V} title="WhatsApp" real={real} />,
     sms: () => <Convos V={V} title="SMS" real={real} />,
-    channels: () => <Channels />,
+    channels: () => <Channels real={real} email={me?.email} dataKey={loadDataKey()} />,
     ads: () => <Ads email={me?.email} dataKey={loadDataKey()} />,
     support: () => <Support onNav={setView} email={me?.email} dataKey={loadDataKey()} />,
+    relacionamento: () => <Relacionamento onNav={setView} email={me?.email} dataKey={loadDataKey()} />,
     trainer: () => <Trainer V={V} onNav={setView} email={me?.email} dataKey={loadDataKey()} lang={lang} />,
     kb: () => <KnowledgeBase V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     docs: () => <Docs real={real} />,
@@ -2686,8 +2883,24 @@ export default function Portal() {
             <button onClick={() => setView("settings")} className="w-full text-left rounded-xl2 border border-g-gold/40 bg-g-gold/[0.10] px-4 py-3 flex flex-wrap items-center gap-3 hover:border-g-gold/70 transition">
               <span className="text-lg">📊</span>
               <div className="min-w-0 flex-1">
-                <div className="text-[13px] font-bold text-g-word">{tr("You're seeing sample data — this isn't your real account yet.")}</div>
-                <div className="text-[11.5px] text-g-muted">{tr("Paste your connection code (from your welcome email) in Settings to see your real calls, bookings and revenue.")}</div>
+                {/* O aviso tem que dizer a VERDADE do caso. Antes era sempre "cole seu código" —
+                    inclusive para quem já tinha colado e só perdeu a rede por um segundo. */}
+                {realFalha === "rede" || realFalha === "servidor" || realFalha === "resposta_estranha" ? (
+                  <>
+                    <div className="text-[13px] font-bold text-g-word">{tr("I couldn't refresh your data just now.")}</div>
+                    <div className="text-[11.5px] text-g-muted">{tr("This is what I read last — not a live reading. Check your connection and try again.")}</div>
+                  </>
+                ) : realFalha === "chave_invalida" ? (
+                  <>
+                    <div className="text-[13px] font-bold text-g-word">{tr("Your connection code isn't matching.")}</div>
+                    <div className="text-[11.5px] text-g-muted">{tr("Paste it again in Settings — it's in your welcome email. Nothing on screen is your real data until it matches.")}</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-[13px] font-bold text-g-word">{tr("You're seeing sample data — this isn't your real account yet.")}</div>
+                    <div className="text-[11.5px] text-g-muted">{tr("Paste your connection code (from your welcome email) in Settings to see your real calls, bookings and revenue.")}</div>
+                  </>
+                )}
               </div>
               <span className="shrink-0 rounded-full bg-g-gold px-3 py-1.5 text-[12px] font-extrabold text-black">{tr("Connect →")}</span>
             </button>
@@ -2705,7 +2918,7 @@ export default function Portal() {
       </main>
 
       {/* Gui — the AI assistant that executes tasks (floating, from any view) */}
-      <Gui V={V} onNav={setView} />
+      <Gui V={V} onNav={setView} real={real} />
 
       {paletteOpen && <Palette V={V} sections={sections} onNav={setView} onClose={() => setPaletteOpen(false)} />}
       <Toaster />

@@ -2370,7 +2370,7 @@ function ctaBrand(label, href, accent) {
 
 // The branded shell. brand = { business, logo_url, accent, agent_name, lang }.
 // bodyHtml is trusted, pre-assembled markup from the builders below (they escape their own inputs).
-export function clientEmailShell({ brand = {}, title = "", preheader = "", eyebrow = "", bodyHtml = "", ctaText = "", ctaUrl = "", footerNote = "", unsubscribeUrl = "", lang } = {}) {
+export function clientEmailShell({ brand = {}, title = "", preheader = "", eyebrow = "", bodyHtml = "", ctaText = "", ctaUrl = "", footerNote = "", unsubscribeUrl = "", recvNote = "", lang } = {}) {
   const accent = _isHex(brand.accent) ? String(brand.accent).trim() : "#FF8A33";
   // accent  = fundo de botão / filete (cru, é a cor da marca)
   // accentT = a MESMA cor usada como TEXTO, clareada até ser legível na casca escura.
@@ -2383,7 +2383,12 @@ export function clientEmailShell({ brand = {}, title = "", preheader = "", eyebr
   const lg = lang || brand.lang || "en";
   const htmlLang = lg === "pt" ? "pt-BR" : lg === "es" ? "es" : "en";
   const powered = lg === "pt" ? "com tecnologia Guileo" : lg === "es" ? "con tecnología de Guileo" : "powered by Guileo";
-  const recv = lg === "pt" ? `Você recebe este email de ${business}.` : lg === "es" ? `Recibe este correo de ${business}.` : `You're receiving this from ${business}.`;
+  // `recvNote` existe porque esta casca nasceu para o e-mail que o CLIENTE manda ao cliente DELE
+  // ("você recebe este email de Natura Spa"). O Growth Report usa a mesma casca — logo e cor do
+  // cliente no topo, porque o relatório é sobre ele — mas quem MANDA é a Guileo. Sem esta saída,
+  // a Lilian receberia um e-mail dizendo que ela mesma o enviou. Quem não passa nada continua
+  // com a frase de sempre (zero regressão nos e-mails de marca).
+  const recv = recvNote ? esc(recvNote) : lg === "pt" ? `Você recebe este email de ${business}.` : lg === "es" ? `Recibe este correo de ${business}.` : `You're receiving this from ${business}.`;
   const header = logo
     ? `<a href="${B.site}" style="text-decoration:none;display:inline-block;"><img src="${esc(logo)}" height="42" alt="${business}" style="display:inline-block;max-height:48px;max-width:220px;height:auto;width:auto;border:0;outline:none;" /></a>`
     : `<span style="display:inline-block;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:24px;font-weight:800;letter-spacing:-.3px;color:${B.ink2};">${business}</span>`;
@@ -3201,4 +3206,179 @@ export function demoAnalysisEmail({ name = "", business = "your business", achad
   <div align="center">${cta(t.cta, link)}</div>
   <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
   return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+}
+
+// ── O E-MAIL QUE ENTREGA O GROWTH REPORT ──────────────────────────────────────────────────────
+// PRIMEIRO CASO REAL: Lilian, dona do Natura Spa + Salon (score 69, /natura → /apresentacao/:id).
+//
+// O QUE ESTE E-MAIL É: o carregador do relatório, não o relatório. A página (/apresentacao/:id)
+// tem os 6 aspectos, os concorrentes, a estratégia inteira. O e-mail tem UMA função — fazer o
+// dono clicar. Por isso: score grande, as 2-3 notas mais baixas em uma linha cada, o dinheiro em
+// jogo, botão. Nada mais. Relatório inteiro dentro do e-mail = parede de texto que ninguém lê e
+// clique que não acontece (mesma lição do demoAnalysisEmail logo acima).
+//
+// ⚠️ NÚMERO SEM PREMISSA É PROIBIDO NESTA BASE. As previsões ("$1.278/mês em risco") são ESTIMATIVA
+// construída sobre premissa declarada (1 em 3 ligações vira agendamento, ticket médio real do
+// catálogo). O motor já devolve `premissa` junto de cada valor — este template imprime a premissa
+// SEMPRE, colada no número. Se a previsão vier sem premissa, o número NÃO é impresso: preferimos
+// mostrar menos a mostrar um número que o dono não consegue auditar na primeira pergunta.
+//
+// Marca: logo + cor do cliente (clientEmailShell), igual ao moneyRecoveredEmail. Logo .svg é
+// recusado pela casca (Gmail/Outlook não renderizam) e cai no nome do negócio em texto.
+const _ASPECTO_LABEL = {
+  presenca_web: { pt: "Presença web", en: "Web presence", es: "Presencia web", emoji: "🌐" },
+  descoberta: { pt: "Descoberta (Google)", en: "Discovery (Google)", es: "Descubrimiento (Google)", emoji: "🔎" },
+  redes_sociais: { pt: "Redes sociais", en: "Social media", es: "Redes sociales", emoji: "📱" },
+  captura_de_leads: { pt: "Captura de leads", en: "Lead capture", es: "Captura de leads", emoji: "🧲" },
+  atendimento: { pt: "Atendimento", en: "Phone coverage", es: "Atención", emoji: "📞" },
+  vendas_digitais: { pt: "Vendas digitais", en: "Digital sales", es: "Ventas digitales", emoji: "💳" },
+};
+const _PREVISAO_LABEL = {
+  receita_em_risco_estimada_mes: { pt: "Receita em risco / mês", en: "Revenue at risk / month", es: "Ingresos en riesgo / mes" },
+  ligacoes_perdidas_estimadas_mes: { pt: "Ligações perdidas / mês", en: "Missed calls / month", es: "Llamadas perdidas / mes" },
+};
+// A premissa do motor é longa de propósito (ela é auditável). No e-mail ela precisa CABER ao lado
+// do número — cortamos na primeira frase e, se ainda for longa, em ~150 caracteres com reticências.
+// O texto integral continua na página, que é para onde o botão leva.
+const _resumoPremissa = (s) => {
+  const t = String(s || "").replace(/\s+/g, " ").trim();
+  if (!t) return "";
+  const primeira = t.split(/(?<=[.!?])\s/)[0] || t;
+  return primeira.length > 150 ? primeira.slice(0, 147).trimEnd() + "…" : primeira;
+};
+
+export function growthReportEmail({ business = "", agentName = "Gui", score = 0, aspectos = [], previsoes = {}, estrategia = [], link = "", logo = "", accent = "", lang = "pt", idiomas = 3 } = {}) {
+  const lg = lang === "en" ? "en" : lang === "es" ? "es" : "pt";
+  const acc = _isHex(accent) ? String(accent).trim() : "#FF8A33";
+  const bizName = String(business || "seu negócio").slice(0, 90);
+  const biz = esc(bizName);
+  const agente = esc(String(agentName || "Gui").slice(0, 40));
+  const nota = Math.max(0, Math.min(100, Math.round(Number(score) || 0)));
+  const url = /^https?:\/\//i.test(String(link || "")) ? String(link).slice(0, 400) : B.site;
+  const langs = Math.max(1, Math.round(Number(idiomas) || 3));
+
+  const T = {
+    pt: {
+      subject: `${bizName}: seu Growth Report está pronto (nota ${nota}/100)`,
+      pre: `As notas por aspecto, o que está aberto e quanto isso custa por mês.`,
+      eyebrow: "Growth Report",
+      title: `${bizName}: o diagnóstico está pronto`,
+      lead: `Olhamos o <b style="color:${B.ink};">${biz}</b> por fora, como um cliente olha: site, ficha do Google, redes, os canais de contato e as horas em que o telefone toca sem ninguém. Saiu uma nota por aspecto e um plano — está tudo na página.`,
+      scoreLabel: "Nota geral do negócio",
+      scoreSub: "média dos 6 aspectos avaliados",
+      fracosT: "Onde a nota cai mais",
+      dinheiroT: "O que isso custa por mês",
+      semPrevisao: "As previsões de receita estão na página, com a premissa de cada número.",
+      passoT: "Primeiro passo",
+      cta: "Ver meu relatório completo →",
+      agente: `Quem cobre essas horas é a <b style="color:${B.ink};">${agente}</b> — atende 24/7, em ${langs} idiomas, no número que vocês já têm.`,
+      foot: "Cada número acima é estimativa com premissa declarada — não é medição. O relatório mostra a conta inteira.",
+      recv: `Este relatório foi preparado e enviado pela Guileo para ${bizName}.`,
+    },
+    es: {
+      subject: `${bizName}: su Growth Report está listo (nota ${nota}/100)`,
+      pre: `Las notas por aspecto, lo que está abierto y cuánto cuesta al mes.`,
+      eyebrow: "Growth Report",
+      title: `${bizName}: el diagnóstico está listo`,
+      lead: `Miramos <b style="color:${B.ink};">${biz}</b> desde afuera, como lo mira un cliente: sitio, ficha de Google, redes, los canales de contacto y las horas en que el teléfono suena sin nadie. Salió una nota por aspecto y un plan — está todo en la página.`,
+      scoreLabel: "Nota general del negocio",
+      scoreSub: "promedio de los 6 aspectos evaluados",
+      fracosT: "Donde más baja la nota",
+      dinheiroT: "Lo que eso cuesta al mes",
+      semPrevisao: "Las previsiones de ingresos están en la página, con la premisa de cada número.",
+      passoT: "Primer paso",
+      cta: "Ver mi informe completo →",
+      agente: `Quien cubre esas horas es <b style="color:${B.ink};">${agente}</b> — atiende 24/7, en ${langs} idiomas, en el número que ya tienen.`,
+      foot: "Cada número de arriba es una estimación con premisa declarada — no es una medición. El informe muestra la cuenta entera.",
+      recv: `Este informe fue preparado y enviado por Guileo para ${bizName}.`,
+    },
+    en: {
+      subject: `${bizName}: your Growth Report is ready (score ${nota}/100)`,
+      pre: `Scores per area, what's open, and what it costs per month.`,
+      eyebrow: "Growth Report",
+      title: `${bizName}: the diagnosis is ready`,
+      lead: `We looked at <b style="color:${B.ink};">${biz}</b> from the outside, the way a customer does: site, Google listing, socials, the contact channels, and the hours the phone rings with nobody there. It produced a score per area and a plan — it's all on the page.`,
+      scoreLabel: "Overall business score",
+      scoreSub: "average of the 6 areas evaluated",
+      fracosT: "Where the score drops most",
+      dinheiroT: "What that costs per month",
+      semPrevisao: "The revenue forecasts are on the page, each with its stated assumption.",
+      passoT: "First move",
+      cta: "See my full report →",
+      agente: `The one covering those hours is <b style="color:${B.ink};">${agente}</b> — answering 24/7, in ${langs} languages, on the number you already have.`,
+      foot: "Every number above is an estimate with a stated assumption — not a measurement. The report shows the full math.",
+      recv: `This report was prepared and sent by Guileo for ${bizName}.`,
+    },
+  }[lg];
+
+  // ── SCORE em destaque ──────────────────────────────────────────────────────────────────────
+  const heroScore = panel(`
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:${B.muted};">${esc(T.scoreLabel)}</div>
+    <div style="margin-top:6px;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:52px;line-height:1;font-weight:900;letter-spacing:-1.5px;color:${_textAccent(acc, B.panel)};">${nota}<span style="font-size:22px;font-weight:800;color:${B.muted};letter-spacing:0;">/100</span></div>
+    <div style="margin-top:7px;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};">${esc(T.scoreSub)}</div>`, "22px 22px");
+
+  // ── AS 2-3 NOTAS MAIS BAIXAS ───────────────────────────────────────────────────────────────
+  // Só entra aspecto com nota real (número) e abaixo de 100 — listar um aspecto nota 100 como
+  // "onde a nota cai" é ruído que faz o dono desconfiar do resto do relatório.
+  const fracos = (Array.isArray(aspectos) ? aspectos : [])
+    .filter((a) => a && Number.isFinite(Number(a.score)) && Number(a.score) < 100)
+    .sort((a, b) => Number(a.score) - Number(b.score))
+    .slice(0, 3);
+  const linhaFraca = (a) => {
+    const meta = _ASPECTO_LABEL[a.nome] || {};
+    const nome = esc(meta[lg] || meta.pt || String(a.nome || "").replace(/_/g, " "));
+    const n = Math.max(0, Math.round(Number(a.score)));
+    return `<tr><td style="padding:9px 0;border-bottom:1px solid ${B.line};font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;">
+      <span style="font-size:15px;">${meta.emoji || "•"}</span>
+      <span style="font-size:15px;color:${B.ink};font-weight:600;">&nbsp;${nome}</span>
+      <span style="float:right;font-size:15px;font-weight:800;color:${n < 50 ? B.gold : B.ink2};">${n}</span>
+    </td></tr>`;
+  };
+  const blocoFracos = fracos.length ? `
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:${B.muted};margin:26px 0 4px;">${esc(T.fracosT)}</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${fracos.map(linhaFraca).join("")}</table>` : "";
+
+  // ── O DINHEIRO EM JOGO — número SEMPRE colado na premissa ──────────────────────────────────
+  const moedaSimbolo = (m) => (String(m || "").toUpperCase() === "BRL" ? "R$" : "$");
+  const previsaoLinhas = Object.entries(previsoes || {})
+    .filter(([, p]) => p && Number.isFinite(Number(p.valor)) && _resumoPremissa(p.premissa))
+    .slice(0, 2)
+    .map(([k, p]) => {
+      const meta = _PREVISAO_LABEL[k] || {};
+      const rotulo = esc(meta[lg] || meta.pt || String(k).replace(/_/g, " "));
+      const v = Math.round(Number(p.valor));
+      const val = p.moeda ? `${moedaSimbolo(p.moeda)}${v.toLocaleString("en-US")}` : v.toLocaleString("en-US");
+      return `<tr><td style="padding:12px 0;border-bottom:1px solid ${B.line};font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;">
+        <div style="font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:${B.muted};">${rotulo}</div>
+        <div style="margin-top:3px;font-size:28px;line-height:1.1;font-weight:900;letter-spacing:-.6px;color:${B.gold};">~${esc(val)}</div>
+        <div style="margin-top:5px;font-size:12px;line-height:1.6;color:${B.muted};">${esc(_resumoPremissa(p.premissa))}</div>
+      </td></tr>`;
+    }).join("");
+  const blocoDinheiro = previsaoLinhas ? `
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:${B.muted};margin:26px 0 2px;">${esc(T.dinheiroT)}</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${previsaoLinhas}</table>`
+    : `<p style="margin:22px 0 0 0;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.65;color:${B.muted};">${esc(T.semPrevisao)}</p>`;
+
+  // ── O PRIMEIRO PASSO — uma linha, a prioridade 1 da estratégia ─────────────────────────────
+  // A estratégia inteira (4+ frentes, produto Guileo em cada uma) vive na página. Aqui entra só a
+  // de prioridade 1: sem ela o e-mail diagnostica e não aponta saída; com a lista toda, vira o
+  // relatório de novo e o botão perde a razão de existir.
+  const passo1 = (Array.isArray(estrategia) ? estrategia : [])
+    .filter((e) => e && e.recomendacao)
+    .sort((a, b) => (Number(a.prioridade) || 99) - (Number(b.prioridade) || 99))[0];
+  const blocoPasso = passo1 ? `
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:${B.muted};margin:26px 0 4px;">${esc(T.passoT)}</div>
+    <p style="margin:0;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:14.5px;line-height:1.7;color:${B.ink};">${esc(String(passo1.recomendacao).slice(0, 220))}</p>` : "";
+
+  const bodyHtml = `${_bp(T.lead)}${heroScore}${blocoFracos}${blocoDinheiro}${blocoPasso}
+    <p style="margin:22px 0 0 0;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:14.5px;line-height:1.7;color:${B.ink2};">${T.agente}</p>`;
+
+  return {
+    subject: T.subject,
+    html: clientEmailShell({
+      brand: { business: bizName, logo_url: logo, accent: acc, lang: lg },
+      title: T.title, preheader: T.pre, eyebrow: T.eyebrow,
+      bodyHtml, ctaText: T.cta, ctaUrl: url, footerNote: T.foot, recvNote: T.recv, lang: lg,
+    }),
+  };
 }

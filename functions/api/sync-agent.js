@@ -60,7 +60,20 @@ export async function onRequestPost(context) {
     // que o servidor já conhece. Agora tem cadeia de resgate e, se tudo falhar, RECUSA o sync —
     // melhor não sincronizar do que despersonalizar o agente de quem paga.
     let business = (b.business || "").toString().slice(0, 160);
-    const industry = (b.industry || "").toString().slice(0, 80);
+    // ⚠️ A INDÚSTRIA VEM DO PERFIL QUANDO NÃO É PASSADA (2026-08-18). Ela só chegava pelo CORPO da
+    // requisição — e o re-sync automático (agent-evolve) não manda corpo nenhum. Resultado: `industry`
+    // sempre vazio, e `licoesPara(ind)` nunca casava um vertical: as lições de SPA, CLÍNICA,
+    // RESTAURANTE e JURÍDICO existiam no código e não chegavam a NENHUM agente já nascido.
+    // Descoberto ao verificar (não supor) se o vocabulário de spa tinha entrado na Lilian: não tinha.
+    // O perfil já guardava `industry: "salon"` o tempo todo. É a mesma família do defeito do dia:
+    // o dado existe, o caminho até quem usa é que estava partido.
+    let industry = (b.industry || "").toString().slice(0, 80);
+    if (!industry) {
+      try {
+        const pi = await rpc("get_client_profile", { p_secret: env.INGEST_SECRET || "", p_email: email });
+        if (pi.ok) { const pj = await pi.json().catch(() => null); industry = (pj?.industry || "").toString().slice(0, 80); }
+      } catch { /* sem perfil o agente sincroniza com as universais — degrada, não quebra */ }
+    }
     const lang = ["pt", "es", "en"].includes(b.lang) ? b.lang : "en";
     const brain = (b.brain || "").toString().slice(0, 4000);
 
@@ -69,7 +82,21 @@ export async function onRequestPost(context) {
     let kbBrain = brain;
     try {
       const kr = await rpc("kb_for_agent", { p_secret: env.INGEST_SECRET || "", p_email: email });
-      if (kr.ok) { const kb = ((await kr.json()) || "").toString().slice(0, 1600); if (kb.trim()) kbBrain = `${brain || ""}\n\nBUSINESS FAQ (answer these exactly as the owner wrote them):\n${kb}`.trim(); }
+      // ⚠️ O CORTE ERA 1.600 E APAGAVA O NEGÓCIO INTEIRO (2026-08-17).
+      // A RPC `kb_for_agent` monta a base com orçamento de 12.000 caracteres e só descarta o que
+      // NÃO CABE INTEIRO — ou seja, ela já é a guardiã do tamanho. Aqui embaixo havia um segundo
+      // corte de 1.600 que ninguém via, e ele mandava fora tudo que passasse disso.
+      // Medido no Natura Spa: 16 itens de conhecimento, 7.738 caracteres. O item "WHO AM I" (tom e
+      // maneira) sozinho ocupa 1.369 — então sobravam 231 caracteres para os outros QUINZE.
+      // Chegavam na agente: a personalidade. Ficavam de fora: a regra de preço por unidade, o
+      // "nunca invente serviço", o "nunca finja agendamento", horários, endereços, telefones,
+      // profissionais. A dona treinou 16 respostas e a agente recebeu uma.
+      // E o corte era SILENCIOSO: o sync devolvia ok, o painel dizia "treinada", e 80% do treino
+      // nunca existiu. Sucesso relatado sobre trabalho não feito — o defeito da casa, na peça mais
+      // cara que existe: o cérebro que atende o cliente do cliente.
+      // O teto agora é o mesmo da RPC. Se um dia precisar limitar, o lugar é LÁ, onde a decisão é
+      // por item inteiro e o que sobra é ANUNCIADO ("N more entries did not fit").
+      if (kr.ok) { const kb = ((await kr.json()) || "").toString().slice(0, 12000); if (kb.trim()) kbBrain = `${brain || ""}\n\nBUSINESS FAQ (answer these exactly as the owner wrote them):\n${kb}`.trim(); }
     } catch { /* KB is a bonus — never blocks a sync */ }
 
     // PRICES — inject the tenant's REAL live menu so editing the brain never strips the prices the Gui
@@ -160,6 +187,13 @@ export async function onRequestPost(context) {
           primary: cc?.agent?.language || null,
           voice: cc?.tts?.voice_id || null,
           stability: cc?.tts?.stability ?? null,
+          // O MOTOR, não só a voz (2026-08-17). Um motor monolíngue inglês passou meses aqui sem
+          // aparecer porque a prova só mostrava a VOZ — e voz brasileira em motor inglês parece
+          // certo no cadastro e sai errado na boca. Todo campo que pode quebrar precisa aparecer
+          // na leitura de volta, senão a prova prova a coisa errada.
+          model: cc?.tts?.model_id || null,
+          model_by_lang: Object.fromEntries(Object.keys(presets).sort()
+            .map((k) => [k, presets[k]?.overrides?.tts?.model_id || "(herda a base)"])),
           switchable: Object.keys(presets).sort(),
           // qual VOZ cada idioma usa — é isso que prova que o português não sai com sotaque gringo
           voice_by_lang: Object.fromEntries(Object.keys(presets).sort()

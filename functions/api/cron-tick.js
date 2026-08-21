@@ -142,6 +142,16 @@ export async function onRequest(context) {
       // dunning grace-period sweep — dry-run until DUNNING_ENFORCE='1'; claim-deduped so an
       // hourly re-run never spams the last-call email or double-pauses (safe to run every hour).
       targets.push({ name: "dunning-sweep", url: `${base}/api/dunning-sweep?token=${t}` });
+      // ⚠️ PASSOU DE 1×/DIA PARA DE HORA EM HORA (2026-08-17), e o motivo é um incidente real.
+      // Enquanto isto rodava só às 13h UTC, "atrasado" também significava só "lição nova". O catálogo
+      // do Natura foi corrigido às 18h e a Lilian seguiu cotando o preço velho AO TELEFONE — o
+      // conserto existia no banco e não chegava em quem atende. Agora `agentes_atrasados` também
+      // acusa CATÁLOGO e CONHECIMENTO mexidos depois do último sync (achou 3 agentes que o critério
+      // antigo jurava estarem em dia), e a varredura roda toda hora para que a distância entre
+      // "o dono mudou o preço" e "a agente sabe" seja no máximo 60 minutos, não 24 horas.
+      // Continua barato quando não há nada: a rota devolve na hora se a lista vier vazia, e o sync
+      // só toca em quem realmente mudou.
+      targets.push({ name: "agent-evolve", url: `${base}/api/agent-evolve?token=${t}` });
       // QUALIDADE DA GUI — roda o golden set (genérico + os 13 casos POR VERTICAL) contra o
       // cérebro real e grava a nota em agent_evals. Só na 1ª hora do dia (00h UTC) pra não
       // gastar modelo de hora em hora; é medição, não operação.
@@ -156,7 +166,12 @@ export async function onRequest(context) {
       // UMA janela por dia, e um tick perdido custava a noite inteira — foi o que aconteceu em
       // 07/08, 13/08 e 14/08. A 2ª chance é grátis: `ops_run_claim` (janela de 20h) devolve
       // "ja_rodou_hoje" e sai sem chamar modelo se a 1ª tiver dado certo.
-      if (hourUTC === 0 || hourUTC === 1) targets.push({ name: "agent-eval", url: `${base}/api/agent-eval?cadeia=1&token=${t}` });
+      // ⏸️ DESLIGADO A PEDIDO DO LUIS (2026-08-18): o eval noturno gasta crédito Anthropic todo
+      // dia para medir o cérebro de TEXTO — e a ligação telefônica, que é o produto, roda inteira
+      // na ElevenLabs (LLM gpt-4o de lá) sem tocar em Anthropic. Em 17/08 as rodadas repetidas do
+      // harness ZERARAM o saldo e derrubaram o chat do site no fallback. Medição não pode custar a
+      // operação. Religar = descomentar; rodada manual continua possível via /api/agent-eval.
+      // if (hourUTC === 0 || hourUTC === 1) targets.push({ name: "agent-eval", url: `${base}/api/agent-eval?cadeia=1&token=${t}` });
       // O AVISO DO EVAL, ÀS 02h UTC (22h NY) — uma hora depois da 2ª chance do eval.
       // Luis, 2026-08-17: «me avisa quando o eval rodar». A resposta certa não é eu lembrar: é o
       // servidor mandar o e-mail todas as noites, para sempre, sem depender de sessão nenhuma.
@@ -211,7 +226,6 @@ export async function onRequest(context) {
       // duas vezes seguidas gasta chamada de terceiro à toa. Se falhar, o dia seguinte pega —
       // quem não sincroniza não recebe carimbo, então continua aparecendo como atrasado.
       // No-op barato quando não há atrasados: a rota devolve na hora sem tocar em agente nenhum.
-      if (hourUTC === 13) targets.push({ name: "agent-evolve", url: `${base}/api/agent-evolve?token=${t}` });
       // Company OS owner brief — "sua empresa se operou hoje". 13h ONLY (not the 14h retry) so the
       // owner gets exactly ONE daily brief (it isn't claim-deduped; a missed day is harmless).
       if (hourUTC === 13) targets.push({ name: "company-os-brief", url: `${base}/api/company-os-brief?token=${t}` });

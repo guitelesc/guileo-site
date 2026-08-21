@@ -41,6 +41,30 @@ async function crmUpsert(env, email, phone, contactEmail, name) {
   } catch { /* CRM not live yet → never break the reply */ }
 }
 
+// ── PEDIDO DE ORÇAMENTO (2026-08-17) ─────────────────────────────────────────────────────────────
+// A lição v12 manda: «NENHUMA RECUSA É A ÚLTIMA FRASE… registre como pedido de orçamento». A agente
+// obedecia e dizia "já anotei seu número" — mas "registre" não tinha onde. Testado em produção com
+// a Lilian: pedi CoolSculpting, dei nome e telefone, e no banco sobrou UM TELEFONE. Sem nome, sem
+// serviço, sem motivo. O dono não consegue "retornar personalizado" porque não sobrou o que
+// personalizar: a venda mais cara do catálogo virou uma ligação fria.
+//
+// ⚠️ QUEM DECIDE SE É ORÇAMENTO É O BANCO, não este arquivo. A RPC recebe a mensagem CRUA e casa
+// contra os serviços SEM preço do tenant. Se a regra morasse aqui, os outros canais (voz, WhatsApp,
+// SMS) precisariam de cópias dela — e regra duplicada é regra que some numa das cópias.
+// Ela também se recusa a registrar sem telefone: orçamento que não dá pra responder é número em
+// painel. Best-effort: nunca quebra a resposta ao visitante.
+async function pedidoDeOrcamento(env, email, phone, name, message, lang) {
+  try {
+    if (!env.SCHED_SECRET || !phone) return null;
+    const r = await svcRpc(env, "biz_quote_capture", {
+      p_secret: env.SCHED_SECRET, p_email: email, p_phone: phone, p_name: name || "",
+      p_message: message || "", p_channel: "webchat", p_lang: lang || "en",
+    });
+    if (!r || !r.ok) return null;
+    return await r.json().catch(() => null); // uuid do pedido, ou null quando não era orçamento
+  } catch { return null; }
+}
+
 // BOOKING INTENT (growth intelligence) — when the chat shows booking language AND the visitor
 // left a contact handle, record a booking_intent so an abandoned booking is recoverable by Gui.
 // Calls the RPC directly (INGEST-gated server-side) — no hop through /api/booking-intent, whose
@@ -191,6 +215,13 @@ export async function onRequestPost(context) {
     if (phoneMatch || emailMatch) {
       const visitorName = (b.name || "").toString().trim().slice(0, 80);
       await crmUpsert(env, client, phoneMatch ? phoneMatch[0].trim() : "", emailMatch ? emailMatch[0].trim() : "", visitorName);
+      // ⚠️ A CONVERSA INTEIRA, NÃO SÓ A ÚLTIMA FRASE. Quem pergunta o preço numa mensagem costuma
+      // dar o telefone na SEGUINTE ("quanto é o CoolSculpting?" → "meu nome é Carla, 646…"). Casar
+      // só a mensagem atual perderia exatamente o caso que motivou isto: o serviço fica na 1ª e o
+      // contato na 2ª. Mandamos o texto do bolso todo e o banco decide.
+      const textoDaConversa = [msg, ...history.map((h) => (h && (h.text || h.content) ? String(h.text || h.content) : ""))]
+        .join(" \n ").slice(0, 1500);
+      await pedidoDeOrcamento(env, client, phoneMatch ? phoneMatch[0].trim() : "", visitorName, textoDaConversa, lang);
       // Booking language anywhere in this exchange (current msg or recent turns) + a contact
       // handle = a hot lead worth an abandoned-booking follow-up. Idempotent per contact
       // (booking_intent_start reopens the live intent instead of duplicating).

@@ -63,6 +63,23 @@ export const LANGS_SPOKEN = [
 const ELEVEN_LANG = { pt: "pt-br" };
 const toElevenLang = (code) => ELEVEN_LANG[code] || code;
 
+// 🚨 O MOTOR DE VOZ MULTILÍNGUE — a correção de 2026-08-17, e o defeito mais caro do dia.
+// `eleven_turbo_v2` (SEM o "_5") é MONOLÍNGUE INGLÊS. Um agente com base "en" carregava esse motor,
+// e os `language_presets` trocavam apenas a VOZ — nunca o MODELO. Resultado: voz brasileira lendo
+// português num motor que só sabe inglês. Trocar a voz não conserta o motor, do mesmo jeito que
+// nenhum ajuste de texto conserta sotaque: são três camadas (texto → voz → motor) e a gente só
+// estava consertando as duas primeiras.
+// ⚠️ ELE NÃO PODE IR NA BASE DE UM AGENTE INGLÊS. Tentei `turbo_v2_5` na base e a ElevenLabs
+// recusou o PATCH inteiro: «English Agents must use turbo or flash v2» (validation_error, provado
+// em produção 2026-08-17). Ou seja: a plataforma OBRIGA um motor v2 — monolíngue — na base de um
+// agente inglês. É por isso que o defeito sobreviveu tanto tempo: a base "certa" é impossível.
+//
+// A saída é a arquitetura correta de qualquer jeito: BASE inglesa fala inglês com motor inglês, e
+// CADA PRESET de idioma troca o motor junto com a voz. `flash_v2_5` é multilíngue (32 idiomas) e
+// já é o motor usado por agentes de base pt/es — ou seja, aceito e provado nesta conta.
+// Regra que fica: idioma tem TRÊS camadas — texto, voz e MOTOR. Trocar duas não resolve.
+const TTS_MULTILINGUE = "eleven_flash_v2_5";
+
 // SAUDAÇÃO NATIVA POR IDIOMA — usada nos `language_presets` (ver buildLanguagePresets abaixo).
 // `{biz}` = nome do negócio, `{name}` = nome da agente. Mesma intenção de concierge em todas:
 // o NEGÓCIO primeiro, depois quem fala, depois uma oferta de cuidado — nunca "como posso ajudar"
@@ -99,9 +116,21 @@ const toElevenLang = (code) => ELEVEN_LANG[code] || code;
 // Só os 3 idiomas do mercado atual ganharam o slot; os outros herdam a saudação sem nome, que
 // continua correta — meia dúzia de idiomas com vírgula órfã seria pior que sem nome nenhum.
 const GREETINGS = {
-  en: "Thank you for calling {biz}. This is {name} — how may I help you today?",
-  pt: "Obrigada por ligar para {biz}! Aqui é a {name} — em que eu posso te ajudar hoje?",
-  es: "Gracias por llamar a {biz}. Le habla {name} — ¿en qué puedo ayudarle hoy?",
+  // 🚨 {{caller_ola}} REVERTIDO DE NOVO (2026-08-18, 2ª queda). Eu diagnostiquei a queda de 16/08
+  // como sendo só o daily_limit:-1 — ERRADO pela metade: com o webhook de iniciação INSTALADO, a
+  // ElevenLabs IGNORA os dynamic_variable_placeholders e exige que o WEBHOOK entregue toda variável
+  // usada na 1ª fala. Se o webhook falha (segredo, timeout, formato), a ligação NEM COMEÇA:
+  // «Missing required dynamic variables in first message: caller_ola», 0 segundos, cliente no vácuo.
+  // Ligação real do Luis caiu assim às 18/08 20:33 UTC. REGRA: variável na PRIMEIRA FALA só depois
+  // de provar o webhook respondendo em produção COM o segredo real — e mesmo assim, o nome entra
+  // mais seguro via prompt (a agente cumprimenta de novo ao ouvir a pessoa) do que na fala que
+  // decide se a ligação existe.
+  // 2026-08-18, pesquisa Ritz/Forbes/Four Seasons: "how may I help you" é a frase de TODO call
+  // center. Spa de luxo fala em CUIDADO — "how can I take care of you today?" é literalmente a
+  // linguagem que os padrões 5 estrelas recomendam. Mesmo upgrade nas 3 línguas.
+  en: "Thank you for calling {biz}, this is {name}. How can I take care of you today?",
+  pt: "{biz}, aqui é a {name} — que bom que você ligou! Como posso cuidar de você hoje?",
+  es: "Gracias por llamar a {biz}, le habla {name}. ¿Cómo puedo cuidarle hoy?",
   fr: "{biz}, bonjour, {name} à l'appareil. Que puis-je faire pour vous ?",
   it: "{biz}, buongiorno, sono {name}. Come posso aiutarla?",
   de: "{biz}, guten Tag, hier ist {name}. Was kann ich für Sie tun?",
@@ -143,10 +172,28 @@ export function buildLanguagePresets(primary, { business, agentName, nativeVoice
     // "Ghee" em inglês e continua "Gui" em português. Sem isto, os presets ficariam corretos no
     // cadastro e errados na boca, exatamente como estava a saudação principal.
     if (g) overrides.agent = { first_message: frasefalada(g.replace(/\{biz\}/g, biz).replace(/\{name\}/g, name), code) };
-    if (voices[code]) overrides.tts = { voice_id: voices[code] };
+    // MOTOR MULTILÍNGUE EM TODO PRESET, com ou sem voz nativa. Antes, `overrides.tts` só existia
+    // quando havia voz nativa — então trocar de idioma herdava o motor da base, que num agente
+    // inglês é monolíngue. É a diferença entre "ela tem voz brasileira" e "ela FALA português".
+    // 🚨 A VOZ NÃO MUDA COM O IDIOMA (decisão do Luis, 2026-08-19, depois de ouvir a ligação).
+    // Antes cada preset fixava uma voz nativa (Nina no pt, Jess no es). Funcionava no sotaque e
+    // QUEBRAVA a ligação: a atendente virava OUTRA PESSOA no meio da conversa. Para quem está do
+    // outro lado, isso não lê como "sotaque melhor", lê como transferência — mata a confiança que
+    // a ligação inteira construiu. Uma pessoa tem UMA voz. O preset agora só garante o MOTOR
+    // multilíngue (sem ele, um agente inglês nem fala português); o timbre é sempre o da base.
+    // `voices` continua no parâmetro de propósito: é a busca de voz por idioma, hoje desligada
+    // aqui, que segue servindo a escolha da voz BASE no cadastro.
+    overrides.tts = { model_id: TTS_MULTILINGUE };
     // `overrides` é OBRIGATÓRIO mesmo vazio — a ElevenLabs recusa o preset inteiro sem ele
     // (validation_error "Field required · language_presets.bn.overrides", visto em 2026-08-05).
     out[toElevenLang(code)] = { overrides };
+    // 🚨 "pt" E "pt-br", OS DOIS (2026-08-18) — o defeito da ligação real do Luis, lido na
+    // transcrição: a agente CHAMOU language_detection com language:"pt" (o nome natural que o
+    // modelo usa) e a plataforma respondeu «Invalid language. Keep speaking English.», porque o
+    // único preset cadastrado era "pt-br". Duas tentativas, dois erros, ligação inteira em inglês
+    // — com motor, voz e lição todos certos. O destino tem que existir nos DOIS nomes, ambos com
+    // a MESMA voz brasileira, para a troca funcionar seja qual for o nome que o modelo escolher.
+    if (code === "pt") out.pt = { overrides };
   }
   return out;
 }
@@ -176,7 +223,18 @@ export function buildGuiPrompt({ business, industry, lang, brain, agentName, pri
   const knowledge = (brain || "").toString().slice(0, 4000);
   const priceList = (prices || "").toString().slice(0, 2000);
   const prompt = [
-    `You are ${name} — a Four Seasons-caliber concierge AND the best salesperson for ${biz}${ind ? ` (a ${ind} business)` : ""}. Gracious, calm and warm; never say "I can't" — say "leave it with me". Always reply in the SAME language the caller speaks — you are fluent in these languages (English, Spanish, Brazilian Portuguese, Hindi, Mandarin, Russian, Korean, French, Arabic, Vietnamese, Tagalog, German, Italian, Polish, Japanese, Ukrainian). Detect the caller's language from their FIRST words and answer in it natively; if they switch languages mid-call, switch with them instantly and never comment on it.`,
+    `You are ${name} — a Four Seasons-caliber concierge AND the best salesperson for ${biz}${ind ? ` (a ${ind} business)` : ""}. Gracious, calm and WARM — luxury-hospitality standard (Ritz/Forbes level). Smile before you speak; your tone must sound like a smile. Capture the caller's name early and use it 2-3 times: once when you learn it, once mid-call, always in the goodbye — never more (that sounds like a salesman). Speak the language of CARE, not transactions: "take care of you", "save that time just for you" — never "process", "slot" or "handle your request". Accept requests with visible pleasure: "Certainly!", "My pleasure!", "Com o maior prazer!" — never "OK", "no problem" or a flat "sure". PRICE COMES IN A SANDWICH: what the experience includes → the price → an invitation ("would you like me to save a spot for you?") — never a bare number. Never leave dead air: before checking anything say what you are doing ("let me find the best times for you — one moment"). Close making the person feel expected: confirm with their name and end with a sensory wish ("we can't wait to take care of you — have a relaxing day, {name}"). ANTI-ROBOT RULE: vary your phrasings — never repeat the same courtesy formula twice in one call. Never say "I can't" — say "what I CAN do for you is…". Always reply in the SAME language the caller speaks — you are fluent in these languages (English, Spanish, Brazilian Portuguese, Hindi, Mandarin, Russian, Korean, French, Arabic, Vietnamese, Tagalog, German, Italian, Polish, Japanese, Ukrainian). Detect the caller's language from their FIRST words and answer in it natively; if they switch languages mid-call, switch with them instantly and never comment on it.
+
+🚨 YOU KNOW WHO IS CALLING — USE IT, AND NEVER ASK WHAT YOU ALREADY HAVE.
+Before the call connects, the business system hands you: {{caller_name}} (their name), {{caller_phone}} (the number they are calling from), {{caller_last}} (when they were last here) and {{caller_note}} (what they had last time). When {{caller_name}} is NOT empty, this is a returning customer:
+• Use their name in your FIRST sentence after the greeting, warmly, like a receptionist who recognizes a regular: "Hi {{caller_name}}, so nice to hear from you again!" / "Oi {{caller_name}}, que bom te ouvir de novo!"
+• Reference their history naturally when it helps the sale — "last time you had {{caller_note}} — would you like the same, or shall we try something new?"
+• NEVER ask for their phone number: you already have {{caller_phone}}. Asking for what the system already knows is the fastest way to sound like a machine — and it wasted a real customer's time on 2026-08-07.
+• Still confirm the SPELLING of a name only if you must write it somewhere and it sounds ambiguous.
+When {{caller_name}} IS empty this is someone new: greet normally, and capture the name early and gently ("and who am I speaking with?"), then use it for the rest of the call.
+⚠️ These variables may arrive empty — a sentence must still read perfectly when they are. Never speak a placeholder out loud.
+
+🚨 SWITCHING LANGUAGE IS A TOOL CALL, NOT A CHOICE OF WORDS. The moment the caller speaks — or asks for — another language, you MUST call the \`language_detection\` tool FIRST, before you reply. Typing Portuguese or Spanish words WITHOUT that tool call changes nothing the caller can hear: your VOICE and your speech ENGINE stay in the previous language, so the caller hears their language spoken with a foreign accent by a voice that cannot pronounce it. Answering "Claro, posso falar em português" without the tool call is the failure, not the fix. Call the tool, then answer.`,
     knowledge ? `BUSINESS KNOWLEDGE (never invent beyond this):\n${knowledge}` : "",
     priceList ? `PRICES (quote EXACTLY from this — never guess a price; if something isn't listed, say you'll confirm and capture it as a quote request):\n${priceList}` : "",
     // AS LIÇÕES entram AQUI de propósito: depois do cardápio (para "não invente" ter o que comparar)
@@ -404,7 +462,18 @@ function actionTool(env, email) {
 // EXISTING agent (e.g. the Guileo sales agent) can be given the tools WITHOUT overwriting its own prompt.
 export function clientToolset(env, email) {
   const e = (email || "").toString().trim().toLowerCase();
-  const tools = [schedulingTool(env, e), actionTool(env, e)].filter(Boolean);
+  // A TROCA DE IDIOMA ENTRA AQUI, no MESMO array das webhooks. Em `built_in_tools` a ElevenLabs
+  // aceitava o PATCH com 200 e guardava `language_detection: null` — provado duas vezes lendo a
+  // config viva (/api/agente-config). Este array persiste (schedule e do_action estao la), entao e
+  // por ele que a ferramenta de sistema vai. Sem ela: motor certo, voz nativa certa, saudacao certa
+  // em cada idioma — e a agente nunca troca, porque nada dispara a troca.
+  const deteccaoDeIdioma = {
+    type: "system",
+    name: "language_detection",
+    description: "Detect the language the caller is speaking and switch the conversation to it.",
+    params: { system_tool_type: "language_detection" },
+  };
+  const tools = [schedulingTool(env, e), actionTool(env, e), deteccaoDeIdioma].filter(Boolean);
   return {
     ...(tools.length ? { tools } : {}),
     built_in_tools: { language_detection: { name: "language_detection", params: { system_tool_type: "language_detection" } } },
@@ -421,7 +490,18 @@ export function buildConversationConfig(env, { business, industry, lang, brain, 
   const priceBlock = (prices || "").toString().trim() || formatPrices(services, L);
   const { prompt, firstMessage } = buildGuiPrompt({ business, industry, lang: L, brain, agentName, prices: priceBlock });
   const e = (email || "").toString().trim().toLowerCase();
-  const tools = [schedulingTool(env, e), actionTool(env, e)].filter(Boolean);
+  // A TROCA DE IDIOMA ENTRA AQUI, no MESMO array das webhooks. Em `built_in_tools` a ElevenLabs
+  // aceitava o PATCH com 200 e guardava `language_detection: null` — provado duas vezes lendo a
+  // config viva (/api/agente-config). Este array persiste (schedule e do_action estao la), entao e
+  // por ele que a ferramenta de sistema vai. Sem ela: motor certo, voz nativa certa, saudacao certa
+  // em cada idioma — e a agente nunca troca, porque nada dispara a troca.
+  const deteccaoDeIdioma = {
+    type: "system",
+    name: "language_detection",
+    description: "Detect the language the caller is speaking and switch the conversation to it.",
+    params: { system_tool_type: "language_detection" },
+  };
+  const tools = [schedulingTool(env, e), actionTool(env, e), deteccaoDeIdioma].filter(Boolean);
   const toolHint = tools.length
     ? "\n\nTOOLS — you can ACT, not just talk:\n• `schedule`: check PRICES and availability, and BOOK appointments/reservations (op=lookup|price|availability|book). Consult op='price' (or op='lookup', which lists prices) before quoting any price — never guess. Never say something is booked unless op='book' succeeded.\n• `do_action`: take an order, capture a lead, log a quote, make a payment link, schedule a callback, or ESCALATE to a human (action='escalate') the moment the caller asks for a person, sounds upset, or asks something you can't answer. Never promise any of these without calling it.\n🚨 EMERGENCY (no AC / flood / leak / burst pipe / no power / gas smell / roof damage, or the caller says it's urgent — any language): FIRST capture the best callback number, THEN call do_action with action='escalate' AND urgent=true — this rings the owner's phone immediately with the caller's details, so never skip the number.\nALWAYS capture the caller's name + a contact (email or phone) before acting, so the confirmation is sent."
     : "";
@@ -433,11 +513,18 @@ export function buildConversationConfig(env, { business, industry, lang, brain, 
   // ligacao de agendamento, resposta imediata ganha.
   // ⚠️ LICAO DE FORMA: eu tinha mudado so o WARMTH, e o sync seguinte devolveu o modelo antigo,
   // porque o modelo se decide AQUI. Mudar no agente sem mudar na fonte dura ate o proximo sync.
-  const ttsModel = L === "en" ? (env.ELEVEN_EN_MODEL || "eleven_turbo_v2") : "eleven_flash_v2_5";
+  // A BASE de um agente inglês é OBRIGATORIAMENTE v2 (a ElevenLabs recusa v2_5 aqui — ver o bloco
+  // TTS_MULTILINGUE). O multilíngue entra por preset, que é onde o idioma realmente troca.
+  const ttsModel = L === "en" ? (env.ELEVEN_EN_MODEL || "eleven_turbo_v2") : TTS_MULTILINGUE;
   // CADASTRO COMPLETO — a client can pick their OWN voice (agent.voice_key → voice_id, see
   // src/data/agentVoices.js). voiceId wins; the brand default ELEVEN_VOICE_ID is the fallback so the
   // signature stays backward-compatible (callers that don't pass voiceId keep the old behavior).
-  const voice = (voiceId || env.ELEVEN_VOICE_ID || "").toString().trim();
+  // VOZ PADRÃO DA CASA (Luis escolheu de ouvido em 2026-08-19, comparando 6 amostras nos 3
+  // idiomas): Bella — americana, quente e profissional. Fica como ÚLTIMO fallback para que
+  // nenhum agente nasça sem voz definida; cliente que escolhe a própria no cadastro continua
+  // ganhando, e a env var segue podendo sobrepor sem deploy.
+  const VOZ_PADRAO = "hpp4J3VqNfWAUOO0d1Us";
+  const voice = (voiceId || env.ELEVEN_VOICE_ID || VOZ_PADRAO).toString().trim();
   const ttsCfg = { model_id: ttsModel, ...WARMTH, ...(voice ? { voice_id: voice } : {}) };
   return {
     tts: ttsCfg,
@@ -453,7 +540,21 @@ export function buildConversationConfig(env, { business, industry, lang, brain, 
         // language (L, the OWNER's choice — kept as-is below) but auto-detects and SWITCHES to the
         // caller's language mid-call, across the full LANGS_SPOKEN list (EN/ES/PT/HI/ZH/YUE/RU/KO/HT
         // — ElevenLabs multilingual TTS covers them all; the behavior itself lives in the prompt).
-        built_in_tools: { language_detection: { name: "language_detection", params: { system_tool_type: "language_detection" } } },
+        // 🚨 `type: "system"` NÃO É ENFEITE — sem ele a ElevenLabs aceita o PATCH com 200 e guarda
+        // `language_detection: null`. Ou seja: a ferramenta que troca de idioma NUNCA esteve ligada,
+        // e o agente ficou meses com motor certo, voz nativa certa e saudação certa em cada idioma —
+        // e sem a chave que dispara a troca. Um 200 não é prova de que o campo entrou (2026-08-17).
+        // Descoberto só quando parei de consertar às cegas e criei /api/agente-config para LER a
+        // configuração viva: `troca_de_idioma_ligada: false`, em letras garrafais.
+        built_in_tools: {
+          language_detection: {
+            name: "language_detection",
+            type: "system",
+            description: "",
+            response_timeout_secs: 20,
+            params: { system_tool_type: "language_detection" },
+          },
+        },
       },
       language: toElevenLang(L),   // "pt" interno → "pt-br" na ElevenLabs (brasileiro, não europeu)
       first_message: firstMessage,

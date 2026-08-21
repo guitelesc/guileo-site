@@ -123,10 +123,10 @@ export const PRODUCTS = [
     id: "close_collect", pilar: "brain", icon: "💳", accent: "#5EC26A", category: { en: "Money", pt: "Dinheiro", es: "Dinero", hi: "पैसा" },
     name: { en: "Close & Collect", pt: "Fecha e Cobra", es: "Cierra & Cobra", hi: "क्लोज़ & कलेक्ट" },
     result: {
-      en: "Gui quotes the exact price, closes the sale, and collects on the call — a pay-link by SMS or a deposit to book.",
-      pt: "A Gui passa o preço exato, fecha a venda e cobra na ligação — link de pagamento por SMS ou depósito pra agendar.",
-      es: "Gui cotiza el precio exacto, cierra la venta y cobra en la llamada — pay-link por SMS o depósito.",
-      hi: "गुई सटीक कीमत देती है, बिक्री बंद करती है और कॉल पर कलेक्ट करती है।",
+      en: "Gui quotes the exact price, closes the sale, and collects on the call — a pay-link by email today (by SMS when the carrier approves A2P; the code is ready) or a deposit to book.",
+      pt: "A Gui passa o preço exato, fecha a venda e cobra na ligação — link de pagamento por e-mail hoje (por SMS quando a operadora aprovar o A2P; o código está pronto) ou depósito pra agendar.",
+      es: "Gui cotiza el precio exacto, cierra la venta y cobra en la llamada — pay-link por email hoy (por SMS cuando la operadora apruebe el A2P; el código está listo) o depósito.",
+      hi: "गुई सटीक कीमत देती है, बिक्री बंद करती है और कॉल पर कलेक्ट करती है — आज ई-मेल से पे-लिंक (ऑपरेटर की A2P मंज़ूरी पर SMS से; कोड तैयार है) या बुकिंग डिपॉज़िट।",
     },
     resultMetric: { value: "$0", unit: { en: "sale left on the table", pt: "venda perdida na mesa", es: "venta perdida", hi: "छूटी बिक्री" } },
     resultIsEstimate: false, credits: "call", activationKey: "stripe", plans: ["growth", "scale"],
@@ -148,12 +148,16 @@ export const PRODUCTS = [
   {
     id: "websites", pilar: "build", icon: "🖥️", accent: "#9AA0FF",
     category: { en: "Built once", pt: "Construído uma vez", es: "Construido una vez", hi: "एक बार निर्मित" },
-    name: { en: "Websites", pt: "Sites", es: "Sitios web", hi: "वेबसाइट्स" },
+    // Mesma separação do `apps`: o plano entrega o site QUE A PLATAFORMA GERA — `client_sites` +
+    // SSR em `functions/site/[slug].js`, com a tela `MeuSite` no cockpit para o dono editar.
+    // Isso é real, automático e de custo marginal zero. Site sob medida, desenhado do zero, é o
+    // projeto de `services.js` e continua sendo cobrado à parte.
+    name: { en: "Your site, generated", pt: "Seu site, gerado", es: "Tu sitio, generado", hi: "आपकी साइट, तैयार" },
     result: {
-      en: "Fast, beautiful websites built to convert — with Gui already living inside them.",
-      pt: "Sites rápidos e bonitos feitos pra converter — com a Gui já morando dentro deles.",
-      es: "Sitios rápidos y hermosos hechos para convertir — con Gui ya viviendo dentro.",
-      hi: "तेज़, खूबसूरत वेबसाइट्स जो कन्वर्ट करने के लिए बनी हैं — जिनमें गुई पहले से बसती है।",
+      en: "A fast site with your name, your services and your prices — generated from what you already told us, editable in the cockpit, with Gui answering inside it. (A bespoke site designed from scratch is a separate project.)",
+      pt: "Um site rápido com seu nome, seus serviços e seus preços — gerado a partir do que você já nos contou, editável no cockpit, com a Gui atendendo dentro dele. (Site sob medida, desenhado do zero, é projeto à parte.)",
+      es: "Un sitio rápido con tu nombre, tus servicios y tus precios — generado con lo que ya nos contaste, editable en el cockpit, con Gui atendiendo dentro. (Un sitio a medida, diseñado desde cero, es un proyecto aparte.)",
+      hi: "आपके नाम, सेवाओं और कीमतों वाली तेज़ साइट — जो आपने बताया उसी से बनी, कॉकपिट में संपादन-योग्य, अंदर गुई जवाब देती है। (शून्य से डिज़ाइन की गई कस्टम साइट अलग प्रोजेक्ट है।)",
     },
     resultMetric: { value: "1×", unit: { en: "build, runs forever", pt: "build, roda pra sempre", es: "build, corre siempre", hi: "बिल्ड, हमेशा" } },
     resultIsEstimate: false, credits: null, activationKey: null, plans: ["scale"],
@@ -161,25 +165,42 @@ export const PRODUCTS = [
   {
     id: "apps", pilar: "build", icon: "📱", accent: "#9AA0FF",
     category: { en: "Built once", pt: "Construído uma vez", es: "Construido una vez", hi: "एक बार निर्मित" },
-    name: { en: "Apps", pt: "Apps", es: "Apps", hi: "ऐप्स" },
+    // 🚨 DOIS PRODUTOS COM O MESMO NOME (separado em 2026-08-20).
+    // Isto dizia "Apps móveis · iOS + Android · entregues de ponta a ponta" e estava em
+    // `plans:["scale"]` — ou seja, INCLUSO no plano de $999/mês. E `services.js:571-588` cobra
+    // $6.000–$20.000 pelo mesmo entregável, à parte. Não existe nenhuma esteira mobile no repo
+    // (sem Xcode, Gradle, React Native ou Expo). Prometer App Store por $999/mês é reembolso certo.
+    // Mas NÃO é conflito de preço — são DUAS COISAS diferentes chamadas do mesmo jeito:
+    //   • O que o plano entrega HOJE, automático: o PWA por tenant. `functions/site/[slug].js`
+    //     reescreve o <head> com a identidade do negócio e pendura manifesto, service worker e
+    //     ícone NA MARCA DELE. Instala na tela inicial, abre sem barra de navegador. Tem teste
+    //     próprio (`functions/site/pwa.test.mjs`) e o comentário de lá diz exatamente isto:
+    //     "o app que a Guileo vende é o site do cliente instalável na marca DELE".
+    //   • O que custa $6–20k: app NATIVO, publicado na App Store e na Play Store. Não existe.
+    // Separar os nomes transforma uma promessa quebrada num upsell honesto.
+    name: { en: "Your installable app", pt: "Seu app instalável", es: "Tu app instalable", hi: "आपका इंस्टॉल-योग्य ऐप" },
     result: {
-      en: "Mobile apps for your customers or your team — designed and shipped end to end.",
-      pt: "Apps móveis pros seus clientes ou pro seu time — desenhados e entregues de ponta a ponta.",
-      es: "Apps móviles para tus clientes o tu equipo — diseñadas y entregadas de punta a punta.",
-      hi: "आपके ग्राहकों या टीम के लिए मोबाइल ऐप्स — डिज़ाइन से डिलीवरी तक।",
+      en: "Your business as an app on your customer's home screen — your name, your icon, opening without a browser bar. Generated for you, no store review queue. (A NATIVE App Store / Play Store app is a separate project.)",
+      pt: "Seu negócio como app na tela inicial do cliente — seu nome, seu ícone, abrindo sem barra de navegador. Gerado pra você, sem fila de aprovação de loja. (App NATIVO na App Store / Play Store é projeto à parte.)",
+      es: "Tu negocio como app en la pantalla de inicio del cliente — tu nombre, tu ícono, abriendo sin barra de navegador. Generado para ti, sin cola de revisión de tienda. (La app NATIVA en App Store / Play Store es un proyecto aparte.)",
+      hi: "आपका व्यवसाय ग्राहक की होम स्क्रीन पर एक ऐप के रूप में — आपका नाम, आपका आइकन, बिना ब्राउज़र बार के। स्टोर समीक्षा की कतार नहीं। (App Store / Play Store का NATIVE ऐप अलग प्रोजेक्ट है।)",
     },
-    resultMetric: { value: "iOS + Android", unit: { en: "shipped", pt: "publicados", es: "publicadas", hi: "लाइव" } },
+    resultMetric: { value: "PWA", unit: { en: "on the home screen", pt: "na tela inicial", es: "en la pantalla de inicio", hi: "होम स्क्रीन पर" } },
     resultIsEstimate: false, credits: null, activationKey: null, plans: ["scale"],
   },
   {
     id: "ecommerce", pilar: "build", icon: "🛒", accent: "#9AA0FF",
     category: { en: "Built once", pt: "Construído uma vez", es: "Construido una vez", hi: "एक बार निर्मित" },
-    name: { en: "E-commerce", pt: "E-commerce", es: "E-commerce", hi: "ई-कॉमर्स" },
+    // O plano entrega a VENDA DIRETA que a plataforma já opera: catálogo com preço, link de
+    // pagamento, pacotes, assinaturas e gift card, tudo com checkout Stripe no dinheiro do próprio
+    // cliente. Loja completa com estoque, frete e variação de produto é o projeto de `services.js`
+    // ("Online store & e-commerce", linha 552) e continua à parte.
+    name: { en: "Sell online, right away", pt: "Vender online, já", es: "Vender online, ya", hi: "अभी ऑनलाइन बेचें" },
     result: {
-      en: "Online stores with catalog, checkout and payments — ready to sell from day one.",
-      pt: "Lojas online com catálogo, checkout e pagamentos — prontas pra vender desde o dia um.",
-      es: "Tiendas online con catálogo, checkout y pagos — listas para vender desde el día uno.",
-      hi: "कैटलॉग, चेकआउट और पेमेंट के साथ ऑनलाइन स्टोर — पहले दिन से बिक्री के लिए तैयार।",
+      en: "Your priced catalog with pay links, packages, memberships and gift cards — money landing in your own Stripe from day one. (A full store with inventory, shipping and product variants is a separate project.)",
+      pt: "Seu catálogo com preço e link de pagamento, pacotes, assinaturas e gift card — dinheiro caindo no seu próprio Stripe desde o dia um. (Loja completa com estoque, frete e variação de produto é projeto à parte.)",
+      es: "Tu catálogo con precio y enlace de pago, paquetes, membresías y gift cards — dinero llegando a tu propio Stripe desde el día uno. (Una tienda completa con inventario, envío y variantes es un proyecto aparte.)",
+      hi: "कीमत और पेमेंट लिंक वाला आपका कैटलॉग, पैकेज, मेंबरशिप और गिफ़्ट कार्ड — पहले दिन से पैसा आपके अपने Stripe में। (इन्वेंटरी, शिपिंग और वेरिएंट वाली पूरी दुकान अलग प्रोजेक्ट है।)",
     },
     resultMetric: { value: "1×", unit: { en: "store, sells 24/7", pt: "loja, vende 24/7", es: "tienda, vende 24/7", hi: "स्टोर, 24/7" } },
     resultIsEstimate: false, credits: null, activationKey: null, plans: ["scale"],
@@ -276,7 +297,11 @@ export const PRODUCTS = [
       hi: "पोस्ट लिखे, शेड्यूल और आपके अकाउंट पर प्रकाशित — आप मंज़ूरी दें, इंजन समय पर पोस्ट करता है, कभी दो बार नहीं।",
     },
     resultMetric: { value: "0", unit: { en: "blank-page weeks", pt: "semanas de tela em branco", es: "semanas de página en blanco", hi: "खाली पन्ने वाले हफ़्ते" } },
-    resultIsEstimate: false, credits: null, activationKey: null, plans: ["growth", "scale"],
+    // activationKey:"meta" — igual ao gêmeo `content` (:96). Os dois rodam no MESMO motor
+    // (functions/api/social-publish.js), que sem META_APP_ID/SECRET + conta conectada devolve
+    // { ready:false } e "nothing goes out". Estava `null` (= sempre ligado) e vendia publicação
+    // automática inclusa no plano de $449 sem nada poder sair. 2026-08-20.
+    resultIsEstimate: false, credits: null, activationKey: "meta", plans: ["growth", "scale"],
   },
   {
     id: "seo_aeo", pilar: "ad", icon: "🔎", accent: "#33C6D6",
@@ -335,3 +360,404 @@ export const productCredits = (id) => { const p = productById(id); return p && p
 // how many of plan's included products are live given a set of active activation keys
 export const productsLiveCount = (planKey, activeKeys = []) =>
   productsForPlan(planKey).filter((p) => !p.activationKey || activeKeys.includes(p.activationKey)).length;
+
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// FICHA DE ENTREGA DO PRODUTO — o que ele É, o que ele FAZ, e o resultado (2026-08-18)
+//
+// PEDIDO DO LUIS, LITERAL: "tem que ter mais informações, principalmente dos produtos que vamos
+// entregar". No Growth Report (/apresentacao/:id) cada passo da estratégia mostrava só um selo com
+// o NOME do produto ("✅ Gui — agente de voz 24/7"). Nome não vende: o dono do negócio não sabe o
+// que chega na segunda-feira.
+//
+// ISTO ESTENDE `PRODUCTS`, NÃO DUPLICA. Onde o produto já existe no sistema (answering, speedlead,
+// close_collect, pulse) a ficha só ACRESCENTA o detalhe de entrega — nome, ícone, resultado e
+// crédito continuam vindo de PRODUCTS (`base`). Entradas sem `base` (agenda, widget_whatsapp,
+// catalog) são capacidades da plataforma que o motor de avaliação recomenda mas que ainda não são
+// produto vendável isolado — por isso vivem aqui e NÃO foram enfiadas em PRODUCTS: inventar linha
+// no catálogo para emparelhar a conta é a mentira que este arquivo previne.
+//
+// A CHAVE é `produto_id`, emitida pelo motor (functions/lib/avaliacao.js → estrategia[].produto_id).
+// Chave estável, nunca traduzida — a tradução é o conteúdo.
+//
+// REGRA DOS BULLETS: 3, concretos e verificáveis. Cada um descreve algo que a plataforma FAZ hoje
+// (ver MOTORES.md). Nada de "aumenta suas vendas" — promessa vaga não é bullet.
+// `resultado` recebe o GAP MEDIDO do próprio relatório: o resultado fica amarrado ao vazamento que
+// a gente mediu, nunca a um número inventado.
+// `prazo` só existe onde o repo já publica o prazo (recepção IA: ~7 dias — launchKit.js/blog).
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+export const PRODUCT_DETAIL = {
+  answering: {
+    base: "answering", icon: "📞",
+    name: { en: "24/7 Voice Agent", pt: "Agente de voz 24/7", es: "Agente de voz 24/7", hi: "24/7 वॉइस एजेंट" },
+    whatIs: {
+      en: "An AI receptionist that answers your existing number, in your business's name, day and night.",
+      pt: "Uma recepcionista de IA que atende o seu número atual, no nome do seu negócio, dia e noite.",
+      es: "Una recepcionista de IA que atiende tu número actual, en nombre de tu negocio, día y noche.",
+      hi: "एक AI रिसेप्शनिस्ट जो आपके मौजूदा नंबर पर, आपके व्यवसाय के नाम से, दिन-रात जवाब देती है।",
+    },
+    bullets: {
+      en: [
+        "Answers every call — including several at once, so the line is never busy.",
+        "Quotes prices straight from your catalog and books into the real calendar during the call.",
+        "Logs caller, transcript and sentiment; emails you the summary after each call.",
+      ],
+      pt: [
+        "Atende toda ligação — inclusive várias ao mesmo tempo, então a linha nunca dá ocupado.",
+        "Passa preço direto do seu catálogo e marca na agenda real durante a própria ligação.",
+        "Registra quem ligou, transcrição e sentimento; manda o resumo por e-mail depois de cada ligação.",
+      ],
+      es: [
+        "Atiende cada llamada — incluso varias a la vez, así la línea nunca da ocupado.",
+        "Cotiza precios directo de tu catálogo y reserva en la agenda real durante la llamada.",
+        "Registra quién llamó, transcripción y sentimiento; te envía el resumen por correo tras cada llamada.",
+      ],
+      hi: [
+        "हर कॉल का जवाब — एक साथ कई भी, इसलिए लाइन कभी व्यस्त नहीं।",
+        "आपके कैटलॉग से सीधे कीमत बताती है और कॉल के दौरान असली कैलेंडर में बुक करती है।",
+        "कॉलर, ट्रांसक्रिप्ट और सेंटिमेंट दर्ज करती है; हर कॉल के बाद सारांश ईमेल करती है।",
+      ],
+    },
+    prazo: { en: "live in ~7 days", pt: "no ar em ~7 dias", es: "en el aire en ~7 días", hi: "~7 दिनों में लाइव" },
+  },
+  agenda: {
+    base: null, icon: "📅", pilar: "brain",
+    name: { en: "Booking Engine", pt: "Motor de Agenda", es: "Motor de Agenda", hi: "बुकिंग इंजन" },
+    whatIs: {
+      en: "Your real calendar — services, staff, locations and opening hours — wired into every channel.",
+      pt: "A sua agenda real — serviços, profissionais, unidades e horário — ligada em todos os canais.",
+      es: "Tu agenda real — servicios, personal, sedes y horarios — conectada a todos los canales.",
+      hi: "आपका असली कैलेंडर — सेवाएँ, स्टाफ़, शाखाएँ और समय — हर चैनल से जुड़ा।",
+    },
+    bullets: {
+      en: [
+        "Offers only slots that actually exist — duration, staff and location are checked before it says yes.",
+        "Holds the slot atomically, so two callers can never take the same time.",
+        "Sends a branded confirmation email and reminders; reschedules and cancellations update the same calendar.",
+      ],
+      pt: [
+        "Só oferece horário que existe de verdade — duração, profissional e unidade são conferidos antes do sim.",
+        "Reserva o horário de forma atômica: dois clientes nunca pegam o mesmo horário.",
+        "Manda confirmação por e-mail com a sua marca e lembretes; remarcação e cancelamento atualizam a mesma agenda.",
+      ],
+      es: [
+        "Solo ofrece horarios que existen de verdad — duración, personal y sede se verifican antes del sí.",
+        "Reserva el horario de forma atómica: dos clientes nunca toman el mismo turno.",
+        "Envía confirmación por correo con tu marca y recordatorios; reprogramar y cancelar actualizan la misma agenda.",
+      ],
+      hi: [
+        "सिर्फ़ वही समय देती है जो वाकई खाली है — अवधि, स्टाफ़ और शाखा जाँचने के बाद ही हाँ।",
+        "स्लॉट को एटॉमिक रूप से रोकती है: दो ग्राहक कभी एक ही समय नहीं ले सकते।",
+        "आपकी ब्रांडिंग वाला कन्फ़र्मेशन ईमेल और रिमाइंडर भेजती है; बदलाव व रद्दीकरण उसी कैलेंडर में अपडेट।",
+      ],
+    },
+    prazo: { en: "live in ~7 days", pt: "no ar em ~7 dias", es: "en el aire en ~7 días", hi: "~7 दिनों में लाइव" },
+  },
+  widget_whatsapp: {
+    base: null, icon: "💬", pilar: "brain",
+    name: { en: "Chat Widget + WhatsApp", pt: "Widget de chat + WhatsApp", es: "Widget de chat + WhatsApp", hi: "चैट विजेट + WhatsApp" },
+    whatIs: {
+      en: "The same agent, in writing: a chat bubble on your site and your WhatsApp line, sharing one brain and one calendar.",
+      pt: "A mesma agente, por escrito: um chat no seu site e o seu WhatsApp, com o mesmo cérebro e a mesma agenda.",
+      es: "La misma agente, por escrito: un chat en tu sitio y tu WhatsApp, con el mismo cerebro y la misma agenda.",
+      hi: "वही एजेंट, लिखित रूप में: आपकी साइट पर चैट और आपका WhatsApp — एक ही दिमाग़, एक ही कैलेंडर।",
+    },
+    bullets: {
+      en: [
+        "Answers on the site and on WhatsApp from the same knowledge base the phone agent uses.",
+        "Books, quotes and captures name + phone inside the conversation — no hand-off, no form to fill twice.",
+        "Every conversation lands in the CRM, so a chat that started at midnight is a lead you can call back.",
+      ],
+      pt: [
+        "Responde no site e no WhatsApp com a mesma base de conhecimento que a agente do telefone usa.",
+        "Marca, cota e captura nome + telefone dentro da conversa — sem transferir, sem preencher formulário duas vezes.",
+        "Toda conversa cai no CRM: um chat que começou de madrugada é um lead pra você retornar.",
+      ],
+      es: [
+        "Responde en el sitio y en WhatsApp con la misma base de conocimiento que usa la agente del teléfono.",
+        "Reserva, cotiza y captura nombre + teléfono dentro de la conversación — sin transferencias ni formularios repetidos.",
+        "Cada conversación entra al CRM: un chat que empezó de madrugada es un lead para devolver la llamada.",
+      ],
+      hi: [
+        "साइट और WhatsApp पर वही नॉलेज बेस जो फ़ोन एजेंट इस्तेमाल करती है।",
+        "बातचीत के भीतर ही बुकिंग, कीमत और नाम + फ़ोन दर्ज — कोई ट्रांसफ़र नहीं, दोबारा फ़ॉर्म नहीं।",
+        "हर बातचीत CRM में जाती है: आधी रात शुरू हुआ चैट भी एक लीड है।",
+      ],
+    },
+    prazo: { en: "needs Meta approval", pt: "precisa da aprovação da Meta", es: "requiere la aprobación de Meta", hi: "Meta की मंज़ूरी ज़रूरी" },
+  },
+  speedlead: {
+    base: "speedlead", icon: "⚡",
+    name: { en: "Speed-to-Lead", pt: "Speed-to-lead", es: "Speed-to-lead", hi: "स्पीड-टू-लीड" },
+    whatIs: {
+      en: "The moment someone fills a form, the agent calls them back — in about 60 seconds.",
+      pt: "No instante em que alguém preenche um formulário, a agente liga de volta — em ~60 segundos.",
+      es: "En el instante en que alguien llena un formulario, la agente devuelve la llamada — en ~60 segundos.",
+      hi: "जैसे ही कोई फ़ॉर्म भरता है, एजेंट ~60 सेकंड में वापस कॉल करती है।",
+    },
+    bullets: {
+      en: [
+        "Works with the form on your own site, or with a Guileo-hosted form — the webhook is the same.",
+        "Also picks up marketplace leads (Yelp, Angi, Thumbtack) and calls them the same way.",
+        "If nobody picks up, it retries on a schedule and leaves the lead in the CRM with its origin attached.",
+      ],
+      pt: [
+        "Funciona com o formulário do seu próprio site ou com um formulário hospedado pela Guileo — o webhook é o mesmo.",
+        "Também pega lead de marketplace (Yelp, Angi, Thumbtack) e liga do mesmo jeito.",
+        "Se ninguém atende, tenta de novo com intervalo e deixa o lead no CRM com a origem registrada.",
+      ],
+      es: [
+        "Funciona con el formulario de tu propio sitio o con uno alojado por Guileo — el webhook es el mismo.",
+        "También toma leads de marketplace (Yelp, Angi, Thumbtack) y llama igual.",
+        "Si nadie contesta, reintenta con intervalos y deja el lead en el CRM con su origen registrado.",
+      ],
+      hi: [
+        "आपकी साइट के फ़ॉर्म या Guileo-होस्टेड फ़ॉर्म — दोनों के लिए एक ही वेबहुक।",
+        "मार्केटप्लेस लीड (Yelp, Angi, Thumbtack) भी उठाती है और वैसे ही कॉल करती है।",
+        "कोई न उठाए तो निर्धारित अंतराल पर दोबारा कोशिश; लीड CRM में स्रोत सहित दर्ज रहता है।",
+      ],
+    },
+    prazo: { en: "live in ~7 days", pt: "no ar em ~7 dias", es: "en el aire en ~7 días", hi: "~7 दिनों में लाइव" },
+  },
+  close_collect: {
+    base: "close_collect", icon: "💳",
+    name: { en: "Close & Collect + Packages", pt: "Fecha & Cobra + Pacotes", es: "Cierra & Cobra + Paquetes", hi: "क्लोज़ & कलेक्ट + पैकेज" },
+    whatIs: {
+      en: "Selling without a person present: the agent quotes, closes and takes the money on the call.",
+      pt: "Vender sem ninguém presente: a agente cota, fecha e recebe na própria ligação.",
+      es: "Vender sin nadie presente: la agente cotiza, cierra y cobra en la propia llamada.",
+      hi: "बिना किसी के मौजूद हुए बिक्री: एजेंट कीमत बताती है, सौदा करती है और कॉल पर पैसा लेती है।",
+    },
+    bullets: {
+      en: [
+        "Sends a pay-link by email during the call (by SMS as soon as the carrier approves A2P — the code is ready), or takes a deposit to hold the booking.",
+        "Sells packages, memberships and gift cards — each redemption is checked against the balance.",
+        "Every payment reconciles into one place, so the same booking is never charged twice.",
+      ],
+      pt: [
+        "Manda link de pagamento por e-mail durante a ligação (por SMS assim que a operadora aprovar o A2P — o código está pronto), ou cobra depósito pra segurar o horário.",
+        "Vende pacotes, memberships e gift cards — cada uso é conferido contra o saldo.",
+        "Todo pagamento é conciliado num lugar só: o mesmo agendamento nunca é cobrado duas vezes.",
+      ],
+      es: [
+        "Envía pay-link por email durante la llamada (por SMS en cuanto la operadora apruebe el A2P — el código está listo), o cobra un depósito para retener el turno.",
+        "Vende paquetes, membresías y gift cards — cada uso se verifica contra el saldo.",
+        "Todo pago se concilia en un solo lugar: la misma reserva nunca se cobra dos veces.",
+      ],
+      hi: [
+        "कॉल के दौरान ई-मेल से पे-लिंक भेजती है (ऑपरेटर की A2P मंज़ूरी मिलते ही SMS से — कोड तैयार है), या बुकिंग रोकने के लिए डिपॉज़िट लेती है।",
+        "पैकेज, मेंबरशिप और गिफ़्ट कार्ड बेचती है — हर उपयोग बैलेंस से जाँचा जाता है।",
+        "हर भुगतान एक ही जगह मिलान होता है: एक बुकिंग पर दो बार शुल्क कभी नहीं।",
+      ],
+    },
+    prazo: { en: "needs Stripe connected", pt: "precisa do Stripe conectado", es: "requiere Stripe conectado", hi: "Stripe कनेक्ट होना ज़रूरी" },
+  },
+  catalog: {
+    base: null, icon: "🏷️", pilar: "build",
+    name: { en: "Priced Catalog", pt: "Catálogo precificado", es: "Catálogo con precios", hi: "मूल्य-सहित कैटलॉग" },
+    whatIs: {
+      en: "One list of services with real prices and durations — the only thing the agent is allowed to quote from.",
+      pt: "Uma lista de serviços com preço e duração reais — a única fonte de onde a agente pode cotar.",
+      es: "Una lista de servicios con precio y duración reales — la única fuente de la que la agente puede cotizar.",
+      hi: "असली कीमत और अवधि वाली सेवाओं की एक सूची — एजेंट सिर्फ़ इसी से कीमत बता सकती है।",
+    },
+    bullets: {
+      en: [
+        "Price and duration per service, per location — quoted word for word, never improvised.",
+        "A service with no price is flagged loudly instead of guessed, and becomes a captured quote request.",
+        "The same catalog feeds the phone, the chat, the booking engine and the payment link — one edit, every channel.",
+      ],
+      pt: [
+        "Preço e duração por serviço e por unidade — cotados palavra por palavra, nunca improvisados.",
+        "Serviço sem preço é sinalizado em alto e bom som em vez de adivinhado, e vira pedido de orçamento capturado.",
+        "O mesmo catálogo alimenta telefone, chat, agenda e link de pagamento — uma edição, todos os canais.",
+      ],
+      es: [
+        "Precio y duración por servicio y por sede — cotizados palabra por palabra, nunca improvisados.",
+        "Un servicio sin precio se señala con claridad en vez de adivinarse, y se vuelve un pedido de presupuesto capturado.",
+        "El mismo catálogo alimenta teléfono, chat, agenda y pay-link — una edición, todos los canales.",
+      ],
+      hi: [
+        "हर सेवा और शाखा की कीमत व अवधि — शब्दशः, कभी अनुमान से नहीं।",
+        "बिना कीमत वाली सेवा अनुमान के बजाय स्पष्ट रूप से चिह्नित होती है और कोटेशन अनुरोध बन जाती है।",
+        "वही कैटलॉग फ़ोन, चैट, बुकिंग और पेमेंट लिंक चलाता है — एक बदलाव, हर चैनल।",
+      ],
+    },
+    prazo: { en: "needs the client price list", pt: "precisa dos preços do cliente", es: "requiere la lista de precios del cliente", hi: "क्लाइंट की मूल्य-सूची ज़रूरी" },
+  },
+  // ── FASE 2 do Growth Report (2026-08-18) ────────────────────────────────────────────────────
+  // A estratégia do relatório passou a ter uma FASE 2 (crescer, não só parar a perda) e ela cita
+  // estes três produtos. Sem ficha aqui a página mostrava só o selo com o nome — a Fase 2 ficava
+  // mais fraca justamente onde precisa convencer. `base` aponta pra linha aprovada em PRODUCTS:
+  // o claim de resultado continua vindo de lá, não é reescrito aqui.
+  reactivation: {
+    base: "reactivation", icon: "♻️",
+    name: { en: "Reactivation & Churn-save", pt: "Reativação e Anti-churn", es: "Reactivación & Anti-churn", hi: "रीएक्टिवेशन और चर्न-सेव" },
+    whatIs: {
+      en: "The agent calls back the people who reached out and never booked — and the regulars who stopped coming.",
+      pt: "A agente liga de volta para quem procurou e não marcou — e para o cliente fiel que parou de vir.",
+      es: "La agente vuelve a llamar a quien buscó y no reservó — y al cliente fiel que dejó de venir.",
+      hi: "एजेंट उन लोगों को वापस कॉल करती है जिन्होंने संपर्क किया पर बुक नहीं किया — और उन नियमित ग्राहकों को जो आना बंद कर चुके हैं।",
+    },
+    bullets: {
+      en: [
+        "Reads each customer's own rhythm and flags the ones about to vanish.",
+        "Calls or messages with the offer and the calendar already in hand.",
+        "Books straight into the real calendar — no one has to call back.",
+      ],
+      pt: [
+        "Lê o ritmo de cada cliente e marca quem está prestes a sumir.",
+        "Liga ou manda mensagem com a oferta e a agenda já na mão.",
+        "Marca direto na agenda real — ninguém precisa retornar depois.",
+      ],
+      es: [
+        "Lee el ritmo de cada cliente y marca a quien está por irse.",
+        "Llama o escribe con la oferta y la agenda ya en la mano.",
+        "Reserva directo en la agenda real — nadie tiene que devolver la llamada.",
+      ],
+      hi: [
+        "हर ग्राहक की अपनी लय पढ़कर बताती है कौन छूटने वाला है।",
+        "ऑफ़र और कैलेंडर हाथ में लेकर कॉल या मैसेज करती है।",
+        "सीधे असली कैलेंडर में बुक करती है — किसी को वापस कॉल नहीं करना पड़ता।",
+      ],
+    },
+    prazo: { en: "live in ~7 days", pt: "no ar em ~7 dias", es: "en el aire en ~7 días", hi: "~7 दिनों में लाइव" },
+  },
+  reputation: {
+    base: "reputation", icon: "⭐",
+    name: { en: "Reputation Machine", pt: "Máquina de Reputação", es: "Máquina de Reputación", hi: "रेपुटेशन मशीन" },
+    whatIs: {
+      en: "Every visit ends in a review request, and every review that lands gets answered in your tone.",
+      pt: "Todo atendimento termina em pedido de avaliação, e toda avaliação que chega é respondida no seu tom.",
+      es: "Cada visita termina en un pedido de reseña, y cada reseña que llega se responde en tu tono.",
+      hi: "हर विज़िट के बाद रिव्यू का अनुरोध, और आने वाले हर रिव्यू का जवाब आपके अंदाज़ में।",
+    },
+    bullets: {
+      en: [
+        "Asks for the review right after the visit, when the customer is happiest.",
+        "Drafts the answer to every review in your tone — you approve, it posts.",
+        "Unhappy customers are routed to a callback before they write publicly.",
+      ],
+      pt: [
+        "Pede a avaliação logo depois do atendimento, quando o cliente está mais satisfeito.",
+        "Escreve a resposta de cada avaliação no seu tom — você aprova, ela publica.",
+        "Cliente insatisfeito vira retorno de ligação antes de escrever em público.",
+      ],
+      es: [
+        "Pide la reseña justo después de la visita, cuando el cliente está más satisfecho.",
+        "Redacta la respuesta de cada reseña en tu tono — tú apruebas, se publica.",
+        "El cliente insatisfecho pasa a una llamada de vuelta antes de escribir en público.",
+      ],
+      hi: [
+        "विज़िट के तुरंत बाद रिव्यू माँगती है, जब ग्राहक सबसे खुश होता है।",
+        "हर रिव्यू का जवाब आपके अंदाज़ में लिखती है — आप मंज़ूरी दें, वह पोस्ट हो जाता है।",
+        "असंतुष्ट ग्राहक सार्वजनिक रूप से लिखने से पहले कॉलबैक के लिए भेजा जाता है।",
+      ],
+    },
+    prazo: { en: "needs the Google connection", pt: "precisa da conexão com o Google", es: "requiere la conexión con Google", hi: "Google कनेक्शन ज़रूरी" },
+  },
+  marketing_ads: {
+    base: "marketing_ads", icon: "📣",
+    name: { en: "Marketing & ads", pt: "Marketing e anúncios", es: "Marketing y anuncios", hi: "मार्केटिंग और विज्ञापन" },
+    whatIs: {
+      en: "Paid campaigns run for you, with every lead landing straight on the agent instead of a form.",
+      pt: "Campanhas pagas rodando por você, com cada lead caindo direto na agente em vez de num formulário.",
+      es: "Campañas pagas gestionadas por ti, con cada lead cayendo directo en la agente en vez de un formulario.",
+      hi: "आपके लिए चलाए गए पेड कैंपेन, जिनमें हर लीड फ़ॉर्म के बजाय सीधे एजेंट तक पहुँचती है।",
+    },
+    bullets: {
+      en: [
+        "Creative and campaigns built on your own catalog and prices.",
+        "The lead is called back in about 60 seconds, day or night.",
+        "Measured by bookings and revenue per campaign — not by clicks.",
+      ],
+      pt: [
+        "Criativo e campanhas montados em cima do seu catálogo e dos seus preços.",
+        "O lead recebe ligação em cerca de 60 segundos, de dia ou de madrugada.",
+        "Medido por agendamento e receita por campanha — não por clique.",
+      ],
+      es: [
+        "Creativo y campañas armados sobre tu propio catálogo y tus precios.",
+        "El lead recibe llamada en unos 60 segundos, de día o de madrugada.",
+        "Medido por reservas e ingresos por campaña — no por clics.",
+      ],
+      hi: [
+        "आपके अपने कैटलॉग और दामों पर बने क्रिएटिव और कैंपेन।",
+        "लीड को लगभग 60 सेकंड में कॉल आती है, दिन हो या रात।",
+        "कैंपेन के हिसाब से बुकिंग और आय से मापा जाता है — क्लिक से नहीं।",
+      ],
+    },
+    prazo: { en: "starts after the accounts are connected", pt: "começa depois de conectar as contas", es: "empieza tras conectar las cuentas", hi: "खाते जुड़ने के बाद शुरू" },
+  },
+  pulse: {
+    base: "pulse", icon: "💗",
+    name: { en: "Guileo Pulse", pt: "Guileo Pulse", es: "Guileo Pulse", hi: "Guileo Pulse" },
+    whatIs: {
+      en: "The experience meter: it measures how your customers actually felt, from the calls and reviews you already have.",
+      pt: "O medidor de experiência: mede como o seu cliente realmente se sentiu, a partir das ligações e avaliações que você já tem.",
+      es: "El medidor de experiencia: mide cómo se sintió tu cliente de verdad, a partir de llamadas y reseñas que ya tienes.",
+      hi: "अनुभव मीटर: आपकी मौजूदा कॉल्स और रिव्यू से मापता है कि ग्राहक ने असल में कैसा महसूस किया।",
+    },
+    bullets: {
+      en: [
+        "Asks for a review after each visit, at the moment the customer is happiest.",
+        "Scores sentiment on every analyzed call and turns it into one CX number you can track.",
+        "Flags the unhappy customer for a callback before the bad review is written.",
+      ],
+      pt: [
+        "Pede avaliação depois de cada atendimento, no momento em que o cliente está mais satisfeito.",
+        "Pontua o sentimento de cada ligação analisada e transforma isso em uma nota de CX pra acompanhar.",
+        "Sinaliza o cliente insatisfeito pra retorno antes de a avaliação ruim ser escrita.",
+      ],
+      es: [
+        "Pide reseña después de cada visita, en el momento en que el cliente está más satisfecho.",
+        "Puntúa el sentimiento de cada llamada analizada y lo convierte en una nota de CX para seguir.",
+        "Señala al cliente insatisfecho para devolverle la llamada antes de que escriba la mala reseña.",
+      ],
+      hi: [
+        "हर विज़िट के बाद, जब ग्राहक सबसे ख़ुश हो, तभी रिव्यू माँगता है।",
+        "हर विश्लेषित कॉल का सेंटिमेंट स्कोर करता है और उसे एक CX नंबर में बदलता है।",
+        "बुरा रिव्यू लिखे जाने से पहले असंतुष्ट ग्राहक को कॉलबैक के लिए चिह्नित करता है।",
+      ],
+    },
+    prazo: { en: "live in ~7 days", pt: "no ar em ~7 dias", es: "en el aire en ~7 días", hi: "~7 दिनों में लाइव" },
+  },
+};
+
+// ── A PERNA DE UM PASSO DO RELATÓRIO (2026-08-18) ──────────────────────────────────────────────
+// O Growth Report agrupa o plano por 🧠 Brain · 📈 AD · 🏗️ Build. A perna sai do MOTOR
+// (`functions/lib/avaliacao.js` → `perna` em cada passo). Esta função é a MESMA resposta pelo lado
+// do catálogo, e serve a dois casos reais: payloads gravados ANTES de a perna existir, e qualquer
+// superfície que só tenha o `produto_id` na mão.
+// A ordem de resolução tem um motivo: `PRODUCT_DETAIL.pilar` primeiro porque é lá que vivem as
+// três capacidades que não são produto vendável (agenda, widget_whatsapp, catalog); depois
+// `PRODUCTS.pilar`, a atribuição de negócio que a landing inteira já usa.
+// null quando não dá pra saber — nunca um chute. Pendurar um passo na perna errada num documento
+// que se vende por não inventar nada seria caro justamente onde é barato só omitir o grupo.
+export const pilarDoPasso = (id) => {
+  if (!id) return null;
+  const d = PRODUCT_DETAIL[id];
+  if (d?.pilar) return d.pilar;
+  if (d?.base) return productById(d.base)?.pilar || null;
+  return productById(id)?.pilar || null;
+};
+
+// Ficha completa de um produto no idioma pedido — junta a linha de PRODUCTS (quando existe) com o
+// detalhe de entrega. Devolve null quando a chave não existe (a página então mostra só o selo).
+export const productDetail = (id, lang = "en") => {
+  const d = PRODUCT_DETAIL[id];
+  if (!d) return null;
+  const p = d.base ? productById(d.base) : null;
+  const pick = (o) => (o ? o[lang] || o.en : null);
+  return {
+    id,
+    icon: d.icon || p?.icon || "🎯",
+    name: pick(d.name) || pick(p?.name) || id,
+    whatIs: pick(d.whatIs) || "",
+    bullets: pick(d.bullets) || [],
+    prazo: pick(d.prazo) || null,
+    // claim aprovado do catálogo (quando o produto existe lá) — nunca reescrito aqui
+    result: pick(p?.result) || null,
+    resultIsEstimate: !!p?.resultIsEstimate,
+  };
+};

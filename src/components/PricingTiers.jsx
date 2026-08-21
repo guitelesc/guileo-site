@@ -48,6 +48,7 @@ export default function PricingTiers() {
 
   return (
     <section id="pricing" className="relative overflow-hidden px-5 py-20">
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(520px_260px_at_18%_0%,rgba(214,194,154,0.10),transparent)]" />
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(700px_360px_at_50%_-5%,rgba(62,148,104,0.09),transparent)]" />
       <div className="mx-auto max-w-6xl">
         <Reveal className="mx-auto max-w-2xl text-center">
@@ -138,7 +139,6 @@ export default function PricingTiers() {
             landing é número que diverge do que o vendedor fala na semana seguinte. */}
         <Reveal className="mt-6">
           <div className="relative overflow-hidden rounded-xl3 border border-g-gold/30 bg-gradient-to-br from-g-gold/[0.07] via-white/[0.02] to-transparent p-7 shadow-lift sm:p-9">
-            <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(520px_260px_at_18%_0%,rgba(214,194,154,0.10),transparent)]" />
             <div className="grid items-center gap-7 lg:grid-cols-[1.35fr_1fr]">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-g-gold/35 bg-g-gold/10 px-3 py-1 text-[10.5px] font-black uppercase tracking-[0.18em] text-g-gold">

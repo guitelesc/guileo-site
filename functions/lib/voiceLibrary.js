@@ -30,8 +30,14 @@
 // marcado para o mercado latino dos EUA, que é majoritariamente mexicano/caribenho. Neutro vende
 // em todo lugar; regional vende num lugar e estranha nos outros.
 export const NATIVE_VOICE_TARGETS = [
-  { code: "pt", lib: "pt", prefer: [/brazil|brasil/i], label: "português brasileiro" },
-  { code: "es", lib: "es", prefer: [/neutral|latin/i, /mexic/i, /colomb/i, /peru|chile/i, /argent|castil/i], label: "espanhol latino" },
+  // PT FIXADO na Nina M. (2026-08-18): o Luis OUVIU as 8 candidatas de estúdio e escolheu. A
+  // anterior (Jenifer) tinha eco — e eco não aparece em metadado nenhum, só no ouvido de quem
+  // escuta. Voz aprovada por escuta real não volta para sorteio: `pinned` curto-circuita a busca.
+  { code: "pt", lib: "pt", pinned: "GM2UA3fbsIaLHcswCDX9", prefer: [/brazil|brasil/i], label: "português brasileiro" },
+  // ES FIXADO (2026-08-18): o Luis ouviu e aprovou ("o espanhol está perfeito"). Voz aprovada em
+  // ligação real não entra em sorteio nunca mais — subir a política de escolha re-sortearia as
+  // DUAS línguas para consertar UMA. `pinned` ganha de qualquer busca.
+  { code: "es", lib: "es", pinned: "x5O3bgPT2grYhry6qmWR", prefer: [/neutral|latin/i, /mexic/i, /colomb/i, /peru|chile/i, /argent|castil/i], label: "espanhol latino" },
 ];
 
 // VERSÃO DA POLÍTICA DE ESCOLHA. Entra no nome da voz adicionada ("Guileo pt v2 · …").
@@ -40,7 +46,10 @@ export const NATIVE_VOICE_TARGETS = [
 // "Earthy and Wise" (madura, séria) porque ordenava por popularidade, e o Luis pediu "som de feliz
 // e bem". Subir a versão faz o sistema procurar uma voz melhor UMA vez; as antigas ficam paradas na
 // conta sem uso. Suba isto sempre que mudar o critério de escolha.
-const VOICE_POLICY = "v2";
+// v3 (2026-08-18): a v2 escolheu uma brasileira com ECO ("tá ruim" — Luis, em ligação real). O
+// critério ganhou QUALIDADE DE ESTÚDIO: vozes `category: "professional"` (gravadas por dublador,
+// com controle de captação) vêm antes das clonadas pela comunidade, que é onde mora o eco.
+const VOICE_POLICY = "v3";
 
 // O QUE É "SOM DE FELIZ E BEM" — o pedido do Luis, traduzido em palavras que a biblioteca usa para
 // descrever voz. Positivo puxa pra cima; negativo puxa pra baixo (uma voz "authoritative" ou
@@ -108,19 +117,23 @@ async function searchShared(env, target) {
 
   // Sem correspondência de sotaque preferimos NÃO adicionar nada a adicionar um português europeu
   // e chamar de brasileiro. Lista vazia é uma resposta honesta.
+  const studio = (v) => (String(v?.category || "") === "professional" ? 1 : 0);
   return all
     .filter((v) => v?.voice_id && v?.public_owner_id && accentRank(v) >= 0)
     .sort((a, b) =>
       accentRank(a) - accentRank(b)                                   // 1º: sotaque preferido
-      || warmth(b) - warmth(a)                                        // 2º: som acolhedor
-      || (b.cloned_by_count || 0) - (a.cloned_by_count || 0)          // 3º: validada pelo mercado
-      || String(a.voice_id).localeCompare(String(b.voice_id)));       // 4º: desempate estável
+      || studio(b) - studio(a)                                        // 2º: gravação de estúdio (sem eco)
+      || warmth(b) - warmth(a)                                        // 3º: som acolhedor
+      || (b.cloned_by_count || 0) - (a.cloned_by_count || 0)          // 4º: validada pelo mercado
+      || String(a.voice_id).localeCompare(String(b.voice_id)));       // 5º: desempate estável
 }
 
 // Garante uma voz nativa para UM idioma. Devolve { voice_id, name, added } ou null.
 // `owned` é passado de fora para a lista da conta ser buscada UMA vez, não uma por idioma.
 export async function ensureVoiceForLang(env, target, owned) {
   if (!env.ELEVENLABS_API_KEY) return null;
+  // Voz APROVADA EM LIGAÇÃO não entra em sorteio: pinned curto-circuita busca e idempotência.
+  if (target.pinned) return { voice_id: target.pinned, name: "", added: false };
   const list = owned || (await listAccountVoices(env));
   const existing = accountVoiceFor(list, target);
   if (existing) return { voice_id: existing, name: "", added: false };

@@ -26,7 +26,7 @@ begin
       from gui_actions g
       where g.action = 'lead'
         and g.contact like '%@%'
-        and g.details like ('%👤ref:' || trim(p_ref) || '%')
+        and substring(g.details from '👤ref:([^\s·]+)') = trim(p_ref)
       union
       -- path 2: checkouts that carried client_reference_id=<ref> — the seller's
       -- payment-link hand-off writes an 'attribution' client_event on the new tenant

@@ -4,6 +4,7 @@
 // to an attacker-chosen victim. The seller then forwards the branded email on to their client.
 import { sameOrigin, rateLimited } from "../lib/guard.js";
 import { sellerQuoteEmail } from "../lib/emailTemplates.js";
+import { verifySession } from "../lib/sellerSession.js";
 
 // Mirror lead.js: a self-contained JSON helper with the same hardening headers.
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store" } });
@@ -22,13 +23,26 @@ export async function onRequestPost(context) {
 
     const body = await request.json();
     const s = (v, n) => (v == null ? "" : v.toString().slice(0, n));
-    const to = s(body.to, 160).trim();
+
+    // 🚨 O DESTINATÁRIO VEM DA SESSÃO ASSINADA, NUNCA DO CORPO (corrigido 2026-08-20).
+    // O comentário no topo deste arquivo AFIRMAVA que "o destinatário é SEMPRE o endereço do
+    // próprio vendedor" — mas isso era uma promessa do cliente, não uma checagem do servidor.
+    // O gate era só `sameOrigin` + limite por IP, e o `to` vinha do body: qualquer visitante da
+    // guileoai.com mandava e-mail com a MARCA GUILEO, com 4000 caracteres controlados, para
+    // qualquer endereço. É a lição "status/comentário não é autenticação" na forma mais literal:
+    // a garantia estava escrita em prosa, não em código.
+    // Agora exige o crachá HMAC do vendedor e usa o e-mail QUE ELE ASSINOU. O `to` do corpo é
+    // ignorado de propósito — aceitar mesmo "só para conferir" reabre o relé.
+    const sid = s(body.sid, 400);
+    const to = (await verifySession(env, sid).catch(() => null)) || "";
+    if (!to) return json({ error: "unauthorized", motivo: "faça login de novo para enviar o orçamento" }, 401);
     const sellerName = s(body.sellerName, 80);
     const clientName = s(body.clientName, 80);
     const summary = s(body.summary, 4000);
     const lang = s(body.lang, 5) || "en";
 
-    // VALIDATE the recipient. ONLY this address is ever used as `to` — never cc/bcc/others.
+    // O e-mail vem do crachá, então já é o do vendedor; a validação sintática continua como
+    // rede de segurança contra um crachá antigo com formato estranho.
     if (!EMAIL_RE.test(to)) return json({ error: "invalid recipient" }, 400);
 
     // Graceful no-op if email isn't wired up yet — never 500, never block the seller's flow.
@@ -45,7 +59,7 @@ export async function onRequestPost(context) {
     });
     if (!er.ok) return json({ ok: false, note: "send failed" });
 
-    return json({ ok: true });
+    return json({ ok: true, enviado_para: to });
   } catch {
     return json({ error: "bad request" }, 400);
   }

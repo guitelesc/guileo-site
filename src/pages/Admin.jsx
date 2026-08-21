@@ -6,13 +6,17 @@ import ActivationRunbook from "../components/ActivationRunbook.jsx";
 import CompanyFinance from "../components/CompanyFinance.jsx";
 import CompanyOS from "../components/CompanyOS.jsx";
 import MetaConnect from "../components/MetaConnect.jsx";
+import WhatsAppConnect from "../components/WhatsAppConnect.jsx";
 import ChannelStatus from "../components/ChannelStatus.jsx";
 import QualityPanel from "../components/QualityPanel.jsx";
 import LinhasPanel from "../components/LinhasPanel.jsx";
+// Funil do Guileo X-Ray (RPC xray_funil, mesma senha do /admin). Não-medido em cinza, nunca 0.
+import XrayFunilPanel from "../components/XrayFunilPanel.jsx";
 import WarRoom from "../components/WarRoom.jsx";
 import OnboardApprovals from "../components/OnboardApprovals.jsx";
 import ClientWallet from "../components/ClientWallet.jsx";
 import SellerManager from "../components/SellerManager.jsx";
+import PainelComando from "../components/PainelComando.jsx";
 import DemoEngine from "../components/DemoEngine.jsx";
 import { ACTIVATION_STEPS, ACTIVATION_SECTORS, pickL } from "../data/activation.js";
 import { GUILEO_PLANS, planByKey } from "../data/guileoPlans.js";
@@ -65,6 +69,28 @@ const LOGIN_TX = {
 };
 
 export default function Admin() {
+  // Reenvio do e-mail de acesso: o cliente perdeu/nunca recebeu o e-mail de nascimento.
+  // A chave NAO passa por aqui - o servidor le do banco e escreve direto no corpo do e-mail.
+  const [reenvio, setReenvio] = useState(null); // {estado:"busy"|"ok"|"err", msg, para}
+  // Varredura de contato da carteira inteira: roda em lotes e só avança quando o lote VOLTA —
+  // barra que anda sozinha enquanto o Worker pensa é a mesma mentira de um "ok" sem comprovante.
+  const [contatos, setContatos] = useState(null); // {rodando, feitos, restam, erros}
+  const varrerContatos = async () => {
+    setContatos({ rodando: true, feitos: 0, restam: null, erros: 0 });
+    let feitos = 0, erros = 0;
+    for (let i = 0; i < 80; i++) { // teto duro: 80 lotes de 5 = 400 negócios, acima da carteira
+      try {
+        const r = await fetch("/api/contatos-carteira", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || !d.ok) { setContatos({ rodando: false, feitos, restam: null, erros, motivo: d.motivo || d.error || `HTTP ${r.status}` }); return; }
+        feitos += d.feitos || 0;
+        erros += (d.total || 0) - (d.feitos || 0);
+        setContatos({ rodando: true, feitos, restam: d.restam, erros });
+        if (d.fim) break;
+      } catch (e) { setContatos({ rodando: false, feitos, restam: null, erros, motivo: String(e).slice(0, 120) }); return; }
+    }
+    setContatos((c) => ({ ...(c || {}), rodando: false }));
+  };
   const [token, setToken] = useState(() => { try { return sessionStorage.getItem("guileo_admin_tok") || ""; } catch { return ""; } });
   const [unlocked, setUnlocked] = useState(() => { try { return !!sessionStorage.getItem("guileo_admin_tok"); } catch { return false; } });
   // O idioma vem do MESMO seletor do site — a porta do /admin não tem bandeira própria
@@ -367,6 +393,10 @@ export default function Admin() {
         {/* ═════════════════════ 📊 VISÃO GERAL ═════════════════════ */}
         {tab === "overview" && (
           <div className="mt-5 space-y-5">
+            {/* O COMANDO PRIMEIRO. O que vem depois (saúde, visitas, jornada) continua valendo —
+                mas nenhuma dessas coisas decide o dia, e o que decide tem que estar no topo. */}
+            <PainelComando token={token} />
+
             <div className="grid items-start gap-5 sm:grid-cols-2">
               <ColBanner tag="🎛️ Operação · Comando" tone="orange" tiles={[
                 { label: "Saúde", value: sysOnline ? "OK" : "—", tone: sysOnline ? "green" : "red" },
@@ -520,7 +550,13 @@ export default function Admin() {
         )}
 
         {/* ═════════════════════ 🧭 JORNADA (demo → onboarding → retenção) ═════════════════════ */}
-        {tab === "jornada" && <JourneyBoard j={journey} erro={feedErr === "admin_journey"} />}
+        {tab === "jornada" && (
+          <div className="space-y-5">
+            <JourneyBoard j={journey} erro={feedErr === "admin_journey"} />
+            {/* O X-Ray é a PONTA de entrada do funil — mora ao lado da jornada, não numa aba órfã. */}
+            <XrayFunilPanel token={token} />
+          </div>
+        )}
 
         {/* ═════════════════════ 👥 CLIENTES & VENDAS ═════════════════════ */}
         {tab === "clientes" && (
@@ -576,7 +612,13 @@ export default function Admin() {
                   {obState === "busy" ? "Ativando…" : "🚀 Ativar cliente"}
                 </button>
               </div>
-              {obResult && obResult.error && <div className="mt-2 text-[12px] text-[#e0855f]">{obResult.error}</div>}
+              {/* O `motivo` vem antes do código do erro: "cliente_ja_existe" não diz nada a quem
+                  está olhando; a frase inteira diz o que houve e o que fazer no lugar. */}
+              {obResult && obResult.error && (
+                <div className="mt-2 rounded-xl border border-[#e0855f]/40 bg-[#e0855f]/[0.08] px-4 py-2.5 text-[12.5px] text-[#e0855f]">
+                  {obResult.motivo || obResult.error}
+                </div>
+              )}
               {obResult && obResult.ok && (
                 <div className="mt-3 rounded-xl border border-g-gold/30 bg-g-gold/[0.07] px-4 py-3 text-[12.5px]">
                   <div className="font-bold text-g-gold">✅ {ob.business} ativado!</div>
@@ -627,6 +669,57 @@ export default function Admin() {
                     className="rounded-full border border-g-green/40 px-3 py-1 text-[11.5px] font-bold text-g-green hover:bg-g-green/15">
                     {keyState === "copied" ? "Copiado ✓" : "Copiar"}
                   </button>
+                </div>
+              )}
+
+              {/* REENVIAR O E-MAIL DE ACESSO — para o cliente que perdeu, nunca recebeu ou caiu no spam.
+                  A chave sai do banco direto pro e-mail DELE: não aparece nesta tela, não vai pro log,
+                  e o destinatário é o e-mail cadastrado, nunca um endereço digitado aqui. */}
+              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-g-line/60 pt-4">
+                <button type="button" disabled={reenvio?.estado === "busy"}
+                  onClick={async () => {
+                    const em = keyEmail.trim().toLowerCase();
+                    if (!em || !em.includes("@")) { setReenvio({ estado: "err", msg: "Digite o email do cliente no campo acima." }); return; }
+                    setReenvio({ estado: "busy" });
+                    try {
+                      const r = await fetch("/api/reenviar-acesso", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, email: em }) });
+                      const j = await r.json().catch(() => ({}));
+                      // "ok" sem comprovante é promessa sem lastro: só declaro enviado com o id da Resend.
+                      if (r.ok && j.ok && j.envio_id) setReenvio({ estado: "ok", para: j.enviado_para, msg: j.negocio || "" });
+                      else setReenvio({ estado: "err", msg: j.motivo || ("não saiu (HTTP " + r.status + ")") });
+                    } catch (e) { setReenvio({ estado: "err", msg: String(e).slice(0, 120) }); }
+                  }}
+                  className="rounded-xl border border-g-gold/40 bg-g-gold/10 px-5 py-2.5 text-[13px] font-bold text-g-gold hover:bg-g-gold/20 disabled:opacity-60">
+                  {reenvio?.estado === "busy" ? "Enviando…" : "✉️ Reenviar e-mail de acesso"}
+                </button>
+                <span className="text-[12px] text-g-muted">Manda o e-mail de boas-vindas com a chave para o próprio cliente.</span>
+              </div>
+
+              {/* ── CONTATO DA CARTEIRA INTEIRA ────────────────────────────────────────────
+                  342 de 353 prospects não tinham e-mail: o motor existia no hub de cada vendedor
+                  e ninguém clicava. Daqui o Luis completa a carteira dos 5 de uma vez. */}
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-g-line/60 pt-4">
+                <button type="button" disabled={contatos?.rodando} onClick={varrerContatos}
+                  className="rounded-xl border border-g-green/40 bg-g-green/10 px-5 py-2.5 text-[13px] font-bold text-g-green hover:bg-g-green/20 disabled:opacity-60">
+                  {contatos?.rodando ? `Buscando… ${contatos.feitos} prontos` : "📞 Completar telefone + e-mail de TODOS os prospects"}
+                </button>
+                <span className="text-[12px] text-g-muted">Busca no Google e no site de cada negócio. Nunca sobrescreve contato que já existe.</span>
+              </div>
+              {contatos && !contatos.rodando && (
+                <div className={`mt-2 rounded-xl border px-4 py-2.5 text-[12.5px] ${contatos.motivo ? "border-[#e0855f]/40 bg-[#e0855f]/[0.08] text-[#e0855f]" : "border-g-green/30 bg-g-green/[0.07] text-g-green"}`}>
+                  {contatos.motivo
+                    ? <>Parou: {contatos.motivo} — {contatos.feitos} completados antes disso.</>
+                    : <>✓ {contatos.feitos} completados{contatos.erros ? ` · ${contatos.erros} sem contato publicado` : ""}{contatos.restam != null ? ` · ${contatos.restam} ainda sem` : ""}</>}
+                </div>
+              )}
+              {reenvio?.estado === "ok" && (
+                <div className="mt-2 rounded-xl border border-g-green/30 bg-g-green/[0.07] px-4 py-2.5 text-[12.5px] text-g-green">
+                  ✓ Enviado para <b>{reenvio.para}</b>{reenvio.msg ? <> — {reenvio.msg}</> : null}. A chave foi direto pro e-mail dele.
+                </div>
+              )}
+              {reenvio?.estado === "err" && (
+                <div className="mt-2 rounded-xl border border-[#e0855f]/40 bg-[#e0855f]/[0.08] px-4 py-2.5 text-[12.5px] text-[#e0855f]">
+                  Não saiu: {reenvio.msg}
                 </div>
               )}
             </div>
@@ -880,6 +973,7 @@ export default function Admin() {
             <ChannelStatus token={token} />
             {/* ── CONECTAR META — dono cola o Page Access Token → liga IG/Messenger a um cliente ── */}
             <MetaConnect token={token} />
+            <WhatsAppConnect token={token} />
           </div>
         )}
 

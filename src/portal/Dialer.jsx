@@ -1,9 +1,9 @@
 /* Split out of Portal.jsx (performance): Dialer tab view — code moved verbatim. */
 import { useState } from "react";
 import { toast } from "../lib/portalApi.js";
-import { tr, Card } from "../pages/Portal.jsx";
+import { tr, Card , FaixaAmostra} from "../pages/Portal.jsx";
 
-function Dialer() {
+function Dialer({ real }) {
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
   const [num, setNum] = useState("");
   const [calling, setCalling] = useState(false);
@@ -21,7 +21,9 @@ function Dialer() {
     setTimeout(() => { setCalling(false); setNum(""); toast(tr("Preview — in your live account, Gui places this call and logs it in Call Logs.")); }, 1600);
   };
   return (
-    <div className="max-w-xs mx-auto">
+    <>
+      <FaixaAmostra real={real} />
+      <div className="max-w-xs mx-auto">
       <Card className="text-center">
         <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("AI Call Dialer")}</div>
         <div className="h-10 rounded-xl2 bg-black/20 border border-white/10 grid place-items-center text-g-word font-bold mb-3 tracking-wide">{fmt(num)}</div>
@@ -33,6 +35,7 @@ function Dialer() {
         <p className="mt-2.5 text-[10px] text-g-muted">{tr("The AI places the call, talks to the customer, and logs the outcome for you.")}</p>
       </Card>
     </div>
+    </>
   );
 }
 

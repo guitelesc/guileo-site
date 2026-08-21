@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { useLang } from "../i18n.jsx";
 import ContractDoc from "../components/ContractDoc.jsx";
+import { productDetail } from "../data/productSystem.js";
 import logo from "../assets/guileo-mark.png";
 
 // ════════════════════════════════════════════════════════════════════════════════════════════════
@@ -33,9 +35,11 @@ import logo from "../assets/guileo-mark.png";
 //    a hora em que o cliente novo mais duvida da escolha.
 //
 // ⚠️ PROTEÇÃO — as decisões abaixo são jurídicas, não estéticas:
-//    • as 13 cláusulas são renderizadas INTEIRAS e sempre visíveis. Nada de acordeão fechado nem
-//      "leia os termos" atrás de link: documento que a contraparte não viu é documento que ela
-//      alega não ter visto. A contagem aparece no topo pra deixar claro que nada foi escondido.
+//    • TODA cláusula aparece: número, título e a MESMA cláusula em palavras simples, sempre
+//      visíveis. Só o texto integral é que fica recolhido, e abre num toque (e abre sozinho ao
+//      imprimir). Recolher ≠ esconder — nada de "leia os termos" atrás de link, e a contagem no
+//      topo continua dizendo quantas são. Documento que a contraparte não viu é documento que ela
+//      alega não ter visto; documento que ela não ENTENDEU é disputa na semana seguinte.
 //    • o aceite exige NOME DIGITADO + caixa marcada, nunca só um clique — intenção inequívoca.
 //    • o registro (nome, data/hora e IP) é gravado no servidor e MOSTRADO na tela; o que a pessoa
 //      vê é o mesmo que fica guardado.
@@ -77,11 +81,20 @@ const T = {
   passo1:   { pt: "Guarde sua via — o botão abaixo salva em PDF.", en: "Keep your copy — the button below saves a PDF.", es: "Guarda tu copia — el botón de abajo guarda un PDF.", hi: "अपनी प्रति रखें — नीचे का बटन PDF सहेजता है।" },
   passo2:   { pt: "Nossa equipe recebe o aviso do aceite e entra em contato para começar.", en: "Our team is notified of the acceptance and reaches out to start.", es: "Nuestro equipo recibe el aviso y te contacta para empezar.", hi: "हमारी टीम को सूचना मिलती है और वे शुरू करने के लिए संपर्क करेंगे।" },
   passo3:   { pt: "Qualquer dúvida, fale com a gente — a mesma pessoa que te atendeu continua com você.", en: "Any questions, talk to us — the same person who helped you stays with you.", es: "Cualquier duda, habla con nosotros — la misma persona sigue contigo.", hi: "कोई प्रश्न हो तो हमसे बात करें — वही व्यक्ति आपके साथ रहेगा।" },
+  cancela:  { pt: "Como cancela", en: "How to cancel", es: "Cómo cancelar", hi: "रद्द कैसे करें" },
+  garantia: { pt: "Cancela quando quiser. Nos primeiros 30 dias devolvemos o primeiro mês inteiro.", en: "Cancel any time. In the first 30 days we refund the entire first month.", es: "Cancela cuando quieras. En los primeros 30 días devolvemos el primer mes completo.", hi: "कभी भी रद्द करें। पहले 30 दिनों में पहला महीना पूरा वापस।" },
+  contratou:{ pt: "O que você contratou", en: "What you signed up for", es: "Lo que contrataste", hi: "आपने क्या लिया" },
+  comeca:   { pt: "Quando começa", en: "When it starts", es: "Cuándo empieza", hi: "कब शुरू होगा" },
   print:    { pt: "📄 Salvar PDF / Imprimir", en: "📄 Save PDF / Print", es: "📄 Guardar PDF / Imprimir", hi: "📄 PDF सहेजें / प्रिंट" },
   physical: { pt: "Prefere assinar no papel? Imprima, assine e devolva — também vale.", en: "Prefer to sign on paper? Print, sign and return — that works too.", es: "¿Prefieres firmar en papel? Imprime, firma y devuelve — también vale.", hi: "काग़ज़ पर हस्ताक्षर करना चाहते हैं? प्रिंट करें और लौटाएँ — वह भी मान्य है।" },
 };
 
 const WA = "https://wa.me/19298288170";
+// ⚠️ NADA DE `toLocaleString()` PELADO. Sem locale ele usa o do NAVEGADOR: um contrato em português
+// carimbava "8/20/2026, 1:54 AM" embaixo da assinatura. O carimbo de data é parte do documento —
+// tem que sair na língua DELE. (Mesma lição do fmt() com "en-US" cravado.)
+const LOC = { pt: "pt-BR", es: "es-ES", hi: "hi-IN", en: "en-US" };
+const quando = (d, lang) => { try { return new Date(d).toLocaleString(LOC[lang] || LOC.en); } catch { return new Date(d).toISOString().slice(0, 16).replace("T", " "); } };
 const dinheiro = (cents, lang) => {
   const v = Number(cents || 0) / 100;
   try { return v.toLocaleString(lang === "pt" ? "pt-BR" : lang === "es" ? "es-ES" : "en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }); }
@@ -89,11 +102,12 @@ const dinheiro = (cents, lang) => {
 };
 
 export default function Sign() {
-  const { lang } = useLang();
-  const t = (k, ...a) => {
-    const v = T[k] && (T[k][lang] || T[k].en);
-    return typeof v === "function" ? v(...a) : (v || "");
-  };
+  // ⚠️ ESTA PÁGINA É DO CLIENTE, NÃO DO VENDEDOR. O idioma que manda é o do CONTRATO (doc.lang),
+  // não o que o visitante deixou no site: um contrato em português exibido com a moldura em inglês
+  // é duas línguas na mesma tela, no documento que a pessoa vai assinar. Antes de carregar não há
+  // contrato ainda — aí (e só aí) vale o idioma do visitante.
+  const { lang: uiLang } = useLang();
+  const reduzir = useReducedMotion();
   const token = (() => { try { return new URLSearchParams(window.location.search).get("t") || ""; } catch { return ""; } })();
 
   const [doc, setDoc] = useState(undefined);   // undefined=carregando · null=não achado · {}=doc
@@ -106,13 +120,19 @@ export default function Sign() {
   const [sig, setSig] = useState(null);
   const [perto, setPerto] = useState(false);    // o bloco de assinar está na tela?
 
+  const lang = (doc && doc.lang) || uiLang;
+  const t = (k, ...a) => {
+    const v = T[k] && (T[k][lang] || T[k].en);   // reserva SEMPRE en, nunca pt
+    return typeof v === "function" ? v(...a) : (v || "");
+  };
+
   const carregar = () => {
     setRedeErro(false); setDoc(undefined);
     fetch("/api/contract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "by_token", sign_token: token }) })
       .then((r) => r.json())
       .then((d) => {
         setDoc(d?.doc || null);
-        if (d?.doc?.status === "signed") setSig({ name: d.doc.signer_name, at: d.doc.signed_at ? new Date(d.doc.signed_at).toLocaleString() : "" });
+        if (d?.doc?.status === "signed") setSig({ name: d.doc.signer_name, at: d.doc.signed_at ? quando(d.doc.signed_at, d.doc.lang || "en") : "" });
       })
       .catch(() => { setDoc(null); setRedeErro(true); });
   };
@@ -139,7 +159,7 @@ export default function Sign() {
     try {
       const r = await fetch("/api/contract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "sign", sign_token: token, signer_name: name.trim() }) });
       const d = await r.json().catch(() => ({}));
-      if (d && d.signed) { setSig({ name: name.trim(), at: new Date().toLocaleString() }); setState("signed"); return; }
+      if (d && d.signed) { setSig({ name: name.trim(), at: quando(Date.now(), lang) }); setState("signed"); return; }
       // ⚠️ AQUI ESTAVA O BURACO: qualquer recusa virava setState("idle") em silêncio.
       setState("idle");
       setFalha(d && d.motivo === "link_invalido_ou_ja_assinado" ? "m_link" : "m_indisp");
@@ -156,6 +176,8 @@ export default function Sign() {
   // é exatamente o que vira disputa. `b.amount` é a string que o vendedor escreveu ("$1,490/mês"):
   // ela carrega a periodicidade. Os centavos ficam de reserva, pra quando não houver texto.
   const valor = b?.amount || (doc?.amount_cents ? dinheiro(doc.amount_cents, lang) : null);
+  // Prazo REAL publicado pelo repo (productSystem.js → recepção IA). Nada de data inventada.
+  const prazo = b?.timeline || productDetail("answering", lang)?.prazo || "";
 
   const Chip = ({ rotulo, valor: v }) => !v ? null : (
     <div className="rounded-xl border border-g-line bg-white/[0.03] px-3.5 py-2.5">
@@ -217,10 +239,13 @@ export default function Sign() {
                 </div>
               )}
 
-              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
                 <Chip rotulo={t("quando")} valor={b.timeline} />
                 <Chip rotulo={t("como")} valor={b.payment} />
                 <Chip rotulo={t("oquee")} valor={nEscopo ? t("inclui", nEscopo) : null} />
+                {/* COMO CANCELA fica ao lado do preço, não escondido na cláusula 6. Quem sabe que
+                    pode sair assina mais rápido — e a garantia é REAL (cláusula 6, 30 dias). */}
+                <Chip rotulo={t("cancela")} valor={t("garantia")} />
               </div>
 
               {/* PROTEÇÃO: dizer o número de cláusulas é o contrário de esconder. Quem lê sabe que
@@ -235,20 +260,46 @@ export default function Sign() {
             <div className="mb-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-g-muted print:hidden">{t("paraler")}</div>
 
             {/* ── [B] A FOLHA DE PAPEL ────────────────────────────────────────────────────────── */}
-            <ContractDoc body={b} signature={sig} />
+            <ContractDoc body={b} signature={sig} collapsible lang={lang} />
 
             {/* ── [C] O ACEITE ───────────────────────────────────────────────────────────────── */}
             <div id="bloco-assinar" className="mt-5 print:hidden">
               {assinado ? (
-                <div className="rounded-2xl border border-g-green/40 bg-g-green/[0.08] p-6">
+                /* O MOMENTO — e só DEPOIS do banco confirmar (state "signed" vem do `d.signed`
+                   verdadeiro, nunca de `r.ok`). Movimento discreto, e nenhum se a pessoa pediu
+                   menos movimento no sistema. */
+                <motion.div
+                  initial={reduzir ? false : { opacity: 0, y: 12, scale: 0.985 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: reduzir ? 0 : 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  className="rounded-xl3 border border-g-green/40 bg-g-green/[0.08] p-6 backdrop-blur-xl"
+                >
                   <div className="flex items-center gap-2.5">
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-g-green/20 text-[17px]">✓</span>
+                    <motion.span
+                      initial={reduzir ? false : { scale: 0.6, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: reduzir ? 0 : 0.45, delay: reduzir ? 0 : 0.12, ease: [0.22, 1, 0.36, 1] }}
+                      className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-g-green/20 text-[17px]"
+                    >✓</motion.span>
                     <div>
                       <div className="text-[17px] font-black leading-tight text-g-word">{t("signed")}</div>
                       {sig?.at && <div className="text-[11.5px] text-g-muted">{sig.name} · {sig.at}</div>}
                     </div>
                   </div>
                   {state !== "signed" && <p className="mt-2 text-[12px] text-g-muted">{t("already")}</p>}
+
+                  {/* O QUE FOI CONTRATADO e QUANDO COMEÇA, com o nome de quem assinou. O prazo é o
+                      que o repo já publica (productSystem.js → ~7 dias) — não se inventa data. */}
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-xl border border-g-green/25 bg-black/15 px-3.5 py-2.5">
+                      <div className="text-[9.5px] font-black uppercase tracking-[0.14em] text-g-muted">{t("contratou")}</div>
+                      <div className="mt-0.5 text-[13px] font-bold text-g-word">{b.title || doc.title}{valor ? ` · ${valor}` : ""}</div>
+                    </div>
+                    <div className="rounded-xl border border-g-green/25 bg-black/15 px-3.5 py-2.5">
+                      <div className="text-[9.5px] font-black uppercase tracking-[0.14em] text-g-muted">{t("comeca")}</div>
+                      <div className="mt-0.5 text-[13px] font-bold text-g-word">{prazo}</div>
+                    </div>
+                  </div>
 
                   <div className="mt-5 border-t border-g-green/25 pt-4">
                     <div className="text-[10px] font-black uppercase tracking-[0.16em] text-g-green">{t("agora")}</div>
@@ -263,22 +314,22 @@ export default function Sign() {
                   </div>
 
                   <div className="mt-5 flex flex-wrap gap-2">
-                    <button onClick={() => window.print()} className="btn-bright text-sm">{t("print")}</button>
-                    <a href={WA} target="_blank" rel="noopener noreferrer" className="btn-ghost text-sm">💬 {t("help")}</a>
+                    <button onClick={() => window.print()} className="btn-bright min-h-[48px] text-sm">{t("print")}</button>
+                    <a href={WA} target="_blank" rel="noopener noreferrer" className="btn-ghost min-h-[48px] text-sm">💬 {t("help")}</a>
                   </div>
-                </div>
+                </motion.div>
               ) : (
                 <div className="rounded-2xl border border-g-line bg-white/[0.035] p-5">
                   <div className="text-[14px] font-extrabold text-g-word">{t("review")}</div>
 
                   <input value={name} onChange={(e) => { setName(e.target.value); if (err) setErr(false); }}
                     placeholder={t("yourname")} autoComplete="name"
-                    className="mt-3 w-full rounded-xl border border-g-line bg-black/20 px-4 py-3 text-[15px] text-g-word placeholder:text-g-muted/60 outline-none transition focus:border-g-green/60" />
+                    className="mt-3 min-h-[52px] w-full rounded-xl border border-g-line bg-black/20 px-4 py-3 text-[16px] text-g-word placeholder:text-g-muted/60 outline-none transition focus:border-g-green/60" />
 
                   {/* NOME DIGITADO + CAIXA MARCADA, nunca só um clique: é o que caracteriza intenção
                       inequívoca de assinar. Um botão sozinho é clicável por acidente. */}
                   <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-[12.5px] leading-snug text-g-ink">
-                    <input type="checkbox" checked={consent} onChange={(e) => { setConsent(e.target.checked); if (err) setErr(false); }} className="mt-0.5 shrink-0 accent-[#3E9468]" />
+                    <input type="checkbox" checked={consent} onChange={(e) => { setConsent(e.target.checked); if (err) setErr(false); }} className="mt-0.5 h-5 w-5 shrink-0 accent-[#3E9468]" />
                     <span>{t("consent")}</span>
                   </label>
 
@@ -296,7 +347,7 @@ export default function Sign() {
                   )}
 
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <button onClick={submit} disabled={state === "signing"} className="btn-bright text-sm disabled:opacity-60">
+                    <button onClick={submit} disabled={state === "signing"} className="btn-bright min-h-[48px] text-sm disabled:opacity-60">
                       {state === "signing" ? t("signing") : `✍️ ${t("sign")}`}
                     </button>
                     <button onClick={() => window.print()} className="btn-ghost text-sm">{t("print")}</button>
@@ -320,7 +371,7 @@ export default function Sign() {
               {valor && <div className="text-[17px] font-black leading-none text-g-word">{valor}</div>}
             </div>
             <button onClick={() => document.getElementById("bloco-assinar")?.scrollIntoView({ behavior: "smooth", block: "center" })}
-              className="btn-bright shrink-0 text-sm">✍️ {t("sign")}</button>
+              className="btn-bright min-h-[48px] shrink-0 text-sm">✍️ {t("sign")}</button>
           </div>
         </div>
       )}

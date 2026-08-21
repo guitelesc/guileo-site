@@ -1,7 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { useLang } from "../i18n.jsx";
 import LiveCallBar from "./LiveCallBar.jsx";
 import mark from "../assets/guileo-mark.png";
+
+// A VOZ NO NAVEGADOR — carregada só quando o convite abre.
+//
+// POR QUE ELA ENTROU AQUI (2026-08-18): a Guileo vendia agente de voz e o próprio site não
+// tinha um. O componente e o endpoint já existiam há semanas, servindo o site de cada cliente;
+// faltava a landing apontar pra eles. É o dogfood mais barato que existia parado no repositório.
+//
+// POR QUE É O PRIMEIRO CAMINHO DO PAINEL, e não o segundo: hoje ele é o ÚNICO que funciona de
+// ponta a ponta sem depender de nada externo. A ligação telefônica precisa de Twilio + operadora
+// + campanha A2P; o chat de texto precisa de crédito Anthropic. A conversa por voz no navegador
+// passa por dois lugares só — nosso servidor e o navegador de quem chegou.
+//
+// `lazy` porque o motor de áudio (src/lib/voiceWeb.js) não tem por que pesar no primeiro paint
+// de uma landing: quem nunca abre o convite nunca baixa o arquivo.
+const VoiceWeb = lazy(() => import("./VoiceWeb.jsx"));
 
 // O CONVITE FLUTUANTE — o que aparece no canto de toda página de marketing (2026-08-15).
 //
@@ -22,11 +37,19 @@ import mark from "../assets/guileo-mark.png";
 export const ELEVEN_AGENT_ID = "agent_5901ktdkev68f5kb161fmeax1rdm"; // segue alimentando a agente de voz
 
 const T = {
-  pt: { convite: "Fale com a Gui", sub: "ela te liga agora", fechar: "Fechar" },
-  en: { convite: "Talk to Gui", sub: "she calls you now", fechar: "Close" },
-  es: { convite: "Habla con Gui", sub: "ella te llama ahora", fechar: "Cerrar" },
-  hi: { convite: "Gui से बात करें", sub: "वह अभी कॉल करती है", fechar: "बंद करें" },
+  pt: { convite: "Fale com a Gui", sub: "fale agora ou receba a ligação", fechar: "Fechar",
+        ou: "ou prefere receber uma ligação?", carregando: "Abrindo a voz…" },
+  en: { convite: "Talk to Gui", sub: "talk now or get a call", fechar: "Close",
+        ou: "or would you rather get a call?", carregando: "Opening voice…" },
+  es: { convite: "Habla con Gui", sub: "habla ahora o recibe la llamada", fechar: "Cerrar",
+        ou: "¿o prefieres recibir una llamada?", carregando: "Abriendo la voz…" },
+  hi: { convite: "Gui से बात करें", sub: "अभी बोलें या कॉल पाएँ", fechar: "बंद करें",
+        ou: "या कॉल पाना पसंद करेंगे?", carregando: "आवाज़ खुल रही है…" },
 };
+
+// O slug RESERVADO da própria Guileo no /api/voice-web (o servidor o traduz para o agente de
+// demo da plataforma). Não é um site de cliente e nunca pode virar um — ver PLATFORM_SLUG lá.
+const SLUG_GUILEO = "guileo";
 
 export default function VoiceAgent() {
   const { lang } = useLang();
@@ -53,12 +76,28 @@ export default function VoiceAgent() {
 
   return (
     <div className="fixed bottom-4 right-4 z-40 sm:bottom-6 sm:right-6">
+      {/* max-h + scroll no painel aberto: com os DOIS caminhos dentro (voz + ligação), ele passa
+          da altura de um celular deitado — sem o corte, o formulário de telefone sairia da tela. */}
       {aberto ? (
-        <div className="w-[min(92vw,26rem)] rounded-xl3 border border-white/20 bg-g-cream/95 shadow-lift backdrop-blur-xl">
+        <div className="max-h-[85vh] w-[min(92vw,26rem)] overflow-y-auto overscroll-contain rounded-xl3 border border-white/20 bg-g-cream/95 shadow-lift backdrop-blur-xl">
           <div className="flex items-center justify-between px-4 pt-3">
             <span className="text-[11px] font-black uppercase tracking-[0.18em] text-g-green">{t.sub}</span>
             <button onClick={() => setAberto(false)} aria-label={t.fechar}
               className="grid h-7 w-7 place-items-center rounded-full text-g-muted transition hover:bg-white/10 hover:text-g-word">✕</button>
+          </div>
+          {/* A VOZ PRIMEIRO: um clique e a pessoa está falando com a Gui, sem telefone e sem
+              formulário. O componente cuida sozinho de navegador sem suporte, microfone negado,
+              cota estourada e voz desligada — cada caso com sua frase, nunca um botão morto. */}
+          <div className="px-3 pt-3">
+            <Suspense fallback={<div className="py-6 text-center text-[13px] text-g-muted">{t.carregando}</div>}>
+              <VoiceWeb slug={SLUG_GUILEO} tema="escuro" brand="#D6C29A" business="Gui" lang={lang} />
+            </Suspense>
+          </div>
+
+          {/* O caminho do telefone continua inteiro: quem não quer falar agora (está no
+              escritório, sem fone, sem microfone) recebe a ligação. Nada foi tirado. */}
+          <div className="mt-4 flex items-center gap-3 px-4 text-[11px] font-bold uppercase tracking-[0.14em] text-g-muted">
+            <div className="h-px flex-1 bg-g-line" />{t.ou}<div className="h-px flex-1 bg-g-line" />
           </div>
           <div className="px-2 pb-2">
             <LiveCallBar source="floating" compacto />

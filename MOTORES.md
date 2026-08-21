@@ -22,8 +22,8 @@ do vendedor. Motores **done-for-you** (Ads, posts aprovados) = serviço premium 
 
 | Motor | Estado | O que faz | Gasta crédito? | Chave externa que falta |
 |---|---|---|---|---|
-| 🎙️ **Voz** | 🟢 LIVE | Lilian atende ligações 24/7, 20+ idiomas, cota preços, fecha | ✅ por ligação | — (Twilio ok; A2P só p/ SMS) |
-| 💬 **Atendimento/Chat** | 🟢 LIVE (webchat) · 🟡 SMS/WhatsApp | mesma Gui (guiBrain unificado) responde webchat/SMS/WhatsApp/IG/Messenger | ✅ por resposta | A2P 10DLC (SMS US) OU **WhatsApp Cloud API da Meta** (alt) |
+| 🎙️ **Voz** | 🟢 LIVE | Lilian atende ligações 24/7, 20+ idiomas, cota preços, fecha · **voz no NAVEGADOR** (sem telefone/A2P) no site do cliente E na landing da Guileo desde 2026-08-18 | ✅ por ligação | — (Twilio ok; A2P só p/ SMS) |
+| 💬 **Atendimento/Chat** | 🟢 LIVE (webchat) · 🟡 SMS/WhatsApp | mesma Gui (guiBrain unificado) responde webchat/SMS/WhatsApp/IG/Messenger · **ponte ManyChat** (`/api/manychat-lead` → `/api/lead`) cobre as DMs enquanto o crédito Anthropic do `meta-webhook` não volta | ✅ por resposta | A2P 10DLC (SMS US) OU **WhatsApp Cloud API da Meta** (alt) |
 | 📅 **Agenda universal** | 🟢 pronto (adapter+interno) · 🟡 externo aguarda chave | agenda no sistema do cliente (MindBody/Square/…) OU no motor interno; anti-choque | ✅ por reserva | MINDBODY_API_KEY (Natura); Square=token por-cliente |
 | 💰 **Financeiro/Cobrança** | 🟢 LIVE | close&collect na ligação, faturas, cobrança educada, ledger | ✅ por cobrança | Stripe Connect + Mercado Pago |
 | 🔵 **Google** | 🟡 em construção | GBP (SEO local), reviews pedir+responder, Ads done-for-you | ✅ por review/post | GOOGLE_BUSINESS_* (aprovação Google) |

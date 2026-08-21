@@ -10,6 +10,16 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- GUILEO APP (PWA). O manifesto vale para a casca da Guileo; ele é REMOVIDO do <head> nas
+         rotas /site/:slug (functions/site/[slug].js), onde o app é o do NEGÓCIO do cliente e o
+         manifesto tem que ser o dele — nunca dois manifestos, nunca a nossa marca no app dele.
+         O service worker é registrado só dentro de /portal (src/pages/Portal.jsx). -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Guileo" />
+    <meta name="application-name" content="Guileo" />
     <!-- preconnect: shaves the TLS handshake off the critical external requests -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

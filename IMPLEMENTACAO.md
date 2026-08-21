@@ -64,8 +64,7 @@
 
 **Etapa 1 — token permanente (Usuário do Sistema):** `business.facebook.com/settings` → portfólio **MED MUNDO BRASIL** → *Usuários → Usuários do sistema* → **Adicionar** (ex.: `Guileo API`, função Admin) → **Adicionar ativos**: o app **Guileo** (`2252636211962171`) e a **conta do WhatsApp** (WABA `972448889140826`), controle total nos dois → **Gerar novo token** → app Guileo → permissões `whatsapp_business_messaging` + `whatsapp_business_management` → **expiração: Nunca** → copiar (aparece UMA vez).
 
-**Etapa 2 — guardar:** o token é POR TENANT e mora no banco, **não em env** (cliente novo = INSERT, zero deploy):
-`update client_integrations set tokens = tokens || jsonb_build_object('access_token','<TOKEN>','token_kind','system_user') where client_email='…' and provider='whatsapp_cloud';`
+**Etapa 2 — guardar:** o token é POR TENANT e mora no banco, **não em env** (cliente novo = INSERT, zero deploy). Cole no card **💬 Conectar WhatsApp** do `/admin` (`src/components/WhatsAppConnect.jsx` → `POST /api/whatsapp-connect`) — o token vai direto pro banco, não passa por chat. O card **confere no Graph ANTES de gravar**: token que não responde não entra. Deixe os IDs vazios pra manter os guardados (trocar só o token é o caso normal — `store_integration` SUBSTITUI o jsonb inteiro, então a rota lê-mescla-grava). Botão **🩺 Testar** responde "ainda funciona?" sem enviar mensagem pra ninguém.
 
 **Etapa 3 — entrega:** para atender cliente real, registrar um **número próprio** na WABA (não pode estar ativo no app WhatsApp comum) e concluir a **Verificação da Empresa**. Enquanto isso, a prova possível é adicionar o celular do Luis à lista de destinatários do número de teste.
 
@@ -96,6 +95,14 @@
 **Zero modelo:** roda com a IA sem saldo — foi decisão depois do apagão de 14/08.
 **Prova:** token lixo → 401 · `avabello.com` → 4 achados, 3 linhas, `envio:null` sem `enviar:true` · e-mail renderiza com exatamente 3 bullets (suíte 56/56).
 **Arquivos:** `functions/lib/diagnostico.js`, `functions/api/diagnostico.js`, `demoAnalysisEmail` em `emailTemplates.js`, RPCs `diag_save`/`diag_get` (tabela `prospect_diagnostics`).
+
+## ROTA-AVALIACAO · o score de negócio que todo prospect/cliente recebe
+**Quando:** montar página de apresentação/quote de um prospect, ou medir a evolução de um cliente. ESTENDE a ROTA-ANALISE: o diagnóstico é a ferida; a avaliação é a régua (score 0-100 por aspecto) + previsões com premissa + estratégia produto-a-produto.
+1. **Gerar:** `POST /api/avaliacao {site, negocio, cliente_email?, contato, seller}` + `sid` do vendedor **ou** `token` admin (ou header `x-guileo-secret` = DIGEST_TOKEN) → devolve `{id, link, avaliacao}`. Com `cliente_email` = **modo cliente** (usa catálogo com preço real, ligações, agenda interna via `avaliacao_client_snapshot`); sem = modo prospect (só o público).
+2. **Ler:** `GET /api/avaliacao?id=<uuid>` (JSON; 1ª abertura grava `aberto_em`). Histórico: RPC `avaliacao_historico` — o mesmo negócio avaliado de novo mostra a curva do score (frase de renovação).
+3. **Régua honesta:** cada aspecto = verificações binárias medidas; **não medido sai do denominador** e aparece como "— não medido: motivo" (sem GOOGLE_PLACES_KEY a descoberta inteira fica não-medida, nunca zerada). Previsão SEMPRE `{valor, premissa}` — sem insumo medido, `valor:null` e a premissa diz o que falta. Sem horário no site, o modo cliente usa a **agenda interna** (união de turnos via `range_agg`) e a premissa declara a fonte.
+4. **Concorrentes com nome = USO INTERNO** (vendedor). A regra da ROTA-ANALISE continua: página de prospect nunca cita vizinho pelo nome.
+**Zero modelo** (heurística sobre HTML + banco; roda com a Anthropic zerada). **Arquivos:** `functions/lib/avaliacao.js` (motor), `functions/api/avaliacao.js` (rota), `db/avaliacao.sql` (tabela `business_evaluations` + RPCs `avaliacao_save/get/historico/client_snapshot`, gate INGEST literal).
 
 ## ROTA-ENCAMINHA · fazer o telefone REAL do cliente cair na Gui
 **Quando:** o cliente tem agente + número nosso e mesmo assim recebe ZERO ligação. Foi o caso do Natura (2026-08-14): agente ok, número ok, pipeline ok, 15 ligações no banco — **todas nossas, de teste**. Um número provisionado por nós é um número que ninguém disca: quem o mundo liga é a linha publicada do cliente (Google, porta, Instagram, cartão). Sem encaminhamento, a Gui atende um telefone que não toca.
@@ -648,3 +655,239 @@ Decidir orçamento com estimativa é legítimo; decidir **sem saber que é estim
 **Prova:** `sim@guileoai.com` (tenant `internal`, fora das métricas reais) carrega o fixture:
 boa `$300→$2100 [misto] SUBIR` · ruim `$300→$0 REDUZIR` · cega `$50→$0 [sem_valor] NAO_MEXER` ·
 mesma pessoa 2 agendamentos → receita NÃO dobra.
+
+---
+
+## ROTA-AGENTE · mexer no agente de voz sem quebrar (e voltar em 1 comando)
+
+**Quando:** qualquer alteração no agente ElevenLabs — voz, idioma, prompt, ferramentas, lição nova.
+
+**Por que existe:** antes, mudar e piorar era caminho sem volta — a versão boa vivia só na
+ElevenLabs e sumia na mudança seguinte. Foi assim que a voz nativa por idioma foi ao ar e
+quebrou a ligação da Lilian. Agora tem rede.
+
+**Os 4 passos (nesta ordem, sempre):**
+
+```bash
+S=$INGEST_SECRET; A=<agent_id>
+# 1. CONGELA o estado bom ANTES de mexer (ouro=1 marca como referência aprovada)
+curl -s "https://guileoai.com/api/agente-config?secret=$S&congelar=1&ouro=1&agent_id=$A&rotulo=antes+de+<o+que+vou+mexer>"
+# 2. MEXE (deploy da mudança na fonte + sync)
+curl -s -X POST "https://guileoai.com/api/sync-agent" -H "x-guileo-secret: $S" \
+     -H "content-type: application/json" -d "{\"email\":\"<email-do-cliente>\"}"
+# 3. PROVA — só vai pro ar com 17/17
+curl -s "https://guileoai.com/api/agente-config?secret=$S&padrao=1&agent_id=$A"
+# 4. SE PIOROU (ou o Luis ouviu e não gostou) — a volta:
+curl -s "https://guileoai.com/api/agente-config?secret=$S&voltar=1&agent_id=$A"
+curl -s -X POST "https://guileoai.com/api/sync-agent" -H "x-guileo-secret: $S" \
+     -H "content-type: application/json" -d "{\"email\":\"<email-do-cliente>\"}"   # cérebro da fonte
+```
+
+**Divisão de trabalho (o que cada peça restaura):**
+| peça | restaura | por quê |
+|---|---|---|
+| `?voltar=1` | **voz + presets de idioma** | é o que o sync NÃO restaura: ele preserva a voz viva de propósito, pra não atropelar escolha de cliente |
+| `POST /api/sync-agent` | **cérebro** (prompt, lições, KB, ferramentas) | já é reconstruível da fonte — não precisa de snapshot |
+| `?padrao=1` | **nada** — só julga | 17 itens, cada um nascido de um incidente real |
+
+**Regras que não se negociam:**
+- Voz muda **por PATCH direto**, uma vez. Sync nenhum troca voz (ele preserva) — se você tentar
+  trocar voz por sync, vai parecer que não funcionou.
+- Mudança de voz/idioma **só vai ao ar depois de ouvida**. Amostra nos 3 idiomas na mesma faixa
+  (`creative_generate_speech`, motor `eleven_flash_v2_5` = o das ligações).
+- Norma escrita: `AGENTE-PADRAO.md`. Norma executável: `?padrao=1`. Se as duas discordarem,
+  **corrija as duas** — foi o que aconteceu com a regra de voz em 2026-08-19.
+
+**Provado em 2026-08-19:** congelei o agente de teste, quebrei a voz de propósito, rodei
+`?voltar=1` → voltou e a releitura bateu (`bateu: true`). Não é promessa, é teste.
+
+---
+
+## ROTA-RAIOX — qualquer negócio pede o Guileo X-Ray sozinho (motor de aquisição)
+
+**Quando:** ligar/operar a porta pública `/raio-x` (`/x-ray`), o destino de anúncio onde o dono
+responde um quiz curto, recebe o X-Ray medido do próprio negócio e marca a call de 15 minutos.
+
+**As peças:**
+
+| peça | arquivo | o que faz |
+|---|---|---|
+| página | `src/pages/RaioX.jsx` | quiz de 6 passos (4 idiomas) → resultado → agenda |
+| endpoint | `functions/api/raio-x.js` | `gerar` · `horarios` · `marcar` |
+| motor | `functions/lib/avaliacao.js` | mede o site; o quiz entra como `declarado` |
+| relatório | `/apresentacao/<uuid>` | o MESMO documento de sempre |
+| SQL opcional | `db/xray.sql` | serviço de 15 min + `xray_funil` para o /admin |
+
+**Custo por X-Ray ≈ zero:** o motor é determinístico (nenhuma chamada de IA paga). É isso que
+permite ser grátis no anúncio. **Nunca** enfie um modelo neste caminho.
+
+**As 4 travas anti-abuso** (é rota pública que varre site de terceiro): `sameOrigin` · 5/h por IP ·
+3/dia por domínio · **idempotência de 7 dias por domínio** (mesmo site pedido de novo reaproveita
+a avaliação em vez de re-escanear). Dez pessoas pedindo o mesmo domínio = uma leitura só.
+
+**Honestidade:** o que o dono responde é **declarado, não medido**. Entra só nas previsões, com a
+premissa dizendo por extenso de onde veio (`payload.previsoes.*.declarado === true`), e **nunca**
+no score por aspecto. "Não sei" é resposta válida em toda pergunta de número → não-medido.
+
+**Prova (2026-08-19, ambiente local contra o banco de produção):**
+```bash
+curl -s -X POST https://guileoai.com/api/raio-x -H 'Content-Type: application/json' \
+  -H 'Origin: https://guileoai.com' \
+  -d '{"acao":"gerar","site":"sweetgreen.com","nome":"X","contato":"x@example.com",
+       "lang":"en","quiz":{"horas_abertas_semana":77,"ligacoes_semana":40,"ticket_medio":18}}'
+# → {"ok":true,"id":"...","score":52,"lead_no_funil":true}
+curl -s -X POST .../api/raio-x -d '{"acao":"horarios"}'   # → vagas REAIS da agenda da Guileo
+curl -s -X POST .../api/raio-x -d '{"acao":"marcar","quando":"<slot>","contato":"x@example.com"}'
+# → {"ok":true,"ref":"GUI-B763"}   (linha real em biz_appointments)
+```
+
+**Pendências conhecidas:** a call cai no serviço "Guileo Demo" (30 min) até `db/xray.sql` ser
+aplicado; e `/vendedor`, `/admin` e o suporte ainda não têm o botão de gerar/listar X-Ray.
+
+---
+
+## ROTA-VOZWEB-LANDING — a Guileo atende por VOZ no próprio site
+
+**Quando:** operar/alterar o botão de voz do `guileoai.com` (o convite flutuante no canto de toda
+página de marketing).
+
+**Por que existe:** a Guileo vendia agente de voz e o próprio site não tinha um. O componente
+(`src/components/VoiceWeb.jsx`) e o endpoint (`functions/api/voice-web.js`) já serviam o site de
+CADA cliente há semanas; faltava a landing apontar para eles. E hoje é o único canal 100% no ar:
+a voz roda na ElevenLabs (**não gasta Anthropic** — por isso o chat de texto do site foi
+desligado) e não passa por Twilio/operadora/A2P.
+
+**As peças:**
+
+| peça | arquivo | o que faz |
+|---|---|---|
+| convite | `src/components/VoiceAgent.jsx` | pílula flutuante → painel com **voz primeiro**, ligação depois |
+| tela da voz | `src/components/VoiceWeb.jsx` | 4 idiomas + 2 peles (`tema="claro"` cliente · `"escuro"` landing) |
+| motor de áudio | `src/lib/voiceWeb.js` | WebSocket + PCM, sem SDK de provedor (carregado por `lazy`) |
+| endpoint | `functions/api/voice-web.js` | slug → tenant → agente → cota → URL assinada |
+| teto de custo | `db/voice_web.sql` + **`db/voice_web_guileo.sql`** | reserva/devolução de minutos |
+
+**O slug reservado:** a landing manda `slug:"guileo"`. O servidor (constante `PLATFORM_SLUG`)
+traduz isso para o tenant interno `demo@guileoai.com` + o agente de demo da plataforma
+(`ELEVENLABS_AGENT_ID` ou `agent_5901ktdkev68f5kb161fmeax1rdm`, o mesmo do `+19864443334`).
+O atalho acontece **antes** do lookup de cliente — o que também impede um cliente de publicar um
+site com slug `guileo` e herdar o agente de demo. Site de cliente segue idêntico: nada mudou no
+caminho dele.
+
+**A trava de custo (obrigatória — é a superfície de voz mais exposta do produto):** o medidor já
+existia e é o mesmo dos clientes — reserva o teto ao abrir, devolve a sobra ao fechar, e conta em
+4 camadas (por IP nesta rota **fail-closed**, por sessão, por dia do tenant, por dia da
+plataforma). O que faltava é `db/voice_web_guileo.sql` (**não aplicado**): a linha de limites do
+tenant interno — **3 min/sessão · 30 min/dia · 20 sessões/dia**. Sem ela a landing herda o padrão
+de cliente pagante (4 min · 60 min/dia · 40 sessões), que é folgado demais para uma porta pública.
+**Desligar a voz da landing em 1 comando, sem deploy:**
+`update public.voice_web_limits set enabled=false where client_email='demo@guileoai.com';`
+
+**Prova (2026-08-19, antes do deploy):**
+```bash
+# produção ainda não tem o slug reservado (esperado — sem deploy):
+curl -s -X POST https://guileoai.com/api/voice-web -H 'Content-Type: application/json' \
+     -d '{"action":"start","slug":"guileo"}'          # → {"ok":false,"reason":"no_site"}  [404]
+
+# wrangler local com o código novo — o desvio da plataforma É tomado:
+#   slug=guileo            → {"reason":"quota_unavailable"}  (passou de dono+agente, parou no medidor)
+#   slug=naoexisteesteslug → {"reason":"no_site"} [404]      (caminho do cliente intacto)
+```
+Agente conferido na conta real da ElevenLabs: `GUI`, `pcm_16000` nas duas pontas (o formato que
+`src/lib/voiceWeb.js` fala), `max_duration_seconds:600`, `daily_limit:5000` (não `-1`).
+Landing aberta a 375px: painel com voz + ligação, sem overflow, e o caminho do erro renderiza a
+frase honesta em vez de um botão que gira.
+
+**Depois do deploy, a prova que falta** (precisa de microfone humano): abrir `guileoai.com`,
+clicar no convite → 🎙️ → falar. Confirmar no banco:
+`select public.voice_web_stats('glo_ing_c7f2a9e4b8d16350','demo@guileoai.com');`
+
+---
+
+## ROTA-MANYCHAT — lead do Instagram/Messenger entra no nosso funil
+
+**Quando:** o Luis ligar o ManyChat nas redes da Guileo. O ManyChat responde a DM; **esta rota é
+o lado de cá** — pega o lead e joga no funil que já existe.
+
+**O desenho:** `/api/manychat-lead` é uma **ponte**, não um CRM. Ela reencaminha para `/api/lead`
+e herda de graça: `gui_actions` (feed do /admin), CRM da Guileo, atribuição de anúncio, registro
+de consentimento, nurture por idioma e speed-to-lead. Mesmo desenho do `/api/raio-x`, pelo mesmo
+motivo: o 12º formulário não pode nascer órfão. **Arquivo:** `functions/api/manychat-lead.js`.
+
+> O `functions/api/meta-webhook.js` faz auto-resposta na DM pelo cérebro da Gui (exactly-once,
+> anti-injeção) — mas depende de Anthropic. O ManyChat cobre a janela; o meta-webhook volta a ser
+> o caminho quando o crédito voltar. **Um não mexe no outro.**
+
+### O que o Luis precisa fazer (3 passos)
+
+**1) Criar o segredo no Cloudflare.** Pages → projeto `guileoai` → Settings → Environment
+variables → **`MANYCHAT_SECRET`** = uma frase longa e aleatória (é uma senha; não reusar nenhuma
+outra). ⚠️ **Não use o INGEST aqui**: o INGEST abre as RPCs do banco inteiro, e este valor vai
+ficar salvo dentro de uma ferramenta de terceiro. Sem essa variável a rota responde **503** e não
+aceita nada — de propósito.
+
+**2) No ManyChat: Flow → + → External Request.**
+- **Method:** `POST`
+- **URL:** `https://guileoai.com/api/manychat-lead`
+- **Headers:**
+  - `Content-Type: application/json`
+  - `x-guileo-manychat: <o mesmo valor do MANYCHAT_SECRET>`
+  - *(se a tela não deixar criar cabeçalho de nome livre, use `Authorization: Bearer <segredo>` —
+    a rota aceita os dois. **Nunca** na URL: query string entra em log e histórico.)*
+- **Body (JSON):** monte com as variáveis do ManyChat, por exemplo:
+```json
+{
+  "name": "{{first name}} {{last name}}",
+  "phone": "{{phone}}",
+  "email": "{{email}}",
+  "username": "{{ig username}}",
+  "channel": "instagram",
+  "message": "{{last text input}}",
+  "lang": "pt",
+  "consent": false
+}
+```
+
+**3) Testar com o botão "Test Request" do ManyChat** e conferir o lead no `/admin`.
+
+### O formato que a rota espera (tolerante, e nunca inventa)
+
+| o que | nomes aceitos |
+|---|---|
+| nome | `name` · `nome` · `full_name` · ou `first_name` + `last_name` |
+| telefone | `phone` · `telefone` · `whatsapp` · `phone_number` · `celular` |
+| e-mail | `email` · `e-mail` · `mail` · `email_address` |
+| mensagem | `message` · `mensagem` · `text` · `last_input_text` · `pergunta` |
+| negócio | `business` · `negocio` · `company` · `empresa` |
+| perfil | `username` · `ig_username` · `instagram` · `handle` · `subscriber_id` |
+| canal | `channel` · `canal` · `platform` → `instagram`/`messenger`/`whatsapp`/`telegram`/`sms` |
+| idioma | `lang` · `language` · `idioma` · `locale` |
+
+**Campo que não vier entra vazio — nada é inventado.** Telefone só é aceito com cara de telefone
+(8–15 dígitos) e e-mail só com cara de e-mail; lixo do perfil não vira contato. **Mínimo exigido:**
+`phone` **ou** `email` **ou** `username` (numa DM costuma não haver telefone, e o `@` ainda é uma
+forma de responder — ele entra como contato prefixado com `@`). Sem nenhum dos três → **400**.
+
+### ⚠️ Consentimento (TCPA — a multa é por ligação)
+
+Quem manda DM **não** consentiu em receber ligação. Por isso o padrão é `consent:false` +
+`noCall:true`: o lead entra inteiro no funil e **a Gui não liga sozinha**. Para ativar o
+speed-to-lead, o fluxo do ManyChat precisa **perguntar** ("posso te ligar?") e só então mandar
+`"consent": true` — aí o opt-in é real e fica gravado no log de consentimento com origem
+`manychat`.
+
+### Prova (2026-08-19, wrangler local contra o banco de produção)
+
+| teste | resposta |
+|---|---|
+| sem cabeçalho de segredo | `{"erro":"forbidden"}` **403** |
+| segredo errado | `{"erro":"forbidden"}` **403** |
+| sem telefone/e-mail/perfil | `{"erro":"sem_contato"}` **400** |
+| corpo não-JSON | `{"erro":"json_invalido"}` **400** |
+| `{"nome","telefone":"n/a","ig_username","canal":"instagram"}` | `{"ok":true,"lead_no_funil":true,"contato":"@teste_ponte","canal":"Instagram","ligacao_automatica":false}` — telefone-lixo recusado, perfil virou contato |
+| `Authorization: Bearer` + `email` + `consent:true` | `{"ok":true,"lead_no_funil":true,"contato":"teste.ponte@example.com","canal":"Messenger","ligacao_automatica":true}` |
+
+`lead_no_funil` só é `true` quando o `/api/lead` respondeu `ok:true` **e** `stored !== false` —
+"200 sem gravar" conta como falha e vira evento `manychat_lead_nao_entrou` no /admin.
+🧹 Os dois testes acima criaram leads reais no feed (mensagem **"TESTE PONTE MANYCHAT — pode
+apagar"**): apagar no /admin.

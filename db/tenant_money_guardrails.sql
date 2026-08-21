@@ -141,7 +141,7 @@ begin
       from gui_actions g
       where g.action = 'lead'
         and g.contact like '%@%'
-        and g.details like ('%👤ref:' || trim(p_ref) || '%')
+        and substring(g.details from '👤ref:([^\s·]+)') = trim(p_ref)
       group by lower(trim(g.contact))
     ),
     pays as (

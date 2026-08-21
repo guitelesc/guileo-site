@@ -11,4 +11,22 @@
 /prospeccao        /prospects         301
 /consultoria       /consulting        301
 
+# ── Rótulos do menu que viraram URL óbvia. "Setores" e "Demonstração" existem como ÂNCORAS
+# (/#industries e /#try) — quem lê o rótulo num print, num anúncio ou digita a URL óbvia caía
+# em 404. Rótulo prometido = URL que responde. Os 4 idiomas do menu têm o seu.
+/setores           /#industries       301
+/industries        /#industries       301
+/sectores          /#industries       301
+/demonstracao      /#try              301
+/demo              /#try              301
+/demostracion      /#try              301
+
+# link curto do Growth Report da Natura (pra mandar por mensagem — o uuid continua sendo o segredo)
+# ⚠️ `catalogo=` é o SLUG do site público do cliente (client_site_public). É por ele que o relatório
+# mostra os SERVIÇOS e PREÇOS REAIS dela — a mesmíssima fonte de onde a agente tira o preço na
+# ligação. Sem esse parâmetro a seção de catálogo simplesmente não aparece (só os agregados
+# medidos): a página nunca adivinha nome nem preço de serviço. Cliente novo → um slug novo aqui.
+/natura            /apresentacao/8803d8e2-ab77-4917-9aff-aa4bf41fd9d4?accent=%234d92c2&agente=Lilian&catalogo=natura-spa&linha=%2B19298288170&logo=https%3A%2F%2Fnaturaspanyc.com%2Fwp-content%2Fuploads%2F2022%2F06%2Flogo-home-hero.png&capa=https%3A%2F%2Fnaturaspanyc.com%2Fwp-content%2Fuploads%2F2020%2F03%2Fnatura-spa-nyc-09-uai-1280x1280.jpg  302
+/natura-pt            /apresentacao/3c8ab340-8e1e-41ad-a84d-aea289570083?accent=%234d92c2&agente=Lilian&catalogo=natura-spa&linha=%2B19298288170&logo=https%3A%2F%2Fnaturaspanyc.com%2Fwp-content%2Fuploads%2F2022%2F06%2Flogo-home-hero.png&capa=https%3A%2F%2Fnaturaspanyc.com%2Fwp-content%2Fuploads%2F2020%2F03%2Fnatura-spa-nyc-09-uai-1280x1280.jpg  302
+
 /*                 /index.html        200

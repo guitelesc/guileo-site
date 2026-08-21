@@ -4,6 +4,14 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    // DEV ONLY: /api lives in Cloudflare Pages Functions, which vite doesn't run.
+    // Proxying to prod lets API-backed pages render locally with real data and
+    // keeps fetches same-origin (the site's CSP allows only connect-src 'self').
+    proxy: {
+      '/api': { target: 'https://guileoai.com', changeOrigin: true },
+    },
+  },
   build: {
     cssCodeSplit: true,
     chunkSizeWarningLimit: 700,

@@ -29,10 +29,12 @@ import { horasFechadas } from "./horario.js";
 
 // Provedores de agendamento online mais comuns nos verticais que atendemos. Achar QUALQUER um
 // significa "o cliente dele consegue marcar sem falar com ninguém" — e aí esse achado NÃO entra.
-const AGENDA = /mindbody|fresha|booksy|vagaro|squareup\.com\/appointments|square\.site|calendly|acuityscheduling|schedulicity|setmore|simplybook|resy|opentable|tock|zocdoc|housecallpro|jobber|servicetitan/i;
-const CHAT = /intercom|drift|tawk\.to|crisp\.chat|tidio|livechat|zendesk|hubspot.*messages|facebook\.com\/plugins\/customerchat|guileo/i;
-const REVIEW = /g\.page\/r\/|search\.google\.com\/local\/writereview|yelp\.com\/biz|trustpilot\.com\/review/i;
-const WHATS = /wa\.me\/|api\.whatsapp\.com\/send/i;
+// EXPORTADOS (2026-08-18): o motor de avaliação (lib/avaliacao.js) pontua os MESMOS sinais.
+// Duas cópias destas regex divergiriam em silêncio — regra duplicada é regra que some numa cópia.
+export const AGENDA = /mindbody|fresha|booksy|vagaro|squareup\.com\/appointments|square\.site|calendly|acuityscheduling|schedulicity|setmore|simplybook|resy|opentable|tock|zocdoc|housecallpro|jobber|servicetitan/i;
+export const CHAT = /intercom|drift|tawk\.to|crisp\.chat|tidio|livechat|zendesk|hubspot.*messages|facebook\.com\/plugins\/customerchat|guileo/i;
+export const REVIEW = /g\.page\/r\/|search\.google\.com\/local\/writereview|yelp\.com\/biz|trustpilot\.com\/review/i;
+export const WHATS = /wa\.me\/|api\.whatsapp\.com\/send/i;
 
 const conta = (re, s) => (s.match(re) || []).length;
 

@@ -59,7 +59,13 @@ import { productsForPilar } from "../data/productSystem.js";
 // confuso. E os três cards ficavam 7 · 4 · 2, fazendo parecer que um pilar importa e dois sobram.
 //
 // A informação que faltava JÁ ESTAVA na fonte: todo produto carrega um `resultMetric`
-// (+$2k–11k /mês recuperado · 21× mais conversões · −10–20% faltas). A landing mostrava só o nome
+// ⚠️ HISTÓRICO: o Brain exibia "+$2k–11k /mês recuperado" (e "+R$10k–55k" no pt). REMOVIDO em
+// 2026-08-20: era a ÚNICA perna com cifra, e sem premissa nenhuma. Os irmãos vendem sem número —
+// AD diz "mais leads", Build diz "1× build" — e a pesquisa de vendas confirmou que enquadramento
+// de valor sem lastro tem efeito quase nulo (r=.03); o que convence é o FATO MEDIDO. O número
+// medido de verdade vive no relatório X-Ray de CADA cliente, com a premissa escrita ao lado.
+// Se alguém quiser cifra aqui de novo, ela precisa de premissa na mesma linha.
+// (histórico: +$2k–11k /mês recuperado · 21× mais conversões · −10–20% faltas). A landing mostrava só o nome
 // e escondia o número — mostrando a parte que não vende e escondendo a que vende.
 //
 // TETO DE 4: acima disso o olho para de ler item e passa a ver "lista". O "+N" mantém a promessa
@@ -85,63 +91,73 @@ const produtosDoPilar = (pilar, lang, tudo = false) => {
   return { itens, resto: Math.max(0, todos.length - itens.length) };
 };
 
-const P = {
+// ⚠️ EXPORTADO (2026-08-18): o Growth Report (/apresentacao/:id) espelha os TRÊS PILARES com as
+// MESMAS palavras — Luis: "padrão no nível da landing, com o mesmo design". Reescrever badge,
+// "owns" e a linha de cada pilar num segundo arquivo é a armadilha que este arquivo inteiro
+// documenta (a lista à mão que divergiu da fonte e passou a prometer serviço inexistente).
+// A landing continua sendo a fonte da PALAVRA; o relatório só troca a cor pelo accent do cliente
+// e acrescenta os números MEDIDOS daquele negócio embaixo de cada pilar.
+export const PILLAR_COPY = {
   en: {
     eyebrow: "Three pillars · one system",
-    h1a: "One AI + marketing team, ",
-    h1b: "run as three pillars.",
+    h1a: "Your conversations became ",
+    h1b: "your most valuable asset.",
     sub: "Not features — pillars. Each owns a job, delivers a result, and pays for itself.",
     hybrid: "AI every day · a real human team on the craft",
     ai: "AI-run · a human supervises",
     dfy: "Done-for-you by the Guileo team",
     resultLabel: "The result",
+    wins: {"brain": ["Every call & message answered", "More bookings, fewer no-shows", "Lapsed clients won back"], "ad": ["More leads, every channel", "More 5-star reviews", "Birthday & win-back reminders"], "build": ["A site that books & sells", "Your own app & online store", "Everything on autopilot"]},
     pillars: [
-      { pilar: "brain", badge: "Guileo Brain", icon: "🧠", accent: "#3E9468", owns: "Your performance", line: "The AI employee that runs the front desk — answers every call & message, books, quotes, closes and collects. 24/7, 16 languages.", result: "+$2k–11k", unit: "/mo recovered", tone: "ai" },
+      { pilar: "brain", badge: "Guileo Brain", icon: "🧠", accent: "#3E9468", owns: "Your performance", line: "The AI employee that runs the front desk — answers every call & message, books, quotes, closes and collects. 24/7, 16 languages.", result: "Every call answered", unit: "· 24/7, no busy signal", tone: "ai" },
       { pilar: "ad", badge: "Guileo AD", icon: "📈", accent: "#D6C29A", owns: "Your growth", line: "Marketing that runs every day so you reach more people, close more deals and waste less ad money.", result: "More leads", unit: "· less wasted ad spend", tone: "hybrid" },
       { pilar: "build", badge: "Guileo Build", icon: "🏗️", accent: "#BE7F35", owns: "Your foundation", line: "The websites, apps, store and software your whole operation runs on — built once, runs forever.", result: "1× build", unit: "· runs forever", tone: "dfy" },
     ],
   },
   pt: {
     eyebrow: "Três pilares · um sistema",
-    h1a: "Um time de IA + marketing, ",
-    h1b: "em três pilares.",
+    h1a: "Suas conversas viraram ",
+    h1b: "seu ativo mais valioso.",
     sub: "Não são recursos — são pilares. Cada um tem um trabalho, entrega um resultado e se paga.",
     hybrid: "IA todo dia · um time humano na arte",
     ai: "IA opera · um humano supervisiona",
     dfy: "Feito pra você pelo time Guileo",
     resultLabel: "O resultado",
+    wins: {"brain": ["Toda ligação e mensagem atendida", "Mais agendamentos, menos faltas", "Clientes sumidos de volta"], "ad": ["Mais leads, em todo canal", "Mais avaliações 5 estrelas", "Lembrete de aniversário e retorno"], "build": ["Um site que agenda e vende", "Seu app e loja online", "Tudo no piloto automático"]},
     pillars: [
-      { pilar: "brain", badge: "Guileo Brain", icon: "🧠", accent: "#3E9468", owns: "Sua performance", line: "O funcionário-IA que cuida da recepção — atende toda ligação e mensagem, agenda, orça, fecha e cobra. 24/7, 16 idiomas.", result: "+R$10k–55k", unit: "/mês recuperado", tone: "ai" },
+      { pilar: "brain", badge: "Guileo Brain", icon: "🧠", accent: "#3E9468", owns: "Sua performance", line: "O funcionário-IA que cuida da recepção — atende toda ligação e mensagem, agenda, orça, fecha e cobra. 24/7, 16 idiomas.", result: "Toda ligação atendida", unit: "· 24/7, sem dar ocupado", tone: "ai" },
       { pilar: "ad", badge: "Guileo AD", icon: "📈", accent: "#D6C29A", owns: "Seu crescimento", line: "Marketing rodando todo dia pra você alcançar mais gente, fechar mais e desperdiçar menos em anúncio.", result: "Mais leads", unit: "· menos verba desperdiçada", tone: "hybrid" },
       { pilar: "build", badge: "Guileo Build", icon: "🏗️", accent: "#BE7F35", owns: "Sua fundação", line: "Os sites, apps, loja e software onde toda a operação roda — construído uma vez, roda pra sempre.", result: "1× build", unit: "· roda pra sempre", tone: "dfy" },
     ],
   },
   es: {
     eyebrow: "Tres pilares · un sistema",
-    h1a: "Un equipo de IA + marketing, ",
-    h1b: "en tres pilares.",
+    h1a: "Tus conversaciones se volvieron ",
+    h1b: "tu activo más valioso.",
     sub: "No son funciones — son pilares. Cada uno tiene un trabajo, entrega un resultado y se paga solo.",
     hybrid: "IA cada día · un equipo humano en el arte",
     ai: "IA opera · un humano supervisa",
     dfy: "Hecho para ti por el equipo Guileo",
     resultLabel: "El resultado",
+    wins: {"brain": ["Cada llamada y mensaje atendido", "Más reservas, menos ausencias", "Clientes perdidos recuperados"], "ad": ["Más leads, en todo canal", "Más reseñas 5 estrellas", "Recordatorio de cumpleaños y retorno"], "build": ["Un sitio que agenda y vende", "Tu app y tienda online", "Todo en piloto automático"]},
     pillars: [
-      { pilar: "brain", badge: "Guileo Brain", icon: "🧠", accent: "#3E9468", owns: "Tu performance", line: "El empleado-IA que atiende la recepción — contesta cada llamada y mensaje, agenda, cotiza, cierra y cobra. 24/7, 16 idiomas.", result: "+$2k–11k", unit: "/mes recuperado", tone: "ai" },
+      { pilar: "brain", badge: "Guileo Brain", icon: "🧠", accent: "#3E9468", owns: "Tu performance", line: "El empleado-IA que atiende la recepción — contesta cada llamada y mensaje, agenda, cotiza, cierra y cobra. 24/7, 16 idiomas.", result: "Cada llamada atendida", unit: "· 24/7, sin dar ocupado", tone: "ai" },
       { pilar: "ad", badge: "Guileo AD", icon: "📈", accent: "#D6C29A", owns: "Tu crecimiento", line: "Marketing corriendo cada día para llegar a más gente, cerrar más y desperdiciar menos en anuncios.", result: "Más leads", unit: "· menos gasto perdido", tone: "hybrid" },
       { pilar: "build", badge: "Guileo Build", icon: "🏗️", accent: "#BE7F35", owns: "Tu base", line: "Las webs, apps, tienda y software donde corre toda tu operación — construido una vez, corre siempre.", result: "1× build", unit: "· corre siempre", tone: "dfy" },
     ],
   },
   hi: {
     eyebrow: "तीन स्तंभ · एक सिस्टम",
-    h1a: "एक AI + मार्केटिंग टीम, ",
-    h1b: "तीन स्तंभों में।",
+    h1a: "आपकी बातचीत बन गई ",
+    h1b: "आपकी सबसे मूल्यवान संपत्ति।",
     sub: "फ़ीचर नहीं — स्तंभ। हर एक का एक काम, एक नतीजा, और खुद की कीमत निकालता है।",
     hybrid: "रोज़ AI · कारीगरी पर असली मानव टीम",
     ai: "AI चलाता है · मानव निगरानी करता है",
     dfy: "Guileo टीम आपके लिए बनाती है",
     resultLabel: "नतीजा",
+    wins: {"brain": ["हर कॉल और मैसेज का जवाब", "ज़्यादा बुकिंग, कम ग़ैरहाज़िरी", "खोए ग्राहक वापस"], "ad": ["हर चैनल पर ज़्यादा लीड", "ज़्यादा 5-स्टार रिव्यू", "जन्मदिन और वापसी रिमाइंडर"], "build": ["साइट जो बुक और बिक्री करे", "आपका ऐप और ऑनलाइन स्टोर", "सब कुछ ऑटोपायलट पर"]},
     pillars: [
-      { pilar: "brain", badge: "Guileo Brain", icon: "🧠", accent: "#3E9468", owns: "आपकी परफ़ॉर्मेंस", line: "AI कर्मचारी जो रिसेप्शन संभालता है — हर कॉल और मैसेज का जवाब, बुकिंग, कोटेशन, डील बंद और वसूली। 24/7, 16 भाषाएँ।", result: "+$2k–11k", unit: "/माह वापस", tone: "ai" },
+      { pilar: "brain", badge: "Guileo Brain", icon: "🧠", accent: "#3E9468", owns: "आपकी परफ़ॉर्मेंस", line: "AI कर्मचारी जो रिसेप्शन संभालता है — हर कॉल और मैसेज का जवाब, बुकिंग, कोटेशन, डील बंद और वसूली। 24/7, 16 भाषाएँ।", result: "हर कॉल का जवाब", unit: "· 24/7, कभी बिज़ी नहीं", tone: "ai" },
       { pilar: "ad", badge: "Guileo AD", icon: "📈", accent: "#D6C29A", owns: "आपकी ग्रोथ", line: "मार्केटिंग जो हर दिन चलती है — ज़्यादा लोगों तक पहुँच, ज़्यादा डील, कम विज्ञापन बर्बादी।", result: "ज़्यादा लीड", unit: "· कम बर्बादी", tone: "hybrid" },
       { pilar: "build", badge: "Guileo Build", icon: "🏗️", accent: "#BE7F35", owns: "आपकी नींव", line: "वेबसाइट, ऐप, स्टोर और सॉफ़्टवेयर जिन पर पूरा ऑपरेशन चलता है — एक बार बनता है, हमेशा चलता है।", result: "1× बिल्ड", unit: "· हमेशा चलता है", tone: "dfy" },
     ],
@@ -156,7 +172,7 @@ const hexToRgb = (hex) => {
 
 export default function PillarsProducts() {
   const { lang } = useLang();
-  const t = P[lang] || P.en;
+  const t = PILLAR_COPY[lang] || PILLAR_COPY.en;
   // Qual pilar está aberto (um por vez). Um-por-vez e não vários: com dois cards expandidos as
   // alturas divergem e a fileira perde o alinhamento do bloco 'O RESULTADO', que é o que ancora
   // a leitura horizontal dos três.
@@ -187,7 +203,7 @@ export default function PillarsProducts() {
               explicar a estrutura SEJA o assunto, ele está aqui, não foi jogado fora. */}
         </Reveal>
 
-        <style>{`@keyframes prshine{to{background-position:220% center}}`}</style>
+        <style>{`@keyframes prshine{to{background-position:220% center}}@keyframes pwin{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}`}</style>
 
         {/* three pillar columns */}
         <Stagger className="mt-12 grid grid-cols-1 gap-5 lg:grid-cols-3" gap={0.1}>
@@ -209,52 +225,19 @@ export default function PillarsProducts() {
                     </div>
                   </div>
 
-                  <p className="mt-4 text-[13px] leading-relaxed text-g-ink">{p.line}</p>
+                  {/* ⛔ A DESCRIÇÃO SAIU (Luis, 2026-08-20): «só os ícones com os nomes e os
+                      resultados, sem muitos textos». O cartão tinha 3 níveis de leitura (linha
+                      + selo de modo + resultado) competindo pelo mesmo olhar; agora tem UM.
+                      O que cada pilar faz já foi dito duas seções acima, no anel do motor. */}
 
-                  {/* the real products under this pillar */}
-                  {/* ── O "+N" VIROU BOTÃO (2026-08-17) ────────────────────────────────────────
-                      O Luis: «essa parte é a estrela do time, tem que estar perfeito» — e o pedido
-                      maior do dia era que o cliente entendesse TODOS os serviços.
-                      O "+3" trabalhava contra as duas coisas: dizia "existe mais" e não deixava ver,
-                      um beco sem saída num card cuja função é justamente mostrar amplitude. Pior:
-                      tem cara de botão (pílula, mesma família visual dos chips ao lado), então quem
-                      clicava não recebia nada — e um clique sem resposta ensina a não clicar mais
-                      nesta seção, inclusive nos chips que importam.
-                      Agora abre no lugar, sem sair da página e sem navegação: um clique revela o
-                      resto do pilar, outro recolhe. O teto de 4 continua sendo o estado de repouso
-                      (acima disso o olho para de ler item e passa a ver "lista") — a diferença é que
-                      agora é uma DOBRA, não um corte. */}
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {(() => {
-                      const { itens, resto } = produtosDoPilar(p.pilar, lang, aberto === p.pilar);
-                      return (<>
-                        {itens.map((it) => (
-                          // ⚠️ O NÚMERO SAIU DO CHIP (2026-08-17). O card do Brain trazia o chip
-                          // "24/7 AI Reception +$2k–11k" e, quatro linhas abaixo, "O RESULTADO
-                          // +$2k–11k /mês recuperado". O MESMO número duas vezes no mesmo card:
-                          // mostrado pequeno primeiro, ele chega gasto no lugar onde deveria
-                          // impressionar — e ainda enche o chip de ruído (21×, −10–20%, +★, −h,
-                          // unidades diferentes em pílulas de 11px, que o olho lê como sujeira).
-                          // Agora o chip diz só O QUE É (o serviço, que é o que a pessoa procura
-                          // quando varre a lista) e o número aparece UMA vez, grande, embaixo.
-                          // O valor completo continua no `title` para quem quiser o detalhe.
-                          <span key={it.nome} title={it.detalhe} className="inline-flex items-center rounded-full border px-3 py-1.5 text-[11.5px] font-semibold text-g-light" style={{ borderColor: `rgba(${rgb},0.3)`, background: `rgba(${rgb},0.07)` }}>
-                            {it.nome}
-                          </span>
-                        ))}
-                        {(resto > 0 || aberto === p.pilar) && (
-                          <button
-                            type="button"
-                            onClick={() => setAberto(aberto === p.pilar ? null : p.pilar)}
-                            aria-expanded={aberto === p.pilar}
-                            className="rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-g-muted transition hover:border-white/25 hover:text-g-word"
-                          >
-                            {aberto === p.pilar ? (MENOS[lang] || MENOS.en) : `+${resto}`}
-                          </button>
-                        )}
-                      </>);
-                    })()}
-                  </div>
+                  {/* ⛔ OS CHIPS DE PRODUTO SAÍRAM (Luis, 2026-08-20): «deixar só as coisas
+                      simples — mais leads, mais vendas, tudo que for de RESULTADO».
+                      O argumento, para poder voltar com consciência: a AMPLITUDE do catálogo já
+                      aparece na ServicesMarquee, na PRIMEIRA tela da página. Aqui os chips
+                      repetiam o que a pessoa acabou de ver e roubavam o espaço do único número que
+                      esta seção existe para entregar.
+                      ↩️ Para voltar: backup em /tmp/Pillars.bak.jsx. O helper `produtosDoPilar` e o
+                      estado `aberto` continuam no arquivo, intactos. */}
 
 
                   {/* ⚠️ O SELO DE ENTREGA DESCEU (2026-08-17). Ele ficava colado nos chips, e com
@@ -267,13 +250,31 @@ export default function PillarsProducts() {
                       app, loja, software e automação, e o productSystem só tem DOIS itens dele.
                       Enquanto isso não for resolvido na FONTE, o pilar mais caro será sempre o que
                       parece o mais magro. */}
+                  {/* ✨ OS GANHOS — o vazio do card virou os RESULTADOS que o Luis pediu
+                      («mais leads, mais relacionamento, mais reviews, aniversário»). Vêm do
+                      dicionário `wins` por pilar (dados reais, não produtos), com uma revelação
+                      discreta em cascata — movimento com intenção, não decoração. */}
+                  {(t.wins?.[p.pilar] || []).length > 0 && (
+                    <ul className="mt-5 space-y-2.5">
+                      {t.wins[p.pilar].map((w, wi) => (
+                        <li key={wi} className="flex items-center gap-2.5 text-[13.5px] text-g-ink"
+                          style={{ animation: `pwin .6s cubic-bezier(.2,.7,.2,1) ${0.15 + wi * 0.12}s both` }}>
+                          <span aria-hidden="true" className="grid h-4 w-4 shrink-0 place-items-center rounded-full text-[9px] font-black"
+                            style={{ color: p.accent, background: `rgba(${rgb},0.14)`, boxShadow: `inset 0 0 0 1px rgba(${rgb},0.4)` }}>✓</span>
+                          {w}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* o resultado — ancorado no pé; agora é o ÚNICO nível de leitura do cartão */}
                   <div className="mt-auto pt-5">
-                    <div className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-white/[0.04] px-2.5 py-1 text-[10.5px] font-semibold text-g-muted ring-1 ring-white/10">
+                    {/* o modo de entrega virou uma linha fina acima do rótulo: continua sendo dito
+                        (é promessa de que tem humano no circuito, não enfeite), mas sem caixa e sem
+                        bloco próprio, então não disputa o olhar com o número. */}
+                    <div className="mb-2 flex items-center gap-1.5 text-[10.5px] font-semibold text-g-muted">
                       <span className="h-1.5 w-1.5 rounded-full" style={{ background: p.accent, boxShadow: `0 0 7px ${p.accent}` }} />{toneLabel(p.tone)}
                     </div>
-                  </div>
-                  {/* the result — anchored at the foot */}
-                  <div className="mt-auto pt-5">
                     <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-g-muted">{t.resultLabel}</div>
                     <div className="mt-1 flex items-baseline gap-1.5">
                       <span className="font-black leading-none tracking-tight tabular-nums" style={{ color: p.accent, fontSize: "clamp(1.6rem,3vw,2rem)", textShadow: `0 4px 22px rgba(${rgb},0.35)` }}>{p.result}</span>

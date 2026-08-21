@@ -50,7 +50,8 @@ LIGAÇÃO/CANAL → ElevenLabs (só a VOZ) → NOSSOS webhooks (Cloudflare funct
 
 1. **E-mail**: SEMPRE via `emailTemplates.js`. Branded por cliente = `brandFor(env,email)` + `clientEmailShell`.
 2. **SQL novo**: arquivo próprio em `db/`, idempotente, RLS on SEM policy anon, RPC gated + `grant execute to anon`, blocos EXCEPTION pra degradar (nunca 500 por tabela ausente).
-3. **Honestidade de canal**: LIVE (voz/SMS/widget/email) vs PENDING (WA/IG/Google/Ads — capturado agora, acende com a API). Badge verde/âmbar. Nunca fingir.
+3. **Honestidade de canal**: LIVE (voz · widget/webchat · e-mail) vs PENDING de aprovação EXTERNA, código pronto, acende sozinho (**SMS US** — campanha A2P 10DLC reprovada, erro 30034 · **WhatsApp** — remetente · **IG/Messenger** — `meta-app-not-approved` · **Google Business** · **Ads**): capturado agora, sai quando aprovar. Badge verde/âmbar. Nunca fingir.
+   ⚠️ **SMS NÃO ESTÁ LIVE** (esta linha dizia que estava, até 2026-08-20 — e a contradição com `functions/lib/productFacts.js` virou 12 promessas sem lastro no catálogo público). A fonte da verdade do estado REAL de cada canal é **`functions/lib/productFacts.js`**. Quando uma aprovação sair, **três arquivos mudam JUNTOS, no mesmo commit**: `functions/lib/productFacts.js` · `src/data/selfServePlans.js` · **este** ARQUITETURA.md. Os três são lidos como lei e não podem discordar. Hoje o pay-link e o alcance de review saem por **e-mail/ligação**, não por SMS.
 4. **Integrações externas** (MindBody/Google Business/Yelp API): scaffold inerte `{ready:false, note}` até env+creds — padrão `mindbody.js`.
 5. **Ligação outbound**: SEMPRE pelo portão blindado (`call.js` — DNC+caps). Exceção única: ligar pro PRÓPRIO dono (notify phone).
 6. **Design**: app/cockpit = cimento quente `#161512` (LOCKED — nunca retocar tokens globais); sinais: Gui laranja `#FF8A33`, info azul, live rosa, atenção âmbar, done verde. Landing tem paleta própria.
@@ -85,6 +86,7 @@ LIGAÇÃO/CANAL → ElevenLabs (só a VOZ) → NOSSOS webhooks (Cloudflare funct
 - **`+19864443334` = RESERVADO da plataforma** (demo/saída da landing, `ELEVENLABS_PHONE_NUMBER_ID`). NUNCA vai pra cliente — `bind-number.js` recusa e o picker do /admin mostra 🚫.
 - **Cada cliente = 1 número PRÓPRIO** (nunca compartilhado, nunca o demo). Vem do **pool** de números livres (mapear no /admin via ROTA-NUMERO) ou **compra automática** no onboard (number_mode='buy').
 - **1 número = 1 agente.** O picker marca 🟢 livre / 🔒 já usado / 🚫 reservado.
+- **Slug reservado `guileo`** (2026-08-18): a landing fala com esse MESMO agente de demo **por voz no navegador** (`/api/voice-web`, `PLATFORM_SLUG`), sem telefone e sem A2P. O atalho roda antes do lookup de cliente — nenhum site de cliente pode reivindicar o slug. Medidor no tenant interno `demo@guileoai.com`. Ver ROTA-VOZWEB-LANDING.
 
 ## ⏰ Cron externo (Pages não tem cron) — URLs token-gated
 `/api/proactive` (datas/aniversário/rebooking) · `/api/automations` (radar/slow-day) · `/api/lifecycle` · `/api/collections?sweep=1` · `/api/nps` · `/api/money-reconcile` · `/api/health-monitor`

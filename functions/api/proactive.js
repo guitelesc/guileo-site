@@ -103,6 +103,8 @@ export async function onRequestPost(context) {
     return ok;
   };
   let reactivated = 0, reminded = 0, birthdays = 0, anniversaries = 0, recalls = 0, loyalty = 0, welcomes = 0, rebooks = 0;
+  // retornos de orçamento disparados nesta rodada (motor novo de 2026-08-17)
+  let orcamentosRetornados = 0;
   // MOTOR DE AVALIAÇÃO (2026-08-17). `semLinkReview` não é estatística: é a lista de tenants cujo
   // motor está PARADO por falta do link de avaliação no cadastro. Sem ela, zero pedidos leria como
   // "nenhuma visita" — o mesmo fallback silencioso que deixou três motores mortos rodando 96×/dia.
@@ -234,6 +236,37 @@ export async function onRequestPost(context) {
     // rodada — e a rodada agora é DE HORA EM HORA (ver cron-tick), com janela de 26h.
     // A janela de 24h com rodada diária tinha um buraco silencioso: reserva criada DEPOIS da rodada
     // do dia para o dia seguinte nunca caía em janela nenhuma. As 2h a mais cobrem a folga.
+    // ── RETORNO DE ORÇAMENTO (2026-08-17) ───────────────────────────────────────────────────────
+    // Fecha a promessa que a agente faz quando não tem o preço: "deixa eu confirmar e já te
+    // retorno". Até hoje essa frase morria na conversa — o telefone entrava no CRM sem serviço e
+    // sem motivo, e ninguém retornava. Agora a fila `biz_quote_requests` guarda QUEM pediu O QUÊ,
+    // e a Gui liga de volta pelo mesmo portão de discagem de sempre (/api/call: DNC + tetos).
+    //
+    // ⚠️ ESPERA 10 MINUTOS ANTES DE LIGAR. A conversa pode continuar e virar agendamento sozinha;
+    // ligar em cima de quem ainda está digitando é a pior primeira impressão possível.
+    // ⚠️ E A TENTATIVA SÓ É CARIMBADA SE A LIGAÇÃO FOI ACEITA. Marcar antes transformaria falha de
+    // rede em "já tentamos 3 vezes" e a pessoa nunca mais receberia retorno — o defeito que este
+    // arquivo inteiro existe para não cometer.
+    const orc = await rpc(env, "biz_quotes_due", { p_email: email, p_min_idade_min: 10, p_max_tentativas: 3, p_limit: 20 });
+    if (orc && orc.error) rpcRecusou.push(`orcamento:${email}:${orc.error}`);
+    for (const q of (orc?.due || [])) {
+      if (!q.phone) continue;
+      let ligou = false;
+      try {
+        const cr = await fetch(`${url.origin}/api/call`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: q.phone, client_email: email, motivo: "orcamento", servico: q.servico, lang: q.lang || "en" }),
+        });
+        const cd = await cr.json().catch(() => ({}));
+        ligou = cr.ok && cd.ok !== false;
+        if (!ligou) rpcRecusou.push(`orcamento-ligacao:${email}:${(cd.reason || cd.error || cr.status)}`);
+      } catch (e) { rpcRecusou.push(`orcamento-ligacao:${email}:rede`); }
+      if (ligou) {
+        orcamentosRetornados++;
+        await rpc(env, "biz_quote_mark", { p_email: email, p_id: q.id, p_tentou: true });
+      }
+    }
+
     const rem = await rpc(env, "biz_reminders_due", { p_email: email, p_hours: 26, p_limit: 50 });
     // mesma guarda do motor de avaliação: recusa do banco não pode virar "ninguém para lembrar".
     // Este é o motor mais caro de todos para falhar em silêncio — lembrete que não sai é falta.
@@ -448,5 +481,5 @@ export async function onRequestPost(context) {
     }
   }
 
-  return json({ ok: true, reactivated, reminded, reviewsAsked, reviewMarcaFalhou, semLinkReview, rpcRecusou, birthdays, anniversaries, recalls, loyalty, welcomes, rebooks, crmBirthdays, marketingDates, rebookNudges, valueReports, vipThanks, leadNurtures, businesses: businesses.length });
+  return json({ ok: true, orcamentosRetornados, reactivated, reminded, reviewsAsked, reviewMarcaFalhou, semLinkReview, rpcRecusou, birthdays, anniversaries, recalls, loyalty, welcomes, rebooks, crmBirthdays, marketingDates, rebookNudges, valueReports, vipThanks, leadNurtures, businesses: businesses.length });
 }

@@ -69,7 +69,11 @@ export async function onRequestPost(context) {
     if (!seller) return json({ error: "unauthorized" }, 401);
     // The shared team code (roster:false) accepts any typed email → it must NOT read/mutate another
     // seller's private prospect CRM. Prospects require a PERSONAL roster code (roster:true).
-    if (!seller.roster) return json({ error: "unauthorized" }, 401);
+    // ⚠️ CÓDIGO DE ERRO PRÓPRIO (2026-08-20). Os dois 401 devolviam `unauthorized`, então a tela
+    // não sabia se era sessão expirada ("entra de novo") ou código de time ("peça o pessoal ao
+    // Luis") — dois problemas com soluções OPOSTAS embaixo da mesma palavra. Erro genérico faz o
+    // vendedor tentar a coisa errada e desistir. `team_code` deixa a mensagem ser cirúrgica.
+    if (!seller.roster) return json({ error: "team_code" }, 401);
 
     // ── LIST (+ stats) — the seller's whole pipeline in one round-trip ──────────────────────────────
     if (action === "list") {

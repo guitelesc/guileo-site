@@ -74,7 +74,14 @@ const EVAL_BUDGET_MS_DEFAULT = 20000;
 // caso). Com 3 seriam ~48s de wall-time numa invocação que hoje gasta ~32s, e um lote que morre no
 // meio com offset determinístico PULA casos em silêncio. Escolher o número já provado custa mais
 // saltos e zero risco. 48 casos ÷ 2 = 24 saltos, por isso o teto subiu para 40.
-const LOTE_CADEIA = 2;
+// 🚨 LOTE 1 (2026-08-18). Era 2, com o sucessor disparando no MEIO — e isso fazia as invocações se
+// SOBREPOREM de propósito. Parecia esperto; virou estampida: 17 casos gravados em 38 SEGUNDOS, com
+// varias invocacoes batendo no modelo ao mesmo tempo. E foi nessa rodada que `vert-hvac-gas-leak`
+// tirou 5 (ele tira 90 quando roda sozinho). Ou seja: parte do "ruido do juiz" que eu medi era a
+// MINHA propria corrente atropelando o modelo — eu estava medindo o meu paralelismo, nao o agente.
+// Com lote 1 a invocacao dura ~25s (um caso), o sucessor sai no fim dela, e a corrente anda em FILA:
+// uma invocacao viva por vez. Mais saltos, zero concorrencia, e o numero volta a ser sobre o agente.
+const LOTE_CADEIA = 1;
 
 async function rpc(env, fn, args) {
   try {
@@ -241,6 +248,12 @@ export async function onRequest(context) {
   const body = request.method === "POST" ? await request.json().catch(() => ({})) : {};
   const tok = (body.token || url.searchParams.get("token") || request.headers.get("x-guileo-secret") || "").toString();
   let authed = !!env.DIGEST_TOKEN && safeEq(tok, env.DIGEST_TOKEN);
+  // PORTA DE SERVIÇO (2026-08-17): o INGEST_SECRET também entra. Não afrouxa nada — é ELE quem já
+  // autoriza a ESCRITA em agent_evals na própria RPC, então quem o tem já podia gravar notas; e
+  // ele é o mesmo segredo que abre /api/sync-agent, que reescreve o cérebro de um agente inteiro.
+  // Recusar aqui só impedia DIAGNOSTICAR o que já se pode alterar. Fail-closed preservado: a
+  // verdade do env vem ANTES do safeEq, senão safeEq("","") abriria a porta para todo mundo.
+  if (!authed) authed = !!env.INGEST_SECRET && safeEq(tok, env.INGEST_SECRET);
   if (!authed && tok) {
     authed = await fetch(`${SB}/rest/v1/rpc/blitz_stats`, {
       method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
@@ -402,23 +415,44 @@ export async function onRequest(context) {
   // `dispararProximo` leria `hops`/`MAX_HOPS` antes da declaração — e `const` em TDZ não é
   // `undefined`, é ReferenceError em tempo de execução. Ou seja: build verde, eval morto na
   // primeira invocação. É exatamente a família de erro de [[feedback_build_verde_nao_e_prova]].
-  const MAX_HOPS = 40; // 48 casos ÷ lote 2 = 24 saltos; 40 dá folga pra o conjunto crescer
+  // 3 rodadas x 48 casos ÷ lote 2 = 72 saltos. 120 dá folga pro conjunto crescer sem soltar a trava.
+  const MAX_HOPS = 200; // lote 1 × 48 casos × 3 rodadas = 144 saltos; 200 dá folga
   const hops = Math.max(0, Number(url.searchParams.get("hops") || body.hops || 0));
+  // ── TRÊS RODADAS, UMA run_id ────────────────────────────────────────────────────────────────
+  // Medi o MESMO conjunto duas vezes seguidas, sem mudar nada: hvac 90→5, law 93→30, dental 35→96.
+  // A oscilação do juiz consigo mesmo (até 85 pontos) é MAIOR que a diferença entre duas versões de
+  // lição (1,2 ponto). Com amostra de 1, "melhorou" e "piorou" são a mesma medição — e eu já reportei
+  // ganho de lição que não sobreviveria a um segundo sorteio.
+  // A correção não é um juiz melhor: é PARAR DE ACREDITAR EM UMA AMOSTRA. Três rodadas sob a MESMA
+  // run_id, e quem lê agrega por MEDIANA (a média deixa um 5 solitário afundar um caso que vai bem
+  // em dois terços das vezes; a mediana ignora o outlier, que é exatamente o que ele é).
+  const rodada = Math.max(1, Number(url.searchParams.get("rodada") || body.rodada || 1));
+  const RODADAS = Math.max(1, Math.min(5, Number(url.searchParams.get("rodadas") || body.rodadas || (cadeia ? 3 : 1))));
   let saltou = false;
   const dispararProximo = () => {
     if (saltou || !cadeia || dry || hops >= MAX_HOPS) return;
-    const proxOffset = OFFSET + HARD_CAP;              // determinístico: por isso o lote é fixo
-    if (proxOffset >= cases.length) return;            // nada depois deste lote
+    let proxOffset = OFFSET + HARD_CAP;                // determinístico: por isso o lote é fixo
+    let proxRodada = rodada;
+    if (proxOffset >= cases.length) {
+      // acabou o conjunto: se ainda falta rodada, RECOMEÇA do zero na mesma run_id.
+      // ⚠️ `hops` continua crescendo entre rodadas de propósito — é ele a trava de recursão. Zerar
+      // aqui devolveria a corrente infinita que MAX_HOPS existe para impedir.
+      if (proxRodada >= RODADAS) return;               // acabou de verdade
+      proxOffset = 0;
+      proxRodada = rodada + 1;
+    }
     saltou = true;
     const prox = new URL(url.origin + "/api/agent-eval");
     prox.searchParams.set("cadeia", "1");
     prox.searchParams.set("hops", String(hops + 1));
     prox.searchParams.set("run_id", out.run_id);       // MESMA run: uma rodada, não 17
     prox.searchParams.set("offset", String(proxOffset));
+    prox.searchParams.set("rodada", String(proxRodada));
+    prox.searchParams.set("rodadas", String(RODADAS));
     prox.searchParams.set("tenant", tenant);
     prox.searchParams.set("token", tok);
     context.waitUntil(fetch(prox.toString()).catch(() => {}));
-    out.corrente = { saltou_para: proxOffset, hop: hops + 1, teto: MAX_HOPS, quando: "meio do lote" };
+    out.corrente = { saltou_para: proxOffset, rodada: proxRodada, de: RODADAS, hop: hops + 1, teto: MAX_HOPS, quando: "meio do lote" };
   };
 
   let idx = OFFSET;
@@ -432,7 +466,17 @@ export async function onRequest(context) {
     const c = cases[idx];
     out.processed++;
     // Depois do 1º caso concluído, com o handler ainda no meio do caminho: hora de gerar o próximo.
-    if (out.processed === 2) dispararProximo();
+    // 🚨 DEPOIS DO PRIMEIRO CASO, não do segundo (2026-08-17). Estava `=== 2`, e com HARD_CAP = 2
+    // isso é o FIM do lote, não o meio — o comentário dizia "meio do lote" e o código fazia outra
+    // coisa. Por isso a corrente andava 12 saltos e morria: os 23 casos base levam ~16s (lote ~32s,
+    // a invocação aguenta), mas os VERTICAIS levam 22-29s cada (medido um a um em produção hoje:
+    // law 29s, restaurant 26s, hvac 22s) → lote de ~50-58s, e a invocação morria ANTES da linha que
+    // dispara o sucessor. Disparando aos 25s, o salto acontece com folga enquanto o 2º caso ainda roda.
+    //
+    // TROCA CONSCIENTE: se o 2º caso do lote estourar, ele é PULADO (o sucessor já saiu em
+    // OFFSET+2) em vez de matar a corrente inteira. Um buraco visível — o relatório lista os ids
+    // não medidos — é melhor que uma parada silenciosa que ninguém percebe por duas semanas.
+    if (out.processed === 1) dispararProximo();
     const a = out.agents[c.agent] || (out.agents[c.agent] = { cases: 0, scored: 0, passed: 0, failed: 0, sum: 0, sum_safety: 0, avg: null, avg_safety: null, pending: false });
     a.cases++;
 

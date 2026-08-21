@@ -13,7 +13,16 @@ function Followups({ V, real = null, email = "", dataKey = "" }) {
   useEffect(() => { setDone(portalApi.loadState(`${V.label}:fups`, [])); }, [V.label]);
   const open = rows.map((r, i) => ({ r, i })).filter(({ i }) => !done.includes(i));
   const pipeline = open.reduce((s, { r }) => s + r.value, 0);
-  const markWon = (i, name, value) => { setDone((d) => { const n = [...d, i]; portalApi.saveState(`${V.label}:fups`, n); return n; }); logImpact(V.label, `Won back ${name}`, value || 120); setSel(null); toast(`Wonderful — ${name} is won. 🎉 $${value || 120} added to your Guileo Impact.`); };
+  // "Won" on a SAMPLE row used to inject its invented value (fallback $120) straight into Guileo
+  // Impact — invented money inside a paying client's ROI. The rows here still come from
+  // genFollowups(V) (sample) because there is no real follow-up list endpoint yet, so in live mode
+  // Won only closes the row locally: it never writes a number the client didn't earn.
+  const markWon = (i, name, value) => {
+    setDone((d) => { const n = [...d, i]; portalApi.saveState(`${V.label}:fups`, n); return n; });
+    if (!live) { logImpact(V.label, `Won back ${name}`, value || 120); toast(`Wonderful — ${name} is won. 🎉 $${value || 120} added to your Guileo Impact.`); }
+    else toast(tr("Closed here. Your real revenue is counted from what's actually collected."));
+    setSel(null);
+  };
   // Nudge — in LIVE mode fire the REAL reengage sender (Gui emails now / queues SMS) and only ever
   // toast success on a real ok+queued; dedupe via `nudged`. In demo it's a sample interaction. A live
   // row with no real contact (phone/email) can't be sent → the chip is hidden (never a fake send).
@@ -34,6 +43,11 @@ function Followups({ V, real = null, email = "", dataKey = "" }) {
   };
   return (
     <div className="space-y-4 stagger">
+      {live && (
+        <div className="rounded-xl2 border border-g-gold/30 bg-g-gold/[0.07] px-4 py-3 text-[12px] leading-snug text-g-light">
+          {tr("Heads up: this list is still a sample layout — there's no live follow-up feed behind it yet. Your real contacts that went quiet are in CRM 360.")}
+        </div>
+      )}
       <MiniStats items={[["Active sequences", `${open.length}`], ["Pipeline value", `$${pipeline.toLocaleString()}`], ["Won this week", `${vnum(V.label, "won", 4, 14)}`, "good"], ["Auto-nudged", `${vnum(V.label, "nudge", 18, 44)}`, "good"]]} />
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("The AI is chasing these — so you never lose them")}</div>

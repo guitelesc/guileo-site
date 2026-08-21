@@ -234,6 +234,72 @@ function fillTokens(text, vals) {
 
 // Pure builder → produces a ContractDoc-compatible body (see src/components/ContractDoc.jsx).
 // No fetch, no side effects. { planKey, lang, provider, client, amount, startDate, market }.
+
+// ── EM PALAVRAS SIMPLES ─────────────────────────────────────────────────────────────────────────
+// Uma linha por cláusula, na língua de um dono de salão. NÃO substitui a cláusula (o texto integral
+// continua ali, inteiro e acessível) e não tem valor jurídico próprio: serve para a pessoa saber o
+// que está prestes a abrir antes de abrir. Quem assina entendendo não pede o dinheiro de volta na
+// semana seguinte — e "não entendi o que assinei" é a origem da maioria das disputas pequenas.
+export const CLAUSE_PLAIN = {
+  pt: [
+    "O que você está contratando: uma recepcionista de IA que atende, agenda e vende no seu nome, por assinatura.",
+    "Seu plano vem com uma cota de créditos por mês; o que passar disso é cobrado à parte ou pede upgrade.",
+    "A gente liga tudo em cerca de 7 dias, contando a partir do momento em que você entrega acessos e informações.",
+    "Você paga o valor combinado todo mês, adiantado, no cartão cadastrado. Atraso suspende o serviço até regularizar.",
+    "Renova sozinho todo mês. Se o preço mudar, avisamos antes e você pode sair sem multa.",
+    "Pode cancelar quando quiser. Nos primeiros 30 dias, devolvemos o valor do primeiro mês por inteiro.",
+    "Não prometemos número de vendas. A IA ajuda muito, mas pode errar — confira o que for crítico.",
+    "Se algo der errado, nossa responsabilidade tem teto: no máximo o que você pagou nos últimos 3 meses.",
+    "A plataforma continua sendo nossa; o seu conteúdo, o seu catálogo e os seus dados continuam sendo seus.",
+    "Cuidamos dos dados dos seus clientes conforme a lei (LGPD/GDPR/CCPA) e só usamos para operar o serviço.",
+    "Ligações e mensagens seguem as regras de telefonia; você garante que tem permissão para contatar quem lista.",
+    "O que trocarmos de informação sensível fica entre a gente.",
+    "Cada lado responde pelo que causou por conta própria — inclusive pelo conteúdo que envia.",
+    "Coisas fora do controle de todos (queda de operadora, desastre, guerra) não viram culpa de ninguém.",
+    "Descumprimento grave permite encerrar o contrato, com aviso e chance de corrigir.",
+    "Se houver disputa, este é o lugar e a lei que valem.",
+    "Ajustes valem por escrito; se uma cláusula cair, o resto do contrato continua de pé.",
+  ],
+  en: [
+    "What you're buying: an AI receptionist that answers, books and sells in your name, as a subscription.",
+    "Your plan includes a monthly credit quota; anything beyond it is billed separately or needs an upgrade.",
+    "We get everything live in about 7 days, counted from when you hand over access and information.",
+    "You pay the agreed amount every month, upfront, on the card on file. Late payment pauses the service.",
+    "It renews by itself each month. If the price changes we tell you first and you may leave with no penalty.",
+    "Cancel whenever you want. In the first 30 days we refund the entire first month.",
+    "We don't promise a number of sales. The AI helps a lot but can be wrong — double-check anything critical.",
+    "If something goes wrong, our liability is capped at what you paid over the last 3 months.",
+    "The platform stays ours; your content, your catalog and your data stay yours.",
+    "We handle your customers' data under the law (LGPD/GDPR/CCPA) and only to run the service.",
+    "Calls and messages follow telephony rules; you confirm you may contact the people you list.",
+    "Whatever sensitive information we exchange stays between us.",
+    "Each side answers for what it caused — including the content it sends.",
+    "Things nobody controls (carrier outage, disaster, war) are nobody's fault.",
+    "A serious breach lets either side end the contract, with notice and a chance to fix it.",
+    "If there's a dispute, this is the place and the law that apply.",
+    "Changes must be in writing; if one clause falls, the rest of the contract still stands.",
+  ],
+  es: [
+    "Qué estás contratando: una recepcionista de IA que atiende, agenda y vende en tu nombre, por suscripción.",
+    "Tu plan incluye una cuota de créditos al mes; lo que pase de ahí se cobra aparte o pide upgrade.",
+    "Lo dejamos todo funcionando en unos 7 días, contados desde que entregas accesos e información.",
+    "Pagas el importe acordado cada mes, por adelantado, con la tarjeta registrada. El atraso suspende el servicio.",
+    "Se renueva solo cada mes. Si el precio cambia, avisamos antes y puedes salir sin multa.",
+    "Puedes cancelar cuando quieras. En los primeros 30 días devolvemos el primer mes completo.",
+    "No prometemos un número de ventas. La IA ayuda mucho, pero puede equivocarse — revisa lo crítico.",
+    "Si algo sale mal, nuestra responsabilidad tiene tope: lo que pagaste en los últimos 3 meses.",
+    "La plataforma sigue siendo nuestra; tu contenido, tu catálogo y tus datos siguen siendo tuyos.",
+    "Cuidamos los datos de tus clientes según la ley (LGPD/GDPR/CCPA) y solo para operar el servicio.",
+    "Llamadas y mensajes siguen las reglas de telefonía; confirmas que puedes contactar a quien listas.",
+    "La información sensible que intercambiemos queda entre nosotros.",
+    "Cada parte responde por lo que causó — incluido el contenido que envía.",
+    "Lo que nadie controla (caída de operadora, desastre, guerra) no es culpa de nadie.",
+    "Un incumplimiento grave permite terminar el contrato, con aviso y oportunidad de corregir.",
+    "Si hay disputa, este es el lugar y la ley que valen.",
+    "Los cambios valen por escrito; si una cláusula cae, el resto del contrato sigue en pie.",
+  ],
+};
+
 export function buildServiceContract({ planKey, lang, provider, client, amount, startDate, market } = {}) {
   const L3 = (lang === "pt" || lang === "en" || lang === "es") ? lang : "en";
   const mkt = market === "br" ? "br" : "us";
@@ -253,7 +319,10 @@ export function buildServiceContract({ planKey, lang, provider, client, amount, 
   const venue = VENUE[mkt][L3];
 
   const vals = { client: clientName, amount: amountStr, date: dateStr, term, venue };
-  const clauses = SERVICE_CLAUSES[L3].map(([n, title, body]) => [n, title, fillTokens(body, vals)]);
+  // 4º item = a MESMA cláusula em palavras simples (CLAUSE_PLAIN). Fica sempre visível; o texto
+  // integral é que se recolhe. Recolher ≠ esconder: o resumo é o convite para abrir.
+  const plain = CLAUSE_PLAIN[L3] || CLAUSE_PLAIN.en;
+  const clauses = SERVICE_CLAUSES[L3].map(([n, title, body], i) => [n, title, fillTokens(body, vals), plain[i] || ""]);
 
   // Payment line: recurring price + credits + guarantee.
   const paymentStr = `${amountStr} — ${labels.recurring} · ${plan.credits.toLocaleString(L3 === "en" ? "en-US" : L3 === "pt" ? "pt-BR" : "es-ES")} ${labels.creditsMo}. ${labels.guarantee}`;

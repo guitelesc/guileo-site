@@ -258,7 +258,7 @@ function CaptureTools({ V, real = null, email = "", dataKey = "" }) {
                             <span className="text-g-muted text-xs">$</span>
                             <input autoFocus value={priceVal} onChange={(e) => setPriceVal(e.target.value)} placeholder="0.00" inputMode="decimal"
                               className="w-20 rounded-full border border-g-gold/40 bg-white/[0.04] px-2.5 py-1 text-[12px] text-g-word focus:outline-none" />
-                            <button onClick={() => setQuote(q)} className="rounded-full bg-g-gold/90 px-2.5 py-1 text-[11px] font-black text-black hover:bg-g-gold transition"><FaCheck size={10} /></button>
+                            <button onClick={() => setQuote(q)} className="rounded-full bg-g-gold/90 px-2.5 py-1 text-[11px] font-black text-black hover:bg-g-gold transition min-h-[44px] inline-flex items-center"><FaCheck size={10} /></button>
                           </div>
                         ) : (
                           <button onClick={() => { setPriceFor(q.id); setPriceVal(q.quote_cents ? (q.quote_cents / 100).toString() : ""); }}

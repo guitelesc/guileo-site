@@ -5,8 +5,13 @@
 // Each finished call lands as a `call` event (plus a `booking`/`sale` when the
 // analysis detects one) for the client identified by dynamic_variables.client_email.
 import { json, safeEq } from "../lib/guard.js";
-import { callAlertEmail } from "../lib/emailTemplates.js";
-import { sbKey, svcRpc } from "../lib/sb.js";
+import { callAlertEmail, ownerAlertEmail } from "../lib/emailTemplates.js";
+import { sbKey, svcRpc, svcJson } from "../lib/sb.js";
+
+// Quanto vale uma ligação atendida. A tabela de planos fala em "~5 créditos por tarefa" — uma
+// ligação atendida É a tarefa. Fica como constante nomeada e não como número solto no meio do
+// código, para o dia em que o preço mudar não virar caça ao 5.
+const CREDITOS_POR_LIGACAO = 5;
 import { emitFailure } from "../lib/failure.js";
 
 const isEmail = (s) => /.+@.+\..+/.test((s || "").toString());
@@ -187,6 +192,47 @@ export async function onRequestPost(context) {
     // honest operational signal behind "a ligação caiu".
     const endReason = d?.metadata?.termination_reason || d?.metadata?.end_reason || null;
 
+    // ── ALARME DE VOZ BLOQUEADA (2026-08-21) ──────────────────────────────────────────────────
+    // Em 21/08 a linha da Natura ficou 7 ligações no ar SEM ATENDER: cada chamada morria em 1
+    // segundo com "This request cannot be processed due to a payment issue" — a ElevenLabs
+    // recusando gerar voz. Nada no nosso lado estava quebrado: Twilio entregou, o número estava
+    // amarrado, o agente existia, o webhook gravou tudo. A plataforma funcionou perfeitamente
+    // para registrar o próprio fracasso, e ninguém foi avisado. O Luis descobriu TENTANDO LIGAR.
+    //
+    // 🚨 ISTO É FALHA DE PLATAFORMA, NÃO DE CLIENTE. Um cliente sem crédito é assunto dele; a
+    // conta de voz bloqueada derruba TODOS os agentes ao mesmo tempo — e cada minuto disso é um
+    // cliente do cliente ouvindo silêncio e desligando.
+    const BLOQUEIO_DE_PLATAFORMA = /payment|billing|quota|insufficient|subscription|suspend/i;
+    if (endReason && BLOQUEIO_DE_PLATAFORMA.test(endReason)) {
+      try {
+        // uma vez por hora, decidido pelo BANCO: sete webhooks chegam em paralelo e um
+        // "já avisei?" lido em JavaScript diria "não" nas sete vezes ao mesmo tempo.
+        const pode = await svcJson(env, "alarme_uma_vez", {
+          p_secret: env.INGEST_SECRET || "", p_chave: "voz_bloqueada", p_minutos: 60,
+        }).catch(() => false);
+        if (pode === true) {
+          await emitFailure(env, "voz_bloqueada", email || "",
+            `A ElevenLabs recusou a chamada: "${String(endReason).slice(0, 120)}" — TODOS os agentes estão mudos até o pagamento ser regularizado`,
+            { end_reason: endReason, agent_id: agentId }).catch(() => {});
+          if (env.RESEND_API_KEY) {
+            const dono = (env.OWNER_EMAIL || "smart@guileoai.com").toString().split(",")[0].trim();
+            const tpl = ownerAlertEmail({
+              kind: "alert", business: "Guileo · plataforma de voz", customer: email || "",
+              details: `A ElevenLabs recusou a chamada com "${String(endReason).slice(0, 140)}". Enquanto isso durar, TODA ligação para qualquer agente é atendida e cai em 1 segundo. Regularize o pagamento em elevenlabs.io → Billing.`,
+              when: new Date().toISOString(), lang: "pt",
+            });
+            const mr = await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: [dono], subject: "🚨 A voz está bloqueada — nenhum agente está atendendo", html: tpl.html }),
+            });
+            // o alarme também precisa de comprovante: se o e-mail não sai, isso vira uma falha.
+            if (!mr.ok) await emitFailure(env, "alarme_nao_enviado", "", `o alarme de voz bloqueada NÃO saiu por e-mail (HTTP ${mr.status})`, {}).catch(() => {});
+          }
+        }
+      } catch { /* o alarme nunca pode derrubar a ingestão da ligação */ }
+    }
+
     await ingest(env, email, "call", "voice",
       `${mood ? mood + " " : ""}${summary}${dur ? ` · ${Math.round(dur)}s` : ""}${ok === "success" ? " ✓" : ""}`,
       0, {
@@ -198,6 +244,36 @@ export async function onRequestPost(context) {
 
     // COST LEDGER — record the voice-provider cost of this call (only if the rate env is set).
     await recordVoiceCost(env, email, convId, dur);
+
+    // ═══ MEDIDOR DE CRÉDITO — decisão do Luis (2026-08-20) ═══════════════════════════════════
+    // Até hoje NENHUMA ligação debitava crédito: `call.js` e este webhook não mediam nada, então o
+    // saldo do cockpit e todo o ROI eram ficção — o cliente via 1.715 créditos que nunca desciam.
+    //
+    // 🚨 A LEI: ISTO MEDE, NUNCA BLOQUEIA. Se o medidor falhar, a ligação JÁ ACONTECEU e o evento
+    // JÁ foi gravado — engolir a ligação por causa de contabilidade seria trocar o produto pela
+    // planilha. Por isso vem DEPOIS do `ingest` e é `try/catch` que só registra.
+    // O Luis decidiu: saldo pode ficar NEGATIVO e a agente continua atendendo. Telefone mudo mata a
+    // conta do cliente; saldo negativo se cobra depois.
+    // A referência é o `conversation_id`: reentrega do webhook não cobra duas vezes.
+    try {
+      const cr = await svcRpc(env, "consumir_creditos", {
+        p_secret: env.INGEST_SECRET || "", p_email: email,
+        p_credits: CREDITOS_POR_LIGACAO, p_kind: "call", p_ref: convId,
+      });
+      const cd = cr.ok ? await cr.json().catch(() => null) : null;
+      // `cruzou_zero` é true SÓ na transição — o aviso sai uma vez, não a cada ligação.
+      if (cd && cd.cruzou_zero) {
+        await emitFailure(env, "credito_zerado", email,
+          `Créditos de ${email} chegaram a ${cd.saldo}. A agente CONTINUA atendendo (decisão do Luis) — cobre a recarga.`,
+          { saldo: cd.saldo, antes: cd.antes, conversation_id: convId });
+      } else if (!cd || cd.ok !== true) {
+        // Medição falhou: a ligação vale, o registro do consumo não. Declara, não inventa.
+        await emitFailure(env, "credito_nao_medido", email,
+          `Não consegui debitar o crédito da ligação ${convId}: ${cd?.motivo || `HTTP ${cr.status}`}`, { conversation_id: convId });
+      }
+    } catch (e) {
+      await emitFailure(env, "credito_nao_medido", email, `Falha ao medir crédito de ${convId}: ${String(e).slice(0, 140)}`, {}).catch(() => {});
+    }
 
     // Mirror into the owned project so the portal can show the analysis + full transcript.
     await logCall(env, {

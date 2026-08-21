@@ -99,6 +99,9 @@ function CopyBtn({ text, label, copiedLabel, copiedKey, myKey, setCopiedKey, cls
 // Props: interactivity contract adds `market` (us|br, drives BR/US tone) and `nav(tabKey, payload)`
 // to hand a hunted target off to Follow-up (as a prospect) or to the roleplay trainer. Both optional —
 // absent → the component works exactly as before.
+// o crachá do vendedor: `prospect-ai` gasta crédito de IA e passou a exigi-lo.
+const sidLocal = () => { try { return (JSON.parse(localStorage.getItem("guileo_seller") || "null") || {}).sid || ""; } catch { return ""; } };
+
 export default function SellerProspect({ lang = "pt", seller, market = "us", nav }) {
   const t = PROSPECT_TXT[lang] || PROSPECT_TXT.pt;
   const kitLang = KIT_VIDEO[lang] ? lang : "en"; // video/kit content: pt/en/es, hi falls back to en
@@ -121,7 +124,7 @@ export default function SellerProspect({ lang = "pt", seller, market = "us", nav
     if (!city.trim()) { setState("err"); return; }
     setState("go"); setPlan(null); setRaw("");
     try {
-      const r = await fetch("/api/prospect-ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ niche: nicheLabel, city: city.trim(), pains: meta.pains, lang }) });
+      const r = await fetch("/api/prospect-ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sid: sidLocal(), niche: nicheLabel, city: city.trim(), pains: meta.pains, lang }) });
       const d = await r.json().catch(() => ({}));
       if (d?.ok && d.plan) { setPlan(d.plan); setState("done"); logPitch(seller); }
       else if (d?.ok && d.raw) { setRaw(d.raw); setState("done"); logPitch(seller); }
@@ -325,6 +328,8 @@ function KitEmails({ t, copiedKey, setCopiedKey }) {
 // "já pronto pra ele só ligar e fechar."
 const LEADBOSS_TX = {
   pt: {
+    soLocalTitulo: "⚠️ Este quadro está só neste navegador",
+    soLocalTexto: "Você entrou com o código do time, que não tem vínculo de identidade — por segurança o servidor não grava o quadro de quem usa código compartilhado. Trocou de aparelho ou limpou o navegador, perdeu tudo. Peça seu CÓDIGO PESSOAL ao Luis para sincronizar de verdade.",
     // ⚠️ CHAVE QUE FALTAVA (auditoria 2026-08-17): `t.copy` era usado na linha do botão
     // de copiar a mensagem de WhatsApp PRONTA — em TODO lead — e não existia neste dicionário.
     // Resultado: o botão renderizava com rótulo VAZIO. Ninguém clica num botão sem nome, então a
@@ -348,6 +353,8 @@ const LEADBOSS_TX = {
     toFollowup: "➡️ Follow-up", toCadastro: "➕ Cadastrar", waReady: "💬 WhatsApp pronto", waSend: "Abrir no WhatsApp",
   },
   en: {
+    soLocalTitulo: "⚠️ This board lives only in this browser",
+    soLocalTexto: "You signed in with the team code, which carries no identity binding — for safety the server does not store boards from a shared code. Switch devices or clear the browser and it is gone. Ask Luis for your PERSONAL CODE to sync for real.",
     // ⚠️ CHAVE QUE FALTAVA (auditoria 2026-08-17): `t.copy` era usado na linha do botão
     // de copiar a mensagem de WhatsApp PRONTA — em TODO lead — e não existia neste dicionário.
     // Resultado: o botão renderizava com rótulo VAZIO. Ninguém clica num botão sem nome, então a
@@ -371,6 +378,8 @@ const LEADBOSS_TX = {
     toFollowup: "➡️ Follow-up", toCadastro: "➕ Add client", waReady: "💬 WhatsApp ready", waSend: "Open in WhatsApp",
   },
   es: {
+    soLocalTitulo: "⚠️ Este tablero existe solo en este navegador",
+    soLocalTexto: "Entraste con el código del equipo, que no tiene vínculo de identidad — por seguridad el servidor no guarda tableros de un código compartido. Si cambias de aparato o limpias el navegador, se pierde todo. Pídele a Luis tu CÓDIGO PERSONAL para sincronizar de verdad.",
     // ⚠️ CHAVE QUE FALTAVA (auditoria 2026-08-17): `t.copy` era usado na linha do botão
     // de copiar a mensagem de WhatsApp PRONTA — em TODO lead — e não existia neste dicionário.
     // Resultado: o botão renderizava com rótulo VAZIO. Ninguém clica num botão sem nome, então a
@@ -400,7 +409,12 @@ const STATUS_ORDER = ["novo", "contatado", "agendado", "fechado"];
 const STATUS_TONE = { novo: "text-g-muted ring-white/15", contatado: "text-g-info ring-g-info/40", agendado: "text-g-gold ring-g-gold/40", fechado: "text-g-green ring-g-green/50" };
 
 function LeadBoss({ lang = "pt", seller, nav }) {
-  const t = LEADBOSS_TX[lang] || LEADBOSS_TX.pt;
+  // Reserva é INGLÊS, não português. O `hi` já cai em `en` por atribuição explícita mais acima
+  // (LEADBOSS_TX.hi = LEADBOSS_TX.en), então esta linha é a segunda trava: qualquer idioma novo
+  // que alguém adicione ao seletor sem dicionário vê inglês, nunca o português do autor.
+  // 🚧 PENDENTE declarado: não existe bloco `hi` traduzido de verdade (são 25+ chaves, inclusive
+  // o script de ligação). Hindi vê inglês inteiro — coerente. Meio-hindi seria pior.
+  const t = LEADBOSS_TX[lang] || LEADBOSS_TX.en;
   const key = `guileo_leadboss_${(seller && seller.email) || "anon"}`;
   const [crm, setCrm] = useState({});          // { [id]: { status, notes, log:[{ts,kind}] } }
   const [openId, setOpenId] = useState(null);  // which lead's profile is expanded
@@ -408,6 +422,18 @@ function LeadBoss({ lang = "pt", seller, nav }) {
 
   const sellerCode = (seller && (seller.code || seller.token)) || "";
   const canSync = !!((seller && seller.email) && sellerCode);
+
+  // 🚨 O QUADRO QUE SALVAVA NO VAZIO (corrigido 2026-08-20).
+  // Quem entra pelo CÓDIGO DE TIME (compartilhado) não pode gravar no servidor — e isso é uma
+  // decisão de segurança CORRETA: o código de time aceita qualquer e-mail digitado, sem vínculo
+  // de identidade, então um colaborador poderia ler e envenenar o quadro de outro. O servidor
+  // recusa e devolve `local:true` explicando.
+  // O defeito era o SILÊNCIO: `saveLead` disparava o POST, ignorava a resposta inteira
+  // (`.catch(()=>{})` + retorno nunca lido), e o vendedor trabalhava meses achando que estava no
+  // sistema. Um "ok" que ninguém confere é promessa sem lastro — e aqui custava o pipeline
+  // inteiro na hora de trocar de aparelho.
+  // Agora a resposta é LIDA e o estado vira visível na tela.
+  const [soNesteNavegador, setSoNesteNavegador] = useState(false);
 
   useEffect(() => {
     // 1) localStorage first (instant, offline-safe)
@@ -421,6 +447,7 @@ function LeadBoss({ lang = "pt", seller, nav }) {
     if (canSync) {
       fetch("/api/seller-leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "list", seller_email: seller.email, seller_code: sellerCode }) })
         .then((r) => r.json()).then((d) => {
+          if (d && d.local) setSoNesteNavegador(true);      // o servidor avisou; agora a gente escuta
           if (d && d.ok && d.crm && Object.keys(d.crm).length) {
             setCrm((prev) => { const merged = { ...prev, ...d.crm }; try { localStorage.setItem(key, JSON.stringify(merged)); } catch { /* ignore */ } return merged; });
           }
@@ -432,7 +459,12 @@ function LeadBoss({ lang = "pt", seller, nav }) {
   const persist = (next) => { try { localStorage.setItem(key, JSON.stringify(next)); } catch { /* ignore */ } return next; };
   const saveLead = (id, r) => {
     if (!canSync) return;
-    fetch("/api/seller-leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save", seller_email: seller.email, seller_code: sellerCode, lead_id: id, status: r.status, notes: r.notes, log: r.log }) }).catch(() => { /* offline → localStorage cache stands, re-syncs next load */ });
+    fetch("/api/seller-leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save", seller_email: seller.email, seller_code: sellerCode, lead_id: id, status: r.status, notes: r.notes, log: r.log }) })
+      .then((resp) => resp.json()).then((d) => {
+        // Ler a resposta é o ponto: `local:true` = o servidor recusou gravar (código de time).
+        if (d && d.local) setSoNesteNavegador(true);
+      })
+      .catch(() => { /* offline → o cache local vale e re-sincroniza no próximo load */ });
   };
   // sync=false for keystroke-level notes edits (persist locally only); the textarea onBlur flushes to DB.
   const patch = (id, partial, sync = true) => {
@@ -462,6 +494,13 @@ function LeadBoss({ lang = "pt", seller, nav }) {
           <span className="rounded-full bg-g-green/15 px-3 py-1 text-g-green ring-1 ring-g-green/30">{closed} {t.closed}</span>
         </div>
       </div>
+
+      {soNesteNavegador && (
+        <div className="mt-4 rounded-xl border border-g-gold/40 bg-g-gold/[0.07] p-3.5">
+          <div className="text-[12.5px] font-bold text-g-gold">{t.soLocalTitulo}</div>
+          <p className="mt-1 text-[12px] leading-relaxed text-g-muted">{t.soLocalTexto}</p>
+        </div>
+      )}
 
       {groups.map((g) => (
         <div key={g.city} className="mt-4">

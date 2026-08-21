@@ -229,7 +229,7 @@ function Experience({ V, real = null, email = "", dataKey = "" }) {
           onClick={() => saveSurvey(!surveyEnabled)}
           aria-pressed={surveyEnabled}
           title={surveyEnabled ? T("on") : T("off")}
-          className="relative shrink-0 h-7 w-[52px] rounded-full transition-colors disabled:opacity-50"
+          className="relative shrink-0 h-7 w-[52px] rounded-full transition-colors disabled:opacity-50 min-h-[44px] inline-flex items-center"
           style={{ background: surveyEnabled ? "#3E9468" : "rgba(255,255,255,0.12)" }}
         >
           <span className="absolute top-1 h-5 w-5 rounded-full bg-white transition-all" style={{ left: surveyEnabled ? "26px" : "4px" }} />
