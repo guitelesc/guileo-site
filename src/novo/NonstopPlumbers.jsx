@@ -128,6 +128,22 @@ const FAQ = [
 const ROLES = ["Licensed plumbers", "Drain and sewer technicians", "Helpers and apprentices",
   "Dispatch and customer coordination", "Project and compliance support"];
 
+/* Six real photos from their own jobs. Captions describe ONLY what is visible —
+   no invented address, no invented client. */
+const PHOTOS = [
+  { s: "p-crew.webp", c: "Our crew, Brooklyn" },
+  { s: "p-van.webp", c: "Dispatch van" },
+  { s: "p-corridor.webp", c: "Corridor repair" },
+  { s: "p-wall.webp", c: "Open-wall repair" },
+  { s: "p-pipes.webp", c: "Mechanical pipe work" },
+  { s: "p-sprinkler.webp", c: "Fire suppression, garage" },
+];
+
+/* RED = emergency/action only. Everything else on the board is cyan-ink or navy. */
+const tagStyle = (tag) => tag === "Priority 1"
+  ? { background: "rgba(217,42,40,.09)", color: "var(--red-d)" }
+  : { background: "rgba(23,198,255,.14)", color: "var(--cyan-d)" };
+
 const nyTime = () =>
   new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" })
     .format(new Date());
@@ -141,7 +157,7 @@ const CSS = `
 .np-mg.np-on path{fill:var(--red);stroke:rgba(255,255,255,.6);filter:drop-shadow(0 0 12px rgba(217,42,40,.8)) drop-shadow(0 0 34px rgba(217,42,40,.45))}
 .np-mg text{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:600;letter-spacing:.14em;fill:rgba(255,255,255,.4);pointer-events:none;transition:fill .5s}
 .np-mg.np-on text{fill:#fff}
-.np-mapcap{text-align:center;color:#7f93aa}
+.np-mapcap{text-align:center;color:#8ea2b8}
 
 .np-boro{position:relative;display:flex;width:100%;text-align:left;align-items:flex-start;gap:14px;border:0;cursor:pointer;background:transparent;font-family:inherit;border-radius:26px;padding:18px;transition:background .3s ease}
 .np-boro:hover{background:rgba(23,198,255,.09)}
@@ -153,7 +169,7 @@ const CSS = `
 .np-bc{flex:none;margin-top:3px;font-size:11px;padding:5px 9px;border-radius:999px;background:rgba(23,198,255,.12);color:var(--cyan);letter-spacing:.1em}
 .np-boro[aria-expanded="true"] .np-bc{background:rgba(217,42,40,.22);color:#ffb9b3}
 .np-bn{display:block;color:#fff;font-weight:800;font-size:20px;line-height:1.2;letter-spacing:-.015em}
-.np-bd{display:block;margin-top:7px;color:#9fb2c8;font-size:14px;line-height:1.62}
+.np-bd{display:block;margin-top:7px;color:#a9bbcf;font-size:15px;line-height:1.64}
 .np-boro-go{flex:none;display:inline-flex;align-items:center;gap:7px;margin-top:4px;color:var(--cyan);font-size:10px;opacity:.55;transition:opacity .25s ease,color .25s ease}
 .np-boro:hover .np-boro-go,.np-boro:focus-visible .np-boro-go{opacity:1}
 .np-boro-go svg{transition:transform .35s cubic-bezier(.2,.7,.3,1)}
@@ -166,9 +182,10 @@ const CSS = `
 .np-field.np-field-d::placeholder{color:rgba(255,255,255,.46)}
 .np-field.np-field-d:focus{background:rgba(255,255,255,.1);border-color:var(--cyan)}
 
-.np{--navy:#0c1a2e;--navy-2:#132741;--red:#d92a28;--red-d:#ab1f1d;--cyan:#17c6ff;--ink:#0c1a2e;--mut:#5a6b80;
- --line:rgba(12,26,46,.11);--paper:#f5f7fa;--stage:#fff;
+.np{--navy:#0c1a2e;--navy-2:#132741;--red:#d92a28;--red-d:#ab1f1d;--cyan:#17c6ff;--cyan-d:#0a6b91;--ink:#0c1a2e;--mut:#54657a;
+ --line:rgba(12,26,46,.11);--paper:#f5f7fa;--stage:#fff;--dot:rgba(12,26,46,.3);
  background:#fff;color:var(--ink);font-family:'Inter Tight','Inter',system-ui,sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+.np p,.np li{line-height:1.62}
 .np *{box-sizing:border-box}
 /* display = Archivo, signage weight and a touch of extra width */
 .np h1,.np h2,.np h3,.np h4,.np .dsp{font-family:'Archivo',system-ui,sans-serif;font-weight:800;
@@ -190,9 +207,9 @@ const CSS = `
  border:1px solid var(--line);background:#fff;color:var(--navy);white-space:nowrap}
 .np-pill-d{border-color:rgba(255,255,255,.22);background:rgba(255,255,255,.09);color:#fff;backdrop-filter:blur(6px)}
 /* ── BUTTON SYSTEM — gradient depth, lit top edge, glow, sheen sweep, press ── */
-.np-btn,.np-btn-o{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;text-decoration:none;cursor:pointer;font-family:inherit;transition:transform .24s cubic-bezier(.2,.7,.3,1),box-shadow .3s,border-color .3s,background .3s,filter .24s}
-.np-btn::before,.np-btn-o::before{content:"";position:absolute;top:0;left:0;width:44%;height:100%;pointer-events:none;background:linear-gradient(105deg,transparent,rgba(255,255,255,.32),transparent);transform:translateX(-190%) skewX(-14deg);transition:transform .8s ease}
-.np-btn:hover::before,.np-btn-o:hover::before{transform:translateX(330%) skewX(-14deg)}
+.np-btn,.np-btn-o,.np-btn-n{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;border-radius:999px;text-decoration:none;cursor:pointer;font-family:inherit;transition:transform .24s cubic-bezier(.2,.7,.3,1),box-shadow .3s,border-color .3s,background .3s,filter .24s}
+.np-btn::before,.np-btn-o::before,.np-btn-n::before{content:"";position:absolute;top:0;left:0;width:44%;height:100%;pointer-events:none;background:linear-gradient(105deg,transparent,rgba(255,255,255,.32),transparent);transform:translateX(-190%) skewX(-14deg);transition:transform .8s ease}
+.np-btn:hover::before,.np-btn-o:hover::before,.np-btn-n:hover::before{transform:translateX(330%) skewX(-14deg)}
 .np-btn{gap:12px;padding:18px 30px;border:0;font-weight:800;letter-spacing:-.012em;color:#fff;background:linear-gradient(180deg,#ec4442 0%,var(--red) 46%,var(--red-d) 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.38),inset 0 -1px 0 rgba(0,0,0,.24),0 0 0 1px rgba(217,42,40,.4),0 18px 38px -18px rgba(217,42,40,.9)}
 .np-btn:hover{transform:translateY(-3px);filter:brightness(1.04);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -1px 0 rgba(0,0,0,.24),0 0 0 1px rgba(23,198,255,.35),0 0 34px rgba(217,42,40,.4),0 26px 52px -18px rgba(217,42,40,.95)}
 .np-btn:active{transform:scale(.98)}
@@ -201,6 +218,12 @@ const CSS = `
 .np-btn-o:hover{transform:translateY(-3px);border-color:rgba(23,198,255,.75);background:linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,.08));box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 0 30px rgba(23,198,255,.28),0 20px 40px -20px rgba(0,0,0,.9)}
 .np-btn-o:active{transform:scale(.98)}
 .np-btn-o:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+/* SECONDARY on light surfaces — navy steel, same depth system, never competes
+   with the one red emergency pill in the view */
+.np-btn-n{gap:11px;padding:17px 26px;border:0;font-weight:800;letter-spacing:-.01em;color:#fff;background:linear-gradient(180deg,#22406a 0%,#152b47 46%,#0c1a2e 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(0,0,0,.35),0 14px 30px -18px rgba(12,26,46,.85)}
+.np-btn-n:hover{transform:translateY(-3px);filter:brightness(1.1);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 0 0 1px rgba(23,198,255,.4),0 0 28px rgba(23,198,255,.2),0 22px 44px -18px rgba(12,26,46,.9)}
+.np-btn-n:active{transform:scale(.98)}
+.np-btn-n:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
 /* nav pills — same family, light surface */
 .np-navp{box-shadow:inset 0 1px 0 rgba(255,255,255,.85);transition:transform .24s cubic-bezier(.2,.7,.3,1),box-shadow .3s,border-color .3s,color .3s}
 .np-navp:hover{transform:translateY(-2px);border-color:rgba(23,198,255,.65);color:var(--navy)!important;box-shadow:inset 0 1px 0 #fff,0 0 0 3px rgba(23,198,255,.1),0 10px 20px -12px rgba(12,26,46,.55)}
@@ -211,17 +234,26 @@ const CSS = `
 .np-creds{border-top:1px solid rgba(255,255,255,.1)}
 .np-credrow{display:grid;grid-template-columns:repeat(2,minmax(0,auto));justify-content:center;align-items:center;gap:14px 30px}
 .np-credrow>:first-child{grid-column:1/-1;justify-self:center}
-.np-cred{display:inline-flex;align-items:center;gap:9px;white-space:nowrap;color:#c6d3e3;font-size:10.5px;letter-spacing:.19em}
+.np-cred{display:inline-flex;align-items:center;gap:9px;white-space:nowrap;color:#d3dfec;font-size:11px;letter-spacing:.17em}
 .np-cred svg{color:var(--cyan);flex:none}
 @media(max-width:479px){.np-credrow{grid-template-columns:minmax(0,auto)}}
 @media(min-width:1200px){.np-credrow{grid-template-columns:repeat(5,auto);justify-content:space-between;gap:0 18px}.np-credrow>:first-child{grid-column:auto;justify-self:start}}
 
 /* THE DISPATCH TICKET — punched notches + perforation, generous radius */
+/* MATERIAL REALISM — light comes from above-right on every panel of this page:
+   a soft top reflection sweeping down, a lit top rim, a dark bottom rim, and two
+   layered shadows (contact + cast). Panels read as objects with thickness. */
 .np-tk{position:relative;background:#fff;border:1px solid var(--line);border-radius:28px;overflow:hidden;
- box-shadow:0 1px 2px rgba(12,26,46,.05),0 26px 52px -38px rgba(12,26,46,.5);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(12,26,46,.07),0 1px 2px rgba(12,26,46,.05),0 10px 20px -16px rgba(12,26,46,.35),0 30px 58px -38px rgba(12,26,46,.55);
  transition:transform .34s cubic-bezier(.2,.7,.3,1),box-shadow .34s,border-color .34s}
+.np-tk::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;border-radius:inherit;
+ mix-blend-mode:screen;background:linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,.015) 16%,transparent 38%),radial-gradient(120% 70% at 84% -14%,rgba(255,255,255,.07),transparent 56%)}
 .np-tk:hover{transform:translateY(-6px);border-color:rgba(12,26,46,.2);
- box-shadow:0 2px 4px rgba(12,26,46,.06),0 40px 70px -34px rgba(12,26,46,.55)}
+ box-shadow:inset 0 1px 0 #fff,inset 0 -1px 0 rgba(12,26,46,.08),0 2px 4px rgba(12,26,46,.06),0 16px 28px -18px rgba(12,26,46,.4),0 46px 80px -36px rgba(12,26,46,.6)}
+/* dark glass variant — same light, tuned for the navy panels */
+.np-glass{box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(0,0,0,.4),0 12px 26px -18px rgba(0,0,0,.8),0 40px 80px -40px rgba(0,0,0,.95)}
+.np-glass::before{background:linear-gradient(180deg,rgba(255,255,255,.085),rgba(255,255,255,.02) 17%,transparent 40%),radial-gradient(120% 70% at 84% -12%,rgba(23,198,255,.10),transparent 56%)}
+.np-glass:hover{transform:none;border-color:rgba(255,255,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 -1px 0 rgba(0,0,0,.42),0 12px 26px -18px rgba(0,0,0,.8),0 46px 90px -40px rgba(0,0,0,.95)}
 .np-tk::after{content:"";position:absolute;inset:0;pointer-events:none;
  background:linear-gradient(104deg,transparent 38%,rgba(23,198,255,.13) 50%,transparent 62%);
  transform:translateX(-125%);transition:transform .9s ease}
@@ -239,27 +271,43 @@ const CSS = `
  radial-gradient(900px 520px at 4% 12%,rgba(217,42,40,.13),transparent 58%)}
 .np-grain::before{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;opacity:.4;mix-blend-mode:soft-light;
  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)'/%3E%3C/svg%3E")}
+.np-grain-s::before{opacity:.24}
+/* the thin navy band is a real surface too: lit from above-right, never a flat fill */
+.np-band{position:relative;background-color:var(--navy);background-image:radial-gradient(900px 260px at 84% -60%,rgba(23,198,255,.13),transparent 62%),radial-gradient(700px 240px at 6% 140%,rgba(217,42,40,.09),transparent 60%);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 -1px 0 rgba(0,0,0,.5)}
 
 .np-live{width:9px;height:9px;border-radius:999px;background:#39d98a;box-shadow:0 0 0 0 rgba(57,217,138,.6);animation:npPulse 2.4s ease-out infinite}
 @keyframes npPulse{70%{box-shadow:0 0 0 9px rgba(57,217,138,0)}100%{box-shadow:0 0 0 0 rgba(57,217,138,0)}}
-.np-frame{border-radius:32px;overflow:hidden;border:1px solid var(--line);
- box-shadow:0 30px 70px -40px rgba(12,26,46,.6)}
+.np-frame{position:relative;border-radius:32px;overflow:hidden;border:1px solid var(--line);box-shadow:0 14px 30px -22px rgba(0,0,0,.7),0 44px 90px -44px rgba(0,0,0,.85)}
+.np-frame::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;border-radius:inherit;
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -1px 0 rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.05);background:linear-gradient(180deg,rgba(255,255,255,.10),transparent 20%),radial-gradient(120% 60% at 86% -10%,rgba(255,255,255,.12),transparent 55%);mix-blend-mode:screen}
+/* ── THE CREW SLIDESHOW ── */
+.np-show{aspect-ratio:16/11;background:#0a1524}
+@media(min-width:1024px){.np-show{aspect-ratio:41/50}}
+.np-slide{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(1.035);transition:opacity 1.05s ease,transform 7s linear}
+.np-slide.np-on{opacity:1;transform:scale(1)}
+.np-shade{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(6,14,25,.36),transparent 24%,transparent 44%,rgba(6,14,25,.82))}
+.np-cap{position:absolute;z-index:3;left:16px;bottom:16px;max-width:calc(100% - 130px);display:inline-flex;align-items:center;font-size:10px;letter-spacing:.15em;color:#eaf3fb;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.24);background:rgba(9,18,32,.62);backdrop-filter:blur(9px);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 10px 22px -14px rgba(0,0,0,.9)}
+.np-dots{position:absolute;z-index:3;right:16px;bottom:22px;display:flex;gap:6px}
+.np-dot{width:16px;height:5px;padding:0;border:0;border-radius:999px;cursor:pointer;background:rgba(255,255,255,.34);box-shadow:inset 0 1px 0 rgba(255,255,255,.4);transition:width .4s cubic-bezier(.2,.7,.3,1),background .4s,box-shadow .4s}
+.np-dot:hover{background:rgba(255,255,255,.62)}
+.np-dot.np-on{width:32px;background:var(--cyan);box-shadow:0 0 14px rgba(23,198,255,.65)}
+.np-dot:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
 .np-rev{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.3,1)}
 .np-rev.np-in{opacity:1;transform:none}
 .np-in-d1{transition-delay:.07s}.np-in-d2{transition-delay:.14s}.np-in-d3{transition-delay:.21s}
-.np-field{width:100%;background:#fff;border:1px solid var(--line);border-radius:999px;padding:14px 18px;font-size:15px;color:var(--ink);
- outline:none;transition:border-color .2s,box-shadow .2s;font-family:inherit}
+.np-field{width:100%;background:#fff;border:1px solid var(--line);border-radius:999px;padding:14px 18px;font-size:15.5px;color:var(--ink);outline:none;transition:border-color .2s,box-shadow .2s,background .2s;font-family:inherit;box-shadow:inset 0 2px 4px rgba(12,26,46,.06),inset 0 -1px 0 rgba(255,255,255,.9)}
 textarea.np-field{border-radius:22px;resize:vertical}
-.np-field:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(23,198,255,.18)}
+.np-field:focus{border-color:var(--cyan);box-shadow:inset 0 2px 4px rgba(12,26,46,.05),0 0 0 3px rgba(23,198,255,.18)}
+.np-field.np-field-d{box-shadow:inset 0 2px 5px rgba(0,0,0,.3),inset 0 -1px 0 rgba(255,255,255,.08)}
+.np-field.np-field-d:focus{box-shadow:inset 0 2px 5px rgba(0,0,0,.28),0 0 0 3px rgba(23,198,255,.22)}
 /* FAQ — native details/summary dressed as a rounded ticket row */
 .np-q{list-style:none;cursor:pointer;display:flex;align-items:flex-start;gap:16px;padding:20px 22px}
 .np-q::-webkit-details-marker{display:none}
 .np-q:focus-visible{outline:2px solid var(--cyan);outline-offset:-3px;border-radius:24px}
-.np-qi{flex:none;width:32px;height:32px;border-radius:999px;display:grid;place-items:center;
- background:rgba(217,42,40,.09);color:var(--red);transition:transform .3s cubic-bezier(.2,.7,.3,1),background .25s}
-.np-fq[open] .np-qi{transform:rotate(45deg);background:var(--red);color:#fff}
+.np-qi{flex:none;width:32px;height:32px;border-radius:999px;display:grid;place-items:center;background:rgba(23,198,255,.13);color:var(--cyan-d);box-shadow:inset 0 1px 0 rgba(255,255,255,.8),inset 0 -1px 0 rgba(12,26,46,.06);transition:transform .3s cubic-bezier(.2,.7,.3,1),background .25s,color .25s}
+.np-fq[open] .np-qi{transform:rotate(45deg);background:var(--navy);color:var(--cyan)}
 .np-fq{transition:border-color .3s,box-shadow .3s}
-.np-fq[open]{border-color:rgba(217,42,40,.28)}
+.np-fq[open]{border-color:rgba(12,26,46,.22)}
 .np-fq:hover{border-color:rgba(12,26,46,.2)}
 .np-faqs{display:grid;gap:14px}
 @media(min-width:1024px){.np-faqs{display:block;columns:2;column-gap:14px}
@@ -274,8 +322,9 @@ textarea.np-field{border-radius:22px;resize:vertical}
 
 .np-err{border-color:rgba(217,42,40,.55)!important;box-shadow:0 0 0 3px rgba(217,42,40,.13)!important}
 @media(prefers-reduced-motion:reduce){.np-rev{opacity:1;transform:none;transition:none}
- .np-tk,.np-btn,.np-btn-o,.np-live,.np-callbar,.np-qi,.np-panel,.np-mg path,.np-mg text{transition:none;animation:none}
- .np-btn::before,.np-btn-o::before{display:none}}
+ .np-tk,.np-btn,.np-btn-o,.np-btn-n,.np-live,.np-slide,.np-dot,.np-callbar,.np-qi,.np-panel,.np-mg path,.np-mg text{transition:none;animation:none}
+ .np-btn::before,.np-btn-o::before,.np-btn-n::before{display:none}
+ .np-tk::after{display:none}}
 `;
 
 /* ── ONLINE PRESENCE: head tags + structured data, all cleaned up on unmount ── */
@@ -346,6 +395,38 @@ const LD = () => ({
     },
   ],
 });
+
+/* ── THE CREW SLIDESHOW — their own photos, soft cross-fade, pause on hover/focus,
+   still on the first frame when the visitor asked for reduced motion. ── */
+function CrewShow({ still }) {
+  const [i, setI] = useState(0);
+  const [hold, setHold] = useState(false);
+  useEffect(() => {
+    if (still || hold) return;
+    const t = setInterval(() => setI((p) => (p + 1) % PHOTOS.length), 4500);
+    return () => clearInterval(t);
+  }, [still, hold]);
+  const pause = () => setHold(true), play = () => setHold(false);
+  return (
+    <div className="np-frame np-show" onMouseEnter={pause} onMouseLeave={play}
+      onFocus={pause} onBlur={play}>
+      {PHOTOS.map((p, n) => (
+        <img key={p.s} src={A + p.s} alt={p.c} className={`np-slide ${n === i ? "np-on" : ""}`}
+          width="1200" height="1500" decoding="async" aria-hidden={n !== i}
+          loading={n ? "lazy" : "eager"} fetchPriority={n ? undefined : "high"} />
+      ))}
+      <span className="np-shade" aria-hidden="true" />
+      <p className="np-cap np-lab" aria-live="polite">{PHOTOS[i].c}</p>
+      <div className="np-dots">
+        {PHOTOS.map((p, n) => (
+          <button key={p.s} type="button" className={`np-dot ${n === i ? "np-on" : ""}`}
+            aria-current={n === i} onClick={() => setI(n)}
+            aria-label={`Show photo ${n + 1} of ${PHOTOS.length} — ${p.c}`} />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function NonstopPlumbers() {
   const root = useRef(null);
@@ -469,7 +550,7 @@ export default function NonstopPlumbers() {
                 style={{ color: "var(--mut)", background: "var(--paper)" }}>{t}</a>
             ))}
           </nav>
-          <a href={TEL} className="np-btn !py-3.5 !px-5 text-sm">
+          <a href={TEL} className="np-btn-n !py-3.5 !px-5 text-sm">
             <Ic d={I.phone} s={18} />
             <span className="hidden sm:inline">{PHONE}</span>
             <span className="sm:hidden">Call 24/7</span>
@@ -520,7 +601,7 @@ export default function NonstopPlumbers() {
             </p>
 
             <div className="np-rev np-in-d3 mt-8">
-              <div className="np-lab mb-4 max-w-md leading-relaxed" style={{ color: "#9fb2c8" }}>
+              <div className="np-lab mb-4 max-w-md leading-relaxed" style={{ color: "#a9bbcf" }}>
                 Emergency dispatch — answered 24/7 by AI, dispatched in minutes
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
@@ -537,8 +618,8 @@ export default function NonstopPlumbers() {
       </section>
 
       {/* ── CREDENTIAL STATUS PILLS BAND ─────────────────────── */}
-      <section className="np-creds" style={{ background: "var(--navy)" }}>
-        <div className="np-w py-5">
+      <section className="np-creds np-band np-grain np-grain-s">
+        <div className="np-w py-5 relative z-[3]">
           <div className="np-credrow">
             <DeskOpen dark />
             {CREDS.map((c) => (
@@ -552,13 +633,13 @@ export default function NonstopPlumbers() {
       <section id="services" style={{ background: "var(--paper)", "--stage": "var(--paper)" }} className="py-20 sm:py-28">
         <div className="np-w">
           <div className="np-rev max-w-2xl">
-            <div className="np-lab flex items-center gap-3" style={{ color: "var(--red)" }}>
+            <div className="np-lab flex items-center gap-3" style={{ color: "var(--red-d)" }}>
               <span className="np-stripe np-stripe-r w-10 shrink-0" style={{ height: 6 }} />
               The board
             </div>
             <h2 className="mt-5 text-4xl sm:text-5xl">Every ticket we take.</h2>
             <p className="mt-4 text-[17.5px] leading-relaxed" style={{ color: "var(--mut)" }}>
-              One licensed crew for the emergency at 3 AM and the compliance inspection on the calendar.
+              One licensed crew takes the emergency at 3 AM and the compliance inspection on the calendar.
             </p>
           </div>
 
@@ -567,8 +648,7 @@ export default function NonstopPlumbers() {
               <article key={s.t} className={`np-tk np-rev ${["", "np-in-d1", "np-in-d2", "np-in-d3"][i % 4]} flex flex-col`}>
                 <div className="np-tk-head px-5 py-3 flex items-center justify-between gap-2">
                   <span className="mono text-[11px]" style={{ color: "var(--mut)", letterSpacing: ".08em" }}>{s.wo}</span>
-                  <span className="np-lab text-[10px] px-2.5 py-1 rounded-full"
-                    style={{ background: "rgba(217,42,40,.09)", color: "var(--red)" }}>{s.tag}</span>
+                  <span className="np-lab text-[10px] px-2.5 py-1 rounded-full" style={tagStyle(s.tag)}>{s.tag}</span>
                 </div>
                 <div className="p-6 flex-1 flex flex-col">
                   <span className="inline-flex items-center justify-center w-11 h-11 rounded-full"
@@ -576,10 +656,10 @@ export default function NonstopPlumbers() {
                   <h3 className="mt-5 text-[21px]" style={{ color: "var(--navy)" }}>{s.t}</h3>
                   <div className="np-notch np-notch-l" style={{ top: "calc(50% + 18px)" }} />
                   <div className="np-notch np-notch-r" style={{ top: "calc(50% + 18px)" }} />
-                  <ul className="np-perf mt-5 pt-5 space-y-2 text-[14px] leading-relaxed" style={{ color: "var(--mut)" }}>
+                  <ul className="np-perf mt-5 pt-5 space-y-2.5 text-[15px]" style={{ color: "var(--mut)" }}>
                     {s.d.map((x) => (
                       <li key={x} className="flex gap-2.5">
-                        <span className="mt-[7px] w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--red)" }} />
+                        <span className="mt-[8px] w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--dot)" }} />
                         {x}
                       </li>
                     ))}
@@ -593,32 +673,36 @@ export default function NonstopPlumbers() {
 
       {/* ── WHO SHOWS UP — crew photo + borough dispatch board ── */}
       <section id="crew" className="relative np-dark np-grain py-20 sm:py-28" style={{ "--stage": "#0d1a2b" }}>
-        <div className="np-w relative z-[3] grid gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
-          <div className="np-rev">
-            <div className="np-frame" style={{ borderColor: "rgba(255,255,255,.14)" }}>
-              <img src={`${A}crew-hi.webp`} alt="Nonstop Plumbers crew and branded van on a Brooklyn street"
-                className="w-full h-full object-cover" width="1200" height="800" loading="lazy" decoding="async" />
-            </div>
-          </div>
-
-          <div className="np-rev np-in-d1">
+        <div className="np-w relative z-[3]">
+          {/* the headline spans the top so both columns below start on the same edge */}
+          <div className="np-rev max-w-3xl">
             <div className="np-lab flex items-center gap-3" style={{ color: "var(--cyan)" }}>
               <span className="np-stripe np-stripe-r w-10 shrink-0" style={{ height: 6 }} />
               Who shows up
             </div>
             <h2 className="mt-5 text-4xl sm:text-[46px] text-white">
-              A licensed crew and a marked van.
+              A licensed crew and a marked van, in your building today.
             </h2>
-            <p className="mt-4 text-[17.5px] leading-relaxed" style={{ color: "#bccadb" }}>
+            <p className="mt-4 text-[17.5px] max-w-2xl" style={{ color: "#c2d0e0", lineHeight: 1.64 }}>
               The call is answered 24/7 and dispatched in minutes — then real people arrive:
               Master Plumber and Master Fire Suppression licensed, fully insured, working in
               New York buildings every day of the year.
             </p>
+          </div>
+
+          <div className="mt-11 grid gap-8 lg:gap-10 lg:grid-cols-[.86fr_1.14fr] lg:items-start">
+            {/* their own job photos, passing */}
+            <div className="np-rev lg:sticky lg:top-[104px]">
+              <CrewShow still={still} />
+              <p className="np-lab mt-4 text-[10px]" style={{ color: "#8ea2b8" }}>
+                Real jobs · real crews · five boroughs
+              </p>
+            </div>
 
             {/* THE BOROUGH BOARD — hand-drawn map + tickets that open in place */}
-            <div className="np-tk mt-9" style={{ background: "rgba(255,255,255,.05)", borderColor: "rgba(255,255,255,.16)" }}>
+            <div className="np-tk np-glass np-rev np-in-d1" style={{ background: "rgba(255,255,255,.05)", borderColor: "rgba(255,255,255,.16)" }}>
               <div className="px-5 py-3.5 flex items-center justify-between gap-3" style={{ borderBottom: "1px solid rgba(255,255,255,.14)" }}>
-                <span className="np-lab flex items-center gap-2" style={{ color: "#9fb2c8" }}>
+                <span className="np-lab flex items-center gap-2" style={{ color: "#a9bbcf" }}>
                   <span className="np-live" /> Dispatch desk open
                 </span>
                 <span className="mono text-[11px]" style={{ color: "var(--cyan)", letterSpacing: ".08em" }}>NYC {clock}</span>
@@ -692,7 +776,7 @@ export default function NonstopPlumbers() {
       <section id="plans" className="py-20 sm:py-28" style={{ background: "#fff", "--stage": "#fff" }}>
         <div className="np-w">
           <div className="np-rev max-w-2xl">
-            <div className="np-lab flex items-center gap-3" style={{ color: "var(--red)" }}>
+            <div className="np-lab flex items-center gap-3" style={{ color: "var(--red-d)" }}>
               <span className="np-stripe np-stripe-r w-10 shrink-0" style={{ height: 6 }} />
               Standing orders
             </div>
@@ -707,26 +791,26 @@ export default function NonstopPlumbers() {
               <article key={p.t} className={`np-tk np-rev ${i ? "np-in-d1" : ""} flex flex-col`}>
                 <div className="np-tk-head px-6 py-3.5 flex items-center justify-between gap-2">
                   <span className="mono text-[11px]" style={{ color: "var(--mut)", letterSpacing: ".08em" }}>{p.wo}</span>
-                  <span className="np-lab" style={{ color: "var(--red)", fontSize: 10 }}>Standing order</span>
+                  <span className="np-lab" style={{ color: "var(--cyan-d)", fontSize: 10 }}>Standing order</span>
                 </div>
                 <div className="p-7 flex-1 flex flex-col">
                   <h3 className="text-[25px]" style={{ color: "var(--navy)" }}>{p.t}</h3>
-                  <p className="mt-2 text-[14px]" style={{ color: "var(--mut)" }}>{p.s}</p>
+                  <p className="mt-2.5 text-[15px]" style={{ color: "var(--mut)" }}>{p.s}</p>
                   <span className="np-pill np-lab mt-4 self-start"
-                    style={{ background: "rgba(217,42,40,.08)", borderColor: "rgba(217,42,40,.22)", color: "var(--red)" }}>
+                    style={{ background: "rgba(12,26,46,.05)", borderColor: "rgba(12,26,46,.16)", color: "var(--navy)" }}>
                     {p.from}
                   </span>
                   <div className="np-notch np-notch-l" style={{ top: "calc(50% + 26px)" }} />
                   <div className="np-notch np-notch-r" style={{ top: "calc(50% + 26px)" }} />
-                  <ul className="np-perf mt-6 pt-6 space-y-3 text-[15px] leading-relaxed" style={{ color: "var(--mut)" }}>
+                  <ul className="np-perf mt-6 pt-6 space-y-3 text-[15.5px]" style={{ color: "var(--mut)" }}>
                     {p.d.map((x) => (
                       <li key={x} className="flex gap-3">
-                        <span className="mt-[8px] w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--red)" }} />
+                        <span className="mt-[9px] w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--dot)" }} />
                         {x}
                       </li>
                     ))}
                   </ul>
-                  <a href="#contact" className="np-btn mt-7 w-full !py-4">
+                  <a href="#contact" className="np-btn-n mt-7 w-full !py-4">
                     Request plan details <Ic d={I.arrow} s={18} />
                   </a>
                 </div>
@@ -746,7 +830,7 @@ export default function NonstopPlumbers() {
         <div className="np-w">
           <div className="grid gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-start">
             <div className="np-rev max-w-2xl">
-              <div className="np-lab flex items-center gap-3" style={{ color: "var(--red)" }}>
+              <div className="np-lab flex items-center gap-3" style={{ color: "var(--red-d)" }}>
                 <span className="np-stripe np-stripe-r w-10 shrink-0" style={{ height: 6 }} />
                 Since 1992
               </div>
@@ -773,13 +857,13 @@ export default function NonstopPlumbers() {
             <div className="np-rev np-in-d1 np-tk">
               <div className="np-tk-head px-6 py-3.5 flex items-center justify-between gap-2">
                 <span className="mono text-[11px]" style={{ color: "var(--mut)", letterSpacing: ".08em" }}>WO-STD</span>
-                <span className="np-lab" style={{ color: "var(--red)", fontSize: 10 }}>Our standards</span>
+                <span className="np-lab" style={{ color: "var(--cyan-d)", fontSize: 10 }}>Our standards</span>
               </div>
               <div className="p-7">
-                <h3 className="text-[22px]" style={{ color: "var(--navy)" }}>Exceeding expectations every day</h3>
-                <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--mut)" }}>
+                <h3 className="text-[22px]" style={{ color: "var(--navy)" }}>Done right the first time, and clean when we leave.</h3>
+                <p className="mt-2.5 text-[15.5px]" style={{ color: "var(--mut)" }}>
                   Use the right equipment, respect the schedule, communicate clearly, and leave every
-                  space clean when the job is done.
+                  space in order when the job is done.
                 </p>
                 <div className="np-notch np-notch-l" style={{ top: 150 }} />
                 <div className="np-notch np-notch-r" style={{ top: 150 }} />
@@ -790,7 +874,7 @@ export default function NonstopPlumbers() {
                         style={{ background: "rgba(23,198,255,.12)", color: "var(--navy)" }}><Ic d={I.shield} s={15} /></span>
                       <span>
                         <span className="block font-semibold text-[15px]" style={{ color: "var(--navy)" }}>{t}</span>
-                        <span className="block mt-1 text-[14px] leading-relaxed" style={{ color: "var(--mut)" }}>{d}</span>
+                        <span className="block mt-1.5 text-[15px]" style={{ color: "var(--mut)" }}>{d}</span>
                       </span>
                     </li>
                   ))}
@@ -808,19 +892,19 @@ export default function NonstopPlumbers() {
               <article key={o.c} className={`np-tk np-rev ${["", "np-in-d1", "np-in-d2"][i]} flex flex-col`}>
                 <div className="np-tk-head px-6 py-3.5 flex items-center justify-between gap-2">
                   <span className="mono text-[11px]" style={{ color: "var(--mut)", letterSpacing: ".08em" }}>{o.c.toUpperCase()}</span>
-                  <span className="np-lab" style={{ color: "var(--red)", fontSize: 10 }}>{o.lab}</span>
+                  <span className="np-lab" style={{ fontSize: 10, color: o.tel === TEL ? "var(--red-d)" : "var(--cyan-d)" }}>{o.lab}</span>
                 </div>
                 <div className="p-6 flex-1 flex flex-col">
                   <span className="inline-flex items-center justify-center w-11 h-11 rounded-full"
                     style={{ background: "var(--navy)", color: "var(--cyan)" }}><Ic d={I.pin} s={20} /></span>
                   <h4 className="mt-5 text-[19px] font-extrabold tracking-tight" style={{ color: "var(--navy)" }}>{o.n}</h4>
-                  <address className="mt-2 not-italic text-[15px] leading-relaxed" style={{ color: "var(--mut)" }}>
+                  <address className="mt-2.5 not-italic text-[15.5px]" style={{ color: "var(--mut)" }}>
                     {o.a1}<br />{o.a2}
                   </address>
                   <div className="np-notch np-notch-l" style={{ top: "calc(100% - 92px)" }} />
                   <div className="np-notch np-notch-r" style={{ top: "calc(100% - 92px)" }} />
                   <div className="np-perf mt-6 pt-5 mt-auto">
-                    <a href={o.tel} className="np-btn w-full !py-4 text-[17px]">
+                    <a href={o.tel} className="np-btn-n w-full !py-4 text-[17px]">
                       <Ic d={I.phone} s={18} /> {o.ph}
                     </a>
                   </div>
@@ -828,7 +912,7 @@ export default function NonstopPlumbers() {
               </article>
             ))}
           </div>
-          <p className="np-rev mt-5 text-[13px] leading-relaxed" style={{ color: "var(--mut)" }}>
+          <p className="np-rev mt-5 text-[14px]" style={{ color: "var(--mut)" }}>
             {PHONE} is the 24-hour emergency dispatch line. {PHONE_OFFICE} is the Manhattan office line at 30 Wall St.
           </p>
         </div>
@@ -838,7 +922,7 @@ export default function NonstopPlumbers() {
       <section id="faq" aria-labelledby="faq-h" className="py-20 sm:py-28" style={{ background: "#fff", "--stage": "#fff" }}>
         <div className="np-w">
           <div className="np-rev max-w-2xl">
-            <div className="np-lab flex items-center gap-3" style={{ color: "var(--red)" }}>
+            <div className="np-lab flex items-center gap-3" style={{ color: "var(--red-d)" }}>
               <span className="np-stripe np-stripe-r w-10 shrink-0" style={{ height: 6 }} />
               Before you call
             </div>
@@ -858,7 +942,7 @@ export default function NonstopPlumbers() {
                     style={{ color: "var(--navy)" }}>{f.q}</h3>
                 </summary>
                 <div className="px-[22px] pb-[22px] pl-[70px]">
-                  <p className="np-perf pt-4 text-[14.5px] leading-relaxed" style={{ color: "var(--mut)" }}>{f.a}</p>
+                  <p className="np-perf pt-4 text-[16.5px]" style={{ color: "var(--mut)", lineHeight: 1.68 }}>{f.a}</p>
                 </div>
               </details>
             ))}
@@ -866,8 +950,8 @@ export default function NonstopPlumbers() {
 
           <div className="np-rev mt-10 flex flex-col sm:flex-row gap-3 sm:items-center">
             <a href={TEL} className="np-btn"><Ic d={I.phone} s={20} /> Call 24/7 dispatch — {PHONE}</a>
-            <span className="text-[14px] leading-relaxed" style={{ color: "var(--mut)" }}>
-              Still not sure it&rsquo;s an emergency? Call anyway — dispatch triages it in under a minute.
+            <span className="text-[15px]" style={{ color: "var(--mut)" }}>
+              Not sure it&rsquo;s an emergency? Call anyway — dispatch triages it before you hang up.
             </span>
           </div>
         </div>
@@ -877,7 +961,7 @@ export default function NonstopPlumbers() {
       <section id="contact" className="py-20 sm:py-28" style={{ background: "var(--paper)", "--stage": "var(--paper)" }}>
         <div className="np-w grid gap-8 lg:grid-cols-[.95fr_1.05fr] lg:items-start">
           <div className="np-rev">
-            <div className="np-lab flex items-center gap-3" style={{ color: "var(--red)" }}>
+            <div className="np-lab flex items-center gap-3" style={{ color: "var(--red-d)" }}>
               <span className="np-stripe np-stripe-r w-10 shrink-0" style={{ height: 6 }} />
               Dispatch
             </div>
@@ -887,10 +971,10 @@ export default function NonstopPlumbers() {
               the same line takes all of it.
             </p>
 
-            <div className="np-tk mt-8" style={{ background: "var(--navy)", borderColor: "rgba(255,255,255,.14)" }}>
+            <div className="np-tk np-glass mt-8" style={{ background: "var(--navy)", borderColor: "rgba(255,255,255,.14)" }}>
               <div className="np-stripe" />
               <div className="p-7">
-                <div className="np-lab" style={{ color: "#9fb2c8" }}>Emergency dispatch — answered 24/7 by AI, dispatched in minutes</div>
+                <div className="np-lab" style={{ color: "#a9bbcf" }}>Emergency dispatch — answered 24/7 by AI, dispatched in minutes</div>
                 <a href={TEL} className="dsp mt-4 block text-[40px] sm:text-[52px] leading-none" style={{ color: "#fff" }}>{PHONE}</a>
                 <div className="mt-5 flex flex-wrap items-center gap-2.5">
                   <DeskOpen dark />
@@ -918,8 +1002,8 @@ export default function NonstopPlumbers() {
               </div>
               <div className="p-6 sm:p-8">
                 <h3 className="text-[25px]" style={{ color: "var(--navy)" }}>Open a work order</h3>
-                <p className="mt-2 text-[14px]" style={{ color: "var(--mut)" }}>
-                  Not an emergency? Send the details and we&rsquo;ll come back with a time.
+                <p className="mt-2.5 text-[15.5px]" style={{ color: "var(--mut)" }}>
+                  Not an emergency? Send the details and dispatch comes back with a time.
                 </p>
                 <div className="np-notch np-notch-l" style={{ top: 158 }} />
                 <div className="np-notch np-notch-r" style={{ top: 158 }} />
@@ -940,9 +1024,9 @@ export default function NonstopPlumbers() {
                   </select>
                   <textarea className="np-field" rows="3" placeholder="What's going on?" aria-label="What's going on?" />
                 </div>
-                <button type="submit" className="np-btn w-full mt-5">Send the work order</button>
-                <p className="mt-4 flex gap-2.5 text-[13px] leading-relaxed" style={{ color: "var(--mut)" }}>
-                  <span className="mt-[2px] shrink-0" style={{ color: "var(--red)" }}><Ic d={I.shield} s={15} /></span>
+                <button type="submit" className="np-btn-n w-full mt-5">Send the work order <Ic d={I.arrow} s={18} /></button>
+                <p className="mt-4 flex gap-2.5 text-[14px]" style={{ color: "var(--mut)" }}>
+                  <span className="mt-[2px] shrink-0" style={{ color: "var(--cyan-d)" }}><Ic d={I.shield} s={15} /></span>
                   What happens next: dispatch triages what you sent, calls you back, and tells you what to do
                   before a technician arrives. Anything active right now — a leak, a backup, no hot water —
                   should go straight to <a href={TEL} className="font-semibold underline whitespace-nowrap"
@@ -978,21 +1062,21 @@ export default function NonstopPlumbers() {
             <h2 id="careers-h" className="mt-5 text-3xl sm:text-[42px] text-white">
               We hire licensed NYC plumbers.
             </h2>
-            <p className="mt-4 text-[17px] leading-relaxed max-w-xl" style={{ color: "#bccadb" }}>
+            <p className="mt-4 text-[17px] leading-relaxed max-w-xl" style={{ color: "#c2d0e0" }}>
               Licensed plumbers, drain and sewer specialists, helpers, apprentices and operations support
               who want steady work, clear expectations and real NYC field experience. We look for people
               who communicate clearly, respect customers and job sites, and treat timing seriously.
             </p>
             <div className="mt-7 flex flex-col sm:flex-row gap-3">
-              <a href="#contact" className="np-btn"><Ic d={I.hard} s={20} /> Tell us where you fit</a>
-              <a href={TEL} className="np-btn-o">Call the office <Ic d={I.arrow} s={18} /></a>
+              <a href="#contact" className="np-btn-n"><Ic d={I.hard} s={20} /> Tell us where you fit</a>
+              <a href={TEL_OFFICE} className="np-btn-o">Call the office line <Ic d={I.arrow} s={18} /></a>
             </div>
           </div>
-          <div className="np-rev np-in-d1 np-tk" style={{ background: "rgba(255,255,255,.05)", borderColor: "rgba(255,255,255,.16)" }}>
-            <div className="px-6 py-3.5 np-lab" style={{ color: "#9fb2c8", borderBottom: "1px solid rgba(255,255,255,.14)" }}>
+          <div className="np-rev np-in-d1 np-tk np-glass" style={{ background: "rgba(255,255,255,.05)", borderColor: "rgba(255,255,255,.16)" }}>
+            <div className="px-6 py-3.5 np-lab" style={{ color: "#a9bbcf", borderBottom: "1px solid rgba(255,255,255,.14)" }}>
               Typical hiring paths
             </div>
-            <ul className="p-6 space-y-3 text-[15px]" style={{ color: "#dbe5f0" }}>
+            <ul className="p-6 space-y-3 text-[15.5px]" style={{ color: "#dfe8f2" }}>
               {ROLES.map((r) => (
                 <li key={r} className="flex gap-3 items-start">
                   <span className="mt-[8px] w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--cyan)" }} />
@@ -1019,7 +1103,7 @@ export default function NonstopPlumbers() {
         <div className="np-w py-12 grid gap-10 md:grid-cols-[1.2fr_1fr_1fr]">
           <div>
             <img src={`${A}logo-hi.webp`} alt="Nonstop Plumbers NY logo" className="h-12 w-auto" width="240" height="48" loading="lazy" decoding="async" />
-            <p className="mt-5 text-[14px] leading-relaxed max-w-sm" style={{ color: "var(--mut)" }}>
+            <p className="mt-5 text-[15px] max-w-sm" style={{ color: "var(--mut)" }}>
               24/7/365 emergency plumbing, drain &amp; sewer, fire suppression and NYC compliance.
               Master Plumber and Master Fire Suppression licensed · fully insured.
             </p>
@@ -1037,7 +1121,7 @@ export default function NonstopPlumbers() {
           <div>
             <div className="np-lab" style={{ color: "var(--navy)" }}>Emergency dispatch</div>
             <a href={TEL} className="dsp mt-4 block text-3xl" style={{ color: "var(--red)" }}>{PHONE}</a>
-            <p className="mt-3 text-[13px]" style={{ color: "var(--mut)" }}>Answered every hour of every day — including holidays.</p>
+            <p className="mt-3 text-[14px]" style={{ color: "var(--mut)" }}>Answered every hour of every day — including holidays.</p>
             <div className="np-lab mt-7" style={{ color: "var(--navy)" }}>Manhattan office</div>
             <a href={TEL_OFFICE} className="mt-2 block text-[15px] font-semibold" style={{ color: "var(--navy)" }}>{PHONE_OFFICE}</a>
             <div className="mt-7 flex flex-wrap gap-2.5">
