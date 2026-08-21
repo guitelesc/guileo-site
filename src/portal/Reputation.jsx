@@ -28,6 +28,7 @@
    apresentada como "você não tem avaliações").
    O showcase antigo continua vivo para a demonstração — com selo, em cada número. */
 import { useState, useEffect } from "react";
+import NoSeuPlano from "./NoSeuPlano.jsx";
 import { portalApi, loadDataKey, toast } from "../lib/portalApi.js";
 import { genReviews, loadCreated, genCustomers, pushCreated, MiniStats, vnum, Card, tr, Drawer, Empty, SectionSkeleton, UI_LANG } from "../pages/Portal.jsx";
 
@@ -287,8 +288,13 @@ function Reputation({ V, onNav, real: realProp = null, email: emailProp = "", da
   const dataKey = dataKeyProp || loadDataKey();
   if (realProp == null && sess === undefined) return <SectionSkeleton rows={5} />;
   const live = !!(email && dataKey && (realProp != null || sess?.demo !== true));
+  // O convite de plano entra SÓ no ramo real — em demonstração o cockpit inteiro é vitrine, e
+  // dizer "não está no seu plano" para quem não tem plano nenhum é ruído sem sentido.
   return live
-    ? <RealReputation email={email} dataKey={dataKey} onNav={onNav} />
+    ? (<>
+        <NoSeuPlano real={realProp} produto="reputation" />
+        <RealReputation email={email} dataKey={dataKey} onNav={onNav} />
+      </>)
     : <DemoReputation V={V} onNav={onNav} />;
 }
 

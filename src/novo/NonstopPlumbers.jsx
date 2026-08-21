@@ -3,12 +3,19 @@
 // a red emergency stripe as structure. Everything fully rounded (pills + 28-32px cards).
 // Their own assets: /novo/nonstop/{hero-web.mp4,hero-poster.webp,logo-hi.webp,crew-hi.webp,boiler-hi.webp}
 // Their own palette: red #d92a28 · cyan #17c6ff · navy #0c1a2e · paper #f5f7fa.
-// Real content only — nonstopplumbers.com · (212) 567-2000. No prices, no invented stats.
+// Real content only — nonstopplumbers.com. Every fact, price, FAQ answer, address and
+// borough line below is carried over from their own pages. No invented stats.
 import { useEffect, useRef, useState } from "react";
 
 const PHONE = "(212) 567-2000";
 const TEL = "tel:+12125672000";
+const PHONE_OFFICE = "(646) 992-9210";
+const TEL_OFFICE = "tel:+16469929210";
+const IG = "https://www.instagram.com/plumbingnewyork/";
+const FB = "https://www.facebook.com/profile.php?id=100091333871352";
+const SITE = "https://www.guileoai.com/novo/nonstop-plumbers";
 const A = "/novo/nonstop/";
+const SITE_ORIGIN = "https://www.guileoai.com";
 
 /* ── inline icons, 1.5px stroke — no emoji anywhere ── */
 const I = {
@@ -25,6 +32,9 @@ const I = {
   clock: <><circle cx="12" cy="12" r="8.8" /><path d="M12 6.8V12l3.4 2" /></>,
   pin: <path d="M12 21s6.5-6 6.5-10.6a6.5 6.5 0 1 0-13 0C5.5 15 12 21 12 21zM12 12.6a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8z" />,
   arrow: <path d="M4.5 12h14m-5.5-5.6 5.6 5.6-5.6 5.6" />,
+  plus: <path d="M12 5.5v13M5.5 12h13" />,
+  hard: <path d="M4 16.5h16M6.5 16V11a5.5 5.5 0 0 1 11 0v5M10 6.2V4.6A1.1 1.1 0 0 1 11.1 3.5h1.8A1.1 1.1 0 0 1 14 4.6v1.6M4 16.5v1.4A1.1 1.1 0 0 0 5.1 19h13.8a1.1 1.1 0 0 0 1.1-1.1v-1.4" />,
+  star: <path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.1-4 5.7-.8L12 3.6z" />,
 };
 const Ic = ({ d, s = 22 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
@@ -48,15 +58,65 @@ const CREDS = [
   { ic: I.clock, t: "24/7 Emergency Dispatch" },
 ];
 const BOROUGHS = [
-  { b: "Manhattan", c: "MN" }, { b: "Brooklyn", c: "BK" }, { b: "Queens", c: "QN" },
-  { b: "Bronx", c: "BX" }, { b: "Staten Island", c: "SI" },
+  { b: "Manhattan", c: "MN", d: "Leaks, drain backups, gas piping compliance and high-rise service from Harlem to the Financial District." },
+  { b: "Brooklyn", c: "BK", d: "Brownstones, multifamily buildings, drain backups, remodel plumbing and emergency leak response." },
+  { b: "Queens", c: "QN", d: "Water heaters, water service problems, drain work, backflow compliance and emergency response." },
+  { b: "Bronx", c: "BX", d: "Multifamily emergencies, drain and sewer issues, code corrections and plumbing compliance support." },
+  { b: "Staten Island", c: "SI", d: "Water-main work, gas piping, fixture upgrades, drain issues and emergency plumbing support." },
 ];
 const PLANS = [
   { wo: "WO-BSP", t: "Building Service Plans", s: "For managed buildings & commercial properties",
-    d: ["Planned maintenance across the building's systems", "Compliance testing kept on schedule", "Priority line into the same 24/7 dispatch"] },
+    from: "From $1,199 / month",
+    d: ["Monthly house trap cleaning, pressure jetting, pipe inspection and valve exercising",
+        "Local Law 152, FDNY and DEP inspections, backflow and standpipe support on Tier 2 and 3",
+        "24/7 priority with no after-hours surcharge, and 10–20% off additional services",
+        "Tier 1 $1,199 · Tier 2 $2,299 (most popular) · Tier 3 VIP $3,499 — 36-month agreement gets 2 months free"] },
   { wo: "WO-HPM", t: "Home Plumbing Memberships", s: "For homeowners and apartments",
-    d: ["Routine care for the plumbing you rely on", "Same licensed crew every visit", "Priority line into the same 24/7 dispatch"] },
+    from: "From $99 / year",
+    d: ["10–20% off all services, VIP priority scheduling and $0 dispatch fees",
+        "Silver Care $99/yr — everyday savings and priority scheduling",
+        "Gold Plus $399/yr — one complimentary visit, assessment and labor-only service every year",
+        "Diamond Elite $799/yr — whole-home visit and two complimentary labor-only services a year"] },
 ];
+
+const OFFICES = [
+  { c: "Astoria", a1: "14-31 Astoria Blvd", loc: "Astoria", zip: "11102", ph: PHONE, tel: TEL, lab: "24-hour emergency service" },
+  { c: "Brooklyn", a1: "555 Macon St Suite 1", loc: "Brooklyn", zip: "11233", ph: PHONE, tel: TEL, lab: "24-hour emergency service" },
+  { c: "Manhattan", a1: "30 Wall St 8th Floor", loc: "New York", zip: "10005", ph: PHONE_OFFICE, tel: TEL_OFFICE, lab: "Office line" },
+].map((o) => ({ ...o, n: `Nonstop Plumbers CORP — ${o.c}`, a2: `${o.loc}, NY ${o.zip}` }));
+
+const STANDARDS = [
+  ["State-of-the-art equipment", "The right tools for the job, so plumbing problems are solved cleanly and accurately."],
+  ["Prompt appointments in a busy city", "Modern scheduling and responsive dispatch, because your time counts too."],
+  ["Customers who come back", "Straightforward, fair and professional from the first call to the final walkthrough."],
+  ["Clean finish, not just finished", "The site is left in order — the mess doesn't stay behind for the customer."],
+];
+
+const FAQ = [
+  { q: "How quickly can you send a plumber in NYC?",
+    a: "For active leaks, drain backups, no-water conditions or any urgent problem, the fastest path is to call dispatch. The team routes the nearest qualified crew based on borough, building access and the actual severity. Arrival depends on traffic, access restrictions and current emergency volume — the goal is always to stabilize the property first, explain the condition clearly, then move into the right repair scope." },
+  { q: "Should I call or use the contact form for an emergency?",
+    a: "Call for anything active or time-sensitive: leaking water, sewer backup, no hot water in a building, gas concerns, or a shutdown already affecting occupants. Dispatch can triage immediately and tell you what to do before a technician arrives. Use the form for estimates, planned work and follow-ups — it is good for organized scope intake, but it is not the path for a live emergency." },
+  { q: "What should I do before the plumber arrives for a leak or backup?",
+    a: "If it is safe, shut off the local fixture or the nearest water source, stop using the affected drains and move valuables away. In multifamily or commercial buildings, notify building staff right away so access and shutdown decisions happen faster. Note which fixtures are affected and whether the problem is isolated or building-wide — that narrows the likely cause before anyone arrives." },
+  { q: "What causes recurring drain backups in apartment buildings or brownstones?",
+    a: "Recurring backups usually point to a deeper line condition, not a one-time surface clog: grease buildup, scale, partial collapses, root intrusion, poor pitch, or a branch line that was only opened temporarily instead of properly cleaned. In older NYC buildings, stacked systems and limited access hide where the real restriction starts, so repeat backups need a full diagnosis rather than another pass with a cable." },
+  { q: "Why did my apartment or building lose hot water?",
+    a: "A hot-water outage can come from the heater itself, boiler controls, recirculation problems, gas supply, electrical failures, or a larger building-system condition — and it looks different depending on whether one line, one riser or the whole property is affected. The first step is confirming whether the loss is local or building-wide and whether there is any safety concern, then diagnosis, safe restoration and any follow-up work." },
+  { q: "Can you coordinate with supers, property managers and building staff?",
+    a: "Yes. A large part of NYC plumbing work is coordinating around live buildings, occupied units, elevator rules, cellar access, freight windows, shutdown timing and management approval. Access needs get identified early and authority on site confirmed up front, which keeps the job moving and cuts repeat visits caused by preventable access problems." },
+  { q: "Do plumbing repairs or replacements in NYC require permits?",
+    a: "Some work is handled as repair or maintenance; other scopes need permits, filings, inspections or licensed sign-off. It depends on what is being changed, whether gas or water service is affected, and which agency has jurisdiction. The safest assumption is not to guess — the job is evaluated on actual site conditions and mapped to the correct code and filing path first." },
+  { q: "Can you help with DOB, DEP, FDNY, gas and backflow-related scopes?",
+    a: "Yes. Compliance work often overlaps gas piping, sprinkler coordination, backflow requirements, water-service issues or agency-driven corrections, where paperwork, testing and sequence matter as much as the repair. Work is handled under NYC Master Plumber License #1332, with Master Fire Suppression License #543B when the scope touches sprinkler or standpipe systems." },
+  { q: "Do you provide estimates for non-emergency plumbing work?",
+    a: "Yes. Fixture replacement, remodeling, water heater changes, piping upgrades, compliance corrections and building-wide improvements can all be scoped through an estimate or a site visit. The more accurate the access details and project information you send, the more useful that estimate is — and the fewer surprises later." },
+  { q: "Do you service all five boroughs?",
+    a: "Yes — Manhattan, Brooklyn, Queens, the Bronx and Staten Island, for emergency response, drain and sewer work, hot-water issues, compliance-driven plumbing, repairs and planned projects. Coverage is citywide, but scheduling and scope still vary by borough because access, traffic, building density and agency coordination are not the same everywhere." },
+];
+
+const ROLES = ["Licensed plumbers", "Drain and sewer technicians", "Helpers and apprentices",
+  "Dispatch and customer coordination", "Project and compliance support"];
 
 const nyTime = () =>
   new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" })
@@ -135,9 +195,100 @@ const CSS = `
  outline:none;transition:border-color .2s,box-shadow .2s;font-family:inherit}
 textarea.np-field{border-radius:22px;resize:vertical}
 .np-field:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(23,198,255,.18)}
+/* FAQ — native details/summary dressed as a rounded ticket row */
+.np-q{list-style:none;cursor:pointer;display:flex;align-items:flex-start;gap:16px;padding:20px 22px}
+.np-q::-webkit-details-marker{display:none}
+.np-q:focus-visible{outline:2px solid var(--cyan);outline-offset:-3px;border-radius:24px}
+.np-qi{flex:none;width:32px;height:32px;border-radius:999px;display:grid;place-items:center;
+ background:rgba(217,42,40,.09);color:var(--red);transition:transform .3s cubic-bezier(.2,.7,.3,1),background .25s}
+.np-fq[open] .np-qi{transform:rotate(45deg);background:var(--red);color:#fff}
+.np-fq{transition:border-color .3s,box-shadow .3s}
+.np-fq[open]{border-color:rgba(217,42,40,.28)}
+.np-fq:hover{border-color:rgba(12,26,46,.2)}
+.np-faqs{display:grid;gap:14px}
+@media(min-width:1024px){.np-faqs{display:block;columns:2;column-gap:14px}
+ .np-faqs>details{break-inside:avoid;margin-bottom:14px}}
+
+/* sticky mobile call bar — sits UNDER the floating AI widget (z-40) */
+.np-callbar{position:fixed;left:0;right:0;bottom:0;z-index:30;pointer-events:none;
+ padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));
+ background:linear-gradient(180deg,rgba(245,247,250,0),rgba(245,247,250,.94) 42%);backdrop-filter:blur(10px);
+ transform:translateY(130%);transition:transform .38s cubic-bezier(.2,.7,.3,1)}
+.np-callbar.np-show{transform:none;pointer-events:auto}
+
+.np-err{border-color:rgba(217,42,40,.55)!important;box-shadow:0 0 0 3px rgba(217,42,40,.13)!important}
 @media(prefers-reduced-motion:reduce){.np-rev{opacity:1;transform:none;transition:none}
- .np-tk,.np-btn,.np-live{transition:none;animation:none}}
+ .np-tk,.np-btn,.np-live,.np-callbar,.np-qi{transition:none;animation:none}}
 `;
+
+/* ── ONLINE PRESENCE: head tags + structured data, all cleaned up on unmount ── */
+const META = [
+  ["name", "description", "24/7 emergency plumbing in NYC since 1992 — drain & sewer, water main, fire suppression and Local Law 152 compliance across Manhattan, Brooklyn, Queens, the Bronx and Staten Island. Master Plumber licensed, fully insured. Dispatch (212) 567-2000."],
+  ["name", "robots", "index,follow,max-image-preview:large"],
+  ["property", "og:type", "website"],
+  ["property", "og:site_name", "Nonstop Plumbers NY"],
+  ["property", "og:title", "Nonstop Plumbers NY — 24/7 Emergency Plumbing Across NYC"],
+  ["property", "og:description", "Licensed 24/7/365 emergency plumbing, drain & sewer, fire suppression and NYC compliance in all five boroughs. Dispatch (212) 567-2000."],
+  ["property", "og:image", SITE_ORIGIN + A + "hero-poster.webp"],
+  ["property", "og:url", SITE],
+  ["name", "twitter:card", "summary_large_image"],
+  ["name", "twitter:title", "Nonstop Plumbers NY — 24/7 Emergency Plumbing Across NYC"],
+  ["name", "twitter:image", SITE_ORIGIN + A + "hero-poster.webp"],
+  ["name", "twitter:description", "Emergency plumbing, drain & sewer, fire suppression and NYC compliance. Five boroughs, 24/7/365."],
+];
+
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const HOURS = [{ "@type": "OpeningHoursSpecification", dayOfWeek: DAYS, opens: "00:00", closes: "23:59" }];
+const addr = (street, loc, zip) => ({
+  "@type": "PostalAddress", streetAddress: street, addressLocality: loc,
+  addressRegion: "NY", postalCode: zip, addressCountry: "US",
+});
+
+const LD = () => ({
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": ["Plumber", "LocalBusiness"],
+      "@id": SITE + "#business",
+      name: "Nonstop Plumbers NY",
+      legalName: "Nonstop Plumbers CORP",
+      description: "Licensed 24/7 emergency plumbing, drain and sewer, water main, fire suppression and NYC compliance service across the five boroughs since 1992.",
+      url: SITE,
+      telephone: "+1-212-567-2000",
+      foundingDate: "1992",
+      image: SITE_ORIGIN + A + "hero-poster.webp",
+      logo: SITE_ORIGIN + A + "logo-hi.webp",
+      address: addr("30 Wall St 8th Floor", "New York", "10005"),
+      areaServed: ["Manhattan", "Brooklyn", "Queens", "The Bronx", "Staten Island"].map((n) => ({
+        "@type": "AdministrativeArea", name: n,
+      })),
+      openingHoursSpecification: HOURS,
+      sameAs: [IG, FB],
+      department: OFFICES.map((o) => ({
+        "@type": ["Plumber", "LocalBusiness"],
+        name: o.n,
+        telephone: "+1-" + o.ph.replace(/[^0-9]/g, "").replace(/^(\d{3})(\d{3})(\d{4})$/, "$1-$2-$3"),
+        address: addr(o.a1, o.loc, o.zip),
+        openingHoursSpecification: HOURS,
+      })),
+    },
+    {
+      "@type": "FAQPage",
+      "@id": SITE + "#faq",
+      mainEntity: FAQ.map((f) => ({
+        "@type": "Question", name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+      })),
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": SITE + "#breadcrumb",
+      itemListElement: [["Home", ""], ["Services", "#services"], ["FAQ", "#faq"]].map(([n, h], i) => ({
+        "@type": "ListItem", position: i + 1, name: n, item: SITE + h,
+      })),
+    },
+  ],
+});
 
 export default function NonstopPlumbers() {
   const root = useRef(null);
@@ -147,6 +298,9 @@ export default function NonstopPlumbers() {
   const [boro, setBoro] = useState("");
   const [still, setStill] = useState(false);
   const [clock, setClock] = useState(nyTime);
+  const [bar, setBar] = useState(false);
+  const [form, setForm] = useState({ name: "", phone: "" });
+  const [err, setErr] = useState("");
 
   useEffect(() => {
     const m = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -155,6 +309,35 @@ export default function NonstopPlumbers() {
     m.addEventListener?.("change", on);
 
     const tick = setInterval(() => setClock(nyTime()), 20000);
+
+    const onScroll = () => setBar(window.scrollY > 500);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    // ── ONLINE PRESENCE: title, meta, canonical, JSON-LD (all removed on unmount) ──
+    const prevTitle = document.title;
+    document.title = "Nonstop Plumbers NY — 24/7 Emergency Plumbing, Drain & Sewer Across NYC";
+    // O site tem SEO global no index.html: SOBRESCREVE a tag existente e devolve
+    // o valor original ao desmontar — senão a página fica com duas descrições.
+    const seo = [], restore = [];
+    META.forEach(([k, v, c]) => {
+      const found = document.head.querySelector(`meta[${k}="${v}"]`);
+      if (found) { restore.push([found, found.getAttribute("content")]); found.setAttribute("content", c); return; }
+      const el = document.createElement("meta");
+      el.setAttribute(k, v); el.setAttribute("content", c); el.setAttribute("data-np-seo", "1");
+      document.head.appendChild(el); seo.push(el);
+    });
+    const oldCanon = document.head.querySelector("link[rel=canonical]");
+    if (oldCanon) { restore.push([oldCanon, oldCanon.getAttribute("href"), "href"]); oldCanon.setAttribute("href", SITE); }
+    else {
+      const canon = document.createElement("link");
+      canon.rel = "canonical"; canon.href = SITE;
+      document.head.appendChild(canon); seo.push(canon);
+    }
+    const ld = document.createElement("script");
+    ld.type = "application/ld+json";
+    ld.textContent = JSON.stringify(LD());
+    document.head.appendChild(ld); seo.push(ld);
 
     const links = [
       Object.assign(document.createElement("link"), { rel: "preconnect", href: "https://fonts.googleapis.com" }),
@@ -181,6 +364,10 @@ export default function NonstopPlumbers() {
     return () => {
       clearTimeout(failOpen); clearInterval(tick); io?.disconnect();
       m.removeEventListener?.("change", on);
+      window.removeEventListener("scroll", onScroll);
+      document.title = prevTitle;
+      seo.forEach((el) => el.remove());
+      restore.forEach(([el, val, at = "content"]) => (val === null ? el.removeAttribute(at) : el.setAttribute(at, val)));
       links.forEach((l) => l.remove());
     };
   }, []);
@@ -205,7 +392,7 @@ export default function NonstopPlumbers() {
             <img src={`${A}logo-hi.webp`} alt="Nonstop Plumbers NY" className="h-11 w-auto" width="220" height="44" />
           </a>
           <nav className="hidden lg:flex items-center gap-1.5 np-lab">
-            {[["#services", "Services"], ["#crew", "Who shows up"], ["#plans", "Service plans"], ["#contact", "Contact"]].map(([h, t]) => (
+            {[["#services", "Services"], ["#crew", "Boroughs"], ["#plans", "Service plans"], ["#about", "About"], ["#faq", "FAQ"], ["#contact", "Contact"]].map(([h, t]) => (
               <a key={h} href={h} className="np-pill hover:border-[color:var(--cyan)] transition-colors"
                 style={{ color: "var(--mut)", background: "var(--paper)" }}>{t}</a>
             ))}
@@ -224,7 +411,7 @@ export default function NonstopPlumbers() {
         <div className="absolute inset-0 z-0">
           {still ? (
             <img src={`${A}hero-poster.webp`} alt="Nonstop Plumbers technicians on a New York job site"
-              className="w-full h-full object-cover" />
+              className="w-full h-full object-cover" width="1920" height="1080" decoding="async" />
           ) : (
             <video className="w-full h-full object-cover" style={{ filter: "contrast(1.07) saturate(1.06) brightness(1.05)" }} autoPlay muted loop playsInline preload="metadata"
               poster={`${A}hero-poster.webp`} aria-hidden="true">
@@ -338,7 +525,7 @@ export default function NonstopPlumbers() {
           <div className="np-rev">
             <div className="np-frame" style={{ borderColor: "rgba(255,255,255,.14)" }}>
               <img src={`${A}crew-hi.webp`} alt="Nonstop Plumbers crew and branded van on a Brooklyn street"
-                className="w-full h-full object-cover" loading="lazy" />
+                className="w-full h-full object-cover" width="1200" height="800" loading="lazy" decoding="async" />
             </div>
           </div>
 
@@ -368,13 +555,18 @@ export default function NonstopPlumbers() {
               <div className="p-2 sm:p-3">
                 {BOROUGHS.map((b) => (
                   <a key={b.b} href="#contact" onClick={() => setBoro(b.b)}
-                    className="np-boro group flex items-center gap-3 rounded-full px-3 sm:px-4 py-3 transition">
-                    <span className="np-led shrink-0" aria-hidden="true" />
+                    className="np-boro group flex items-start gap-3 rounded-[26px] px-3 sm:px-4 py-3 transition">
+                    <span className="np-led shrink-0 mt-[3px]" aria-hidden="true" />
                     <span className="mono text-[11px] px-2 py-1 rounded-full shrink-0"
                       style={{ background: "rgba(23,198,255,.12)", color: "var(--cyan)" }}>{b.c}</span>
-                    <span className="min-w-0 flex-1 text-white font-semibold text-[15px] leading-tight truncate">{b.b}</span>
-                    <span className="np-boro-go shrink-0 flex items-center gap-1.5 np-lab" style={{ color: "var(--cyan)", fontSize: 10 }}>
-                      Start a ticket <Ic d={I.arrow} s={14} />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2">
+                        <span className="text-white font-semibold text-[15px] leading-tight">{b.b}</span>
+                        <span className="np-boro-go shrink-0 flex items-center gap-1.5 np-lab" style={{ color: "var(--cyan)", fontSize: 10 }}>
+                          Start a ticket <Ic d={I.arrow} s={14} />
+                        </span>
+                      </span>
+                      <span className="block mt-1 text-[13px] leading-snug" style={{ color: "#9fb2c8" }}>{b.d}</span>
                     </span>
                   </a>
                 ))}
@@ -408,6 +600,10 @@ export default function NonstopPlumbers() {
                 <div className="p-7 flex-1 flex flex-col">
                   <h3 className="text-[25px]" style={{ color: "var(--navy)" }}>{p.t}</h3>
                   <p className="mt-2 text-[14px]" style={{ color: "var(--mut)" }}>{p.s}</p>
+                  <span className="np-pill np-lab mt-4 self-start"
+                    style={{ background: "rgba(217,42,40,.08)", borderColor: "rgba(217,42,40,.22)", color: "var(--red)" }}>
+                    {p.from}
+                  </span>
                   <div className="np-notch np-notch-l" style={{ top: "calc(50% + 26px)" }} />
                   <div className="np-notch np-notch-r" style={{ top: "calc(50% + 26px)" }} />
                   <ul className="np-perf mt-6 pt-6 space-y-3 text-[15px] leading-relaxed" style={{ color: "var(--mut)" }}>
@@ -426,8 +622,141 @@ export default function NonstopPlumbers() {
             ))}
             <div className="np-rev np-in-d2 np-frame min-h-[260px] lg:min-h-0">
               <img src={`${A}boiler-hi.webp`} alt="Nonstop Plumbers technician working in a boiler room"
-                className="w-full h-full object-cover" loading="lazy" />
+                className="w-full h-full object-cover" width="900" height="1200" loading="lazy" decoding="async" />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── ABOUT — their real story + the three real offices ─── */}
+      <section id="about" aria-labelledby="about-h" className="py-20 sm:py-28"
+        style={{ background: "var(--paper)", "--stage": "var(--paper)" }}>
+        <div className="np-w">
+          <div className="grid gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-start">
+            <div className="np-rev max-w-2xl">
+              <div className="np-lab flex items-center gap-3" style={{ color: "var(--red)" }}>
+                <span className="np-stripe np-stripe-r w-10 shrink-0" style={{ height: 6 }} />
+                Since 1992
+              </div>
+              <h2 id="about-h" className="mt-5 text-4xl sm:text-5xl">
+                The crews NYC buildings trust when the work has to be done right.
+              </h2>
+              <p className="mt-5 text-[17px] leading-relaxed" style={{ color: "var(--mut)" }}>
+                New York&rsquo;s premier residential and commercial buildings, institutions and private schools
+                rely on Nonstop Plumbers CORP for a reason: since 1992 the reputation has been built on
+                high-quality, fairly priced service and impeccable attention to detail.
+              </p>
+              <p className="mt-4 text-[17px] leading-relaxed" style={{ color: "var(--mut)" }}>
+                We believe in doing a job right the first time, and doing it neatly, without excuses. With over
+                60 trained professionals and live plumbers answering the phone, customers get immediate access to
+                real help — and with locations in Astoria, Brooklyn and Manhattan, we can always be there fast.
+              </p>
+              <div className="mt-7 flex flex-wrap gap-2.5">
+                <span className="np-pill np-lab"><Ic d={I.shield} s={15} />NYC Master Plumber License #1332</span>
+                <span className="np-pill np-lab"><Ic d={I.flame} s={15} />Master Fire Suppression License #543B</span>
+                <span className="np-pill np-lab"><Ic d={I.star} s={15} />30+ years · 60+ professionals</span>
+              </div>
+            </div>
+
+            <div className="np-rev np-in-d1 np-tk">
+              <div className="np-tk-head px-6 py-3.5 flex items-center justify-between gap-2">
+                <span className="mono text-[11px]" style={{ color: "var(--mut)", letterSpacing: ".08em" }}>WO-STD</span>
+                <span className="np-lab" style={{ color: "var(--red)", fontSize: 10 }}>Our standards</span>
+              </div>
+              <div className="p-7">
+                <h3 className="text-[22px]" style={{ color: "var(--navy)" }}>Exceeding expectations every day</h3>
+                <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--mut)" }}>
+                  Use the right equipment, respect the schedule, communicate clearly, and leave every
+                  space clean when the job is done.
+                </p>
+                <div className="np-notch np-notch-l" style={{ top: 150 }} />
+                <div className="np-notch np-notch-r" style={{ top: 150 }} />
+                <ul className="np-perf mt-6 pt-6 space-y-4">
+                  {STANDARDS.map(([t, d]) => (
+                    <li key={t} className="flex gap-3.5">
+                      <span className="mt-[3px] flex-none inline-flex items-center justify-center w-7 h-7 rounded-full"
+                        style={{ background: "rgba(23,198,255,.12)", color: "var(--navy)" }}><Ic d={I.shield} s={15} /></span>
+                      <span>
+                        <span className="block font-semibold text-[15px]" style={{ color: "var(--navy)" }}>{t}</span>
+                        <span className="block mt-1 text-[14px] leading-relaxed" style={{ color: "var(--mut)" }}>{d}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* three real offices, one 24-hour response team */}
+          <h3 className="np-rev mt-16 text-[26px] sm:text-3xl" style={{ color: "var(--navy)" }}>
+            Three NYC offices backing one 24-hour response team.
+          </h3>
+          <div className="mt-7 grid gap-6 md:grid-cols-3">
+            {OFFICES.map((o, i) => (
+              <article key={o.c} className={`np-tk np-rev ${["", "np-in-d1", "np-in-d2"][i]} flex flex-col`}>
+                <div className="np-tk-head px-6 py-3.5 flex items-center justify-between gap-2">
+                  <span className="mono text-[11px]" style={{ color: "var(--mut)", letterSpacing: ".08em" }}>{o.c.toUpperCase()}</span>
+                  <span className="np-lab" style={{ color: "var(--red)", fontSize: 10 }}>{o.lab}</span>
+                </div>
+                <div className="p-6 flex-1 flex flex-col">
+                  <span className="inline-flex items-center justify-center w-11 h-11 rounded-full"
+                    style={{ background: "var(--navy)", color: "var(--cyan)" }}><Ic d={I.pin} s={20} /></span>
+                  <h4 className="mt-5 text-[19px] font-extrabold tracking-tight" style={{ color: "var(--navy)" }}>{o.n}</h4>
+                  <address className="mt-2 not-italic text-[15px] leading-relaxed" style={{ color: "var(--mut)" }}>
+                    {o.a1}<br />{o.a2}
+                  </address>
+                  <div className="np-notch np-notch-l" style={{ top: "calc(100% - 92px)" }} />
+                  <div className="np-notch np-notch-r" style={{ top: "calc(100% - 92px)" }} />
+                  <div className="np-perf mt-6 pt-5 mt-auto">
+                    <a href={o.tel} className="np-btn w-full !py-4 text-[17px]">
+                      <Ic d={I.phone} s={18} /> {o.ph}
+                    </a>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+          <p className="np-rev mt-5 text-[13px] leading-relaxed" style={{ color: "var(--mut)" }}>
+            {PHONE} is the 24-hour emergency dispatch line. {PHONE_OFFICE} is the Manhattan office line at 30 Wall St.
+          </p>
+        </div>
+      </section>
+
+      {/* ── FAQ — their real questions, accessible accordion ──── */}
+      <section id="faq" aria-labelledby="faq-h" className="py-20 sm:py-28" style={{ background: "#fff", "--stage": "#fff" }}>
+        <div className="np-w">
+          <div className="np-rev max-w-2xl">
+            <div className="np-lab flex items-center gap-3" style={{ color: "var(--red)" }}>
+              <span className="np-stripe np-stripe-r w-10 shrink-0" style={{ height: 6 }} />
+              Before you call
+            </div>
+            <h2 id="faq-h" className="mt-5 text-4xl sm:text-5xl">Plumbing questions from NYC owners and managers.</h2>
+            <p className="mt-4 text-[17px] leading-relaxed" style={{ color: "var(--mut)" }}>
+              Direct answers about emergency response, drain and sewer issues, permits, compliance work
+              and what to expect before a licensed NYC plumber arrives.
+            </p>
+          </div>
+
+          <div className="np-faqs mt-11">
+            {FAQ.map((f, i) => (
+              <details key={f.q} className={`np-tk np-fq np-rev ${["", "np-in-d1", "np-in-d2", "np-in-d3"][i % 4]}`}>
+                <summary className="np-q">
+                  <span className="np-qi" aria-hidden="true"><Ic d={I.plus} s={16} /></span>
+                  <h3 className="flex-1 text-[16.5px] leading-snug font-extrabold tracking-tight pt-[5px]"
+                    style={{ color: "var(--navy)" }}>{f.q}</h3>
+                </summary>
+                <div className="px-[22px] pb-[22px] pl-[70px]">
+                  <p className="np-perf pt-4 text-[14.5px] leading-relaxed" style={{ color: "var(--mut)" }}>{f.a}</p>
+                </div>
+              </details>
+            ))}
+          </div>
+
+          <div className="np-rev mt-10 flex flex-col sm:flex-row gap-3 sm:items-center">
+            <a href={TEL} className="np-btn"><Ic d={I.phone} s={20} /> Call 24/7 dispatch — {PHONE}</a>
+            <span className="text-[14px] leading-relaxed" style={{ color: "var(--mut)" }}>
+              Still not sure it&rsquo;s an emergency? Call anyway — dispatch triages it in under a minute.
+            </span>
           </div>
         </div>
       </section>
@@ -462,7 +791,15 @@ export default function NonstopPlumbers() {
           </div>
 
           <div className="np-rev np-in-d1">
-            <form className="np-tk" onSubmit={(e) => { e.preventDefault(); setSent(true); }}>
+            <form className="np-tk" noValidate onSubmit={(e) => {
+              e.preventDefault();
+              if (!form.name.trim() || !form.phone.trim()) {
+                setSent(false);
+                setErr("We need a name and a phone number to call you back — everything else is optional.");
+                return;
+              }
+              setErr(""); setSent(true);
+            }}>
               <div className="np-tk-head px-6 py-3.5 flex items-center justify-between gap-2">
                 <span className="mono text-[11px]" style={{ color: "var(--mut)", letterSpacing: ".08em" }}>WO-NEW</span>
                 <span className="mono text-[11px]" style={{ color: "var(--mut)", letterSpacing: ".08em" }}>NYC {clock}</span>
@@ -475,9 +812,13 @@ export default function NonstopPlumbers() {
                 <div className="np-notch np-notch-l" style={{ top: 158 }} />
                 <div className="np-notch np-notch-r" style={{ top: 158 }} />
                 <div className="np-perf mt-6 pt-6 grid gap-3">
-                  <input className="np-field" placeholder="Full name" aria-label="Full name" required />
+                  <input className={`np-field ${err && !form.name.trim() ? "np-err" : ""}`} placeholder="Full name *"
+                    aria-label="Full name" aria-required="true" aria-invalid={!!err && !form.name.trim()}
+                    value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
                   <div className="grid sm:grid-cols-2 gap-3">
-                    <input className="np-field" placeholder="Phone" aria-label="Phone" type="tel" required />
+                    <input className={`np-field ${err && !form.phone.trim() ? "np-err" : ""}`} placeholder="Phone *"
+                      aria-label="Phone" type="tel" aria-required="true" aria-invalid={!!err && !form.phone.trim()}
+                      value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
                     <input className="np-field" placeholder="Email" aria-label="Email" type="email" />
                   </div>
                   <input className="np-field" placeholder="Address or borough" aria-label="Address or borough" value={boro} onChange={(e) => setBoro(e.target.value)} />
@@ -488,6 +829,19 @@ export default function NonstopPlumbers() {
                   <textarea className="np-field" rows="3" placeholder="What's going on?" aria-label="What's going on?" />
                 </div>
                 <button type="submit" className="np-btn w-full mt-5">Send the work order</button>
+                <p className="mt-4 flex gap-2.5 text-[13px] leading-relaxed" style={{ color: "var(--mut)" }}>
+                  <span className="mt-[2px] shrink-0" style={{ color: "var(--red)" }}><Ic d={I.shield} s={15} /></span>
+                  What happens next: dispatch triages what you sent, calls you back, and tells you what to do
+                  before a technician arrives. Anything active right now — a leak, a backup, no hot water —
+                  should go straight to <a href={TEL} className="font-semibold underline whitespace-nowrap"
+                    style={{ color: "var(--navy)" }}>{PHONE}</a> instead.
+                </p>
+                {err && (
+                  <p className="mt-4 text-[13px] leading-relaxed px-4 py-3 rounded-2xl" role="alert"
+                    style={{ background: "rgba(217,42,40,.08)", border: "1px solid rgba(217,42,40,.35)", color: "var(--navy)" }}>
+                    {err}
+                  </p>
+                )}
                 {sent && (
                   <p className="mt-4 text-[13px] leading-relaxed px-4 py-3 rounded-2xl" role="status"
                     style={{ background: "rgba(23,198,255,.09)", border: "1px solid rgba(23,198,255,.35)", color: "var(--navy)" }}>
@@ -500,12 +854,59 @@ export default function NonstopPlumbers() {
         </div>
       </section>
 
+      {/* ── CAREERS — real: they hire licensed NYC plumbers ───── */}
+      <section id="careers" aria-labelledby="careers-h" className="relative np-dark np-grain py-16 sm:py-20"
+        style={{ "--stage": "#0d1a2b" }}>
+        <div className="np-w relative z-[3] grid gap-9 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
+          <div className="np-rev">
+            <div className="np-lab flex items-center gap-3" style={{ color: "var(--cyan)" }}>
+              <span className="np-stripe np-stripe-r w-10 shrink-0" style={{ height: 6 }} />
+              Careers
+            </div>
+            <h2 id="careers-h" className="mt-5 text-3xl sm:text-[42px] text-white">
+              We hire licensed NYC plumbers.
+            </h2>
+            <p className="mt-4 text-[16.5px] leading-relaxed max-w-xl" style={{ color: "#bccadb" }}>
+              Licensed plumbers, drain and sewer specialists, helpers, apprentices and operations support
+              who want steady work, clear expectations and real NYC field experience. We look for people
+              who communicate clearly, respect customers and job sites, and treat timing seriously.
+            </p>
+            <div className="mt-7 flex flex-col sm:flex-row gap-3">
+              <a href="#contact" className="np-btn"><Ic d={I.hard} s={20} /> Tell us where you fit</a>
+              <a href={TEL} className="np-btn-o">Call the office <Ic d={I.arrow} s={18} /></a>
+            </div>
+          </div>
+          <div className="np-rev np-in-d1 np-tk" style={{ background: "rgba(255,255,255,.05)", borderColor: "rgba(255,255,255,.16)" }}>
+            <div className="px-6 py-3.5 np-lab" style={{ color: "#9fb2c8", borderBottom: "1px solid rgba(255,255,255,.14)" }}>
+              Typical hiring paths
+            </div>
+            <ul className="p-6 space-y-3 text-[15px]" style={{ color: "#dbe5f0" }}>
+              {ROLES.map((r) => (
+                <li key={r} className="flex gap-3 items-start">
+                  <span className="mt-[8px] w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--cyan)" }} />
+                  {r}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* ── STICKY MOBILE CALL BAR — z-30, room kept for the AI widget ── */}
+      <div className={`np-callbar sm:hidden ${bar ? "np-show" : ""}`}>
+        <div className="pr-24">
+          <a href={TEL} className="np-btn w-full !py-4 !px-5 text-[16px]" aria-label={`Call Nonstop Plumbers dispatch at ${PHONE}`}>
+            <Ic d={I.phone} s={19} /> Call 24/7 dispatch
+          </a>
+        </div>
+      </div>
+
       {/* ── FOOTER ───────────────────────────────────────────── */}
       <footer className="bg-white">
         <div className="np-stripe" />
         <div className="np-w py-12 grid gap-10 md:grid-cols-[1.2fr_1fr_1fr]">
           <div>
-            <img src={`${A}logo-hi.webp`} alt="Nonstop Plumbers NY" className="h-12 w-auto" width="240" height="48" loading="lazy" />
+            <img src={`${A}logo-hi.webp`} alt="Nonstop Plumbers NY logo" className="h-12 w-auto" width="240" height="48" loading="lazy" decoding="async" />
             <p className="mt-5 text-[14px] leading-relaxed max-w-sm" style={{ color: "var(--mut)" }}>
               24/7/365 emergency plumbing, drain &amp; sewer, fire suppression and NYC compliance.
               Master Plumber and Master Fire Suppression licensed · fully insured.
@@ -516,16 +917,26 @@ export default function NonstopPlumbers() {
             <ul className="mt-4 space-y-2 text-[14px]" style={{ color: "var(--mut)" }}>
               {BOROUGHS.map((b) => <li key={b.b}>{b.b}</li>)}
             </ul>
+            <div className="np-lab mt-7" style={{ color: "var(--navy)" }}>Offices</div>
+            <ul className="mt-4 space-y-3 text-[14px] leading-relaxed" style={{ color: "var(--mut)" }}>
+              {OFFICES.map((o) => <li key={o.c}><strong style={{ color: "var(--navy)" }}>{o.c}</strong><br />{o.a1}, {o.a2}</li>)}
+            </ul>
           </div>
           <div>
             <div className="np-lab" style={{ color: "var(--navy)" }}>Emergency dispatch</div>
             <a href={TEL} className="dsp mt-4 block text-3xl" style={{ color: "var(--red)" }}>{PHONE}</a>
             <p className="mt-3 text-[13px]" style={{ color: "var(--mut)" }}>Answered every hour of every day — including holidays.</p>
+            <div className="np-lab mt-7" style={{ color: "var(--navy)" }}>Manhattan office</div>
+            <a href={TEL_OFFICE} className="mt-2 block text-[15px] font-semibold" style={{ color: "var(--navy)" }}>{PHONE_OFFICE}</a>
+            <div className="mt-7 flex flex-wrap gap-2.5">
+              <a href={IG} target="_blank" rel="noopener noreferrer" className="np-pill np-lab hover:border-[color:var(--cyan)] transition-colors" style={{ color: "var(--mut)" }}>Instagram</a>
+              <a href={FB} target="_blank" rel="noopener noreferrer" className="np-pill np-lab hover:border-[color:var(--cyan)] transition-colors" style={{ color: "var(--mut)" }}>Facebook</a>
+            </div>
           </div>
         </div>
         <div className="border-t" style={{ borderColor: "var(--line)" }}>
           <div className="np-w py-5 flex flex-wrap items-center justify-between gap-3 text-[12px]" style={{ color: "var(--mut)" }}>
-            <span>© {new Date().getFullYear()} Nonstop Plumbers NY. All rights reserved.</span>
+            <span>© {new Date().getFullYear()} Nonstop Plumbers CORP. All rights reserved. · Serving NYC since 1992.</span>
             <a href="https://www.guileoai.com" target="_blank" rel="noopener noreferrer"
               className="hover:text-[color:var(--navy)] transition-colors">
               Demonstration rebuild proposed by Guileo · website + AI

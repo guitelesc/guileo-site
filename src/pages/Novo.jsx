@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import GuiLayer from "../novo/GuiLayer.jsx";
 
@@ -17,6 +17,19 @@ const REGISTRY = {
 
 export default function Novo() {
   const { slug } = useParams();
+
+  // O index.html carrega o JSON-LD da GUILEO (Organization/WebSite/Service/FAQPage) em toda
+  // rota do SPA. Num site reconstruído de cliente isso é defeito de SEO: o Google leria a
+  // página do Nonstop como sendo da Guileo, e ficariam DOIS FAQPage brigando. Aqui os
+  // estáticos são desativados enquanto o /novo está montado — e voltam ao sair.
+  useEffect(() => {
+    // Só os da GUILEO, marcados com data-guileo-global no index.html. Filtrar por tipo
+    // derrubaria o schema do cliente (o efeito do filho roda antes do pai) e filtrar por
+    // conteúdo também: as imagens DELE estão hospedadas no nosso domínio.
+    const statics = Array.from(document.querySelectorAll('script[data-guileo-global]'));
+    statics.forEach((el) => { el.type = "application/ld+json-disabled"; });
+    return () => statics.forEach((el) => { el.type = "application/ld+json"; });
+  }, []);
   const Page = REGISTRY[slug];
   if (!Page) {
     return (

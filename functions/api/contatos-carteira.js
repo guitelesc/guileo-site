@@ -22,6 +22,16 @@ const LOTE = 5;
 const LIXO = /(sentry|wixpress|squarespace|godaddy|shopify|example|domain|yourname|email@|no-?reply|postmaster|abuse|privacy|\.png|\.jpg|\.webp|\.gif)/i;
 const PROVEDOR = /@(gmail|hotmail|outlook|yahoo|icloud|aol|live|msn)\./i;
 
+// mesma regra da fila: home raramente tem e-mail; /contact e /contato têm. Teto de 3 páginas.
+async function emailDoSiteProfundo(base, dominio) {
+  const raiz = base.startsWith("http") ? base.replace(/\/+$/, "") : `https://${dominio}`;
+  for (const u of [raiz, `${raiz}/contact`, `${raiz}/contato`]) {
+    const achado = await emailDoSite(u, dominio);
+    if (achado) return achado;
+  }
+  return "";
+}
+
 async function emailDoSite(url, dominio) {
   try {
     const ctl = new AbortController();
@@ -65,7 +75,7 @@ export async function onRequestPost({ request, env }) {
         if (!f?.ok && nome) f = await fichaDoGoogle(env, `${nome} New York, NY`).catch(() => null);
         const telefone = f?.ok ? (f.telefone || "") : "";
         const alvo = site || (f?.ok && f.site) || "";
-        const mail = alvo ? await emailDoSite(alvo.startsWith("http") ? alvo : `https://${dom}`, dom || (alvo.replace(/^https?:\/\/(www\.)?/, "").split("/")[0])) : "";
+        const mail = alvo ? await emailDoSiteProfundo(alvo.startsWith("http") ? alvo : `https://${dom}`, dom || (alvo.replace(/^https?:\/\/(www\.)?/, "").split("/")[0])) : "";
 
         if (!telefone && !mail) { itens.push({ id: p.id, ok: false, motivo: "sem telefone nem e-mail publicados", business: nome }); continue; }
         const g = await svcJson(env, "prospect_contato_set", { p_secret: ING, p_id: p.id, p_phone: telefone, p_email: mail });

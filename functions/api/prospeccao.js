@@ -42,6 +42,22 @@ const POR_LOTE = 3;
 // provedor comum (gmail/hotmail/yahoo), que é o que o dono de negócio local usa de verdade.
 const LIXO = /(sentry|wixpress|squarespace|godaddy|shopify|example|domain|yourname|email@|no-?reply|postmaster|abuse|privacy|\.png|\.jpg|\.webp|\.gif)/i;
 const PROVEDOR_COMUM = /@(gmail|hotmail|outlook|yahoo|icloud|aol|live|msn)\./i;
+// ── UMA PÁGINA SÓ, E ELA QUASE NUNCA TEM O E-MAIL ────────────────────────────────────────────
+// 17 dos 34 leads ficaram sem e-mail porque olhávamos apenas a HOME. Negócio local raramente põe
+// e-mail na home — ele mora em /contact, /contato, /about. Duas páginas a mais por negócio custa
+// pouco e é a diferença entre ter um segundo canal e não ter.
+// 🚨 TETO DE 3 PÁGINAS E 6s CADA, sequencial. Rastrear o site inteiro de um prospect seria abusar
+// do servidor de alguém que nunca nos pediu nada — e um lote que trava não completa lote nenhum.
+async function emailDoSiteProfundo(base, dominio) {
+  const raiz = base.startsWith("http") ? base.replace(/\/+$/, "") : `https://${dominio}`;
+  const candidatas = [raiz, `${raiz}/contact`, `${raiz}/contato`];
+  for (const u of candidatas) {
+    const achado = await emailDoSite(u, dominio);
+    if (achado) return achado;   // a primeira que resolve encerra: não há prêmio por insistir
+  }
+  return "";
+}
+
 async function emailDoSite(url, dominio) {
   try {
     const ctl = new AbortController();
@@ -254,7 +270,7 @@ export async function onRequest({ request, env }) {
       const f = await fichaDoGoogle(env, dom).catch(() => null);
       if (f?.ok && f.telefone) {
         const alvo = (f.site || siteDica).startsWith("http") ? (f.site || siteDica) : `https://${dom}`;
-        const mail = await emailDoSite(alvo, dom);
+        const mail = await emailDoSiteProfundo(alvo, dom);
         return json({
           ok: true, via: "dominio",
           nome_no_google: f.nome || "", telefone: f.telefone, email: mail, site: f.site || siteDica,
@@ -284,7 +300,7 @@ export async function onRequest({ request, env }) {
 
       const siteAchado = p0?.websiteUri || siteDica || "";
       const domAchado = siteAchado.replace(/^https?:\/\/(www\.)?/, "").split("/")[0];
-      const mailAchado = siteAchado ? await emailDoSite(siteAchado.startsWith("http") ? siteAchado : `https://${domAchado}`, domAchado) : "";
+      const mailAchado = siteAchado ? await emailDoSiteProfundo(siteAchado.startsWith("http") ? siteAchado : `https://${domAchado}`, domAchado) : "";
       return json({
         ok: true,
         nome_no_google: p0?.displayName?.text || "",
