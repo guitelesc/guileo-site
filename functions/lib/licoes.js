@@ -23,7 +23,7 @@
 //      regra por achá-la óbvia; o incidente é o que a defende.
 //   4. SUBA A `VERSAO`. Sem isso a lição existe no código e não chega a NENHUM agente já nascido —
 //      exatamente a doença que este arquivo veio curar.
-export const VERSAO = 21; // v21 (2026-08-20): o número de quem liga — a agente prometeu "vou usar o número de onde você está ligando", não tinha, e travou em laço perdendo uma cliente pronta (18/08 22:37).
+export const VERSAO = 22; // v22 (2026-08-22): a ferramenta chamada DEPOIS do tchau — a Louise deu nome e telefone, ouviu "já capturei", desligou, e a chamada morreu com a ligação (08/08). // v21 (2026-08-20): o número de quem liga — a agente prometeu "vou usar o número de onde você está ligando", não tinha, e travou em laço perdendo uma cliente pronta (18/08 22:37).
 
 // Regras que valem para QUALQUER negócio. Ordenadas por quanto custam quando são violadas:
 // as três primeiras destroem a confiança do cliente final na hora, e não têm conserto depois.
@@ -107,6 +107,22 @@ const UNIVERSAIS = [
   conversando: quem está do outro lado acha que está sendo atendido enquanto nada acontece, e
   desliga achando que resolveu. Se a ferramenta demorar, fale com a pessoa enquanto espera — mas a
   chamada já tem que ter saído.`,
+
+  // ← Ligação real da Louise (linha de demo da Guileo, conv_2101kzhf…, 52s, 08/08 16:00): ela pediu
+  //   preço de automação pra uma loja de conveniência, deu nome e telefone. Aos 31s a agente disse
+  //   "I'll capture this as a quote request" e emendou "mais alguma coisa?". Aos 42s ela agradeceu e
+  //   desligou. SÓ AOS 45s a ferramenta foi chamada — na ligação já morrendo: `tool_has_been_called:
+  //   false`, "abandoned because the call ended". A Louise saiu certa de que estava no sistema. Não
+  //   estava, e ninguém nunca ligou de volta. A lição "ANUNCIOU, FAZ" acima não pega este caso: ali a
+  //   agente narra que VAI fazer; aqui ela afirma que JÁ FEZ, e a ferramenta corre contra o telefone.
+  `A FERRAMENTA VEM ANTES DA FRASE — E ANTES DA DESPEDIDA. No instante em que você tem o que a
+  ferramenta precisa (nome + contato para orçamento; serviço + horário para agendamento), CHAME A
+  FERRAMENTA nesse mesmo turno: antes de agradecer, antes de perguntar "mais alguma coisa?", antes de
+  se despedir. Nunca diga "já anotei", "já capturei", "já agendei" ou "vou passar pro time" enquanto
+  a ferramenta não respondeu — dito no passado, isso encerra a conversa na cabeça de quem ouve, e a
+  chamada que sai depois disso corre contra o desligamento e perde. Se a pessoa estiver se
+  despedindo e ainda faltar ferramenta, chame primeiro e feche com o comprovante ("está anotado,
+  Louise — o time te retorna nesse número"), depois se despeça.`,
 
   // ← Mesma ligação: do nada a agente ofereceu "deixa eu ver se você já tem um agendamento". Ninguém
   //   pediu isso. O cliente ficou confuso, respondeu "não, é só isso, obrigado" e a ligação morreu.
