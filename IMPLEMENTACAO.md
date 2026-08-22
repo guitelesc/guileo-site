@@ -954,3 +954,15 @@ Acesso ao `/portal` com o `client_email` dele + o briefing do dono (ROTA-BRIEFDO
 - **Saldo Twilio:** piso $20 — conferir antes de provisionar número de cliente pagante.
 - **Stripe Connect:** habilitado; só falta o CLIENTE conectar a conta dele (1 clique no cockpit).
 - **Google Business:** necessário pra Review Machine operar de verdade.
+
+## ROTA-ENTREGA · a lista viva de cada venda done-for-you
+**Quando:** alguém paga um link do Website Upgrade ou de um módulo. **O que acontece sozinho:** o
+`stripe-webhook` reconhece `guileo=website_upgrade|modulo`, registra a receita, **não dá crédito nem
+provisiona**, cria a ENTREGA (`dfy_upsert_from_payment`, idempotente por `stripe_ref`) e emite o aviso
+`dfy_pago`. **O que você faz:** `/admin → 🏗️ Entregas` → marca os passos (contrato · cadastro · número ·
+encaminhamento · site no ar · painel). A entrega **fecha sozinha** quando todos estiverem marcados.
+**⚠️ Depende do SQL:** cole `db/dfy_entregas.sql` no SQL Editor (projeto ynihodbknhjirkdogxby). Enquanto
+não colar, o card mostra a frase honesta pedindo isso — não finge lista vazia.
+**Prova:** `select public.dfy_upsert_from_payment('<INGEST>','teste@x.com','website_upgrade',null,'BUILD',50000,'sess_teste');`
+duas vezes → 1 linha só · `dfy_step_set` com passo inexistente → erro · sem token o `/api/entregas` → 401 (provado).
+**Arquivos:** `db/dfy_entregas.sql` · `functions/api/entregas.js` · `functions/api/stripe-webhook.js` · `src/pages/Admin.jsx`.
