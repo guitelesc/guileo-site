@@ -70,3 +70,9 @@ The dedicated **Guileo AI account (2694627625500551) is STILL not connected** to
 
 ## Changelog
 - 2026-06-09 — Accounts re-checked: Luis Teles + Point Brazil connected & paid; Guileo AI acct still unconnected; **no Guileo FB Page = build blocker**. Fresh 664-ad sweep; Wynner "100 qualified patient calls" (10× dup) noted as working medical angle. Campaign staged, pending Page.
+
+## Copy shipped — 2026-08-22 (motor /winner, Workflow 3)
+- Ângulo: **"cobra na própria ligação"** (a lane vazia da varredura de 674 anúncios).
+- 3 variantes A/B/C em `COPY-GHT-XRAY.md`, compliance-checked. Correção feita: variante B abria com "Are you losing money after 5 PM?" → atributo pessoal (rejeição nº1 do Meta) → reescrita em 3ª pessoa como média de setor.
+- **Criativo**: `ads-creatives/ad-ght-xray-dental.mp4` (15s, 9:16) — renderizado no NOSSO motor de código, não em vídeo de IA. Decisão do Luis 2026-08-22 depois de rejeitar 2 direções de Seedance (v1 "datada": telefone com fio + subúrbio; v2 premium NYC: "nada a ver"). Regra nova: **vídeo de IA fica fora das peças da marca; a peça é tipografia + a conversa da Gui, que é o que tem a nossa cara.**
+- Sobra do Higgsfield em `ads-creatives/higgsfield/` (ambientes sem rosto) — só reaproveitar se um dia fizer sentido como B-roll; nunca como a peça inteira.
