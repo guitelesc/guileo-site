@@ -3458,48 +3458,11 @@ export function websiteUpgradeEmail({
   const body = `
   <div style="font-size:26px;line-height:1.2;color:${B.ink2};font-weight:700;">${t.h1}</div>
   <div class="g-intro" style="font-size:16px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
-  ${avaliacao ? `
-  <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
-  <div style="border:1px solid ${B.line};border-radius:18px;background:${B.panel};padding:18px;">
-    <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.gold};font-weight:800;">${esc(avaliacao.tag || "")}</div>
-    <div style="color:${B.ink2};font-size:19px;font-weight:800;margin-top:6px;">${esc(avaliacao.t || "")}</div>
-    <table role="presentation" width="100%" style="margin-top:12px;border-collapse:collapse;">
-      ${(avaliacao.itens || []).map((x) => {
-        const cor = x.s >= 70 ? B.green : x.s >= 40 ? B.gold : "#e0685f";
-        return `<tr>
-          <td valign="top" style="padding:9px 0;border-bottom:1px solid ${B.line};">
-            <div style="color:${B.ink};font-size:14.5px;font-weight:700;">${esc(x.n || "")}</div>
-            <div style="color:${B.muted};font-size:13px;line-height:1.6;margin-top:2px;">${esc(x.txt || "")}</div>
-          </td>
-          <td align="right" valign="top" style="padding:9px 0 9px 12px;border-bottom:1px solid ${B.line};white-space:nowrap;">
-            <span style="color:${cor};font-size:15px;font-weight:800;">${x.s == null ? "—" : x.s + "/100"}</span>
-          </td>
-        </tr>`;
-      }).join("")}
-    </table>
-    ${avaliacao.fecho ? `<div style="color:${B.ink};font-size:14px;line-height:1.65;margin-top:12px;">${esc(avaliacao.fecho)}</div>` : ""}
-  </div>` : ""}
   <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
   <div align="center">${cta(t.cta, link)}</div>
   <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
   <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.gold};font-weight:800;">${t.inclusoT}</div>
   <table role="presentation" width="100%" style="margin-top:8px;border-collapse:collapse;">${linhasInc}</table>
-  ${destaque ? `
-  <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
-  <div style="border:1px solid ${B.green}55;border-radius:18px;background:linear-gradient(180deg,${B.green}14,${B.panel} 60%);padding:18px;">
-    <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.green};font-weight:800;">${esc(destaque.tag || "")}</div>
-    <div style="color:${B.ink2};font-size:20px;font-weight:800;margin-top:6px;line-height:1.25;">${esc(destaque.t || "")}</div>
-    <div style="color:${B.ink};font-size:14.5px;line-height:1.7;margin-top:8px;">${esc(destaque.d || "")}</div>
-    <table role="presentation" width="100%" style="margin-top:12px;border-collapse:collapse;">
-      ${(destaque.pontos || []).map((x) => `
-      <tr><td style="padding:6px 0;color:${B.ink};font-size:14px;line-height:1.55;">
-        <span style="color:${B.green};font-weight:800;">→</span>&nbsp;${esc(x)}
-      </td></tr>`).join("")}
-    </table>
-    <div style="margin-top:12px;padding-top:12px;border-top:1px solid ${B.line};color:${B.muted};font-size:13px;">
-      <span style="color:${B.gold};font-size:15px;font-weight:800;">${esc(destaque.p || "")}</span> · ${esc(destaque.nota || "")}
-    </div>
-  </div>` : ""}
   <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
   <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.gold};font-weight:800;">${t.addonT}</div>
   <div style="color:${B.muted};font-size:13px;margin-top:5px;">${t.addonSub}</div>
@@ -3523,6 +3486,45 @@ export function websiteUpgradeEmail({
     </tr>
   </table>
   ${blocosHtml}
+  ${avaliacao ? `
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  <div style="border:1px solid ${B.line};border-radius:16px;background:${B.panel};padding:14px 16px;">
+    <div style="font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:${B.gold};font-weight:800;">${esc(avaliacao.tag || "")}</div>
+    <div style="color:${B.ink2};font-size:15px;font-weight:800;margin-top:4px;">${esc(avaliacao.t || "")}</div>
+    <table role="presentation" width="100%" style="margin-top:10px;border-collapse:collapse;">
+      ${(avaliacao.itens || []).map((x) => {
+        const n = x.s == null ? -1 : Math.round(x.s / 20);
+        const estrelas = x.s == null ? "—" : "★★★★★".slice(0, n) + "☆☆☆☆☆".slice(0, 5 - n);
+        const cor = x.s == null ? B.muted : x.s >= 70 ? B.green : x.s >= 40 ? B.gold : "#e0685f";
+        return `<tr>
+          <td valign="top" style="padding:6px 0;border-bottom:1px solid ${B.line};">
+            <span style="color:${B.ink};font-size:13.5px;font-weight:700;">${esc(x.n || "")}</span>
+            <span style="color:${B.muted};font-size:12.5px;"> — ${esc(x.txt || "")}</span>
+          </td>
+          <td align="right" valign="top" style="padding:6px 0 6px 10px;border-bottom:1px solid ${B.line};white-space:nowrap;letter-spacing:1px;">
+            <span style="color:${cor};font-size:13px;">${estrelas}</span>
+          </td>
+        </tr>`;
+      }).join("")}
+    </table>
+    ${avaliacao.fecho ? `<div style="color:${B.muted};font-size:12.5px;line-height:1.6;margin-top:10px;">${esc(avaliacao.fecho)}</div>` : ""}
+  </div>` : ""}
+  ${destaque ? `
+  <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
+  <div style="border:1px solid ${B.green}55;border-radius:18px;background:linear-gradient(180deg,${B.green}14,${B.panel} 60%);padding:18px;">
+    <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.green};font-weight:800;">${esc(destaque.tag || "")}</div>
+    <div style="color:${B.ink2};font-size:20px;font-weight:800;margin-top:6px;line-height:1.25;">${esc(destaque.t || "")}</div>
+    <div style="color:${B.ink};font-size:14.5px;line-height:1.7;margin-top:8px;">${esc(destaque.d || "")}</div>
+    <table role="presentation" width="100%" style="margin-top:12px;border-collapse:collapse;">
+      ${(destaque.pontos || []).map((x) => `
+      <tr><td style="padding:6px 0;color:${B.ink};font-size:14px;line-height:1.55;">
+        <span style="color:${B.green};font-weight:800;">→</span>&nbsp;${esc(x)}
+      </td></tr>`).join("")}
+    </table>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid ${B.line};color:${B.muted};font-size:13px;">
+      <span style="color:${B.gold};font-size:15px;font-weight:800;">${esc(destaque.p || "")}</span> · ${esc(destaque.nota || "")}
+    </div>
+  </div>` : ""}
   ${nota ? `<div style="margin-top:18px;padding:12px 14px;border:1px solid ${B.line};border-radius:12px;color:${B.muted};font-size:13px;line-height:1.6;">${esc(nota)}</div>` : ""}
   <div style="font-size:12.5px;color:${B.muted};text-align:center;margin-top:20px;line-height:1.65;">${t.foot}</div>`;
   return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
