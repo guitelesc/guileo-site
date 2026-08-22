@@ -175,7 +175,7 @@ grant execute on function public.quote_create(text,text,integer,text,text,text,t
 grant execute on function public.quote_fila(text,text) to anon;
 grant execute on function public.quote_list(text,text,int) to anon;
 grant execute on function public.quote_decidir(text,text,uuid,boolean,text,text) to anon;
-grant execute on function public.quote_marcar_enviado(text,text) to anon;
+grant execute on function public.quote_marcar_enviado(text,uuid,text) to anon;
 grant execute on function public.quote_por_token(text) to anon;
 grant execute on function public.quote_resposta_cliente(text,boolean) to anon;
 grant execute on function public.quote_config(text,text,int,boolean) to anon;

@@ -37,6 +37,7 @@ do vendedor. Motores **done-for-you** (Ads, posts aprovados) = serviço premium 
 | 📊 **Inteligência** | 🟢 LIVE | relatório semanal, forecast, radar de no-show, briefing | — (subproduto) | — |
 | 🏪 **Marketplace** | 🟢 LIVE | Yelp/Angi/Thumbtack → CRM → Gui liga em 60s | ✅ por lead | (Zap do cliente) |
 | 🎁 **Recorrência/Fidelidade** | 🟢 LIVE | pacotes, assinaturas, gift cards, pontos | ✅ por resgate | (via Stripe) |
+| 🧾 **Orçamento** | 🟡 código pronto — falta colar `db/quote_engine.sql` | a IA monta o orçamento na ligação e o BANCO decide: abaixo do teto do negócio sai sozinho na marca dele; acima do teto entra na FILA do cockpit (aba Orçamentos) e só sai com 1 clique do dono. Cliente final aceita/recusa por link. **Envio só por e-mail hoje** (SMS/WhatsApp bloqueados) | ✅ por orçamento enviado | A2P/WhatsApp p/ mandar por SMS/WA (e-mail já funciona) |
 | 🔬 **Experiência (XM)** | 🟢 LIVE (passivo + survey ativo por email) | o "Qualtrics do cliente": mede como OS CLIENTES DELE se sentem — sentimento de ligação + reviews (passivo) + survey NPS/CSAT ativo (Gui manda por email pós-visita, cron diário, toggle ON por padrão, cliente desliga na aba) → CX score, drivers (amam/consertar), detratores p/ reconquistar (close-loop). Aba Experiência no cockpit | — (subproduto) | A2P/WhatsApp p/ survey por SMS/WA (email já funciona) |
 
 **Legenda:** 🟢 no ar · 🟡 parcial/aguarda chave · ⚪ planejado.
