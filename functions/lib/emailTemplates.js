@@ -3497,17 +3497,17 @@ export function websiteUpgradeEmail({
         const estrelas = x.s == null ? "—" : "★★★★★".slice(0, n) + "☆☆☆☆☆".slice(0, 5 - n);
         const cor = x.s == null ? B.muted : x.s >= 70 ? B.green : x.s >= 40 ? B.gold : "#e0685f";
         return `<tr>
-          <td valign="top" style="padding:6px 0;border-bottom:1px solid ${B.line};">
-            <span style="color:${B.ink};font-size:13.5px;font-weight:700;">${esc(x.n || "")}</span>
-            <span style="color:${B.muted};font-size:12.5px;"> — ${esc(x.txt || "")}</span>
+          <td valign="top" style="padding:9px 0;border-bottom:1px solid ${B.line};">
+            <span style="color:${B.ink2};font-size:14px;font-weight:700;">${esc(x.n || "")}</span><br/>
+            <span style="color:#b7afa1;font-size:13px;line-height:1.55;">${esc(x.txt || "")}</span>
           </td>
-          <td align="right" valign="top" style="padding:6px 0 6px 10px;border-bottom:1px solid ${B.line};white-space:nowrap;letter-spacing:1px;">
-            <span style="color:${cor};font-size:13px;">${estrelas}</span>
+          <td align="right" valign="top" style="padding:9px 0 9px 12px;border-bottom:1px solid ${B.line};white-space:nowrap;letter-spacing:2px;">
+            <span style="color:${cor};font-size:15px;">${estrelas}</span>
           </td>
         </tr>`;
       }).join("")}
     </table>
-    ${avaliacao.fecho ? `<div style="color:${B.muted};font-size:12.5px;line-height:1.6;margin-top:10px;">${esc(avaliacao.fecho)}</div>` : ""}
+    ${avaliacao.fecho ? `<div style="color:#b7afa1;font-size:13px;line-height:1.6;margin-top:12px;">${esc(avaliacao.fecho)}</div>` : ""}
   </div>` : ""}
   ${destaque ? `
   <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
