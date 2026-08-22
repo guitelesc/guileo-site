@@ -149,7 +149,14 @@ async function provar(request, env) {
     sms,
     whatsapp: whats,
     // Resumo em cor para quem lê no celular sem comparar campo por campo.
-    resumo: { sms: sms.estado, whatsapp: whats.estado },
+    // `falta` entra no resumo de propósito: é a única parte acionável, e não é segredo — é a
+    // frase que diz o que fazer. Cor sem motivo já mandou "termine o registro" com a marca
+    // aprovada: conselho errado com cara de certo.
+    resumo: {
+      sms: sms.estado, whatsapp: whats.estado,
+      falta_sms: sms.falta || sms.motivo || null,
+      falta_whatsapp: whats.falta || whats.motivo || null,
+    },
   });
 }
 

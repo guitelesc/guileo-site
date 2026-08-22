@@ -288,6 +288,28 @@ export async function onRequest(context) {
           }
         } else if (semaforo) semaforo.linhas = { estado: "cinza", nota: `agente-prova http ${lr.status}` };
       } catch (e) { if (semaforo) semaforo.linhas = { estado: "cinza", nota: String(e).slice(0, 60) }; }
+
+      // ── OS CANAIS DE TEXTO RESPONDEM? (2026-08-22) ──────────────────────────────────────────
+      // O buraco: o semáforo media voz, dinheiro, agenda e agentes — e NADA media SMS e WhatsApp.
+      // O WhatsApp passou 19 dias respondendo para o vazio (token temporário expirado, code 190)
+      // sem uma única cor mudar, porque a entrada funcionava e ninguém olhava a SAÍDA.
+      // Cor apenas, sem segredo: o detalhe (motivo, campanha reprovada, código da Meta) sai em
+      // /api/canais-prova, que é gated.
+      try {
+        const cr = await fetch(`${base}/api/canais-prova?token=${t}`);
+        if (cr.ok) {
+          const cj = await cr.json().catch(() => null);
+          if (cj?.resumo) {
+            semaforo = semaforo || {};
+            semaforo.mensagens = cj.resumo;
+            // Canal de texto caído NÃO derruba o geral (voz é o produto), mas cinza nunca vira
+            // verde: "não medido" continua sendo uma resposta diferente de "está bom".
+            if (semaforo.overall === "ok" && (cj.resumo.sms === "vermelho" || cj.resumo.whatsapp === "vermelho")) {
+              semaforo.overall = "degraded";
+            }
+          }
+        } else if (semaforo) semaforo.mensagens = { nota: `canais-prova http ${cr.status}` };
+      } catch (e) { if (semaforo) semaforo.mensagens = { nota: String(e).slice(0, 60) }; }
     }
 
     // PHONE RE-ENGAGEMENT EXECUTOR (#19) — once per hour, dial the queued phone-contact

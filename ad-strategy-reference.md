@@ -124,3 +124,13 @@ Copy que acompanha (hook de história concreta): *"Someone decided at 9pm they w
 
 **Nossos criativos v2** em `ads-creatives/garantia/` (g2-dental, g2-hvac, g2-clinic, g2-restaurant): mesma gramática, nossa paleta (cimento #131210, ivory, verde #3E9468 como única cor de destaque), herói = "2 RINGS", virada = "Or the month is free."
 **O que estava errado nos meus anteriores:** emoji, gradiente em texto, botão pill dentro da arte, tudo em peso 900, duas cores de destaque, 1:1. Parecia amador ao lado do concorrente.
+
+## 🔓 ACHADO ESTRATÉGICO — "CALL THE AI DIRECTLY" (Proman Digital / Nova, 2026-08-22)
+O concorrente mais próximo do nosso modelo (agência de site + IA) roda 4+ variantes com o telefone NA ARTE:
+> "CALL NOVA DIRECTLY (646) 212-0253 · Test her as if you were one of your own HVAC customers. You're calling Nova — not a salesperson."
+Oferta deles: "21 DAYS FREE · $2,000 SETUP FEE WAIVED" → revela que o setup deles é ~$2.000 (referência de mercado pro nosso sob medida).
+Design: azul-marinho + DOURADO, mockup de celular com ligação entrando, selo de oferta, número gigante, tudo em caixa alta condensada.
+
+**Por que isso muda nosso plano:** a demo viva sempre foi nosso moat, mas dependia do A2P (nossa IA ligar PRA ele). Aqui a direção inverte: **ele liga pra nós**. Nossa linha de demo (+1 986 444 3334) já está no ar e provada — zero bloqueio, zero espera.
+
+**Como ganhamos deles no mesmo formato:** 16 idiomas (teste em espanhol/português — decisivo em NY) · a Gui COTA e COBRA na ligação (Nova só agenda) · garantia dos 2 toques · e somos IA + site + anúncios no mesmo contrato.
