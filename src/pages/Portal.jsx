@@ -629,6 +629,7 @@ const MarketingDates = lazy(() => import("../portal/MarketingDates.jsx"));
 const Coupons = lazy(() => import("../portal/Coupons.jsx"));
 const GrowthIntel = lazy(() => import("../portal/GrowthIntel.jsx"));
 const CaptureTools = lazy(() => import("../portal/CaptureTools.jsx"));
+const QuoteEngine = lazy(() => import("../portal/QuoteEngine.jsx")); // Motor de Orçamento — fila de aprovação (teto/auto-envio)
 const MarketplaceLeads = lazy(() => import("../portal/MarketplaceLeads.jsx"));
 const StormMode = lazy(() => import("../portal/StormMode.jsx"));
 const Trainer = lazy(() => import("../portal/Trainer.jsx"));
@@ -741,6 +742,7 @@ function sectionsFor(vid, V) {
     l = inject(l, "ads", "Anúncios · Resultado", "coupons");
     l = inject(l, "growthintel", "Inteligência", "ads"); // LTV + lead sources + forecast + abandoned bookings
     l = inject(l, "capture", "Captura", "growthintel"); // intake forms + photo-quote + Google Business
+    l = inject(l, "orcamentos", "Orçamentos", "capture"); // Motor de Orçamento — a IA orça, acima do teto o dono aprova
     l = inject(l, "experience", "Experience", "capture"); // XM — how THIS business's own customers feel (NPS/CSAT/sentiment/drivers/detractors)
     l = inject(l, "timeline", "Linha do tempo", "experience"); // Do fornecedor ao cliente — custo→lucro→risco numa timeline só
     l = inject(l, "retention", "Growth & Retention", "marketing");
@@ -784,7 +786,7 @@ function sectionsFor(vid, V) {
 // Views that render REAL tenant data when connected — ONLY these earn the LIVE badge.
 // Everything else shows an honest "Sample preview" chip even when the account is linked.
 const REAL_VIEWS = new Set(["hoje", "overview", "impact", "billing", "inbox", "calllogs", "convos", "whatsapp", "sms",
-  "mycompany", "crm", "command", "finance", "leadstoday", "dates", "coupons", "growthintel", "capture", "experience", "timeline", "mktleads", "storm", "meusite",
+  "mycompany", "crm", "command", "finance", "leadstoday", "dates", "coupons", "growthintel", "capture", "orcamentos", "experience", "timeline", "mktleads", "storm", "meusite",
   "riskradar", "emergency", "locations", "recurring", "kb", "brain", "settings", "support", "relacionamento", "trainer", "grow", "documents", "schedulesync", "googlehub", "socialhub", "operations"]);
 
 function notifFor(key, V, real = null) {
@@ -818,7 +820,7 @@ const SECTION_ICON = {
   impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock, recurring: FaIdCard, reputation: FaStar, loyalty: FaGift, payments: FaReceipt,
   channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, relacionamento: FaHeadset, docs: FaFileLines, settings: FaGear, team: FaUsers, locations: FaLocationDot,
   crm: FaIdCard, command: FaGaugeHigh, finance: FaCreditCard, marketing: FaBullhorn, retention: FaArrowsRotate, documents: FaFileLines,
-  riskradar: FaTriangleExclamation, emergency: FaBell, schedulesync: FaCalendarDays, googlehub: FaGoogle, socialhub: FaShareNodes, leadstoday: FaUsers, dates: FaGift, coupons: FaTag, growthintel: FaChartLine, capture: FaListCheck, experience: FaFaceSmile, timeline: FaChartLine, mktleads: FaBullseye, storm: FaBell, meusite: FaGlobe,
+  riskradar: FaTriangleExclamation, emergency: FaBell, schedulesync: FaCalendarDays, googlehub: FaGoogle, socialhub: FaShareNodes, leadstoday: FaUsers, dates: FaGift, coupons: FaTag, growthintel: FaChartLine, capture: FaListCheck, orcamentos: FaFileInvoiceDollar, experience: FaFaceSmile, timeline: FaChartLine, mktleads: FaBullseye, storm: FaBell, meusite: FaGlobe,
   trainer: FaGraduationCap, kb: FaBrain, mycompany: FaBuilding,
 };
 // Group the (long) nav into scannable categories
@@ -832,7 +834,7 @@ const NAV_GROUPS = [
   ["Operations", ["liveorders", "kitchen", "menu", "schedule", "riskradar", "storm", "catalog", "deliveries", "operations"]],
   ["Conversations", ["inbox", "calllogs", "dialer", "whatsapp", "sms", "social"]],
   ["Customers", ["crm"]],
-  ["Grow revenue", ["impact", "finance", "marketing", "dates", "coupons", "growthintel", "capture", "experience", "timeline", "retention", "integrations"]],
+  ["Grow revenue", ["impact", "finance", "marketing", "dates", "coupons", "growthintel", "capture", "orcamentos", "experience", "timeline", "retention", "integrations"]],
   ["Account", ["locations", "team", "billing", "documents", "relacionamento", "support", "settings"]],
 ];
 // Portal UI translations (PT/ES/HI) — each dictionary now lives in its own lazy
@@ -2671,6 +2673,7 @@ export default function Portal() {
     experience: () => <Experience V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     timeline: () => <Timeline V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     capture: () => <CaptureTools V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    orcamentos: () => <QuoteEngine V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     mktleads: () => <MarketplaceLeads V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     storm: () => <StormMode V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     retention: () => <GrowthDept V={V} onNav={setView} email={me?.email} dataKey={loadDataKey()} />,

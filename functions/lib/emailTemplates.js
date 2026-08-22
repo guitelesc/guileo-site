@@ -3530,3 +3530,93 @@ export function websiteUpgradeEmail({
   return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
 }
 
+
+// ── MOTOR DE ORÇAMENTO — o orçamento na mão do cliente do cliente ───────────────────────────────
+// Sai na marca do NEGÓCIO (logo/cor dele), nunca na da Guileo: quem manda o orçamento é o
+// encanador, não a plataforma. Backend: db/quote_engine.sql · endpoint: functions/api/orcamento.js.
+//
+// HONESTIDADE (regra da casa): este e-mail NÃO promete prazo, garantia, nem "preço fechado". Ele
+// mostra o que foi orçado, o total, e diz em uma linha que quem montou foi a IA do negócio e que
+// orçamento acima do teto passa por uma pessoa. Nada além disso — inventar garantia aqui é o mesmo
+// defeito do preço-âncora que já virou cotação falsa numa ligação real.
+//
+// MOEDA: o valor vem em centavos + `moeda` da linha do banco. O locale segue o IDIOMA do e-mail —
+// o `en-US` fixo dentro de um e-mail em português já custou "R$ 5 mil virou $5 mil" nesta base.
+const _quoteMoney = (cents, moeda = "usd", lang = "en") => {
+  const v = Math.max(0, Number(cents) || 0) / 100;
+  const cur = String(moeda || "usd").toUpperCase().slice(0, 3) || "USD";
+  const loc = lang === "pt" ? "pt-BR" : lang === "es" ? "es-ES" : "en-US";
+  try { return new Intl.NumberFormat(loc, { style: "currency", currency: cur }).format(v); }
+  catch { return `${cur} ${v.toFixed(2)}`; }
+};
+
+// quoteToCustomerEmail({ brand, logo, accent, business, customerName, resumo, itens, totalCents, moeda, link, lang })
+// `itens` = jsonb do banco: [{ nome|name|descricao, qtd|qty, valor_cents|preco_cents|total_cents }].
+// Item sem valor aparece SEM valor (não vira 0) — ausência de preço tem que se ver, não se esconder.
+export function quoteToCustomerEmail({ brand = null, logo = "", accent = "", business = "", customerName = "", resumo = "", itens = [], totalCents = 0, moeda = "usd", link = "", lang = "en" } = {}) {
+  const lg = lang === "pt" ? "pt" : lang === "es" ? "es" : "en";
+  const marca = { ...(brand || {}) };
+  if (!marca.business && business) marca.business = business;
+  if (!marca.logo_url && logo) marca.logo_url = logo;
+  if (!marca.accent && accent) marca.accent = accent;
+  marca.lang = lg;
+  const bizRaw = String(marca.business || business || "");
+  const biz = esc(bizRaw);
+  const acc = _isHex(marca.accent) ? String(marca.accent).trim() : "#FF8A33";
+  const quem = esc(String(customerName || "").slice(0, 120));
+  const total = _quoteMoney(totalCents, moeda, lg);
+
+  const T = {
+    pt: { subject: `Seu orçamento${bizRaw ? ` — ${bizRaw}` : ""}`, pre: `Orçamento de ${total}${bizRaw ? ` · ${bizRaw}` : ""}.`,
+      eyebrow: "Orçamento", title: quem ? `${quem}, aqui está seu orçamento` : "Aqui está seu orçamento",
+      intro: `Segue o orçamento${biz ? ` da ${biz}` : ""} para o que você pediu. Se estiver tudo certo, é só tocar no botão — a gente segue daqui.`,
+      totalLbl: "Total", cta: "Ver e aceitar o orçamento",
+      nota: "Este orçamento foi montado pela assistente de IA do negócio e revisado por uma pessoa quando o valor pede. Dúvida em algum item? Responda este e-mail.",
+      semItens: "Os detalhes do serviço estão com o negócio — qualquer dúvida, é só responder." },
+    es: { subject: `Su presupuesto${bizRaw ? ` — ${bizRaw}` : ""}`, pre: `Presupuesto de ${total}${bizRaw ? ` · ${bizRaw}` : ""}.`,
+      eyebrow: "Presupuesto", title: quem ? `${quem}, aquí está su presupuesto` : "Aquí está su presupuesto",
+      intro: `Este es el presupuesto${biz ? ` de ${biz}` : ""} para lo que pidió. Si está todo bien, solo toque el botón — seguimos desde aquí.`,
+      totalLbl: "Total", cta: "Ver y aceptar el presupuesto",
+      nota: "Este presupuesto lo preparó la asistente de IA del negocio y lo revisa una persona cuando el monto lo pide. ¿Alguna duda? Responda este correo.",
+      semItens: "Los detalles del servicio están con el negocio — cualquier duda, solo responda." },
+    en: { subject: `Your quote${bizRaw ? ` — ${bizRaw}` : ""}`, pre: `A ${total} quote${bizRaw ? ` · ${bizRaw}` : ""}.`,
+      eyebrow: "Quote", title: quem ? `${quem}, here's your quote` : "Here's your quote",
+      intro: `Here's the quote${biz ? ` from ${biz}` : ""} for what you asked about. If it looks right, just tap the button — we'll take it from there.`,
+      totalLbl: "Total", cta: "Review and accept",
+      nota: "This quote was prepared by the business's AI assistant and reviewed by a person when the amount calls for it. Question on a line? Just reply to this email.",
+      semItens: "The service details are with the business — just reply with any question." },
+  }[lg];
+
+  const linhas = (Array.isArray(itens) ? itens : []).slice(0, 30).map((it) => {
+    const nome = esc(String((it && (it.nome || it.name || it.descricao || it.description)) || "").slice(0, 140));
+    const qtdN = Number(it && (it.qtd ?? it.qty ?? it.quantidade ?? it.quantity));
+    const qtd = Number.isFinite(qtdN) && qtdN > 1 ? `<span style="color:${B.muted};font-weight:600;">×${esc(String(Math.round(qtdN)))}</span> ` : "";
+    const c = it && (it.valor_cents ?? it.preco_cents ?? it.total_cents ?? it.cents);
+    const val = c == null || !Number.isFinite(Number(c)) ? "—" : _quoteMoney(Number(c), moeda, lg);
+    if (!nome && val === "—") return "";
+    return `<tr>
+      <td valign="top" style="padding:10px 0;border-bottom:1px solid ${B.line};font-size:14.5px;line-height:1.5;color:${B.ink2};">${qtd}${nome || "—"}</td>
+      <td align="right" valign="top" style="padding:10px 0 10px 14px;border-bottom:1px solid ${B.line};font-size:14.5px;font-weight:800;color:${B.ink};white-space:nowrap;">${esc(val)}</td>
+    </tr>`;
+  }).filter(Boolean).join("");
+
+  const tabela = linhas
+    ? panel(`<table role="presentation" width="100%" style="border-collapse:collapse;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;">${linhas}
+        <tr>
+          <td style="padding:14px 0 0 0;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:${B.muted};">${esc(T.totalLbl)}</td>
+          <td align="right" style="padding:14px 0 0 14px;font-size:26px;font-weight:900;letter-spacing:-.5px;color:${_textAccent(acc, B.panel)};white-space:nowrap;">${esc(total)}</td>
+        </tr>
+      </table>`, "18px 20px")
+    : panel(`<div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;color:${B.muted};line-height:1.6;">${esc(T.semItens)}</div>
+      <div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div>
+      <div align="center" style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:34px;font-weight:900;letter-spacing:-1px;color:${_textAccent(acc, B.panel)};">${esc(total)}</div>`, "20px 20px");
+
+  const bodyHtml = `${_bp(T.intro)}${resumo ? _bp(`<b style="color:${B.ink};">${esc(String(resumo).slice(0, 300))}</b>`, 15) : ""}${tabela}`;
+  return {
+    subject: T.subject,
+    html: clientEmailShell({
+      brand: marca, title: T.title, preheader: T.pre, eyebrow: T.eyebrow, bodyHtml,
+      ctaText: link ? T.cta : "", ctaUrl: link || "", footerNote: T.nota, lang: lg,
+    }),
+  };
+}
