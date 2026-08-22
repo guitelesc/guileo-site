@@ -3393,7 +3393,7 @@ export function growthReportEmail({ business = "", agentName = "Gui", score = 0,
 // ─────────────────────────────────────────────────────────────────────────────
 export function websiteUpgradeEmail({
   name = "there", business = "your business", link = "", lang = "en",
-  incluso = [], blocos = [], nota = "",
+  incluso = [], blocos = [], destaque = null, nota = "",
 } = {}) {
   business = esc(business); name = esc(name);
   const t = lang === "pt" ? {
@@ -3401,7 +3401,7 @@ export function websiteUpgradeEmail({
     pre: "O site novo já está no ar. Nada pra instalar, nada pra assinar.",
     eyebrow: "Website Upgrade · pronto pra ver",
     h1: `${name}, refizemos o site do ${business}`,
-    intro: `Pegamos o que já é de vocês — o vídeo, a marca, as fotos da equipe, os serviços — e reconstruímos numa página feita pra converter. <strong style="color:${B.ink};">Está no ar agora</strong>, é só abrir:`,
+    intro: `Ninguém te mandou uma proposta. A gente reconstruiu seu site — com o seu vídeo, sua marca, as fotos da sua equipe e seus serviços — e colocou no ar pra você julgar, não imaginar. <strong style="color:${B.ink};">Está no ar agora.</strong> Dois minutos abaixo: o que já vem nele e o que dá pra ligar.`,
     cta: "Ver o site novo →",
     inclusoT: "O que já vem no modelo",
     addonT: "O que dá pra ligar em cima",
@@ -3412,7 +3412,7 @@ export function websiteUpgradeEmail({
     pre: "The new site is live. Nothing to install, nothing to sign.",
     eyebrow: "Website Upgrade · ready to view",
     h1: `${name}, we rebuilt the ${business} website`,
-    intro: `We took what is already yours — the video, the brand, the crew photos, the services — and rebuilt it as a page built to convert. <strong style="color:${B.ink};">It is live right now</strong>, just open it:`,
+    intro: `Nobody sent you a proposal. We just rebuilt your site — with your own video, logo, crew photos and services — and put it online so you can judge it, not imagine it. <strong style="color:${B.ink};">It is live right now.</strong> Two minutes below: what is already in it, and what you can switch on.`,
     cta: "See the new site →",
     inclusoT: "What already comes in it",
     addonT: "What you can switch on",
@@ -3463,6 +3463,22 @@ export function websiteUpgradeEmail({
   <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
   <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.gold};font-weight:800;">${t.inclusoT}</div>
   <table role="presentation" width="100%" style="margin-top:8px;border-collapse:collapse;">${linhasInc}</table>
+  ${destaque ? `
+  <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
+  <div style="border:1px solid ${B.green}55;border-radius:18px;background:linear-gradient(180deg,${B.green}14,${B.panel} 60%);padding:18px;">
+    <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.green};font-weight:800;">${esc(destaque.tag || "")}</div>
+    <div style="color:${B.ink2};font-size:20px;font-weight:800;margin-top:6px;line-height:1.25;">${esc(destaque.t || "")}</div>
+    <div style="color:${B.ink};font-size:14.5px;line-height:1.7;margin-top:8px;">${esc(destaque.d || "")}</div>
+    <table role="presentation" width="100%" style="margin-top:12px;border-collapse:collapse;">
+      ${(destaque.pontos || []).map((x) => `
+      <tr><td style="padding:6px 0;color:${B.ink};font-size:14px;line-height:1.55;">
+        <span style="color:${B.green};font-weight:800;">→</span>&nbsp;${esc(x)}
+      </td></tr>`).join("")}
+    </table>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid ${B.line};color:${B.muted};font-size:13px;">
+      <span style="color:${B.gold};font-size:15px;font-weight:800;">${esc(destaque.p || "")}</span> · ${esc(destaque.nota || "")}
+    </div>
+  </div>` : ""}
   <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
   <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.gold};font-weight:800;">${t.addonT}</div>
   <div style="color:${B.muted};font-size:13px;margin-top:5px;">${t.addonSub}</div>
