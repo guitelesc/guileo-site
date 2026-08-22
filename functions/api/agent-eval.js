@@ -372,6 +372,25 @@ export async function onRequest(context) {
   }
 
   let cases = AGENT_EVAL_CASES.concat(VERTICAL_EVAL_CASES, ACTION_EVAL_CASES);
+  // ── ?risco=1 — O SUBCONJUNTO QUE NÃO PODE FICAR SEM VIGIA (2026-08-22) ───────────────────────
+  // Por que existe: o eval completo (48 casos) rodava TODA NOITE e o Luis o desligou em 18/08 —
+  // custava crédito Anthropic demais. E monitor desligado custa mais caro que monitor caro: desde
+  // então o painel mostra o retrato de 18/08 (voz 8/17 reprovados, segurança 72,4) sem ninguém
+  // saber se ainda é verdade.
+  // O corte não é por preço, é por CONSEQUÊNCIA. Ficam de fora os casos onde errar é vergonha
+  // (tom, idioma, resposta longa); ficam dentro os dois grupos onde errar machuca alguém ou abre
+  // a porta: os VERTICAIS (vazamento de gás, alergia, queimadura química, conselho médico/jurídico,
+  // discriminação em imóvel) e os ADVERSARIAIS (injeção de prompt, dados de outro cliente, coerção
+  // de reembolso). São 20 de 48 — e são exatamente os que pintam o vermelho de `avg_safety`.
+  // ⚠️ SEM RODÍZIO, de propósito: sortear 3 verticais por noite sairia mais barato e deixaria uma
+  // regressão de segurança até 4 dias invisível. Segurança é justamente onde não se aceita janela.
+  // ⚠️ MARCA EXPLÍCITA, NUNCA PADRÃO DE NOME. A 1ª versão deste filtro dizia "adversarial OU
+  // vertical" e deixou de fora as travas de dinheiro (cobrança acima do limite, link de pagamento
+  // sem Stripe) e a ESCALADA DE EMERGÊNCIA. E o próprio `adversarial` provou o ponto: o caso
+  // `msg-adv-desconto` tinha "adv" no nome e não tinha a marca — alarme mudo desde que nasceu.
+  // Caso novo entra no diário escrevendo `risco: true` nele, não acertando um prefixo.
+  const soRisco = url.searchParams.get("risco") === "1" || body.risco === true;
+  if (soRisco) cases = cases.filter((c) => c.adversarial === true || c.risco === true);
   if (onlyAgent) cases = cases.filter((c) => c.agent === onlyAgent);
   if (onlyCase) cases = cases.filter((c) => c.id === onlyCase);
   out.total = cases.length; // tamanho do conjunto (filtrado) inteiro — não só deste lote
@@ -450,6 +469,14 @@ export async function onRequest(context) {
     prox.searchParams.set("rodada", String(proxRodada));
     prox.searchParams.set("rodadas", String(RODADAS));
     prox.searchParams.set("tenant", tenant);
+    // 🚨 OS FILTROS TÊM QUE VIAJAR COM O SALTO (2026-08-22). Sem isto, `?agent=voice&cadeia=1`
+    // rodava o 1º caso no conjunto FILTRADO e saltava para offset 2 do conjunto INTEIRO — os
+    // offsets deixam de apontar para os mesmos casos e o meio do conjunto some em silêncio.
+    // É o defeito que este arquivo já documenta duas vezes ("pular casos em silêncio"), sobrevivendo
+    // num lugar onde ninguém olhou: os filtros nasceram para uso manual e a corrente veio depois.
+    if (soRisco) prox.searchParams.set("risco", "1");
+    if (onlyAgent) prox.searchParams.set("agent", onlyAgent);
+    if (onlyCase) prox.searchParams.set("case", onlyCase);
     prox.searchParams.set("token", tok);
     context.waitUntil(fetch(prox.toString()).catch(() => {}));
     out.corrente = { saltou_para: proxOffset, rodada: proxRodada, de: RODADAS, hop: hops + 1, teto: MAX_HOPS, quando: "meio do lote" };

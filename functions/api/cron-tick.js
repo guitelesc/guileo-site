@@ -13,7 +13,8 @@
 // Cadência: o Worker chama a cada 15 min; os pesados (proactive/nps/reconcile) só
 // rodam na janela horária certa pra não desperdiçar subrequests.
 import { json, rateLimited } from "../lib/guard.js";
-import { svcRpc } from "../lib/sb.js";
+import { svcRpc, svcJson } from "../lib/sb.js";
+import { ownerAlertEmail } from "../lib/emailTemplates.js";
 
 // PHONE RE-ENGAGEMENT EXECUTOR (#19) — turns a queued churn-reengage / booking-recovery
 // client_event that carries a PHONE (not an email) into a REAL Gui callback through the single
@@ -171,7 +172,26 @@ export async function onRequest(context) {
       // na ElevenLabs (LLM gpt-4o de lá) sem tocar em Anthropic. Em 17/08 as rodadas repetidas do
       // harness ZERARAM o saldo e derrubaram o chat do site no fallback. Medição não pode custar a
       // operação. Religar = descomentar; rodada manual continua possível via /api/agent-eval.
-      // if (hourUTC === 0 || hourUTC === 1) targets.push({ name: "agent-eval", url: `${base}/api/agent-eval?cadeia=1&token=${t}` });
+      // ▶️ RELIGADO PARTIDO EM DOIS (2026-08-22), com a razão do desligamento respeitada.
+      // O que estava errado não era medir — era medir 48 casos TODA noite para vigiar os 20 que
+      // decidem a nota de segurança. Ficou assim:
+      //   • TODA noite → `risco=1`: os 29 casos marcados `adversarial` ou `risco` no próprio dado —
+      //     13 verticais (gás, alergia, queimadura, conselho médico/jurídico), 8 adversariais
+      //     (injeção, dados de outro cliente, coerção) e 8 travas de dinheiro/emergência
+      //     (cobrança acima do limite, pay-link sem Stripe, dupla-reserva, escalar emergência).
+      //   • DOMINGO   → o conjunto inteiro (48), para tom, idioma e formato não sumirem do radar.
+      // Semana: 29×6 + 48 = 222 rodadas de caso, contra 336 antes — um terço a menos, e NENHUM
+      // caso de dano esperando o domingo. A 1ª versão cortava 20 e parecia melhor: tinha deixado
+      // de fora a escalada de emergência. Economia que apaga o alarme não é economia.
+      // ⚠️ UMA CHANCE POR NOITE, não duas. A 2ª chance era grátis quando `ops_run_claim` segurava,
+      // mas em 17/08 foram rodadas REPETIDAS que zeraram o saldo Anthropic e derrubaram o chat do
+      // site no fallback — o modo de falha aqui não é "perdi uma noite", é "a operação caiu por
+      // causa do medidor". Perder uma noite é barato; derrubar o site não é.
+      if (hourUTC === 0) {
+        const domingo = new Date().getUTCDay() === 0;
+        targets.push({ name: domingo ? "agent-eval-completo" : "agent-eval-risco",
+                       url: `${base}/api/agent-eval?cadeia=1&token=${t}${domingo ? "" : "&risco=1"}` });
+      }
       // O AVISO DO EVAL, ÀS 02h UTC (22h NY) — uma hora depois da 2ª chance do eval.
       // Luis, 2026-08-17: «me avisa quando o eval rodar». A resposta certa não é eu lembrar: é o
       // servidor mandar o e-mail todas as noites, para sempre, sem depender de sessão nenhuma.
@@ -309,6 +329,37 @@ export async function onRequest(context) {
             }
           }
         } else if (semaforo) semaforo.mensagens = { nota: `canais-prova http ${cr.status}` };
+
+        // 🚨 O ALARME QUE NÃO EXISTIA. Gravar evento não bastou: o WhatsApp passou 19 dias
+        // falhando com eventos gravados no banco que ninguém leu. Alarme que fica dentro da
+        // plataforma é alarme que não existe. Este SAI — por e-mail, para o dono.
+        // Uma vez por dia POR CANAL: a varredura roda de hora em hora e 24 avisos iguais viram
+        // ruído, e ruído é como um alarme morre no dia em que importa.
+        const m = semaforo && semaforo.mensagens;
+        if (m && env.RESEND_API_KEY && env.INGEST_SECRET) {
+          for (const canal of ["sms", "whatsapp"]) {
+            if (m[canal] !== "vermelho") continue;
+            const pode = await svcJson(env, "alarme_uma_vez", {
+              p_secret: env.INGEST_SECRET, p_chave: `canal_caido:${canal}`, p_minutos: 1440,
+            }).catch(() => false);
+            if (pode !== true) continue;
+            try {
+              const { subject, html } = ownerAlertEmail({
+                kind: "canal", business: "Guileo", lang: "pt",
+                customer: canal === "sms" ? "SMS" : "WhatsApp",
+                details: (canal === "sms" ? m.falta_sms : m.falta_whatsapp) || "sem motivo lido",
+              });
+              const to = (env.OWNER_EMAIL || "smart@guileoai.com").toString().split(",")[0].trim();
+              const er = await fetch("https://api.resend.com/emails", {
+                method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to, subject, html }),
+              });
+              // Conferir o retorno: um aviso "enviado" que o Resend recusou é o mesmo silêncio
+              // que este alarme existe para acabar.
+              if (!er.ok) console.error(JSON.stringify({ alarme_canal: canal, resend: er.status }));
+            } catch (e) { console.error(JSON.stringify({ alarme_canal: canal, erro: String(e).slice(0, 80) })); }
+          }
+        }
       } catch (e) { if (semaforo) semaforo.mensagens = { nota: String(e).slice(0, 60) }; }
     }
 

@@ -1002,6 +1002,7 @@ export function ownerAlertEmail({ kind = "order", customer = "", business = "", 
     escalate: { icon: "🙋", pt: "pedido de atendente", en: "human request", es: "pedido de humano" },
     billing: { icon: "⚠️", pt: "alerta de cobrança", en: "billing alert", es: "alerta de cobro" },
     referral: { icon: "🎁", pt: "cliente indicado", en: "referral", es: "referido" }, // masc. noun — the shared "Novo ${word}" must agree
+    canal: { icon: "🔴", pt: "canal fora do ar", en: "channel down", es: "canal caído" },
   }[kind] || { icon: "🔔", pt: "evento", en: "event", es: "evento" };
   const L = lang === "pt" ? "pt" : lang === "es" ? "es" : "en";
   const word = K[L];
@@ -1022,6 +1023,14 @@ export function ownerAlertEmail({ kind = "order", customer = "", business = "", 
       pt: `Boa notícia: uma indicação${biz ? ` (${biz})` : ""} acabou de converter — chegou agora.`,
       en: `Good news: a referral${biz ? ` (${biz})` : ""} just converted — it came in now.`,
       es: `Buena noticia: un referido${biz ? ` (${biz})` : ""} acaba de convertir — llegó ahora.`,
+    },
+    // Canal caído NÃO é venda fechada. Sem este texto próprio o aviso sairia como "a Gui acabou
+    // de fechar isso" sobre um canal que parou de entregar — a mentira mais cara possível, já que
+    // é exatamente o alarme que ficou 19 dias sem existir enquanto o WhatsApp respondia pro vazio.
+    canal: {
+      pt: `Um canal de mensagem parou de entregar. Enquanto estiver assim, a Gui responde e ninguém recebe.`,
+      en: `A messaging channel stopped delivering. While it stays this way, Gui replies and nobody receives it.`,
+      es: `Un canal de mensajes dejó de entregar. Mientras siga así, Gui responde y nadie recibe.`,
     },
   };
   if (INTRO[kind]) C.intro = INTRO[kind][L];

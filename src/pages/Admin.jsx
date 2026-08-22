@@ -14,6 +14,7 @@ import LinhasPanel from "../components/LinhasPanel.jsx";
 import XrayFunilPanel from "../components/XrayFunilPanel.jsx";
 import WarRoom from "../components/WarRoom.jsx";
 import OnboardApprovals from "../components/OnboardApprovals.jsx";
+import ComprarNumero from "../components/ComprarNumero.jsx";
 import ClientWallet from "../components/ClientWallet.jsx";
 import SellerManager from "../components/SellerManager.jsx";
 import PainelComando from "../components/PainelComando.jsx";
@@ -905,6 +906,9 @@ export default function Admin() {
 
             {/* CADASTROS PENDENTES — sellers' full intakes (OnboardWizard) → 1-click approve births the agent */}
             <OnboardApprovals token={token} />
+
+            {/* Compra AVULSA de número — fora do fluxo de aprovar cliente. Ver ComprarNumero.jsx. */}
+            <ComprarNumero token={token} />
 
             {/* ── RUNBOOK DO CLIENTE #1 — os 7 passos do "oi" ao primeiro dinheiro (mesmo no hub /vendedor) ── */}
             <ActivationRunbook lang="pt" />

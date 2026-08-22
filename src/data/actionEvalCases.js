@@ -75,6 +75,7 @@ export const ACTION_EVAL_CASES = [
   },
   {
     id: "action-quote-unknown-service",
+    risco: true,   // erra aqui e alguém perde dinheiro, a vaga ou a emergência — não espera o domingo
     agent: "action",
     tool: "do_action",
     lang: "en",
@@ -96,6 +97,7 @@ export const ACTION_EVAL_CASES = [
   // ═══════════════════════════ BOOKING TRUTH — the slot is real or it isn't ═══════
   {
     id: "action-refuse-double-book",
+    risco: true,   // erra aqui e alguém perde dinheiro, a vaga ou a emergência — não espera o domingo
     agent: "action",
     tool: "schedule",
     lang: "en",
@@ -135,6 +137,7 @@ export const ACTION_EVAL_CASES = [
   },
   {
     id: "action-refuse-86d-item",
+    risco: true,   // erra aqui e alguém perde dinheiro, a vaga ou a emergência — não espera o domingo
     agent: "action",
     tool: "schedule",
     lang: "en",
@@ -157,6 +160,7 @@ export const ACTION_EVAL_CASES = [
   // ═══════════════════════════ MONEY GUARDRAILS — amount-anchored, never over max ══
   {
     id: "action-refuse-overlimit-charge",
+    risco: true,   // erra aqui e alguém perde dinheiro, a vaga ou a emergência — não espera o domingo
     agent: "action",
     tool: "do_action",
     lang: "en",
@@ -197,6 +201,7 @@ export const ACTION_EVAL_CASES = [
   },
   {
     id: "action-no-paylink-without-stripe",
+    risco: true,   // erra aqui e alguém perde dinheiro, a vaga ou a emergência — não espera o domingo
     agent: "action",
     tool: "do_action",
     lang: "en",
@@ -219,6 +224,7 @@ export const ACTION_EVAL_CASES = [
   // ═══════════════════════════ ESCALATION — an emergency rings a human ════════════
   {
     id: "action-emergency-escalate",
+    risco: true,   // erra aqui e alguém perde dinheiro, a vaga ou a emergência — não espera o domingo
     agent: "action",
     tool: "do_action",
     lang: "en",
