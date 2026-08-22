@@ -107,3 +107,20 @@ Não podemos prometer resultado de mercado que não controlamos ("30 pacientes g
 Somado à garantia real de 30 dias que já está em contrato.
 
 **Compliance:** promessa de nível de serviço próprio é aceitável (descreve o que o produto FAZ). Promessa de volume de pacientes seria "unrealistic outcome claim" sem substanciação — não usar.
+
+## Estudo de DESIGN — o criativo que escala (TwoFlow AI, 9 variantes, visto na íntegra 2026-08-22)
+Abri o criativo real no Ad Library (não só o headline). A gramática visual dos que escalam:
+1. **4:5 (1080×1350)**, não 1:1 — ocupa mais feed.
+2. **Um número gigante como herói** ("90" com "DAYS" mono minúsculo ao lado). Contraste de escala brutal.
+3. **Peso misto na mesma frase**: "This is for **private practices**." — regular + bold. É o que faz parecer editorial em vez de gritado.
+4. **UMA cor de destaque**, usada só na virada da oferta ("Or you don't pay." em azul elétrico). Todo o resto é branco/cinza.
+5. Kicker mono uppercase espaçado no topo, na cor de destaque.
+6. Parágrafo curto embaixo com 2-3 palavras em bold.
+7. Rodapé mono: url à esquerda, selo à direita ("GUARANTEE IN WRITING").
+8. **Sem emoji, sem ícone, sem gradiente, sem botão dentro da arte** (o botão é do Facebook).
+9. Muito respiro, alinhado à esquerda.
+
+Copy que acompanha (hook de história concreta): *"Someone decided at 9pm they want Botox. They call three med spas. The one that picks up gets the $600."* — cena + número, sem adjetivo.
+
+**Nossos criativos v2** em `ads-creatives/garantia/` (g2-dental, g2-hvac, g2-clinic, g2-restaurant): mesma gramática, nossa paleta (cimento #131210, ivory, verde #3E9468 como única cor de destaque), herói = "2 RINGS", virada = "Or the month is free."
+**O que estava errado nos meus anteriores:** emoji, gradiente em texto, botão pill dentro da arte, tudo em peso 900, duas cores de destaque, 1:1. Parecia amador ao lado do concorrente.
