@@ -891,3 +891,61 @@ speed-to-lead, o fluxo do ManyChat precisa **perguntar** ("posso te ligar?") e s
 "200 sem gravar" conta como falha e vira evento `manychat_lead_nao_entrou` no /admin.
 🧹 Os dois testes acima criaram leads reais no feed (mensagem **"TESTE PONTE MANYCHAT — pode
 apagar"**): apagar no /admin.
+
+## ROTA-FECHAMENTO · do "sim" do dono até o sistema rodando (Website Upgrade)
+**Quando:** o dono aceita a proposta do Website Upgrade ($500 uma vez + módulos mensais). Esta rota é a
+ordem exata — cada passo tem dono (Luis ou Claude), prova, e o que ACONTECE se pular.
+
+### 0. O sim (Luis) — 2 min
+Ele responde o e-mail ou fala na ligação. **Registrar na hora quais módulos ele marcou** (é o que define
+preço e trabalho). Se veio pelo modo dono (`?dono=1`), a seleção chega pronta no WhatsApp.
+
+### 1. Cobrar (Luis + Claude) — 10 min
+- **$500 do site (uma vez)** + **a mensalidade dos módulos escolhidos**. Dois preços na Stripe:
+  Payment Link avulso pro setup + assinatura mensal recorrente.
+- Conta live: **Med Mundo Brasil** `acct_1Tbm3wE0fF3QBRot` (a mesma da `STRIPE_SECRET_KEY`).
+- **Claude cria os produtos/preços/links** (Stripe MCP) e manda pro Luis conferir ANTES de enviar ao cliente.
+- ⚠️ Cobrar antes de construir: o setup existe porque o trabalho existe. Sem pagamento, nada de número.
+**Prova:** pagamento confirmado no Stripe + `checkout.session.completed` no webhook.
+
+### 2. Nascer o cliente (Luis) — 15 min · ROTA-ATIVAR
+`/vendedor → ➕ Cadastrar cliente` com o cadastro completo (serviços, preços, horários, unidades) →
+draft → Luis aprova no `/admin` → `onboard-client.js` cria agente ElevenLabs + cérebro + agenda + widget.
+**Prova:** `select status,agent_id,number from onboard_drafts where client_email=…` → `live`.
+
+### 3. Dar voz (Claude) — 10 min · ROTA-PROVISION → ROTA-NUMERO
+Reusa número livre antes de comprar (`dry_run` primeiro, `confirm:true` depois). Mapeia no agente.
+⚠️ **Conferir o saldo da Twilio antes** (piso de alerta $20) — número novo sem saldo não nasce.
+**Prova:** ligar pro número → o agente atende com o nome do negócio.
+
+### 4. Fazer o telefone DELE tocar na Gui (Luis manda, cliente executa) — 5 min · ROTA-ENCAMINHA
+`GET /api/encaminhar?email=<tenant>&token=<admin>` gera o documento na marca dele, com as linhas certas.
+Recomendação padrão: **condicional** (ocupado + não atende), disparo em ~4 toques (caixa postal em 30s).
+⚠️ **Pular isso = a Gui atende um telefone que ninguém disca.** Foi exatamente o caso do Natura.
+**Prova:** as 3 ligações do teste (toca longo → Gui; ocupado → Gui; humano no 2º toque → humano) em `call_logs`.
+
+### 5. Entregar o site (decisão do cliente + Claude) — 30 min
+Três caminhos, do mais rápido ao mais definitivo:
+- **a) Subdomínio** (`new.nonstopplumbers.com`) — ele cria 1 CNAME, o site atual continua no ar. Melhor pra começar.
+- **b) Domínio principal** — ele aponta o DNS pra nós; o site antigo sai do ar. Só quando ele estiver seguro.
+- **c) Continuar no nosso link** (`guileoai.com/novo/<slug>`) — serve pra piloto/anúncio, não pra marca dele.
+**Prova:** abrir o domínio dele e ver o site novo + o schema do CLIENTE (não o da Guileo).
+
+### 6. Ligar os módulos comprados (Claude) — varia
+- **Voz 24/7** → já ligado nos passos 2-4.
+- **Motor de Orçamento** → e-mail funciona hoje; **SMS depende do A2P** (ver bloqueios).
+- **Cobrança na ligação** → o cliente conecta a conta dele: cockpit → *Receber pagamentos (Stripe)* (Connect JÁ habilitado; falta só ele clicar).
+- **Review Machine** → precisa do Google Business dele conectado (ATIVACOES #4).
+- **Pulse** → liga junto com o cockpit; a avaliação vira mensal.
+**Prova:** cada módulo com seu round-trip (ligação real, orçamento enviado, review coletada).
+
+### 7. Entregar o painel (Luis) — 5 min
+Acesso ao `/portal` com o `client_email` dele + o briefing do dono (ROTA-BRIEFDONO) ligado.
+**Prova:** ele entra e vê as ligações/leads/agenda do próprio negócio.
+
+### 🚧 Os bloqueios REAIS de hoje (falar antes, não depois)
+- **SMS (A2P 10DLC):** marca aprovada, **campanha REPROVADA** (erro 30909, "call to action"). Enquanto não
+  reenviar apontando pra `/sms`, missed-call text-back e orçamento por SMS **não saem**. E-mail sai.
+- **Saldo Twilio:** piso $20 — conferir antes de provisionar número de cliente pagante.
+- **Stripe Connect:** habilitado; só falta o CLIENTE conectar a conta dele (1 clique no cockpit).
+- **Google Business:** necessário pra Review Machine operar de verdade.
