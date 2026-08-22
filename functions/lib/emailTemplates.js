@@ -3393,7 +3393,7 @@ export function growthReportEmail({ business = "", agentName = "Gui", score = 0,
 // ─────────────────────────────────────────────────────────────────────────────
 export function websiteUpgradeEmail({
   name = "there", business = "your business", link = "", lang = "en",
-  incluso = [], blocos = [], destaque = null, nota = "",
+  incluso = [], blocos = [], destaque = null, avaliacao = null, nota = "",
 } = {}) {
   business = esc(business); name = esc(name);
   const t = lang === "pt" ? {
@@ -3458,6 +3458,27 @@ export function websiteUpgradeEmail({
   const body = `
   <div style="font-size:26px;line-height:1.2;color:${B.ink2};font-weight:700;">${t.h1}</div>
   <div class="g-intro" style="font-size:16px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
+  ${avaliacao ? `
+  <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
+  <div style="border:1px solid ${B.line};border-radius:18px;background:${B.panel};padding:18px;">
+    <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.gold};font-weight:800;">${esc(avaliacao.tag || "")}</div>
+    <div style="color:${B.ink2};font-size:19px;font-weight:800;margin-top:6px;">${esc(avaliacao.t || "")}</div>
+    <table role="presentation" width="100%" style="margin-top:12px;border-collapse:collapse;">
+      ${(avaliacao.itens || []).map((x) => {
+        const cor = x.s >= 70 ? B.green : x.s >= 40 ? B.gold : "#e0685f";
+        return `<tr>
+          <td valign="top" style="padding:9px 0;border-bottom:1px solid ${B.line};">
+            <div style="color:${B.ink};font-size:14.5px;font-weight:700;">${esc(x.n || "")}</div>
+            <div style="color:${B.muted};font-size:13px;line-height:1.6;margin-top:2px;">${esc(x.txt || "")}</div>
+          </td>
+          <td align="right" valign="top" style="padding:9px 0 9px 12px;border-bottom:1px solid ${B.line};white-space:nowrap;">
+            <span style="color:${cor};font-size:15px;font-weight:800;">${x.s == null ? "—" : x.s + "/100"}</span>
+          </td>
+        </tr>`;
+      }).join("")}
+    </table>
+    ${avaliacao.fecho ? `<div style="color:${B.ink};font-size:14px;line-height:1.65;margin-top:12px;">${esc(avaliacao.fecho)}</div>` : ""}
+  </div>` : ""}
   <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
   <div align="center">${cta(t.cta, link)}</div>
   <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
