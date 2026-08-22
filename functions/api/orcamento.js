@@ -249,13 +249,42 @@ export async function onRequestPost(context) {
 // ABRIR. `&r=aceitar|recusar` é o clique de resposta — 1 toque, sem login, sem formulário.
 const htmlResp = (body, status = 200) => new Response(body, { status, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
 const escH = (v) => s(v, 400).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const dinheiro = (cents, moeda) => {
+// A PÁGINA FALA O IDIOMA DE QUEM ABRE. Sem isto o cliente de um encanador que atende em espanhol
+// recebe uma tela em inglês — e o status cru do banco ("aceito") vaza português dentro da frase.
+const PG = {
+  en: { quote: "Quote", seu: "Your quote", total: "Total", aceitar: "Accept", recusar: "Decline",
+        respondido: (st) => `Already answered (${st}).`, rodape: "Prepared by the business's AI assistant and reviewed by a person when the amount calls for it.",
+        invalido: "Invalid link", sumiu: "This quote is no longer available.",
+        ok_aceito: "Quote accepted — the business has been notified.", ok_recusado: "Quote declined. Thank you for letting us know.",
+        ja: "You already responded to this quote.", falhou: "We couldn't record your answer — please reply to the email instead.",
+        st: { aceito: "accepted", recusado: "declined", enviado: "sent", aprovado: "approved", aguardando_aprovacao: "under review" } },
+  pt: { quote: "Orçamento", seu: "Seu orçamento", total: "Total", aceitar: "Aceitar", recusar: "Recusar",
+        respondido: (st) => `Você já respondeu (${st}).`, rodape: "Preparado pelo assistente de IA do negócio e revisado por uma pessoa quando o valor pede.",
+        invalido: "Link inválido", sumiu: "Este orçamento não está mais disponível.",
+        ok_aceito: "Orçamento aceito — o negócio já foi avisado.", ok_recusado: "Orçamento recusado. Obrigado por avisar.",
+        ja: "Você já respondeu a este orçamento.", falhou: "Não consegui registrar sua resposta — responda o e-mail, por favor.",
+        st: { aceito: "aceito", recusado: "recusado", enviado: "enviado", aprovado: "aprovado", aguardando_aprovacao: "em análise" } },
+  es: { quote: "Presupuesto", seu: "Tu presupuesto", total: "Total", aceitar: "Aceptar", recusar: "Rechazar",
+        respondido: (st) => `Ya respondiste (${st}).`, rodape: "Preparado por el asistente de IA del negocio y revisado por una persona cuando el monto lo pide.",
+        invalido: "Enlace inválido", sumiu: "Este presupuesto ya no está disponible.",
+        ok_aceito: "Presupuesto aceptado — el negocio ya fue avisado.", ok_recusado: "Presupuesto rechazado. Gracias por avisar.",
+        ja: "Ya respondiste a este presupuesto.", falhou: "No pude registrar tu respuesta — responde el correo, por favor.",
+        st: { aceito: "aceptado", recusado: "rechazado", enviado: "enviado", aprovado: "aprobado", aguardando_aprovacao: "en revisión" } },
+};
+// O idioma vem do navegador de QUEM ABRE o link — a tabela `quotes` ainda não guarda idioma.
+const idiomaDaPagina = (request) => {
+  const al = s(request.headers.get("accept-language") || "", 60).toLowerCase();
+  return al.startsWith("pt") ? "pt" : al.startsWith("es") ? "es" : "en";
+};
+const LOCALE = { en: "en-US", pt: "pt-BR", es: "es-US" };
+const dinheiro = (cents, moeda, lang = "en") => {
   const v = Math.max(0, Number(cents) || 0) / 100;
-  try { return new Intl.NumberFormat("en-US", { style: "currency", currency: String(moeda || "usd").toUpperCase().slice(0, 3) }).format(v); }
+  try { return new Intl.NumberFormat(LOCALE[lang] || "en-US", { style: "currency", currency: String(moeda || "usd").toUpperCase().slice(0, 3) }).format(v); }
   catch { return `$${v.toFixed(2)}`; }
 };
-function pagina(inner) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Guileo · Quote</title></head>
+function pagina(inner, lang = "en") {
+  const t = PG[lang] || PG.en;
+  return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Guileo · ${t.quote}</title></head>
 <body style="margin:0;background:#0e0d0b;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;color:#ede7dc;">
 <div style="max-width:480px;margin:10vh auto 0;padding:32px 26px;background:#161512;border:1px solid #2b2720;border-radius:22px;box-shadow:0 40px 100px -45px rgba(0,0,0,.92);">${inner}</div></body></html>`;
 }
@@ -264,44 +293,43 @@ export async function onRequestGet(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const token = s(url.searchParams.get("t") || "", 90);
-  if (!isToken(token)) return htmlResp(pagina('<h1 style="font-size:20px;margin:0;">Invalid link</h1>'), 400);
+  const lang = idiomaDaPagina(request);
+  const T = PG[lang] || PG.en;
+  if (!isToken(token)) return htmlResp(pagina(`<h1 style="font-size:20px;margin:0;">${T.invalido}</h1>`, lang), 400);
 
   const resposta = s(url.searchParams.get("r") || "", 10).toLowerCase();
   if (resposta === "aceitar" || resposta === "recusar") {
     const r = await rpc(env, "quote_resposta_cliente", { p_token: token, p_aceitar: resposta === "aceitar" });
     const st = r.ok ? s(r.dados, 20) : "";
-    const msg = st === "aceito" ? "Quote accepted — the business has been notified."
-      : st === "recusado" ? "Quote declined. Thank you for letting us know."
-      : st === "ja_respondido" ? "You already responded to this quote."
-      : "We couldn't record your answer — please reply to the email instead.";
+    const msg = st === "aceito" ? T.ok_aceito : st === "recusado" ? T.ok_recusado : st === "ja_respondido" ? T.ja : T.falhou;
     return htmlResp(pagina(`<div style="font-size:34px;line-height:1;">${st === "aceito" ? "✅" : st === "recusado" ? "✔️" : "⚠️"}</div>
-      <p style="font-size:16px;line-height:1.7;color:#c5beb0;margin:16px 0 0;">${escH(msg)}</p>`), r.ok ? 200 : 502);
+      <p style="font-size:16px;line-height:1.7;color:#c5beb0;margin:16px 0 0;">${escH(msg)}</p>`, lang), r.ok ? 200 : 502);
   }
 
   const r = await rpc(env, "quote_por_token", { p_token: token });
   const q = r.ok ? primeira(r.dados) : null;
-  if (!q) return htmlResp(pagina('<h1 style="font-size:20px;margin:0;">This quote is no longer available.</h1>'), 404);
+  if (!q) return htmlResp(pagina(`<h1 style="font-size:20px;margin:0;">${T.sumiu}</h1>`, lang), 404);
   const itens = (Array.isArray(q.itens) ? q.itens : []).slice(0, 30).map((it) => {
     const nome = escH((it && (it.nome || it.name || it.descricao || it.description)) || "—");
     const c = it && (it.valor_cents ?? it.preco_cents ?? it.total_cents ?? it.cents);
-    const val = c == null || !Number.isFinite(Number(c)) ? "—" : dinheiro(Number(c), q.moeda);
+    const val = c == null || !Number.isFinite(Number(c)) ? "—" : dinheiro(Number(c), q.moeda, lang);
     return `<tr><td style="padding:9px 0;border-bottom:1px solid #2b2720;font-size:14px;color:#ede7dc;">${nome}</td>
       <td align="right" style="padding:9px 0;border-bottom:1px solid #2b2720;font-size:14px;font-weight:800;">${escH(val)}</td></tr>`;
   }).join("");
   const jaRespondeu = q.status !== "enviado";
   const base = `${url.origin}/api/orcamento?t=${encodeURIComponent(token)}`;
   return htmlResp(pagina(`
-    <div style="font-size:10.5px;letter-spacing:3px;text-transform:uppercase;color:#c2a878;font-weight:800;">Quote</div>
-    <h1 style="font-size:22px;font-weight:800;margin:8px 0 4px;">${escH(q.customer_name || "Your quote")}</h1>
+    <div style="font-size:10.5px;letter-spacing:3px;text-transform:uppercase;color:#c2a878;font-weight:800;">${T.quote}</div>
+    <h1 style="font-size:22px;font-weight:800;margin:8px 0 4px;">${escH(q.customer_name || T.seu)}</h1>
     ${q.resumo ? `<p style="font-size:14px;color:#c5beb0;margin:0 0 14px;line-height:1.6;">${escH(q.resumo)}</p>` : ""}
     <table width="100%" style="border-collapse:collapse;margin-top:8px;">${itens}
-      <tr><td style="padding-top:14px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#9c9485;font-weight:800;">Total</td>
-      <td align="right" style="padding-top:14px;font-size:24px;font-weight:900;color:#d6c29a;">${escH(dinheiro(q.total_cents, q.moeda))}</td></tr></table>
+      <tr><td style="padding-top:14px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#9c9485;font-weight:800;">${T.total}</td>
+      <td align="right" style="padding-top:14px;font-size:24px;font-weight:900;color:#d6c29a;">${escH(dinheiro(q.total_cents, q.moeda, lang))}</td></tr></table>
     ${jaRespondeu
-      ? `<p style="margin:20px 0 0;font-size:14px;color:#9c9485;">Already answered (${escH(q.status)}).</p>`
+      ? `<p style="margin:20px 0 0;font-size:14px;color:#9c9485;">${escH(T.respondido(T.st[q.status] || q.status))}</p>`
       : `<div style="margin-top:22px;display:flex;gap:10px;">
-          <a href="${escH(base)}&amp;r=aceitar" style="flex:1;text-align:center;padding:13px 18px;border-radius:999px;background:#3e9468;color:#fff;font-weight:800;text-decoration:none;font-size:14px;">Accept</a>
-          <a href="${escH(base)}&amp;r=recusar" style="flex:1;text-align:center;padding:13px 18px;border-radius:999px;border:1px solid #2b2720;color:#9c9485;font-weight:700;text-decoration:none;font-size:14px;">Decline</a>
+          <a href="${escH(base)}&amp;r=aceitar" style="flex:1;text-align:center;padding:13px 18px;border-radius:999px;background:#3e9468;color:#fff;font-weight:800;text-decoration:none;font-size:14px;">${T.aceitar}</a>
+          <a href="${escH(base)}&amp;r=recusar" style="flex:1;text-align:center;padding:13px 18px;border-radius:999px;border:1px solid #2b2720;color:#9c9485;font-weight:700;text-decoration:none;font-size:14px;">${T.recusar}</a>
         </div>`}
-    <p style="margin:18px 0 0;font-size:12px;color:#6a655b;line-height:1.6;">Prepared by the business's AI assistant and reviewed by a person when the amount calls for it.</p>`));
+    <p style="margin:18px 0 0;font-size:12px;color:#6a655b;line-height:1.6;">${T.rodape}</p>`, lang));
 }

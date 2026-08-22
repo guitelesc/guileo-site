@@ -155,6 +155,10 @@ async function provar(request, env) {
     resumo: {
       sms: sms.estado, whatsapp: whats.estado,
       falta_sms: sms.falta || sms.motivo || null,
+      // "não verificada" juntava DUAS realidades opostas — ainda em análise e reprovada de novo —
+      // e a ação de cada uma é o contrário da outra (esperar × recadastrar). O status cru separa.
+      campanha_sms: sms.servicos ? sms.servicos.flatMap((x) => x.campanha || []) : null,
+      motivo_campanha: sms.servicos ? sms.servicos.flatMap((x) => x.motivo_falha || []).slice(0, 2) : null,
       falta_whatsapp: whats.falta || whats.motivo || null,
     },
   });

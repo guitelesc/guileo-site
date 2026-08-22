@@ -81,7 +81,7 @@ begin
   values (v_tenant, nullif(trim(coalesce(p_customer_name,'')),''), nullif(trim(coalesce(p_customer_phone,'')),''),
           lower(nullif(trim(coalesce(p_customer_email,'')),'')), nullif(trim(coalesce(p_resumo,'')),''),
           coalesce(p_itens,'[]'::jsonb), p_total_cents, coalesce(p_origem,'ai'), v_status, v_motivo,
-          encode(gen_random_bytes(18), 'hex'))
+          replace(gen_random_uuid()::text,'-','') || replace(gen_random_uuid()::text,'-',''))
   returning * into v_row;
   return v_row;
 end $$;

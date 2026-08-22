@@ -23,11 +23,14 @@ const PLACEHOLDER = {
   messenger: "@yourhandle", x: "@yourhandle",
 };
 
-export default function LeadForm({ source = "website" }) {
+// `canal` existe para a página /sms: um revisor de campanha A2P abrindo um programa de SMS e
+// encontrando "WhatsApp" pré-selecionado lê incoerência entre o que declaramos e o que ele vê —
+// e incoerência é o que reprova em MESSAGE_FLOW. Padrão segue "whatsapp" em todo o resto.
+export default function LeadForm({ source = "website", canal = "whatsapp" }) {
   const { t, lang } = useLang();
   const L = t.more.lead;
   const [name, setName] = useState("");
-  const [ch, setCh] = useState("whatsapp");
+  const [ch, setCh] = useState(canal);
   const [contact, setContact] = useState("");
   const [biz, setBiz] = useState("");
   const [state, setState] = useState("idle"); // idle | sending | done

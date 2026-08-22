@@ -110,3 +110,57 @@ costuma reprovar amostra com variável não preenchida, porque não dá pra aval
 
 Ligar isto acende de uma vez: missed-call text-back, lembretes de agendamento, speed-to-lead
 por SMS, blitz de reativação e a demo de voz nos EUA.
+
+---
+
+## 🚨 2026-08-22 — a campanha de 04/08 REPROVOU TAMBÉM. Motivo novo.
+
+Descoberto ao construir `/api/canais-prova` (a plataforma não tinha janela nenhuma para SMS e
+WhatsApp — 18 dias de "em análise" que já era "reprovada"). Estado lido ao vivo na Twilio:
+
+| Etapa | Status real |
+|---|---|
+| Marca A2P | ✅ APPROVED |
+| Campanha | 🔴 **FAILED** |
+
+**Motivo oficial — erro `30909`, campo `MESSAGE_FLOW`:**
+> *"rejected due to issues verifying the Call to Action (CTA) provided for the campaign."*
+
+Ou seja: **não é mais opt-in incompleto.** O texto de consentimento está certo (conferido ao vivo
+em 22/08: inglês, desmarcado, obrigatório, com frequência e link de privacidade). O que falhou é
+que o revisor **não consegue verificar** o CTA: declaramos "os formulários em guileoai.com" e ele
+cai numa landing de ~15.000px e precisa caçar o opt-in.
+
+### O que foi corrigido para a próxima submissão (feito e no ar em 22/08)
+
+`https://guileoai.com/sms` — a página que existe só para isso. Ela já existia desde 07/08 (e a
+campanha nunca foi recadastrada apontando para ela), mas só **descrevia** o opt-in com uma caixa
+de amostra desabilitada. Agora tem o **formulário real** (o mesmo `<LeadForm/>` da home — uma
+fonte, dois lugares, sem segundo caminho de captura), com o canal já em **Phone** (achar
+"WhatsApp" pré-selecionado num programa de SMS é a incoerência que reprova) e o passo 1 do texto
+reescrito para bater com o que o revisor vê na tela.
+
+### Ao recadastrar — o campo que reprovou
+
+No **Message Flow / "How do end-users consent"**, mandar o revisor direto para a prova:
+
+```
+End users opt in at https://guileoai.com/sms — a page dedicated to this program that shows the
+program name, the message types, the frequency and cost disclosure, the STOP/HELP instructions,
+and the actual sign-up form. On that form the user enters their name and phone number and must
+tick a consent checkbox that is UNCHECKED by default and required to submit. The checkbox reads:
+"I agree to be contacted by Gui (Guileo) at the number provided, by call and text. Msg & data
+rates may apply. Msg frequency varies. Reply STOP to opt out, HELP for help. Privacy Policy."
+The same form and the same checkbox appear at https://guileoai.com. Consent text and timestamp
+are logged with the lead. Users also opt in verbally on a call by giving their number and
+agreeing to be contacted. We do not purchase or upload third-party lists.
+```
+
+Resto dos campos: sem mudança (tabela acima). Reusar a marca TRANSPOINT, já aprovada.
+
+### A janela, para isto nunca mais ficar 18 dias invisível
+
+- Público, sem segredo: `POST /api/cron-tick?semaforo=1` → `semaforo.mensagens` traz a cor dos
+  dois canais **e o motivo** (`campanha_sms`, `motivo_campanha`, `falta_whatsapp`).
+- Detalhe completo: `GET /api/canais-prova?token=…` (token do cron OU senha do /admin).
+- "Não medido" nunca sai verde — sai **cinza**, que é uma resposta diferente de "está bom".

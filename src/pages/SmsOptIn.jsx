@@ -1,5 +1,6 @@
 import { useState } from "react";
 import ConsentText from "../components/ConsentText.jsx";
+import LeadForm from "../components/LeadForm.jsx";
 import { useLang } from "../i18n.jsx";
 
 // /sms — A PÁGINA QUE O REVISOR DA OPERADORA ABRE.
@@ -29,7 +30,7 @@ export default function SmsOptIn() {
       intro: "Guileo only sends text messages to people who ask for them. This page shows exactly how that consent is collected.",
       stepsH: "How someone opts in",
       steps: [
-        "They visit guileoai.com and fill in the contact form with their name and phone number.",
+        "They fill in the form at the bottom of this page — or the same form on guileoai.com — with their name and phone number.",
         "They tick the consent box below. It is UNCHECKED by default — the form cannot be submitted without it.",
         "They press “Get started”. Only then is the number added, and only for the messages described here.",
       ],
@@ -56,7 +57,7 @@ export default function SmsOptIn() {
       intro: "A Guileo só envia mensagem para quem pediu. Esta página mostra exatamente como esse consentimento é coletado.",
       stepsH: "Como a pessoa dá o consentimento",
       steps: [
-        "Ela entra em guileoai.com e preenche o formulário de contato com nome e telefone.",
+        "Ela preenche o formulário no fim desta página — ou o mesmo formulário em guileoai.com — com nome e telefone.",
         "Ela marca a caixa de consentimento abaixo. Ela vem DESMARCADA — sem marcar, o formulário não envia.",
         "Ela clica em “Começar”. Só então o número passa a receber as mensagens descritas aqui.",
       ],
@@ -120,9 +121,15 @@ export default function SmsOptIn() {
         {t.freq.map((s, i) => <li key={i} className="text-[15px] leading-relaxed text-g-ink">{s}</li>)}
       </ul>
 
+      {/* O FORMULÁRIO DE VERDADE, NESTA PÁGINA (2026-08-22).
+          A versão anterior mandava o revisor para /#contact. Foi por isso que a campanha
+          reprovou de novo com 30909 (MESSAGE_FLOW): o revisor tem que VER e CONSEGUIR USAR o
+          opt-in na URL declarada — mandar para outro lugar é a mesma caçada que reprovou antes.
+          Não é um segundo caminho de captura: é o MESMO <LeadForm/> da home, só que aqui
+          também. Uma fonte, dois lugares — a duplicação que preocupava não acontece. */}
       <div className="mt-12 rounded-2xl border border-g-line bg-white/[0.04] p-6">
         <div className="text-[15px] font-bold text-g-word">{t.ctaH}</div>
-        <a href="/#contact" className="btn mt-4 inline-flex text-sm">{t.cta}</a>
+        <div className="mt-5"><LeadForm source="sms-optin" canal="phone" /></div>
       </div>
 
       <div className="mt-8 text-[13px] text-g-muted">
