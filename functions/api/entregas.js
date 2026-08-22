@@ -11,20 +11,24 @@
 import { json } from "../lib/guard.js";
 import { svcRpc } from "../lib/sb.js";
 
+// mesma porta do resto do /admin (blitz_stats), com as MESMAS constantes — usar
+// env.SUPABASE_* aqui devolvia 500 em vez de 401: a variável não existe com esse
+// nome e o fetch estourava antes de checar a senha. Portão que erra o código de
+// resposta é portão que ninguém consegue auditar.
+const SB = "https://ynihodbknhjirkdogxby.supabase.co";
+const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
     const b = await request.json().catch(() => ({}));
     const token = (b.token || "").toString();
     // gate: a senha do /admin (rotaciona; lida do banco, nunca escrita em doc)
-    const vr = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/_admin_ok`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", apikey: env.SUPABASE_SERVICE_ROLE, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE}` },
+    const vr = await fetch(`${SB}/rest/v1/rpc/blitz_stats`, {
+      method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
       body: JSON.stringify({ p_token: token, p_email: "" }),
     });
     if (!vr.ok) return json({ error: "unauthorized" }, 401);
-    const ok = await vr.json().catch(() => false);
-    if (ok !== true) return json({ error: "unauthorized" }, 401);
 
     const ING = env.INGEST_SECRET || "";
     if (!ING) return json({ ok: false, note: "INGEST_SECRET ausente" }, 503);
