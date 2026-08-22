@@ -76,3 +76,34 @@ The dedicated **Guileo AI account (2694627625500551) is STILL not connected** to
 - 3 variantes A/B/C em `COPY-GHT-XRAY.md`, compliance-checked. Correção feita: variante B abria com "Are you losing money after 5 PM?" → atributo pessoal (rejeição nº1 do Meta) → reescrita em 3ª pessoa como média de setor.
 - **Criativo**: `ads-creatives/ad-ght-xray-dental.mp4` (15s, 9:16) — renderizado no NOSSO motor de código, não em vídeo de IA. Decisão do Luis 2026-08-22 depois de rejeitar 2 direções de Seedance (v1 "datada": telefone com fio + subúrbio; v2 premium NYC: "nada a ver"). Regra nova: **vídeo de IA fica fora das peças da marca; a peça é tipografia + a conversa da Gui, que é o que tem a nossa cara.**
 - Sobra do Higgsfield em `ads-creatives/higgsfield/` (ambientes sem rosto) — só reaproveitar se um dia fizer sentido como B-roll; nunca como a peça inteira.
+
+---
+
+## Teardown 2026-08-22 — o que o mercado REALMENTE está escalando (238 anúncios ativos, dental US)
+
+Método: duplicação é o único sinal de performance visível de fora. Ninguém sobe 6-9 variantes quase idênticas de um anúncio que não converte.
+
+**Os que estão escalando (duplicação pesada):**
+| Anunciante | Variantes ativas | O que promete |
+|---|---|---|
+| TwoFlow AI | **9** | "20 Booked Consults — **Guaranteed**", "30 Booked Patients in 90 Days", "15 Booked GLP-1 Consults — Guaranteed" |
+| BiteBot.io | **8** | "DENTISTS: Get Your **FREE Smile Simulator**" (isca de ferramenta grátis) |
+| Wynner Marketing | **6** | "**100 Qualified Patient Calls** A Month" |
+| VoxHealth AI | **5** | "**Talk to the AI Receptionist — Right Now**", "Cut front-desk costs in half" |
+| Cream Digital | 8 headlines num só anúncio | curiosidade editorial: "The 9-Word Text That Ends Insurance Hold Music", "Doctors Lose 15.5 Hours A Week To 'This'" |
+
+**As 3 conclusões que mudam nossa campanha:**
+
+1. **O mercado não vende recurso, vende NÚMERO COM GARANTIA.** Ninguém que escala diz "atende 24/7". Dizem "20 consultas agendadas — garantido", "100 ligações qualificadas por mês", "30 pacientes em 90 dias". Nossa oferta atual ("Revenue X-Ray grátis") é diagnóstico — mais fraca que resultado garantido. **É aqui que perdemos, não no criativo.**
+
+2. **CORREÇÃO da varredura anterior:** eu havia registrado que a lane "a IA te liga agora" estava vazia. **Não está mais** — VoxHealth AI roda "Talk to the AI Receptionist — Right Now" com 5 variantes. Nosso diferencial de demo viva agora tem concorrente direto; continua forte, mas não é mais exclusivo.
+
+3. **Isca de ferramenta grátis funciona** (BiteBot, 8 variantes de "Free Smile Simulator"). Nosso X-Ray é exatamente esse formato — o problema é que "Revenue X-Ray" não diz o que a pessoa GANHA. "Free Smile Simulator" é concreto; "X-Ray" é abstrato.
+
+**Reestruturação proposta da oferta (precisa do aval do Luis — é compromisso comercial):**
+Não podemos prometer resultado de mercado que não controlamos ("30 pacientes garantidos") sem dado. Mas podemos prometer **nível de serviço, que é 100% nosso**:
+> **"Every call answered in 2 rings — days, nights, weekends. Or the month is free."**
+É o análogo honesto da garantia do concorrente, é verificável no nosso próprio painel, e nenhum deles promete isso.
+Somado à garantia real de 30 dias que já está em contrato.
+
+**Compliance:** promessa de nível de serviço próprio é aceitável (descreve o que o produto FAZ). Promessa de volume de pacientes seria "unrealistic outcome claim" sem substanciação — não usar.
