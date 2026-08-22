@@ -265,13 +265,56 @@ const CSS = `
 .np-navp:active{transform:scale(.98)}
 .np-navp:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 
+/* ══ THE HERO — cinematic scrim, slow push-in, fine grain ══════════════════
+   Their footage is dark and busy: the scrim is heavy on the LEFT (where the
+   type sits) and opens up on the RIGHT so the van, the crew and the skyline
+   stay readable. It lands on --navy at the bottom so the credential strip
+   reads as the last band of the hero, not a leftover stripe. */
+.np-hero{isolation:isolate;display:flex;flex-direction:column;justify-content:center}
+.np-hero>.np-w{width:100%;padding-top:clamp(26px,4vh,46px);padding-bottom:clamp(28px,4.4vh,50px)}
+@media(min-width:1024px){.np-hero{min-height:min(620px,64vh)}}
+.np-hero-media{overflow:hidden;transform:translateZ(0)}
+.np-hero-shot{filter:contrast(1.06) saturate(1.05) brightness(1.03)}
+.np-hero-zoom{animation:npPush 8s cubic-bezier(.16,.72,.28,1) both;will-change:transform}
+@keyframes npPush{from{transform:scale(1.085)}to{transform:scale(1)}}
+.np-hero-scrim{position:absolute;inset:0;z-index:1;pointer-events:none;background:
+ linear-gradient(97deg,rgba(4,11,20,.93) 0%,rgba(4,11,20,.84) 24%,rgba(4,11,20,.52) 52%,rgba(4,11,20,.17) 78%,rgba(4,11,20,.04) 100%),
+ linear-gradient(180deg,rgba(4,11,20,.74) 0%,rgba(4,11,20,.20) 26%,rgba(6,14,25,.44) 66%,#0c1a2e 100%),
+ radial-gradient(125% 95% at 52% 46%,transparent 40%,rgba(2,7,13,.5) 100%)}
+@media(max-width:767px){.np-hero-scrim{background:
+ linear-gradient(97deg,rgba(4,11,20,.92) 0%,rgba(4,11,20,.80) 48%,rgba(4,11,20,.5) 100%),
+ linear-gradient(180deg,rgba(4,11,20,.72) 0%,rgba(4,11,20,.34) 24%,rgba(6,14,25,.6) 64%,#0c1a2e 100%)}}
+/* fine film grain — keeps the compressed footage from reading flat */
+.np-hero-grain{position:absolute;inset:0;z-index:2;pointer-events:none;opacity:.42;mix-blend-mode:soft-light;
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='h'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.05' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23h)'/%3E%3C/svg%3E")}
+/* type — the headline dominates, fluid so it never overflows 390 or 1280 */
+.np-hero-copy{max-width:47rem}
+.np h1.np-h1{font-size:clamp(2.3rem,6.2vw,5.15rem);letter-spacing:-.042em;line-height:.94;
+ text-shadow:0 2px 26px rgba(3,9,17,.55)}
+.np-hero-sub{max-width:34rem;color:#c6d4e4;font-size:clamp(15.5px,1.3vw,17.5px);line-height:1.55}
+/* the promise line — this, not the paragraph, is what makes the phone worth pressing */
+.np-dispatch{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;
+ padding-left:15px;color:#fff;font-size:clamp(9.7px,.92vw,12px);letter-spacing:.155em;line-height:1.5}
+.np-dispatch::before{content:"";position:absolute;left:0;top:1px;bottom:1px;width:4px;border-radius:999px;
+ background:linear-gradient(180deg,#ff7466,var(--red));box-shadow:0 0 14px rgba(217,42,40,.8)}
+.np-dispatch b{font-weight:600;color:#fff}
+.np-dispatch span{color:#bdd0e3}
+/* the two CTAs — red phone dominant, ghost second, optically the same block */
+.np-cta{display:flex;flex-wrap:wrap;align-items:stretch;gap:12px}
+.np-cta>*{flex:0 0 auto}
+.np-btn-call{gap:14px;padding:15px 30px;font-size:clamp(23px,2.3vw,29px);font-variant-numeric:tabular-nums}
+.np-btn-ghost{padding:15px 26px;font-size:15px}
+@media(max-width:479px){.np-cta{flex-direction:column}.np-cta>*{width:100%}}
+
 /* ── CREDENTIAL STRIP — one tidy line at 1200px+, balanced rows below ── */
-.np-creds{border-top:1px solid rgba(255,255,255,.1)}
+.np-creds{border-top:0;box-shadow:inset 0 -1px 0 rgba(0,0,0,.5)}
+.np-creds .np-w{padding-top:11px;padding-bottom:11px}
 .np-credrow{display:grid;grid-template-columns:repeat(2,minmax(0,auto));justify-content:center;align-items:center;gap:14px 30px}
 .np-credrow>:first-child{grid-column:1/-1;justify-self:center}
 .np-cred{display:inline-flex;align-items:center;gap:9px;white-space:nowrap;color:#d3dfec;font-size:11px;letter-spacing:.17em}
 .np-cred svg{color:var(--cyan);flex:none}
-@media(max-width:479px){.np-credrow{grid-template-columns:minmax(0,auto)}}
+@media(max-width:479px){.np-credrow{grid-template-columns:repeat(2,minmax(0,auto));gap:12px 18px}
+ .np-cred{font-size:10px;letter-spacing:.12em;gap:7px}}
 @media(min-width:1200px){.np-credrow{grid-template-columns:repeat(5,auto);justify-content:space-between;gap:0 18px}.np-credrow>:first-child{grid-column:auto;justify-self:start}}
 
 /* THE DISPATCH TICKET — punched notches + perforation, generous radius */
@@ -361,7 +404,8 @@ textarea.np-field{border-radius:22px;resize:vertical}
 
 .np-err{border-color:rgba(217,42,40,.55)!important;box-shadow:0 0 0 3px rgba(217,42,40,.13)!important}
 @media(prefers-reduced-motion:reduce){.np-rev{opacity:1;transform:none;transition:none}
- .np-tk,.np-btn,.np-btn-o,.np-btn-n,.np-btn-q,.np-qarrow,.np-live,.np-slide,.np-dot,.np-callbar,.np-qi,.np-panel,.np-mg path,.np-mg text{transition:none;animation:none}
+ .np-tk,.np-btn,.np-btn-o,.np-btn-n,.np-btn-q,.np-qarrow,.np-live,.np-slide,.np-dot,.np-callbar,.np-qi,.np-panel,.np-mg path,.np-mg text,.np-hero-zoom{transition:none;animation:none}
+ .np-hero-zoom{transform:none}
  .np-btn::before,.np-btn-o::before,.np-btn-n::before{display:none}
  /* the quote edge stops travelling but stays a metal border */
  .np-btn-q::before{animation:none;background:linear-gradient(120deg,var(--cyan),#eaf8ff 45%,var(--cyan))}
@@ -602,24 +646,22 @@ export default function NonstopPlumbers() {
       </header>
 
       {/* ── HERO — THEIR video + dispatch pill + live NYC clock ── */}
-      <section id="top" className="relative isolate np-dark np-grain overflow-hidden">
-        <div className="absolute inset-0 z-0">
+      <section id="top" className="relative isolate np-dark np-hero overflow-hidden">
+        <div className="absolute inset-0 z-0 np-hero-media">
           {still ? (
             <img src={`${A}hero-poster.webp`} alt="Nonstop Plumbers technicians on a New York job site"
-              className="w-full h-full object-cover" width="1920" height="1080" decoding="async" />
+              className="w-full h-full object-cover np-hero-shot" width="1920" height="1080" decoding="async" />
           ) : (
-            <video className="w-full h-full object-cover" style={{ filter: "contrast(1.07) saturate(1.06) brightness(1.05)" }} autoPlay muted loop playsInline preload="metadata"
-              poster={`${A}hero-poster.webp`} aria-hidden="true">
+            <video className="w-full h-full object-cover np-hero-shot np-hero-zoom" autoPlay muted loop playsInline
+              preload="metadata" poster={`${A}hero-poster.webp`} aria-hidden="true">
               <source src={`${A}hero-web.mp4`} type="video/mp4" />
             </video>
           )}
         </div>
-        <div className="absolute inset-0 z-[1]" style={{
-          background:
-            "linear-gradient(180deg,rgba(6,14,25,.84) 0%,rgba(6,14,25,.55) 34%,rgba(6,14,25,.74) 74%,rgba(6,14,25,.96) 100%)," +
-            "linear-gradient(90deg,rgba(6,14,25,.82) 0%,rgba(6,14,25,.26) 62%,rgba(6,14,25,.10) 100%)",
-        }} />
-        <div className="relative z-10 np-w pt-10 pb-14 sm:pt-14 sm:pb-18 lg:pt-16 lg:pb-20">
+        <div className="np-hero-scrim" aria-hidden="true" />
+        <div className="np-hero-grain" aria-hidden="true" />
+
+        <div className="relative z-10 np-w">
           {/* announcement pill — real, dated, live */}
           <div className="np-rev flex flex-wrap items-center gap-2.5">
             <span className="np-pill np-lab" style={{ background: "var(--red)", borderColor: "transparent", color: "#fff" }}>
@@ -632,25 +674,25 @@ export default function NonstopPlumbers() {
             </span>
           </div>
 
-          <div className="max-w-3xl">
-            <h1 className="np-rev np-in-d1 mt-7 text-white text-[42px] sm:text-[56px] lg:text-[72px]">
+          <div className="np-hero-copy">
+            <h1 className="np-rev np-in-d1 np-h1 mt-6 text-white">
               When it can&rsquo;t wait,<br />we don&rsquo;t <span style={{ color: "var(--red)" }}>stop.</span>
             </h1>
-            <p className="np-rev np-in-d2 mt-5 text-[16px] sm:text-[17.5px] leading-relaxed max-w-xl" style={{ color: "#cdd8e6" }}>
-              Emergency plumbing, drain &amp; sewer, fire suppression and NYC compliance —
-              Master Plumber and Master Fire Suppression licensed, fully insured, across
-              Manhattan, Brooklyn, Queens, the Bronx and Staten Island. 24/7/365.
+            <p className="np-rev np-in-d2 np-hero-sub mt-4">
+              Master-licensed and fully insured: emergency plumbing, drain &amp; sewer, fire
+              suppression and NYC compliance — five boroughs, 24/7/365.
             </p>
 
-            <div className="np-rev np-in-d3 mt-8">
-              <div className="np-lab mb-4 max-w-md leading-relaxed" style={{ color: "#a9bbcf" }}>
-                Emergency dispatch — answered 24/7 by AI, dispatched in minutes
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <a href={TEL} className="np-btn dsp text-2xl sm:text-[28px] !py-5 !px-8">
+            <div className="np-rev np-in-d3 mt-6">
+              <p className="np-dispatch np-lab">
+                <b>Emergency dispatch</b>
+                <span>Answered 24/7 by AI, dispatched in minutes</span>
+              </p>
+              <div className="np-cta mt-4">
+                <a href={TEL} className="np-btn dsp np-btn-call">
                   <Ic d={I.phone} s={26} /> {PHONE}
                 </a>
-                <a href="#services" className="np-btn-o">
+                <a href="#services" className="np-btn-o np-btn-ghost">
                   See what we dispatch <Ic d={I.arrow} s={18} />
                 </a>
               </div>
@@ -661,7 +703,7 @@ export default function NonstopPlumbers() {
 
       {/* ── CREDENTIAL STATUS PILLS BAND ─────────────────────── */}
       <section className="np-creds np-band np-grain np-grain-s">
-        <div className="np-w py-5 relative z-[3]">
+        <div className="np-w py-4 relative z-[3]">
           <div className="np-credrow">
             <DeskOpen dark />
             {CREDS.map((c) => (
@@ -672,7 +714,7 @@ export default function NonstopPlumbers() {
       </section>
 
       {/* ── SERVICES — dispatch tickets ──────────────────────── */}
-      <section id="services" style={{ background: "var(--paper)", "--stage": "var(--paper)" }} className="py-20 sm:py-28">
+      <section id="services" style={{ background: "var(--paper)", "--stage": "var(--paper)" }} className="py-16 sm:py-[5.5rem]">
         <div className="np-w">
           <div className="np-rev max-w-2xl">
             <div className="np-lab flex items-center gap-3" style={{ color: "var(--red-d)" }}>
@@ -685,7 +727,7 @@ export default function NonstopPlumbers() {
             </p>
           </div>
 
-          <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {SERVICES.map((s, i) => (
               <article key={s.t} className={`np-tk np-rev ${["", "np-in-d1", "np-in-d2", "np-in-d3"][i % 4]} flex flex-col`}>
                 <div className="np-tk-head px-4 py-2.5 flex items-center justify-between gap-2">
@@ -716,7 +758,7 @@ export default function NonstopPlumbers() {
       </section>
 
       {/* ── WHO SHOWS UP — crew photo + borough dispatch board ── */}
-      <section id="crew" className="relative np-dark np-grain py-20 sm:py-28" style={{ "--stage": "#0d1a2b" }}>
+      <section id="crew" className="relative np-dark np-grain py-16 sm:py-[5.5rem]" style={{ "--stage": "#0d1a2b" }}>
         <div className="np-w relative z-[3]">
           {/* the headline spans the top so both columns below start on the same edge */}
           <div className="np-rev max-w-3xl">
@@ -734,7 +776,7 @@ export default function NonstopPlumbers() {
             </p>
           </div>
 
-          <div className="mt-11 grid gap-8 lg:gap-10 lg:grid-cols-[.86fr_1.14fr] lg:items-start">
+          <div className="mt-9 grid gap-7 lg:gap-9 lg:grid-cols-[.86fr_1.14fr] lg:items-start">
             {/* their own job photos, passing */}
             <div className="np-rev lg:sticky lg:top-[104px]">
               <CrewShow still={still} />
@@ -818,7 +860,7 @@ export default function NonstopPlumbers() {
       </section>
 
       {/* ── SERVICE PLANS — two tickets + boiler photo ───────── */}
-      <section id="plans" className="py-20 sm:py-28" style={{ background: "#fff", "--stage": "#fff" }}>
+      <section id="plans" className="py-16 sm:py-[5.5rem]" style={{ background: "#fff", "--stage": "#fff" }}>
         <div className="np-w">
           <div className="np-rev max-w-2xl">
             <div className="np-lab flex items-center gap-3" style={{ color: "var(--red-d)" }}>
@@ -831,7 +873,7 @@ export default function NonstopPlumbers() {
             </p>
           </div>
 
-          <div className="mt-12 grid gap-6 lg:grid-cols-[1fr_1fr_.86fr] items-stretch">
+          <div className="mt-9 grid gap-6 lg:grid-cols-[1fr_1fr_.86fr] items-stretch">
             {PLANS.map((p, i) => (
               <article key={p.t} className={`np-tk np-rev ${i ? "np-in-d1" : ""} flex flex-col`}>
                 <div className="np-tk-head px-6 py-3.5 flex items-center justify-between gap-2">
@@ -870,10 +912,10 @@ export default function NonstopPlumbers() {
       </section>
 
       {/* ── ABOUT — their real story + the three real offices ─── */}
-      <section id="about" aria-labelledby="about-h" className="py-20 sm:py-28"
+      <section id="about" aria-labelledby="about-h" className="py-16 sm:py-[5.5rem]"
         style={{ background: "var(--paper)", "--stage": "var(--paper)" }}>
         <div className="np-w">
-          <div className="grid gap-10 lg:grid-cols-[1.05fr_.95fr] lg:items-start">
+          <div className="grid gap-8 lg:grid-cols-[1.05fr_.95fr] lg:items-start">
             <div className="np-rev max-w-2xl">
               <div className="np-lab flex items-center gap-3" style={{ color: "var(--red-d)" }}>
                 <span className="np-stripe np-stripe-r w-10 shrink-0" style={{ height: 6 }} />
@@ -929,7 +971,7 @@ export default function NonstopPlumbers() {
           </div>
 
           {/* three real offices, one 24-hour response team */}
-          <h3 className="np-rev mt-16 text-[26px] sm:text-3xl" style={{ color: "var(--navy)" }}>
+          <h3 className="np-rev mt-12 text-[26px] sm:text-3xl" style={{ color: "var(--navy)" }}>
             Three NYC offices backing one 24-hour response team.
           </h3>
           <div className="mt-7 grid gap-6 md:grid-cols-3">
@@ -964,7 +1006,7 @@ export default function NonstopPlumbers() {
       </section>
 
       {/* ── FAQ — their real questions, accessible accordion ──── */}
-      <section id="faq" aria-labelledby="faq-h" className="py-20 sm:py-28" style={{ background: "#fff", "--stage": "#fff" }}>
+      <section id="faq" aria-labelledby="faq-h" className="py-16 sm:py-[5.5rem]" style={{ background: "#fff", "--stage": "#fff" }}>
         <div className="np-w">
           <div className="np-rev max-w-2xl">
             <div className="np-lab flex items-center gap-3" style={{ color: "var(--red-d)" }}>
@@ -978,7 +1020,7 @@ export default function NonstopPlumbers() {
             </p>
           </div>
 
-          <div className="np-faqs mt-11">
+          <div className="np-faqs mt-9">
             {FAQ.map((f, i) => (
               <details key={f.q} className={`np-tk np-fq np-rev ${["", "np-in-d1", "np-in-d2", "np-in-d3"][i % 4]}`}>
                 <summary className="np-q">
@@ -993,7 +1035,7 @@ export default function NonstopPlumbers() {
             ))}
           </div>
 
-          <div className="np-rev mt-10 flex flex-col sm:flex-row gap-3 sm:items-center">
+          <div className="np-rev mt-8 flex flex-col sm:flex-row gap-3 sm:items-center">
             <a href={TEL} className="np-btn"><Ic d={I.phone} s={20} /> Call 24/7 dispatch — {PHONE}</a>
             <span className="text-[15px]" style={{ color: "var(--mut)" }}>
               Not sure it&rsquo;s an emergency? Call anyway — dispatch triages it before you hang up.
@@ -1003,8 +1045,8 @@ export default function NonstopPlumbers() {
       </section>
 
       {/* ── CONTACT — dispatch line + work-order ticket form ──── */}
-      <section id="contact" className="py-20 sm:py-28" style={{ background: "var(--paper)", "--stage": "var(--paper)" }}>
-        <div className="np-w grid gap-8 lg:grid-cols-[.95fr_1.05fr] lg:items-start">
+      <section id="contact" className="py-16 sm:py-[5.5rem]" style={{ background: "var(--paper)", "--stage": "var(--paper)" }}>
+        <div className="np-w grid gap-7 lg:grid-cols-[.95fr_1.05fr] lg:items-start">
           <div className="np-rev">
             <div className="np-lab flex items-center gap-3" style={{ color: "var(--red-d)" }}>
               <span className="np-stripe np-stripe-r w-10 shrink-0" style={{ height: 6 }} />
@@ -1016,7 +1058,7 @@ export default function NonstopPlumbers() {
               the same line takes all of it.
             </p>
 
-            <div className="np-tk np-glass mt-8" style={{ background: "var(--navy)", borderColor: "rgba(255,255,255,.14)" }}>
+            <div className="np-tk np-glass mt-7" style={{ background: "var(--navy)", borderColor: "rgba(255,255,255,.14)" }}>
               <div className="np-stripe" />
               <div className="p-7">
                 <div className="np-lab" style={{ color: "#a9bbcf" }}>Emergency dispatch — answered 24/7 by AI, dispatched in minutes</div>
@@ -1117,7 +1159,7 @@ export default function NonstopPlumbers() {
       </section>
 
       {/* ── CAREERS — real: they hire licensed NYC plumbers ───── */}
-      <section id="careers" aria-labelledby="careers-h" className="relative np-dark np-grain py-16 sm:py-20"
+      <section id="careers" aria-labelledby="careers-h" className="relative np-dark np-grain py-[3.25rem] sm:py-16"
         style={{ "--stage": "#0d1a2b" }}>
         <div className="np-w relative z-[3] grid gap-9 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
           <div className="np-rev">
@@ -1166,7 +1208,7 @@ export default function NonstopPlumbers() {
       {/* ── FOOTER ───────────────────────────────────────────── */}
       <footer className="bg-white">
         <div className="np-stripe" />
-        <div className="np-w py-12 grid gap-10 md:grid-cols-[1.2fr_1fr_1fr]">
+        <div className="np-w py-10 grid gap-8 md:grid-cols-[1.2fr_1fr_1fr]">
           <div>
             <img src={`${A}logo-hi.webp`} alt="Nonstop Plumbers NY logo" className="h-12 w-auto" width="240" height="48" loading="lazy" decoding="async" />
             <p className="mt-5 text-[15px] max-w-sm" style={{ color: "var(--mut)" }}>
