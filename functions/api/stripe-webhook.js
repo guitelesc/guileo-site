@@ -294,6 +294,30 @@ export async function onRequestPost(context) {
         }
         return json({ received: true, setup: true });
       }
+      // WEBSITE UPGRADE + MÓDULOS done-for-you (2026-08-21) — outra linha de produto, NÃO é plano.
+      // Sem este portão o link de $500 do site cairia no fallback "1 crédito por dólar": o comprador
+      // ganharia 500 créditos E dispararia o AUTO-PROVISION lá embaixo — agente criado e número
+      // Twilio COMPRADO (dinheiro nosso) pra quem só comprou a reconstrução do site. Um módulo de
+      // $2.500/mês viraria 2.500 créditos todo mês. Aqui a venda é registrada como receita e a
+      // entrega é humana: cadastro, número e encaminhamento seguem a ROTA-FECHAMENTO.
+      const dfy = (meta.guileo || lineMeta.guileo || "").toString();
+      if (dfy === "website_upgrade" || dfy === "modulo") {
+        const rotulo = dfy === "website_upgrade" ? "🏗️ Website Upgrade" : `🔧 Módulo · ${(meta.slug || lineMeta.slug || "").toString() || "done-for-you"}`;
+        if (email && cents > 0) {
+          try {
+            await svcRpc(env, "ingest_client_event", {
+              p_secret: ING, p_email: email, p_type: "payment", p_channel: "stripe",
+              p_summary: `${rotulo} · $${(cents / 100).toFixed(2)}`,
+              p_amount: cents / 100,
+              p_payload: { session: obj.id || "", dfy, slug: (meta.slug || lineMeta.slug || "") || null, leg: (meta.leg || lineMeta.leg || "") || null },
+            });
+          } catch { /* best-effort — a Stripe reconcilia do lado dela */ }
+        }
+        // Sempre avisa: esta venda EXIGE trabalho humano (a entrega não nasce sozinha). Sem o aviso,
+        // um cliente pagaria e ficaria esperando um site que ninguém começou.
+        await emitFailure(env, "dfy_pago", email, `${rotulo} pago — $${(cents / 100).toFixed(2)}${email ? ` por ${email}` : " (sessão SEM e-mail)"}. Iniciar a ROTA-FECHAMENTO: cadastro → número → encaminhamento → entrega.`, { session: obj.id || "", dfy });
+        return json({ received: true, dfy });
+      }
       // Recognize the self-serve plans by their exact price (so the Payment Links can be
       // plain — no metadata needed): $149→500cr, $449→2,000cr, $999→6,000cr. Any other
       // amount falls back to 1 credit per USD. Metadata NEVER decides credits (see below);

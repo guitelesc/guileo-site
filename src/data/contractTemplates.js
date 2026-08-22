@@ -143,6 +143,24 @@ export const GUILEO_CLIENT = [
     payment: { pt: "US$ 1.997/mês. Garantia de 30 dias — devolução integral.", en: "$1,997/mo. 30-day money-back guarantee.", es: "US$ 1.997/mes. Garantía de 30 días — devolución total." },
   },
   {
+    // WEBSITE UPGRADE (2026-08-21) — a linha done-for-you: o site é a porta ($500 uma vez) e cada
+    // automação entra como mensalidade. NÃO é plano self-serve: aqui a entrega é nossa, por módulo.
+    code: "GUI-UPGRADE", icon: "🏗️",
+    name: { pt: "Website Upgrade — o site que atende sozinho", en: "Website Upgrade — the site that answers on its own", es: "Website Upgrade — el sitio que atiende solo" },
+    summary: {
+      pt: "Reconstruímos o site do seu negócio com a SUA identidade (vídeo, marca, fotos, serviços) e deixamos a IA instalada dentro dele. Cada automação entra separada, por mês, e você escolhe quais.",
+      en: "We rebuild your business website with YOUR identity (video, brand, photos, services) and install the AI inside it. Each automation is added separately, per month, and you pick which ones.",
+      es: "Reconstruimos el sitio de tu negocio con TU identidad (video, marca, fotos, servicios) e instalamos la IA dentro. Cada automatización entra por separado, por mes, y tú eliges cuáles.",
+    },
+    deliverables: {
+      pt: ["Site reconstruído com o seu vídeo, logo, fotos e serviços reais", "Tudo que já existe no seu site atual, reorganizado pra converter", "Presença online: dados estruturados, horário 24/7, FAQ e redes no Google", "Formulários e telefone ligados à IA", "Hospedagem e manutenção da página incluídas", "Módulos escolhidos (voz, orçamento, reviews, cockpit…) cobrados à parte, por mês"],
+      en: ["Site rebuilt with your real video, logo, photos and services", "Everything from your current site, reorganized to convert", "Online presence: structured data, 24/7 hours, FAQ and profiles for Google", "Forms and phone wired into the AI", "Hosting and page maintenance included", "Chosen modules (voice, quotes, reviews, cockpit…) billed separately, per month"],
+      es: ["Sitio reconstruido con tu video, logo, fotos y servicios reales", "Todo lo de tu sitio actual, reorganizado para convertir", "Presencia online: datos estructurados, horario 24/7, FAQ y perfiles para Google", "Formularios y teléfono conectados a la IA", "Hospedaje y mantenimiento incluidos", "Módulos elegidos (voz, cotización, reseñas, cockpit…) cobrados aparte, por mes"],
+    },
+    timeline: { pt: "Site no ar em até 7 dias. Os módulos ligam conforme cada um for contratado.", en: "Site live in up to 7 days. Modules switch on as each one is contracted.", es: "Sitio en vivo en hasta 7 días. Los módulos se activan según se contraten." },
+    payment: { pt: "US$ 500 uma única vez pelo site + a mensalidade dos módulos escolhidos. Garantia de 30 dias — devolução integral.", en: "$500 one-time for the site + the monthly fee of the chosen modules. 30-day money-back guarantee.", es: "US$ 500 única vez por el sitio + la mensualidad de los módulos elegidos. Garantía de 30 días — devolución total." },
+  },
+  {
     code: "GD-WEB", icon: "🌐",
     name: { pt: "Desenvolvimento de Website / Aplicação Web", en: "Website / Web Application Development", es: "Desarrollo de Sitio Web / Aplicación Web" },
     summary: {
