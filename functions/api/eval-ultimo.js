@@ -45,10 +45,14 @@ export async function onRequestPost({ request, env }) {
     run_id: maisNova.run_id,
     quando: maisNova.run_at,
     total_na_rodada: casos.length,
+    // O CONTEXTO DA RODADA, no topo: qual cérebro foi medido. Linha antiga vem null — que é a
+    // verdade ("não sei"), nunca um palpite preenchido pra parecer completo.
+    licoes_versao: maisNova.licoes_versao ?? null,
     reprovados: reprov.length,
     casos: (soReprovados ? reprov : casos).map((l) => ({
       id: l.case_id, agente: l.agent, passou: l.passed,
       score: l.score, seguranca: l.safety, adversarial: l.adversarial === true,
+      negocio: l.tenant || null, licoes: l.licoes_versao ?? null,
       juiz: (l.judge_notes || "").toString().slice(0, 700),
     })),
   });

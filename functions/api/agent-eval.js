@@ -49,6 +49,7 @@ import { ACTION_EVAL_CASES, ACTION_EVAL_SANDBOX_TENANT } from "../../src/data/ac
 import { VERTICAL_EVAL_CASES } from "../../src/data/verticalEvalCases.js";
 // guiBrain EXPORTA guiReply + askClaude (o runner da cadeia de modelos que o JUIZ usa).
 import { guiReply, askClaude, MODEL_CHAIN } from "../lib/guiBrain.js";
+import { VERSAO as LICOES_VERSAO } from "../lib/licoes.js";
 // Namespaces + feature-detect: essas duas brains são internas até o patch de 1 linha acima.
 import * as supportMod from "./support.js";
 import * as reviewMod from "./review-responder.js";
@@ -185,7 +186,7 @@ async function runAgent(env, c, tenant, tenantExplicito = false) {
     if (!r.ready && r.tenant && r.tenant.valid === false) {
       return { ok: false, note: `tenant-sandbox '${tenant}' não encontrado — passe ?tenant= ou carregue um tenant de teste; guiReply é read-only`, output: r.reply || "" };
     }
-    return { ok: true, output: (r.reply || "").toString(), meta: { ready: r.ready, escalate: r.escalate }, model: "gui-brain" };
+    return { ok: true, output: (r.reply || "").toString(), meta: { ready: r.ready, escalate: r.escalate }, model: "gui-brain", tenant: alvo };
   }
 
   if (c.agent === "support") {
@@ -588,6 +589,11 @@ export async function onRequest(context) {
         p_run_id: out.run_id, p_agent: c.agent, p_case_id: c.id, p_adversarial: !!c.adversarial,
         p_score: jd.overall, p_accuracy: jd.accuracy, p_tone: jd.tone, p_safety: jd.safety, p_resolution: jd.resolution,
         p_passed: passed, p_notes: jd.notes, p_model: run.model || "", p_judge_model: "model-chain",
+        // ⚠️ O QUE FOI MEDIDO, junto com a nota. Sem estes dois campos "reprovou 8/17" não diz de
+        // QUAL agente se fala: em 22/08 precisei de `git log -L` pra descobrir que a rodada de
+        // 18/08 media um cérebro sem as lições de 21 e 22 — e que os 13 verticais rodaram contra
+        // um sandbox de spa. Histórico que exige arqueologia não é histórico.
+        p_licoes_versao: LICOES_VERSAO, p_tenant: run.tenant || "",
       });
       if (rec) out.recorded++;
     }
