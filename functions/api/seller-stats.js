@@ -119,7 +119,7 @@ async function conversions(env, ref) {
 // such; NEVER present estimates as earned money. Returns null when there's nothing to compute.
 // `pct` is the seller's REAL roster rate (via commissionPct → seller_dashboard RPC), NOT a hardcoded
 // 20 — so Metas and Financeiro show ONE honest number.
-const PLAN_MID = 449; // Track-A plans are $149/$449/$999 — the estimate uses the middle one
+const PLAN_MID = 897; // Track-A plans are $149/$897/$1,997 — the estimate uses the middle one
 function commission(attributedLeads, conv, pct) {
   const p = Math.min(100, Math.max(0, Number(pct) || 10));
   if (conv) return { kind: "earned", pct: p, converted: conv.converted, paid: conv.paid, earned: Math.round(conv.paid * p) / 100 };

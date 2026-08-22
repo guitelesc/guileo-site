@@ -167,9 +167,9 @@ export const PRODUCTS = [
     category: { en: "Built once", pt: "Construído uma vez", es: "Construido una vez", hi: "एक बार निर्मित" },
     // 🚨 DOIS PRODUTOS COM O MESMO NOME (separado em 2026-08-20).
     // Isto dizia "Apps móveis · iOS + Android · entregues de ponta a ponta" e estava em
-    // `plans:["scale"]` — ou seja, INCLUSO no plano de $999/mês. E `services.js:571-588` cobra
+    // `plans:["scale"]` — ou seja, INCLUSO no plano de $1.997/mês. E `services.js:571-588` cobra
     // $6.000–$20.000 pelo mesmo entregável, à parte. Não existe nenhuma esteira mobile no repo
-    // (sem Xcode, Gradle, React Native ou Expo). Prometer App Store por $999/mês é reembolso certo.
+    // (sem Xcode, Gradle, React Native ou Expo). Prometer App Store por $1.997/mês é reembolso certo.
     // Mas NÃO é conflito de preço — são DUAS COISAS diferentes chamadas do mesmo jeito:
     //   • O que o plano entrega HOJE, automático: o PWA por tenant. `functions/site/[slug].js`
     //     reescreve o <head> com a identidade do negócio e pendura manifesto, service worker e
@@ -300,7 +300,7 @@ export const PRODUCTS = [
     // activationKey:"meta" — igual ao gêmeo `content` (:96). Os dois rodam no MESMO motor
     // (functions/api/social-publish.js), que sem META_APP_ID/SECRET + conta conectada devolve
     // { ready:false } e "nothing goes out". Estava `null` (= sempre ligado) e vendia publicação
-    // automática inclusa no plano de $449 sem nada poder sair. 2026-08-20.
+    // automática inclusa no plano de $897 sem nada poder sair. 2026-08-20.
     resultIsEstimate: false, credits: null, activationKey: "meta", plans: ["growth", "scale"],
   },
   {

@@ -7,7 +7,7 @@ import logo from "../assets/guileo-mark.png";
 // módulo: cada motor que a Guileo JÁ tem rodando vira um produto nomeado com
 // âncora de preço. O vendedor abre na reunião, marca os módulos que o negócio
 // precisa e gera a proposta na hora. Preços = âncora do trilho sob medida —
-// NÃO conflitam com os planos self-service ($149/$449/$999): aqui é outro
+// NÃO conflitam com os planos self-service ($149/$897/$1.997): aqui é outro
 // produto (construído, operado e otimizado pelo nosso time, por módulo).
 // ─────────────────────────────────────────────────────────────────────────────
 

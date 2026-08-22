@@ -3,7 +3,7 @@
 Mensagens prontas pra entregar os materiais a **colaboradores** e **clientes** — WhatsApp e e-mail.
 Links são "decks vivos": sempre atualizados, com a demo da Gui embutida. Preview no WhatsApp já sai com a imagem premium da marca.
 
-**Comissão do Growth Partner (modelo atual, RECORRENTE): 10% (Agendador) a 20% (Closer) da mensalidade de TODA a carteira, todo mês, enquanto o cliente pagar.** Ex: Personalized $449 → $90/mês por cliente no nível Closer.
+**Comissão do Growth Partner (modelo atual, RECORRENTE): 10% (Agendador) a 20% (Closer) da mensalidade de TODA a carteira, todo mês, enquanto o cliente pagar.** Ex: Personalized $897 → $90/mês por cliente no nível Closer.
 
 ---
 
@@ -51,7 +51,7 @@ Apresente direto da tela: 👉 **https://www.guileoai.com/pitch** (navega com as
 
 ### Montar o link da proposta (30 segundos)
 ```
-https://www.guileoai.com/proposta?to=NOME&biz=EMPRESA&pkg=PACOTE&price=449&setup=0&credits=2000&recover=3900&by=SEU_NOME&pay=LINK_STRIPE
+https://www.guileoai.com/proposta?to=NOME&biz=EMPRESA&pkg=PACOTE&price=897&setup=0&credits=2000&recover=3900&by=SEU_NOME&pay=LINK_STRIPE
 ```
 - `price` = mensalidade · `setup` = entrada · `recover` = quanto ele recupera/mês (do quiz/calculadora)
 - `pay` = Payment Link do Stripe **pra esse preço** (se vazio, o botão cai no WhatsApp)

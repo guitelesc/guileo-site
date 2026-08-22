@@ -4,7 +4,7 @@ Decisions (Luis, 2026-06-19): **USD pricing everywhere** · **WhatsApp-first in 
 
 ## What ALREADY serves both (no work)
 - **Language:** site, emails and the Gui agent are trilingual PT/EN/ES. NYC = EN + ES (huge bilingual/immigrant SMB market); Brazil = PT. The Gui detects and replies in the caller's language. ✅
-- **Pricing:** USD everywhere — $149/$449/$999/mo self-serve; done-for-you quoted per business (no list price). No currency localization needed. ✅
+- **Pricing:** USD everywhere — $149/$897/$1,997/mo self-serve; done-for-you quoted per business (no list price). No currency localization needed. ✅
 - **Sectors:** restaurants, clinics, salons, HVAC/plumbing, real estate, law, gyms, auto, bilingual services — all apply to both NYC and Brazil. ✅
 - **Voice agent:** Four Seasons concierge, multilingual, on Flash v2.5 — same for both. ✅
 

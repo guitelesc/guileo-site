@@ -931,11 +931,11 @@ export default function Admin() {
             {/* ── COMPANY OS — os 8 departamentos da própria Guileo, KPI real de cada um ── */}
             <CompanyOS token={token} />
 
-            {/* Stripe self-serve plans — create/sync the $149/$449/$999 Payment Links from the server (owner-only).
+            {/* Stripe self-serve plans — create/sync the $149/$897/$1.997 Payment Links from the server (owner-only).
                 You click it (so you authorize live payment setup); it returns the 3 links to wire into the site. */}
             <div className="rounded-2xl border border-g-line bg-white/[0.04] p-5 backdrop-blur-sm">
-              <div className="text-[12px] font-bold uppercase tracking-wider text-g-gold">💳 Planos no Stripe ($149 / $449 / $999)</div>
-              <p className="mt-1 text-[12.5px] text-g-muted">Cria/sincroniza os 3 links de pagamento (Essential $149 · Personalized $449 · Full Operation $999) com os créditos certos. Clique uma vez — depois me mande os 3 links pra eu fixar na /planos.</p>
+              <div className="text-[12px] font-bold uppercase tracking-wider text-g-gold">💳 Planos no Stripe ($149 / $897 / $1.997)</div>
+              <p className="mt-1 text-[12.5px] text-g-muted">Cria/sincroniza os 3 links de pagamento (Essential $149 · Personalized $897 · Full Operation $1.997) com os créditos certos. Clique uma vez — depois me mande os 3 links pra eu fixar na /planos.</p>
               <button type="button" disabled={planState === "busy"} onClick={async () => {
                 setPlanState("busy"); setPlanResult(null);
                 try {

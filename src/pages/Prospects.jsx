@@ -40,7 +40,7 @@ const D = {
     steps: [
       { n: "1", t: "Contato", c: "g-green", d: "Mande a mensagem acima por DM, WhatsApp ou ligue. Uma dor, um convite. Objetivo único: o sim pra demo ao vivo." },
       { n: "2", t: "Demo ao vivo · o Gui liga", c: "g-gold", d: "Pega o número dele, o Gui liga ao vivo em 60s. MESMA demo nos dois mercados — o Gui liga o lead. Siga o roteiro de 2 min passo a passo.", link: "/roteiro", linkT: "🎬 Abrir roteiro de demo" },
-      { n: "3", t: "Fechar", c: "g-green", d: "Logo após o ‘uau’, abra a proposta na frente dele com os números DELE — preço e quanto está perdendo. Preço em USD nos dois mercados.", link: "/proposta?to=Cliente&price=449&recover=2000", linkT: "📄 Abrir proposta" },
+      { n: "3", t: "Fechar", c: "g-green", d: "Logo após o ‘uau’, abra a proposta na frente dele com os números DELE — preço e quanto está perdendo. Preço em USD nos dois mercados.", link: "/proposta?to=Cliente&price=897&recover=2000", linkT: "📄 Abrir proposta" },
     ],
     tip: "💡 Regra de ouro: nunca venda no chat. Venda o ‘posso te mostrar? a IA te liga em 60s’. A demo fecha, não o texto.",
     toolsH: "🧰 Abrir agora",
@@ -75,7 +75,7 @@ const D = {
     steps: [
       { n: "1", t: "Contact", c: "g-green", d: "Send the message above by DM, WhatsApp or call. One pain, one invite. Single goal: the yes to the live demo." },
       { n: "2", t: "Live demo · Gui calls", c: "g-gold", d: "Grab their number, Gui calls them live in 60s. SAME demo in both markets — Gui calls the lead. Run the 2-min script step by step.", link: "/roteiro", linkT: "🎬 Open demo script" },
-      { n: "3", t: "Close", c: "g-green", d: "Right after the ‘wow’, open the proposal in front of them with THEIR numbers — price and what they're losing. Pricing is USD in both markets.", link: "/proposta?to=Client&price=449&recover=2000", linkT: "📄 Open proposal" },
+      { n: "3", t: "Close", c: "g-green", d: "Right after the ‘wow’, open the proposal in front of them with THEIR numbers — price and what they're losing. Pricing is USD in both markets.", link: "/proposta?to=Client&price=897&recover=2000", linkT: "📄 Open proposal" },
     ],
     tip: "💡 Golden rule: never sell in the chat. Sell the ‘can I show you? the AI calls you in 60s’. The demo closes, not the text.",
     toolsH: "🧰 Open now",
@@ -110,7 +110,7 @@ const D = {
     steps: [
       { n: "1", t: "Contacto", c: "g-green", d: "Envía el mensaje de arriba por DM, WhatsApp o llama. Un dolor, una invitación. Meta única: el sí a la demo en vivo." },
       { n: "2", t: "Demo en vivo · Gui llama", c: "g-gold", d: "Toma su número, Gui le llama en vivo en 60s. MISMA demo en ambos mercados — Gui llama al lead. Sigue el guion de 2 min paso a paso.", link: "/roteiro", linkT: "🎬 Abrir guion de demo" },
-      { n: "3", t: "Cerrar", c: "g-green", d: "Justo después del ‘guau’, abre la propuesta frente a él con SUS números — precio y lo que está perdiendo. El precio es en USD en ambos mercados.", link: "/proposta?to=Cliente&price=449&recover=2000", linkT: "📄 Abrir propuesta" },
+      { n: "3", t: "Cerrar", c: "g-green", d: "Justo después del ‘guau’, abre la propuesta frente a él con SUS números — precio y lo que está perdiendo. El precio es en USD en ambos mercados.", link: "/proposta?to=Cliente&price=897&recover=2000", linkT: "📄 Abrir propuesta" },
     ],
     tip: "💡 Regla de oro: nunca vendas en el chat. Vende el ‘¿te lo muestro? la IA te llama en 60s’. La demo cierra, no el texto.",
     toolsH: "🧰 Abrir ahora",

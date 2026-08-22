@@ -68,7 +68,7 @@ export const CATS = [
           "es": "Tu lista de precios y una cuenta de Stripe o Mercado Pago para cobrar."
         },
         "br": "R$2.499/mês",
-        "us": "$449/mo",
+        "us": "$897/mo",
         "type": "ongoing"
       },
       {
@@ -88,7 +88,7 @@ export const CATS = [
           "es": "Tu lista de clientes actual (cualquier hoja de cálculo sirve) y las herramientas que usas hoy."
         },
         "br": "R$5.499/mês",
-        "us": "$999/mo",
+        "us": "$1,997/mo",
         "type": "ongoing"
       },
       {
@@ -1100,7 +1100,7 @@ export const CATS = [
           "es": "Acceso de administrador a tu Perfil de Empresa de Google y sitio web, tus servicios principales y las zonas o ciudades que quieres ganar."
         },
         "br": "R$1.490/mês",
-        "us": "$449/mo",
+        "us": "$897/mo",
         "type": "ongoing"
       },
       {

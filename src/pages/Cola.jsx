@@ -87,7 +87,7 @@ export default function Cola() {
             <a href="/roteiro" className="rounded-xl border border-g-gold/30 bg-g-gold/[0.08] px-3 py-2.5 text-center text-[12px] font-black text-g-gold">🎬 Roteiro</a>
             <a href="/prospects" className="rounded-xl border border-g-green/30 bg-g-green/[0.08] px-3 py-2.5 text-center text-[12px] font-black text-g-green">🎯 Prospects</a>
             <a href="/pitch" className="rounded-xl border border-g-line bg-white/[0.04] px-3 py-2.5 text-center text-[12px] font-bold text-g-word">🎤 Pitch</a>
-            <a href="/proposta?to=Cliente&price=449&recover=3900" className="rounded-xl border border-g-line bg-white/[0.04] px-3 py-2.5 text-center text-[12px] font-bold text-g-word">📄 Proposta</a>
+            <a href="/proposta?to=Cliente&price=897&recover=3900" className="rounded-xl border border-g-line bg-white/[0.04] px-3 py-2.5 text-center text-[12px] font-bold text-g-word">📄 Proposta</a>
             <a href="/academia" className="rounded-xl border border-g-line bg-white/[0.04] px-3 py-2.5 text-center text-[12px] font-bold text-g-word">🎓 Academy</a>
             <a href="/vendedor" className="rounded-xl border border-g-green/30 bg-g-green/[0.08] px-3 py-2.5 text-center text-[12px] font-black text-g-green">🧰 {lang === "pt" ? "Hub" : "Hub"}</a>
             <a href={waLink("Luis, socorro rápido numa reunião:")} target="_blank" rel="noopener" className="rounded-xl border border-g-green/30 bg-g-green/[0.08] px-3 py-2.5 text-center text-[12px] font-black text-g-green">🆘 Luis</a>

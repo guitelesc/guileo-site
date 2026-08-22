@@ -166,7 +166,7 @@ export default function Roteiro() {
 
         <div>
           <div className="mb-2 text-[11px] font-black uppercase tracking-wider text-g-muted">{t.toolsH}</div>
-          <a href="/proposta?to=Cliente&price=449&recover=2000" className="mb-2 block rounded-xl border border-g-green/30 bg-g-green/[0.08] px-3 py-3 text-center text-[13px] font-black text-g-green">{t.tProp} · {t.propLabel}</a>
+          <a href="/proposta?to=Cliente&price=897&recover=2000" className="mb-2 block rounded-xl border border-g-green/30 bg-g-green/[0.08] px-3 py-3 text-center text-[13px] font-black text-g-green">{t.tProp} · {t.propLabel}</a>
           <div className="grid grid-cols-3 gap-2">
             <a href="/portal" className="rounded-xl border border-g-line bg-white/[0.04] px-3 py-2.5 text-center text-[12px] font-bold text-g-word">{t.tPortal}</a>
             <a href="/cola" className="rounded-xl border border-g-line bg-white/[0.04] px-3 py-2.5 text-center text-[12px] font-bold text-g-word">{t.tCola}</a>

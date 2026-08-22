@@ -124,7 +124,7 @@ export const GUILEO_CLIENT = [
       es: ["Todo lo de Essential", "Chat IA en tu sitio + WhatsApp + redes", "Cierra y COBRA en la llamada (link de pago)", "Campañas automáticas: cumpleaños, reactivación, fechas", "Radar de ausencias + confirmaciones inteligentes", "3.000 créditos/mes + soporte prioritario"],
     },
     timeline: { pt: "No ar em até 7 dias.", en: "Live in up to 7 days.", es: "En vivo en hasta 7 días." },
-    payment: { pt: "US$ 449/mês. Garantia de 30 dias — devolução integral.", en: "$449/mo. 30-day money-back guarantee.", es: "US$ 449/mes. Garantía de 30 días — devolución total." },
+    payment: { pt: "US$ 897/mês. Garantia de 30 dias — devolução integral.", en: "$897/mo. 30-day money-back guarantee.", es: "US$ 897/mes. Garantía de 30 días — devolución total." },
   },
   {
     code: "GUI-FULL", icon: "🏆",
@@ -140,7 +140,7 @@ export const GUILEO_CLIENT = [
       es: ["Todo lo de Personalized", "Campañas y cupones con TU marca", "Paquetes, membresías y gift cards listos para vender", "Reporte semanal de valor generado (ROI)", "Implementación profunda multi-sucursal", "9.000 créditos/mes + equipo dedicado"],
     },
     timeline: { pt: "No ar em até 7 dias.", en: "Live in up to 7 days.", es: "En vivo en hasta 7 días." },
-    payment: { pt: "US$ 999/mês. Garantia de 30 dias — devolução integral.", en: "$999/mo. 30-day money-back guarantee.", es: "US$ 999/mes. Garantía de 30 días — devolución total." },
+    payment: { pt: "US$ 1.997/mês. Garantia de 30 dias — devolução integral.", en: "$1,997/mo. 30-day money-back guarantee.", es: "US$ 1.997/mes. Garantía de 30 días — devolución total." },
   },
   {
     code: "GD-WEB", icon: "🌐",
