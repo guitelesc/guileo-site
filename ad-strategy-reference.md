@@ -53,3 +53,20 @@ The niche is crowded and YOUNG: dozens of small pages, most ads created within d
 
 ## Changelog
 - 2026-08-21 — File created (pre-launch). Ad Library sweep done; GHT-XRay-US staged; waiting on Guileo account connection.
+
+---
+
+## UPDATE 2026-06-09 — accounts connected, but no Guileo Page (build blocker)
+**Connected & MCP-enabled ad accounts (both ACTIVE, USD, payment method on file, min $1/day):**
+- **Luis Teles** — `1891468104495846` (no owning business)
+- **Point Brazil** — `4008138549436420` (business: Dr. Luis Teles)
+The dedicated **Guileo AI account (2694627625500551) is STILL not connected** to the MCP connector.
+
+**BUILD BLOCKER — no Guileo Facebook Page.** Usable Pages: Point Brazil Restaurant, Chigo Shop, Chigo Turismo, MED MUNDO BR, ART PARA TODOS — none are Guileo. An ad renders under its Page's name/avatar, so a Guileo ad from "MED MUNDO BR" is off-brand. **Luis must create a "Guileo" Facebook Page** (his Meta login; agent can't create Pages) before any Guileo campaign is built. Ad account can be "Luis Teles"; the Page is the missing piece.
+
+**Fresh Ad Library sweep (US, "AI receptionist missed calls", 664 active ads):** landscape unchanged & still young. NEW signal: **Wynner Marketing Firm** running 10+ identical *"100 Qualified Patient Calls A Month"* variants (medical) — heavy duplication = working; quantified-patient-volume is a proven angle for the clinic vertical (Luis's médicos focus). Also live: Frontdeskbots "30 Appointments, Guaranteed", Ring Pilot AI "Book Your Free Demo", Trexinet "$59/mo + 5¢/min", vertical splits (RiverX contractors, HappyAssist plumbing, HVAC Inbox). Openings still open: live-demo (blocked on A2P), collects-on-call, done-for-you high-ticket, multilingual PT/ES.
+
+**Ready-to-build (PAUSED) once a Guileo Page exists:** GHT-XRay flight → 4 vertical ad sets (clinic/dental/hvac/realestate) → destination guileoai.com/quiz (or /grader), Traffic objective for the first test (upgrade to Leads once a Pixel + on-site lead event is installed), $20–30/day test. Copy ready in MARKETING-LAUNCH.md + CREATIVE-PACK.md (EN/PT/ES).
+
+## Changelog
+- 2026-06-09 — Accounts re-checked: Luis Teles + Point Brazil connected & paid; Guileo AI acct still unconnected; **no Guileo FB Page = build blocker**. Fresh 664-ad sweep; Wynner "100 qualified patient calls" (10× dup) noted as working medical angle. Campaign staged, pending Page.

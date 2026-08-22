@@ -903,7 +903,12 @@ preço e trabalho). Se veio pelo modo dono (`?dono=1`), a seleção chega pronta
 ### 1. Cobrar (Luis + Claude) — 10 min
 - **$500 do site (uma vez)** + **a mensalidade dos módulos escolhidos**. Dois preços na Stripe:
   Payment Link avulso pro setup + assinatura mensal recorrente.
-- Conta live: **Med Mundo Brasil** `acct_1Tbm3wE0fF3QBRot` (a mesma da `STRIPE_SECRET_KEY`).
+- Conta live: **GUILEO AI** `acct_1Tbm3wE0fF3QBRot` (USD).
+- Tabela de planos self-serve (reajuste 21/08): Essential **$149** · Personalized **$897** · Full Operation **$1.997**.
+  Links antigos ($449/$999) seguem ativos SÓ pros assinantes atuais — nunca mandar pra cliente novo.
+- ⚠️ **A MCP da Stripe não escreve em live** (classificador bloqueia ação de dinheiro real): criar
+  produto/preço/link exige o Luis liberar a permissão ou fazer no dashboard. Estrutura já PROVADA em
+  modo teste (produto → preço → payment link).
 - **Claude cria os produtos/preços/links** (Stripe MCP) e manda pro Luis conferir ANTES de enviar ao cliente.
 - ⚠️ Cobrar antes de construir: o setup existe porque o trabalho existe. Sem pagamento, nada de número.
 **Prova:** pagamento confirmado no Stripe + `checkout.session.completed` no webhook.
