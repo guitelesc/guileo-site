@@ -680,32 +680,34 @@ export default function NonstopPlumbers() {
               The board
             </div>
             <h2 className="mt-5 text-4xl sm:text-5xl">Every ticket we take.</h2>
-            <p className="mt-4 text-[17.5px] leading-relaxed" style={{ color: "var(--mut)" }}>
-              One licensed crew takes the emergency at 3 AM and the compliance inspection on the calendar.
+            <p className="mt-4 text-[17.5px]" style={{ color: "var(--mut)" }}>
+              One licensed crew — the 3 AM emergency and the scheduled inspection.
             </p>
           </div>
 
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {SERVICES.map((s, i) => (
               <article key={s.t} className={`np-tk np-rev ${["", "np-in-d1", "np-in-d2", "np-in-d3"][i % 4]} flex flex-col`}>
-                <div className="np-tk-head px-5 py-3 flex items-center justify-between gap-2">
+                <div className="np-tk-head px-4 py-2.5 flex items-center justify-between gap-2">
                   <span className="mono text-[11px]" style={{ color: "var(--mut)", letterSpacing: ".08em" }}>{s.wo}</span>
                   <span className="np-lab text-[10px] px-2.5 py-1 rounded-full" style={tagStyle(s.tag)}>{s.tag}</span>
                 </div>
-                <div className="p-6 flex-1 flex flex-col">
-                  <span className="inline-flex items-center justify-center w-11 h-11 rounded-full"
-                    style={{ background: "var(--navy)", color: "var(--cyan)" }}><Ic d={s.ic} s={21} /></span>
-                  <h3 className="mt-5 text-[21px]" style={{ color: "var(--navy)" }}>{s.t}</h3>
-                  <div className="np-notch np-notch-l" style={{ top: "calc(50% + 18px)" }} />
-                  <div className="np-notch np-notch-r" style={{ top: "calc(50% + 18px)" }} />
-                  <ul className="np-perf mt-5 pt-5 space-y-2.5 text-[15px]" style={{ color: "var(--mut)" }}>
-                    {s.d.map((x) => (
-                      <li key={x} className="flex gap-2.5">
-                        <span className="mt-[8px] w-1.5 h-1.5 rounded-full shrink-0" style={{ background: "var(--dot)" }} />
+                <div className="px-4 pt-4 pb-3.5 flex items-center gap-3">
+                  <span className="inline-flex items-center justify-center w-9 h-9 rounded-full shrink-0"
+                    style={{ background: "var(--navy)", color: "var(--cyan)" }}><Ic d={s.ic} s={18} /></span>
+                  <h3 className="text-[16.5px] leading-[1.14]" style={{ color: "var(--navy)" }}>{s.t}</h3>
+                </div>
+                <div className="np-perf relative px-4 py-3.5 flex-1">
+                  <div className="np-notch np-notch-l" style={{ top: -12 }} />
+                  <div className="np-notch np-notch-r" style={{ top: -12 }} />
+                  <div className="text-[13.5px]" style={{ color: "var(--mut)", lineHeight: 1.5 }}>
+                    {s.d.map((x, j) => (
+                      <span key={x}>
+                        {j > 0 && <span aria-hidden="true" style={{ color: "var(--cyan-d)", padding: "0 6px" }}>·</span>}
                         {x}
-                      </li>
+                      </span>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               </article>
             ))}
