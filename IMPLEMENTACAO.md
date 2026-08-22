@@ -966,3 +966,16 @@ não colar, o card mostra a frase honesta pedindo isso — não finge lista vazi
 **Prova:** `select public.dfy_upsert_from_payment('<INGEST>','teste@x.com','website_upgrade',null,'BUILD',50000,'sess_teste');`
 duas vezes → 1 linha só · `dfy_step_set` com passo inexistente → erro · sem token o `/api/entregas` → 401 (provado).
 **Arquivos:** `db/dfy_entregas.sql` · `functions/api/entregas.js` · `functions/api/stripe-webhook.js` · `src/pages/Admin.jsx`.
+
+## ROTA-ORCAMENTO · o Motor de Orçamento (módulo de $1.800/mês)
+**O que é:** a IA monta o orçamento e o sistema decide o destino — **híbrido por valor**: até o teto do
+tenant sai sozinho; acima disso entra na FILA e só sai depois do escritório aprovar. Vendido assim no
+/menu e no e-mail do Website Upgrade; este é o motor que faz a promessa existir.
+**Não confundir** com `photo_quotes` (o cliente manda foto e o dono precifica na mão) — aqui a IA monta.
+**Ligar num cliente:** `quote_config('<INGEST>', '<tenant>', <teto em centavos>, true|false)` — sem linha,
+o padrão é **US$ 800** e auto-envio ligado (o silêncio nunca vira "manda tudo sozinho").
+**Canal:** hoje **e-mail** (SMS depende do A2P aprovado; WhatsApp depende da publicação do app na Meta).
+O código já está escrito pra ganhar sms/whatsapp numa linha quando destravarem.
+**⚠️ Depende do SQL:** cole `db/quote_engine.sql` no SQL Editor (ynihodbknhjirkdogxby).
+**Prova:** os comandos no fim do .sql — um orçamento abaixo do teto nasce `aprovado`, um acima nasce
+`aguardando_aprovacao`, e `quote_decidir` com o tenant ERRADO tem que dar erro.
