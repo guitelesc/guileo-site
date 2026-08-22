@@ -68,6 +68,76 @@ const LOGIN_TX = {
   hi: { titulo: "Guileo Admin", sub: "निजी कमांड सेंटर।", ph: "पासवर्ड", entrar: "प्रवेश →", voltar: "← साइट पर वापस", vazio: "पासवर्ड डालें" },
 };
 
+
+// ── ENTREGAS DONE-FOR-YOU ───────────────────────────────────────────────────
+// A venda do Website Upgrade é a única cuja entrega é HUMANA: site, número,
+// encaminhamento e módulos são trabalho nosso. O webhook cria a entrega no
+// pagamento; aqui o Luis vê o que falta e marca. Sem esta lista, a venda vira
+// e-mail perdido e o cliente espera um site que ninguém começou.
+const PASSO_ROTULO = {
+  contrato: "Contrato assinado", cadastro: "Cliente cadastrado", numero: "Número mapeado",
+  encaminhamento: "Telefone encaminhado", site_no_ar: "Site no ar", painel: "Painel entregue",
+  configurado: "Módulo configurado", provado: "Provado com o cliente",
+};
+function Entregas({ token }) {
+  const [lista, setLista] = useState(null);
+  const [nota, setNota] = useState("");
+  const [carregando, setCarregando] = useState(false);
+  const carregar = async () => {
+    setCarregando(true); setNota("");
+    try {
+      const r = await fetch("/api/entregas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) });
+      const d = await r.json().catch(() => ({}));
+      if (d.ok) setLista(d.entregas || []); else { setLista([]); setNota(d.note || d.error || "não deu"); }
+    } catch { setNota("falha de rede"); }
+    setCarregando(false);
+  };
+  const marcar = async (id, passo, feito) => {
+    const r = await fetch("/api/entregas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, acao: "passo", id, passo, feito }) });
+    const d = await r.json().catch(() => ({}));
+    if (d.ok) carregar(); else setNota(d.note || d.error || "não deu");
+  };
+  return (
+    <div className="rounded-2xl border border-g-line bg-white/[0.04] p-5 backdrop-blur-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[12px] font-bold uppercase tracking-wider text-g-gold">🏗️ Entregas (Website Upgrade + módulos)</div>
+          <p className="mt-1 text-[12.5px] text-g-muted">Cada venda done-for-you vira uma lista. Fecha sozinha quando todo passo estiver marcado.</p>
+        </div>
+        <button onClick={carregar} disabled={carregando} className="shrink-0 rounded-full border border-g-gold/40 px-4 py-2 text-[12.5px] font-bold text-g-gold disabled:opacity-50">
+          {carregando ? "…" : "Atualizar"}
+        </button>
+      </div>
+      {nota && <p className="mt-3 rounded-xl border border-g-gold/25 bg-g-gold/[0.06] px-3 py-2 text-[12.5px] text-g-ink">{nota}</p>}
+      {lista && lista.length === 0 && !nota && <p className="mt-3 text-[12.5px] text-g-muted">Nenhuma entrega ainda — a primeira nasce no pagamento.</p>}
+      <div className="mt-3 space-y-3">
+        {(lista || []).map((e) => (
+          <div key={e.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[13px] font-black text-g-word">{e.client_email}</span>
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10.5px] font-bold text-g-ink">
+                {e.produto === "website_upgrade" ? "Website Upgrade" : (e.slug || "módulo")}
+              </span>
+              <span className="text-[11.5px] text-g-muted">${((e.amount_cents || 0) / 100).toFixed(2)}</span>
+              <span className={`ml-auto rounded-full px-2 py-0.5 text-[10.5px] font-bold ${e.status === "entregue" ? "bg-g-green/20 text-g-green" : "bg-g-gold/15 text-g-gold"}`}>
+                {e.status === "entregue" ? "entregue" : "aberta"}
+              </span>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {Object.entries(e.steps || {}).map(([passo, feito]) => (
+                <button key={passo} onClick={() => marcar(e.id, passo, !feito)}
+                  className={`rounded-full border px-2.5 py-1 text-[11.5px] transition ${feito ? "border-g-green/50 bg-g-green/15 text-g-green" : "border-white/15 text-g-muted hover:border-white/30"}`}>
+                  {feito ? "✓ " : "○ "}{PASSO_ROTULO[passo] || passo}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Admin() {
   // Reenvio do e-mail de acesso: o cliente perdeu/nunca recebeu o e-mail de nascimento.
   // A chave NAO passa por aqui - o servidor le do banco e escreve direto no corpo do e-mail.
@@ -930,6 +1000,9 @@ export default function Admin() {
 
             {/* ── COMPANY OS — os 8 departamentos da própria Guileo, KPI real de cada um ── */}
             <CompanyOS token={token} />
+
+            {/* ── ENTREGAS done-for-you: o que foi vendido e ainda não foi entregue ── */}
+            <Entregas token={token} />
 
             {/* Stripe self-serve plans — create/sync the $149/$897/$1.997 Payment Links from the server (owner-only).
                 You click it (so you authorize live payment setup); it returns the 3 links to wire into the site. */}

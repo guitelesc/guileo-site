@@ -313,6 +313,18 @@ export async function onRequestPost(context) {
             });
           } catch { /* best-effort — a Stripe reconcilia do lado dela */ }
         }
+        // A ENTREGA NASCE AQUI (db/dfy_entregas.sql): a venda vira uma lista viva com os passos
+        // da ROTA-FECHAMENTO. Idempotente por stripe_ref — reentrega de evento não duplica.
+        if (email) {
+          try {
+            await svcRpc(env, "dfy_upsert_from_payment", {
+              p_secret: ING, p_email: email, p_produto: dfy,
+              p_slug: (meta.slug || lineMeta.slug || "") || null,
+              p_leg: (meta.leg || lineMeta.leg || "") || null,
+              p_amount_cents: cents, p_ref: obj.id || null,
+            });
+          } catch { /* a RPC pode ainda não existir (SQL não colado) — o aviso abaixo cobre */ }
+        }
         // Sempre avisa: esta venda EXIGE trabalho humano (a entrega não nasce sozinha). Sem o aviso,
         // um cliente pagaria e ficaria esperando um site que ninguém começou.
         await emitFailure(env, "dfy_pago", email, `${rotulo} pago — $${(cents / 100).toFixed(2)}${email ? ` por ${email}` : " (sessão SEM e-mail)"}. Iniciar a ROTA-FECHAMENTO: cadastro → número → encaminhamento → entrega.`, { session: obj.id || "", dfy });
