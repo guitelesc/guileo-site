@@ -63,6 +63,31 @@ const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 // Override por ?tenant=, env.EVAL_SANDBOX_TENANT ou env.EVAL_TENANT.
 const EVAL_TENANT_DEFAULT = "eval-sandbox@guileoai.com";
 const EVAL_BUSINESS = "Guileo Eval Sandbox Spa"; // nome de marca do tenant-sandbox, pro tom da brandReply
+
+// ── O NEGÓCIO CERTO PARA CADA CASO (2026-08-22) ──────────────────────────────────────────────────
+// Cada caso vertical declarava `vertical: "plumbing-hvac"` desde que nasceu, e este runner NUNCA
+// leu o campo: os 13 rodavam contra o sandbox do SPA. Perguntávamos a um spa quando ele abre pra
+// consertar vazamento de gás e o reprovávamos por não agendar com o contador — o juiz escreveu
+// isso por extenso em 18/08 ("wrong business entirely"). Oito versões de lição foram gastas
+// tentando consertar no AGENTE um defeito que estava aqui.
+// `db/eval_sandbox_verticais.sql` cria os 13 tenants sintéticos; sem ele colado, o `||` cai no
+// sandbox antigo e nada quebra — mas a medição volta a ser a de antes, então `?padrao` do eval
+// deve olhar `tenant_por_caso` na resposta para saber qual mundo foi medido.
+const TENANT_POR_VERTICAL = {
+  "medical-clinics": "eval-medical-clinics@guileoai.com",
+  "dental-clinics": "eval-dental-clinics@guileoai.com",
+  "law-firms": "eval-law-firms@guileoai.com",
+  "restaurants": "eval-restaurants@guileoai.com",
+  "plumbing-hvac": "eval-plumbing-hvac@guileoai.com",
+  "real-estate": "eval-real-estate@guileoai.com",
+  "accountants": "eval-accountants@guileoai.com",
+  "gyms-fitness": "eval-gyms-fitness@guileoai.com",
+  "salons-spas": "eval-salons-spas@guileoai.com",
+  "auto-dealerships": "eval-auto-dealerships@guileoai.com",
+  "cleaning-services": "eval-cleaning-services@guileoai.com",
+  "home-contractors": "eval-home-contractors@guileoai.com",
+  "ecommerce": "eval-ecommerce@guileoai.com",
+};
 // Orçamento de tempo (soft deadline) e tamanho de lote padrão do "run all", pra caber no
 // wall-time da Function. Ambos sobrescrevíveis por env / query. Ver bloco de chunking abaixo.
 const EVAL_BUDGET_MS_DEFAULT = 20000;
@@ -147,11 +172,15 @@ async function runActionCase(env, c, origin) {
   }
 }
 
-async function runAgent(env, c, tenant) {
+async function runAgent(env, c, tenant, tenantExplicito = false) {
   if (c.agent === "voice") {
     // guiReply é read-only: resolve o tenant-sandbox, monta o MESMO system prompt de
     // produção (preços reais via biz_lookup, KB, anti-injection) e gera. Zero escrita.
-    const r = await guiReply(env, { email: tenant, channel: "webchat", from: "eval", text: c.input, history: [], lang: c.lang || "en", origin: "eval" });
+    // ⚠️ O TENANT É DO CASO, não da rodada: um caso de HVAC precisa de um negócio de HVAC do outro
+    // lado, senão o que se mede é o desencontro, não o agente. Sem `?tenant=` explícito e sem o
+    // vertical do caso, cai no sandbox de sempre — comportamento antigo, nunca um erro silencioso.
+    const alvo = (!tenantExplicito && c.vertical && TENANT_POR_VERTICAL[c.vertical]) || tenant;
+    const r = await guiReply(env, { email: alvo, channel: "webchat", from: "eval", text: c.input, history: [], lang: c.lang || "en", origin: "eval" });
     if (!r) return { ok: false, note: "guiReply devolveu vazio" };
     if (!r.ready && r.tenant && r.tenant.valid === false) {
       return { ok: false, note: `tenant-sandbox '${tenant}' não encontrado — passe ?tenant= ou carregue um tenant de teste; guiReply é read-only`, output: r.reply || "" };
@@ -329,6 +358,7 @@ export async function onRequest(context) {
   const dry = url.searchParams.get("dry") === "1" || body.dry === true || body.dry === 1;
   const onlyAgent = (url.searchParams.get("agent") || body.agent || "").toString().trim().toLowerCase();
   const onlyCase = (url.searchParams.get("case") || body.case || "").toString().trim();
+  const tenantForcado = !!(url.searchParams.get("tenant") || body.tenant);
   const tenant = (url.searchParams.get("tenant") || body.tenant || env.EVAL_SANDBOX_TENANT || env.EVAL_TENANT || EVAL_TENANT_DEFAULT).toString().trim().toLowerCase();
 
   // ── TRAVA DE GASTO: 1 rodada por dia, decidida no BANCO ──────────────────────
@@ -523,7 +553,7 @@ export async function onRequest(context) {
     }
 
     // 1) resposta do agente REAL (pura, sem efeito colateral)
-    const run = await runAgent(env, c, tenant);
+    const run = await runAgent(env, c, tenant, tenantForcado);
     if (!run.ok) {
       if (run.pending) a.pending = true;
       out.results.push({ id: c.id, agent: c.agent, adversarial: !!c.adversarial, skipped: true, note: run.note, output: (run.output || "").slice(0, 240) });
