@@ -3401,15 +3401,21 @@ export function growthReportEmail({ business = "", agentName = "Gui", score = 0,
 // orçamento por SMS+e-mail; acima de um teto, o escritório aprova antes de sair.
 // ─────────────────────────────────────────────────────────────────────────────
 export function websiteUpgradeEmail({
-  name = "there", business = "your business", link = "", lang = "en",
+  name = "", business = "your business", link = "", lang = "en",
   incluso = [], blocos = [], destaque = null, avaliacao = null, nota = "",
 } = {}) {
   business = esc(business); name = esc(name);
+  // ⚠️ SEM NOME, A FRASE SE SEGURA SOZINHA. O padrão era "there", e sem o nome do dono o título
+  // saía "there, we rebuilt the Nonstop Plumbers website" — uma saudação pela metade na primeira
+  // linha do primeiro e-mail que o dono recebe. Frio é melhor que quebrado: sem nome, começa pelo
+  // verbo. Mesmo princípio do `|| []`: ausência precisa aparecer, não virar enfeite.
+  const _n = name.trim();
+  const _pre = { pt: _n ? `${_n}, ` : "", en: _n ? `${_n}, ` : "", es: _n ? `${_n}, ` : "" };
   const t = lang === "pt" ? {
     subject: `${business}: seu site novo está no ar — e o que cada peça soma em receita`,
     pre: "O site novo já está no ar. Nada pra instalar, nada pra assinar.",
     eyebrow: "Website Upgrade · pronto pra ver",
-    h1: `${name}, refizemos o site do ${business}`,
+    h1: `${_pre.pt}${_n ? "refizemos" : "Refizemos"} o site do ${business}`,
     intro: `Ninguém te mandou uma proposta. A gente reconstruiu seu site — com o seu vídeo, sua marca, as fotos da sua equipe e seus serviços — e colocou no ar pra você julgar, não imaginar. <strong style="color:${B.ink};">Está no ar agora.</strong> Dois minutos abaixo: o que já vem nele e o que dá pra ligar.`,
     cta: "Ver o site novo →",
     inclusoT: "O que já vem no modelo",
@@ -3420,7 +3426,7 @@ export function websiteUpgradeEmail({
     subject: `${business}: your new site is live — and what each piece adds to revenue`,
     pre: "The new site is live. Nothing to install, nothing to sign.",
     eyebrow: "Website Upgrade · ready to view",
-    h1: `${name}, we rebuilt the ${business} website`,
+    h1: `${_pre.en}${_n ? "we" : "We"} rebuilt the ${business} website`,
     intro: `Nobody sent you a proposal. We just rebuilt your site — with your own video, logo, crew photos and services — and put it online so you can judge it, not imagine it. <strong style="color:${B.ink};">It is live right now.</strong> Two minutes below: what is already in it, and what you can switch on.`,
     cta: "See the new site →",
     inclusoT: "What already comes in it",
