@@ -27,9 +27,12 @@ async function tratar(request, env) {
     if (a === true || a?.ok === true) tudo = true;   // o CORPO, não o status
   }
   if (!tudo && sid) {
-    const s = await verifySession(env, sid).catch(() => null);
+    // ⚠️ `verifySession` devolve o E-MAIL como STRING, não um objeto. Eu li `s?.email` numa
+    // string — `undefined` — e o crachá válido do vendedor virava 401 na cara dele. Ler o
+    // contrato da função em vez de supor pelo nome teria custado 30 segundos.
+    const email = await verifySession(env, sid).catch(() => null);
     // O vendedor vê a CARTEIRA DELE. Sem este escopo, um crachá viraria a lista da casa inteira.
-    if (s?.email) vendedor = String(s.email).toLowerCase();
+    if (typeof email === "string" && email.includes("@")) vendedor = email.toLowerCase();
   }
   if (!tudo && !vendedor) return json({ error: "unauthorized" }, 401);
   if (!env.INGEST_SECRET) return json({ ok: false, motivo: "sem INGEST_SECRET" }, 503);

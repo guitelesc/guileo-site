@@ -13,17 +13,6 @@
 import { json, safeEq } from "../lib/guard.js";
 import { websiteUpgradeEmail } from "../lib/emailTemplates.js";
 import { CONTACT } from "../../src/data/contactData.js";
-import { brandFromSite } from "../lib/brandExtract.js";
-
-// Saturação e luminosidade mínimas — só passa cor que alguém escolheria para uma marca.
-function corDeMarca(hex) {
-  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim());
-  if (!m) return false;
-  const n = parseInt(m[1], 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
-  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
-  const sat = mx === mn ? 0 : (mx - mn) / (l > 0.5 ? 2 - mx - mn : mx + mn);
-  return sat >= 0.22 && l >= 0.12 && l <= 0.88;
-}
 
 export async function onRequestPost({ request, env }) {
   const ING = (env.INGEST_SECRET || "").toString();
@@ -51,37 +40,6 @@ export async function onRequestPost({ request, env }) {
 
   const to = (b.to || "").toString().trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@.]+\.[^\s@]{2,}$/.test(to)) return json({ ok: false, error: "destinatario invalido" }, 400);
-
-  // ── A CARA DO NEGÓCIO DELE, AUTOMÁTICA (24/08) ────────────────────────────────────────────────
-  // Antes, `capa` e `logo` eram arquivos que eu convertia à mão — funcionava pro Nonstop e para
-  // mais ninguém. O e-mail sem a marca dele vira template, e template é o que o dono descarta em
-  // dois segundos. Aqui a logo e a cor saem de `brandFromSite` (leitura de HTML, ZERO modelo) e a
-  // capa de /api/capa — os mesmos dois motores que o Growth Report já usa.
-  // ⚠️ SÓ JPG/PNG. Gmail e Outlook não renderizam webp nem svg, e um quadrado quebrado no topo é
-  // pior que nenhuma imagem. O que não passar no filtro simplesmente não vai — nunca uma foto de
-  // banco de imagens no lugar, que seria "um negócio qualquer vendido como o dele".
-  const site = (b.site || "").toString().trim();
-  if (site && (!b.logo || !b.accent)) {
-    try {
-      const mk = await brandFromSite(site);
-      if (mk && !mk.why) {
-        if (!b.logo && mk.logo_url) b.logo = mk.logo_url;
-        // ⚠️ BRANCO, PRETO E CINZA NÃO SÃO COR DE MARCA (24/08). A extração devolveu #ffffff para
-        // o Nonstop — que é vermelho. Um accent branco não dá erro: ele pinta o filete e o preço
-        // de branco e o e-mail fica "sem marca" parecendo que tem. Falha disfarçada de sucesso é
-        // a que ninguém procura. Sem saturação suficiente, prefiro o dourado da casa: assumido,
-        // não fingido.
-        if (!b.accent && mk.accent && corDeMarca(mk.accent)) b.accent = mk.accent;
-      }
-    } catch { /* marca é enfeite: falhar aqui nunca pode impedir o e-mail */ }
-  }
-  if (site && !b.capa) {
-    try {
-      const orig = new URL(request.url).origin;
-      const cr = await fetch(`${orig}/api/capa?site=${encodeURIComponent(site)}`);
-      if (cr.ok) { const cj = await cr.json().catch(() => null); if (cj && cj.capa) b.capa = cj.capa; }
-    } catch { /* idem */ }
-  }
 
   const { subject, html } = websiteUpgradeEmail(b);
   const r = await fetch("https://api.resend.com/emails", {

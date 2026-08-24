@@ -1514,8 +1514,6 @@ export default function Apresentacao() {
   // payload da avaliação (quem gerou sabe de quem é); a URL continua aceita e GANHA, para o
   // vendedor conseguir testar outra cor sem mexer no banco.
   const marca = (state.data && (state.data.payload || state.data)) || {};
-  const accent = sp.get("accent") || marca.accent || "#D6C29A"; // champanhe Guileo é só o fallback
-  const logo = sp.get("logo") || marca.logo || "";
   const agente = sp.get("agente") || marca.agente || "";
   const agentName = agente || "Gui";
   useEffect(() => {
@@ -1575,6 +1573,33 @@ export default function Apresentacao() {
       .catch(() => { /* sem capa → fundo da marca. Nunca quebra. */ });
     return () => { alive = false; };
   }, [capaUrl, siteAv]);
+
+  /* ── A LOGO E A COR DELE, TAMBÉM AUTOMÁTICAS (24/08) ────────────────────────────────────────
+     A regra da casa manda carregar marca no link curto (?logo=&accent=), e isso resolve o
+     cliente cadastrado. Só que os 34 relatórios de PROSPECT não têm link curto nenhum — foram
+     medidos em massa — e estavam todos com o símbolo da Guileo no topo e mais nada do negócio.
+     Um laudo com o nome dele e a cara da gente lê-se como template, e template o dono descarta.
+     `/api/marca` lê o HTML do site DELE (o irmão de /api/capa, que já traz a foto). Não achou →
+     fica vazio e o champanhe da casa assume: a página nunca inventa uma marca.
+     ⚠️ O que veio no link ou no payload continua ganhando — isto só preenche o vazio. */
+  const [marcaAuto, setMarcaAuto] = useState({ logo: "", accent: "" });
+  useEffect(() => {
+    if (!siteAv) { setMarcaAuto({ logo: "", accent: "" }); return; }
+    let alive = true;
+    fetch(`/api/marca?site=${encodeURIComponent(siteAv)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (alive && j?.ok) setMarcaAuto({ logo: j.logo || "", accent: j.accent || "" }); })
+      .catch(() => { /* sem marca → champanhe da casa. Nunca quebra. */ });
+    return () => { alive = false; };
+  }, [siteAv]);
+
+  /* ⚠️ A ORDEM É A PRECEDÊNCIA: link curto > payload > lido do site > champanhe da casa.
+     O link curto vence sempre porque é onde o vendedor corrige na mão sem esperar deploy —
+     e regenerar a avaliação apaga a marca do payload (já aconteceu com os dois relatórios da
+     Natura, que voltaram sem logo e sem cor e ninguém viu). O automático entra por último: ele
+     preenche o vazio, nunca sobrescreve uma escolha. */
+  const accent = sp.get("accent") || marca.accent || marcaAuto.accent || "#D6C29A";
+  const logo = sp.get("logo") || marca.logo || marcaAuto.logo || "";
 
   useSeo({
     title: state.data?.business ? `${c.report} · ${state.data.business} | Guileo` : `${c.report} | Guileo`,
