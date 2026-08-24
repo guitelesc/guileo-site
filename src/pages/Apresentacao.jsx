@@ -1292,6 +1292,100 @@ function AspectRow({ a, lang, notMeasuredLabel, recLabel, freeWinLabel, showMore
   );
 }
 
+
+/* ═══ RESUMO EM UMA TELA — 1, 2, 3 ══════════════════════════════════════════════════════════════
+   Luis (24/08): «o cliente precisa entender a avaliação de uma vez, e a solução em duas etapas de
+   uma vez, estilo o e-mail». A página tinha 25 TELAS de rolagem: cada bloco é honesto, mas quem
+   abre um link no celular não vai minerar 25 telas pra achar a conclusão — ele fecha antes.
+
+   Isto NÃO substitui nada: é a capa do laudo. Três respostas na altura de um polegar —
+   (1) o que a gente mediu, (2) o que fazer, em duas etapas, (3) quanto custa começar — e o resto
+   da página passa a ser a EVIDÊNCIA de quem quiser conferir, que é exatamente o papel dela.
+
+   ⚠️ Nenhum número novo nasce aqui. Tudo vem do mesmo payload que os blocos de baixo usam; se o
+   resumo e o detalhe pudessem discordar, o resumo seria um segundo painel com o mesmo número
+   diferente — o defeito mais caro desta base. Não-medido continua cinza e continua `—`. */
+const RES = {
+  en: { tag: "The short version", um: "What we measured", dois: "What to do — two phases", tres: "How it starts",
+        risco: "at risk every month", riscoSub: "if nothing changes", pior: "Weakest point",
+        f1: "Stop the loss", f2: "Advance", passos: (n) => `${n} step${n !== 1 ? "s" : ""}`,
+        cobre: "covers", ver: "See the full X-Ray below ↓", nada: "no step — nothing was invented to fill it" },
+  pt: { tag: "O resumo", um: "O que a gente mediu", dois: "O que fazer — duas etapas", tres: "Como começa",
+        risco: "em risco por mês", riscoSub: "se nada mudar", pior: "Ponto mais fraco",
+        f1: "Parar a perda", f2: "Avançar", passos: (n) => `${n} passo${n !== 1 ? "s" : ""}`,
+        cobre: "cobre", ver: "O raio-X completo está abaixo ↓", nada: "nenhum passo — nada foi inventado pra preencher" },
+  es: { tag: "El resumen", um: "Lo que medimos", dois: "Qué hacer — dos fases", tres: "Cómo empieza",
+        risco: "en riesgo por mes", riscoSub: "si nada cambia", pior: "Punto más débil",
+        f1: "Detener la pérdida", f2: "Avanzar", passos: (n) => `${n} paso${n !== 1 ? "s" : ""}`,
+        cobre: "cubre", ver: "El rayos-X completo está abajo ↓", nada: "ningún paso — nada se inventó para llenarlo" },
+  hi: { tag: "सारांश", um: "हमने क्या मापा", dois: "क्या करें — दो चरण", tres: "शुरुआत कैसे",
+        risco: "हर महीने जोखिम में", riscoSub: "अगर कुछ नहीं बदला", pior: "सबसे कमज़ोर बिंदु",
+        f1: "नुकसान रोकें", f2: "आगे बढ़ें", passos: (n) => `${n} कदम`,
+        cobre: "कवर करता है", ver: "पूरा एक्स-रे नीचे है ↓", nada: "कोई कदम नहीं — भरने के लिए कुछ नहीं गढ़ा गया" },
+};
+
+function ResumoUmaTela({ lang, accent, score, aspectos, riskFmt, premissa, fase1, fase2, cobre, notMeasured }) {
+  const t = RES[lang] || RES.en;
+  // O pior aspecto MEDIDO. Um aspecto sem nota não é "o pior" — é desconhecido, e chamar
+  // desconhecido de pior é a mesma mentira do `null` virando 0.
+  const medidos = (aspectos || []).filter((a) => a.score != null);
+  const pior = medidos.length ? medidos.reduce((m, a) => (a.score < m.score ? a : m)) : null;
+  const N = ({ n, cor, children }) => (
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-black"
+            style={{ background: `${cor}22`, color: cor, border: `1px solid ${cor}66` }}>{n}</span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+  return (
+    <div className="mb-10 rounded-3xl border border-g-line bg-g-creamd/70 p-5 backdrop-blur sm:p-7"
+         style={{ boxShadow: "0 22px 60px -34px rgba(0,0,0,0.9)" }}>
+      <div className="text-[10.5px] font-black uppercase tracking-[0.18em]" style={{ color: accent }}>{t.tag}</div>
+
+      <div className="mt-5 space-y-5">
+        <N n="1" cor={accent}>
+          <div className="text-[13px] font-black uppercase tracking-wider text-g-muted">{t.um}</div>
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="font-mono text-[30px] font-black leading-none"
+                  style={{ color: score == null ? notMeasured : bandColor(score) }}>{score == null ? "—" : score}</span>
+            <span className="text-[13px] text-g-muted">/100</span>
+            {pior && (
+              <span className="text-[13.5px] text-g-muted">
+                · {t.pior}: <b style={{ color: bandColor(pior.score) }}>{aspectLabel(pior.nome, lang)}</b>
+              </span>
+            )}
+          </div>
+          {riskFmt && (
+            <div className="mt-2.5">
+              <span className="font-mono text-[22px] font-black" style={{ color: PERDA }}>{riskFmt}</span>
+              <span className="text-[13.5px] text-g-muted"> {t.risco} — {t.riscoSub}</span>
+              {premissa && <div className="mt-1 text-[11.5px] leading-snug text-g-muted/80">{premissa}</div>}
+            </div>
+          )}
+        </N>
+
+        <N n="2" cor={accent}>
+          <div className="text-[13px] font-black uppercase tracking-wider text-g-muted">{t.dois}</div>
+          <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
+            {[{ ic: "🩹", nome: t.f1, n: fase1.length, extra: cobre?.valor ? `${t.cobre} ${fmtMoney(cobre.valor, cobre.moeda, lang)}` : "", cor: PERDA },
+              { ic: "🚀", nome: t.f2, n: fase2.length, extra: "", cor: GANHO }].map((f, i) => (
+              <div key={i} className="rounded-2xl border border-g-line bg-white/[0.03] px-4 py-3">
+                <div className="text-[14px] font-black text-g-word">{f.ic} {f.nome}</div>
+                <div className="mt-1 text-[12.5px] text-g-muted">
+                  {f.n ? t.passos(f.n) : t.nada}
+                  {f.extra && <> · <b style={{ color: f.cor }}>{f.extra}</b></>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </N>
+      </div>
+
+      <a href="#plano" className="mt-5 inline-block text-[13px] font-bold" style={{ color: accent }}>{t.ver}</a>
+    </div>
+  );
+}
+
 export default function Apresentacao() {
   const { id } = useParams();
   const [sp] = useSearchParams();
@@ -1569,6 +1663,12 @@ export default function Apresentacao() {
           />
         </div>
 
+        <ResumoUmaTela
+          lang={rlang} accent={accent} score={av.score_geral} aspectos={aspectos}
+          riskFmt={riskFmt} premissa={risco?.premissa} fase1={fase1} fase2={fase2}
+          cobre={cobre} notMeasured={NOT_MEASURED}
+        />
+
         {/* 1 ── HERO: brand + score ring SIDE BY SIDE with the snapshot chart.
                md+ = two columns; mobile = stacked, centered. */}
         <header className="grid items-center gap-8 md:grid-cols-2 md:gap-10">
@@ -1737,7 +1837,7 @@ export default function Apresentacao() {
                decides what is measured and what is a bet. Payloads written before the phases
                existed have no `fase`; those steps were all leak-closers, so they read as Phase 1. */}
         {estrategia.length > 0 && (
-          <section className="relative mt-16">
+          <section id="plano" className="relative mt-16 scroll-mt-6">
             <style>{`
               @keyframes arreveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
               @keyframes arshine{to{background-position:220% center}}
