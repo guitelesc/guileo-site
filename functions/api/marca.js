@@ -29,6 +29,33 @@ function corDeMarca(hex) {
   return sat >= 0.22 && l >= 0.12 && l <= 0.88;
 }
 
+// A COR DENTRO DO FAVICON (24/08). O nearmeplumbingastoria.site tem 2.384 bytes, ZERO <img> e
+// nenhum og:image — mas o favicon é um SVG embutido no HTML com `fill='%23da2c2c'`, que é o
+// vermelho da marca deles. O extrator só olhava CSS, então a cor existia publicada e a gente
+// devolvia "nada aproveitável". Site pequeno demais para ter CSS de marca ainda tem ícone, e o
+// ícone é onde o dono coloca a cor dele. Pego só o que passa em `corDeMarca`, e o primeiro que
+// passar: num ícone de duas cores, a saturada é a marca e a escura é o fundo.
+function corDoFavicon(html) {
+  const m = /rel="[^"]*icon[^"]*"[^>]*href="(data:image\/svg\+xml[^"]+)"/i.exec(html || "");
+  if (!m) return "";
+  let svg = m[1];
+  try { svg = decodeURIComponent(svg); } catch { /* já legível */ }
+  // ⚠️ A PRIMEIRA QUE PASSA NÃO É A CERTA. Neste ícone vinham #0f2744 (o fundo azul-marinho) e
+  // #da2c2c (o vermelho do encanamento) — os dois passam no filtro, e eu ficava no primeiro,
+  // devolvendo o FUNDO como cor de marca. Num ícone de duas cores o destaque é o mais saturado e
+  // de luminosidade média; o fundo é escuro de propósito. E accent quase preto some no relatório,
+  // que já é escuro: escolher errado aqui é o mesmo que não ter cor.
+  const cores = [...new Set((svg.match(/#[0-9a-f]{6}/gi) || []).map((c) => c.toLowerCase()))].filter(corDeMarca);
+  if (!cores.length) return "";
+  const pontua = (hex) => {
+    const n = parseInt(hex.slice(1), 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+    const sat = mx === mn ? 0 : (mx - mn) / (l > 0.5 ? 2 - mx - mn : mx + mn);
+    return sat - Math.abs(l - 0.5);          // saturado E nem escuro nem estourado
+  };
+  return cores.sort((a, b) => pontua(b) - pontua(a))[0];
+}
+
 export async function onRequestGet({ request, env }) {
   const site = new URL(request.url).searchParams.get("site") || "";
   if (!/^https?:\/\//i.test(site)) return json({ ok: false, logo: "", accent: "", motivo: "site invalido" }, 400);
@@ -37,7 +64,15 @@ export async function onRequestGet({ request, env }) {
     const mk = await brandFromSite(site);
     if (!mk || mk.why) return json({ ok: false, logo: "", accent: "", motivo: (mk && mk.why) || "sem marca" });
     const logo = /^https?:\/\//i.test(mk.logo_url || "") && !/\.svg(\?|#|$)/i.test(mk.logo_url || "") ? mk.logo_url : "";
-    const accent = corDeMarca(mk.accent) ? mk.accent : "";
+    let accent = corDeMarca(mk.accent) ? mk.accent : "";
+    if (!accent) {
+      // 2ª tentativa antes de desistir: a cor que o dono pôs no ícone do site.
+      try {
+        const r = await fetch(site, { redirect: "follow", signal: AbortSignal.timeout(7000),
+          headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/121.0 Safari/537.36" } });
+        if (r.ok) accent = corDoFavicon((await r.text()).slice(0, 200000));
+      } catch { /* sem 2ª chance: segue vazio e a página assume o champanhe */ }
+    }
     return json({ ok: true, logo, accent, motivo: logo || accent ? "" : "nada aproveitavel" });
   } catch (e) {
     return json({ ok: false, logo: "", accent: "", motivo: String(e).slice(0, 90) });
