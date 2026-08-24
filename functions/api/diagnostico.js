@@ -124,7 +124,9 @@ export async function onRequest(context) {
   const site = (b.site || "").toString().trim().slice(0, 300);
   if (!site) return json({ error: "informe o site" }, 400);
 
-  const an = await diagnosticar(site, env, (b.negocio || b.brand || "").toString().slice(0, 120));
+  // Idioma do prospect, não de quem clicou: `.br` fala português, o resto fala inglês.
+  const langDiag = /\.br(\/|$)/i.test(site) ? "pt" : ((b.lang || "en").toString().slice(0, 2));
+  const an = await diagnosticar(site, env, (b.negocio || b.brand || "").toString().slice(0, 120), langDiag);
   if (!an.ok) return json({ ok: false, erro: "nao_deu_pra_ler", motivo: an.motivo }, 409);
 
   const salvo = await rpc(env, "diag_save", {

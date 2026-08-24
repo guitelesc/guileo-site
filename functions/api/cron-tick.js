@@ -15,7 +15,7 @@
 import { json, rateLimited } from "../lib/guard.js";
 import { svcRpc, svcJson } from "../lib/sb.js";
 import { ownerAlertEmail } from "../lib/emailTemplates.js";
-import { semeiaFila, drenaFila } from "../lib/filaAgente.js";
+import { semeiaFila, drenaFila, semeiaEval, drenaEval, semeiaRelatorios, drenaRelatorios } from "../lib/filaAgente.js";
 
 // PHONE RE-ENGAGEMENT EXECUTOR (#19) — turns a queued churn-reengage / booking-recovery
 // client_event that carries a PHONE (not an email) into a REAL Gui callback through the single
@@ -191,10 +191,16 @@ export async function onRequest(context) {
       // mas em 17/08 foram rodadas REPETIDAS que zeraram o saldo Anthropic e derrubaram o chat do
       // site no fallback — o modo de falha aqui não é "perdi uma noite", é "a operação caiu por
       // causa do medidor". Perder uma noite é barato; derrubar o site não é.
+      // ▶️ MIGRADO PARA A FILA (2026-08-22). O `cadeia=1` sumiu daqui de propósito: era ele que
+      // fazia cada lote chamar o próximo, e foi essa avalanche que zerou o saldo em 17/08.
+      // Agora a semente roda UM caso (reservando o dia, como antes) e o resto vira fila, drenada
+      // aos poucos e presa ao teto de tokens. Se o teto bater, a varredura PAUSA e retoma no
+      // tique seguinte com o mesmo run_id — em vez de morrer e perder a noite.
+      // A rodada manual com `cadeia=1` continua existindo em /api/agent-eval para quem quiser.
       if (hourUTC === 0) {
         const domingo = new Date().getUTCDay() === 0;
-        targets.push({ name: domingo ? "agent-eval-completo" : "agent-eval-risco",
-                       url: `${base}/api/agent-eval?cadeia=1&token=${t}${domingo ? "" : "&risco=1"}` });
+        try { evalSemente = await semeiaEval(env, { base, risco: !domingo }); }
+        catch (e) { evalSemente = { ok: false, motivo: String(e).slice(0, 120) }; }
       }
       // O AVISO DO EVAL, ÀS 02h UTC (22h NY) — uma hora depois da 2ª chance do eval.
       // Luis, 2026-08-17: «me avisa quando o eval rodar». A resposta certa não é eu lembrar: é o
@@ -271,6 +277,7 @@ export async function onRequest(context) {
     // (cores, sem detalhe sensível). Assim `POST /api/cron-tick` vira a pergunta única, pública e
     // sem segredo: uma chamada, e você vê se alguma máquina caiu.
     // Só no tique da hora: é agregação de sondas, não precisa rodar de 15 em 15 minutos.
+    let evalSemente = null;
     let semaforo = null;
     if (minute < 15 || forcarSemaforo) {
       try {
@@ -409,7 +416,17 @@ export async function onRequest(context) {
       try {
         const semeou = await semeiaFila(env, { teto: 25 });
         const drenou = await drenaFila(env, { base, n: 5 });
-        fila = { semeou, drenou };
+        // O eval drena em TODO tique da hora, não só à meia-noite: é assim que a varredura
+        // atravessa o dia sem pico. Lote pequeno — cada caso é uma chamada paga ao juiz.
+        const eval_ = await drenaEval(env, { base, n: 3 });
+        // Relatório no idioma errado é peça de venda que não pode ser enviada. Semeia uma vez
+        // (a lista esvazia sozinha quando todos viram EN) e mastiga poucos por tique — cada um é
+        // raspagem + chamada ao Google.
+        const semRel = await semeiaRelatorios(env, { teto: 60 });
+        // 8 por tique: cada um é raspagem + Google, mas são 296 esperando e relatório em português
+        // não pode ser enviado. Ainda é lote — não varredura.
+        const relEn = await drenaRelatorios(env, { base, n: 8 });
+        fila = { semeou, drenou, eval: eval_, relatorios: { semeou: semRel, drenou: relEn } };
       } catch (e) { fila = { erro: String(e).slice(0, 120) }; }
     }
 
@@ -418,7 +435,7 @@ export async function onRequest(context) {
       try { reengage = await phoneReengageSweep(env, base, hourUTC); }
       catch (e) { reengage = { error: String(e).slice(0, 80) }; }
     }
-    return json({ ok: true, semaforo, ran: results, reengage, fila, hourUTC, minute });
+    return json({ ok: true, semaforo, ran: results, reengage, fila, evalSemente, hourUTC, minute });
   } catch (e) {
     return json({ error: String(e).slice(0, 140) }, 500);
   }

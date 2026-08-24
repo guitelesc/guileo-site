@@ -91,10 +91,12 @@ export async function onRequestPost(context) {
     if (!gate.ok) return json({ error: "unauthorized" }, 401);
 
     const email = s(b.email, 160).toLowerCase();
-    if (!email.includes("@")) return json({ error: "email inválido" }, 400);
     const action = (b.action || "connect").toString();
+    // `auditar` é da PLATAFORMA inteira, não de um cliente — exigir e-mail aqui obrigaria o painel
+    // a inventar um, e e-mail inventado é a porta pra medir o tenant errado.
+    if (action !== "auditar" && !email.includes("@")) return json({ error: "email inválido" }, 400);
 
-    const lido = await lerCreds(env, ING, email);
+    const lido = action === "auditar" ? { estado: "vazio" } : await lerCreds(env, ING, email);
     // "Não consegui ler" NUNCA vira "não tem". Falha de leitura sai como falha, com o motivo.
     if (lido.estado === "erro") return json({ ok: false, error: lido.motivo }, 502);
     const atual = lido.estado === "ok" ? lido.tokens : null;
@@ -109,6 +111,33 @@ export async function onRequestPost(context) {
       if (!atual || !atual.access_token) return json({ ok: true, vivo: false, motivo: "nenhum token guardado para este cliente" });
       const v = await conferirToken(atual.phone_number_id, atual.access_token);
       return json({ ok: true, ...v, ...publico(atual) });
+    }
+
+
+    // ── AUDITAR: todos os tenants com WhatsApp, cada token conferido no Graph ────────────────
+    // É o que o painel "Estado dos canais" passou a usar. Antes ele lia PRESENÇA de env var e
+    // pintava 🟢 — e ficou verde por três semanas com a saída morta. Presença de chave não é
+    // chave funcionando; a única resposta honesta vem de perguntar ao Graph, um token por vez.
+    if (action === "auditar") {
+      const lista = await svcJson(env, "whatsapp_cloud_list_tenants", { p_secret: ING });
+      if (!Array.isArray(lista)) {
+        return json({ ok: false, error: `não consegui listar: ${JSON.stringify(lista).slice(0, 160)}` }, 502);
+      }
+      const linhas = await Promise.all(lista.map(async (t) => {
+        if (!t.tem_token) return { ...t, vivo: false, motivo: "nenhum token guardado" };
+        const creds = await lerCreds(env, ING, t.client_email);
+        if (creds.estado !== "ok") return { ...t, vivo: false, motivo: creds.motivo || "não consegui ler" };
+        const v = await conferirToken(t.phone_number_id, creds.tokens.access_token);
+        return { ...t, vivo: v.vivo, motivo: v.motivo || "", numero: v.numero || t.display_number || "" };
+      }));
+      const vivos = linhas.filter((l) => l.vivo).length;
+      return json({
+        ok: true, total: linhas.length, vivos, mortos: linhas.length - vivos,
+        // `estado` é o que o card pinta. "sem_credencial" NÃO é verde nem vermelho: ninguém
+        // conectou ainda, e chamar isso de falha assustaria por nada.
+        estado: linhas.length === 0 ? "sem_credencial" : (vivos === linhas.length ? "ok" : "vencido"),
+        tenants: linhas.map(({ ...l }) => l),
+      });
     }
 
     // ── CONECTAR ─────────────────────────────────────────────────────────────────────────────

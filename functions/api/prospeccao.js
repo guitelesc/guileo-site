@@ -88,25 +88,29 @@ const T = {
         nota: (v) => `nota ${v}/100 no X-Ray`, notaF: (v) => `nota ${v}/100 no X-Ray — está bem`,
         rot: { atendimento: "telefone descoberto", vendas_digitais: "não vende pelo site", captura_de_leads: "não captura quem visita" },
         rotF: { atendimento: "telefone coberto", vendas_digitais: "vende pelo site", captura_de_leads: "captura quem visita" },
-        semSinal: "nenhum sinal medido — não dá para ranquear" },
+        semSinal: "nenhum sinal medido — não dá para ranquear",
+        umSinalSo: "só um sinal medido — não dá para ranquear com isso" },
   en: { prova: (n, m) => `${n} reviews — the neighborhood median is ${m}`,
         provaF: (n, m) => `${n} reviews, above the neighborhood median (${m})`,
         nota: (v) => `${v}/100 on the X-Ray`, notaF: (v) => `${v}/100 on the X-Ray — doing well`,
         rot: { atendimento: "phone left uncovered", vendas_digitais: "the site does not sell", captura_de_leads: "does not capture visitors" },
         rotF: { atendimento: "phone covered", vendas_digitais: "the site sells", captura_de_leads: "captures visitors" },
-        semSinal: "nothing measured — cannot rank this one" },
+        semSinal: "nothing measured — cannot rank this one",
+        umSinalSo: "only one signal measured — not enough to rank" },
   es: { prova: (n, m) => `${n} reseñas — la mediana del vecindario es ${m}`,
         provaF: (n, m) => `${n} reseñas, por encima de la mediana del vecindario (${m})`,
         nota: (v) => `${v}/100 en la Radiografía`, notaF: (v) => `${v}/100 en la Radiografía — está bien`,
         rot: { atendimento: "teléfono sin cubrir", vendas_digitais: "el sitio no vende", captura_de_leads: "no captura a quien visita" },
         rotF: { atendimento: "teléfono cubierto", vendas_digitais: "el sitio vende", captura_de_leads: "captura a quien visita" },
-        semSinal: "no se midió nada — no se puede clasificar" },
+        semSinal: "no se midió nada — no se puede clasificar",
+        umSinalSo: "solo una señal medida — no alcanza para clasificar" },
   hi: { prova: (n, m) => `${n} रिव्यू — आस-पड़ोस की मध्यिका ${m} है`,
         provaF: (n, m) => `${n} रिव्यू, पड़ोस की मध्यिका (${m}) से ऊपर`,
         nota: (v) => `X-Ray में ${v}/100`, notaF: (v) => `X-Ray में ${v}/100 — अच्छा है`,
         rot: { atendimento: "फ़ोन बिना कवर", vendas_digitais: "साइट बिक्री नहीं करती", captura_de_leads: "आगंतुक कैप्चर नहीं होते" },
         rotF: { atendimento: "फ़ोन कवर", vendas_digitais: "साइट बिक्री करती है", captura_de_leads: "आगंतुक कैप्चर होते हैं" },
-        semSinal: "कुछ मापा नहीं गया — रैंक नहीं कर सकते" },
+        semSinal: "कुछ मापा नहीं गया — रैंक नहीं कर सकते",
+        umSinalSo: "सिर्फ़ एक संकेत मापा गया — रैंक के लिए पर्याप्त नहीं" },
 };
 const txt = (lang) => T[lang] || T.en;
 
@@ -128,11 +132,18 @@ function buracoMedido(av, medianaAvaliacoes, doVizinho = null, lang = "pt") {
     (p > 0 ? buracos : forcas).push({ chave, valor: p, texto: p > 0 ? txtBuraco : txtForca });
   };
 
-  // a contagem pode vir da busca direta OU da listagem da vizinhança — mesmo Google, um só número
-  const minha = av?.minha_ficha || (doVizinho && doVizinho.avaliacoes != null ? { avaliacoes: doVizinho.avaliacoes } : null);
-  if (minha && minha.avaliacoes != null && medianaAvaliacoes) {
-    const p = Math.round((1 - Math.min(1, minha.avaliacoes / medianaAvaliacoes)) * 100);
-    conta(p, 3, "prova_social", t.prova(minha.avaliacoes, medianaAvaliacoes), t.provaF(minha.avaliacoes, medianaAvaliacoes));
+  // 🚨 O `||` PEGAVA O OBJETO E PERDIA O NÚMERO (corrigido 2026-08-24, mesma família do defeito da
+  // vizinhança). `av.minha_ficha` costuma existir com endereço e categoria e SEM `avaliacoes`;
+  // sendo um objeto verdadeiro, o `||` parava nele e a contagem que veio da listagem do vizinho
+  // (a mesma consulta ao Google, com o número ao lado do nome) nunca era olhada. Resultado: a
+  // prova social ora não pontuava, ora pontuava sobre o número errado — e o CARD, que usa
+  // `?? entrada.avaliacoes`, mostrava um número que não era o do cálculo. Dois números diferentes
+  // para a mesma coisa na mesma tela: o defeito mais caro desta base.
+  // Agora escolho pelo CAMPO, não pelo objeto.
+  const contagem = [av?.minha_ficha?.avaliacoes, doVizinho?.avaliacoes].find((v) => Number.isFinite(v));
+  if (Number.isFinite(contagem) && Number.isFinite(medianaAvaliacoes) && medianaAvaliacoes > 0) {
+    const p = Math.round((1 - Math.min(1, contagem / medianaAvaliacoes)) * 100);
+    conta(p, 3, "prova_social", t.prova(contagem, medianaAvaliacoes), t.provaF(contagem, medianaAvaliacoes));
   }
   if (av?.score_geral != null) {
     conta(100 - av.score_geral, 2, "nota_geral", t.nota(av.score_geral), t.notaF(av.score_geral));
@@ -142,9 +153,21 @@ function buracoMedido(av, medianaAvaliacoes, doVizinho = null, lang = "pt") {
     if (!t.rot[a.nome]) continue;
     conta(100 - a.score, 1, a.nome, `${t.rot[a.nome]} (${a.score}/100)`, `${t.rotF[a.nome]} (${a.score}/100)`);
   }
-  if (!peso) return { buraco: null, buracos, forcas, motivo: t.semSinal };
+  if (!peso) return { buraco: null, buracos, forcas, sinais: 0, motivo: t.semSinal };
+
+  // 🚨 UM SINAL SÓ NÃO É UM BURACO (2026-08-24). Quando a avaliação não trouxe `score_geral` nem
+  // aspectos, sobrava a prova social sozinha — e sozinha ela vira 100 sem nada que a contradiga.
+  // Foi assim que Solace, Powerhouse Gym e Astoria Plumbers apareceram com buraco 100 tendo
+  // score 100 e ZERO aspectos reprovados: o número era real e a leitura ("é o maior potencial da
+  // carteira") era ficção. Um vendedor ligaria primeiro justamente para quem não tem o que
+  // consertar — e queimaria a lista.
+  // Com um sinal só o número não sai: sai o motivo. Medida incompleta declarada vale mais que
+  // medida completa inventada.
+  const sinais = buracos.length + forcas.length;
+  if (sinais < 2) return { buraco: null, buracos, forcas, sinais, motivo: t.umSinalSo };
+
   buracos.sort((a, b) => b.valor - a.valor);             // a ferida maior primeiro: é a abertura
-  return { buraco: Math.round(pontos / peso), buracos, forcas, motivo: null };
+  return { buraco: Math.round(pontos / peso), buracos, forcas, sinais, motivo: null };
 }
 
 export async function onRequest({ request, env }) {
@@ -413,7 +436,17 @@ export async function onRequest({ request, env }) {
           }
         }
         if (!av) {
-          av = await avaliarNegocio({ site: canonico, env, lang });
+          // 🚨 O RELATÓRIO FALA O IDIOMA DO PROSPECT, NÃO O DE QUEM CLICOU (2026-08-22).
+          // 295 relatórios de encanadores de Nova York saíram em PORTUGUÊS porque `lang` vinha da
+          // interface do Luis. Mandar assim queima o prospect na primeira linha — e o link já
+          // estava gerado, esperando para ser enviado.
+          // Regra: domínio/mercado manda. `.br` → pt; qualquer outro TLD dos EUA → en. Quem quiser
+          // forçar passa `lang_relatorio` explicitamente.
+          const langRel = normLang(
+            (b.lang_relatorio || "").toString()
+            || (/\.br(\/|$)/i.test(canonico) ? "pt" : "en")
+          );
+          av = await avaliarNegocio({ site: canonico, env, lang: langRel });
           if (!av.ok) { saida.push({ site: canonico, dominio: dom, ok: false, motivo: av.motivo }); continue; }
           const salvo = await svcJson(env, "avaliacao_save", {
             p_secret: env.INGEST_SECRET || "",

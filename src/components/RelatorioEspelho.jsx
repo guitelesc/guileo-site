@@ -1059,14 +1059,21 @@ export function PilaresDoNegocio({ aspectos = [], extras = {}, accent, lang, not
                 {/* ── a âncora + as notas dela, numa linha só ─────────────────────────────── */}
                 {(ancora || notas.length > 0) && (
                   <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3">
+                    {/* ⚠️ AS NOTAS SAÍRAM DAQUI TAMBÉM (2026-08-22). Este era o TERCEIRO lugar
+                        onde o número aparecia — e o pior: mostrava "0/100" em letra gigante.
+                        Dizer a um encanador com 5 estrelas que ele é ZERO destrói a conversa
+                        antes dela existir, e ainda é falso: 0 aqui significa "este canal não
+                        existe", não "este negócio é ruim".
+                        O QUE FICA é o nome do elo mais fraco — apontar onde dói é diagnóstico;
+                        dar nota é julgamento. */}
                     {ancora && (
                       <div>
-                        <div className="text-[40px] font-black leading-none tracking-tight sm:text-[46px]"
-                          style={{ color: bandColor(ancora.score), fontVariantNumeric: "tabular-nums" }}>
-                          {ancora.score}<span className="text-[20px] opacity-50">/100</span>
+                        <div className="text-[24px] font-black leading-tight tracking-tight sm:text-[28px]"
+                          style={{ color: bandColor(ancora.score) }}>
+                          {aspectLabel(ancora.nome, lang)}
                         </div>
                         <div className="mt-1 text-[11px] font-bold uppercase tracking-wider text-g-muted">
-                          {aspectLabel(ancora.nome, lang)} · {c.pilWeak}
+                          {c.pilWeak}
                         </div>
                       </div>
                     )}
@@ -1076,10 +1083,12 @@ export function PilaresDoNegocio({ aspectos = [], extras = {}, accent, lang, not
                         if (ancora && a.nome === ancora.nome) return null;   /* já está na âncora */
                         return (
                           <li key={a.nome} className="text-[12px] text-g-ink">
-                            {aspectLabel(a.nome, lang)}{" "}
-                            <span className="font-black" style={{ color: medido ? bandColor(a.score) : NOT_MEASURED, fontVariantNumeric: "tabular-nums" }}>
-                              {medido ? `${a.score}/100` : notMeasuredLabel}
+                            {/* Sem número: a COR já diz se está bom, ruim ou não medido, e cor
+                                não humilha ninguém. Não medido continua escrito, nunca vira 0. */}
+                            <span className="font-semibold" style={{ color: medido ? bandColor(a.score) : NOT_MEASURED }}>
+                              {aspectLabel(a.nome, lang)}
                             </span>
+                            {!medido && <span className="ml-1 text-[11px] text-g-muted">· {notMeasuredLabel}</span>}
                           </li>
                         );
                       })}

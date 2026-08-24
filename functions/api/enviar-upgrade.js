@@ -22,6 +22,22 @@ export async function onRequestPost({ request, env }) {
   if (!env.RESEND_API_KEY) return json({ ok: false, error: "RESEND_API_KEY ausente" }, 503);
 
   const b = await request.json().catch(() => ({}));
+
+  // ── STATUS: o e-mail chegou ou voltou? ────────────────────────────────────────────────────────
+  // Sem isto, "enviado: true" significa só "o Resend aceitou" — e um endereço inexistente é
+  // aceito na hora e rejeitado minutos depois, quando o servidor do destino responde. A diferença
+  // entre aceito e ENTREGUE é a diferença entre achar que o prospect não respondeu e saber que
+  // ele nunca recebeu. Mesma regra do resto da casa: olhar o resultado, não o envelope.
+  if ((b.action || "").toString() === "status") {
+    const id = (b.id || "").toString().trim();
+    if (!/^[0-9a-f-]{10,}$/i.test(id)) return json({ ok: false, error: "id invalido" }, 400);
+    const r = await fetch(`https://api.resend.com/emails/${id}`, { headers: { Authorization: `Bearer ${env.RESEND_API_KEY}` } });
+    const txt = await r.text().catch(() => "");
+    if (!r.ok) return json({ ok: false, error: `resend ${r.status}: ${txt.slice(0, 140)}` }, 502);
+    let d = {}; try { d = JSON.parse(txt) || {}; } catch { /* */ }
+    return json({ ok: true, id, para: d.to, assunto: d.subject, estado: d.last_event || "?", quando: d.created_at || "" });
+  }
+
   const to = (b.to || "").toString().trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@.]+\.[^\s@]{2,}$/.test(to)) return json({ ok: false, error: "destinatario invalido" }, 400);
 

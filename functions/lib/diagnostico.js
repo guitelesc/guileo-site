@@ -42,7 +42,12 @@ const conta = (re, s) => (s.match(re) || []).length;
 // `gravidade`: alta = dinheiro escapando agora · media = atrito · baixa = oportunidade.
 // `evidencia`: o que foi LIDO no site. Sem evidência o achado não nasce — é a diferença entre
 // "vi no site de vocês que" e telemarketing (a mesma regra do leadClassifier).
-function achados({ html, perfil, horas }) {
+// ⚠️ `lang` ENTRA AQUI, não fica implícito. Na 1ª tentativa eu usei a tabela de tradução dentro
+// desta função enquanto o `L` só existia dentro de `diagnosticar` — duas funções diferentes, um
+// `L` que não existia neste escopo. O erro não aparecia em teste nenhum porque nada exercita
+// este caminho sem rede.
+function achados({ html, perfil, horas, lang = "pt" }) {
+  const L = tx(lang);
   const out = [];
   const temTel = /href=["']tel:/i.test(html);
   const temForm = /<form[\s>]/i.test(html);
@@ -58,10 +63,9 @@ function achados({ html, perfil, horas }) {
     const piso = horas.dias < 5;
     out.push({
       id: "fora_horario", gravidade: "alta",
-      titulo: `${piso ? "Pelo menos " : ""}${horas.fechadas}h por semana com o telefone sem ninguém`,
-      evidencia: `Horário publicado no site (${horas.dias} dia(s) lido(s)): ${horas.resumo}`,
-      dor: "Quem liga fora desse intervalo cai na caixa postal — e a maioria não liga de novo, liga pro próximo da lista.",
-      gui: "A agente atende 24 horas, nos 7 dias, e marca no mesmo telefone de hoje.",
+      titulo: L.fh_t(piso, horas.fechadas),
+      evidencia: L.fh_e_site(horas.dias, horas.resumo),
+      dor: L.fh_d, gui: L.fh_g,
     });
   }
 
@@ -69,10 +73,7 @@ function achados({ html, perfil, horas }) {
   if (!temAgenda) {
     out.push({
       id: "sem_agendamento", gravidade: "alta",
-      titulo: "Não dá para marcar sem falar com alguém",
-      evidencia: "Nenhum sistema de agendamento online encontrado no site.",
-      dor: "Cada marcação ocupa uma pessoa da equipe, e quem liga na hora cheia desiste.",
-      gui: "A agente marca durante a própria ligação, já conferindo a agenda real.",
+      titulo: L.sa_t, evidencia: L.sa_e, dor: L.sa_d, gui: L.sa_g,
     });
   }
 
@@ -80,10 +81,7 @@ function achados({ html, perfil, horas }) {
   if (temForm && !temTel) {
     out.push({
       id: "so_formulario", gravidade: "alta",
-      titulo: "O contato principal é um formulário",
-      evidencia: "O site tem formulário de contato e nenhum link de telefone clicável.",
-      dor: "Lead preenche e fica esperando. Quem responde primeiro fica com o cliente — normalmente em minutos, não horas.",
-      gui: "Formulário preenchido vira ligação da agente em cerca de 60 segundos.",
+      titulo: L.sf_t, evidencia: L.sf_e, dor: L.sf_d, gui: L.sf_g,
     });
   }
 
@@ -92,10 +90,8 @@ function achados({ html, perfil, horas }) {
   if (alternos < 2) {
     out.push({
       id: "um_idioma", gravidade: "media",
-      titulo: `Site só em ${perfil.idioma ? perfil.idioma.toUpperCase() : "um idioma"}`,
-      evidencia: alternos ? "Só uma versão de idioma declarada." : "Nenhuma versão alternativa de idioma no site.",
-      dor: "Quem liga e não é atendido na própria língua desliga — e nunca vira estatística, porque não deixa recado.",
-      gui: "A agente reconhece e responde em 16 idiomas, com voz nativa em cada um.",
+      titulo: L.ui_t(perfil.idioma ? perfil.idioma.toUpperCase() : L.um_idioma),
+      evidencia: L.ui_e(!!alternos), dor: L.ui_d, gui: L.ui_g,
     });
   }
 
@@ -103,10 +99,7 @@ function achados({ html, perfil, horas }) {
   if (!REVIEW.test(html)) {
     out.push({
       id: "sem_review", gravidade: "media",
-      titulo: "Nenhum caminho para o cliente avaliar",
-      evidencia: "Nenhum link de avaliação (Google/Yelp) encontrado no site.",
-      dor: "Cliente satisfeito vai embora calado; o insatisfeito acha o caminho sozinho.",
-      gui: "Depois do atendimento a agente pede a avaliação e responde as que chegam.",
+      titulo: L.sr_t, evidencia: L.sr_e, dor: L.sr_d, gui: L.sr_g,
     });
   }
 
@@ -116,10 +109,8 @@ function achados({ html, perfil, horas }) {
   if (perfil.unidades > 1 && tels.size < perfil.unidades) {
     out.push({
       id: "unidades_sem_linha", gravidade: "media",
-      titulo: `${perfil.unidades} unidades para ${tels.size || 1} telefone`,
-      evidencia: `${perfil.unidades} endereços no site, ${tels.size || 1} número(s) de telefone.`,
-      dor: "Quem liga querendo uma unidade cai na outra, e a ligação vira transferência ou desistência.",
-      gui: "A agente pergunta a unidade, responde pela agenda daquela loja e marca no lugar certo.",
+      titulo: L.ul_t(perfil.unidades, tels.size || 1),
+      evidencia: L.ul_e(perfil.unidades, tels.size || 1), dor: L.ul_d, gui: L.ul_g,
     });
   }
 
@@ -127,10 +118,7 @@ function achados({ html, perfil, horas }) {
   if (!CHAT.test(html) && !WHATS.test(html)) {
     out.push({
       id: "sem_texto", gravidade: "baixa",
-      titulo: "Nenhum canal de texto",
-      evidencia: "Nenhum chat no site e nenhum link de WhatsApp.",
-      dor: "Uma parte dos clientes não liga em hipótese nenhuma — se só existe telefone, eles vão embora sem contato.",
-      gui: "A mesma agente atende no chat do site e no WhatsApp, com a mesma agenda.",
+      titulo: L.st_t, evidencia: L.st_e, dor: L.st_d, gui: L.st_g,
     });
   }
 
@@ -142,7 +130,90 @@ function achados({ html, perfil, horas }) {
  * Analisa o site de um prospect e devolve o diagnóstico pronto.
  * Nunca levanta: erro de rede/SSRF volta como { ok:false, motivo }.
  */
-export async function diagnosticar(siteUrl, env = null, dica = "") {
+
+// ── OS ACHADOS FALAM O IDIOMA DO RELATÓRIO (2026-08-22) ──────────────────────────────────────
+// 🚨 ESTE ARQUIVO NÃO CONHECIA IDIOMA NENHUM. Todo achado era português fixo no código — então a
+// moldura do Growth Report traduzia e o CONTEÚDO não. Ficava "WHAT WE MEASURED: Pelo menos 144h
+// por semana com o telefone sem ninguém" num relatório mandado para um encanador de Nova York.
+// O defeito estava enterrado no meio da página; ao tirar a nota 24/100 e promover o achado para
+// a primeira dobra, ele virou a PRIMEIRA COISA que o prospect lê. Erro velho, palco novo.
+//
+// Interpolação fica em função para o número entrar no lugar certo de cada língua — em inglês a
+// unidade e a ordem não são as mesmas.
+const TX = {
+  pt: {
+    fh_t: (piso, h) => `${piso ? "Pelo menos " : ""}${h}h por semana com o telefone sem ninguém`,
+    fh_e_site: (d, r) => `Horário publicado no site (${d} dia(s) lido(s)): ${r}`,
+    fh_e_google: (d, r) => `Horário na ficha do Google (${d} dia(s) aberto(s)): ${r}`,
+    fh_d: "Quem liga fora desse intervalo cai na caixa postal — e a maioria não liga de novo, liga pro próximo da lista.",
+    fh_g: "A agente atende 24 horas, nos 7 dias, e marca no mesmo telefone de hoje.",
+    sa_t: "Não dá para marcar sem falar com alguém",
+    sa_e: "Nenhum sistema de agendamento online encontrado no site.",
+    sa_d: "Cada marcação ocupa uma pessoa da equipe, e quem liga na hora cheia desiste.",
+    sa_g: "A agente marca durante a própria ligação, já conferindo a agenda real.",
+    sf_t: "O contato principal é um formulário",
+    sf_e: "O site tem formulário de contato e nenhum link de telefone clicável.",
+    sf_d: "Lead preenche e fica esperando. Quem responde primeiro fica com o cliente — normalmente em minutos, não horas.",
+    sf_g: "Formulário preenchido vira ligação da agente em cerca de 60 segundos.",
+    ui_t: (i) => `Site só em ${i}`,
+    ui_e: (tem) => tem ? "Só uma versão de idioma declarada." : "Nenhuma versão alternativa de idioma no site.",
+    ui_d: "Quem liga e não é atendido na própria língua desliga — e nunca vira estatística, porque não deixa recado.",
+    ui_g: "A agente reconhece e responde em 16 idiomas, com voz nativa em cada um.",
+    sr_t: "Nenhum caminho para o cliente avaliar",
+    sr_e: "Nenhum link de avaliação (Google/Yelp) encontrado no site.",
+    sr_d: "Cliente satisfeito vai embora calado; o insatisfeito acha o caminho sozinho.",
+    sr_g: "Depois do atendimento a agente pede a avaliação e responde as que chegam.",
+    ul_t: (u, t) => `${u} unidades para ${t} telefone`,
+    ul_e: (u, t) => `${u} endereços no site, ${t} número(s) de telefone.`,
+    ul_d: "Quem liga querendo uma unidade cai na outra, e a ligação vira transferência ou desistência.",
+    ul_g: "A agente pergunta a unidade, responde pela agenda daquela loja e marca no lugar certo.",
+    st_t: "Nenhum canal de texto",
+    st_e: "Nenhum chat no site e nenhum link de WhatsApp.",
+    st_d: "Uma parte dos clientes não liga em hipótese nenhuma — se só existe telefone, eles vão embora sem contato.",
+    st_g: "A mesma agente atende no chat do site e no WhatsApp, com a mesma agenda.",
+    fonte_google: "O site não abriu para leitura automática (proteção anti-bot). Estes pontos vêm da ficha pública do Google.",
+    um_idioma: "um idioma",
+  },
+  en: {
+    fh_t: (piso, h) => `${piso ? "At least " : ""}${h} hours a week with nobody on the phone`,
+    fh_e_site: (d, r) => `Hours published on the site (${d} day(s) read): ${r}`,
+    fh_e_google: (d, r) => `Hours on the Google listing (${d} day(s) open): ${r}`,
+    fh_d: "Anyone calling outside that window gets voicemail — and most don't call back, they call the next name on the list.",
+    fh_g: "The agent answers 24 hours a day, 7 days a week, and books on the same number you use today.",
+    sa_t: "You can't book without talking to someone",
+    sa_e: "No online booking system found on the site.",
+    sa_d: "Every booking ties up a person on your team, and whoever calls during the rush gives up.",
+    sa_g: "The agent books during the call itself, checking the real calendar.",
+    sf_t: "Your main contact is a form",
+    sf_e: "The site has a contact form and no clickable phone link.",
+    sf_d: "The lead fills it in and waits. Whoever answers first keeps the customer — usually in minutes, not hours.",
+    sf_g: "A submitted form becomes a call from the agent in about 60 seconds.",
+    ui_t: (i) => `Site only in ${i}`,
+    ui_e: (tem) => tem ? "Only one language version declared." : "No alternate language version on the site.",
+    ui_d: "Someone who calls and isn't served in their own language hangs up — and never shows up in any report, because they leave no message.",
+    ui_g: "The agent recognises and answers in 16 languages, with a native voice in each.",
+    sr_t: "No way for a customer to leave a review",
+    sr_e: "No review link (Google/Yelp) found on the site.",
+    sr_d: "The happy customer leaves quietly; the unhappy one finds the way on their own.",
+    sr_g: "After the visit the agent asks for the review and replies to the ones that come in.",
+    ul_t: (u, t) => `${u} locations for ${t} phone line`,
+    ul_e: (u, t) => `${u} addresses on the site, ${t} phone number(s).`,
+    ul_d: "Someone calling for one location lands on another, and the call turns into a transfer or a hang-up.",
+    ul_g: "The agent asks which location, answers from that store's calendar and books in the right place.",
+    st_t: "No text channel",
+    st_e: "No chat on the site and no WhatsApp link.",
+    st_d: "Some customers will never call. If the phone is the only door, they leave without contacting you.",
+    st_g: "The same agent answers on the site chat and on WhatsApp, from the same calendar.",
+    fonte_google: "The site did not open for automated reading (anti-bot protection). These points come from the public Google listing.",
+    um_idioma: "one language",
+  },
+};
+TX.es = TX.en;   // ES ainda não escrito: cai em EN, que é honesto. PT para um cliente de Miami
+                 // seria pior que EN — e inventar espanhol de máquina aqui não é tradução, é chute.
+const tx = (lang) => TX[String(lang || "pt").slice(0, 2)] || TX.pt;
+
+export async function diagnosticar(siteUrl, env = null, dica = "", lang = "pt") {
+  const L = tx(lang);
   const got = await buscarHtml(siteUrl);
 
   // ── REDE DE SEGURANÇA: A FICHA DO GOOGLE ────────────────────────────────────────────────────
@@ -165,10 +236,9 @@ export async function diagnosticar(siteUrl, env = null, dica = "") {
       const piso = horasG.dias < 5;
       lista.push({
         id: "fora_horario", gravidade: "alta",
-        titulo: `${piso ? "Pelo menos " : ""}${horasG.fechadas}h por semana com o telefone sem ninguém`,
-        evidencia: `Horário na ficha do Google (${horasG.dias} dia(s) aberto(s)): ${horasG.resumo}`,
-        dor: "Quem liga fora desse intervalo cai na caixa postal — e a maioria não liga de novo, liga pro próximo da lista.",
-        gui: "A agente atende 24 horas, nos 7 dias, e marca no mesmo telefone de hoje.",
+        titulo: L.fh_t(piso, horasG.fechadas),
+        evidencia: L.fh_e_google(horasG.dias, horasG.resumo),
+        dor: L.fh_d, gui: L.fh_g,
       });
     }
     const av = achadoDeAvaliacoes(f);
@@ -178,7 +248,7 @@ export async function diagnosticar(siteUrl, env = null, dica = "") {
       ok: true, site: siteUrl, fonte: "google",
       // O aviso é para o VENDEDOR, e vai impresso na página: ele precisa saber que não lemos o
       // site antes de dizer qualquer coisa sobre o site na frente do prospect.
-      nota_fonte: "O site não abriu para leitura automática (proteção anti-bot). Estes pontos vêm da ficha pública do Google.",
+      nota_fonte: L.fonte_google,
       perfil: { nome: f.nome, telefone: f.telefone, endereco: f.endereco, horarios: f.horarios, idioma: "", servicos: [], marca: null, unidades: 1 },
       horas: horasG, achados: lista,
       resumo: { total: lista.length, altas: lista.filter((a) => a.gravidade === "alta").length, horas_sem_ninguem: horasG ? horasG.fechadas : null },
@@ -199,7 +269,7 @@ export async function diagnosticar(siteUrl, env = null, dica = "") {
   };
 
   const horas = horasFechadas(perfil.horarios);
-  const lista = achados({ html, perfil, horas });
+  const lista = achados({ html, perfil, horas, lang });
 
   // ── O VIZINHO ────────────────────────────────────────────────────────────────────────────────
   // ⚠️ ISTO REVISA UMA REGRA QUE EU MESMO ESCREVI ACIMA ("o Google só é chamado quando a leitura

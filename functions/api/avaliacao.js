@@ -74,6 +74,34 @@ export async function onRequest(context) {
   // Natura Spa). O idioma escolhido fica GRAVADO no payload — a página só renderiza.
   const lang = normLang(b.lang || b.idioma || url.searchParams.get("lang") || "pt");
 
+  // ── REGERAR NO MESMO ID (2026-08-22) ────────────────────────────────────────────────────────
+  // Existe porque 299 relatórios saíram no idioma errado e os links JÁ estavam criados. Salvar
+  // de novo geraria id novo — e qualquer link já compartilhado viraria 404, além de perder a
+  // marca (logo/cor) que mora no registro. Aqui o payload é reescrito EM CIMA do mesmo id.
+  // Portão: INGEST_SECRET. Não é caminho de produto — é conserto de acervo.
+  const regerarId = (b.regerar_id || "").toString();
+  if (regerarId) {
+    if (!env.INGEST_SECRET || (b.token || request.headers.get("x-guileo-secret")) !== env.INGEST_SECRET) {
+      return json({ error: "unauthorized" }, 401);
+    }
+    if (!/^[0-9a-f-]{36}$/i.test(regerarId)) return json({ ok: false, erro: "id_invalido" }, 400);
+    const alvo = (b.site || "").toString().trim();
+    if (!alvo) return json({ ok: false, erro: "informe o site do registro" }, 400);
+    const novo = await avaliarNegocio({ site: alvo, env, negocio: (b.negocio || "").toString().slice(0, 120), lang });
+    // Não conseguir LER o site não pode virar payload vazio por cima de um relatório bom.
+    if (!novo.ok) return json({ ok: false, erro: "nao_deu_pra_ler", motivo: novo.motivo }, 409);
+    const gravou = await svcJson(env, "avaliacao_payload_set", {
+      p_secret: env.INGEST_SECRET, p_id: regerarId, p_payload: novo,
+    }).catch(() => null);
+    // "ok" sem comprovante é promessa sem lastro: confere que a escrita voltou.
+    if (!gravou || gravou.ok === false) return json({ ok: false, erro: "nao_gravou", detalhe: gravou?.detalhe || gravou?.motivo || null }, 500);
+    // Devolve o 1º achado: sem isso, "regerado: true" não prova NADA sobre o texto que foi
+    // gravado — e foi exatamente aí que eu fiquei em círculo, relendo o payload antigo.
+    return json({ ok: true, id: regerarId, lang, regerado: true, business: novo.business || "",
+                  primeiro_achado: (novo.achados || [])[0]?.titulo || null });
+  }
+
+
   const av = await avaliarNegocio({ site, env, negocio: (b.negocio || b.brand || b.business || "").toString().slice(0, 120), interno, lang });
   if (!av.ok) return json({ ok: false, erro: "nao_deu_pra_ler", motivo: av.motivo }, 409);
   if (internoMotivo) av.nota_fonte = [av.nota_fonte, `modo cliente degradado: ${internoMotivo}`].filter(Boolean).join(" · ");

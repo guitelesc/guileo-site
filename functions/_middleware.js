@@ -105,7 +105,7 @@ export async function onRequest(context) {
   // when a route is added. Generous by design — a missing entry only softens a real 404, never blocks
   // a valid page (which would be far worse).
   const KNOWN_SEGMENTS = new Set([
-    "academia", "admin", "ai-receptionist", "blog", "calculator", "cola", "colaborador", "compliance",
+    "academia", "admin", "agente", "ai-receptionist", "blog", "calculator", "cola", "colaborador", "compliance",
     "conectar-stripe", "consulting", "consultoria", "contact", "cookies", "cancellation", "deck", "demo",
     "for", "get-paid", "go-live", "grader", "health-compliance", "hipaa", "home-services", "kit",
     "lead-generation", "leads", "live", "lp", "marketing", "sms", "nossa-gente", "parceiro", "partners", "pitch",

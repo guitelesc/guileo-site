@@ -533,6 +533,90 @@ function CountUp({ value, format = (n) => n, duration = 1400 }) {
   return <span ref={ref}>{format(final === null ? value : num)}</span>;
 }
 
+/* ── REVELA AS SEÇÕES (2026-08-22) ───────────────────────────────────────────
+   Um observador para a página inteira, em vez de um componente por seção: as
+   seções ganham a classe `.ap-rev` no próprio JSX e este hook liga o `.ap-in`
+   quando cada uma chega à vista. Menos ruído no markup e um só lugar para
+   consertar se o comportamento mudar.
+   ⚠️ REDE DE SEGURANÇA (a mesma do CicloDaGui, que já resolveu isto uma vez):
+   timer de 1,4s revela TUDO. Sem IntersectionObserver, com ele não disparando,
+   ou com o JS morrendo no meio, o relatório aparece do mesmo jeito. Este
+   documento é um link que o vendedor MANDA — página em branco por causa de
+   animação é o pior desfecho possível, muito pior que não ter animação. */
+function useRevelaSecoes(pronto) {
+  useEffect(() => {
+    if (!pronto) return;
+    const els = Array.from(document.querySelectorAll(".ap-rev"));
+    if (!els.length) return;
+    const mostrar = (el) => el.classList.add("ap-in");
+    const t = setTimeout(() => els.forEach(mostrar), 1400);
+    if (!("IntersectionObserver" in window)) { els.forEach(mostrar); return () => clearTimeout(t); }
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => { if (e.isIntersecting) { mostrar(e.target); io.unobserve(e.target); } }),
+      { rootMargin: "0px 0px -8% 0px", threshold: 0.12 }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => { clearTimeout(t); io.disconnect(); };
+  }, [pronto]);
+}
+
+/* ── A DOR MEDIDA ABRE O RELATÓRIO (2026-08-22, pedido do Luis) ───────────────
+   ⚠️ O NÚMERO 24/100 SAIU DE TODOS OS RELATÓRIOS. Luis: «sem esse número, todos».
+   E ele está certo pelo motivo mais caro: a nota é uma coisa que NÓS damos. Chegar
+   num encanador com 5 estrelas e 45 avaliações dizendo "você é 24 de 100" é ofensa
+   com cara de diagnóstico — o dono fecha a aba antes da segunda dobra, e ele não
+   está errado em fechar.
+   O que abre agora é um fato DELE, medido: "144h por semana com o telefone sem
+   ninguém". Não é julgamento, é espelho. E é exatamente a frase que a ligação usa.
+
+   HONESTIDADE: o número grande só aparece quando existe número no achado. Achado
+   sem grandeza ("não dá para marcar sem falar com alguém") vira manchete de texto —
+   inventar um número aqui seria a mentira mais fácil e mais cara desta página. */
+function DorDeAbertura({ achado, accent, eyebrow }) {
+  if (!achado?.titulo) return null;
+  // "Pelo menos 148h por semana…" / "144h por semana…" → 148 | 144
+  const m = String(achado.titulo).match(/(\d[\d.,]*)\s*h\b/i);
+  const n = m ? parseInt(m[1].replace(/[.,]/g, ""), 10) : null;
+  const resto = m ? String(achado.titulo).replace(m[0], "").replace(/^\s*(pelo menos|at least)\s*/i, "").trim() : String(achado.titulo);
+
+  // `.stagger` é o padrão da casa: entrada em cascata com `rise`, e o prefers-reduced-motion já
+  // está tratado no index.css. Inventar um keyframe novo aqui criaria uma segunda gramática de
+  // movimento dentro do mesmo produto.
+  return (
+    <div className="stagger flex flex-col items-center text-center md:items-start md:text-left">
+      <div className="text-[10.5px] font-black uppercase tracking-[0.18em] text-g-muted">{eyebrow}</div>
+
+      {Number.isFinite(n) ? (
+        <div className="mt-2 flex items-baseline gap-2">
+          <span className="text-[64px] font-black leading-[0.9] tabular-nums sm:text-[76px]" style={{ color: accent }}>
+            <CountUp value={n} />
+          </span>
+          <span className="text-2xl font-bold text-g-word/70">h</span>
+        </div>
+      ) : null}
+
+      <h1 className={`${Number.isFinite(n) ? "mt-2" : "mt-3"} max-w-[19ch] text-balance text-[22px] font-bold leading-tight text-g-word sm:text-[26px]`}>
+        {resto}
+      </h1>
+
+      {achado.evidencia && (
+        <p className="mt-3 max-w-[42ch] text-[12px] leading-relaxed text-g-muted">
+          {achado.evidencia}
+        </p>
+      )}
+
+      {/* A resposta vem COLADA na dor. Dor sem saída é só má notícia — e má notícia
+          sozinha não vende, afasta. */}
+      {achado.gui && (
+        <p className="mt-4 max-w-[38ch] border-l-2 pl-3 text-[13.5px] font-semibold leading-snug text-g-ink"
+           style={{ borderColor: accent }}>
+          {achado.gui}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /* ── animated score ring (SVG, stroke-dashoffset transition) ─────────────── */
 function ScoreRing({ score, accent, label, notMeasuredLabel }) {
   const measured = typeof score === "number" && Number.isFinite(score);
@@ -891,7 +975,7 @@ function CicloDaGui({ c, accent, rgb, missedCalls, agentName }) {
   });
 
   return (
-    <section className="mt-16" ref={ref}>
+    <section className="ap-rev mt-16" ref={ref}>
       <style>{`
         @keyframes gcpop{0%{transform:scale(.35) translateY(7px);opacity:.2}
                          60%{transform:scale(1.4) translateY(-3px);opacity:1}
@@ -1324,7 +1408,7 @@ const RES = {
         cobre: "कवर करता है", ver: "पूरा एक्स-रे नीचे है ↓", nada: "कोई कदम नहीं — भरने के लिए कुछ नहीं गढ़ा गया" },
 };
 
-function ResumoUmaTela({ lang, accent, score, aspectos, riskFmt, premissa, fase1, fase2, cobre, notMeasured }) {
+function ResumoUmaTela({ lang, accent, score, aspectos, riskFmt, premissa, fase1, fase2, cobre, notMeasured, dor }) {
   const t = RES[lang] || RES.en;
   // O pior aspecto MEDIDO. Um aspecto sem nota não é "o pior" — é desconhecido, e chamar
   // desconhecido de pior é a mesma mentira do `null` virando 0.
@@ -1345,14 +1429,20 @@ function ResumoUmaTela({ lang, accent, score, aspectos, riskFmt, premissa, fase1
       <div className="mt-5 space-y-5">
         <N n="1" cor={accent}>
           <div className="text-[13px] font-black uppercase tracking-wider text-g-muted">{t.um}</div>
+          {/* ⚠️ O "24/100" SAIU DAQUI TAMBÉM (2026-08-22). Ele aparecia em DOIS lugares — o anel
+              no topo e este resumo — e tirar só um deixaria a página se contradizendo: "não te
+              damos nota" na primeira dobra e "você é 24" trezentos pixels abaixo.
+              O ponto mais fraco FICA: apontar onde dói é diagnóstico. O que sai é a NOTA. */}
           <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span className="font-mono text-[30px] font-black leading-none"
-                  style={{ color: score == null ? notMeasured : bandColor(score) }}>{score == null ? "—" : score}</span>
-            <span className="text-[13px] text-g-muted">/100</span>
-            {pior && (
-              <span className="text-[13.5px] text-g-muted">
-                · {t.pior}: <b style={{ color: bandColor(pior.score) }}>{aspectLabel(pior.nome, lang)}</b>
-              </span>
+            {dor?.titulo ? (
+              <span className="text-[17px] font-bold leading-snug text-g-word">{dor.titulo}</span>
+            ) : pior ? (
+              <span className="text-[17px] font-bold leading-snug text-g-word">{aspectLabel(pior.nome, lang)}</span>
+            ) : (
+              <span className="text-[15px] text-g-muted">{notMeasured}</span>
+            )}
+            {dor?.titulo && pior && (
+              <span className="text-[13px] text-g-muted">· {t.pior}: <b>{aspectLabel(pior.nome, lang)}</b></span>
             )}
           </div>
           {riskFmt && (
@@ -1400,6 +1490,15 @@ export default function Apresentacao() {
      evidências em português. Lei do repo: nada de texto EN em página PT, nem o
      contrário. Aqui a página segue o payload — e alinha a moldura inteira
      (navbar/rodapé) com setLang, a menos que a URL peça um idioma na mão. */
+  /* ⚠️ ESTE HOOK FICA AQUI, ACIMA DOS RETURNS ANTECIPADOS (loading / error).
+     Eu o coloquei lá embaixo, junto de `isCliente`, e a página inteira caiu no
+     "Opa — algo saiu do trilho": nos estados de carregando e de erro a função
+     retorna ANTES, o hook não é chamado, a ordem dos hooks muda entre renders e
+     o React derruba o componente. Build passou verde e a produção quebrou —
+     exatamente o que a lei "build verde não é prova" descreve.
+     `pronto` continua controlando o trabalho; o que não pode variar é a CHAMADA. */
+  useRevelaSecoes(state.status === "ok");
+
   const payloadLang = state.data?.lang;
   const rlang = payloadLang && D[payloadLang] ? payloadLang : lang;
   const c = D[rlang] || D.en;
@@ -1624,6 +1723,17 @@ export default function Apresentacao() {
     build: evidenciasDaPerna(["presenca_web", "vendas_digitais"]),
   };
 
+  /* ── A DOR QUE ABRE (2026-08-22) ───────────────────────────────────────────────────────────
+     O achado mais grave vira a primeira dobra. Prefere o de HORÁRIO: telefone sem ninguém é a
+     dor que vira dinheiro perdido na frase seguinte, e é a que a ligação usa. Sem achado grave,
+     cai no primeiro que existir; sem achado nenhum, o componente não renderiza (nada inventado). */
+  const dorAbertura = (() => {
+    const lista = Array.isArray(av?.achados) ? av.achados : [];
+    return lista.find((a) => a?.id === "fora_horario")
+        || lista.find((a) => a?.gravidade === "alta")
+        || lista[0] || null;
+  })();
+
   /* ── O HERÓI DA FASE 1 ────────────────────────────────────────────────────────────────────
      Luis: "falta impacto". O impacto que faltava não era brilho — era HIERARQUIA: um dos passos
      cobre sozinho TODO o dinheiro em risco, e estava desenhado igual aos outros três.
@@ -1666,7 +1776,7 @@ export default function Apresentacao() {
         <ResumoUmaTela
           lang={rlang} accent={accent} score={av.score_geral} aspectos={aspectos}
           riskFmt={riskFmt} premissa={risco?.premissa} fase1={fase1} fase2={fase2}
-          cobre={cobre} notMeasured={NOT_MEASURED}
+          cobre={cobre} notMeasured={NOT_MEASURED} dor={dorAbertura}
         />
 
         {/* 1 ── HERO: brand + score ring SIDE BY SIDE with the snapshot chart.
@@ -1679,15 +1789,11 @@ export default function Apresentacao() {
               às pressas. Identidade aparece UMA vez, no lugar onde ela é o assunto; aqui o assunto
               já é a NOTA. `BrandLogo` continua no arquivo porque é ele que garante o monograma
               quando a logo do cliente quebra — quem desenha a marca agora é a capa. */}
-          <div className="flex flex-col items-center text-center md:items-start md:text-left">
-            <div className="mt-0">
-              <ScoreRing score={av.score_geral} accent={accent} label={c.overallScore} notMeasuredLabel={c.notMeasured} />
-            </div>
-            {/* re-measurable score: today's number is a baseline, not a verdict */}
-            <p className="mt-3 max-w-[240px] text-center text-[11px] leading-snug text-g-muted md:text-left">
-              {c.reMeasure(agentName)}
-            </p>
-          </div>
+          {/* ⚠️ AQUI MORAVA O 24/100. Ver DorDeAbertura: a nota é julgamento NOSSO; o que
+              abre agora é um fato MEDIDO do negócio dele. O ScoreRing continua no arquivo
+              porque a mesma medição alimenta as barras por aspecto — o que saiu foi a NOTA
+              GERAL na primeira dobra, que era a linha que fechava a aba. */}
+          <DorDeAbertura achado={dorAbertura} accent={accent} eyebrow={c.snapshot} />
 
           {/* right: the same 6 aspects as a compact mini-chart */}
           {aspectos.length > 0 && (
@@ -1707,7 +1813,15 @@ export default function Apresentacao() {
                RelatorioEspelho.jsx — ou seja, o respiro entre seções mudava conforme o ARQUIVO,
                não conforme a intenção. Rolando, isso é aquele "quase certo" que faz a página
                parecer montada por blocos em vez de composta. Agora é um ritmo só. */}
-        <section className="mt-16">
+        {/* ✂️ CORTADO PARA PROSPECT (2026-08-22, pedido do Luis: «tá muito longo»).
+            Esta seção são 6 barras + 6 cartões destrinchando cada aspecto — e leva junto o
+            "Próximo degrau", que mora dentro do AspectRow. É diagnóstico DE PROFUNDIDADE:
+            excelente para quem já comprou e quer saber onde mexer, e peso morto para quem
+            ainda está decidindo se atende a ligação. Prospect precisa de: a dor → o que fazer
+            → quanto custa não fazer.
+            Fica INTEIRA para `isCliente` — o cliente pagante é justamente quem lê isso. */}
+        {isCliente && (
+        <section className="ap-rev mt-16">
           <h2 className="text-xl font-bold text-g-word">🔍 {c.aspects}</h2>
           <p className="mt-1 text-sm text-g-muted">{c.aspectsSub}</p>
           <p className="mt-2 max-w-3xl text-[12.5px] leading-snug text-g-muted">↗ {c.nextIntro}</p>
@@ -1756,12 +1870,13 @@ export default function Apresentacao() {
             })}
           </div>
         </section>
+        )}
 
         {/* 3 ── THE MONEY AT STAKE — the ONLY red section on the page (the red
                only carries urgency because nothing else on the page is red).
                Numbers animate 0 → value on scroll, like the landing's stats. */}
         {(perdidas || risco) && (
-          <section className="mt-16">
+          <section className="ap-rev mt-16">
             <h2 className="text-xl font-bold text-red-400">⚠️ {c.money}</h2>
             <p className="mt-1 text-sm text-g-muted">{c.moneySub}</p>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -1837,7 +1952,7 @@ export default function Apresentacao() {
                decides what is measured and what is a bet. Payloads written before the phases
                existed have no `fase`; those steps were all leak-closers, so they read as Phase 1. */}
         {estrategia.length > 0 && (
-          <section id="plano" className="relative mt-16 scroll-mt-6">
+          <section id="plano" className="ap-rev relative mt-16 scroll-mt-6">
             <style>{`
               @keyframes arreveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
               @keyframes arshine{to{background-position:220% center}}

@@ -58,12 +58,53 @@ export async function onRequestPost(context) {
           else { const e = await sr.json().catch(() => ({})); stripeConnect = /connect/i.test(e?.error?.message || "") ? "off" : "unknown"; }
         } catch { stripeConnect = "unknown"; }
       }
+      // ── A2P 10DLC: estado REAL da campanha na Twilio (2026-08-24) ──────────────────────────
+      // Este card mostrava "⚪ Registro do provedor" — um encolher de ombros que escondia o fato
+      // de que a campanha foi REPROVADA (erro 30909, CTA não verificável). Card que não distingue
+      // "ainda não registrei" de "registraram e recusaram" deixa o canal mudo sem ninguém saber,
+      // exatamente como o WhatsApp verde com token vencido. Pergunta-se à Twilio, não ao ambiente.
+      let a2p = { detect: false, ready: null, nota: "" };
+      if (has("TWILIO_ACCOUNT_SID") && has("TWILIO_AUTH_TOKEN")) {
+        try {
+          const auth = "Basic " + btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
+          const sr = await fetch("https://messaging.twilio.com/v1/Services", { headers: { Authorization: auth } });
+          // ⚠️ PORTÃO DE STATUS ANTES DO FALLBACK. Sem ele um 401/429 da Twilio virava `{}` →
+          // `services: []` → "nenhum A2P" — e o painel diria "não registrado" quando a verdade é
+          // "não consegui perguntar". É o mesmo engano do WhatsApp verde com token vencido, que
+          // esta própria função existe para não repetir.
+          if (!sr.ok) {
+            a2p = { detect: false, ready: null, nota: `não deu para ler a Twilio (HTTP ${sr.status}) — isto NÃO é "sem A2P"` };
+            throw new Error("twilio_indisponivel");
+          }
+          const sd = await sr.json().catch(() => ({}));
+          const svcs = (sd && sd.services) || [];
+          let algumAprovado = false, falha = "";
+          for (const sv of svcs.slice(0, 5)) {
+            const cr = await fetch(`https://messaging.twilio.com/v1/Services/${sv.sid}/Compliance/Usa2p`, { headers: { Authorization: auth } });
+            // Mesmo portão: campanha ilegível é "não sei", nunca "não tem".
+            if (!cr.ok) { if (!falha) falha = `campanha ilegível (HTTP ${cr.status})`; continue; }
+            const cd = await cr.json().catch(() => ({}));
+            for (const it of (cd?.compliance || cd?.us_app_to_person || [])) {
+              const st = String(it.campaign_status || "").toUpperCase();
+              if (st === "VERIFIED" || st === "APPROVED") algumAprovado = true;
+              else if (st === "FAILED" && !falha) {
+                const m = (it.errors && it.errors[0] && it.errors[0].description) || "campanha reprovada";
+                falha = String(m).slice(0, 140);
+              }
+            }
+          }
+          if (algumAprovado) a2p = { detect: true, ready: true, nota: "" };
+          else if (falha) a2p = { detect: true, ready: false, nota: `campanha REPROVADA — ${falha}` };
+          // sem campanha nenhuma: continua ⚪, porque "não registrei ainda" não é falha.
+        } catch { /* rede: mantém ⚪ em vez de acusar falha que não medimos */ }
+      }
+
       const engines = [
         // Stripe CONNECT — now detected for real via the live API probe above (stripeConnect).
         // "on" = Connect enabled (money can route to clients); "off" = key works but Connect not on;
         // "unknown" = no key/hiccup → fall back to "verify at provider".
         { id: "stripe",   detect: stripeConnect !== "unknown", ready: stripeConnect === "on", vars: ["STRIPE_WEBHOOK_SECRET"] },
-        { id: "a2p",      detect: false, ready: null,                          vars: [] },
+        { id: "a2p",      detect: a2p.detect, ready: a2p.ready, nota: a2p.nota, vars: [] },
         { id: "whats",    detect: true,  ready: req(["META_APP_ID", "META_APP_SECRET", "META_VERIFY_TOKEN", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_APP_SECRET"]), vars: ["META_APP_ID", "META_APP_SECRET", "META_VERIFY_TOKEN", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_APP_SECRET"] },
         { id: "gbp",      detect: true,  ready: req(["GOOGLE_BUSINESS_CLIENT_ID", "GOOGLE_BUSINESS_CLIENT_SECRET"]), vars: ["GOOGLE_BUSINESS_CLIENT_ID", "GOOGLE_BUSINESS_CLIENT_SECRET"] },
         { id: "mindbody", detect: true,  ready: has("MINDBODY_API_KEY"),       vars: ["MINDBODY_API_KEY"] },
@@ -78,7 +119,7 @@ export async function onRequestPost(context) {
       const present = {};
       engines.forEach((e) => e.vars.forEach((v) => { present[v] = has(v); }));
       const already = { ELEVENLABS_API_KEY: has("ELEVENLABS_API_KEY"), STRIPE_SECRET_KEY: has("STRIPE_SECRET_KEY"), RESEND_API_KEY: has("RESEND_API_KEY"), TWILIO_ACCOUNT_SID: has("TWILIO_ACCOUNT_SID"), DIGEST_TOKEN: has("DIGEST_TOKEN"), INGEST_SECRET: has("INGEST_SECRET") };
-      return json({ ok: true, engines: engines.map(({ id, detect, ready }) => ({ id, detect, ready })), present, already });
+      return json({ ok: true, engines: engines.map(({ id, detect, ready, nota }) => ({ id, detect, ready, nota: nota || "" })), present, already });
     }
 
     // default: the BROTO dashboard payload — whole queue + inventory in one round-trip.

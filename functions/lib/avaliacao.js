@@ -766,7 +766,10 @@ export async function avaliarNegocio({ site, env = null, negocio = "", interno =
   const why = mot(got.why || "?");
 
   // O diagnóstico inteiro entra como base: achados, perfil, horário, comparação com vizinho.
-  const diag = await diagnosticar(site, env, negocio);
+  // O idioma do relatório TEM que descer até os achados. Sem isto a moldura traduz e o conteúdo
+  // não — foi como "Pelo menos 144h por semana com o telefone sem ninguém" foi parar debaixo de
+  // "WHAT WE MEASURED" num relatório mandado para um encanador de Nova York.
+  const diag = await diagnosticar(site, env, negocio, lang);
   if (!diag.ok && !siteLeu && !interno) return { ok: false, motivo: diag.motivo || got.why || "nao_deu_pra_ler" };
 
   const perfil = diag.perfil || {};

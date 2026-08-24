@@ -132,11 +132,23 @@ body::after {
 .flowdot { position:absolute; top:50%; height:6px; width:6px; margin-top:-3px; border-radius:9999px; background:#3E9468; box-shadow:0 0 8px #3E9468; animation:dataflow 2.6s linear infinite; }
 
 /* respect reduced motion — kill ambient/decorative movement */
+/* ── REVELAÇÃO POR SEÇÃO DO GROWTH REPORT (2026-08-22) ────────────────────────
+   O relatório é longo e chegava tudo de uma vez, sem ritmo de leitura. Cada seção
+   entra quando chega à vista.
+   ⚠️ REGRA DE OURO: animação NUNCA pode esconder conteúdo. O estado inicial é
+   opacidade .001 (não 0) e a classe `.ap-in` é aplicada também por um timer de
+   1,4s no JS — se o IntersectionObserver não existir, não disparar, ou o JS
+   morrer, o texto aparece do mesmo jeito. Um documento de venda que fica em
+   branco porque a animação falhou é pior que um documento sem animação. */
+.ap-rev { opacity:.001; transform: translateY(18px); transition: opacity .65s cubic-bezier(.22,.61,.36,1), transform .65s cubic-bezier(.22,.61,.36,1); }
+.ap-rev.ap-in { opacity:1; transform:none; }
+
 @media (prefers-reduced-motion: reduce) {
   .card::after, .btn::before, .btn-gold::before { display:none; }
   .card:hover { transform:none; }
   .animate-aurora, .animate-floatslow, .animate-floaty, .animate-breathe, .animate-shimmer, .animate-marquee, .animate-glowpulse, .animate-spin, .animate-pulse, .animate-ping { animation: none !important; }
   .stagger > * { animation: none !important; }
+  .ap-rev { opacity:1 !important; transform:none !important; transition:none !important; }
   .flowdot { animation: none !important; opacity:.6; left:50% !important; }
   html { scroll-behavior: auto; }
 }

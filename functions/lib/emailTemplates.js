@@ -244,6 +244,15 @@ const HEAD_STYLE = `
 // rodapé como "powered by". Sem isso, o cliente do Natura Spa recebia um e-mail com o logo da
 // Guileo confirmando o horário dele: parece que outra empresa marcou, e o dono paga pra ter a
 // marca DELE na frente do cliente. `null` mantém o e-mail Guileo (avisos do dono, vendas, etc).
+// 🚨 A NOSSA IDENTIDADE SUMIA QUANDO A DELE ENTRAVA (24/08). Com `brand` preenchido, o rodapé
+// trocava o bloco Guileo inteiro por um "powered by Guileo" de 10px em cinza fraco — então o
+// e-mail que mais precisa nos apresentar (o primeiro que o dono recebe) era justamente o que nos
+// escondia. Marca do cliente e marca nossa não competem: a dele é o ASSUNTO, a nossa é a
+// ASSINATURA. As duas aparecem, uma embaixo da outra.
+//
+// ⚠️ Esta razão vivia num comentário <!-- --> DENTRO do template — ou seja, viajava em todo
+// e-mail enviado, legível por quem abrisse o código-fonte da mensagem. Comentário de obra é para
+// quem mantém o código, não para o cliente. Explicação fica aqui; o HTML sai limpo.
 function shell({ preheader = "", eyebrow = "", body = "", lang = "en", brand = null, unsub = "", address = "", canais = false }) {
   const bz = brand && brand.business ? esc(String(brand.business).slice(0, 80)) : "";
   // Só aceitamos http(s) na logo: uma URL `javascript:`/`data:` vinda do perfil do cliente não pode
@@ -335,11 +344,6 @@ ${eyebrow ? `<tr><td class="g-pad-head" style="padding:20px 40px 0 40px;backgrou
 <tr><td class="g-pad" style="padding:22px 40px 30px 40px;border-top:1px solid ${B.line};background:${B.card};" align="center">
   ${bz ? `<div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};line-height:1.85;">
     <span style="color:${B.ink2};font-weight:600;">${bz}</span>
-    <!-- 🚨 A NOSSA IDENTIDADE SUMIA QUANDO A DELE ENTRAVA (24/08). Com \`brand\` preenchido este
-         ramo trocava o bloco Guileo inteiro por um "powered by Guileo" de 10px em cinza fraco —
-         então o e-mail que mais precisa nos apresentar (o primeiro que o dono recebe) era
-         justamente o que nos escondia. Marca do cliente e marca nossa não competem: a dele é o
-         ASSUNTO, a nossa é a ASSINATURA. As duas aparecem, uma embaixo da outra. -->
     <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
     <img src="${B.logo}" width="44" height="44" alt="Guileo" style="display:block;margin:0 auto 10px;border:0;border-radius:11px;" />
     <span style="color:${B.green};font-size:9px;vertical-align:middle;">●</span>&nbsp; <span style="color:${B.ink2};font-weight:600;">Guileo</span> — ${f.desc}
@@ -3451,6 +3455,10 @@ export function growthReportEmail({ business = "", agentName = "Gui", score = 0,
 // A joia do cardápio é o Motor de Orçamento: a IA liga, coleta os dados e manda o
 // orçamento por SMS+e-mail; acima de um teto, o escritório aprova antes de sair.
 // ─────────────────────────────────────────────────────────────────────────────
+// A linha de apoio do botão (`ctaSub`) tira o medo que trava o clique: ele não sabe se cai num
+// formulário, num login ou numa proposta. Dizer que já está no ar e que não pede nada vira
+// curiosidade em clique — e é verdade, que é o único motivo de eu poder escrever isso.
+// (Estava num <!-- --> dentro do HTML, ou seja, viajava no e-mail do cliente.)
 export function websiteUpgradeEmail({
   name = "", business = "your business", link = "", lang = "en",
   incluso = [], blocos = [], destaque = null, avaliacao = null, nota = "",
@@ -3569,9 +3577,6 @@ export function websiteUpgradeEmail({
   <div class="g-intro" style="font-size:16px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
   <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
   <div align="center">${cta(t.cta, link, true)}</div>
-  <!-- A linha embaixo tira o medo que trava o clique: ele não sabe se cai num formulário, num
-       login ou numa proposta. Dizer que já está no ar e que não pede nada vira curiosidade em
-       clique — e é verdade, que é o único motivo de eu poder escrever isso. -->
   <div style="text-align:center;font-size:12.5px;color:${B.muted};margin-top:9px;">${t.ctaSub}</div>
   ${presente ? `
   <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>

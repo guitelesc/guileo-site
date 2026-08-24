@@ -17,6 +17,7 @@ import SellerLeadsNYC from "../components/SellerLeadsNYC.jsx";
 import SellerDashboard from "../components/SellerDashboard.jsx";
 import SellerFollowup from "../components/SellerFollowup.jsx";
 import SellerLeads from "../components/SellerLeads.jsx";
+import SellerLigar from "../components/SellerLigar.jsx";
 import SellerSupport from "../components/SellerSupport.jsx";
 import SellerCloser from "../components/SellerCloser.jsx";
 import SellerIdeas from "../components/SellerIdeas.jsx";
@@ -1077,7 +1078,7 @@ const GRUPOS = [
   // diferentes da mesma vida. Duas abas obrigavam o vendedor a decidir "onde essa pessoa mora?"
   // antes de decidir "o que eu faço com ela" — e a resposta certa some no meio da pergunta errada.
   // Agora `leads` é a vida inteira: chegou → trabalhado → etapa → fechado, sem trocar de tela.
-  { id: "agora",    ico: "🔥", rot: { pt: "Agora",    en: "Now",      es: "Ahora",    hi: "अभी" },     abas: ["leads", "prospec"] },
+  { id: "agora",    ico: "🔥", rot: { pt: "Agora",    en: "Now",      es: "Ahora",    hi: "अभी" },     abas: ["ligar", "leads", "prospec"] },
   { id: "vender",   ico: "🎯", rot: { pt: "Vender",   en: "Sell",     es: "Vender",   hi: "बेचें" },   abas: ["cards", "produtos", "vertical", "raiox", "quote", "contrato", "alvos", "fechar"] },
   { id: "cliente",  ico: "🤝", rot: { pt: "Cliente",  en: "Client",   es: "Cliente",  hi: "क्लाइंट" },  abas: ["cadastro", "relacao", "ativ", "google"] },
   { id: "meu",      ico: "💰", rot: { pt: "Meu",      en: "Mine",     es: "Mío",      hi: "मेरा" },    abas: ["painel", "financeiro", "metas"] },
@@ -1086,6 +1087,9 @@ const GRUPOS = [
 ];
 // Rótulo de cada aba nos 4 idiomas quando o dicionário não tem (eram os 3 literais).
 const ABA_EXTRA = {
+  // Primeira aba do grupo "Agora": 311 prospects com telefone e 0 abordados — o vendedor abre
+  // o hub e a PRIMEIRA coisa que vê é por onde ligar, não um painel de números.
+  ligar:   { pt: "📞 Ligar hoje", en: "📞 Call today", es: "📞 Llamar hoy", hi: "📞 आज कॉल" },
   leads:   { pt: "📥 Leads",     en: "📥 Leads",     es: "📥 Leads",     hi: "📥 लीड्स" },
   produtos:{ pt: "🧰 Produtos",  en: "🧰 Products",  es: "🧰 Productos",  hi: "🧰 प्रोडक्ट" },
   relacao: { pt: "🤝 Relacionamento", en: "🤝 Relationship", es: "🤝 Relación", hi: "🤝 रिश्ता" },
@@ -1202,6 +1206,7 @@ export default function Vendedor() {
         <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
           {tab === "start" && <Start t={t} go={nav} />}
           {tab === "painel" && <SellerDashboard lang={lang} seller={seller} market={market} nav={nav} />}
+          {tab === "ligar" && <SellerLigar lang={lang} sid={sellerSid()} />}
           {tab === "alvos" && <SellerProspect lang={lang} seller={seller} market={market} nav={nav} />}
           {tab === "suporte" && <SellerSupport lang={lang} seller={seller} />}
           {/* ── TRÊS ROTAS REMOVIDAS EM 2026-08-20, E POR QUÊ ────────────────────────────────
