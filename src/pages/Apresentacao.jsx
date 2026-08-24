@@ -1525,8 +1525,13 @@ export default function Apresentacao() {
       .then((j) => {
         if (!alive) return;
         // API shape: { ok, id, avaliado_em, avaliacao:{...} } (also tolerate flat/payload shapes)
-        const av = j?.avaliacao || j?.payload || (j?.score_geral != null ? j : null);
-        if (j?.ok && av && av.score_geral != null) setState({ status: "ok", data: av });
+        // 🚨 NOTA NULA É UM RESULTADO, NÃO UM ERRO (24/08). A guarda exigia `score_geral != null`
+        // e, no dia em que o motor passou a recusar nota com menos de 3 aspectos medidos, o
+        // relatório inteiro parou de abrir — a página tratava "não deu pra medir" como "não
+        // existe". A nota é UM item do laudo; os aspectos, as evidências e o plano continuam
+        // valendo. O que identifica uma avaliação é ter `aspectos`, não ter nota.
+        const av = j?.avaliacao || j?.payload || (Array.isArray(j?.aspectos) ? j : null);
+        if (j?.ok && av && Array.isArray(av.aspectos)) setState({ status: "ok", data: av });
         else setState({ status: "error", data: null });
       })
       .catch(() => alive && setState({ status: "error", data: null }));

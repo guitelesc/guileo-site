@@ -16,6 +16,22 @@ export async function onRequestPost({ request, env }) {
   const vendedor = (b.seller || "").toString().trim().toLowerCase();
 
   // Sem vendedor: o AGREGADO (quantos leads cada um tem). Com vendedor: a lista dele.
+  // ── CORRIGIR A NOTA DE UM PROSPECT ────────────────────────────────────────────────────────
+  // Regerar uma avaliação cria um relatório NOVO com id novo — e a nota do CRM continua apontando
+  // pro antigo. Foi assim que três prospects ficaram com um link que dizia 100/100 depois de a
+  // nota certa já existir. Link velho num CRM não avisa que envelheceu: ele abre.
+  if ((b.acao || "") === "nota") {
+    const alvo = (b.id || "").toString().trim();
+    const nota = (b.nota || "").toString().slice(0, 1500);
+    if (!alvo || !vendedor) return json({ ok: false, error: "id e seller obrigatorios" }, 400);
+    const r = await svcRpc(env, "sp_upsert", { p_secret: ING, p_seller_email: vendedor, p_id: alvo, p_note: nota });
+    if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 502);
+    const row = await r.json().catch(() => null);
+    // Sem a linha de volta não houve gravação — "ok" sem o registro é promessa sem lastro.
+    if (!row) return json({ ok: false, motivo: "nao gravou (id nao e desse vendedor?)" }, 404);
+    return json({ ok: true, gravado: true, id: alvo });
+  }
+
   const tipo = (b.tipo || "").toString();          // "prospects" | "" (crm)
   const fn = tipo === "prospects" ? "sp_list" : vendedor ? "seller_lead_crm_list" : "seller_lead_crm_all";
   const args = tipo === "prospects" ? { p_secret: ING, p_seller_email: vendedor }
