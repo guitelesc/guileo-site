@@ -349,6 +349,27 @@ export default function SellerLeads({ lang = "pt", seller, market = "us", nav, h
   // Duas fontes, DOIS estados independentes. Juntar os dois num só faria a falha de uma apagar a
   // outra — e a tela mentiria por omissão sobre metade da fila.
   const [inbox, setInbox] = useState({ estado: "loading" });  // {estado:'loading'|'ok'|'err', rows, contagens, motivo, tipo}
+  // 🚨 ESTE BLOCO ESTAVA NO COMPONENTE ERRADO (consertado 2026-08-22).
+  // `meuLocal`/`geoEstado`/`pedirLocal` viviam dentro de `PaginaDoLead` e eram usados aqui,
+  // em `SellerLeads` — dois componentes diferentes. Resultado: `ReferenceError: meuLocal is
+  // not defined` e o HUB DO VENDEDOR INTEIRO caindo em "Opa, algo saiu do trilho" para quem
+  // tinha sessão. Quem não estava logado via a tela de entrada e não percebia nada — por isso
+  // passou. Estado mora no componente que o usa.
+  // bairro, volta, atravessa de novo. Ordenar por distância é a diferença entre 6 visitas e 12
+  // no mesmo dia.
+  // 🚨 A LOCALIZAÇÃO É PEDIDA, NUNCA TOMADA. Só quando ele aperta o botão, e o navegador mostra
+  // o próprio pedido. Negar não quebra nada: a fila volta à ordem de sempre, com o motivo dito.
+  const [meuLocal, setMeuLocal] = useState(null);      // {lat,lng}
+  const [geoEstado, setGeoEstado] = useState("idle");  // idle | pedindo | ok | negado | indisponivel
+  const pedirLocal = () => {
+    if (!navigator.geolocation) { setGeoEstado("indisponivel"); return; }
+    setGeoEstado("pedindo");
+    navigator.geolocation.getCurrentPosition(
+      (p) => { setMeuLocal({ lat: p.coords.latitude, lng: p.coords.longitude }); setGeoEstado("ok"); },
+      () => setGeoEstado("negado"),
+      { timeout: 10000, maximumAge: 300000 },
+    );
+  };
   const [funil, setFunil] = useState({ estado: "loading" });  // {estado:'loading'|'ok'|'err', rows, stats, motivo, tipo}
   const [filtro, setFiltro] = useState(null);                 // null=todos · 'novos' · etapa
   const [aberto, setAberto] = useState(null);                 // chave do dossiê aberto
@@ -856,21 +877,6 @@ function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, sal
   const [apontamento, setApontamento] = useState("");
   // ── PERTO DE MIM (2026-08-21) ─────────────────────────────────────────────────────────────
   // A fila vinha por ordem de chegada — o pior roteiro possível na rua: o vendedor atravessa o
-  // bairro, volta, atravessa de novo. Ordenar por distância é a diferença entre 6 visitas e 12
-  // no mesmo dia.
-  // 🚨 A LOCALIZAÇÃO É PEDIDA, NUNCA TOMADA. Só quando ele aperta o botão, e o navegador mostra
-  // o próprio pedido. Negar não quebra nada: a fila volta à ordem de sempre, com o motivo dito.
-  const [meuLocal, setMeuLocal] = useState(null);      // {lat,lng}
-  const [geoEstado, setGeoEstado] = useState("idle");  // idle | pedindo | ok | negado | indisponivel
-  const pedirLocal = () => {
-    if (!navigator.geolocation) { setGeoEstado("indisponivel"); return; }
-    setGeoEstado("pedindo");
-    navigator.geolocation.getCurrentPosition(
-      (p) => { setMeuLocal({ lat: p.coords.latitude, lng: p.coords.longitude }); setGeoEstado("ok"); },
-      () => setGeoEstado("negado"),
-      { timeout: 10000, maximumAge: 300000 },
-    );
-  };
   // A nota segue o BANCO quando o banco muda, e SÓ então — o padrão "ajustar estado quando uma
   // prop muda", em render, sem efeito. Com um `useEffect([item.note])` cada refetch de 60s
   // reescreveria o campo; aqui `notaBase` só se move quando o valor gravado realmente mudou, então
