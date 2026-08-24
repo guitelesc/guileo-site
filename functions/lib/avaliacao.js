@@ -940,13 +940,27 @@ export async function avaliarNegocio({ site, env = null, negocio = "", interno =
   ];
 
   // Score geral = média ponderada dos aspectos MEDIDOS (aspecto sem nenhuma medição sai da conta).
-  let somaP = 0, soma = 0;
+  let somaP = 0, soma = 0, medidos = 0;
   for (const a of aspectos) {
     if (a.score === null) continue;
+    medidos++;
     const p = PESOS[a.nome] || 10;
     soma += a.score * p; somaP += p;
   }
-  const scoreGeral = somaP ? Math.round(soma / somaP) : null;
+
+  /* 🚨 UM ASPECTO SÓ NÃO É UMA NOTA (24/08). Três negócios da carteira — Solace New York,
+     Powerhouse Gym e Astoria Plumbers — apareceram com 100/100 no relatório. Investigando o
+     Astoria: o site dele responde HTTP 525 (o Cloudflare não fecha TLS com a origem) e o .com é
+     uma página estacionada. Cinco dos seis aspectos ficaram NÃO-MEDIDOS, sobrou `descoberta`
+     (ele está no Google, o que é verdade), e a média de um item só virou a NOTA GERAL.
+     O documento então dizia "100/100" para um negócio SEM SITE NO AR — e o efeito prático é o
+     pior possível: o vendedor exclui da fila justamente quem mais precisa da gente.
+     É a mesma lei que acabou de valer para o `buraco`, agora no número que o dono lê primeiro.
+     Abaixo do piso a nota não sai: sai `null`, que a página já desenha como "—" cinza e que o
+     ranking já trata como não-medido. Não medi o suficiente é uma resposta; 100/100 é uma
+     mentira com aparência de elogio. */
+  const PISO_ASPECTOS = 3;                       // de 6 — menos que metade não sustenta uma nota
+  const scoreGeral = (somaP && medidos >= PISO_ASPECTOS) ? Math.round(soma / somaP) : null;
 
   // ── CONCORRENTES ───────────────────────────────────────────────────────────────────────────
   // ⚠️ USO INTERNO (vendedor). A página do PROSPECT nunca cita nome de vizinho — regra da
@@ -1087,6 +1101,7 @@ export async function avaliarNegocio({ site, env = null, negocio = "", interno =
     modo: interno ? "cliente" : "prospect",
     fonte: siteLeu ? "site" : (diag.fonte || "google"),
     score_geral: scoreGeral,
+    aspectos_medidos: medidos,
     aspectos,
     // os achados-ferida do diagnóstico entram inteiros — são a narrativa; o score é a régua
     achados: diag.achados || [],
