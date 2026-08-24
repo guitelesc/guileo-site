@@ -15,6 +15,7 @@
 import { json, rateLimited } from "../lib/guard.js";
 import { svcRpc, svcJson } from "../lib/sb.js";
 import { ownerAlertEmail } from "../lib/emailTemplates.js";
+import { semeiaFila, drenaFila } from "../lib/filaAgente.js";
 
 // PHONE RE-ENGAGEMENT EXECUTOR (#19) — turns a queued churn-reengage / booking-recovery
 // client_event that carries a PHONE (not an email) into a REAL Gui callback through the single
@@ -104,6 +105,9 @@ export async function onRequest(context) {
     // em que o relógio permite. É leitura pura, e o rate-limit de 4/h por IP já segura abuso.
     const url = new URL(request.url);
     const forcarSemaforo = url.searchParams.get("semaforo") === "1";
+    // `?fila=1` força o ciclo da fila fora do tique da hora. Motor que só dá para provar
+    // esperando a virada da hora é motor que ninguém prova — e o que não se prova, apodrece.
+    const forcarFila = url.searchParams.get("fila") === "1";
     const base = "https://guileoai.com";
     const t = encodeURIComponent(env.DIGEST_TOKEN);
     const hourUTC = new Date().getUTCHours();
@@ -395,12 +399,26 @@ export async function onRequest(context) {
 
     // PHONE RE-ENGAGEMENT EXECUTOR (#19) — once per hour, dial the queued phone-contact
     // churn/booking-recovery intents (claim-deduped + TCPA-windowed inside the sweep).
+    // ── O AGENTE DECIDE O QUE OLHAR (2026-08-22) ────────────────────────────────────────────
+    // Semeia a fila com sinais REAIS e mastiga um punhado. É o que fecha o ciclo: até aqui a
+    // fila era atômica e provada, mas quem decidia o próximo trabalho era um cron fixo.
+    // Lote pequeno de propósito — cada item é chamada paga ao Google. Fila que esvazia rápido
+    // demais é conta de terceiro subindo sem ninguém olhar.
+    let fila = null;
+    if (minute < 15 || forcarFila) {
+      try {
+        const semeou = await semeiaFila(env, { teto: 25 });
+        const drenou = await drenaFila(env, { base, n: 5 });
+        fila = { semeou, drenou };
+      } catch (e) { fila = { erro: String(e).slice(0, 120) }; }
+    }
+
     let reengage = null;
     if (minute < 15) {
       try { reengage = await phoneReengageSweep(env, base, hourUTC); }
       catch (e) { reengage = { error: String(e).slice(0, 80) }; }
     }
-    return json({ ok: true, semaforo, ran: results, reengage, hourUTC, minute });
+    return json({ ok: true, semaforo, ran: results, reengage, fila, hourUTC, minute });
   } catch (e) {
     return json({ error: String(e).slice(0, 140) }, 500);
   }

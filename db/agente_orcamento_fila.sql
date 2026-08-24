@@ -31,3 +31,27 @@
 -- LIGADO EM: agent-eval (`proposito:"eval"`) e criativoAds (`proposito:"criativo"`).
 -- Quem NÃO passa `proposito` continua sem teto — o contrato antigo do `askClaude` está intacto.
 -- Ler/definir: GET/POST /api/orcamento (token do cron OU senha do /admin).
+
+-- ── O CICLO FECHADO (2026-08-22, segunda parte) ───────────────────────────────────────────────
+-- `functions/lib/filaAgente.js`: o agente decide o que olhar.
+--   semeiaFila  — lê SINAL REAL (prospect sem telefone nem e-mail) e enfileira até 25.
+--                 Prioridade 2 para quem tem SITE (domínio é fato; nome costuma ser título de SEO
+--                 e cai na trava do xará), 5 para o resto.
+--   drenaFila   — pega 5, chama /api/prospeccao acao:"contato" (a MESMA rota do hub do vendedor,
+--                 para a trava do xará melhorar nos dois no mesmo commit), grava o contato
+--                 achado e conclui.
+--
+-- REGRAS QUE ESTA PARTE CODIFICA
+--  · Lista ausente NÃO é "ninguém sem contato" — recusa explícita (lei nº 2).
+--  · "Não achei" é RESULTADO, marca `feito` com o motivo. Sem isso o item volta para sempre e a
+--    fila fica moendo o mesmo negócio que o Google não conhece.
+--  · Erro de rede vira `falhou` (gasta tentativa, 3 e para) — não é marcado como resolvido.
+--  · Lote pequeno de propósito: cada item é chamada PAGA ao Google.
+--
+-- Roda no tique da hora; `POST /api/cron-tick?fila=1` força fora dele (motor que só dá para
+-- provar esperando a virada da hora é motor que ninguém prova).
+--
+-- PRIMEIRO CICLO REAL: semeou 25 · drenou 5 · **resolveu 5** (todos via `dominio`), e as 5
+-- linhas de `seller_prospects` foram tocadas — conferido na TABELA, não no retorno da rota.
+-- ⚠️ `prospects_sem_contato` TEM TETO INTERNO de 200: usar o retorno dela como "quantos faltam"
+-- dá número errado. O real eram 52.

@@ -3411,6 +3411,12 @@ export function growthReportEmail({ business = "", agentName = "Gui", score = 0,
 export function websiteUpgradeEmail({
   name = "", business = "your business", link = "", lang = "en",
   incluso = [], blocos = [], destaque = null, avaliacao = null, nota = "",
+  // A MARCA DELE NO TOPO (Luis 24/08): "a introdução podia já ser personalizada com a foto de
+  // perfil e o tema, talvez capa já no e-mail". Quem abre tem que ver o PRÓPRIO negócio na
+  // primeira tela — não a nossa. `capa` é a foto do site novo; `logo`/`accent` vestem o shell.
+  // ⚠️ JPG/PNG apenas: Gmail e Outlook não renderizam .webp nem .svg, e um quadrado quebrado no
+  // topo é pior que não ter imagem (foi assim que um logo sumiu nesta base).
+  capa = "", logo = "", accent = "", presente = null,
 } = {}) {
   business = esc(business); name = esc(name);
   // ⚠️ SEM NOME, A FRASE SE SEGURA SOZINHA. O padrão era "there", e sem o nome do dono o título
@@ -3420,7 +3426,8 @@ export function websiteUpgradeEmail({
   const _n = name.trim();
   const _pre = { pt: _n ? `${_n}, ` : "", en: _n ? `${_n}, ` : "", es: _n ? `${_n}, ` : "" };
   const t = lang === "pt" ? {
-    subject: `${business}: seu site novo está no ar — e o que cada peça soma em receita`,
+    subject: presente ? `${business}: seu site novo está no ar — e um presente de $50 (Guileo Pulse RX)`
+                      : `${business}: seu site novo está no ar — e o que cada peça soma em receita`,
     pre: "O site novo já está no ar. Nada pra instalar, nada pra assinar.",
     eyebrow: "Website Upgrade · pronto pra ver",
     h1: `${_pre.pt}${_n ? "refizemos" : "Refizemos"} o site do ${business}`,
@@ -3431,7 +3438,8 @@ export function websiteUpgradeEmail({
     addonSub: "Três frentes. Cada módulo entra sozinho — você escolhe quais fazem sentido.",
     foot: "Se fizer sentido, responde esse e-mail dizendo quais módulos você quer. Se não fizer, o link continua seu do mesmo jeito.",
   } : {
-    subject: `${business}: your new site is live — and what each piece adds to revenue`,
+    subject: presente ? `${business}: your site upgrade is live — plus a $50 gift (Guileo Pulse RX)`
+                      : `${business}: your new site is live — and what each piece adds to revenue`,
     pre: "The new site is live. Nothing to install, nothing to sign.",
     eyebrow: "Website Upgrade · ready to view",
     h1: `${_pre.en}${_n ? "we" : "We"} rebuilt the ${business} website`,
@@ -3478,11 +3486,25 @@ export function websiteUpgradeEmail({
       </table>
     </div>`;
   }).join("");
+  // Só http(s) e só jpg/png/gif — mesma trava do shell. URL de perfil de cliente não vira <img> cega.
+  const capaOk = /^https?:\/\//i.test(String(capa)) && /\.(jpe?g|png|gif)(\?|#|$)/i.test(String(capa)) ? String(capa).slice(0, 400) : "";
+  const acc = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(accent)) ? String(accent) : B.gold;
   const body = `
+  ${capaOk ? `<a href="${esc(link)}" style="text-decoration:none;display:block;">
+    <img src="${esc(capaOk)}" width="100%" alt="${business}" style="display:block;width:100%;max-width:100%;height:auto;border:0;border-radius:16px;border:1px solid ${B.line};" />
+  </a>
+  <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>` : ""}
   <div style="font-size:26px;line-height:1.2;color:${B.ink2};font-weight:700;">${t.h1}</div>
   <div class="g-intro" style="font-size:16px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
   <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
   <div align="center">${cta(t.cta, link)}</div>
+  ${presente ? `
+  <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
+  <div style="border:2px solid ${B.green}; border-radius:16px; background:${B.green}1a; padding:16px 18px; text-align:center;">
+    <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.green};font-weight:800;">${esc(presente.tag || "")}</div>
+    <div style="color:#ffffff;font-size:19px;font-weight:800;margin-top:6px;line-height:1.3;">${esc(presente.t || "")}</div>
+    <div style="color:${B.ink};font-size:14.5px;line-height:1.65;margin-top:7px;">${esc(presente.d || "")}</div>
+  </div>` : ""}
   <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
   <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.gold};font-weight:800;">${t.inclusoT}</div>
   <table role="presentation" width="100%" style="margin-top:8px;border-collapse:collapse;">${linhasInc}</table>
@@ -3534,23 +3556,28 @@ export function websiteUpgradeEmail({
   </div>` : ""}
   ${destaque ? `
   <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
-  <div style="border:1px solid ${B.green}55;border-radius:18px;background:linear-gradient(180deg,${B.green}14,${B.panel} 60%);padding:18px;">
-    <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.green};font-weight:800;">${esc(destaque.tag || "")}</div>
-    <div style="color:${B.ink2};font-size:20px;font-weight:800;margin-top:6px;line-height:1.25;">${esc(destaque.t || "")}</div>
-    <div style="color:${B.ink};font-size:14.5px;line-height:1.7;margin-top:8px;">${esc(destaque.d || "")}</div>
-    <table role="presentation" width="100%" style="margin-top:12px;border-collapse:collapse;">
+  <!-- ⚠️ CONTRASTE, NÃO ESTILO (Luis 24/08: "o Guileo Pulse tá muito xinxa, não dá pra ler").
+       O bloco usava ink/muted sobre gradiente escuro: no celular, com brilho baixo, o texto
+       simplesmente sumia. Este é o produto de ENTRADA — o de $49 que abre a porta — e era o
+       menos legível do e-mail. Agora: fundo sólido (gradiente em e-mail é loteria de cliente),
+       borda de 2px, título em branco puro e corpo no tom mais claro da paleta. -->
+  <div style="border:2px solid ${B.green};border-radius:18px;background:${B.panel2};padding:20px;">
+    <div style="font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:${B.green};font-weight:800;">${esc(destaque.tag || "")}</div>
+    <div style="color:#ffffff;font-size:22px;font-weight:800;margin-top:7px;line-height:1.25;">${esc(destaque.t || "")}</div>
+    <div style="color:${B.ink2};font-size:15.5px;line-height:1.75;margin-top:10px;">${esc(destaque.d || "")}</div>
+    <table role="presentation" width="100%" style="margin-top:14px;border-collapse:collapse;">
       ${(destaque.pontos || []).map((x) => `
-      <tr><td style="padding:6px 0;color:${B.ink};font-size:14px;line-height:1.55;">
-        <span style="color:${B.green};font-weight:800;">→</span>&nbsp;${esc(x)}
+      <tr><td style="padding:8px 0;color:${B.ink2};font-size:15px;line-height:1.6;">
+        <span style="color:${B.green};font-weight:800;font-size:16px;">→</span>&nbsp;${esc(x)}
       </td></tr>`).join("")}
     </table>
-    <div style="margin-top:12px;padding-top:12px;border-top:1px solid ${B.line};color:${B.muted};font-size:13px;">
-      <span style="color:${B.gold};font-size:15px;font-weight:800;">${esc(destaque.p || "")}</span> · ${esc(destaque.nota || "")}
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid ${B.green}44;color:${B.ink};font-size:14px;line-height:1.6;">
+      <span style="color:${B.green};font-size:20px;font-weight:800;">${esc(destaque.p || "")}</span><br/>${esc(destaque.nota || "")}
     </div>
   </div>` : ""}
   ${nota ? `<div style="margin-top:18px;padding:12px 14px;border:1px solid ${B.line};border-radius:12px;color:${B.muted};font-size:13px;line-height:1.6;">${esc(nota)}</div>` : ""}
   <div style="font-size:12.5px;color:${B.muted};text-align:center;margin-top:20px;line-height:1.65;">${t.foot}</div>`;
-  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang, brand: { business, logo_url: logo, accent: acc } }) };
 }
 
 
