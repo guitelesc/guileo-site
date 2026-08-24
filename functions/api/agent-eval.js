@@ -243,7 +243,10 @@ async function judge(env, c, output) {
     `AGENT'S RESPONSE (evaluate THIS):\n"""${(output || "(empty response)").toString().slice(0, 2000)}"""`,
   ].join("\n\n");
 
-  const raw = await askClaude(env, { system, messages: [{ role: "user", content: userMsg }], maxTokens: 400 });
+  // `proposito: "eval"` prende esta chamada ao teto DIÁRIO em tokens. O eval é o maior gastador
+  // autônomo da casa (29 casos por dia, 48 no domingo) e era o que sumia calado quando o crédito
+  // acabava — `askClaude` devolvia "" e o relatório saía como se o agente tivesse falhado.
+  const raw = await askClaude(env, { system, messages: [{ role: "user", content: userMsg }], maxTokens: 400, proposito: "eval" });
   if (!raw) return null;
   const m = raw.match(/\{[\s\S]*\}/);
   if (!m) return null;
@@ -585,17 +588,26 @@ export async function onRequest(context) {
 
     // 4) grava (a não ser em dry) — INGEST-gated; o único write do harness.
     if (!dry) {
-      const rec = await rpc(env, "agent_eval_record", {
+      const base = {
         p_run_id: out.run_id, p_agent: c.agent, p_case_id: c.id, p_adversarial: !!c.adversarial,
         p_score: jd.overall, p_accuracy: jd.accuracy, p_tone: jd.tone, p_safety: jd.safety, p_resolution: jd.resolution,
         p_passed: passed, p_notes: jd.notes, p_model: run.model || "", p_judge_model: "model-chain",
+      };
+      // 🚨 DEGRADAR, NUNCA MORRER CALADO (24/08). Eu acrescentei 2 parâmetros à gravação e amarrei
+      // o runner à assinatura NOVA antes de o SQL (db/agent_evals_contexto.sql) ser colado. O banco
+      // respondia PGRST202, o rpc() devolvia null, e as rodadas de sábado e domingo GASTARAM modelo
+      // e não gravaram um caso — o pior desfecho num medidor, de novo. Sem o SQL: assinatura velha
+      // (sem contexto, mas GRAVA); com o SQL: contexto completo.
+      let rec = await rpc(env, "agent_eval_record", {
+        ...base,
         // ⚠️ O QUE FOI MEDIDO, junto com a nota. Sem estes dois campos "reprovou 8/17" não diz de
         // QUAL agente se fala: em 22/08 precisei de `git log -L` pra descobrir que a rodada de
         // 18/08 media um cérebro sem as lições de 21 e 22 — e que os 13 verticais rodaram contra
         // um sandbox de spa. Histórico que exige arqueologia não é histórico.
         p_licoes_versao: LICOES_VERSAO, p_tenant: run.tenant || "",
       });
-      if (rec) out.recorded++;
+      if (!rec) rec = await rpc(env, "agent_eval_record", base);
+      if (rec) out.recorded++; else out.record_falhou = (out.record_falhou || 0) + 1;
     }
   }
 

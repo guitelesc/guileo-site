@@ -361,6 +361,36 @@ export async function onRequest(context) {
           }
         }
       } catch (e) { if (semaforo) semaforo.mensagens = { nota: String(e).slice(0, 60) }; }
+
+      // ── ORÇAMENTO DO AGENTE ESTOUROU? (2026-08-22) ──────────────────────────────────────────
+      // O freio só serve se alguém souber que ele pisou. Sem este aviso, "o agente parou por
+      // falta de teto" e "o agente quebrou" chegariam ao dono do mesmo jeito: silêncio.
+      try {
+        const orc = await svcJson(env, "orcamento_estado", { p_secret: env.INGEST_SECRET || "" }).catch(() => null);
+        const hoje = new Date().toISOString().slice(0, 10);
+        const barrados = Array.isArray(orc) ? orc.filter((x) => x.dia === hoje && (x.bloqueios || 0) > 0) : [];
+        if (semaforo) semaforo.orcamento = Array.isArray(orc) ? { barrados: barrados.length } : { nota: "não deu para ler" };
+        for (const x of barrados) {
+          const pode = await svcJson(env, "alarme_uma_vez", {
+            p_secret: env.INGEST_SECRET || "", p_chave: `orcamento:${x.proposito}`, p_minutos: 1440,
+          }).catch(() => false);
+          if (pode !== true || !env.RESEND_API_KEY) continue;
+          try {
+            const { subject, html } = ownerAlertEmail({
+              kind: "orcamento", business: "Guileo", lang: "pt", customer: x.proposito,
+              details: `teto ${x.teto} tokens · usado ${x.usado} · recusas hoje: ${x.bloqueios}`,
+            });
+            const to = (env.OWNER_EMAIL || "smart@guileoai.com").toString().split(",")[0].trim();
+            const er = await fetch("https://api.resend.com/emails", {
+              method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to, subject, html }),
+            });
+            if (!er.ok) console.error(JSON.stringify({ alarme_orcamento: x.proposito, resend: er.status }));
+          } catch (e) { console.error(JSON.stringify({ alarme_orcamento: x.proposito, erro: String(e).slice(0, 80) })); }
+        }
+        // Item preso em voo há mais de 30 min volta pra fila — worker morto não pode aposentar trabalho.
+        await svcJson(env, "fila_destrava", { p_secret: env.INGEST_SECRET || "" }).catch(() => {});
+      } catch (e) { console.error(JSON.stringify({ alarme_orcamento: "geral", erro: String(e).slice(0, 80) })); }
     }
 
     // PHONE RE-ENGAGEMENT EXECUTOR (#19) — once per hour, dial the queued phone-contact

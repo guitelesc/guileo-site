@@ -1,0 +1,33 @@
+-- GUILEO · AGENTE COM ORÇAMENTO E FILA — aplicado 2026-08-22 (migrações
+-- `agente_orcamento_e_fila`, `agente_orcamento_rpcs`, `agente_fila_rpcs`, `orcamento_vira_o_dia`).
+-- Ideia emprestada do trycompai/crm: o agente tem fila e orçamento PRÓPRIOS, decide o que olhar
+-- e **para quando o orçamento acaba** — em vez de morrer calado.
+--
+-- POR QUE EM TOKENS E NÃO EM DÓLAR: preço por modelo eu não sei sem chutar (lei nº 5), e `usage`
+-- é o que a Anthropic realmente devolve. Teto medido > teto estimado.
+--
+-- RESERVA ANTES DE GASTAR: o custo real só existe depois da chamada. Reserva-se o PIOR CASO
+-- (maxTokens + entrada estimada a ~4 chars/token) e a diferença volta em `orcamento_reconcilia`.
+-- Chamada que não entregou texto reconcilia com real=0: nada é cobrado.
+--
+-- AS 4 REGRAS QUE ISTO NUNCA QUEBRA
+--  1. Sem teto definido NÃO é ilimitado — é recusa explícita (`sem_teto_definido`).
+--  2. Reserva que não consegue responder NÃO libera gasto. Orçamento que falha aberto não existe.
+--  3. Virada do dia HERDA o teto do dia mais recente. Sem isso o freio viraria apagão à meia-noite
+--     (defeito pego e corrigido antes de ir ao ar).
+--  4. `sem_orcamento` devolve o item da fila para 'aberto' e DESCONTA a tentativa — não foi o
+--     trabalho que falhou, foi o dinheiro que acabou.
+--
+-- FILA: `for update skip locked` na garra, índice único parcial contra duplicata (proposito,alvo)
+-- ainda aberta, 3 tentativas e para, e `fila_destrava` devolve item preso em voo >30min.
+--
+-- PROVADO EM PRODUÇÃO (ida-e-volta, não build verde):
+--   sem teto → recusa · teto 1000, reserva 800 → restam 200 · pede 500 → `sem_orcamento` + bloqueio
+--   reserva 800 / real 120 → usado 120, restam 880 (680 voltaram)
+--   fila: duplicata recusada · garra por prioridade (1 antes de 5) · `sem_orcamento` volta pra fila
+--   virada: teto de ontem herdado, `usado` nasce zero, "nunca definido" continua recusando
+--   cron ao vivo: `semaforo.orcamento = {barrados: 1}` e alarme por e-mail 1×/dia por propósito
+--
+-- LIGADO EM: agent-eval (`proposito:"eval"`) e criativoAds (`proposito:"criativo"`).
+-- Quem NÃO passa `proposito` continua sem teto — o contrato antigo do `askClaude` está intacto.
+-- Ler/definir: GET/POST /api/orcamento (token do cron OU senha do /admin).

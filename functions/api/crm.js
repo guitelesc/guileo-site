@@ -51,6 +51,48 @@ export async function onRequestPost(context) {
       return json({ ok: true, ready: true, count: deals.length, deals });
     }
 
+    // ── CAMPOS CUSTOMIZÁVEIS (2026-08-22) ──────────────────────────────────────────────────
+    // O dono cria um campo próprio no contato sem ninguém tocar no schema. A definição é POR
+    // TENANT e o valor mora num jsonb no contato — coluna nova por campo seria DDL em produção
+    // a cada clique do cliente (lei nº 8: zero downtime).
+    // O portão de tenant é o `email` já casado com a chave acima; o SQL confere de novo.
+    if (b.action === "fields_list") {
+      const r = await svcRpc(env, "crm_fields_list", { p_secret: env.INGEST_SECRET || "", p_email: email });
+      // RPC ausente → ready:false HONESTO. Lista vazia diria "este cliente não tem campo", que
+      // é diferente de "não consegui perguntar" (lei nº 2).
+      if (!r.ok) return json({ ok: false, ready: false, note: "Cole db/crm_custom_fields.sql no Supabase.", fields: null });
+      const d = await r.json().catch(() => null);
+      return json({ ok: true, ready: true, fields: Array.isArray(d) ? d : [] });
+    }
+
+    if (b.action === "field_set") {
+      const r = await svcRpc(env, "crm_field_set", {
+        p_secret: env.INGEST_SECRET || "", p_email: email,
+        p_key: (b.key || "").toString().slice(0, 60),
+        p_label: (b.label || "").toString().slice(0, 60),
+        p_kind: (b.kind || "text").toString(),
+        p_options: Array.isArray(b.options) ? b.options.slice(0, 20).map((o) => String(o).slice(0, 40)) : [],
+        p_remove: b.remove === true,
+      });
+      if (!r.ok) return json({ ok: false, ready: false, note: "Cole db/crm_custom_fields.sql no Supabase." });
+      const d = await r.json().catch(() => null);
+      // Devolve o CORPO da RPC. `r.ok` sozinho já deixou passar recusa como sucesso antes.
+      return json({ ready: true, ...(d && typeof d === "object" ? d : { ok: false, motivo: "resposta_ilegivel" }) });
+    }
+
+    if (b.action === "contact_custom_set") {
+      const cid = (b.contact_id || "").toString();
+      if (!/^[0-9a-f-]{36}$/i.test(cid)) return json({ error: "invalid contact_id" }, 400);
+      const r = await svcRpc(env, "crm_contact_custom_set", {
+        p_secret: env.INGEST_SECRET || "", p_email: email, p_contact_id: cid,
+        p_key: (b.key || "").toString().slice(0, 60),
+        p_value: b.value == null ? "" : String(b.value).slice(0, 500),
+      });
+      if (!r.ok) return json({ ok: false, ready: false, note: "Cole db/crm_custom_fields.sql no Supabase." });
+      const d = await r.json().catch(() => null);
+      return json({ ready: true, ...(d && typeof d === "object" ? d : { ok: false, motivo: "resposta_ilegivel" }) });
+    }
+
     // ── action: deal_move — advance a deal one stage (crm_deal_move, INGEST-gated) ──
     // The pipeline board's "→" button. Tenant-scoped in SQL: the update only matches the
     // caller's own client_email, so a key can never move another tenant's deal.

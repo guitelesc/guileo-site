@@ -101,7 +101,9 @@ export async function gerarPeca(env, { canal, ctx, lang, langName, objetivo, pub
   // askClaude é o ÚNICO executor da cadeia de modelos (guiBrain.js). Já repeti o loop com um modelo
   // fixo aqui, ele não respondeu, e o criativo voltou vazio. Reusar herda o fallback: se um modelo
   // cai, o próximo assume sozinho.
-  const bruto = (await askClaude(env, { system, messages: [{ role: "user", content: brief }], maxTokens: 700 })).trim();
+  // Criativo tem teto próprio: um kit de campanha pode disparar várias reescritas, e sem
+  // propósito separado ele comeria o orçamento do eval sem ninguém ver de onde saiu.
+  const bruto = (await askClaude(env, { system, messages: [{ role: "user", content: brief }], maxTokens: 700, proposito: "criativo" })).trim();
   if (!bruto) return { canal, nome: f.nome, fonte: f.fonte, erro: "a IA não respondeu (sem modelo disponível ou chave sem crédito)" };
   let criativo = extrairJSON(bruto);
   if (!criativo) return { canal, nome: f.nome, fonte: f.fonte, erro: `a IA não devolveu JSON válido — respondeu: ${bruto.slice(0, 160)}` };

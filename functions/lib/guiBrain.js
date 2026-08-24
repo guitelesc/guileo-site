@@ -33,6 +33,7 @@
 // ═════════════════════════════════════════════════════════════════════════════
 
 import { guardSystemPrompt, validateOutput } from "./guiConstitution.js";
+import { svcJson } from "./sb.js";
 import { licoesPara } from "./licoes.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -66,9 +67,38 @@ export const MODEL_CHAIN = ["claude-fable-5", "claude-sonnet-5", "claude-haiku-4
 // enlatado". O sintoma era educado e a causa, invisível. Um fallback que não registra a falha
 // não é resiliência: é a falha com roupa de sucesso.
 // Quem não passa `diag` não muda em nada — o contrato antigo (string, nunca levanta) segue igual.
-export async function askClaude(env, { system, messages, maxTokens = 300, diag = null }) {
+export async function askClaude(env, { system, messages, maxTokens = 300, diag = null, proposito = null }) {
   const nota = (o) => { if (Array.isArray(diag)) diag.push(o); };
   if (!env.ANTHROPIC_API_KEY) { nota({ erro: "ANTHROPIC_API_KEY ausente" }); return ""; }
+
+  // ── ORÇAMENTO (2026-08-22) ───────────────────────────────────────────────────────────────
+  // `proposito` é OPCIONAL: quem não passa não muda em nada (contrato antigo intacto). Quem
+  // passa fica preso a um teto DIÁRIO EM TOKENS, reservado ANTES da chamada.
+  // Por que tokens e não dólar: preço por modelo eu não sei sem chutar (lei nº 5), e `usage` é o
+  // que a Anthropic realmente devolve. Teto medido vale mais que teto estimado.
+  // Por que reservar antes: o custo real só se conhece depois. Reservo o PIOR CASO e devolvo a
+  // diferença — assim nunca estoura, no máximo sobra.
+  let reservado = 0;
+  if (proposito && env.INGEST_SECRET) {
+    // Estimativa da entrada: ~4 caracteres por token. É APROXIMAÇÃO, e é por isso que ela só
+    // serve para RESERVAR — a cobrança usa o número real de `usage`.
+    const chars = (String(system || "") + JSON.stringify(messages || [])).length;
+    const pedido = maxTokens + Math.ceil(chars / 4);
+    const res = await svcJson(env, "orcamento_reserva", { p_secret: env.INGEST_SECRET, p_proposito: proposito, p_tokens: pedido }).catch(() => null);
+    // NÃO CONSEGUI PERGUNTAR ≠ PODE GASTAR. Se a reserva não responde, não gasta — orçamento
+    // que falha aberto é orçamento que não existe.
+    if (!res || res.ok !== true) {
+      nota({ bloqueado: res?.motivo || "orcamento_indisponivel", proposito, orcamento: res || null });
+      return "";
+    }
+    reservado = pedido;
+  }
+  const solta = async (real) => {
+    if (!reservado) return;
+    await svcJson(env, "orcamento_reconcilia", { p_secret: env.INGEST_SECRET, p_proposito: proposito, p_reservado: reservado, p_real: Math.max(0, real | 0) }).catch(() => {});
+    reservado = 0;
+  };
+
   for (const model of MODEL_CHAIN) {
     try {
       const r = await fetch("https://api.anthropic.com/v1/messages", {
@@ -79,7 +109,8 @@ export async function askClaude(env, { system, messages, maxTokens = 300, diag =
       if (r.ok) {
         const d = await r.json().catch(() => ({}));
         const t = (d?.content?.[0]?.text || "").trim();
-        if (t) { nota({ model, status: 200, ok: true }); return t; }
+        const gasto = (d?.usage?.input_tokens || 0) + (d?.usage?.output_tokens || 0);
+        if (t) { await solta(gasto); nota({ model, status: 200, ok: true, tokens: gasto }); return t; }
         nota({ model, status: 200, erro: "200 sem texto", stop: d?.stop_reason || "" });
       } else {
         // O corpo do erro da Anthropic diz o tipo (authentication_error, credit_balance,
@@ -95,6 +126,9 @@ export async function askClaude(env, { system, messages, maxTokens = 300, diag =
       }
     } catch (e) { nota({ model, erro: String(e).slice(0, 120) }); }
   }
+  // Falhou em todos: solta a reserva com gasto REAL = 0. Cobrar por chamada que não entregou
+  // texto esgotaria o teto do dia sem uma linha de resposta.
+  await solta(0);
   return "";
 }
 

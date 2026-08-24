@@ -1003,6 +1003,7 @@ export function ownerAlertEmail({ kind = "order", customer = "", business = "", 
     billing: { icon: "⚠️", pt: "alerta de cobrança", en: "billing alert", es: "alerta de cobro" },
     referral: { icon: "🎁", pt: "cliente indicado", en: "referral", es: "referido" }, // masc. noun — the shared "Novo ${word}" must agree
     canal: { icon: "🔴", pt: "canal fora do ar", en: "channel down", es: "canal caído" },
+    orcamento: { icon: "🧮", pt: "orçamento do dia esgotado", en: "daily budget spent", es: "presupuesto del día agotado" },
   }[kind] || { icon: "🔔", pt: "evento", en: "event", es: "evento" };
   const L = lang === "pt" ? "pt" : lang === "es" ? "es" : "en";
   const word = K[L];
@@ -1027,6 +1028,13 @@ export function ownerAlertEmail({ kind = "order", customer = "", business = "", 
     // Canal caído NÃO é venda fechada. Sem este texto próprio o aviso sairia como "a Gui acabou
     // de fechar isso" sobre um canal que parou de entregar — a mentira mais cara possível, já que
     // é exatamente o alarme que ficou 19 dias sem existir enquanto o WhatsApp respondia pro vazio.
+    // Orçamento esgotado NÃO é falha: é o freio funcionando. O texto tem que dizer isso, senão o
+    // dono lê "quebrou" e vai procurar defeito onde existe uma decisão dele.
+    orcamento: {
+      pt: `O teto de tokens do dia acabou e o agente PAROU por conta própria — nada quebrou, o freio funcionou. Aumente o teto ou espere o próximo dia.`,
+      en: `Today's token ceiling ran out and the agent STOPPED on its own — nothing broke, the brake worked. Raise the ceiling or wait for tomorrow.`,
+      es: `El techo de tokens del día se agotó y el agente PARÓ por su cuenta — nada se rompió, el freno funcionó. Sube el techo o espera al día siguiente.`,
+    },
     canal: {
       pt: `Um canal de mensagem parou de entregar. Enquanto estiver assim, a Gui responde e ninguém recebe.`,
       en: `A messaging channel stopped delivering. While it stays this way, Gui replies and nobody receives it.`,

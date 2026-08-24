@@ -105,6 +105,55 @@ function CRM360({ V, onNav, real = null, email = "", dataKey = "" }) {
   const [loading, setLoading] = useState(!demo);
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(null);
+  // ── CAMPOS CUSTOMIZÁVEIS (2026-08-22) ───────────────────────────────────────────────────────
+  // `campos` = null nunca significa "nenhum campo". null = ainda não perguntei; false = perguntei
+  // e NÃO DEU (RPC ausente / erro). Lista vazia é a única coisa que significa "nenhum campo".
+  const [campos, setCampos] = useState(null);
+  const [novoCampo, setNovoCampo] = useState({ label: "", kind: "text" });
+  const [gerindo, setGerindo] = useState(false);
+  const [salvandoCampo, setSalvandoCampo] = useState(null);
+  const crmCall = async (payload) => {
+    try {
+      const r = await fetch("/api/crm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, token: dataKey, ...payload }) });
+      return r.ok ? await r.json() : null;
+    } catch { return null; }
+  };
+  const carregaCampos = async () => {
+    const d = await crmCall({ action: "fields_list" });
+    setCampos(d && Array.isArray(d.fields) ? d.fields : false);
+  };
+  // DEMO mostra amostra e desabilita a edição — o padrão da casa. Sem este ramo o gerenciador
+  // ficava "Loading…" PARA SEMPRE no cockpit de demonstração, porque a carga só roda em modo
+  // real. Girador eterno é pior que vazio: parece que quebrou.
+  useEffect(() => {
+    if (demo) { setCampos([{ key: "alergia", label: tr("Allergy"), kind: "text", options: [] }, { key: "sessoes", label: tr("Sessions left"), kind: "number", options: [] }]); return; }
+    if (email && dataKey) carregaCampos();
+  }, [demo, email, dataKey]); // eslint-disable-line
+  const criaCampo = async () => {
+    if (!novoCampo.label.trim()) return;
+    setSalvandoCampo("novo");
+    const d = await crmCall({ action: "field_set", key: novoCampo.label, label: novoCampo.label, kind: novoCampo.kind });
+    setSalvandoCampo(null);
+    // O CORPO decide, não o status. `ok:false` traz o motivo (limite_30_campos, label_vazio…).
+    if (d?.ok) { setNovoCampo({ label: "", kind: "text" }); carregaCampos(); }
+    else alert(d?.motivo === "limite_30_campos" ? tr("Limit of 30 custom fields reached.") : tr("Couldn't save — try again."));
+  };
+  const apagaCampo = async (k) => {
+    setSalvandoCampo(k);
+    const d = await crmCall({ action: "field_set", key: k, label: "x", remove: true });
+    setSalvandoCampo(null);
+    if (d?.ok) carregaCampos();
+  };
+  // Grava o valor e usa o `custom` QUE VOLTOU do banco — não o que eu digitei. Se o banco
+  // recusou (número inválido, contato de outro tenant), a tela não pode mostrar o valor novo.
+  const gravaValor = async (contatoId, k, valor) => {
+    setSalvandoCampo(k);
+    const d = await crmCall({ action: "contact_custom_set", contact_id: contatoId, key: k, value: valor });
+    setSalvandoCampo(null);
+    if (d?.ok && d.custom) setSel((c) => (c && c.id === contatoId ? { ...c, custom: d.custom } : c));
+    else if (d?.motivo === "numero_invalido") alert(tr("That field only takes numbers."));
+    else if (d?.motivo) alert(tr("Couldn't save — try again."));
+  };
   const [timeline, setTimeline] = useState([]);
   const [tlLoading, setTlLoading] = useState(false);
   const [tab, setTab] = useState("contacts"); // contacts | pipeline
@@ -202,11 +251,63 @@ function CRM360({ V, onNav, real = null, email = "", dataKey = "" }) {
         [tr("Lifetime value"), fmtMoney(ltv), "good"],
         [tr("At churn risk"), `${risk}`, risk ? "bad" : undefined],
       ]} />
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap items-center">
         {[["contacts", tr("Contacts")], ["pipeline", tr("Pipeline")]].map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)} className={`rounded-full px-4 py-1.5 text-[12.5px] font-bold transition ${tab === k ? "bg-g-green/15 text-g-light border border-g-green/40" : "border border-white/10 bg-white/[0.04] text-g-muted hover:text-g-word"}`}>{label}</button>
         ))}
+        {/* Gerenciador de campos: fora das abas, porque não é uma VISÃO — é configuração. */}
+        <button onClick={() => setGerindo((v) => !v)}
+          className="ml-auto rounded-full px-3 py-1.5 text-[12px] font-bold border border-white/10 bg-white/[0.04] text-g-muted hover:text-g-word transition">
+          {gerindo ? tr("Done") : tr("⚙︎ Your fields")}
+        </button>
       </div>
+
+      {/* CRIAR / APAGAR CAMPO. Aparece só quando pedido — configuração não pode competir com o
+          trabalho do dia na mesma tela. */}
+      {gerindo && (
+        <Card className="p-5">
+          <div className="text-[13px] font-bold text-g-word">{tr("Your own fields")}</div>
+          <p className="mt-1 text-[12px] leading-relaxed text-g-muted">
+            {tr("Anything you want to remember about a customer that Guileo doesn't ask for — allergy, preferred room, sessions left, referral source.")}
+          </p>
+
+          {campos === null && <div className="mt-3 text-[12px] text-g-muted">{tr("Loading…")}</div>}
+          {/* NÃO DEU PRA SABER nunca vira "nenhum campo". */}
+          {campos === false && <div className="mt-3 text-[12px] text-g-amber">{tr("Couldn't load your fields right now — this is not \"you have none\".")}</div>}
+          {Array.isArray(campos) && campos.length === 0 && <div className="mt-3 text-[12px] text-g-muted">{tr("No fields yet.")}</div>}
+
+          {Array.isArray(campos) && campos.length > 0 && (
+            <div className="mt-3 grid gap-1.5">
+              {campos.map((f) => (
+                <div key={f.key} className="flex items-center gap-3 rounded-lg bg-white/[0.04] px-3 py-2">
+                  <span className="text-[13px] text-g-word flex-1 truncate">{f.label}</span>
+                  <span className="text-[10.5px] uppercase tracking-wide text-g-muted shrink-0">{f.kind}</span>
+                  <button onClick={() => apagaCampo(f.key)} disabled={demo || salvandoCampo === f.key}
+                    className="text-[11px] text-g-muted hover:text-g-red shrink-0 disabled:opacity-40">
+                    {salvandoCampo === f.key ? "…" : tr("Remove")}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-4 flex gap-2 flex-wrap">
+            <input value={novoCampo.label} maxLength={60} onChange={(e) => setNovoCampo((f) => ({ ...f, label: e.target.value }))}
+              placeholder={tr("Field name (e.g. Allergy)")}
+              className="flex-1 min-w-[150px] bg-white/[0.05] border border-white/15 rounded-lg px-3 py-2 text-[13px] text-g-word outline-none placeholder:text-g-muted" />
+            <select value={novoCampo.kind} onChange={(e) => setNovoCampo((f) => ({ ...f, kind: e.target.value }))}
+              className="bg-white/[0.05] border border-white/15 rounded-lg px-3 py-2 text-[13px] text-g-word outline-none">
+              <option value="text">{tr("Text")}</option>
+              <option value="number">{tr("Number")}</option>
+              <option value="date">{tr("Date")}</option>
+              <option value="bool">{tr("Yes / no")}</option>
+            </select>
+            <button onClick={criaCampo} disabled={demo || salvandoCampo === "novo" || !novoCampo.label.trim()}
+              className="btn-bright text-[13px] disabled:opacity-40">{salvandoCampo === "novo" ? "…" : tr("Add field")}</button>
+          </div>
+          {demo && <div className="mt-2 text-[11px] text-g-muted">{tr("Demo — connect your account to edit")}</div>}
+        </Card>
+      )}
       {tab === "pipeline" ? (
         dealsLoading ? <SectionSkeleton /> : <PipelineBoard deals={deals} fmtMoney={fmtMoney} tr={tr} demo={demo} onAdvance={advanceDeal} movingId={movingId} />
       ) : (
@@ -242,6 +343,41 @@ function CRM360({ V, onNav, real = null, email = "", dataKey = "" }) {
           actions={(sel.phone || sel.email) ? <a href={waTo(sel.phone, `Hi ${sel.full_name || ""}! `)} target="_blank" rel="noopener" className="btn-bright text-sm">{tr("💬 Message")}</a> : null}
           onClose={() => setSel(null)}
         >
+          {/* CAMPOS DO NEGÓCIO — o que este cliente decidiu guardar sobre a pessoa. */}
+          {Array.isArray(campos) && campos.length > 0 && (
+            <div className="mt-1 mb-5">
+              <div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">{tr("Your fields")}</div>
+              <div className="space-y-2">
+                {campos.map((f) => {
+                  const v = (sel.custom || {})[f.key];
+                  return (
+                    <div key={f.key} className="flex items-center gap-2">
+                      <span className="text-[11px] text-g-muted w-[110px] shrink-0 truncate" title={f.label}>{f.label}</span>
+                      {f.kind === "bool" ? (
+                        <input type="checkbox" checked={v === true} disabled={demo || salvandoCampo === f.key}
+                          onChange={(e) => gravaValor(sel.id, f.key, e.target.checked ? "true" : "")}
+                          className="h-4 w-4 accent-g-green" />
+                      ) : f.kind === "select" ? (
+                        <select value={v == null ? "" : String(v)} disabled={demo || salvandoCampo === f.key}
+                          onChange={(e) => gravaValor(sel.id, f.key, e.target.value)}
+                          className="flex-1 bg-white/[0.05] border border-white/15 rounded-lg px-2 py-1 text-[12px] text-g-word outline-none">
+                          <option value="">—</option>
+                          {(f.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      ) : (
+                        <input type={f.kind === "date" ? "date" : f.kind === "number" ? "text" : "text"}
+                          defaultValue={v == null ? "" : String(v)} disabled={demo || salvandoCampo === f.key}
+                          inputMode={f.kind === "number" ? "decimal" : undefined}
+                          onBlur={(e) => { const novo = e.target.value; const atual = v == null ? "" : String(v); if (novo !== atual) gravaValor(sel.id, f.key, novo); }}
+                          placeholder="—"
+                          className="flex-1 bg-white/[0.05] border border-white/15 rounded-lg px-2 py-1 text-[12px] text-g-word outline-none placeholder:text-g-muted" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="mt-1">
             <div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">{tr("360° timeline")}</div>
             {tlLoading ? (
