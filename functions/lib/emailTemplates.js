@@ -341,7 +341,7 @@ ${eyebrow ? `<tr><td class="g-pad-head" style="padding:20px 40px 0 40px;backgrou
          justamente o que nos escondia. Marca do cliente e marca nossa não competem: a dele é o
          ASSUNTO, a nossa é a ASSINATURA. As duas aparecem, uma embaixo da outra. -->
     <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
-    <img src="${B.logo}" width="30" height="30" alt="Guileo" style="display:block;margin:0 auto 8px;border:0;border-radius:8px;" />
+    <img src="${B.logo}" width="44" height="44" alt="Guileo" style="display:block;margin:0 auto 10px;border:0;border-radius:11px;" />
     <span style="color:${B.green};font-size:9px;vertical-align:middle;">●</span>&nbsp; <span style="color:${B.ink2};font-weight:600;">Guileo</span> — ${f.desc}
     <div style="font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:${B.goldDim};margin:5px 0 7px;">Growth Intelligence Solutions</div>
     <a href="${B.site}" style="color:${B.gold};text-decoration:none;">guileoai.com</a>
@@ -2413,12 +2413,15 @@ function _textAccent(hex, fundo = B.card) {
 }
 
 // Accent CTA pill (client's color). Mirrors cta() but themed; safe text color auto-chosen.
-function ctaBrand(label, href, accent) {
+// `big` (24/08): no e-mail do Website Upgrade este botão é o ÚNICO trabalho da primeira tela — o
+// dono ainda não sabe que existe um site novo dele, e o clique é a coisa toda. Um pill de 14,5px
+// no meio de um e-mail de dez blocos some. Os outros templates seguem no tamanho de sempre.
+function ctaBrand(label, href, accent, big = false) {
   const top = _shade(accent, 0.18), bot = _shade(accent, -0.16), fg = _textOn(accent);
   const { r, g, b } = _rgb(accent);
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="g-btn-wrap" style="margin:6px auto 0 auto;"><tr>
   <td align="center" style="border-radius:999px;background:linear-gradient(180deg,${top} 0%,${accent} 52%,${bot} 100%);box-shadow:0 16px 40px -12px rgba(${r},${g},${b},0.55),inset 0 1px 0 rgba(255,255,255,0.34),inset 0 -1px 0 rgba(0,0,0,0.18),0 0 0 1px rgba(${r},${g},${b},0.45);">
-    <a href="${href}" class="g-btn" style="display:inline-block;padding:15px 34px;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:14.5px;font-weight:800;letter-spacing:.2px;color:${fg};text-decoration:none;border-radius:999px;">${esc(label)}</a>
+    <a href="${href}" class="g-btn" style="display:inline-block;padding:${big ? "19px 46px" : "15px 34px"};font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:${big ? "17px" : "14.5px"};font-weight:800;letter-spacing:.2px;color:${fg};text-decoration:none;border-radius:999px;">${esc(label)}</a>
   </td></tr></table>`;
 }
 
@@ -3469,7 +3472,8 @@ export function websiteUpgradeEmail({
     eyebrow: "Website Upgrade · pronto pra ver",
     h1: `${_pre.pt}${_n ? "refizemos" : "Refizemos"} o site do ${business}`,
     intro: `Ninguém te mandou uma proposta. A gente reconstruiu seu site — com o seu vídeo, sua marca, as fotos da sua equipe e seus serviços — e colocou no ar pra você julgar, não imaginar. <strong style="color:${B.ink};">Está no ar agora.</strong> Dois minutos abaixo: o que já vem nele e o que dá pra ligar.`,
-    cta: "Ver o site novo →",
+    cta: "Abrir meu site novo →",
+    ctaSub: "Já está no ar. Sem login, sem instalar, sem assinar nada.",
     inclusoT: "O que já vem no modelo",
     addonT: "O que dá pra ligar em cima",
     addonSub: "Três frentes. Cada módulo entra sozinho — você escolhe quais fazem sentido.",
@@ -3481,7 +3485,8 @@ export function websiteUpgradeEmail({
     eyebrow: "Website Upgrade · ready to view",
     h1: `${_pre.en}${_n ? "we" : "We"} rebuilt the ${business} website`,
     intro: `Nobody sent you a proposal. We just rebuilt your site — with your own video, logo, crew photos and services — and put it online so you can judge it, not imagine it. <strong style="color:${B.ink};">It is live right now.</strong> Two minutes below: what is already in it, and what you can switch on.`,
-    cta: "See the new site →",
+    cta: "Open my new site →",
+    ctaSub: "It’s live right now. No login, nothing to install, nothing to sign.",
     inclusoT: "What already comes in it",
     addonT: "What you can switch on",
     addonSub: "Three fronts. Each module stands alone — you pick the ones that make sense.",
@@ -3550,7 +3555,11 @@ export function websiteUpgradeEmail({
   <div style="font-size:26px;line-height:1.2;color:${B.ink2};font-weight:700;">${t.h1}</div>
   <div class="g-intro" style="font-size:16px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
   <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
-  <div align="center">${cta(t.cta, link)}</div>
+  <div align="center">${ctaBrand(t.cta, link, acc, true)}</div>
+  <!-- A linha embaixo tira o medo que trava o clique: ele não sabe se cai num formulário, num
+       login ou numa proposta. Dizer que já está no ar e que não pede nada vira curiosidade em
+       clique — e é verdade, que é o único motivo de eu poder escrever isso. -->
+  <div style="text-align:center;font-size:12.5px;color:${B.muted};margin-top:9px;">${t.ctaSub}</div>
   ${presente ? `
   <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
   <div style="border:2px solid ${B.green}; border-radius:16px; background:${B.green}1a; padding:16px 18px; text-align:center;">
