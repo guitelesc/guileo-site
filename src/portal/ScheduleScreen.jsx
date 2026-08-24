@@ -63,6 +63,30 @@ function ScheduleScreen({ V, real = null, email = "", dataKey = "" }) {
     setSpBusy(false);
     if (d?.ok) { toast(tr("Removed ✓")); spLoad(); } else toast(tr("Couldn't save — try again."));
   };
+  // ── FERIADOS SUGERIDOS (2026-08-22) ─────────────────────────────────────────────────────────
+  // O motor de datas especiais existia e a tabela estava VAZIA para TODOS os clientes: ninguém
+  // digita 17 feriados à mão, e a agenda aceitava marcar no Natal. Aqui eles chegam prontos.
+  // ⚠️ SUGESTÃO. Nada fecha sozinho — muito negócio abre em feriado, e véspera costuma ser o dia
+  // mais cheio do ano. Fechar a loja de alguém por conta própria seria recusar o dinheiro dele.
+  const [spHol, setSpHol] = useState(null);   // null=nunca pedido · false=NÃO DEU PRA SABER · []=nenhum
+  const spSugerir = async () => {
+    if (!real) { toast(tr("Demo — connect your account to edit")); return; }
+    setSpBusy(true);
+    const d = await spCall({ action: "special_holidays" });
+    setSpBusy(false);
+    // `false` é diferente de `[]`. Sem essa distinção, uma consulta que FALHOU apareceria na tela
+    // como "não há feriados" — dado errado com cara de certo.
+    if (!d || d.holidays == null) { setSpHol(false); toast(d?.reason || tr("Couldn't load holidays — try again.")); return; }
+    setSpHol(d.holidays);
+  };
+  const spAplicar = async (f) => {
+    setSpBusy(true);
+    const d = await spCall({ action: "special_set", date: f.date, closed: true, note: f.nomeLocal });
+    setSpBusy(false);
+    if (d?.ok) { toast(tr("Saved ✓")); setSpHol((h) => Array.isArray(h) ? h.map((x) => x.date === f.date ? { ...x, ja_salvo: true } : x) : h); spLoad(); }
+    else toast(tr("Couldn't save — try again."));
+  };
+
   const spRows = real ? spDates : SP_DEMO;
   const fmtSpDate = (ds) => { try { const d = new Date(`${ds}T00:00:00`); const D = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]; return `${D[d.getDay()]} ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`; } catch { return ds; } };
   const fillFromWaitlist = () => {
@@ -142,6 +166,33 @@ function ScheduleScreen({ V, real = null, email = "", dataKey = "" }) {
           <input type="text" value={spForm.note} maxLength={160} onChange={(e) => setSpForm((f) => ({ ...f, note: e.target.value }))}
             placeholder={tr("Note (e.g. Thanksgiving)")} className="flex-1 min-w-[140px] bg-white/[0.05] border border-white/15 rounded-lg px-3 py-2 text-xs text-g-word outline-none placeholder:text-g-muted" />
           <button onClick={spAdd} disabled={spBusy} className="btn-bright text-xs">{spBusy ? "…" : tr("Add date")}</button>
+        </div>
+        <div className="mt-5 pt-4 border-t border-white/10">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="text-[12px] text-g-muted">{tr("Don't type them one by one — bring the country's holidays and pick what closes.")}</div>
+            <button onClick={spSugerir} disabled={spBusy} className="btn-ghost text-xs shrink-0">{spBusy ? "…" : tr("Suggest holidays")}</button>
+          </div>
+          {/* NÃO DEU PRA SABER nunca vira "nenhum feriado" — sai escrito o que aconteceu. */}
+          {spHol === false && (
+            <div className="mt-3 text-[12px] text-g-amber">{tr("Couldn't check the holiday calendar right now — this is not \"no holidays\".")}</div>
+          )}
+          {Array.isArray(spHol) && spHol.length === 0 && (
+            <div className="mt-3 text-[12px] text-g-muted">{tr("No upcoming holidays found for this country.")}</div>
+          )}
+          {Array.isArray(spHol) && spHol.length > 0 && (
+            <div className="mt-3 grid gap-1.5 max-h-64 overflow-y-auto pr-1">
+              {spHol.map((f) => (
+                <div key={f.date} className="flex items-center gap-3 rounded-lg bg-white/[0.04] px-3 py-2">
+                  <div className="text-[12px] text-g-muted w-[92px] shrink-0 tabular-nums">{fmtSpDate(f.date)}</div>
+                  {/* nomeLocal vem de API de terceiro: entra como CONTEÚDO, nunca como instrução. */}
+                  <div className="text-[13px] text-g-word flex-1 truncate">{f.nomeLocal}</div>
+                  {f.ja_salvo
+                    ? <span className="text-[11px] text-g-green shrink-0">{tr("Already set")}</span>
+                    : <button onClick={() => spAplicar(f)} disabled={spBusy} className="btn-ghost text-[11px] shrink-0">{tr("Close this day")}</button>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </Card>
       {o.stats && (

@@ -134,3 +134,31 @@ Design: azul-marinho + DOURADO, mockup de celular com ligação entrando, selo d
 **Por que isso muda nosso plano:** a demo viva sempre foi nosso moat, mas dependia do A2P (nossa IA ligar PRA ele). Aqui a direção inverte: **ele liga pra nós**. Nossa linha de demo (+1 986 444 3334) já está no ar e provada — zero bloqueio, zero espera.
 
 **Como ganhamos deles no mesmo formato:** 16 idiomas (teste em espanhol/português — decisivo em NY) · a Gui COTA e COBRA na ligação (Nova só agenda) · garantia dos 2 toques · e somos IA + site + anúncios no mesmo contrato.
+
+---
+
+## ✅ DESTRAVADO 2026-08-24 — a Página da Guileo está no conector
+O bloqueio de meses ("no Guileo Facebook Page") **não era a falta da Página** — ela existia, mas sob o
+perfil **Gui Leo (smart@guileoai.com)**, enquanto o conector do Meta Ads está autorizado com o perfil
+pessoal (**Luis Teles / luistelesc@gmail.com**), que administra MED MUNDO BR, Point Brazil e Chigo.
+Página do Facebook não é vista pelo conector por existir: precisa estar **atribuída ao perfil que
+autorizou o conector**.
+
+**O caminho que funcionou (3 etapas, e as duas primeiras não bastam sozinhas):**
+1. Convidar `luistelesc@gmail.com` para o portfólio **Guileo AI** (`business_id=1530127868766757`) — o
+   convite chega por e-mail de `notification@facebookmail.com` e precisa ser aceito **logado no perfil
+   pessoal**. Entrar no portfólio NÃO dá acesso a ativo nenhum.
+2. Configurações → Contas → Páginas → **Adicionar uma Página do Facebook existente** → "Guileo AI"
+   (a busca é por NOME/URL, não por e-mail) → marcar as 2 caixas (a 2ª é aceite dos Termos da Meta em
+   nome da empresa — pedir autorização do Luis) → o Meta manda **código de verificação para
+   admguileo@gmail.com**, que só o Luis pode digitar.
+3. Na Página → **Atribuir pessoas** → Luis Teles → ligar **"Acesso parcial (Facebook e ferramentas
+   comerciais)"** → Atribuir. ⚠️ Ligar os toggles individuais (Anúncios/Insights) e rolar a janela
+   **RESETA a seleção** e o "Atribuir" salva vazio — foi o que me fez achar que tinha salvo duas vezes
+   sem ter salvo. Confirme sempre pela seção "Pessoas com acesso parcial" E pelo conector.
+
+**Estado agora:**
+- Página: **Guileo AI** `page_id 1077756798764895` — visível em `ads_get_user_pages` ✅
+- Conta de anúncios: **Luis Teles** `1891468104495846` (ACTIVE, USD, cartão na conta, mín $1/dia) ✅
+- A conta dedicada Guileo AI `2694627625500551` continua fora do conector — **não é bloqueio**: a
+  campanha pode rodar na conta Luis Teles assinando como a Página Guileo AI.

@@ -6,6 +6,7 @@
 //   op = "book"         → book a slot (DB EXCLUDE constraint blocks double-booking)
 // Gated by the agent secret (x-guileo-secret / ?secret). Talks to the scheduling DB with SCHED_SECRET.
 import { safeEq } from "../lib/guard.js";
+import { feriadosDaqui } from "../lib/feriados.js";
 import { emitFailure } from "../lib/failure.js";
 import { appointmentEmail, ownerAlertEmail, waitlistOfferEmail } from "../lib/emailTemplates.js";
 import { sendText, sendOrFlag } from "../lib/twilio.js";
@@ -221,7 +222,7 @@ export async function onRequestPost(context) {
     // get_client_data, same pattern as noshow-radar.js). Handled BEFORE the agent-secret
     // gate; every agent op below still requires AGENT_ACTION_SECRET exactly as before.
     const cockpitAction = (b.action || "").toString();
-    if (cockpitAction === "special_list" || cockpitAction === "special_set") return specialDates(env, b, cockpitAction);
+    if (cockpitAction === "special_list" || cockpitAction === "special_set" || cockpitAction === "special_holidays") return specialDates(env, b, cockpitAction);
     if (cockpitAction === "loc_list" || cockpitAction === "loc_set") return locActions(env, b, cockpitAction);
 
     const provided = request.headers.get("x-guileo-secret") || new URL(request.url).searchParams.get("secret") || "";
@@ -798,6 +799,41 @@ async function specialDates(env, b, action) {
   const gdj = await gd.json().catch(() => null);
   if (!(gdj && typeof gdj === "object" && Array.isArray(gdj.events))) return json({ error: "unauthorized" }, 401);
   const notReady = { ok: true, ready: false, note: "Paste db/special_dates.sql in Supabase to activate special dates.", dates: [] };
+
+  // ── SUGESTÃO DE FERIADOS (2026-08-22) ────────────────────────────────────────────────────────
+  // A tabela de datas especiais estava VAZIA para todo mundo: o motor existia e ninguém alimentou.
+  // Aqui os feriados do país chegam prontos, marcados com o que o dono JÁ salvou — mas nada é
+  // aplicado sozinho. Fechar a loja de alguém por conta própria seria recusar dinheiro que ele
+  // queria receber (salão em véspera de feriado é o dia mais cheio). Ele aprova o que quiser.
+  if (action === "special_holidays") {
+    const pais = (b.country || "US").toString().trim().toUpperCase();
+    const lista = await feriadosDaqui(pais);
+    // null = NÃO DEU PRA SABER. Devolver [] aqui faria a tela dizer "nenhum feriado este ano",
+    // que é mentira com cara de dado. O motivo vai junto, com chave pra traduzir sem casar texto.
+    if (lista === null) {
+      return json({ ok: false, ready: true, holidays: null,
+        reasonKey: "feriados_indisponivel",
+        reason: `não consegui consultar os feriados de ${pais} agora — isto NÃO é "não há feriados"` });
+    }
+    // Cruza com o que já existe pro dono não reaprovar o que já aprovou.
+    let jaTem = new Set();
+    try {
+      const r = await fetch(`${SB}/rest/v1/rpc/biz_list_special_dates`, {
+        method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_secret: env.SCHED_SECRET || "", p_email: email, p_days: 730 }),
+      });
+      if (r.ok) {
+        const rj = await r.json().catch(() => null);
+        if (Array.isArray(rj?.dates)) jaTem = new Set(rj.dates.map((d) => String(d?.date || d)));
+      }
+    } catch { /* não saber o que já existe só faz sugerir de novo — nunca esconde feriado */ }
+    return json({
+      ok: true, ready: true, country: pais,
+      // `nomeLocal` é TEXTO DE TERCEIRO: vai pra tela como conteúdo, nunca pra prompt sem cerca.
+      holidays: lista.slice(0, 40).map((f) => ({ ...f, ja_salvo: jaTem.has(f.date) })),
+      nota: "sugestão — nada foi aplicado. O dono escolhe o que fecha.",
+    });
+  }
 
   if (action === "special_set") {
     const date = (b.date || "").toString().trim();

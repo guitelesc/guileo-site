@@ -5,10 +5,20 @@ import { waTo } from "../data/contact.js";
 import { Card, genCustomers, tr, MiniStats, Empty, Drawer, SectionSkeleton } from "../pages/Portal.jsx";
 
 // Pipeline board — crm_deals grouped by stage (the sales motor: inquiry → quoted → booked → won).
-// Kanban columns scroll horizontally on mobile; each open card carries a "→" that advances it one
-// stage (buttons beat drag-drop for reliability). Demo mode shows the board but disables the moves.
+// Kanban columns scroll horizontally on mobile.
+//
+// DUAS MANEIRAS DE MOVER, de propósito:
+//  · ARRASTAR o cartão para qualquer coluna — é o que o dono espera de um kanban, e é a única
+//    forma de marcar "Lost" ou VOLTAR um estágio. O backend (`deal_move`) já aceitava os 5
+//    estágios desde sempre: a limitação era só desta tela.
+//  · O botão "→" continua. Não é redundância: arrastar do HTML5 **não funciona em toque**, e
+//    metade dos donos abre o cockpit no celular. Tirar o botão trocaria um ganho no desktop por
+//    uma perda no telefone.
 const PIPE_ORDER = ["inquiry", "quoted", "booked", "won"];
 function PipelineBoard({ deals = [], fmtMoney, tr, demo, onAdvance, movingId }) {
+  // `arrastando` = o negócio na mão; `sobre` = a coluna sob o cursor (só para o destaque).
+  const [arrastando, setArrastando] = useState(null);
+  const [sobre, setSobre] = useState(null);
   const STAGES = [
     ["inquiry", tr("Inquiry"), "#9AA0A6"],
     ["quoted", tr("Quoted"), "#D6C29A"],
@@ -25,8 +35,22 @@ function PipelineBoard({ deals = [], fmtMoney, tr, demo, onAdvance, movingId }) 
       {STAGES.map(([key, label, color]) => {
         const col = deals.filter((d) => (d.stage || "inquiry") === key);
         const sum = col.reduce((s, d) => s + (d.value_cents || 0), 0);
-        return (
-          <div key={key} className="rounded-xl2 border border-white/10 bg-white/[0.03] p-3 min-w-[200px] w-[200px] sm:w-auto sm:min-w-[180px] sm:flex-1 shrink-0">
+          // Destino válido = tem negócio na mão E a coluna não é a de onde ele saiu.
+          const alvo = !!arrastando && (arrastando.stage || "inquiry") !== key;
+          const aceso = alvo && sobre === key;
+          return (
+          <div key={key}
+            onDragOver={(e) => { if (alvo) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; } }}
+            onDragEnter={() => alvo && setSobre(key)}
+            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setSobre((v) => (v === key ? null : v)); }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const d = arrastando; setArrastando(null); setSobre(null);
+              // Só move o que É um destino: soltar na própria coluna não pode gastar uma chamada
+              // nem piscar "movido" sem nada ter mudado.
+              if (d && !demo && onAdvance && (d.stage || "inquiry") !== key) onAdvance(d, key);
+            }}
+            className={`rounded-xl2 border p-3 min-w-[200px] w-[200px] sm:w-auto sm:min-w-[180px] sm:flex-1 shrink-0 transition ${aceso ? "border-g-green/60 bg-g-green/[0.07]" : alvo ? "border-white/20 bg-white/[0.04] border-dashed" : "border-white/10 bg-white/[0.03]"}`}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-black uppercase tracking-wide" style={{ color }}>{label}</span>
               <span className="text-[10px] text-g-muted">{col.length} · {fmtMoney(sum)}</span>
@@ -37,7 +61,11 @@ function PipelineBoard({ deals = [], fmtMoney, tr, demo, onAdvance, movingId }) 
                 const canMove = !!next && key !== "won" && key !== "lost" && (d.status || "open") === "open";
                 const age = ageDays(d);
                 return (
-                  <div key={d.id || i} className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2">
+                  <div key={d.id || i}
+                    draggable={!demo && (d.status || "open") === "open" && movingId !== d.id}
+                    onDragStart={(e) => { setArrastando(d); try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", d.id || ""); } catch { /* Safari antigo */ } }}
+                    onDragEnd={() => { setArrastando(null); setSobre(null); }}
+                    className={`rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 ${!demo && (d.status || "open") === "open" ? "cursor-grab active:cursor-grabbing" : ""} ${arrastando?.id === d.id ? "opacity-40" : ""}`}>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="text-[12.5px] font-bold text-g-word truncate">{d.contact_name || d.title || tr("Unknown")}</div>
