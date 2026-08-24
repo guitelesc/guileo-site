@@ -363,10 +363,13 @@ ${eyebrow ? `<tr><td class="g-pad-head" style="padding:20px 40px 0 40px;backgrou
 
 // PRIMARY CTA — GUI ORANGE pill (#FF8A33), the brand's signal color: warm gradient with depth,
 // white text, glassy top sheen + soft orange glow. The single "act now" button across all emails.
-function cta(label, href) {
+// `big` (24/08): maior SEM sair do padrão. O laranja é a cor do botão da casa em todos os
+// e-mails; trocá-lo pela cor do cliente fez o botão parar de parecer nosso. O que faltava era
+// TAMANHO e uma frase que tirasse o medo do clique, não uma cor nova.
+function cta(label, href, big = false) {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="g-btn-wrap" style="margin:6px auto 0 auto;"><tr>
   <td align="center" style="border-radius:999px;background:linear-gradient(180deg,#ff9d4d 0%,#ff8a33 52%,#f2731a 100%);box-shadow:0 16px 40px -12px rgba(255,138,51,0.55),inset 0 1px 0 rgba(255,255,255,0.38),inset 0 -1px 0 rgba(120,50,0,0.22),0 0 0 1px rgba(255,138,51,0.45);">
-    <a href="${href}" class="g-btn" style="display:inline-block;padding:15px 34px;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:14.5px;font-weight:800;letter-spacing:.2px;color:#ffffff;text-decoration:none;border-radius:999px;text-shadow:0 1px 1px rgba(120,50,0,0.4);">${label}</a>
+    <a href="${href}" class="g-btn" style="display:inline-block;padding:${big ? "19px 46px" : "15px 34px"};font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:${big ? "17px" : "14.5px"};font-weight:800;letter-spacing:.2px;color:#ffffff;text-decoration:none;border-radius:999px;text-shadow:0 1px 1px rgba(120,50,0,0.4);">${label}</a>
   </td></tr></table>`;
 }
 
@@ -3555,7 +3558,7 @@ export function websiteUpgradeEmail({
   <div style="font-size:26px;line-height:1.2;color:${B.ink2};font-weight:700;">${t.h1}</div>
   <div class="g-intro" style="font-size:16px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
   <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
-  <div align="center">${ctaBrand(t.cta, link, acc, true)}</div>
+  <div align="center">${cta(t.cta, link, true)}</div>
   <!-- A linha embaixo tira o medo que trava o clique: ele não sabe se cai num formulário, num
        login ou numa proposta. Dizer que já está no ar e que não pede nada vira curiosidade em
        clique — e é verdade, que é o único motivo de eu poder escrever isso. -->
