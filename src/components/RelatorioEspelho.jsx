@@ -93,6 +93,7 @@ const E = {
     pulseInstr: "The instrument, before your first reading",
     pulseEmpty: "No score yet — it starts the day the agent goes live. We will never show you a number we did not measure.",
     pulseGiftLine: "Yours at no charge with the plan above.",
+    pulseSeeMore: "See how Pulse works",
     pilTitle: "The three pillars, on your business",
     pilSub: "The same three pillars that run guileoai.com — here with YOUR measured scores under each one.",
     chTitle: "Every channel Guileo works",
@@ -206,6 +207,7 @@ const E = {
     pulseInstr: "O instrumento, antes da sua primeira medição",
     pulseEmpty: "Ainda sem nota — ela começa no dia em que a agente entra no ar. A gente nunca vai te mostrar um número que não mediu.",
     pulseGiftLine: "Seu, sem cobrança, junto com o plano acima.",
+    pulseSeeMore: "Ver como o Pulse funciona",
     pilTitle: "Os três pilares, no seu negócio",
     pilSub: "Os mesmos três pilares que rodam o guileoai.com — aqui com as SUAS notas medidas embaixo de cada um.",
     chTitle: "Todo canal em que a Guileo atua",
@@ -319,6 +321,7 @@ const E = {
     pulseInstr: "El instrumento, antes de tu primera medición",
     pulseEmpty: "Todavía sin nota — empieza el día en que la agente entra en operación. Nunca te mostraremos un número que no medimos.",
     pulseGiftLine: "Tuyo sin cargo, junto con el plan de arriba.",
+    pulseSeeMore: "Ver cómo funciona Pulse",
     pilTitle: "Los tres pilares, en tu negocio",
     pilSub: "Los mismos tres pilares que mueven guileoai.com — aquí con TUS notas medidas debajo de cada uno.",
     chTitle: "Cada canal en el que Guileo actúa",
@@ -432,6 +435,7 @@ const E = {
     pulseInstr: "यंत्र, आपकी पहली माप से पहले",
     pulseEmpty: "अभी कोई स्कोर नहीं — यह उसी दिन शुरू होता है जब एजेंट लाइव होती है। हम कभी ऐसा नंबर नहीं दिखाएँगे जो मापा न गया हो।",
     pulseGiftLine: "ऊपर वाले प्लान के साथ, आपका बिना किसी शुल्क के।",
+    pulseSeeMore: "देखें Pulse कैसे काम करता है",
     pilTitle: "तीन स्तंभ, आपके व्यवसाय पर",
     pilSub: "वही तीन स्तंभ जो guileoai.com चलाते हैं — यहाँ हर एक के नीचे आपके अपने मापे गए स्कोर के साथ।",
     chTitle: "हर चैनल जहाँ Guileo काम करती है",
@@ -1296,177 +1300,26 @@ export function PulsePresente({ lang, moeda }) {
       {/* o argumento que vende: por que isto é melhor que mandar pesquisa */}
       <p className="mx-auto mt-6 max-w-2xl text-center text-[14px] font-semibold leading-relaxed text-g-word">{c.pulseWhy}</p>
 
-      {/* ── O PAINEL: termômetro · estrelas · a pesquisa ───────────────────────────────────
-             Luis (2026-08-19): «adiciona MOVIMENTO: os gráficos, as estrelas, tipo ENCHENDO E
-             ESVAZIANDO, uma SIMULAÇÃO pro cliente entender. E a CARINHA: feliz quando a satisfação
-             é alta, média quando é média, triste quando é terrível.»
-
-             🚨 A PARTE DELICADA: esta página tem o NOME DELA no topo, então número que se move
-             aqui pode ser lido como a nota DELA. Por isso a divisão é rígida:
-               • o que se MOVE é a FORMA (o arco, as barras) e a CARINHA — o instrumento se
-                 explicando sozinho, sem afirmar nada sobre o negócio dela;
-               • o que seria lido como A NOTA DELA continua "—", e a legenda honesta continua
-                 embaixo ("ainda sem nota…");
-               • o painel carrega um selo ▶ SIMULAÇÃO e uma frase dizendo exatamente isso.
-             Nenhum percentual voltou para as barras: elas enchem e esvaziam sem número, e a
-             coluna da direita segue "—".
-
-             Sem rAF e sem estado: é keyframe CSS puro. Aba escondida não trava nada porque não há
-             contador — a única coisa que a animação pode "congelar" é a forma, nunca um número.
-             `prefers-reduced-motion` para tudo e devolve o painel vazio original. */}
-      <div className="mt-6 gp-sim">
-        <style>{`
-          @keyframes gpArc{0%{stroke-dashoffset:157}18%{stroke-dashoffset:118}
-                           42%{stroke-dashoffset:63}62%{stroke-dashoffset:16}
-                           78%{stroke-dashoffset:55}100%{stroke-dashoffset:157}}
-          @keyframes gpLo{0%,14%{opacity:1}26%,72%{opacity:0}92%,100%{opacity:1}}
-          @keyframes gpMid{0%,16%{opacity:0}30%,44%{opacity:1}58%{opacity:0}
-                           72%,84%{opacity:1}94%,100%{opacity:0}}
-          @keyframes gpHi{0%,46%{opacity:0}58%,70%{opacity:1}80%,100%{opacity:0}}
-          @keyframes gpBar{0%{transform:scaleX(.04)}50%{transform:scaleX(1)}100%{transform:scaleX(.04)}}
-          .gp-sim .gp-arc{animation:gpArc 9s cubic-bezier(.45,0,.35,1) infinite}
-          .gp-sim .gp-lo{animation:gpLo 9s linear infinite}
-          .gp-sim .gp-mid{animation:gpMid 9s linear infinite}
-          .gp-sim .gp-hi{animation:gpHi 9s linear infinite}
-          .gp-sim .gp-bar{transform-origin:left center;animation:gpBar 9s cubic-bezier(.45,0,.35,1) infinite}
-          @media (prefers-reduced-motion: reduce){
-            .gp-sim .gp-arc,.gp-sim .gp-lo,.gp-sim .gp-mid,.gp-sim .gp-hi,.gp-sim .gp-bar{
-              animation:none !important}
-            .gp-sim .gp-bar{transform:scaleX(1) !important;opacity:.4}
-            .gp-sim .gp-lo,.gp-sim .gp-hi{opacity:0 !important}
-            .gp-sim .gp-mid{opacity:1 !important}
-          }
-        `}</style>
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: GOLD }}>📈 {c.pulseInstr}</span>
-          {/* o selo que torna a simulação inconfundível */}
-          <span className="rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-wider"
-            style={{ borderColor: `rgba(${GOLD_RGB},0.5)`, color: GOLD, background: `rgba(${GOLD_RGB},0.08)` }}>
-            ▶ {c.pulseSim}
-          </span>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-
-          {/* 1. TERMÔMETRO — o arco enche e esvazia e a CARINHA acompanha a faixa.
-                 O valor grande continua "—": esse é o slot que seria lido como a nota dela. */}
-          <div className="relative rounded-2xl border p-5 text-center backdrop-blur" style={{ borderColor: `rgba(${GOLD_RGB},0.28)`, background: `rgba(${GOLD_RGB},0.05)` }}>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-g-muted">{PN.score}</div>
-            <div className="relative mx-auto mt-2 w-full max-w-[190px]">
-              <svg viewBox="0 0 120 68" className="w-full" role="img" aria-label={`${PN.score} — ${c.pulseSim}`}>
-                {/* trilho vazio (o estado honesto) + o arco de simulação por cima */}
-                <path d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="10" strokeLinecap="round" />
-                <path d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke={`rgba(${GOLD_RGB},0.30)`} strokeWidth="10"
-                  strokeLinecap="round" strokeDasharray="4 9" />
-                <path className="gp-arc" d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke={GOLD} strokeWidth="10"
-                  strokeLinecap="round" strokeDasharray="157" strokeDashoffset="157" />
-              </svg>
-              {/* AS CARINHAS: três, empilhadas; só uma está visível em cada faixa do arco */}
-              <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 grid h-9 place-items-center text-[26px] leading-none">
-                <span className="gp-lo col-start-1 row-start-1" style={{ opacity: 1 }}>😞</span>
-                <span className="gp-mid col-start-1 row-start-1" style={{ opacity: 0 }}>😐</span>
-                <span className="gp-hi col-start-1 row-start-1" style={{ opacity: 0 }}>😃</span>
-              </div>
-            </div>
-            {/* o número DELA — ausente, e continua ausente */}
-            <div className="mt-1 text-[34px] font-black leading-none text-g-muted">—</div>
-          </div>
-
-          {/* 2. DE ONDE A NOTA VEM — as 5 faixas enchendo e esvaziando em cascata, SEM percentual */}
-          <div className="rounded-2xl border p-5 backdrop-blur" style={{ borderColor: `rgba(${GOLD_RGB},0.28)`, background: `rgba(${GOLD_RGB},0.05)` }}>
-            <div className="text-center text-[11px] font-bold uppercase tracking-wider text-g-muted">{PN.stars}</div>
-            <div className="mt-3 flex flex-col gap-1.5">
-              {[5, 4, 3, 2, 1].map((n, i) => (
-                <div key={n} className="flex items-center gap-2">
-                  <span className="w-8 shrink-0 text-right text-[11px] font-bold tabular-nums text-g-ink">{n}★</span>
-                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.07]">
-                    <span className="gp-bar block h-full w-full rounded-full"
-                      style={{
-                        background: `linear-gradient(90deg, rgba(${GOLD_RGB},0.75), rgba(${GOLD_RGB},0.30))`,
-                        animationDelay: `${i * 0.5}s`,
-                        opacity: 0.9 - i * 0.1,
-                      }} />
-                  </span>
-                  <span className="w-8 shrink-0 text-[11px] text-g-muted">—</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 3. A PESQUISA — o que o cliente DELA vê. Isto não é dado dela: é a peça do produto. */}
-          <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-5 backdrop-blur">
-            <div className="text-center text-[11px] font-bold uppercase tracking-wider text-g-muted">{PN.ask}</div>
-            <div className="mt-3 rounded-xl border border-white/10 bg-[#0e0d0b] p-4">
-              <div className="text-[12.5px] font-semibold leading-snug text-g-word">{PN.q}</div>
-              <div className="mt-3 flex justify-between text-[22px]" aria-hidden="true">
-                {[1, 2, 3, 4, 5].map((n) => <span key={n} style={{ opacity: n <= 4 ? 0.35 : 1 }}>★</span>)}
-              </div>
-              <div className="mt-2 text-center text-[10.5px] text-g-muted">{PN.send}</div>
-            </div>
-          </div>
-        </div>
-        <p className="mt-3 text-[11.5px] leading-snug text-g-muted">▶ {c.pulseSimNote}</p>
-        <p className="mt-1.5 text-[11.5px] leading-snug text-g-muted">⚠️ {c.pulseEmpty}</p>
-      </div>
-
-      {/* ── OS DOIS CAMINHOS ────────────────────────────────────────────────────────────────
-             Luis: «a gente também pode mandar SURVEYS junto com o que já fazemos». Confirmado no
-             código antes de escrever: /api/cx-survey roda no cron diário, lista os clientes DELA
-             recém-atendidos, faz uma reserva atômica de 30 dias antes de enviar (ninguém é
-             pesquisado duas vezes), manda o e-mail com a MARCA DELA (cxSurveyEmail) e a resposta
-             de 1 toque cai em /api/cx-vote. Ou seja: os dois caminhos existem de verdade — o
-             passivo (lê a conversa) e o ativo (manda a pesquisa) — e um não substitui o outro. */}
-      <div className="mt-6">
-        <div className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: GOLD }}>🔀 {c.pulseWays}</div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {[c.pulseWay1, c.pulseWay2].map(([icon, t, b]) => (
-            <div key={t} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur">
-              <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[16px]"
-                style={{ background: `rgba(${GOLD_RGB},.13)`, boxShadow: `inset 0 0 0 1px rgba(${GOLD_RGB},.4)` }}>{icon}</span>
-              <div className="min-w-0">
-                <div className="text-[13px] font-bold leading-tight text-g-word">{t}</div>
-                <p className="mt-1 text-[12px] leading-snug text-g-ink">{b}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* o que o Pulse entrega — bullets do catálogo, não escritos aqui */}
-      {(productDetail("pulse", lang)?.bullets || []).length > 0 && (
-        <ul className="mt-6 grid gap-1.5 text-[12.5px] leading-snug text-g-ink sm:grid-cols-3">
-          {productDetail("pulse", lang).bullets.map((b, i) => (
-            <li key={i} className="flex gap-1.5"><span aria-hidden="true" style={{ color: GOLD }}>▸</span><span>{b}</span></li>
-          ))}
-        </ul>
-      )}
-
-      {/* melhor que Qualtrics — a comparação de preço aprovada da landing.
-             ⚠️ 2026-08-19: eu cheguei a TIRAR os nomes (Qualtrics/Birdeye/Medallia/Podium) por
-             conta própria, achando que citar rival num documento assinado era briga que não é
-             dela. O Luis reverteu na hora: «pode voltar o Qualtrics e a Birdeye — eu gostei».
-             A âncora com NOME é o que dá tamanho ao $49; categoria genérica não ancora nada.
-             Fonte única: PULSE_COPY (a landing), nunca uma segunda lista escrita aqui. */}
-      <div className="mt-6 border-t pt-5" style={{ borderColor: `rgba(${GOLD_RGB},0.22)` }}>
-        <div className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: GOLD }}>{G.compare}</div>
-        <div className="mt-3 flex flex-col gap-2.5 sm:flex-row sm:items-stretch">
-          <div className="rounded-2xl border px-5 py-3.5 backdrop-blur"
-            style={{ borderColor: `rgba(${GOLD_RGB},0.55)`, background: `rgba(${GOLD_RGB},0.12)` }}>
-            <div className="text-[15px] font-black text-g-word">✅ {G.us}</div>
-            <div className="mt-0.5 text-[11.5px] font-semibold" style={{ color: GOLD }}>{G.usSub}</div>
-          </div>
-          {G.rivals.map((r) => (
-            <div key={r.n} className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3.5 opacity-80 backdrop-blur">
-              <div className="text-[13.5px] font-bold text-g-ink line-through decoration-g-copper/50">{r.n}</div>
-              <div className="mt-0.5 text-[12px] font-semibold text-g-muted">{r.p}</div>
-            </div>
-          ))}
-        </div>
-        <p className="mt-3 text-[12.5px] font-bold" style={{ color: GOLD }}>🎁 {c.pulseGiftLine}</p>
+      {/* ── ENCURTADO (Luis, 24/08: «precisa ser mais resumido pra converter, ninguém lê tudo»)
+             O que morava aqui — o painel simulado (termômetro, estrelas, cartão da pesquisa), os
+             dois caminhos e a comparação com Qualtrics/Birdeye — NÃO foi apagado: mora em /pulse,
+             a casa do produto, que já lê o MESMO `PULSE_COPY`. Este relatório é o laudo do negócio
+             DELA; uma landing inteira de um produto nosso no meio dele empurrava a conclusão para
+             três telas abaixo e competia com o plano, que é o que ela precisa decidir.
+             Aqui fica o que vende em dez segundos: o que é, por que é diferente, e o preço com o
+             presente. Quem quiser o resto clica — e clicar é sinal de interesse, que a página
+             longa embutida nunca me deu. */}
+      <div className="mt-6 flex flex-col items-center gap-3">
+        <p className="text-center text-[12.5px] font-bold" style={{ color: GOLD }}>🎁 {c.pulseGiftLine}</p>
+        <a href="/pulse" target="_blank" rel="noopener noreferrer"
+           className="rounded-full px-6 py-3 text-[14px] font-black text-g-deep transition hover:brightness-110 motion-reduce:transition-none"
+           style={{ background: GOLD, boxShadow: `0 18px 40px -22px rgba(${GOLD_RGB},0.9)` }}>
+          {c.pulseSeeMore} →
+        </a>
       </div>
     </section>
   );
 }
-
 /* ════════════════════════════════════════════════════════════════════════════════════════════
    OS CANAIS — E POR QUE ELES VIRARAM UMA SEÇÃO, NÃO UM ÍCONE POR EVIDÊNCIA
    Luis: «LEMBRANDO dos ÍCONES DAS REDES SOCIAIS neles — ícones IMPORTANTE. Ou colocar uma SEÇÃO

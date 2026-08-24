@@ -308,8 +308,18 @@ ${eyebrow ? `<tr><td class="g-pad-head" style="padding:20px 40px 0 40px;backgrou
 <tr><td class="g-pad" style="padding:14px 40px 36px 40px;background:${B.card};font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;">${body}</td></tr>
 <tr><td class="g-pad" style="padding:22px 40px 30px 40px;border-top:1px solid ${B.line};background:${B.card};" align="center">
   ${bz ? `<div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};line-height:1.85;">
-    <span style="color:${B.ink2};font-weight:600;">${bz}</span><br/>
-    <span style="font-size:10.5px;color:${B.faint};">powered by <a href="${B.site}" style="color:${B.faint};text-decoration:none;">Guileo</a></span>
+    <span style="color:${B.ink2};font-weight:600;">${bz}</span>
+    <!-- 🚨 A NOSSA IDENTIDADE SUMIA QUANDO A DELE ENTRAVA (24/08). Com \`brand\` preenchido este
+         ramo trocava o bloco Guileo inteiro por um "powered by Guileo" de 10px em cinza fraco —
+         então o e-mail que mais precisa nos apresentar (o primeiro que o dono recebe) era
+         justamente o que nos escondia. Marca do cliente e marca nossa não competem: a dele é o
+         ASSUNTO, a nossa é a ASSINATURA. As duas aparecem, uma embaixo da outra. -->
+    <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
+    <img src="${B.logo}" width="30" height="30" alt="Guileo" style="display:block;margin:0 auto 8px;border:0;border-radius:8px;" />
+    <span style="color:${B.green};font-size:9px;vertical-align:middle;">●</span>&nbsp; <span style="color:${B.ink2};font-weight:600;">Guileo</span> — ${f.desc}
+    <div style="font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:${B.goldDim};margin:5px 0 7px;">Growth Intelligence Solutions</div>
+    <a href="${B.site}" style="color:${B.gold};text-decoration:none;">guileoai.com</a>
+    <span style="color:${B.faint};">&nbsp;·&nbsp;</span>${f.tag}
   </div>` : `<div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};line-height:1.85;">
     <span style="color:${B.green};font-size:9px;vertical-align:middle;">●</span>&nbsp; <span style="color:${B.ink2};font-weight:600;">Guileo</span> — ${f.desc}<br/>
     <div style="font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:${B.goldDim};margin:5px 0 7px;">Growth Intelligence Solutions</div>
