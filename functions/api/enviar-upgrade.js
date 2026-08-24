@@ -12,6 +12,7 @@
 // e-mail, não houve envio.
 import { json, safeEq } from "../lib/guard.js";
 import { websiteUpgradeEmail } from "../lib/emailTemplates.js";
+import { CONTACT } from "../../src/data/contactData.js";
 
 export async function onRequestPost({ request, env }) {
   const ING = (env.INGEST_SECRET || "").toString();
@@ -28,7 +29,15 @@ export async function onRequestPost({ request, env }) {
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to, subject, html }),
+    // 🚨 O E-MAIL PEDE RESPOSTA E SAÍA DE UM noreply@ (achado 24/08). O rodapé diz "reply telling
+    // us which modules you want" — o dono responde, a resposta cai num buraco, e a gente conclui
+    // que o e-mail não converteu. Um convite pra responder num endereço que não escuta é a forma
+    // mais silenciosa de perder uma venda: nada falha, nada avisa, só não chega.
+    body: JSON.stringify({
+      from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>",
+      reply_to: (b.reply_to || CONTACT.email || "").toString().trim() || undefined,
+      to, subject, html,
+    }),
   });
   const corpo = await r.text().catch(() => "");
   if (!r.ok) return json({ ok: false, enviado: false, motivo: `resend ${r.status}: ${corpo.slice(0, 160)}` }, 502);
