@@ -4,6 +4,8 @@
 // PRIMARY CTA = brushed silver/platinum pill (hero landing button). Table-based + inline CSS for
 // client compatibility (Gmail app / Apple Mail / Outlook). Responsive via <head><style> @media.
 
+import { CONTACT } from "../../src/data/contactData.js";
+
 const B = {
   logo: "https://guileoai.com/favicon.png",
   anim: "https://guileoai.com/email/guileo-header.gif",  // animated header banner (silver sweep)
@@ -242,7 +244,7 @@ const HEAD_STYLE = `
 // rodapé como "powered by". Sem isso, o cliente do Natura Spa recebia um e-mail com o logo da
 // Guileo confirmando o horário dele: parece que outra empresa marcou, e o dono paga pra ter a
 // marca DELE na frente do cliente. `null` mantém o e-mail Guileo (avisos do dono, vendas, etc).
-function shell({ preheader = "", eyebrow = "", body = "", lang = "en", brand = null, unsub = "", address = "" }) {
+function shell({ preheader = "", eyebrow = "", body = "", lang = "en", brand = null, unsub = "", address = "", canais = false }) {
   const bz = brand && brand.business ? esc(String(brand.business).slice(0, 80)) : "";
   // Só aceitamos http(s) na logo: uma URL `javascript:`/`data:` vinda do perfil do cliente não pode
   // virar conteúdo do e-mail. Sem logo válida, cai no monograma com a inicial do negócio.
@@ -263,6 +265,30 @@ function shell({ preheader = "", eyebrow = "", body = "", lang = "en", brand = n
     en: { desc: "AI Systems for Business", tag: "Work smart. Grow faster. Sleep better.", recv: "You're receiving this because you started with Guileo." },
   };
   const f = F[lang] || F.en;
+  // ── UM CLIQUE JÁ FALA COM A GENTE (Luis, 24/08) ───────────────────────────────────────────────
+  // Emoji + link, direto da fonte única `src/data/contact.js`. Canal com valor VAZIO não desenha:
+  // um ícone de LinkedIn que leva a lugar nenhum é pior que não ter LinkedIn — e a lista tem cinco
+  // campos vazios esperando o dia em que existirem.
+  // ⚠️ OPT-IN, NUNCA AUTOMÁTICO. O shell também veste e-mail que sai na marca do CLIENTE (a
+  // confirmação de horário do cliente DELE). Pôr o WhatsApp da Guileo ali mandaria o cliente do
+  // encanador falar com a gente em vez de com o encanador. Só entra quando o template pede.
+  const CANAIS = [
+    ["💬", "WhatsApp", CONTACT.whatsapp ? `https://wa.me/${CONTACT.whatsapp}` : ""],
+    ["✉️", "E-mail", CONTACT.email ? `mailto:${CONTACT.email}` : ""],
+    ["📅", { pt: "Agendar", es: "Agendar", en: "Book a call" }[lang] || "Book a call", CONTACT.calendly || ""],
+    ["📸", "Instagram", (CONTACT.socials && CONTACT.socials.instagram) || ""],
+    ["🌐", "guileoai.com", B.site],
+  ].filter(([, , href]) => !!href);
+  const linhaCanais = canais && CANAIS.length ? `
+  <table role="presentation" align="center" style="border-collapse:separate;border-spacing:6px 0;margin:14px auto 0;">
+    <tr>${CANAIS.map(([e, t, href]) => `
+      <td align="center" style="padding:0;">
+        <a href="${href}" style="display:inline-block;padding:8px 12px;border:1px solid ${B.line};border-radius:999px;text-decoration:none;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;color:${B.ink2};white-space:nowrap;">
+          <span style="font-size:14px;">${e}</span>&nbsp;${t}
+        </a>
+      </td>`).join("")}
+    </tr>
+  </table>` : "";
   // CAN-SPAM (auditoria A4, 2026-08-11): estes templates vão para o CLIENTE DO CLIENTE (aniversário,
   // promoção, win-back…) e não tinham NENHUM link de descadastro nem endereço postal — só o rodapé
   // "you started with Guileo", que para o cliente do Natura Spa é simplesmente falso. `unsub` e
@@ -320,6 +346,7 @@ ${eyebrow ? `<tr><td class="g-pad-head" style="padding:20px 40px 0 40px;backgrou
     <div style="font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:${B.goldDim};margin:5px 0 7px;">Growth Intelligence Solutions</div>
     <a href="${B.site}" style="color:${B.gold};text-decoration:none;">guileoai.com</a>
     <span style="color:${B.faint};">&nbsp;·&nbsp;</span>${f.tag}
+    ${linhaCanais}
   </div>` : `<div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};line-height:1.85;">
     <span style="color:${B.green};font-size:9px;vertical-align:middle;">●</span>&nbsp; <span style="color:${B.ink2};font-weight:600;">Guileo</span> — ${f.desc}<br/>
     <div style="font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:${B.goldDim};margin:5px 0 7px;">Growth Intelligence Solutions</div>
@@ -3603,7 +3630,7 @@ export function websiteUpgradeEmail({
   </div>` : ""}
   ${nota ? `<div style="margin-top:18px;padding:12px 14px;border:1px solid ${B.line};border-radius:12px;color:${B.muted};font-size:13px;line-height:1.6;">${esc(nota)}</div>` : ""}
   <div style="font-size:12.5px;color:${B.muted};text-align:center;margin-top:20px;line-height:1.65;">${t.foot}</div>`;
-  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang, brand: { business, logo_url: logo, accent: acc } }) };
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang, brand: { business, logo_url: logo, accent: acc }, canais: true }) };
 }
 
 

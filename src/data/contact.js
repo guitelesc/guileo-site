@@ -3,21 +3,8 @@
 // Update these values once → the whole site (lead form, footer,
 // every CTA) updates automatically. Replace the placeholders.
 // ───────────────────────────────────────────────────────────
-export const CONTACT = {
-  whatsapp: "19295350191",      // digits only, with country code (US +1 929 535 0191)
-  email: "smart@guileoai.com",     // real owner inbox (confirmed by Luis 2026-06-10)
-  calendly: "https://cal.com/guileo",   // Cal.com booking link for "Book a demo" (confirmed Luis's)
-  socials: {
-    instagram: "https://instagram.com/guileoai",     // main brand IG
-    instagramAd: "https://instagram.com/guileo.ad",  // Guileo.AD leg IG
-    linkedin: "",
-    tiktok: "",
-    youtube: "",
-    telegram: "",
-    x: "",
-    google: "",                 // Google Business profile
-  },
-};
+export { CONTACT } from "./contactData.js";
+import { CONTACT } from "./contactData.js";
 
 import { trackContact } from "../lib/analytics.js";
 
