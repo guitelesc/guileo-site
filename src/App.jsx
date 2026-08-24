@@ -134,6 +134,7 @@ const LeadGeneration = lazyRetry(() => import("./pages/LeadGeneration")); // lea
 const SetupAgenda = lazyRetry(() => import("./pages/SetupAgenda")); // admin onboarding for the scheduling engine
 const Sign = lazyRetry(() => import("./pages/Sign")); // public contract e-signature page (/sign?t=token)
 const DemoLink = lazyRetry(() => import("./pages/DemoLink")); // seller's personalized demo link (/demo/:slug?n=&v=&s=) — Gui calls the prospect already knowing their business
+const AgentePronto = lazyRetry(() => import("./pages/AgentePronto")); // Motor de Agente: vendedor monta pela URL, dono vê a prévia (/agente/:token)
 const DemoPage = lazyRetry(() => import("./pages/DemoPage")); // public "vitrine" — any product rendered in the client's brand (/vitrine/:token?)
 const Apresentacao = lazyRetry(() => import("./pages/Apresentacao")); // owner-facing growth report / quote (/apresentacao/:id — id = uuid da avaliação)
 const RaioX = lazyRetry(() => import("./pages/RaioX")); // /raio-x — pedido PÚBLICO do Guileo X-Ray (quiz → relatório medido → call de 15 min)
@@ -264,6 +265,8 @@ export default function App() {
             <Route path="/setup-agenda" element={<SetupAgenda />} />
             <Route path="/sign" element={<Sign />} />
             <Route path="/demo/:slug" element={<DemoLink />} />
+            <Route path="/agente" element={<AgentePronto />} />
+            <Route path="/agente/:token" element={<AgentePronto />} />
             <Route path="/vitrine" element={<DemoPage />} />
             <Route path="/vitrine/:token" element={<DemoPage />} />
             <Route path="/apresentacao/:id" element={<Apresentacao />} />

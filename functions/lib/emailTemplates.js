@@ -3489,7 +3489,23 @@ export function websiteUpgradeEmail({
   // Só http(s) e só jpg/png/gif — mesma trava do shell. URL de perfil de cliente não vira <img> cega.
   const capaOk = /^https?:\/\//i.test(String(capa)) && /\.(jpe?g|png|gif)(\?|#|$)/i.test(String(capa)) ? String(capa).slice(0, 400) : "";
   const acc = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(accent)) ? String(accent) : B.gold;
+  // A MARCA DELE, GRANDE (Luis 24/08: "não dá pra ver a logo, o tema deles"). O shell já põe um
+  // logo de 46px centralizado, que some no meio do cabeçalho da Guileo. Aqui, dentro do corpo,
+  // ele vem em 64px com o nome do negócio ao lado e um filete na cor dele: quem abre vê o PRÓPRIO
+  // negócio antes de ver a gente. Alteração local — os outros 64 templates seguem intactos.
+  const logoOk = /^https?:\/\//i.test(String(logo)) && !/\.svg(\?|#|$)/i.test(String(logo)) ? String(logo).slice(0, 400) : "";
+  const barraMarca = (logoOk || business) ? `
+  <table role="presentation" width="100%" style="border-collapse:collapse;margin-bottom:16px;">
+    <tr>
+      ${logoOk ? `<td width="64" style="padding-right:14px;"><img src="${logoOk}" width="64" alt="${business}" style="display:block;width:64px;height:auto;border:0;border-radius:12px;" /></td>` : ""}
+      <td valign="middle" style="border-left:3px solid ${acc};padding-left:14px;">
+        <div style="color:#ffffff;font-size:17px;font-weight:800;line-height:1.25;">${business}</div>
+        <div style="color:${acc};font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-top:3px;">Website Upgrade</div>
+      </td>
+    </tr>
+  </table>` : "";
   const body = `
+  ${barraMarca}
   ${capaOk ? `<a href="${esc(link)}" style="text-decoration:none;display:block;">
     <img src="${esc(capaOk)}" width="100%" alt="${business}" style="display:block;width:100%;max-width:100%;height:auto;border:0;border-radius:16px;border:1px solid ${B.line};" />
   </a>
@@ -3561,18 +3577,18 @@ export function websiteUpgradeEmail({
        simplesmente sumia. Este é o produto de ENTRADA — o de $49 que abre a porta — e era o
        menos legível do e-mail. Agora: fundo sólido (gradiente em e-mail é loteria de cliente),
        borda de 2px, título em branco puro e corpo no tom mais claro da paleta. -->
-  <div style="border:2px solid ${B.green};border-radius:18px;background:${B.panel2};padding:20px;">
-    <div style="font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:${B.green};font-weight:800;">${esc(destaque.tag || "")}</div>
+  <div style="border:2px solid ${acc};border-radius:18px;background:${B.panel2};padding:20px;">
+    <div style="font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:${acc};font-weight:800;">${esc(destaque.tag || "")}</div>
     <div style="color:#ffffff;font-size:22px;font-weight:800;margin-top:7px;line-height:1.25;">${esc(destaque.t || "")}</div>
     <div style="color:${B.ink2};font-size:15.5px;line-height:1.75;margin-top:10px;">${esc(destaque.d || "")}</div>
     <table role="presentation" width="100%" style="margin-top:14px;border-collapse:collapse;">
       ${(destaque.pontos || []).map((x) => `
       <tr><td style="padding:8px 0;color:${B.ink2};font-size:15px;line-height:1.6;">
-        <span style="color:${B.green};font-weight:800;font-size:16px;">→</span>&nbsp;${esc(x)}
+        <span style="color:${acc};font-weight:800;font-size:16px;">→</span>&nbsp;${esc(x)}
       </td></tr>`).join("")}
     </table>
-    <div style="margin-top:14px;padding-top:14px;border-top:1px solid ${B.green}44;color:${B.ink};font-size:14px;line-height:1.6;">
-      <span style="color:${B.green};font-size:20px;font-weight:800;">${esc(destaque.p || "")}</span><br/>${esc(destaque.nota || "")}
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid ${acc}55;color:${B.ink};font-size:14px;line-height:1.6;">
+      <span style="color:${acc};font-size:20px;font-weight:800;">${esc(destaque.p || "")}</span><br/>${esc(destaque.nota || "")}
     </div>
   </div>` : ""}
   ${nota ? `<div style="margin-top:18px;padding:12px 14px;border:1px solid ${B.line};border-radius:12px;color:${B.muted};font-size:13px;line-height:1.6;">${esc(nota)}</div>` : ""}
