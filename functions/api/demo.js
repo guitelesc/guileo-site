@@ -141,8 +141,14 @@ function extractLogo(html, base) {
 }
 
 // Summarize fetched page text → a structured brand kit via Claude (model chain). Strict JSON.
-async function summarizeBrand(env, text, hintName) {
-  if (!env.ANTHROPIC_API_KEY) return null;
+// ⚠️ ELE PRECISA DIZER POR QUE FALHOU (24/08). Antes, toda falha virava `null` e o chamador
+// preenchia com um modelo do setor + a nota "proteção anti-bot ou página em JS". Para o
+// nonstopplumbers.com essa nota era FALSA: o site entrega 7.758 caracteres perfeitamente legíveis
+// e o logo foi extraído do HTML — o que quebrou foi ESTA etapa. Uma causa inventada é pior que
+// nenhuma: mandou a gente investigar o site do cliente em vez do nosso próprio código.
+// `_motivo` é diagnóstico, não texto de tela.
+async function summarizeBrand(env, text, hintName, diag = {}) {
+  if (!env.ANTHROPIC_API_KEY) { diag.motivo = "ANTHROPIC_API_KEY ausente"; return null; }
   const system = `You extract a factual brand kit from a business website's text. Reply with ONLY valid JSON, no markdown, no preamble. Shape:
 {"name":"","tagline":"","facts":"","services":[{"name":"","price":""}]}
 RULES: Use ONLY information present in the text. If a field is not found, use "" (or [] for services). NEVER invent a business name, service, or price. "tagline" = one short line describing what the business does. "facts" = a compact factual paragraph (hours, location, specialties, what to know) usable as an AI receptionist's brain. "services" = up to 8 real offerings; include "price" only if a price actually appears, else "".`;
@@ -167,10 +173,20 @@ RULES: Use ONLY information present in the text. If a field is not found, use ""
         let t = (d?.content?.[0]?.text || "").trim();
         const m = t.match(/\{[\s\S]*\}/);
         if (m) { try { return JSON.parse(m[0]); } catch { /* try next */ } }
-      } else if (r.status === 401 || r.status === 402) {
-        break; // auth/billing won't be fixed by another model
+        diag.motivo = `modelo ${model} respondeu sem JSON`;
+      } else {
+        let corpo = ""; try { corpo = (await r.text()).slice(0, 180); } catch { /* */ }
+        diag.motivo = `HTTP ${r.status} em ${model}: ${corpo}`;
+        // 🚨 A ANTHROPIC DEVOLVE 400 QUANDO O SALDO ACABA, não 402 (24/08). O teste só olhava
+        // 401/402, então "sem crédito" não era reconhecido como problema de billing: a corrente
+        // tentava TODOS os modelos, um a um, queimando os 10s de orçamento para receber o mesmo
+        // 400 — e no fim reportava um genérico. Saldo é a única falha que nenhum outro modelo
+        // resolve; sair na primeira é o certo, e dizer o nome dela é o que faltava.
+        const semSaldo = /credit balance is too low|insufficient.*credit/i.test(corpo);
+        if (semSaldo) { diag.motivo = "SEM SALDO ANTHROPIC — recarregar em console.anthropic.com"; break; }
+        if (r.status === 401 || r.status === 402) { diag.motivo = `billing/auth ${r.status}`; break; }
       }
-    } catch { /* abort/timeout or network — try next model if budget remains */ }
+    } catch (e) { diag.motivo = `${String(e).slice(0, 60)} em ${model}`; }
     finally { clearTimeout(timer); }
   }
   return null;
@@ -281,7 +297,8 @@ async function doBrand(env, b) {
   }
   const logo = extractLogo(html, url);
   const text = htmlToText(html);
-  const kit = (await summarizeBrand(env, text, explicitName || seedName)) || {};
+  const _diag = {};
+  const kit = (await summarizeBrand(env, text, explicitName || seedName, _diag)) || {};
 
   let services = Array.isArray(kit.services)
     ? kit.services.filter((x) => x && x.name).map((x) => ({ name: s(x.name, 120), price: s(x.price, 40) })).slice(0, 8)
@@ -310,13 +327,15 @@ async function doBrand(env, b) {
   // faz" na frente do cliente. `generic` diz a verdade; quem consome decide o que fazer.
   return reply({
     name: finalName, tagline, facts, colors, logo, services, source: "url",
+    // por que a extracao falhou — some quando ela funciona
+    motivo_generic: generic ? (_diag.motivo || "") : "",
     // O SITE, GUARDADO (2026-08-15). A demo é CONSTRUÍDA a partir da URL e depois só sobravam os
     // derivados (nome, cores, logo) — a URL, que é o dado bruto, era jogada fora. Isso deixava a
     // análise do prospect (ROTA-ANALISE) sem o único campo de que ela precisa, num fluxo onde o
     // dado já estava na mão. Guardar aqui é aditivo: nada que lê `brand` hoje enxerga a chave nova.
     site: url || "",
     generic,
-    ...(generic ? { note: "o site não entregou dados legíveis (proteção anti-bot ou página em JS) — conteúdo típico do setor; revise antes de mostrar" } : {}),
+    ...(generic ? { note: `nao consegui montar a ficha a partir do texto do site${_diag.motivo ? ` (${_diag.motivo})` : ""} — conteudo abaixo e TIPICO DO SETOR, nao do negocio` } : {}),
   });
 }
 

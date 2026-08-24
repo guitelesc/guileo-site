@@ -84,7 +84,20 @@ export async function onRequestPost(context) {
         else if (r.status === 401 || r.status === 402) break; // auth/billing won't improve with another model
       } catch { /* try next model */ }
     }
-    if (!answer) answer = "I'm here. The fastest way to see Guileo is to drop your number on this page — Gui calls you in seconds. Or message us on WhatsApp.";
-    return json({ ok: true, answer });
+    // 🚨 A FRASE ENLATADA PRECISA SE IDENTIFICAR (24/08). Ela existe para o visitante nunca ver
+    // uma tela muda — e isso está certo. O errado era ela sair com `ok:true` e mais nada: o
+    // canário do semáforo julga "200 + texto não vazio", então esta frase mantinha o painel VERDE
+    // com a Anthropic SEM SALDO e o chat respondendo enlatado havia horas. Um monitor que não
+    // consegue falhar não é monitor. `cerebro:false` é o que permite o alarme existir.
+    // E ela responde no IDIOMA de quem perguntou: uma frase EN numa pergunta PT é defeito nosso,
+    // não degradação aceitável.
+    const ENLATADA = {
+      pt: "Estou aqui. O jeito mais rápido de ver a Guileo é deixar seu número nesta página — a Gui te liga em segundos. Ou fale com a gente no WhatsApp.",
+      es: "Estoy aquí. La forma más rápida de ver Guileo es dejar su número en esta página — Gui le llama en segundos. O escríbanos por WhatsApp.",
+      en: "I'm here. The fastest way to see Guileo is to drop your number on this page — Gui calls you in seconds. Or message us on WhatsApp.",
+    };
+    const cerebro = !!answer;
+    if (!answer) answer = ENLATADA[(b.lang || "en").toString().slice(0, 2)] || ENLATADA.en;
+    return json({ ok: true, answer, cerebro });
   } catch (e) { return json({ error: String(e).slice(0, 160) }, 400); }
 }

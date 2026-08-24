@@ -329,11 +329,19 @@ export async function onRequestPost(context) {
         else if (r.status === 401 || r.status === 402) break; // auth/billing won't improve with another model
       } catch { /* try next model */ }
     }
+    // 🚨 O MODO DEGRADADO DIZIA A FRASE PROIBIDA (achado 24/08). O texto era, literalmente,
+    // "Anotado! A equipe te confirma em instantes." / "The team will confirm shortly." — a frase
+    // que a lição v14 proíbe POR NOME em todos os agentes, porque soa resolvida e não entrega
+    // nada. A regra valia para o que o modelo escreve e não para o que NÓS escrevemos quando ele
+    // cai: quem ouve não sabe a diferença. Agora o fallback diz a VERDADE (não consegui responder
+    // agora) e dá um caminho que funciona sem cérebro nenhum — o telefone.
+    const cerebro = !!answer;
     if (!answer) {
-      answer = lang === "pt" ? `Anotado! A equipe te confirma em instantes.${t.phone ? ` Se preferir, ligue: ${t.phone}` : ""} 🌱`
-        : lang === "es" ? `¡Anotado! El equipo te confirma enseguida.${t.phone ? ` Si prefieres, llama: ${t.phone}` : ""} 🌱`
-          : `Noted! The team will confirm shortly.${t.phone ? ` Prefer to call? ${t.phone}` : ""} 🌱`;
+      const tel = t.phone ? (lang === "pt" ? ` Ligue agora: ${t.phone}` : lang === "es" ? ` Llame ahora: ${t.phone}` : ` Call now: ${t.phone}`) : "";
+      answer = lang === "pt" ? `Não consegui responder isso agora.${tel || " Deixe seu telefone que retornamos."}`
+        : lang === "es" ? `No pude responder eso ahora.${tel || " Deje su teléfono y le devolvemos."}`
+          : `I couldn't answer that right now.${tel || " Leave your number and we'll call you back."}`;
     }
-    return json({ ok: true, answer: answer.slice(0, 1200), phone: t.phone, biz: t.business, ...brand });
+    return json({ ok: true, answer: answer.slice(0, 1200), cerebro, phone: t.phone, biz: t.business, ...brand });
   } catch (e) { return json({ error: String(e).slice(0, 160) }, 400); }
 }

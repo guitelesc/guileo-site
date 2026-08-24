@@ -125,6 +125,14 @@ async function probeGuiChat(env, origin) {
     const d = await r.json().catch(() => ({}));
     const answer = (d && (d.answer || "")).toString().trim();
     if (!answer) return { status: "failed", httpStatus: r.status, ms: Date.now() - t0, detail: "empty answer" };
+    // 🚨 "RESPONDEU" NÃO É "O CÉREBRO RESPONDEU" (24/08). O critério aqui era 200 + texto — e a
+    // frase enlatada do gui-chat satisfaz os dois. Resultado: o saldo Anthropic acabou, o chat
+    // passou a responder enlatado em inglês para perguntas em português, e este canário seguiu
+    // VERDE. Era o mesmo defeito do `.then(r => r.ok)` sobre RPC que devolve booleano: ler o
+    // envelope e chamar de conteúdo. Agora, sem `cerebro:true`, é falha.
+    if (d && d.cerebro === false) {
+      return { status: "failed", httpStatus: r.status, ms: Date.now() - t0, detail: "resposta enlatada — o cerebro nao respondeu (saldo/modelo)" };
+    }
     return classificarIA(Date.now() - t0, { httpStatus: r.status, sample: answer.slice(0, 80) });
   } catch (e) {
     // Estourou IA_TIMEOUT_MS (ou a rede caiu): aqui é falha DE VERDADE — o visitante já foi embora.
@@ -211,6 +219,8 @@ async function probeWidgetChat(env, origin) {
     const d = await r.json().catch(() => ({}));
     const answer = (d && (d.answer || d.reply || "")).toString().trim();
     if (!answer) return { status: "failed", httpStatus: r.status, detail: "empty answer" };
+    // Mesma trava do gui_chat: sem `cerebro:true` é resposta de emergência, não saúde.
+    if (d && d.cerebro === false) return { status: "failed", httpStatus: r.status, ms: Date.now() - t0, detail: "resposta enlatada — o cerebro nao respondeu (saldo/modelo)" };
     return classificarIA(Date.now() - t0, { httpStatus: r.status, tenant: client, sample: answer.slice(0, 80) });
   } catch (e) { return { status: "failed", httpStatus: 0, ms: Date.now() - t0, detail: String(e).slice(0, 160) }; }
 }
