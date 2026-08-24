@@ -3469,9 +3469,14 @@ export function websiteUpgradeEmail({
   const _n = name.trim();
   const _pre = { pt: _n ? `${_n}, ` : "", en: _n ? `${_n}, ` : "", es: _n ? `${_n}, ` : "" };
   const t = lang === "pt" ? {
-    subject: presente ? `${business}: seu site novo está no ar — e um presente de $50 (Guileo Pulse RX)`
-                      : `${business}: seu site novo está no ar — e o que cada peça soma em receita`,
-    pre: "O site novo já está no ar. Nada pra instalar, nada pra assinar.",
+    // ⚠️ O ASSUNTO TEM DOIS TRABALHOS E UM SÓ DEDO PRA ABRIR (24/08). O nome do dono na frente
+    // (quando a gente sabe) e o GANHO explícito: "$50 is yours" diz que ele RECEBE, enquanto
+    // "plus a $50 gift" soa a cupom de desconto em compra — a diferença entre presente e isca.
+    // Sem nome, começa pelo verbo, mesma regra do título (nome pela metade é pior que sem nome).
+    subject: presente
+      ? `${_n ? `${_n}, o` : "O"} site novo do ${business} está no ar — e $50 são seus`
+      : `${business}: seu site novo está no ar — e o que cada peça soma em receita`,
+    pre: "Nada pra instalar, nada pra assinar. Os $50 são um mês grátis do Guileo Pulse.",
     eyebrow: "Website Upgrade · pronto pra ver",
     h1: `${_pre.pt}${_n ? "refizemos" : "Refizemos"} o site do ${business}`,
     intro: `Ninguém te mandou uma proposta. A gente reconstruiu seu site — com o seu vídeo, sua marca, as fotos da sua equipe e seus serviços — e colocou no ar pra você julgar, não imaginar. <strong style="color:${B.ink};">Está no ar agora.</strong> Dois minutos abaixo: o que já vem nele e o que dá pra ligar.`,
@@ -3482,9 +3487,14 @@ export function websiteUpgradeEmail({
     addonSub: "Três frentes. Cada módulo entra sozinho — você escolhe quais fazem sentido.",
     foot: "Se fizer sentido, responde esse e-mail dizendo quais módulos você quer. Se não fizer, o link continua seu do mesmo jeito.",
   } : {
-    subject: presente ? `${business}: your site upgrade is live — plus a $50 gift (Guileo Pulse RX)`
-                      : `${business}: your new site is live — and what each piece adds to revenue`,
-    pre: "The new site is live. Nothing to install, nothing to sign.",
+    // ⚠️ O ASSUNTO TEM DOIS TRABALHOS E UM SÓ DEDO PRA ABRIR (24/08). O nome do dono na frente
+    // (quando a gente sabe) e o GANHO explícito: "$50 is yours" diz que ele RECEBE, enquanto
+    // "plus a $50 gift" soa a cupom de desconto em compra — a diferença entre presente e isca.
+    // Sem nome, começa pelo verbo, mesma regra do título (nome pela metade é pior que sem nome).
+    subject: presente
+      ? `${_n ? `${_n} — the` : "The"} new ${business} site is live, and $50 is yours`
+      : `${business}: your new site is live — and what each piece adds to revenue`,
+    pre: "Nothing to install, nothing to sign. The $50 is a free month of Guileo Pulse.",
     eyebrow: "Website Upgrade · ready to view",
     h1: `${_pre.en}${_n ? "we" : "We"} rebuilt the ${business} website`,
     intro: `Nobody sent you a proposal. We just rebuilt your site — with your own video, logo, crew photos and services — and put it online so you can judge it, not imagine it. <strong style="color:${B.ink};">It is live right now.</strong> Two minutes below: what is already in it, and what you can switch on.`,
