@@ -16,7 +16,8 @@ const REGISTRY = {
   "nonstop-plumbers": lazy(() => import("../novo/NonstopPlumbers.jsx")), // PROSPECT REAL — reconstrução nonstopplumbers.com
   "astoria-plumbers": lazy(() => import("../novo/AstoriaPlumbers.jsx")),
   "queens-plumber": lazy(() => import("../novo/QueensPlumber.jsx")),
-  "sideris-plumbing": lazy(() => import("../novo/SiderisPlumbing.jsx")), // PROSPECT REAL — desde 1963, 5 depoimentos publicados e ZERO dado estruturado // PROSPECT REAL — queensnyplumber.com e um app Lovable inacabado (Google so ve a casca) // PROSPECT REAL — astoriaplumbers.nyc está FORA DO AR (525); ativos vieram do arquivo da web
+  "sideris-plumbing": lazy(() => import("../novo/SiderisPlumbing.jsx")),
+  "sr-general": lazy(() => import("../novo/SRGeneral.jsx")), // PROSPECT REAL — DOB certified, brownstone, e o unico JSON-LD deles esta SEM @type // PROSPECT REAL — desde 1963, 5 depoimentos publicados e ZERO dado estruturado // PROSPECT REAL — queensnyplumber.com e um app Lovable inacabado (Google so ve a casca) // PROSPECT REAL — astoriaplumbers.nyc está FORA DO AR (525); ativos vieram do arquivo da web
 };
 
 export default function Novo() {
@@ -53,6 +54,9 @@ export default function Novo() {
     // Mascote = a CHAVE DE GRIFO da logo deles, não um robozinho genérico. A marca do painel de IA
     // é a marca do cliente; o crédito da Guileo fica discreto no rodapé.
     // Mascote = o desentupidor do BORDADO deles, o mesmo da camisa da equipe.
+    // Mascote = a fiada de tijolos da logo deles.
+    "sr-general": { business: "SR General Construction", label: "Ask SR", accent: "#F5A623", surface: "#241C15", phone: "+17184507233",
+      mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9h18M3 15h18M3 5h18M3 19h18M9 5v4M15 9v6M9 15v4"/></svg> },
     "sideris-plumbing": { business: "Sideris Plumbing & Heating", label: "Ask Sideris", accent: "#EB1F39", surface: "#1B2450", phone: "+17186261836",
       mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EB1F39" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4.5h8l-1.2 4.2H9.2L8 4.5Z"/><path d="M12 8.7V20"/></svg> },
     "queens-plumber": { business: "Queens Plumber", label: "Ask Queens", accent: "#F97415", surface: "#0A1F3D", phone: "+19294813200",

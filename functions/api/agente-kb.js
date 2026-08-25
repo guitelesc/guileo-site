@@ -183,6 +183,23 @@ export async function onRequestPost({ request, env }) {
       return json({ acao: "vertical", vertical: vert, ...r });
     }
 
+    // ── VER OS MOLDES (só leitura) ────────────────────────────────────────────────────────────
+    // Nasceu de uma necessidade boba e reveladora: para PERGUNTAR uma coisa a um molde eu estava
+    // chamando de novo a rota que CRIA — só para descobrir o id. Usar uma escrita como leitura é
+    // como abrir o cofre para conferir a hora: funciona, custa caro e um dia derruba algo.
+    if (b.acao === "moldes") {
+      const r = await fetch("https://api.elevenlabs.io/v1/convai/agents?page_size=100", { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+      if (!r.ok) return json({ ok: false, motivo: `não consegui listar (HTTP ${r.status})` }, 502);
+      const d = await r.json().catch(() => null);
+      const todos = Array.isArray(d?.agents) ? d.agents : [];
+      const moldes = todos.filter((a) => (a?.name || "").startsWith("MOLDE · "));
+      return json({ ok: true, total_agentes: todos.length, moldes: moldes.length,
+        lista: moldes.map((a) => ({ nome: a.name, id: a.agent_id || a.id })),
+        // Os que NÃO são molde aparecem também: é como se vê, de relance, que criar 13 gabaritos
+        // não atropelou nenhum agente que atende cliente de verdade.
+        clientes: todos.filter((a) => !(a?.name || "").startsWith("MOLDE · ")).map((a) => a.name) });
+    }
+
     // ── CRIAR (ou atualizar) O MOLDE DE UM RAMO ──────────────────────────────────────────────
     if (b.acao === "molde") {
       const vert = (b.vertical || "").toString().trim();

@@ -146,6 +146,7 @@ const SITE_RECONSTRUIDO = {
   "astoriaplumbers.com": "astoria-plumbers",   // o .com deles redireciona pra uma pagina estacionada
   "queensnyplumber.com": "queens-plumber",
   "siderisplumbingandheating.com": "sideris-plumbing",
+  "srgeneralconstructionnyc.com": "sr-general",
 };
 const siteNovoDe = (site) => {
   const d = String(site || "").replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0].toLowerCase();
