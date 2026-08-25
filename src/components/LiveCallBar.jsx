@@ -39,7 +39,7 @@ export default function LiveCallBar({ source = "callbar", compacto = false }) {
     let ligou = false, motivo = "";
     try {
       const r = await fetch("/api/call", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }) });
+        body: JSON.stringify({ phone, lang }) });
       const d = await r.json().catch(() => ({}));
       ligou = r.ok && d.ok !== false;
       if (!ligou) motivo = (d.reason || d.error || `HTTP ${r.status}`).toString().slice(0, 80);
@@ -103,9 +103,14 @@ export default function LiveCallBar({ source = "callbar", compacto = false }) {
                 sem saber por que nada aconteceu. Mostra o caminho alternativo (ligar direto),
                 porque um "não deu" sem saída é igual a um sucesso falso — os dois perdem o lead. */}
             {falha && (
+              // ⚠️ ESTA CAIXA ESTAVA FIXA EM PORTUGUÊS numa landing que é majoritariamente inglesa —
+              // exatamente o que a casa proíbe (nada de texto EN em site PT, nem o contrário). E ela
+              // é o ÚNICO texto que o visitante lê quando a ligação falha: em idioma errado, ele não
+              // conserta o próprio erro, só conclui que o produto não funciona.
               <div className="rounded-xl border border-g-gold/40 bg-g-gold/10 px-3 py-2 text-[11.5px] leading-snug text-g-gold">
-                Não consegui disparar a ligação agora{falha && falha !== "nao_deu" ? ` (${falha})` : ""}.
-                Tenta de novo em instantes — ou fala com a gente por{" "}
+                {({ pt: "Não consegui disparar a ligação agora", es: "No pude iniciar la llamada ahora" }[lang.slice(0, 2)] || "I couldn't start the call just now")}
+                {falha && falha !== "nao_deu" ? ` (${falha})` : ""}.{" "}
+                {({ pt: "Tenta de novo em instantes — ou fala com a gente por", es: "Inténtalo otra vez en un momento — o escríbenos por" }[lang.slice(0, 2)] || "Try again in a moment — or reach us on")}{" "}
                 <a href="https://wa.me/19298288170" className="underline font-bold">WhatsApp</a>.
               </div>
             )}

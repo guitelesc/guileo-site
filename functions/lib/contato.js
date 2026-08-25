@@ -76,3 +76,32 @@ export function pedirContatoMsg(lang, tipo) {
   if (L === "hi") return email ? "आपका ईमेल ठीक से समझ नहीं आया — धीरे से दोहराएँ?" : "गलती न हो इसलिए: अपना फ़ोन नंबर एरिया कोड सहित बताएँ?";
   return email ? "I don't think I caught your email right — can you repeat it slowly?" : "Just so I get it right — can you confirm your phone number with the area code?";
 }
+
+// ── paraE164: o que a Twilio precisa receber ─────────────────────────────────────────────────────
+// POR QUE ISTO EXISTE (2026-08-25, com linha de comprovante)
+// O Luis pediu a ligação pelo herói do site e nada tocou. No banco:
+//     gui_actions · 00:32:42 · lead · contato "9295350191" · fonte "heroi"
+// O lead entrou; a ligação não. O número saiu do campo do jeito que foi digitado — DEZ dígitos, sem
+// código de país. O portão de discagem (`/api/call`) tem uma regex que só CONTA dígitos, então ele
+// aprovou; a Twilio recusou, porque ela não aceita nada que não seja E.164 (`+19295350191`).
+// Duas lições no mesmo defeito:
+//   1. validar FORMA não é validar DISCABILIDADE — "parece telefone" e "é chamável" são perguntas
+//      diferentes, e só a segunda vale dinheiro;
+//   2. o conserto mora no PORTÃO, não no formulário. Existem várias portas que discam (herói, barra
+//      flutuante, formulário longo, speed-to-lead do servidor); consertar a que quebrou hoje deixa
+//      as outras quebrando amanhã.
+// A política é a MESMA do avaliarContato acima — sem `+` é norte-americano — de propósito: duas
+// regras diferentes para o mesmo número é como o dígito se perde.
+export function paraE164(bruto) {
+  const s = (bruto || "").toString().trim();
+  if (!s) return null;
+  const d = s.replace(/\D/g, "");
+  if (!d) return null;
+  // Já veio com prefixo internacional: confia no que a pessoa escreveu, só limpa a formatação.
+  if (s.startsWith("+")) return d.length >= 8 && d.length <= 15 ? `+${d}` : null;
+  // Sem prefixo → EUA/Canadá, onde 10 dígitos (ou 11 começando com 1) é a única forma válida.
+  if (d.length === 10) return `+1${d}`;
+  if (d.length === 11 && d.startsWith("1")) return `+${d}`;
+  // Qualquer outra coisa sem `+` é um palpite, e palpite aqui vira ligação para a pessoa errada.
+  return null;
+}

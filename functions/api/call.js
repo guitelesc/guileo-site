@@ -7,6 +7,7 @@
 // agent greets by name and acts on it — reference {{name}} {{business}} {{need}} in the prompt.
 import { sameOrigin, rateLimited, safeEq } from "../lib/guard.js";
 import { emitFailure } from "../lib/failure.js";
+import { paraE164 } from "../lib/contato.js";
 
 const ELEVEN_AGENT_ID = "agent_5901ktdkev68f5kb161fmeax1rdm";
 
@@ -34,6 +35,22 @@ export async function onRequestPost(context) {
     if (!phone) return json({ error: "Missing phone" }, 400);
     if (!/^\+?[1-9]\d{7,14}$/.test(phone.replace(/[\s()-]/g, ""))) return json({ error: "Invalid phone" }, 400);
 
+    // ⚠️ A REGEX ACIMA VALIDA FORMA, NÃO DISCABILIDADE — e a diferença custou uma ligação real.
+    // "9295350191" (dez dígitos, sem código de país) passa nela e é REJEITADO pela Twilio, que só
+    // fala E.164. Em 2026-08-25 o Luis pediu a ligação pelo herói do site: o lead entrou no banco,
+    // o telefone nunca tocou, e não sobrou UM registro explicando o porquê. Este é o portão único
+    // de discagem, então a conversão mora aqui — vale para o herói, a barra flutuante, o formulário
+    // longo e o speed-to-lead do servidor de uma vez só.
+    const dial = paraE164(phone);
+    if (!dial) {
+      // A recusa fala o idioma de quem está lendo — o visitante PT/ES não conserta um erro em inglês.
+      const L = (body.lang || "en").toString().slice(0, 2);
+      const diga = { pt: "inclui o código do país (ex.: +1 929 535 0191)",
+                     es: "incluye el código de país (ej.: +1 929 535 0191)",
+                     en: "include the country code (e.g. +1 929 535 0191)" };
+      return json({ error: "phone needs country code", reason: diga[L] || diga.en }, 400);
+    }
+
     // COMPLIANCE: this is the single hardened dial point — EVERY call path (front-end direct +
     // server-side speed-to-lead from /api/lead) funnels through here, so the do-not-contact (TCPA
     // STOP / DNC) check lives here, not just in lead.js. Never dial a number that opted out.
@@ -46,12 +63,12 @@ export async function onRequestPost(context) {
     // (a fail-OPEN here would be a TCPA liability, not a transient blip). A transient RPC error inside
     // the try still falls open — STOP handling + caps remain the backstop for a momentary DB glitch.
     if (!env.INGEST_SECRET) {
-      await emitFailure(env, "dnc_check_unavailable", phone.replace(/[^0-9+]/g, ""), "INGEST_SECRET missing on dial path — refusing to call (cannot verify DNC/opt-out)", {});
+      await emitFailure(env, "dnc_check_unavailable", (paraE164(phone) || phone), "INGEST_SECRET missing on dial path — refusing to call (cannot verify DNC/opt-out)", {});
       return json({ error: "cannot verify do-not-call list" }, 503);
     }
     {
       try {
-        const e164 = phone.replace(/[^0-9+]/g, "");
+        const e164 = dial;
         const dr = await fetch(`${SB_URL}/rest/v1/rpc/is_dnc`, {
           method: "POST",
           headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
@@ -66,7 +83,7 @@ export async function onRequestPost(context) {
     // Best-effort: if KV is down we don't block the call (per-IP caps remain the backstop).
     if (env.RATE_LIMIT) {
       try {
-        const dest = phone.replace(/[^0-9+]/g, "");
+        const dest = dial;
         if (await env.RATE_LIMIT.get(`calldest:${dest}`)) return json({ ok: true, skipped: "recently called" });
         await env.RATE_LIMIT.put(`calldest:${dest}`, "1", { expirationTtl: 600 });
       } catch { /* KV blip → proceed; IP caps backstop */ }
@@ -111,11 +128,17 @@ export async function onRequestPost(context) {
         body: JSON.stringify({
           agent_id: agentId,
           agent_phone_number_id: agentPhoneId,
-          to_number: phone,
+          to_number: dial,
           conversation_initiation_client_data: { dynamic_variables: vars },
         }),
       });
-      if (!res.ok) { try { console.log("call provider error", (await res.text()).slice(0, 300)); } catch { /* */ } return json({ error: "call provider error" }, 502); }
+      // ⚠️ ANTES ISTO SÓ FAZIA console.log — e um log de edge que ninguém lê é o mesmo que silêncio.
+      // Foi assim que a recusa da Twilio pelo número sem código de país não deixou rastro nenhum.
+      if (!res.ok) {
+        const det = await res.text().catch(() => "");
+        await emitFailure(env, "call_provider_error", dial, `ElevenLabs recusou a discagem (HTTP ${res.status})`, { detalhe: det.slice(0, 300), agent_id: agentId });
+        return json({ error: "call provider error", reason: `provedor recusou (HTTP ${res.status})` }, 502);
+      }
       return json({ ok: true, provider: "elevenlabs" });
     }
 
@@ -127,11 +150,14 @@ export async function onRequestPost(context) {
         body: JSON.stringify({
           assistantId: env.VAPI_ASSISTANT_ID,
           phoneNumberId: env.VAPI_PHONE_NUMBER_ID,
-          customer: { number: phone, name: vars.name || undefined },
+          customer: { number: dial, name: vars.name || undefined },
           assistantOverrides: { variableValues: vars },
         }),
       });
-      if (!res.ok) return json({ error: "call provider error" }, 502);
+      if (!res.ok) {
+        await emitFailure(env, "call_provider_error", dial, `Vapi recusou a discagem (HTTP ${res.status})`, {});
+        return json({ error: "call provider error", reason: `provedor recusou (HTTP ${res.status})` }, 502);
+      }
       return json({ ok: true, provider: "vapi" });
     }
 

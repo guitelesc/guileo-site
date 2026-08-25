@@ -46,6 +46,27 @@ export async function onRequestPost({ request, env }) {
     if (!env.ELEVENLABS_API_KEY) return json({ error: "sem ELEVENLABS_API_KEY" }, 503);
 
     const acao = (b.acao || "").toString();
+
+    // ── listar: A PERGUNTA MAIS BÁSICA, QUE FALTAVA ──────────────────────────────────────────────
+    // Este arquivo é a "fonte única" dos números e só sabia MEXER neles (desamarrar/liberar/
+    // recarimbar) — não sabia DIZER quais existem. Em 2026-08-25 a saída de voz estava caída porque
+    // o `ELEVENLABS_PHONE_NUMBER_ID` do Cloudflare apontava para um `phnum_…` já apagado, e não havia
+    // um jeito de ler o id certo sem abrir o painel. Um endpoint que só escreve obriga a adivinhar
+    // antes de escrever. Só leitura, mesmo portão de admin.
+    if (acao === "listar") {
+      const lr = await fetch("https://api.elevenlabs.io/v1/convai/phone-numbers", { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+      if (!lr.ok) return json({ error: `ElevenLabs recusou (HTTP ${lr.status})` }, 502);
+      const lista = (await lr.json().catch(() => []) || []).map((n) => ({
+        numero: n?.phone_number || "", id: n?.phone_number_id || "", provedor: n?.provider || "",
+        agente: n?.assigned_agent?.agent_id || null, agente_nome: n?.assigned_agent?.agent_name || null,
+      }));
+      // O id configurado é CONFRONTADO com a lista — é exatamente esse desencontro que derruba a
+      // discagem em silêncio, e ele não se vê olhando uma fonte de cada vez.
+      const cfg = env.ELEVENLABS_PHONE_NUMBER_ID || "";
+      return json({ ok: true, numeros: lista, configurado: cfg || null,
+        configurado_existe: !!cfg && lista.some((n) => n.id === cfg) });
+    }
+
     const alvo = soDigitos(b.numero);
     if (!alvo) return json({ error: "informe o numero" }, 400);
 

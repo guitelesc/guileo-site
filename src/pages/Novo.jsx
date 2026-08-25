@@ -14,6 +14,7 @@ import DonoMode from "../novo/DonoMode.jsx"; // raio-X do dono (?dono=1) — inv
 const REGISTRY = {
   "clareza-dental": lazy(() => import("../novo/ClarezaDental.jsx")), // clínica dental — modelo
   "nonstop-plumbers": lazy(() => import("../novo/NonstopPlumbers.jsx")), // PROSPECT REAL — reconstrução nonstopplumbers.com
+  "astoria-plumbers": lazy(() => import("../novo/AstoriaPlumbers.jsx")), // PROSPECT REAL — astoriaplumbers.nyc está FORA DO AR (525); ativos vieram do arquivo da web
 };
 
 export default function Novo() {
@@ -47,6 +48,10 @@ export default function Novo() {
       mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0e6e6a" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5.5c-2.2-1.6-5.5-1.3-6.4 1.4-.8 2.4.4 4.6.9 7.2.3 1.7.4 3.9 1.8 3.9 1.3 0 1.4-2.3 2-4 .4-1.2 1.9-1.2 2.3 0 .6 1.7.7 4 2 4 1.4 0 1.5-2.2 1.8-3.9.5-2.6 1.7-4.8.9-7.2-.9-2.7-4.2-3-6.3-1.4Z"/></svg> },
     "nonstop-plumbers": { business: "Nonstop Plumbers", label: "Ask Nonstop", accent: "#d92a28", surface: "#0c1a2e", phone: "+12125672000",
       mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d92a28" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12.5" r="7.5"/><path d="M12 8.5v4.2l2.6 1.6M9 3.2h6"/></svg> },
+    // Mascote = a CHAVE DE GRIFO da logo deles, não um robozinho genérico. A marca do painel de IA
+    // é a marca do cliente; o crédito da Guileo fica discreto no rodapé.
+    "astoria-plumbers": { business: "Astoria Plumbers", label: "Ask Astoria", accent: "#39FF14", surface: "#0B0C4C", phone: "+16469191074",
+      mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#39FF14" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3.5a3.2 3.2 0 0 0 .6 4.3L17 17.2M5.6 6.1 8.4 3.3M14.8 14.3l3.9 3.9a2 2 0 0 1-2.8 2.8l-3.9-3.9"/></svg> },
   };
   const cfg = AI[slug] || { business: "this business", label: "Ask us", accent: "#3E9468" };
   return (
