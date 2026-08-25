@@ -29,12 +29,16 @@ const API = "https://api.elevenlabs.io";
 // A URL assinada é o caminho documentado para servidor: a chave nunca viaja no upgrade do socket.
 async function urlAssinada(env, agentId) {
   try {
+    // ⚠️ COM PRAZO. Numa queda da ElevenLabs em 25/08 este fetch levou 30 SEGUNDOS para devolver
+    // 500 — mais que o teto da conversa inteira. Quem estava do outro lado era alguém esperando uma
+    // resposta no WhatsApp: meio minuto de silêncio e a pessoa já foi embora. Falhar rápido não é
+    // desistir cedo, é liberar o canal para a frase honesta de handoff enquanto ainda importa.
     const r = await fetch(`${API}/v1/convai/conversation/get-signed-url?agent_id=${encodeURIComponent(agentId)}`,
-      { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+      { headers: { "xi-api-key": env.ELEVENLABS_API_KEY }, signal: AbortSignal.timeout(8000) });
     if (!r.ok) return { erro: `assinatura recusada (HTTP ${r.status})`, detalhe: (await r.text().catch(() => "")).slice(0, 200) };
     const d = await r.json().catch(() => null);
     return d?.signed_url ? { url: d.signed_url } : { erro: "assinatura veio sem signed_url" };
-  } catch (e) { return { erro: `assinatura falhou: ${(e && e.message) || "rede"}` }; }
+  } catch (e) { const n = (e && e.name) === "TimeoutError"; return { erro: n ? "a ElevenLabs não assinou em 8s" : `assinatura falhou: ${(e && e.message) || "rede"}` }; }
 }
 
 // Abre o socket no runtime do Cloudflare. `fetch` com Upgrade devolve o socket em `resp.webSocket`
