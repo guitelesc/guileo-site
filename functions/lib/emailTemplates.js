@@ -3469,6 +3469,11 @@ export function websiteUpgradeEmail({
   // topo é pior que não ter imagem (foi assim que um logo sumiu nesta base).
   capa = "", logo = "", accent = "", presente = null,
 } = {}) {
+  /* 🚨 ASSUNTO É TEXTO PURO, NÃO HTML (achado 24/08, antes de sair para um cliente real).
+     `esc()` transforma "&" em "&amp;" — certo dentro do corpo, desastre no assunto: a caixa de
+     entrada do dono mostraria "Sideris Plumbing &amp; Heating". Guardo a versão CRUA para o
+     assunto e uso a escapada só onde entra HTML. */
+  const businessRaw = String(business);
   business = esc(business); name = esc(name);
   // ⚠️ SEM NOME, A FRASE SE SEGURA SOZINHA. O padrão era "there", e sem o nome do dono o título
   // saía "there, we rebuilt the Nonstop Plumbers website" — uma saudação pela metade na primeira
@@ -3482,8 +3487,8 @@ export function websiteUpgradeEmail({
     // "plus a $50 gift" soa a cupom de desconto em compra — a diferença entre presente e isca.
     // Sem nome, começa pelo verbo, mesma regra do título (nome pela metade é pior que sem nome).
     subject: presente
-      ? `${_n ? `${_n}, o` : "O"} site novo do ${business} está no ar — e $50 são seus`
-      : `${business}: seu site novo está no ar — e o que cada peça soma em receita`,
+      ? `${_n ? `${_n}, o` : "O"} site novo do ${businessRaw} está no ar — e $50 são seus`
+      : `${businessRaw}: seu site novo está no ar — e o que cada peça soma em receita`,
     pre: "Nada pra instalar, nada pra assinar. Os $50 são um mês grátis do Guileo Pulse.",
     eyebrow: "Website Upgrade · pronto pra ver",
     h1: `${_pre.pt}${_n ? "refizemos" : "Refizemos"} o site do ${business}`,
@@ -3500,8 +3505,8 @@ export function websiteUpgradeEmail({
     // "plus a $50 gift" soa a cupom de desconto em compra — a diferença entre presente e isca.
     // Sem nome, começa pelo verbo, mesma regra do título (nome pela metade é pior que sem nome).
     subject: presente
-      ? `${_n ? `${_n} — the` : "The"} new ${business} site is live, and $50 is yours`
-      : `${business}: your new site is live — and what each piece adds to revenue`,
+      ? `${_n ? `${_n} — the` : "The"} new ${businessRaw} site is live, and $50 is yours`
+      : `${businessRaw}: your new site is live — and what each piece adds to revenue`,
     pre: "Nothing to install, nothing to sign. The $50 is a free month of Guileo Pulse.",
     eyebrow: "Website Upgrade · ready to view",
     h1: `${_pre.en}${_n ? "we" : "We"} rebuilt the ${business} website`,

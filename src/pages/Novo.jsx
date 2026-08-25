@@ -15,7 +15,8 @@ const REGISTRY = {
   "clareza-dental": lazy(() => import("../novo/ClarezaDental.jsx")), // clínica dental — modelo
   "nonstop-plumbers": lazy(() => import("../novo/NonstopPlumbers.jsx")), // PROSPECT REAL — reconstrução nonstopplumbers.com
   "astoria-plumbers": lazy(() => import("../novo/AstoriaPlumbers.jsx")),
-  "queens-plumber": lazy(() => import("../novo/QueensPlumber.jsx")), // PROSPECT REAL — queensnyplumber.com e um app Lovable inacabado (Google so ve a casca) // PROSPECT REAL — astoriaplumbers.nyc está FORA DO AR (525); ativos vieram do arquivo da web
+  "queens-plumber": lazy(() => import("../novo/QueensPlumber.jsx")),
+  "sideris-plumbing": lazy(() => import("../novo/SiderisPlumbing.jsx")), // PROSPECT REAL — desde 1963, 5 depoimentos publicados e ZERO dado estruturado // PROSPECT REAL — queensnyplumber.com e um app Lovable inacabado (Google so ve a casca) // PROSPECT REAL — astoriaplumbers.nyc está FORA DO AR (525); ativos vieram do arquivo da web
 };
 
 export default function Novo() {
@@ -51,6 +52,9 @@ export default function Novo() {
       mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d92a28" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12.5" r="7.5"/><path d="M12 8.5v4.2l2.6 1.6M9 3.2h6"/></svg> },
     // Mascote = a CHAVE DE GRIFO da logo deles, não um robozinho genérico. A marca do painel de IA
     // é a marca do cliente; o crédito da Guileo fica discreto no rodapé.
+    // Mascote = o desentupidor do BORDADO deles, o mesmo da camisa da equipe.
+    "sideris-plumbing": { business: "Sideris Plumbing & Heating", label: "Ask Sideris", accent: "#EB1F39", surface: "#1B2450", phone: "+17186261836",
+      mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EB1F39" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4.5h8l-1.2 4.2H9.2L8 4.5Z"/><path d="M12 8.7V20"/></svg> },
     "queens-plumber": { business: "Queens Plumber", label: "Ask Queens", accent: "#F97415", surface: "#0A1F3D", phone: "+19294813200",
       // Mascote = a gota, o elemento do mundo deles ("keep water moving"). Nunca robozinho.
       mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F97415" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3.2c3.4 4 5.4 6.7 5.4 9.3a5.4 5.4 0 0 1-10.8 0c0-2.6 2-5.3 5.4-9.3Z"/></svg> },

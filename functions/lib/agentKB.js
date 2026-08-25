@@ -30,7 +30,15 @@
 const API = "https://api.elevenlabs.io";
 const H = (env) => ({ "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" });
 
-const ler = async (r) => ({ ok: r.ok, status: r.status, d: await r.json().catch(() => null), t: r.ok ? "" : await r.text().catch(() => "") });
+// ⚠️ O CORPO SÓ PODE SER LIDO UMA VEZ. A 1ª versão fazia `.json()` e depois `.text()` — e o
+// `.text()` voltava VAZIO porque o stream já tinha sido consumido. Resultado: "a ElevenLabs recusou
+// o PATCH (HTTP 400)" com o detalhe em branco, ou seja, o erro do fornecedor engolido pelo meu
+// próprio leitor. Lê texto UMA vez e tenta interpretar depois.
+const ler = async (r) => {
+  const t = await r.text().catch(() => "");
+  let d = null; try { d = t ? JSON.parse(t) : null; } catch { /* resposta não-JSON fica em `t` */ }
+  return { ok: r.ok, status: r.status, d, t };
+};
 
 // ── acharDoc: existe documento com este nome? ────────────────────────────────────────────────────
 // O nome é a chave de idempotência. Sem isto, rodar a sincronia duas vezes cria dois catálogos e o
@@ -59,7 +67,7 @@ export async function kbUpsert(env, { nome, texto }) {
     method: "POST", headers: H(env), body: JSON.stringify({ name: nome, text: t.slice(0, 100000) }),
   });
   const { ok, d, status, t: erro } = await ler(r);
-  if (!ok) return { ok: false, motivo: `a ElevenLabs recusou o documento (HTTP ${status})`, detalhe: erro.slice(0, 200) };
+  if (!ok) return { ok: false, motivo: `a ElevenLabs recusou o documento (HTTP ${status})`, detalhe: (erro || "").slice(0, 400) };
   const id = d?.id || d?.documentation_id || "";
   if (!id) return { ok: false, motivo: "documento criado sem id — não dá para anexar" };
   return { ok: true, id, nome, antigo: achou.doc?.id || null, chars: t.length };
@@ -83,6 +91,18 @@ export async function kbAnexar(env, { agentId, docs = [] }) {
   // documento sem abrir — e aqui o que está em jogo é o cérebro inteiro do agente.
   if (!prompt || typeof prompt !== "object") return { ok: false, motivo: "não consegui ler o prompt do agente — não vou escrever por cima às cegas" };
 
+  // ⚠️ ARMADILHA DA API (25/08): o GET devolve `tools` (legado, embutido) E `tool_ids` (novo,
+  // por referência). Devolver o prompt inteiro reenvia os dois e a ElevenLabs responde 400
+  // "Cannot specify both tools and tool IDs". Ou seja: a leitura fiel do agente é, sozinha, um
+  // corpo inválido para escrever de volta — o formato de leitura e o de escrita não são o mesmo.
+  // Removemos só o campo LEGADO quando existe o moderno; nada de ferramenta se perde, porque
+  // `tool_ids` aponta para as mesmas. E conferimos a contagem depois do PATCH: se as ferramentas
+  // sumissem, o agente pararia de agendar e de cobrar — falha silenciosa e cara.
+  const pLimpo = { ...prompt };
+  if (Array.isArray(pLimpo.tool_ids) && pLimpo.tool_ids.length) delete pLimpo.tools;
+  else if (Array.isArray(pLimpo.tools) && pLimpo.tools.length) delete pLimpo.tool_ids;
+  const ferramentasAntes = (Array.isArray(prompt.tool_ids) ? prompt.tool_ids.length : 0) || (Array.isArray(prompt.tools) ? prompt.tools.length : 0);
+
   const atual = Array.isArray(prompt.knowledge_base) ? prompt.knowledge_base : [];
   // Mescla por NOME: o documento novo daquela camada substitui o da mesma camada, e todo o resto
   // (KB que o cliente subiu, outras camadas) fica de pé.
@@ -95,23 +115,26 @@ export async function kbAnexar(env, { agentId, docs = [] }) {
   const r = await fetch(`${API}/v1/convai/agents/${encodeURIComponent(agentId)}`, {
     method: "PATCH", headers: H(env),
     // O `prompt` vai INTEIRO de volta (ver o aviso no topo do arquivo). Só o knowledge_base muda.
-    body: JSON.stringify({ conversation_config: { agent: { prompt: { ...prompt, knowledge_base: mesclado } } } }),
+    body: JSON.stringify({ conversation_config: { agent: { prompt: { ...pLimpo, knowledge_base: mesclado } } } }),
   });
   const v = await ler(r);
-  if (!v.ok) return { ok: false, motivo: `a ElevenLabs recusou o PATCH (HTTP ${v.status})`, detalhe: (v.t || "").slice(0, 200) };
+  if (!v.ok) return { ok: false, motivo: `a ElevenLabs recusou o PATCH (HTTP ${v.status})`, detalhe: (v.t || "").slice(0, 400) };
 
   // CONFERE NA FONTE. "200 OK" não é prova de que ficou anexado — já tomei 200 que não mudou nada
   // nesta casa. A verdade é o que o agente devolve depois.
   const c = await ler(await fetch(`${API}/v1/convai/agents/${encodeURIComponent(agentId)}`, { headers: H(env) }));
   const depois = c.d?.conversation_config?.agent?.prompt?.knowledge_base || [];
   const anexados = docs.filter((x) => depois.some((y) => y?.id === x.id));
-  const promptIntacto = (c.d?.conversation_config?.agent?.prompt?.prompt || "").length;
+  const pDepois = c.d?.conversation_config?.agent?.prompt || {};
+  const promptIntacto = (pDepois.prompt || "").length;
+  const ferramentasDepois = (Array.isArray(pDepois.tool_ids) ? pDepois.tool_ids.length : 0) || (Array.isArray(pDepois.tools) ? pDepois.tools.length : 0);
   return {
-    ok: anexados.length === docs.length,
+    ok: anexados.length === docs.length && ferramentasDepois >= ferramentasAntes && promptIntacto > 0,
     anexados: anexados.map((x) => x.nome),
     kb_total: depois.length,
     prompt_chars: promptIntacto,
-    motivo: anexados.length === docs.length ? "" : "o PATCH passou mas o agente não mostra os documentos",
+    ferramentas: `${ferramentasAntes} → ${ferramentasDepois}`,
+    motivo: anexados.length !== docs.length ? "o PATCH passou mas o agente não mostra os documentos" : (ferramentasDepois < ferramentasAntes ? `🚨 PERDEU FERRAMENTA (${ferramentasAntes} → ${ferramentasDepois})` : (promptIntacto ? "" : "🚨 o prompt do agente ficou vazio")),
   };
 }
 
