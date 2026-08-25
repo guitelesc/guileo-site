@@ -142,7 +142,7 @@ export function guardSystemPrompt(basePrompt, opts = {}) {
 // obvious identity leak, visible injection compliance) without false-flagging normal warm copy.
 export function validateOutput(text, opts = {}) {
   const t = clean(text);
-  const { audience = "public", asBusiness = false, priceList = null } = opts;
+  const { audience = "public", asBusiness = false, priceList = null, business = "" } = opts;
   const flags = [];
   const low = t.toLowerCase();
 
@@ -171,7 +171,17 @@ export function validateOutput(text, opts = {}) {
   }
 
   // (c) IDENTITY LEAK — a business-voice persona must never out itself as Guileo / an AI / a bot.
-  if (asBusiness && /\b(guileo|as an ai\b|i am an ai|i'?m an ai|language model|chatbot|\bbot\b|artificial intelligence|powered by)\b/i.test(low)) {
+  // ⚠️ EXCEÇÃO DESCOBERTA EM 2026-08-25: esta regra existe para o WHITE-LABEL — o Gui de um spa
+  // dizer "Guileo" entrega o produto e é dano real. Mas UM tenant se chama Guileo: a própria
+  // empresa. Para ele, a regra transformava toda resposta correta em risco, e o cliente recebia a
+  // frase de handoff no lugar de uma resposta boa. Foi assim que o socorro pela ElevenLabs pareceu
+  // "não funcionar": ele funcionava, e nós é que jogávamos fora — o texto certo, medido pela régua
+  // de outro negócio. Só a palavra da MARCA é dispensada; "sou uma IA", "chatbot" e companhia
+  // continuam proibidos para qualquer um, inclusive para nós.
+  const marcaEhDoProprioTenant = /guileo/i.test(String(business || ""));
+  const IA_RE = /\b(as an ai\b|i am an ai|i'?m an ai|language model|chatbot|\bbot\b|artificial intelligence|powered by)\b/i;
+  const MARCA_RE = /\bguileo\b/i;
+  if (asBusiness && (IA_RE.test(low) || (!marcaEhDoProprioTenant && MARCA_RE.test(low)))) {
     flags.push({ code: "identity_leak", detail: "Business-voice output reveals it is an AI / Guileo." });
   }
 

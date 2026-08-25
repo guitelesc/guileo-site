@@ -65,7 +65,7 @@ export async function onRequestPost(context) {
       });
       return json({ prova: "canal", ms: Date.now() - t2,
         cerebro: r?.cerebro || "anthropic", escalou: !!r?.escalate,
-        cerebro_falhou: r?.cerebro_falhou || null, resposta: r?.reply || "" });
+        cerebro_falhou: r?.cerebro_falhou || null, socorro: r?.socorro || null, resposta: r?.reply || "" });
     }
 
     const diag = [];

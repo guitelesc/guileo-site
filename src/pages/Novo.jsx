@@ -14,7 +14,8 @@ import DonoMode from "../novo/DonoMode.jsx"; // raio-X do dono (?dono=1) — inv
 const REGISTRY = {
   "clareza-dental": lazy(() => import("../novo/ClarezaDental.jsx")), // clínica dental — modelo
   "nonstop-plumbers": lazy(() => import("../novo/NonstopPlumbers.jsx")), // PROSPECT REAL — reconstrução nonstopplumbers.com
-  "astoria-plumbers": lazy(() => import("../novo/AstoriaPlumbers.jsx")), // PROSPECT REAL — astoriaplumbers.nyc está FORA DO AR (525); ativos vieram do arquivo da web
+  "astoria-plumbers": lazy(() => import("../novo/AstoriaPlumbers.jsx")),
+  "queens-plumber": lazy(() => import("../novo/QueensPlumber.jsx")), // PROSPECT REAL — queensnyplumber.com e um app Lovable inacabado (Google so ve a casca) // PROSPECT REAL — astoriaplumbers.nyc está FORA DO AR (525); ativos vieram do arquivo da web
 };
 
 export default function Novo() {
@@ -50,6 +51,9 @@ export default function Novo() {
       mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d92a28" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12.5" r="7.5"/><path d="M12 8.5v4.2l2.6 1.6M9 3.2h6"/></svg> },
     // Mascote = a CHAVE DE GRIFO da logo deles, não um robozinho genérico. A marca do painel de IA
     // é a marca do cliente; o crédito da Guileo fica discreto no rodapé.
+    "queens-plumber": { business: "Queens Plumber", label: "Ask Queens", accent: "#F97415", surface: "#0A1F3D", phone: "+19294813200",
+      // Mascote = a gota, o elemento do mundo deles ("keep water moving"). Nunca robozinho.
+      mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F97415" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3.2c3.4 4 5.4 6.7 5.4 9.3a5.4 5.4 0 0 1-10.8 0c0-2.6 2-5.3 5.4-9.3Z"/></svg> },
     "astoria-plumbers": { business: "Astoria Plumbers", label: "Ask Astoria", accent: "#39FF14", surface: "#0B0C4C", phone: "+16469191074",
       mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#39FF14" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M7 3.5a3.2 3.2 0 0 0 .6 4.3L17 17.2M5.6 6.1 8.4 3.3M14.8 14.3l3.9 3.9a2 2 0 0 1-2.8 2.8l-3.9-3.9"/></svg> },
   };

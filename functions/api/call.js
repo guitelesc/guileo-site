@@ -120,6 +120,40 @@ export async function onRequestPost(context) {
       } catch { /* resolve down → platform agent (no regression) */ }
     }
 
+    // ── A ABERTURA DE UMA LIGAÇÃO DE SAÍDA NÃO É A DE UMA DE ENTRADA ─────────────────────────────
+    // Quem ATENDE cumprimenta e pergunta em que pode ajudar. Quem LIGA já sabe por que ligou — e
+    // quem pediu a demo no site levantou a mão, não está pedindo informação. Em 25/08 a primeira
+    // ligação de saída de verdade abriu com "How can I take care of you today?" e o Luis resumiu o
+    // problema: «não é focado em ser inteligente, soluções, vender». Uma recepcionista educada
+    // desperdiça o único momento em que o prospect está com a mão levantada.
+    //
+    // ⚠️ SÓ VALE PARA A LINHA DA GUILEO. Se o dial é interno (speed-to-lead com o agente do
+    // CLIENTE), o agente é o negócio DELE — abrir vendendo Guileo no telefone de um spa seria o
+    // pior defeito de marca imaginável. Por isso a trava é dupla: caminho público E agente da
+    // plataforma. Na dúvida, não sobrescreve nada e o agente segue como sempre foi.
+    const daGuileo = !internal && agentId === (env.ELEVENLABS_AGENT_ID || ELEVEN_AGENT_ID);
+    const L = ["pt", "es"].includes(vars.lang.slice(0, 2)) ? vars.lang.slice(0, 2) : "en";
+    const quem = vars.name ? vars.name.split(" ")[0] : "";
+    const ABERTURA = {
+      pt: quem
+        ? `Oi ${quem}, aqui é a Gui, da Guileo — você acabou de pedir a demonstração no nosso site. Não vou tomar seu tempo com apresentação: me conta o que o seu negócio faz, que eu te digo onde você está perdendo dinheiro hoje e o que eu faria a respeito.`
+        : `Oi, aqui é a Gui, da Guileo — você acabou de pedir a demonstração no nosso site. Rapidinho: qual é o seu nome e o que o seu negócio faz? Com isso eu já te digo onde você está perdendo dinheiro e o que eu faria a respeito.`,
+      es: quem
+        ? `Hola ${quem}, soy Gui, de Guileo — acabas de pedir la demostración en nuestro sitio. No te voy a robar tiempo con presentaciones: cuéntame qué hace tu negocio y te digo dónde estás perdiendo dinero hoy y qué haría yo al respecto.`
+        : `Hola, soy Gui, de Guileo — acabas de pedir la demostración en nuestro sitio. Rápido: ¿cómo te llamas y qué hace tu negocio? Con eso te digo dónde estás perdiendo dinero y qué haría yo al respecto.`,
+      en: quem
+        ? `Hey ${quem}, this is Gui from Guileo — you just asked for the demo on our site. I won't waste your time with an intro: tell me what your business does, and I'll tell you exactly where you're losing money right now and what I'd do about it.`
+        : `Hey, this is Gui from Guileo — you just asked for the demo on our site. Quick one: what's your name, and what does your business do? Then I'll tell you exactly where you're losing money and what I'd do about it.`,
+    };
+    // O `need` é a variável que o prompt já lê. Numa ligação de saída ela deixa de ser "o que o
+    // cliente quer" e passa a ser a MISSÃO da chamada — ler o negócio, propor e fechar.
+    const MISSAO = {
+      pt: "LIGAÇÃO DE SAÍDA DE VENDA. Objetivo: entender o negócio da pessoa, apontar 2 perdas concretas (ligação perdida, resposta lenta, no-show), propor a solução da Guileo em cima disso, capturar NOME e E-MAIL, e fechar em orçamento ou demonstração agendada. Seja inteligente e direto, venda soluções, nunca pergunte 'em que posso ajudar'.",
+      es: "LLAMADA SALIENTE DE VENTA. Objetivo: entender el negocio, señalar 2 pérdidas concretas, proponer la solución de Guileo, capturar NOMBRE y CORREO, y cerrar en presupuesto o demostración agendada. Inteligente y directo, vende soluciones, nunca preguntes 'en qué puedo ayudarte'.",
+      en: "OUTBOUND SALES CALL. Goal: understand their business, name 2 concrete leaks (missed calls, slow lead response, no-shows), pitch the Guileo fix on top of that, capture NAME and EMAIL, and close on a quote or a booked demo. Be smart and direct, sell solutions, never ask 'how can I help you'.",
+    };
+    if (daGuileo && !vars.need) vars.need = MISSAO[L];
+
     // ── PRIMARY: ElevenLabs Conversational AI outbound call (via Twilio) ──
     if (env.ELEVENLABS_API_KEY && agentPhoneId) {
       const res = await fetch("https://api.elevenlabs.io/v1/convai/twilio/outbound-call", {
@@ -129,7 +163,13 @@ export async function onRequestPost(context) {
           agent_id: agentId,
           agent_phone_number_id: agentPhoneId,
           to_number: dial,
-          conversation_initiation_client_data: { dynamic_variables: vars },
+          conversation_initiation_client_data: {
+            dynamic_variables: vars,
+            // Sobrescreve SÓ a abertura — nunca o prompt inteiro, que carrega o KB, os preços e as
+            // lições versionadas. Trocar o prompt para mudar a primeira frase seria jogar fora o
+            // cérebro para consertar a boca.
+            ...(daGuileo ? { conversation_config_override: { agent: { first_message: ABERTURA[L] } } } : {}),
+          },
         }),
       });
       // ⚠️ ANTES ISTO SÓ FAZIA console.log — e um log de edge que ninguém lê é o mesmo que silêncio.
