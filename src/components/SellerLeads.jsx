@@ -135,6 +135,20 @@ const PITCH = {
   },
 };
 
+/* 🚨 O BOTÃO DO WEBSITE UPGRADE SÓ APARECE COM O SITE PRONTO (24/08). Aquele e-mail diz, na
+   primeira linha, "a gente reconstruiu o seu site — está no ar". Mandá-lo sem o site construído
+   seria a pior mentira possível: o dono clica e não acha nada, e a única chance de primeiro
+   contato morre no clique. Enquanto não há reconstrução, a ficha oferece o e-mail do X-Ray, que
+   é verdadeiro (mede, mostra e aponta o relatório). Chave = slug em src/pages/Novo.jsx. */
+const SITE_RECONSTRUIDO = {
+  "nonstopplumbers.com": "nonstop-plumbers",
+};
+const siteNovoDe = (site) => {
+  const d = String(site || "").replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0].toLowerCase();
+  const slug = SITE_RECONSTRUIDO[d];
+  return slug ? `https://guileoai.com/novo/${slug}` : "";
+};
+
 const PERNA_DO_ASPECTO = {
   atendimento: "brain",
   vendas_digitais: "brain",
@@ -178,7 +192,7 @@ const D = {
     stages: { abordado: "Approached", conversa: "Talking", demo: "Demo", proposta: "Proposal", fechado: "Closed", perdido: "Lost" },
     addFunil: "➕ Add to funnel", adding: "Adding…", inFunil: "In the funnel",
     lastUpdate: "Last update", summary: "What they said",
-    pitchT: "This business's pitch", aCall: "📞 Call", aWa: "💬 WhatsApp", aMail: "✉️ Email", aReport: "📄 Report", aCopy: "📋 Copy link", copied: "Copied ✓", aNoWay: "No phone or email on this lead — ask for it on the call", aMeasure: "🩻 Measure with X-Ray", fones: "📞 Fill in phone + email", perto: "📍 Nearest me", pertoOn: "📍 By distance", geoNegado: "you did not allow location — the queue stays in arrival order", geoIndisp: "this device has no location", semLocal: "location unknown", aGmail: "📧 Gmail", aCopiarMail: "📋 Copy the email", aCopiadoMail: "Copied ✓", aQuote: "🧾 Quote", aContract: "📄 Contract", logMail: "email sent · promised $50 credit on month 1",
+    pitchT: "This business's pitch", aUpgrade: "🚀 Send the Website Upgrade", upSending: "Sending…", upOk: "Sent ✓", upErr: "did not go out — check the address", aCall: "📞 Call", aWa: "💬 WhatsApp", aMail: "✉️ Email", aReport: "📄 Report", aCopy: "📋 Copy link", copied: "Copied ✓", aNoWay: "No phone or email on this lead — ask for it on the call", aMeasure: "🩻 Measure with X-Ray", fones: "📞 Fill in phone + email", perto: "📍 Nearest me", pertoOn: "📍 By distance", geoNegado: "you did not allow location — the queue stays in arrival order", geoIndisp: "this device has no location", semLocal: "location unknown", aGmail: "📧 Gmail", aCopiarMail: "📋 Copy the email", aCopiadoMail: "Copied ✓", aQuote: "🧾 Quote", aContract: "📄 Contract", logMail: "email sent · promised $50 credit on month 1",
     waMsg: (n, b) => `Hi ${n || "there"}! This is Guileo${b ? ` — about ${b}` : ""}. You reached out about the AI receptionist that answers every call and books for you. Do you have 2 minutes?`,
     mailSubj: (b) => `${b || "Your business"} — I measured what your neighbors publish`,
     mailHi: (n) => `Hi ${n || "there"},`,
@@ -221,7 +235,7 @@ const D = {
     stages: { abordado: "Abordado", conversa: "Conversa", demo: "Demo", proposta: "Proposta", fechado: "Fechado", perdido: "Perdido" },
     addFunil: "➕ Colocar no funil", adding: "Colocando…", inFunil: "No funil",
     lastUpdate: "Última atualização", summary: "O que ele falou",
-    pitchT: "O pitch deste negócio", aCall: "📞 Ligar", aWa: "💬 WhatsApp", aMail: "✉️ E-mail", aReport: "📄 Relatório", aCopy: "📋 Copiar link", copied: "Copiado ✓", aNoWay: "Sem telefone nem e-mail — peça na ligação", aMeasure: "🩻 Medir no X-Ray", fones: "📞 Completar telefone + e-mail", perto: "📍 Mais perto de mim", pertoOn: "📍 Por distância", geoNegado: "você não permitiu a localização — a fila fica na ordem de chegada", geoIndisp: "este aparelho não tem localização", semLocal: "sem local conhecido", aGmail: "📧 Gmail", aCopiarMail: "📋 Copiar o e-mail", aCopiadoMail: "Copiado ✓", aQuote: "🧾 Orçamento", aContract: "📄 Contrato", logMail: "e-mail enviado · prometido $50 de crédito no 1º mês",
+    pitchT: "O pitch deste negócio", aUpgrade: "🚀 Mandar o Website Upgrade", upSending: "Enviando…", upOk: "Enviado ✓", upErr: "não saiu — confira o e-mail", aCall: "📞 Ligar", aWa: "💬 WhatsApp", aMail: "✉️ E-mail", aReport: "📄 Relatório", aCopy: "📋 Copiar link", copied: "Copiado ✓", aNoWay: "Sem telefone nem e-mail — peça na ligação", aMeasure: "🩻 Medir no X-Ray", fones: "📞 Completar telefone + e-mail", perto: "📍 Mais perto de mim", pertoOn: "📍 Por distância", geoNegado: "você não permitiu a localização — a fila fica na ordem de chegada", geoIndisp: "este aparelho não tem localização", semLocal: "sem local conhecido", aGmail: "📧 Gmail", aCopiarMail: "📋 Copiar o e-mail", aCopiadoMail: "Copiado ✓", aQuote: "🧾 Orçamento", aContract: "📄 Contrato", logMail: "e-mail enviado · prometido $50 de crédito no 1º mês",
     waMsg: (n, b) => `Oi ${n || ""}! Aqui é da Guileo${b ? ` — sobre o ${b}` : ""}. Você chamou a gente sobre a recepcionista de IA que atende toda ligação e agenda por você. Tem 2 minutinhos?`,
     mailSubj: (b) => `${b || "Seu negócio"} — medi o que os seus vizinhos publicam`,
     mailHi: (n) => `Oi ${n || ""},`,
@@ -264,7 +278,7 @@ const D = {
     stages: { abordado: "Abordado", conversa: "Conversación", demo: "Demo", proposta: "Propuesta", fechado: "Cerrado", perdido: "Perdido" },
     addFunil: "➕ Poner en el embudo", adding: "Agregando…", inFunil: "En el embudo",
     lastUpdate: "Última actualización", summary: "Lo que dijo",
-    pitchT: "El pitch de este negocio", aCall: "📞 Llamar", aWa: "💬 WhatsApp", aMail: "✉️ Correo", aReport: "📄 Informe", aCopy: "📋 Copiar enlace", copied: "Copiado ✓", aNoWay: "Sin teléfono ni correo — pídelo en la llamada", aMeasure: "🩻 Medir con X-Ray", fones: "📞 Completar teléfono + correo", perto: "📍 Más cerca de mí", pertoOn: "📍 Por distancia", geoNegado: "no permitiste la ubicación — la fila queda en orden de llegada", geoIndisp: "este equipo no tiene ubicación", semLocal: "sin ubicación conocida", aGmail: "📧 Gmail", aCopiarMail: "📋 Copiar el correo", aCopiadoMail: "Copiado ✓", aQuote: "🧾 Presupuesto", aContract: "📄 Contrato", logMail: "correo enviado · prometido $50 de crédito en el 1er mes",
+    pitchT: "El pitch de este negocio", aUpgrade: "🚀 Enviar el Website Upgrade", upSending: "Enviando…", upOk: "Enviado ✓", upErr: "no salió — revisa el correo", aCall: "📞 Llamar", aWa: "💬 WhatsApp", aMail: "✉️ Correo", aReport: "📄 Informe", aCopy: "📋 Copiar enlace", copied: "Copiado ✓", aNoWay: "Sin teléfono ni correo — pídelo en la llamada", aMeasure: "🩻 Medir con X-Ray", fones: "📞 Completar teléfono + correo", perto: "📍 Más cerca de mí", pertoOn: "📍 Por distancia", geoNegado: "no permitiste la ubicación — la fila queda en orden de llegada", geoIndisp: "este equipo no tiene ubicación", semLocal: "sin ubicación conocida", aGmail: "📧 Gmail", aCopiarMail: "📋 Copiar el correo", aCopiadoMail: "Copiado ✓", aQuote: "🧾 Presupuesto", aContract: "📄 Contrato", logMail: "correo enviado · prometido $50 de crédito en el 1er mes",
     waMsg: (n, b) => `¡Hola ${n || ""}! Somos de Guileo${b ? ` — sobre ${b}` : ""}. Nos escribiste por la recepcionista de IA que contesta cada llamada y agenda por ti. ¿Tienes 2 minutos?`,
     mailSubj: (b) => `${b || "Tu negocio"} — medí lo que publican tus vecinos`,
     mailHi: (n) => `Hola ${n || ""},`,
@@ -307,7 +321,7 @@ const D = {
     stages: { abordado: "संपर्क किया", conversa: "बातचीत", demo: "डेमो", proposta: "प्रस्ताव", fechado: "बंद", perdido: "खोया" },
     addFunil: "➕ फ़नल में डालें", adding: "जोड़ा जा रहा…", inFunil: "फ़नल में",
     lastUpdate: "अंतिम अपडेट", summary: "उसने क्या कहा",
-    pitchT: "इस व्यवसाय का पिच", aCall: "📞 कॉल", aWa: "💬 WhatsApp", aMail: "✉️ ईमेल", aReport: "📄 रिपोर्ट", aCopy: "📋 लिंक कॉपी", copied: "कॉपी ✓", aNoWay: "फ़ोन या ईमेल नहीं — कॉल पर माँगें", aMeasure: "🩻 X-Ray से मापें", fones: "📞 फ़ोन + ईमेल भरें", perto: "📍 मेरे पास", pertoOn: "📍 दूरी से", geoNegado: "आपने स्थान की अनुमति नहीं दी — सूची आगमन क्रम में रहेगी", geoIndisp: "इस डिवाइस में स्थान नहीं है", semLocal: "स्थान अज्ञात", aGmail: "📧 Gmail", aCopiarMail: "📋 ईमेल कॉपी करें", aCopiadoMail: "कॉपी ✓", aQuote: "🧾 कोटेशन", aContract: "📄 अनुबंध", logMail: "ईमेल भेजा · पहले महीने $50 क्रेडिट का वादा",
+    pitchT: "इस व्यवसाय का पिच", aUpgrade: "🚀 Website Upgrade भेजें", upSending: "भेजा जा रहा…", upOk: "भेजा ✓", upErr: "नहीं गया — ईमेल जाँचें", aCall: "📞 कॉल", aWa: "💬 WhatsApp", aMail: "✉️ ईमेल", aReport: "📄 रिपोर्ट", aCopy: "📋 लिंक कॉपी", copied: "कॉपी ✓", aNoWay: "फ़ोन या ईमेल नहीं — कॉल पर माँगें", aMeasure: "🩻 X-Ray से मापें", fones: "📞 फ़ोन + ईमेल भरें", perto: "📍 मेरे पास", pertoOn: "📍 दूरी से", geoNegado: "आपने स्थान की अनुमति नहीं दी — सूची आगमन क्रम में रहेगी", geoIndisp: "इस डिवाइस में स्थान नहीं है", semLocal: "स्थान अज्ञात", aGmail: "📧 Gmail", aCopiarMail: "📋 ईमेल कॉपी करें", aCopiadoMail: "कॉपी ✓", aQuote: "🧾 कोटेशन", aContract: "📄 अनुबंध", logMail: "ईमेल भेजा · पहले महीने $50 क्रेडिट का वादा",
     waMsg: (n, b) => `Hi ${n || "there"}! This is Guileo${b ? ` — about ${b}` : ""}. You reached out about the AI receptionist that answers every call and books for you. Do you have 2 minutes?`,
     mailSubj: (b) => `${b || "आपका व्यवसाय"} — मैंने मापा कि आपके पड़ोसी क्या दिखाते हैं`,
     mailHi: (n) => `Hi ${n || "there"},`,
@@ -930,6 +944,9 @@ function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, sal
   const [copiado, setCopiado] = useState(false);
   const [mailCopiado, setMailCopiado] = useState(false);
   const [pitchCopiado, setPitchCopiado] = useState(false);
+  const [enviandoUp, setEnviandoUp] = useState(false);
+  const [upMsg, setUpMsg] = useState("");
+  const upgradeUrl = siteNovoDe(item.site);
   const [apontamento, setApontamento] = useState("");
   // ── PERTO DE MIM (2026-08-21) ─────────────────────────────────────────────────────────────
   // A fila vinha por ordem de chegada — o pior roteiro possível na rua: o vendedor atravessa o
@@ -1165,7 +1182,27 @@ function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, sal
                     {mailCopiado ? t.aCopiadoMail : t.aCopiarMail}
                   </button>
                 )}
+                {upgradeUrl && item.email && (
+                  <button type="button" disabled={enviandoUp}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      setEnviandoUp(true); setUpMsg("");
+                      // A RESPOSTA MANDA, não o status HTTP: o motor só devolve id quando o
+                      // Resend aceitou de verdade. Sem id eu digo que NÃO enviou.
+                      const { d } = await post("/api/seller-leads", {
+                        action: "upgrade", para: item.email,
+                        dados: { business: item.negocio || item.nome, link: upgradeUrl, lang, site: item.site || "" },
+                      });
+                      setEnviandoUp(false);
+                      setUpMsg(d?.ok && d?.id ? t.upOk : (d?.motivo || d?.error || t.upErr));
+                    }}
+                    className="inline-flex min-h-[48px] items-center rounded-full border border-g-gold/40 bg-g-gold/10 px-4 text-[13px] font-bold text-g-gold hover:bg-g-gold/20 disabled:opacity-50">
+                    {enviandoUp ? t.upSending : t.aUpgrade}
+                  </button>
+                )}
                 {relatorio && <Acao href={relatorio} externo>{t.aReport}</Acao>}
+                {/* O resultado NA TELA: clicar e não saber se saiu é o mesmo que não ter clicado. */}
+                {upMsg && <span className="inline-flex min-h-[48px] items-center text-[12.5px] font-bold text-g-muted">{upMsg}</span>}
                 {relatorio && (
                   <button type="button" onClick={() => { navigator.clipboard?.writeText(relatorio); setCopiado(true); setTimeout(() => setCopiado(false), 1500); }}
                     className="inline-flex min-h-[48px] items-center rounded-full border border-white/15 bg-white/[0.04] px-4 text-[13px] font-bold text-g-word hover:border-g-gold/40">

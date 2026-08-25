@@ -32,6 +32,7 @@
 // see sendWhatsApp() / sendWhatsAppTemplate() below.
 // ═════════════════════════════════════════════════════════════════════════════
 import { json, safeEq } from "../lib/guard.js";
+import { ouvirRecado } from "../lib/whatsappAudio.js";
 import { svcRpc } from "../lib/sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -237,6 +238,25 @@ export async function onRequestPost(context) {
           } else if (msg.type === "image" || msg.type === "audio" || msg.type === "video" || msg.type === "document") {
             text = (msg[msg.type] && msg[msg.type].caption) || "";
           }
+
+          // ── RECADO DE VOZ (2026-08-25) ──────────────────────────────────────────────────────
+          // Áudio quase nunca tem legenda, então até aqui `text` fica "" e o cérebro recebia uma
+          // pergunta vazia — respondia como se a pessoa não tivesse falado. Quem manda áudio e não
+          // recebe nada conclui que o número está morto. Agora a gente OUVE.
+          let audioFalhou = "";
+          if (msg.type === "audio" && !text) {
+            const mediaId = msg.audio && msg.audio.id;
+            const ouvido = await ouvirRecado(env, {
+              mediaId, token: tenant.tokens && tenant.tokens.access_token, lang: tenant.lang,
+            });
+            if (ouvido.ok) text = ouvido.texto;
+            else {
+              // Falha VISÍVEL, nunca silêncio: a pessoa recebe um pedido para escrever, e o dono
+              // vê no cockpit por que o áudio não virou conversa.
+              audioFalhou = ouvido.motivo || "não consegui transcrever";
+              text = "";
+            }
+          }
           if (!from || !msgId) continue;
 
           // dedup FIRST (fast, synchronous) so a Meta retry never double-answers
@@ -244,6 +264,19 @@ export async function onRequestPost(context) {
           if (!isNew) continue;
 
           const work = (async () => {
+            // Áudio que não deu para ouvir NÃO segue para o cérebro: uma pergunta vazia faz o
+            // cérebro responder qualquer coisa, e o cliente ouve um não-sequitur. Pede para
+            // escrever e registra o motivo REAL — falha visível vale mais que resposta errada.
+            if (audioFalhou) {
+              const { recadoDeFalha } = await import("../lib/whatsappAudio.js");
+              const fala = recadoDeFalha(tenant.lang);
+              const sent = await sendWhatsApp(env, tenant, from, fala);
+              await logSendFailure(env, tenant.client_email, from, `áudio não transcrito: ${audioFalhou}`, {
+                phone_number_id: String(phoneNumberId || ""), message_id: msgId, entregou_pedido_de_texto: !!(sent && sent.ok),
+              });
+              return;
+            }
+
             // Hand to the UNIFIED brain (same handleInboundMessage voice/webchat/SMS use).
             // Its own signature: { channel, tenantEmail, from, text, name, origin, meta }.
             const reply = await brainReply(env, {
