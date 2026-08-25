@@ -79,6 +79,32 @@ export async function onRequestPost(context) {
     const action = (b.action || "list").toString();
     const ING = env.INGEST_SECRET || ""; // fail-closed: no secret literal fallback shipped
 
+    /* ── MANDAR O WEBSITE UPGRADE DESTE LEAD ───────────────────────────────────────────────────
+       Luis (24/08): «o botão do e-mail já com o manual do business, dali mesmo, um clique faz
+       tudo do lead». O e-mail completo já existia em /api/enviar-upgrade, mas aquele endpoint é
+       gated pelo INGEST — segredo de servidor, que NUNCA pode ir para o navegador do vendedor.
+       Então a ponte é aqui: o vendedor está autenticado pela sessão dele, e é o SERVIDOR que
+       acrescenta o segredo e chama o motor. Um clique na ficha, zero segredo no cliente.
+       ⚠️ Manda para uma PESSOA REAL: exige e-mail válido e devolve o id do Resend. "ok" sem id
+       seria promessa sem lastro — e um e-mail dado como enviado sem ter saído é a forma mais
+       silenciosa de perder um lead. */
+    if (action === "upgrade") {
+      const para = (b.para || "").toString().trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@.]+\.[^\s@]{2,}$/.test(para)) return json({ ok: false, error: "email invalido" }, 400);
+      const orig = new URL(request.url).origin;
+      const corpo = { ...(b.dados && typeof b.dados === "object" ? b.dados : {}), to: para };
+      const r = await fetch(`${orig}/api/enviar-upgrade`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-guileo-secret": ING },
+        body: JSON.stringify(corpo),
+      });
+      const txt = await r.text().catch(() => "");
+      if (!r.ok) return json({ ok: false, motivo: `envio respondeu ${r.status}: ${txt.slice(0, 140)}` }, 502);
+      let d = {}; try { d = JSON.parse(txt) || {}; } catch { /* */ }
+      if (!d.id) return json({ ok: false, motivo: "aceito sem id — nao considero enviado" }, 502);
+      return json({ ok: true, enviado: true, id: d.id, para, assunto: d.assunto || "" });
+    }
+
     // ADMIN aggregate — never touches per-seller identity.
     if (action === "all") {
       if (!await adminOk(b.token)) return json({ error: "unauthorized" }, 401);

@@ -80,13 +80,68 @@ const LOCALE = { pt: "pt-BR", en: "en-US", es: "es-ES", hi: "hi-IN" };
 //   atendimento → 🧠 Brain (o cérebro atende)
 //   descoberta / redes_sociais / prova_social → ❤️ AD (o coração traz prova e movimento)
 //   captura_de_leads / vendas_digitais / presenca_web → 🏗️ Build (o corpo vende e cobra)
+/* 🚨 A PERNA VEM DE QUEM EXECUTA, e este mapa discordava do catálogo (24/08).
+   `vendas_digitais` é "nada fecha sem uma pessoa no telefone" — quem resolve isso é o AGENTE
+   cotando, fechando e cobrando na ligação, e em src/data/productSystem.js `close_collect` e
+   `answering` são **brain**. Estava marcado como build, e o efeito era que a BRAIN — a perna que
+   a Guileo mais vende — desaparecia da ficha da maioria dos leads: só sobrava quando o aspecto
+   "cobertura do telefone" vinha vermelho.
+   `captura_de_leads` fica em build de propósito: o buraco ali é o site não ter formulário, e o
+   formulário é obra. O que o agente faz DEPOIS (ligar em 60s) só existe se a captura existir. */
+
+/* ── O PITCH: uma frase, a mais importante para AQUELE negócio ────────────────────────────────
+   Luis (24/08): «o pitch mais importante de cada business, personalizado, pra e-mail e ligação».
+   Sai da PIOR dor MEDIDA — não de um roteiro genérico — porque é isso que o dono reconhece na
+   primeira frase. Serve nos dois canais de propósito: repetir a mesma frase no e-mail e na
+   ligação é o que faz o dono lembrar de onde já ouviu aquilo.
+   ⚠️ Sem dor medida não há pitch: a ficha mostra o aviso de medir, nunca uma frase inventada.
+   O `%s` é o nome do negócio. */
+const PITCH = {
+  atendimento: {
+    pt: (n) => `Liguei pra ${n} pra ver o que acontece com a chamada fora do horário — é por isso que estou te ligando.`,
+    en: (n) => `I called ${n} to see what happens to a call after hours — that's actually why I'm calling you.`,
+    es: (n) => `Llamé a ${n} para ver qué pasa con la llamada fuera de horario — por eso te estoy llamando.`,
+    hi: (n) => `${n} पर कॉल करके देखा कि समय के बाद कॉल का क्या होता है — इसीलिए मैं कॉल कर रहा हूँ।`,
+  },
+  captura_de_leads: {
+    pt: (n) => `No site do ${n} não tem como alguém falar com vocês sem pegar o telefone. Quem não liga, some.`,
+    en: (n) => `On the ${n} site there's no way to reach you without picking up the phone. Whoever won't call just leaves.`,
+    es: (n) => `En el sitio de ${n} no hay forma de contactarlos sin llamar. Quien no llama, se va.`,
+    hi: (n) => `${n} की साइट पर फ़ोन किए बिना संपर्क का कोई रास्ता नहीं है।`,
+  },
+  vendas_digitais: {
+    pt: (n) => `Nada no site do ${n} fecha sozinho — todo pedido precisa de uma pessoa no telefone.`,
+    en: (n) => `Nothing on the ${n} site closes on its own — every job needs a person on the phone.`,
+    es: (n) => `Nada en el sitio de ${n} cierra solo — cada trabajo necesita una persona al teléfono.`,
+    hi: (n) => `${n} की साइट पर कुछ भी अपने आप बंद नहीं होता।`,
+  },
+  descoberta: {
+    pt: (n) => `Procurei ${n} do jeito que um cliente procura, e vocês aparecem tarde demais.`,
+    en: (n) => `I searched for ${n} the way a customer does, and you show up too late.`,
+    es: (n) => `Busqué ${n} como lo hace un cliente, y aparecen demasiado tarde.`,
+    hi: (n) => `मैंने ${n} को ग्राहक की तरह खोजा — आप बहुत देर से दिखते हैं।`,
+  },
+  redes_sociais: {
+    pt: (n) => `Vocês fazem um trabalho bom e quase nada disso aparece onde as pessoas olham antes de ligar.`,
+    en: (n) => `You do great work and almost none of it shows up where people look before they call.`,
+    es: (n) => `Hacen un gran trabajo y casi nada aparece donde la gente mira antes de llamar.`,
+    hi: (n) => `आपका काम बढ़िया है, पर वह वहाँ नहीं दिखता जहाँ लोग कॉल से पहले देखते हैं।`,
+  },
+  presenca_web: {
+    pt: (n) => `Digitei o endereço do site do ${n} e ele não abriu direito. Quem procurou hoje, desistiu.`,
+    en: (n) => `I typed the ${n} website address and it didn't open properly. Anyone who looked today gave up.`,
+    es: (n) => `Escribí la dirección del sitio de ${n} y no abrió bien. Quien buscó hoy, se rindió.`,
+    hi: (n) => `${n} की वेबसाइट खुली ही नहीं। जिसने आज देखा, वह चला गया।`,
+  },
+};
+
 const PERNA_DO_ASPECTO = {
   atendimento: "brain",
+  vendas_digitais: "brain",
   descoberta: "ad",
   redes_sociais: "ad",
   prova_social: "ad",
   captura_de_leads: "build",
-  vendas_digitais: "build",
   presenca_web: "build",
 };
 
@@ -123,7 +178,7 @@ const D = {
     stages: { abordado: "Approached", conversa: "Talking", demo: "Demo", proposta: "Proposal", fechado: "Closed", perdido: "Lost" },
     addFunil: "➕ Add to funnel", adding: "Adding…", inFunil: "In the funnel",
     lastUpdate: "Last update", summary: "What they said",
-    aCall: "📞 Call", aWa: "💬 WhatsApp", aMail: "✉️ Email", aReport: "📄 Report", aCopy: "📋 Copy link", copied: "Copied ✓", aNoWay: "No phone or email on this lead — ask for it on the call", aMeasure: "🩻 Measure with X-Ray", fones: "📞 Fill in phone + email", perto: "📍 Nearest me", pertoOn: "📍 By distance", geoNegado: "you did not allow location — the queue stays in arrival order", geoIndisp: "this device has no location", semLocal: "location unknown", aGmail: "📧 Gmail", aCopiarMail: "📋 Copy the email", aCopiadoMail: "Copied ✓", aQuote: "🧾 Quote", aContract: "📄 Contract", logMail: "email sent · promised $50 credit on month 1",
+    pitchT: "This business's pitch", aCall: "📞 Call", aWa: "💬 WhatsApp", aMail: "✉️ Email", aReport: "📄 Report", aCopy: "📋 Copy link", copied: "Copied ✓", aNoWay: "No phone or email on this lead — ask for it on the call", aMeasure: "🩻 Measure with X-Ray", fones: "📞 Fill in phone + email", perto: "📍 Nearest me", pertoOn: "📍 By distance", geoNegado: "you did not allow location — the queue stays in arrival order", geoIndisp: "this device has no location", semLocal: "location unknown", aGmail: "📧 Gmail", aCopiarMail: "📋 Copy the email", aCopiadoMail: "Copied ✓", aQuote: "🧾 Quote", aContract: "📄 Contract", logMail: "email sent · promised $50 credit on month 1",
     waMsg: (n, b) => `Hi ${n || "there"}! This is Guileo${b ? ` — about ${b}` : ""}. You reached out about the AI receptionist that answers every call and books for you. Do you have 2 minutes?`,
     mailSubj: (b) => `${b || "Your business"} — I measured what your neighbors publish`,
     mailHi: (n) => `Hi ${n || "there"},`,
@@ -166,7 +221,7 @@ const D = {
     stages: { abordado: "Abordado", conversa: "Conversa", demo: "Demo", proposta: "Proposta", fechado: "Fechado", perdido: "Perdido" },
     addFunil: "➕ Colocar no funil", adding: "Colocando…", inFunil: "No funil",
     lastUpdate: "Última atualização", summary: "O que ele falou",
-    aCall: "📞 Ligar", aWa: "💬 WhatsApp", aMail: "✉️ E-mail", aReport: "📄 Relatório", aCopy: "📋 Copiar link", copied: "Copiado ✓", aNoWay: "Sem telefone nem e-mail — peça na ligação", aMeasure: "🩻 Medir no X-Ray", fones: "📞 Completar telefone + e-mail", perto: "📍 Mais perto de mim", pertoOn: "📍 Por distância", geoNegado: "você não permitiu a localização — a fila fica na ordem de chegada", geoIndisp: "este aparelho não tem localização", semLocal: "sem local conhecido", aGmail: "📧 Gmail", aCopiarMail: "📋 Copiar o e-mail", aCopiadoMail: "Copiado ✓", aQuote: "🧾 Orçamento", aContract: "📄 Contrato", logMail: "e-mail enviado · prometido $50 de crédito no 1º mês",
+    pitchT: "O pitch deste negócio", aCall: "📞 Ligar", aWa: "💬 WhatsApp", aMail: "✉️ E-mail", aReport: "📄 Relatório", aCopy: "📋 Copiar link", copied: "Copiado ✓", aNoWay: "Sem telefone nem e-mail — peça na ligação", aMeasure: "🩻 Medir no X-Ray", fones: "📞 Completar telefone + e-mail", perto: "📍 Mais perto de mim", pertoOn: "📍 Por distância", geoNegado: "você não permitiu a localização — a fila fica na ordem de chegada", geoIndisp: "este aparelho não tem localização", semLocal: "sem local conhecido", aGmail: "📧 Gmail", aCopiarMail: "📋 Copiar o e-mail", aCopiadoMail: "Copiado ✓", aQuote: "🧾 Orçamento", aContract: "📄 Contrato", logMail: "e-mail enviado · prometido $50 de crédito no 1º mês",
     waMsg: (n, b) => `Oi ${n || ""}! Aqui é da Guileo${b ? ` — sobre o ${b}` : ""}. Você chamou a gente sobre a recepcionista de IA que atende toda ligação e agenda por você. Tem 2 minutinhos?`,
     mailSubj: (b) => `${b || "Seu negócio"} — medi o que os seus vizinhos publicam`,
     mailHi: (n) => `Oi ${n || ""},`,
@@ -209,7 +264,7 @@ const D = {
     stages: { abordado: "Abordado", conversa: "Conversación", demo: "Demo", proposta: "Propuesta", fechado: "Cerrado", perdido: "Perdido" },
     addFunil: "➕ Poner en el embudo", adding: "Agregando…", inFunil: "En el embudo",
     lastUpdate: "Última actualización", summary: "Lo que dijo",
-    aCall: "📞 Llamar", aWa: "💬 WhatsApp", aMail: "✉️ Correo", aReport: "📄 Informe", aCopy: "📋 Copiar enlace", copied: "Copiado ✓", aNoWay: "Sin teléfono ni correo — pídelo en la llamada", aMeasure: "🩻 Medir con X-Ray", fones: "📞 Completar teléfono + correo", perto: "📍 Más cerca de mí", pertoOn: "📍 Por distancia", geoNegado: "no permitiste la ubicación — la fila queda en orden de llegada", geoIndisp: "este equipo no tiene ubicación", semLocal: "sin ubicación conocida", aGmail: "📧 Gmail", aCopiarMail: "📋 Copiar el correo", aCopiadoMail: "Copiado ✓", aQuote: "🧾 Presupuesto", aContract: "📄 Contrato", logMail: "correo enviado · prometido $50 de crédito en el 1er mes",
+    pitchT: "El pitch de este negocio", aCall: "📞 Llamar", aWa: "💬 WhatsApp", aMail: "✉️ Correo", aReport: "📄 Informe", aCopy: "📋 Copiar enlace", copied: "Copiado ✓", aNoWay: "Sin teléfono ni correo — pídelo en la llamada", aMeasure: "🩻 Medir con X-Ray", fones: "📞 Completar teléfono + correo", perto: "📍 Más cerca de mí", pertoOn: "📍 Por distancia", geoNegado: "no permitiste la ubicación — la fila queda en orden de llegada", geoIndisp: "este equipo no tiene ubicación", semLocal: "sin ubicación conocida", aGmail: "📧 Gmail", aCopiarMail: "📋 Copiar el correo", aCopiadoMail: "Copiado ✓", aQuote: "🧾 Presupuesto", aContract: "📄 Contrato", logMail: "correo enviado · prometido $50 de crédito en el 1er mes",
     waMsg: (n, b) => `¡Hola ${n || ""}! Somos de Guileo${b ? ` — sobre ${b}` : ""}. Nos escribiste por la recepcionista de IA que contesta cada llamada y agenda por ti. ¿Tienes 2 minutos?`,
     mailSubj: (b) => `${b || "Tu negocio"} — medí lo que publican tus vecinos`,
     mailHi: (n) => `Hola ${n || ""},`,
@@ -252,7 +307,7 @@ const D = {
     stages: { abordado: "संपर्क किया", conversa: "बातचीत", demo: "डेमो", proposta: "प्रस्ताव", fechado: "बंद", perdido: "खोया" },
     addFunil: "➕ फ़नल में डालें", adding: "जोड़ा जा रहा…", inFunil: "फ़नल में",
     lastUpdate: "अंतिम अपडेट", summary: "उसने क्या कहा",
-    aCall: "📞 कॉल", aWa: "💬 WhatsApp", aMail: "✉️ ईमेल", aReport: "📄 रिपोर्ट", aCopy: "📋 लिंक कॉपी", copied: "कॉपी ✓", aNoWay: "फ़ोन या ईमेल नहीं — कॉल पर माँगें", aMeasure: "🩻 X-Ray से मापें", fones: "📞 फ़ोन + ईमेल भरें", perto: "📍 मेरे पास", pertoOn: "📍 दूरी से", geoNegado: "आपने स्थान की अनुमति नहीं दी — सूची आगमन क्रम में रहेगी", geoIndisp: "इस डिवाइस में स्थान नहीं है", semLocal: "स्थान अज्ञात", aGmail: "📧 Gmail", aCopiarMail: "📋 ईमेल कॉपी करें", aCopiadoMail: "कॉपी ✓", aQuote: "🧾 कोटेशन", aContract: "📄 अनुबंध", logMail: "ईमेल भेजा · पहले महीने $50 क्रेडिट का वादा",
+    pitchT: "इस व्यवसाय का पिच", aCall: "📞 कॉल", aWa: "💬 WhatsApp", aMail: "✉️ ईमेल", aReport: "📄 रिपोर्ट", aCopy: "📋 लिंक कॉपी", copied: "कॉपी ✓", aNoWay: "फ़ोन या ईमेल नहीं — कॉल पर माँगें", aMeasure: "🩻 X-Ray से मापें", fones: "📞 फ़ोन + ईमेल भरें", perto: "📍 मेरे पास", pertoOn: "📍 दूरी से", geoNegado: "आपने स्थान की अनुमति नहीं दी — सूची आगमन क्रम में रहेगी", geoIndisp: "इस डिवाइस में स्थान नहीं है", semLocal: "स्थान अज्ञात", aGmail: "📧 Gmail", aCopiarMail: "📋 ईमेल कॉपी करें", aCopiadoMail: "कॉपी ✓", aQuote: "🧾 कोटेशन", aContract: "📄 अनुबंध", logMail: "ईमेल भेजा · पहले महीने $50 क्रेडिट का वादा",
     waMsg: (n, b) => `Hi ${n || "there"}! This is Guileo${b ? ` — about ${b}` : ""}. You reached out about the AI receptionist that answers every call and books for you. Do you have 2 minutes?`,
     mailSubj: (b) => `${b || "आपका व्यवसाय"} — मैंने मापा कि आपके पड़ोसी क्या दिखाते हैं`,
     mailHi: (n) => `Hi ${n || "there"},`,
@@ -874,6 +929,7 @@ function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, sal
   const [salvando, setSalvando] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [mailCopiado, setMailCopiado] = useState(false);
+  const [pitchCopiado, setPitchCopiado] = useState(false);
   const [apontamento, setApontamento] = useState("");
   // ── PERTO DE MIM (2026-08-21) ─────────────────────────────────────────────────────────────
   // A fila vinha por ordem de chegada — o pior roteiro possível na rua: o vendedor atravessa o
@@ -907,6 +963,14 @@ function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, sal
     const vermelhos = as.filter((a) => a.score < 50);
     return (vermelhos.length ? vermelhos : as.filter((a) => a.score < 90)).sort((a, b) => a.score - b.score).slice(0, 3);
   }, [av]);
+
+  /* O PITCH DESTE LEAD — a pior dor MEDIDA vira a primeira frase. Mesma frase na ligação e no
+     e-mail: repetição entre canais é o que faz o dono lembrar de onde já ouviu aquilo. */
+  const pitch = useMemo(() => {
+    const pior = dores[0];
+    const f = pior && PITCH[pior.nome] && (PITCH[pior.nome][lang] || PITCH[pior.nome].en);
+    return f ? f(item.negocio || item.nome || "") : "";
+  }, [dores, lang, item.negocio, item.nome]);
 
   // ── CAMADA 3: as 3 palavras — dor medida → perna. Nada redigitado: cor/ícone/nome de pernaMeta.
   const sacadas = useMemo(() => {
@@ -1173,6 +1237,23 @@ function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, sal
                       )}
                     </>
                   )}
+                </div>
+              )}
+
+              {/* O PITCH — a primeira frase, a mesma na ligação e no e-mail. Vai ANTES das 3 pernas
+                  porque é o que se fala primeiro: as pernas explicam o conserto, o pitch abre a
+                  porta. Copiável em um toque: na rua ninguém transcreve frase de tela. */}
+              {pitch && (
+                <div className="rounded-xl border border-g-gold/30 bg-g-gold/[0.06] px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-g-gold">{t.pitchT}</span>
+                    <button type="button"
+                      onClick={(e) => { e.stopPropagation(); navigator.clipboard?.writeText(pitch); setPitchCopiado(true); setTimeout(() => setPitchCopiado(false), 1600); }}
+                      className="rounded-full border border-white/15 px-2.5 py-1 text-[11px] font-bold text-g-word hover:border-g-gold/50">
+                      {pitchCopiado ? t.copied : t.aCopy}
+                    </button>
+                  </div>
+                  <p className="mt-1.5 text-[14px] leading-relaxed text-g-word">“{pitch}”</p>
                 </div>
               )}
 
