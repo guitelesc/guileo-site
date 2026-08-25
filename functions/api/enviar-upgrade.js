@@ -12,6 +12,7 @@
 // e-mail, não houve envio.
 import { json, safeEq } from "../lib/guard.js";
 import { websiteUpgradeEmail } from "../lib/emailTemplates.js";
+import { svcRpc } from "../lib/sb.js";
 import { CONTACT } from "../../src/data/contactData.js";
 
 export async function onRequestPost({ request, env }) {
@@ -62,6 +63,25 @@ export async function onRequestPost({ request, env }) {
   if (!id) return json({ ok: false, enviado: false, motivo: "resend aceitou sem devolver id" }, 502);
   // Reporta O QUE FOI USADO: "enviado" sem dizer se a marca dele entrou deixaria a gente
   // mandando template sem perceber. Marca ausente tem que aparecer, não sumir.
+  /* ── O ENVIO TEM QUE APARECER ONDE O VENDEDOR OLHA (24/08) ────────────────────────────────
+     Luis: «onde que eu acesso isso que foi enviado?». Os e-mails saíam, o Resend confirmava, e o
+     registro vivia só no terminal — a ficha do lead continuava dizendo que ninguém tinha falado
+     com ele. Envio invisível é pior que envio nenhum: o vendedor liga achando que é o primeiro
+     contato, ou não liga achando que já mandou.
+     O clique de `mailto` na ficha já carimbava a nota (`registraEnvio`); o envio pelo SERVIDOR
+     não passava por lá. Agora passa: mesma nota, mesmo lugar, com a data e o id. */
+  if (b.registrar && b.registrar.seller && b.registrar.id) {
+    try {
+      const quando = new Date().toISOString().slice(0, 10);
+      const atual = (b.registrar.nota || "").toString();
+      const linha = `✉️ ${quando} — Website Upgrade enviado a ${to} (id ${id.slice(0, 8)})`;
+      await svcRpc(env, "sp_upsert", {
+        p_secret: ING, p_seller_email: String(b.registrar.seller).toLowerCase(),
+        p_id: String(b.registrar.id), p_note: (atual ? atual + "\n" : "") + linha,
+      });
+    } catch { /* o registro não pode desfazer um envio que já saiu */ }
+  }
+
   return json({ ok: true, enviado: true, id, para: to, assunto: subject,
     marca: { logo: b.logo || "", accent: b.accent || "", capa: b.capa || "" } });
 }

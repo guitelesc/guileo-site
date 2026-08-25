@@ -53,20 +53,58 @@ async function abrir(url) {
 
 function umaRodada(ws, { texto, vars, override, tetoMs }) {
   return new Promise((resolve) => {
-    let pedacos = [];
+    const pedacos = [];
     let convId = null;
     let acabou = false;
-    const fim = (r) => { if (acabou) return; acabou = true; clearTimeout(relogio); try { ws.close(1000, "fim"); } catch { /* já fechado */ } resolve(r); };
+    // ── POR QUE ESTE ESTADO EXISTE: O AGENTE FALA PRIMEIRO ───────────────────────────────────────
+    // Ele foi desenhado para o TELEFONE, onde quem atende cumprimenta antes de ouvir. Então a
+    // primeira `agent_response` é a saudação — a resposta à NOSSA pergunta é a segunda. A versão
+    // anterior mandava a pergunta junto com a abertura, capturava a saudação e ia embora: devolveu
+    // "Thank you for calling Guileo, this is Gui. How can I take care of you today?" para quem
+    // tinha perguntado o preço. Rápido (2,1s) e inútil.
+    // Agora são duas fases: deixa a saudação passar (e a DESCARTA — num canal de texto ela é ruído,
+    // ninguém "ligou"), e só então faz a pergunta. Se o agente não tiver saudação, uma janela curta
+    // expira e a pergunta vai do mesmo jeito — nenhum agente fica esperando por algo que não vem.
+    let fase = "saudacao";
+    let quieto = null, abertura = null;
+    const fim = (r) => {
+      if (acabou) return; acabou = true;
+      clearTimeout(relogio); clearTimeout(quieto); clearTimeout(abertura);
+      try { ws.close(1000, "fim"); } catch { /* já fechado */ }
+      resolve(r);
+    };
+    const entregar = () => fim(pedacos.length
+      ? { ok: true, texto: pedacos.join(" ").trim(), conversation_id: convId }
+      : { ok: false, motivo: "o agente não respondeu à pergunta", conversation_id: convId });
+
+    // Chegou texto → abre uma janela curta; se nada mais vier, o turno acabou. Necessário porque no
+    // modo texto o `agent_response_complete` não vem, e esperar por ele custava 25s por mensagem.
+    const silencio = () => { clearTimeout(quieto); quieto = setTimeout(entregar, 1800); };
+
+    const perguntar = () => {
+      if (fase !== "saudacao" || acabou) return;
+      fase = "pergunta";
+      clearTimeout(abertura);
+      try {
+        // ── AVISA QUE ISTO NÃO É UMA LIGAÇÃO ────────────────────────────────────────────────────
+        // O agente é o mesmo do telefone e escreve como quem FALA: a 1ª prova devolveu "cento e
+        // quarenta e nove dólares" (certo para TTS, errado para WhatsApp, onde se escreve $149) e
+        // abriu com "Thank you for calling". `contextual_update` entrega esse contexto SEM gastar um
+        // turno e SEM tocar na configuração do agente — nada aqui altera o que atende no telefone,
+        // que é justamente o que não pode quebrar. Vale só para esta conversa.
+        ws.send(JSON.stringify({ type: "contextual_update",
+          text: "SYSTEM: this conversation is happening over TEXT (WhatsApp/Instagram/web chat), not a phone call. Never say 'calling' or 'on the line'. Write numbers, prices and times as digits ($149, 2pm), never spelled out. Keep it short — 2 or 3 sentences, no greeting, they already said hello. Reply in the customer's language." }));
+        ws.send(JSON.stringify({ type: "user_message", text: texto, source_medium: "text" }));
+      } catch (e) { fim({ ok: false, motivo: `não consegui perguntar: ${(e && e.message) || "?"}` }); }
+    };
+
     const relogio = setTimeout(() => {
-      // Estourou o prazo COM texto na mão? Entrega o que tem — meia resposta serve, silêncio não.
       fim(pedacos.length ? { ok: true, texto: pedacos.join(" ").trim(), conversation_id: convId, parcial: true }
         : { ok: false, motivo: `sem resposta em ${Math.round(tetoMs / 1000)}s` });
     }, tetoMs);
 
     ws.addEventListener("error", () => fim({ ok: false, motivo: "socket caiu" }));
     ws.addEventListener("close", (ev) => {
-      // Fechar ANTES de qualquer `agent_response` normalmente é override proibido — o chamador
-      // precisa distinguir isso de "o agente não teve o que dizer" para poder tentar de novo.
       if (pedacos.length) return fim({ ok: true, texto: pedacos.join(" ").trim(), conversation_id: convId });
       fim({ ok: false, motivo: `fechou sem responder (code ${ev?.code ?? "?"})`, recusou: (ev?.code ?? 0) !== 1000 });
     });
@@ -74,27 +112,28 @@ function umaRodada(ws, { texto, vars, override, tetoMs }) {
     ws.addEventListener("message", (ev) => {
       let m; try { m = JSON.parse(typeof ev.data === "string" ? ev.data : ""); } catch { return; }
       if (!m || !m.type) return;
-      // O ping É obrigatório: sem o pong o servidor derruba a conexão no meio da resposta.
+      // O pong é obrigatório: sem ele o servidor derruba a conexão no meio da resposta.
       if (m.type === "ping") { try { ws.send(JSON.stringify({ type: "pong", event_id: m.ping_event?.event_id })); } catch { /* já caiu */ } return; }
-      if (m.type === "conversation_initiation_metadata") { convId = m.conversation_initiation_metadata_event?.conversation_id || null; return; }
-      if (m.type === "agent_response") {
-        const t = (m.agent_response_event?.agent_response || "").toString().trim();
-        if (t) pedacos.push(t);
+      if (m.type === "conversation_initiation_metadata") {
+        convId = m.conversation_initiation_metadata_event?.conversation_id || null;
+        // Agente sem saudação existe. A janela evita ficar esperando um cumprimento que não vem.
+        abertura = setTimeout(perguntar, 2500);
         return;
       }
-      // Turno encerrado: é aqui que a gente sai, não no timeout.
-      if (m.type === "agent_response_complete" && pedacos.length) {
-        fim({ ok: true, texto: pedacos.join(" ").trim(), conversation_id: convId });
+      if (m.type === "agent_response") {
+        const t = (m.agent_response_event?.agent_response || "").toString().trim();
+        if (fase === "saudacao") { perguntar(); return; }   // saudação descartada de propósito
+        if (t) { pedacos.push(t); silencio(); }
+        return;
       }
-      // `audio`, `user_transcript`, `vad_score`, `internal_*` → ignorados de propósito.
+      if (m.type === "agent_response_complete" && pedacos.length) entregar();
     });
 
     try {
       const init = { type: "conversation_initiation_client_data", dynamic_variables: vars || {} };
       if (override) init.conversation_config_override = { conversation: { text_only: true } };
       ws.send(JSON.stringify(init));
-      ws.send(JSON.stringify({ type: "user_message", text: texto, source_medium: "text" }));
-    } catch (e) { fim({ ok: false, motivo: `não consegui enviar: ${(e && e.message) || "?"}` }); }
+    } catch (e) { fim({ ok: false, motivo: `não consegui abrir: ${(e && e.message) || "?"}` }); }
   });
 }
 

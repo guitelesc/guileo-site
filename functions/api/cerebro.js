@@ -15,6 +15,7 @@
 // e é exatamente essa recusa que a gente quer ler.
 import { json, sameOrigin, rateLimited } from "../lib/guard.js";
 import { falarComAgente } from "../lib/chatEleven.js";
+import { guiReply } from "../lib/guiBrain.js";
 import { askClaude, MODEL_CHAIN } from "../lib/guiBrain.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -47,6 +48,24 @@ export async function onRequestPost(context) {
         tetoMs: 25000,
       });
       return json({ cerebro: "elevenlabs", ms: Date.now() - t1, ...r });
+    }
+
+    // ── O CAMINHO INTEIRO DO CANAL ──────────────────────────────────────────────────────────────
+    // Provar a biblioteca isolada não prova o produto: entre ela e o cliente ainda existem o
+    // roteamento por tenant, a constituição e a escolha de qual cérebro atende. Este probe roda o
+    // MESMO `guiReply` que o WhatsApp e o Instagram chamam, e devolve QUEM respondeu — é a única
+    // forma de saber se o resgate está de fato ligado, e não só compilando.
+    if (b.canal) {
+      const t2 = Date.now();
+      const r = await guiReply(env, {
+        email: (b.canal_email || "smart@guileoai.com").toString().slice(0, 160),
+        channel: "whatsapp", from: "+10000000000",
+        text: (b.texto || "Quanto custa?").toString().slice(0, 500),
+        lang: (b.lang || "pt").toString().slice(0, 5),
+      });
+      return json({ prova: "canal", ms: Date.now() - t2,
+        cerebro: r?.cerebro || "anthropic", escalou: !!r?.escalate,
+        cerebro_falhou: r?.cerebro_falhou || null, resposta: r?.reply || "" });
     }
 
     const diag = [];
