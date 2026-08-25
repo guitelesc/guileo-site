@@ -493,7 +493,12 @@ async function evoluir(request, env) {
     // no meio. Em 2026-08-16 a âncora foi escrita com um espaço simples e a conferência devolveu
     // 0/4 sobre uma frota que ESTAVA correta: alarme falso, e eu quase saí consertando o que já
     // funcionava. Escolha sempre um trecho contíguo de UMA linha só.
-    const ancora = "INCLUI O COMPROVANTE NA MÃO DA PESSOA";
+    // ⚠️ A ÂNCORA TEM QUE SER DA LIÇÃO MAIS NOVA, SENÃO A CONFERÊNCIA MENTE PRA CIMA.
+    // 2026-08-24: subi a v23 (o TOM) e o `conferir` devolveu 4/4 ✅ na hora — porque a âncora ainda
+    // era a frase da v9. Ele provava, com toda a confiança, uma lição de quinze dias atrás. Já tinha
+    // acontecido em 16/08 na direção contrária (0/4 falso). Regra: subiu a VERSAO, troca a âncora
+    // no mesmo commit, e escolhe um trecho contíguo de UMA linha da lição nova.
+    const ancora = "INCLUI O COMPROVANTE NA MÃO DA PESSOA";  // v24: a frase do tom saiu junto com a lição revertida
     if (!env.ELEVENLABS_API_KEY) return json({ ok: false, conferir: true, nota: "sem ELEVENLABS_API_KEY — não deu para provar" }, 503);
     // ⚠️ NÃO INVENTE NOME DE RPC. Minha 1ª versão chamava `agent_ids_all`, que NÃO EXISTE — o mesmo
     // erro que cometi hoje de manhã com `agent_evals_latest` e que deixou o painel mentindo por 3

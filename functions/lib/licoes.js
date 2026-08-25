@@ -23,11 +23,12 @@
 //      regra por achá-la óbvia; o incidente é o que a defende.
 //   4. SUBA A `VERSAO`. Sem isso a lição existe no código e não chega a NENHUM agente já nascido —
 //      exatamente a doença que este arquivo veio curar.
-export const VERSAO = 22; // v22 (2026-08-22): a ferramenta chamada DEPOIS do tchau — a Louise deu nome e telefone, ouviu "já capturei", desligou, e a chamada morreu com a ligação (08/08). // v21 (2026-08-20): o número de quem liga — a agente prometeu "vou usar o número de onde você está ligando", não tinha, e travou em laço perdendo uma cliente pronta (18/08 22:37).
+export const VERSAO = 24; // v24 (2026-08-24): REVERTIDA a lição de tom da v23. O Luis ligou depois de subir e disse "a Lilian de antes tava mais legal". Causa: minhas regras universais ("não empilhe elogio, não encha de exclamação, falar menos") CONTRADIZIAM a lição do salão logo abaixo ("cuidar de você", "você merece", celebrar em voz alta) — e universal vem antes, então a minha ganhou e apagou o calor que fazia a agente ser boa de conversa. LIÇÃO SOBRE LIÇÕES: tom escrito por SUBTRAÇÃO apaga personalidade que já funcionava; regra universal que proíbe um comportamento sempre vence a vertical que o pede. // v23 (2026-08-24) [removida]: O TOM — decisão do Luis: "o nível da Lilian e do Gui é esse: high ticket, smart, accessible, funny and happy, and make the sale". Sem isso a agente atendia CORRETA e esquecível, e quem cobra caro não pode soar como robô pedindo desculpa por existir. // v22 (2026-08-22): a ferramenta chamada DEPOIS do tchau — a Louise deu nome e telefone, ouviu "já capturei", desligou, e a chamada morreu com a ligação (08/08). // v21 (2026-08-20): o número de quem liga — a agente prometeu "vou usar o número de onde você está ligando", não tinha, e travou em laço perdendo uma cliente pronta (18/08 22:37).
 
 // Regras que valem para QUALQUER negócio. Ordenadas por quanto custam quando são violadas:
 // as três primeiras destroem a confiança do cliente final na hora, e não têm conserto depois.
 const UNIVERSAIS = [
+
   // ← Ligação real da Lilian (Natura Spa, 2026-08-07): a agente ofereceu serviço de unhas. O spa não
   //   faz unhas. A pessoa apareceu no balcão cobrando o que foi prometido no telefone.
   //   O prompt já dizia "never invent beyond this" — não bastou, porque o modelo entende isso como

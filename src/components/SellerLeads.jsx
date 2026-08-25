@@ -940,7 +940,13 @@ function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, sal
   // perdendo": ganho-vs-perda dá r=.03 numa meta-análise de 93 estudos; o que convence é o fato.
 
   const mailtoPartes = useMemo(() => {
-    if (!item.email) return null;
+    // 🚨 O TEXTO NÃO DEPENDE DO ENDEREÇO (24/08). Este `if (!item.email) return null` escondia o
+    // MODELO DE E-MAIL inteiro de quem não tem e-mail cadastrado — e são 256 dos 269 prospects da
+    // carteira. O vendedor abria a ficha do encanador e não via nada, achando que a ferramenta não
+    // existia para ele. `mailto:` e Gmail precisam mesmo de endereço; COPIAR não precisa: o texto
+    // serve para colar no formulário de contato do site dele (que costuma ser a única porta —
+    // provado no Nonstop, onde o e-mail ditado voltou e o formulário entregou), no WhatsApp, ou
+    // para ler durante a ligação.
     // BLOCO SEM DADO NÃO DESENHA — vale para o e-mail também: sem nenhum número medido, a frase
     // "segue o que a gente mediu" ficaria pendurada sobre o vazio, prometendo medição que não houve.
     const medidos = [];
@@ -1088,7 +1094,7 @@ function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, sal
                 {/* Gmail e copiar existem porque `mailto:` depende de um app configurado na máquina
                     do vendedor — e 1.000 vendedores na rua não têm a mesma máquina. */}
                 {item.email && gmailLink && <Acao href={gmailLink} externo aoClicar={registraEnvio}>{t.aGmail}</Acao>}
-                {item.email && mailtoPartes && (
+                {mailtoPartes && (
                   <button type="button"
                     onClick={() => { navigator.clipboard?.writeText(`${mailtoPartes.assunto}\n\n${mailtoPartes.corpo}`); setMailCopiado(true); setTimeout(() => setMailCopiado(false), 1600); }}
                     className="inline-flex min-h-[48px] items-center rounded-full border border-white/15 bg-white/[0.04] px-4 text-[13px] font-bold text-g-word hover:border-g-gold/40">
