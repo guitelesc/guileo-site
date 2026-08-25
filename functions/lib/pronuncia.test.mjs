@@ -46,10 +46,18 @@ eq(frasefalada("Thank you for calling Guileo. This is Gui — how may I help you
    "saudação real em inglês",
    "a saudação de verdade: 'Guileo' intacto E 'Gui' corrigido na MESMA frase — a prova de que a troca respeita limite de palavra e não come o nome maior.");
 
+// ⚠️ ESTE TESTE MUDOU EM 2026-08-25, e o motivo importa mais que a linha.
+// Ele afirmava que NADA muda em português — o que era verdade enquanto ninguém tinha ouvido. O Luis
+// ouviu três amostras geradas com a voz real e escolheu "Guiléo": a voz é uma só (Bella) para todos
+// os idiomas e aplicava fonética inglesa a uma grafia que o português leria sozinho. O acento força
+// a tônica gui-LÉ-o.
+// O que o teste PROTEGE continua igual e é o essencial: "Gui" NÃO vira "Ghee" em português. Trocar
+// o nome da agente por grafia inglesa numa ligação brasileira é o defeito que este arquivo existe
+// para impedir. Mudou o dado, não a regra.
 eq(frasefalada("Obrigada por ligar para Guileo! Aqui é a Gui — em que eu posso te ajudar hoje?", "pt"),
-   "Obrigada por ligar para Guileo! Aqui é a Gui — em que eu posso te ajudar hoje?",
-   "saudação real em português fica intacta",
-   "nenhuma troca deve acontecer em pt. Se este falhar, a agente brasileira passou a falar inglês macarrônico.");
+   "Obrigada por ligar para Guiléo! Aqui é a Gui — em que eu posso te ajudar hoje?",
+   "em português a MARCA ganha acento e o NOME da agente fica intacto",
+   "'Guileo'→'Guiléo' (escolhido de ouvido) e 'Gui' NUNCA vira 'Ghee' em pt. Se o Gui mudar aqui, a agente brasileira passou a falar inglês macarrônico.");
 
 eq(frasefalada("GUI aqui.", "en"), "GHEE aqui.", "caixa alta é preservada",
    "quem escreve o nome em maiúscula no cadastro não pode receber 'Ghee' no meio de um grito.");

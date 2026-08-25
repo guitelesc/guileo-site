@@ -11,7 +11,7 @@
 // rate limit — `r.ok` ignorado já produziu dois "sucessos" invisíveis nesta base. Sem o id do
 // e-mail, não houve envio.
 import { json, safeEq } from "../lib/guard.js";
-import { websiteUpgradeEmail } from "../lib/emailTemplates.js";
+import { websiteUpgradeEmail, achadoEmail } from "../lib/emailTemplates.js";
 import { svcRpc } from "../lib/sb.js";
 import { CONTACT } from "../../src/data/contactData.js";
 
@@ -42,7 +42,10 @@ export async function onRequestPost({ request, env }) {
   const to = (b.to || "").toString().trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@.]+\.[^\s@]{2,}$/.test(to)) return json({ ok: false, error: "destinatario invalido" }, 400);
 
-  const { subject, html } = websiteUpgradeEmail(b);
+  /* Duas saídas do motor: o prospect cujo site foi RECONSTRUÍDO recebe o Website Upgrade; o
+     prospect cujo site é bom recebe o ACHADO. Forçar o upgrade em quem não precisa é vender
+     movimento lateral como melhoria — e o dono percebe. */
+  const { subject, html } = (b.tipo === "achado" ? achadoEmail : websiteUpgradeEmail)(b);
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },

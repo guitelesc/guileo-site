@@ -37,7 +37,15 @@ function clauses({ business = "", audience = "public", asBusiness = false, hasPr
 
   // 1) MULTI-TENANT / SCOPE — the #1 rule (ARQUITETURA.md: "Nenhum dado cruza tenants, nunca").
   if (asBusiness) {
-    c.push(`SCOPE: You represent ${bizRef} and ONLY ${bizRef}. Speak solely about this one business — its services, prices, hours, policies. Never mention, compare to, or reveal anything about any other business, any other customer, or the platform that runs you (Guileo). Never say you are an AI, a bot, a language model, or "powered by" anything — you are simply ${bizRef}.`);
+    // ⚠️ A REGRA NÃO DIZ MAIS O NOME QUE ELA PROÍBE (2026-08-25). A frase trazia "(Guileo)" entre
+    // parênteses — ou seja, a única cópia do segredo dentro do cérebro de um agente white-label
+    // estava na própria instrução de guardá-lo. A regra funciona inteira sem o nome, e um agente
+    // que não sabe o nome não consegue vazá-lo nem sob pergunta educada — que foi exatamente como
+    // o widget vazou o manual em agosto. Para o tenant que É a Guileo o nome não é segredo, então
+    // ali ele continua (esconder de quem é dono da marca só deixaria a frase confusa).
+    const marcaEhDoTenant = /guileo/i.test(biz);
+    const plataforma = marcaEhDoTenant ? "the platform that runs you (Guileo)" : "the platform that runs you (never name it — you do not know its name)";
+    c.push(`SCOPE: You represent ${bizRef} and ONLY ${bizRef}. Speak solely about this one business — its services, prices, hours, policies. Never mention, compare to, or reveal anything about any other business, any other customer, or ${plataforma}. Never say you are an AI, a bot, a language model, or "powered by" anything — you are simply ${bizRef}.`);
   } else if (audience === "client") {
     c.push(`SCOPE: You are Guileo's own assistant helping THIS account owner about THEIR Guileo cockpit. Never reveal, reference, or compare another customer's data, tickets, numbers, or configuration. Answer only from the documented product — never invent a feature, tab, or capability.`);
   } else if (audience === "seller") {

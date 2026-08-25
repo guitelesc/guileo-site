@@ -8,7 +8,7 @@
 // re-applying the current voice + prompt so an existing agent picks up the latest voice on any sync.
 // Never throws — returns { ok, agent_id, step } so callers can surface the exact outcome.
 import { emitFailure } from "./failure.js";
-import { frasefalada } from "./pronuncia.js";
+import { frasefalada, blocoDePronuncia } from "./pronuncia.js";
 import { guardSystemPrompt } from "./guiConstitution.js";
 // O MOTOR DE AGENTE: as lições de ligações reais + a versão que a varredura compara para saber
 // quem ficou para trás. Lição nova → sobe VERSAO lá → /api/agent-evolve atualiza a frota inteira.
@@ -289,7 +289,20 @@ the carrier and risks the whole account, not just one campaign.
   ].filter(Boolean).join("\n\n");
   // Safety floor: the voice Gui speaks AS the business (strictest surface). One constitution, shared
   // with every other agent — change a rule in guiConstitution.js and this voice prompt changes too.
-  const guardedPrompt = guardSystemPrompt(prompt, { audience: "public", asBusiness: true, business: biz, hasPriceList: !!priceList });
+  // ── A PRONÚNCIA VALE A LIGAÇÃO INTEIRA, não só o "alô" ──────────────────────────────────────
+  // `frasefalada` (abaixo) corrige a SAUDAÇÃO. Sozinha, ela produzia um defeito estranho: a agente
+  // cumprimentava certo e errava o nome da empresa em todas as outras frases da mesma ligação — o
+  // que soa pior que errar sempre, porque parece que ela esqueceu no meio da conversa.
+  // Aqui vai a INSTRUÇÃO, não a reescrita: o prompt contém a grafia oficial em lugares que NÃO são
+  // falados (nomes de ferramenta, e-mail, chaves), e passar regex por cima quebraria esses. Só
+  // entram os nomes que mudam NESTE idioma — em português é uma linha.
+  // Todos os idiomas de uma vez — a agente troca no meio da ligação, então a regra tem que valer
+  // em qualquer momento, não só no idioma com que ela nasceu.
+  // A marca só entra quando o negócio É a Guileo — para todo cliente, ela fica de fora (ver o
+  // comentário em pronuncia.js: no white-label a palavra não pode nem existir no prompt).
+  const pron = blocoDePronuncia(["en", "pt", "es"], { marcaPropria: /guileo/i.test(String(biz || "")) });
+  const promptComPronuncia = pron ? `${prompt}\n\n${pron}` : prompt;
+  const guardedPrompt = guardSystemPrompt(promptComPronuncia, { audience: "public", asBusiness: true, business: biz, hasPriceList: !!priceList });
   // SAUDAÇÃO — a primeira frase decide se a pessoa ouve uma RECEPCIONISTA ou um sistema.
   // "How can I help?" é o padrão de call center: eficiente e gelado. "How may I take care of
   // you today?" é concierge — mesma duração, mundo diferente. O nome do NEGÓCIO vem primeiro

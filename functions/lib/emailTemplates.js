@@ -3666,6 +3666,71 @@ export function websiteUpgradeEmail({
 }
 
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ACHADO — o e-mail curto para o prospect cujo site NÃO precisa ser refeito.
+// ═════════════════════════════════════════════════════════════════════════════
+// Nasceu do Melani General Contractor (24/08): 5,0★ com 103 avaliações e um site
+// genuinamente bom — páginas por bairro, schema com endereço, horário e áreas.
+// Reconstruir ali seria movimento lateral vendido como upgrade, e o dono percebe.
+// O que sangra é outra coisa: TRÊS números de telefone diferentes entre a página, o
+// dado estruturado e o perfil do Google — num negócio que só recebe lead por ligação.
+//
+// Então o motor precisa desta segunda saída: entregar o ACHADO, com a evidência, sem
+// oferecer o que ele não precisa. Um achado verdadeiro compra mais atenção que uma
+// oferta genérica — e é a única coisa que a gente pode dar antes de ele pagar nada.
+// Estrutura: o achado (com a prova) → o que isso custa → um pedido só.
+export function achadoEmail({
+  name = "", business = "your business", lang = "en",
+  achados = [],           // [{ t, evidencia, custo }]
+  peca = "", pecaSub = "", assinatura = "",
+} = {}) {
+  const bizRaw = String(business);
+  business = esc(business);
+  const _n = esc(name).trim();
+  const t = lang === "pt" ? {
+    subject: `${_n ? `${_n}, ` : ""}achei três coisas no site do ${bizRaw}`,
+    pre: "Nada pra instalar e nada pra assinar — é só o que eu medi.",
+    eyebrow: "Guileo · o que eu encontrei",
+    h1: `${_n ? `${_n}, ` : ""}olhei o site do ${business} hoje`,
+    intro: "Não é proposta. Eu testei algumas coisas do lado de fora, como um cliente faria, e três delas me pareceram valer um e-mail.",
+    achadosT: "O que eu encontrei",
+    provaL: "Como eu vi",
+    custoL: "O que isso custa",
+    foot: "Se algum ponto estiver errado, me diz que eu corrijo — testei tudo hoje, mas prefiro estar errado a te passar informação torta.",
+  } : {
+    subject: `${_n ? `${_n}, ` : ""}three things I found on the ${bizRaw} site`,
+    pre: "Nothing to install and nothing to sign — just what I measured.",
+    eyebrow: "Guileo · what I found",
+    h1: `${_n ? `${_n}, ` : ""}I looked at the ${business} site today`,
+    intro: "This is not a pitch. I tested a few things from the outside, the way a customer would, and three of them seemed worth an email.",
+    achadosT: "What I found",
+    provaL: "How I saw it",
+    custoL: "What it costs you",
+    foot: "If any of this is wrong, tell me and I'll correct it — I checked everything today, but I would rather be wrong than hand you bad information.",
+  };
+  const lista = (achados || []).map((a, i) => `
+    <div style="margin-top:${i ? "16px" : "10px"};border:1px solid ${B.line};border-radius:16px;background:${B.panel};padding:16px;">
+      <div style="color:${B.ink2};font-size:16.5px;font-weight:800;line-height:1.35;">${esc(a.t || "")}</div>
+      ${a.evidencia ? `<div style="margin-top:9px;font-size:13px;color:${B.muted};line-height:1.6;">
+        <span style="color:${B.gold};font-weight:700;">${t.provaL}:</span> ${esc(a.evidencia)}</div>` : ""}
+      ${a.custo ? `<div style="margin-top:7px;font-size:13.5px;color:${B.ink};line-height:1.6;">
+        <span style="color:${B.gold};font-weight:700;">${t.custoL}:</span> ${esc(a.custo)}</div>` : ""}
+    </div>`).join("");
+  const body = `
+  <div style="font-size:25px;line-height:1.22;color:${B.ink2};font-weight:700;">${t.h1}</div>
+  <div style="font-size:15.5px;color:${B.ink2};line-height:1.7;margin-top:12px;">${t.intro}</div>
+  <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
+  <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.gold};font-weight:800;">${t.achadosT}</div>
+  ${lista}
+  ${peca ? `<div style="margin-top:24px;border:2px solid ${B.green};border-radius:16px;background:${B.green}14;padding:16px 18px;">
+      <div style="color:#ffffff;font-size:17px;font-weight:800;line-height:1.4;">${esc(peca)}</div>
+      ${pecaSub ? `<div style="margin-top:7px;font-size:14px;color:${B.ink};line-height:1.65;">${esc(pecaSub)}</div>` : ""}
+    </div>` : ""}
+  ${assinatura ? `<div style="margin-top:18px;font-size:14.5px;color:${B.ink};line-height:1.7;">${esc(assinatura)}</div>` : ""}
+  <div style="font-size:12.5px;color:${B.muted};margin-top:22px;line-height:1.65;">${t.foot}</div>`;
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang, canais: true }) };
+}
+
 // ── MOTOR DE ORÇAMENTO — o orçamento na mão do cliente do cliente ───────────────────────────────
 // Sai na marca do NEGÓCIO (logo/cor dele), nunca na da Guileo: quem manda o orçamento é o
 // encanador, não a plataforma. Backend: db/quote_engine.sql · endpoint: functions/api/orcamento.js.
