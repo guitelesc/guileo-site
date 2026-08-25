@@ -17,7 +17,8 @@ const REGISTRY = {
   "astoria-plumbers": lazy(() => import("../novo/AstoriaPlumbers.jsx")),
   "queens-plumber": lazy(() => import("../novo/QueensPlumber.jsx")),
   "sideris-plumbing": lazy(() => import("../novo/SiderisPlumbing.jsx")),
-  "sr-general": lazy(() => import("../novo/SRGeneral.jsx")), // PROSPECT REAL — DOB certified, brownstone, e o unico JSON-LD deles esta SEM @type // PROSPECT REAL — desde 1963, 5 depoimentos publicados e ZERO dado estruturado // PROSPECT REAL — queensnyplumber.com e um app Lovable inacabado (Google so ve a casca) // PROSPECT REAL — astoriaplumbers.nyc está FORA DO AR (525); ativos vieram do arquivo da web
+  "sr-general": lazy(() => import("../novo/SRGeneral.jsx")),
+  "penn-plaza-dental": lazy(() => import("../novo/PennPlazaDental.jsx")), // PROSPECT REAL — hero de BANCO DE IMAGEM vendendo "individualized care" // PROSPECT REAL — DOB certified, brownstone, e o unico JSON-LD deles esta SEM @type // PROSPECT REAL — desde 1963, 5 depoimentos publicados e ZERO dado estruturado // PROSPECT REAL — queensnyplumber.com e um app Lovable inacabado (Google so ve a casca) // PROSPECT REAL — astoriaplumbers.nyc está FORA DO AR (525); ativos vieram do arquivo da web
 };
 
 export default function Novo() {
@@ -55,6 +56,9 @@ export default function Novo() {
     // é a marca do cliente; o crédito da Guileo fica discreto no rodapé.
     // Mascote = o desentupidor do BORDADO deles, o mesmo da camisa da equipe.
     // Mascote = a fiada de tijolos da logo deles.
+    // Mascote = o dente-maca da logo deles.
+    "penn-plaza-dental": { business: "Penn Plaza Dental Center", label: "Ask Penn Plaza", accent: "#00319D", surface: "#0B1626", phone: "+12127360670",
+      mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00319D" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5.4c2.6-2.1 6.6-1 6.6 3.2 0 3.4-1.4 5-2 8.2-.4 2.1-2.2 2.3-2.6.3l-.7-3.3c-.2-1-1.4-1-1.6 0l-.7 3.3c-.4 2-2.2 1.8-2.6-.3-.6-3.2-2-4.8-2-8.2 0-4.2 4-5.3 6.6-3.2Z"/></svg> },
     "sr-general": { business: "SR General Construction", label: "Ask SR", accent: "#F5A623", surface: "#241C15", phone: "+17184507233",
       mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9h18M3 15h18M3 5h18M3 19h18M9 5v4M15 9v6M9 15v4"/></svg> },
     "sideris-plumbing": { business: "Sideris Plumbing & Heating", label: "Ask Sideris", accent: "#EB1F39", surface: "#1B2450", phone: "+17186261836",

@@ -147,6 +147,7 @@ const SITE_RECONSTRUIDO = {
   "queensnyplumber.com": "queens-plumber",
   "siderisplumbingandheating.com": "sideris-plumbing",
   "srgeneralconstructionnyc.com": "sr-general",
+  "pennplazadental.com": "penn-plaza-dental",
 };
 const siteNovoDe = (site) => {
   const d = String(site || "").replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0].toLowerCase();

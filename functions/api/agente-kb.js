@@ -21,6 +21,7 @@ import { svcJson } from "../lib/sb.js";
 import { kbSincronizar, acharDoc } from "../lib/agentKB.js";
 import { factsBlock } from "../lib/productFacts.js";
 import { buildConversationConfig } from "../lib/provision.js";
+import { verificarSeguroParaCliente } from "../lib/kbCliente.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const dinheiro = (c) => `$${(Number(c || 0) / 100).toFixed(2).replace(/\.00$/, "")}`;
@@ -181,6 +182,39 @@ export async function onRequestPost({ request, env }) {
       }
       const r = await kbSincronizar(env, { agentId: alvo, camadas: [{ nome, texto }] });
       return json({ acao: "vertical", vertical: vert, ...r });
+    }
+
+    // ── PLAYBOOK EM LINGUAGEM DE NEGÓCIO (o que pode ir para agente de CLIENTE) ───────────────
+    // Documento separado do playbook interno de propósito: são públicos diferentes. O interno diz
+    // o que a PLATAFORMA faz; este diz o que a RECEPÇÃO daquele ramo precisa saber. Nome próprio
+    // (`kb-{vertical}`) para nunca ser confundido com `playbook-{vertical}` na hora de anexar —
+    // trocar os dois seria pôr a nossa especificação na boca da cliente do salão.
+    if (b.acao === "vertical-cliente") {
+      const vert = (b.vertical || "").toString().trim().slice(0, 40);
+      const texto = (b.texto || "").toString();
+      if (!vert || !texto.trim()) return json({ error: "informe vertical e texto" }, 400);
+
+      // O PORTÃO. Recusa, não avisa: um KB vaza uma vez só e a confiança não volta.
+      const seguro = verificarSeguroParaCliente(texto);
+      if (!seguro.ok) {
+        return json({ ok: false, motivo: "este texto NÃO pode entrar no cérebro de um agente de cliente", achados: seguro.achados }, 422);
+      }
+
+      const nome = `kb-${vert}`;
+      if (simular) return json({ ok: true, simulado: true, nome, chars: texto.length, seguro: true, amostra: texto.slice(0, 600) });
+
+      const { kbUpsert, kbApagar, kbAnexar } = await import("../lib/agentKB.js");
+      const up = await kbUpsert(env, { nome, texto });
+      if (!up.ok) return json({ acao: "vertical-cliente", vertical: vert, ...up }, 502);
+
+      const alvo = (b.agente || "").toString();
+      if (!alvo) {
+        if (up.antigo) await kbApagar(env, up.antigo);
+        return json({ acao: "vertical-cliente", vertical: vert, ok: true, id: up.id, nome, chars: up.chars, anexado_em: null });
+      }
+      const anexo = await kbAnexar(env, { agentId: alvo, docs: [{ id: up.id, nome }] });
+      if (anexo.ok && up.antigo) await kbApagar(env, up.antigo);
+      return json({ acao: "vertical-cliente", vertical: vert, id: up.id, nome, chars: up.chars, agente: alvo, ...anexo });
     }
 
     // ── VER OS MOLDES (só leitura) ────────────────────────────────────────────────────────────
