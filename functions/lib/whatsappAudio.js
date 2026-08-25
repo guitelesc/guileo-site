@@ -73,3 +73,40 @@ export async function ouvirRecado(env, { mediaId, token, lang }) {
   if (!t.ok) return { ok: false, motivo: t.motivo, fala: recadoDeFalha(lang), tamanho: baixado.tamanho };
   return { ok: true, texto: t.texto, idioma: t.idioma, tamanho: baixado.tamanho };
 }
+
+
+// ── INSTAGRAM / MESSENGER ────────────────────────────────────────────────────────────────────
+// O direct entrega o anexo de um jeito DIFERENTE do WhatsApp: já vem uma URL pronta em
+// `attachments[].payload.url`, sem media_id e sem precisar de token. Por isso existe este segundo
+// caminho — tratar os dois como iguais seria escrever um código que falha na metade dos casos.
+export async function ouvirDeUrl(env, { url, lang }) {
+  if (!url) return { ok: false, motivo: "sem url do anexo", fala: recadoDeFalha(lang) };
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return { ok: false, motivo: `download falhou: HTTP ${r.status}`, fala: recadoDeFalha(lang) };
+    const buf = await r.arrayBuffer();
+    if (!buf.byteLength) return { ok: false, motivo: "arquivo vazio", fala: recadoDeFalha(lang) };
+    if (buf.byteLength > TETO_BYTES) return { ok: false, motivo: `áudio grande demais (${Math.round(buf.byteLength / 1024)}KB)`, fala: recadoDeFalha(lang) };
+    const t = await transcrever(env, buf, r.headers.get("content-type") || "audio/mp4");
+    if (!t.ok) return { ok: false, motivo: t.motivo, fala: recadoDeFalha(lang) };
+    return { ok: true, texto: t.texto, idioma: t.idioma, tamanho: buf.byteLength };
+  } catch (e) { return { ok: false, motivo: `rede: ${String(e).slice(0, 120)}`, fala: recadoDeFalha(lang) }; }
+}
+
+// O que dizer quando chega ANEXO QUE NÃO É ÁUDIO (foto, figurinha, vídeo, gif). Até 2026-08-25 o
+// webhook do direct fazia `if (!text) return` — silêncio absoluto. Quem manda uma foto do produto
+// e não recebe nada conclui que a conta está abandonada, e vai embora. Responder "não consigo ver,
+// me escreve" é pior que entender a foto e MUITO melhor que sumir.
+export function recadoDeAnexo(lang = "pt", tipo = "") {
+  const L = (lang || "pt").toString().slice(0, 2).toLowerCase();
+  const foto = tipo === "image";
+  if (L === "en") return foto
+    ? "Got your photo! I can't see images yet — could you tell me in words what you need?"
+    : "Got it! I can't open that one — could you type what you need?";
+  if (L === "es") return foto
+    ? "¡Recibí tu foto! Todavía no puedo ver imágenes — ¿me cuentas en palabras qué necesitas?"
+    : "¡Recibido! No puedo abrir eso — ¿me escribes qué necesitas?";
+  return foto
+    ? "Recebi sua foto! Ainda não consigo ver imagens — me conta em palavras o que você precisa?"
+    : "Recebi! Não consigo abrir esse arquivo — me escreve o que você precisa?";
+}

@@ -55,6 +55,7 @@ export const TXT = {
     premPerdidasDecl: (ligSem, lig30, fe, ab, fonte, p) => `${ligSem} ligações por semana INFORMADAS POR VOCÊ (≈${lig30}/mês) × (${fe}h fechadas ÷ ${ab}h abertas, ${fonte}) = ~${p}/mês caindo na caixa postal sem atendimento 24/7. ⚠️ Parte do que VOCÊ declarou — não foi medido na sua linha. Ligando a linha Guileo, em 30 dias este número deixa de ser declarado e passa a ser medido.`,
     premReceitaDecl: (p, t, r) => `${p} ligações perdidas estimadas/mês × premissa de 1 em 3 ligações virando agendamento × ticket médio de ${t} INFORMADO POR VOCÊ = ~${r}/mês em risco. ⚠️ Duas entradas declaradas por você (volume e ticket) e uma taxa de conversão assumida — nenhuma das três medida por nós ainda.`,
     naoAbriu: (rot, why) => `${rot} — o site não abriu para leitura (${why})`,
+    siteQuebrado: (rot, why) => `${rot} — o site do negócio NÃO ABRE para ninguém (${why})`,
     naoMedido: (t) => `— não medido: ${t}`,
     rot: {
       ssl: "SSL", velocidade: "velocidade", titulo: "título", mobile: "adaptação ao celular",
@@ -229,6 +230,7 @@ export const TXT = {
     premPerdidasDecl: (ligSem, lig30, fe, ab, fonte, p) => `${ligSem} calls a week YOU REPORTED (≈${lig30}/month) × (${fe}h closed ÷ ${ab}h open, ${fonte}) = ~${p}/month hitting voicemail without 24/7 answering. ⚠️ This starts from what YOU declared — it was not measured on your line. Turn the Guileo line on and in 30 days this stops being declared and becomes measured.`,
     premReceitaDecl: (p, t, r) => `${p} estimated missed calls/month × an assumption of 1 in 3 calls becoming a booking × an average ticket of ${t} YOU REPORTED = ~${r}/month at risk. ⚠️ Two inputs declared by you (volume and ticket) and one assumed conversion rate — none of the three measured by us yet.`,
     naoAbriu: (rot, why) => `${rot} — the site did not open for reading (${why})`,
+    siteQuebrado: (rot, why) => `${rot} — the business website DOES NOT OPEN for anyone (${why})`,
     naoMedido: (t) => `— not measured: ${t}`,
     rot: {
       ssl: "SSL", velocidade: "speed", titulo: "page title", mobile: "mobile adaptation",
@@ -399,6 +401,7 @@ export const TXT = {
     premPerdidasDecl: (ligSem, lig30, fe, ab, fonte, p) => `${ligSem} llamadas por semana INFORMADAS POR TI (≈${lig30}/mes) × (${fe}h cerradas ÷ ${ab}h abiertas, ${fonte}) = ~${p}/mes cayendo al buzón sin atención 24/7. ⚠️ Parte de lo que TÚ declaraste — no fue medido en tu línea. Activando la línea Guileo, en 30 días este número deja de ser declarado y pasa a ser medido.`,
     premReceitaDecl: (p, t, r) => `${p} llamadas perdidas estimadas/mes × premisa de 1 de cada 3 llamadas convirtiéndose en reserva × ticket promedio de ${t} INFORMADO POR TI = ~${r}/mes en riesgo. ⚠️ Dos entradas declaradas por ti (volumen y ticket) y una tasa de conversión asumida — ninguna de las tres medida por nosotros todavía.`,
     naoAbriu: (rot, why) => `${rot} — el sitio no abrió para lectura (${why})`,
+    siteQuebrado: (rot, why) => `${rot} — el sitio del negocio NO ABRE para nadie (${why})`,
     naoMedido: (t) => `— no medido: ${t}`,
     rot: {
       ssl: "SSL", velocidade: "velocidad", titulo: "título de la página", mobile: "adaptación al celular",
@@ -837,8 +840,20 @@ export async function avaliarNegocio({ site, env = null, negocio = "", interno =
       : { ok: false, motivo: "sem endereço no site nem no Google — vizinho de verdade exige endereço" };
   }
 
-  // helper: verificação que depende do site ter aberto
-  const naoLeu = (id) => chk(id, null, T.naoAbriu(T.rot[id] || id, why));
+  /* 🚨 SITE QUEBRADO NÃO É "NÃO CONSEGUI MEDIR" — É A MEDIÇÃO MAIS CONCLUSIVA QUE EXISTE (24/08).
+     O Astoria Plumbers (4,7★, 68 avaliações) tem o `.nyc` devolvendo 404 e o `.com` estacionado:
+     quem digita o endereço dele hoje não vê nada. O motor arquivava isso como não-medido, o
+     aspecto saía `null`, a ficha do vendedor ficava SEM DOR E SEM PITCH — e o melhor prospect da
+     carteira virava o mais silencioso. A ausência de medição ERA o achado.
+     A distinção é entre o site estar quebrado e ELE não falar com a gente:
+       · 404 / DNS morto / 525 (origem sem TLS) → falha DELE, e o visitante sofre igual → 0
+       · 403 / CAPTCHA / timeout                → bloqueio a NÓS, o visitante entra normal → null
+     Chamar bloqueio de defeito seria acusar o negócio de um problema que ele não tem. */
+  const QUEBRADO = /\b(404|410|5[0-9][0-9]|dns|nxdomain|nao-resolveu|não-resolveu)\b/i;
+  const siteQuebrado = !siteLeu && QUEBRADO.test(String(got.why || ""));
+  const naoLeu = (id) => (siteQuebrado
+    ? chk(id, false, T.siteQuebrado ? T.siteQuebrado(T.rot[id] || id, why) : `${T.rot[id] || id} — ${why}`)
+    : chk(id, null, T.naoAbriu(T.rot[id] || id, why)));
   const noSite = (id, re, simTxt, naoTxt) =>
     siteLeu ? chk(id, re.test(html), re.test(html) ? simTxt : naoTxt) : naoLeu(id);
 

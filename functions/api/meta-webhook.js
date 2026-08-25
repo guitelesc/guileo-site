@@ -30,6 +30,7 @@
 // Per-tenant page access tokens live in client_integrations (provider='meta') via db/meta_integration.sql.
 // ═════════════════════════════════════════════════════════════════════════════
 import { json, safeEq } from "../lib/guard.js";
+import { ouvirDeUrl, recadoDeAnexo } from "../lib/whatsappAudio.js";
 import { svcRpc } from "../lib/sb.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -206,8 +207,27 @@ async function processMessagingEvent(env, origin, object, pageId, ev) {
     // the RECEIVING business id identifies the tenant: recipient.id for a user→page DM, else entry id.
     const businessPageId = recipientId || String(pageId || "");
     if (!senderId || !businessPageId || senderId === businessPageId) return;
-    const text = (msg.text || "").toString().trim();
-    if (!text) return; // attachments-only / stickers → nothing to answer yet
+    let text = (msg.text || "").toString().trim();
+
+    // ── ANEXO NO DIRECT (2026-08-25) ──────────────────────────────────────────────────────────
+    // Até hoje esta função fazia `if (!text) return` — silêncio ABSOLUTO para áudio, foto,
+    // figurinha e vídeo. Quem manda um áudio no direct e não recebe nada conclui que a conta está
+    // abandonada e vai embora; e nem o dono via que aconteceu. Agora: áudio a gente OUVE, e o
+    // resto ganha uma resposta honesta em vez de sumiço.
+    const anexos = Array.isArray(msg.attachments) ? msg.attachments : [];
+    let anexoSemTexto = "";
+    if (!text && anexos.length) {
+      const audio = anexos.find((a) => a && (a.type === "audio" || a.type === "voice"));
+      if (audio) {
+        const ouvido = await ouvirDeUrl(env, { url: audio.payload && audio.payload.url, lang: "" });
+        if (ouvido.ok) text = ouvido.texto;
+        else anexoSemTexto = `áudio não transcrito: ${ouvido.motivo}`;
+      } else {
+        anexoSemTexto = `anexo ${anexos[0].type || "desconhecido"}`;
+      }
+    }
+    // Sem texto E sem anexo (reação, sticker vazio, evento estranho) → nada a responder, de fato.
+    if (!text && !anexoSemTexto) return;
 
     // MULTI-TENANT: unknown page = IGNORE. Never answer as the wrong tenant.
     const tenant = await tenantForPage(env, businessPageId);
@@ -218,6 +238,19 @@ async function processMessagingEvent(env, origin, object, pageId, ev) {
 
     const channel = object === "instagram" ? "Instagram" : "Messenger";
     const fromName = (ev.sender && ev.sender.name) ? String(ev.sender.name) : "";
+
+    // Anexo que não virou texto NÃO vai para o cérebro: pergunta vazia faz o modelo responder um
+    // não-sequitur, que é pior que assumir a limitação. Responde, registra o motivo REAL, e para.
+    if (anexoSemTexto) {
+      const tipo = anexos[0] && anexos[0].type;
+      const fala = recadoDeAnexo(tenant.lang, tipo);
+      await ingestInbound(env, tenant.client_email, channel, fromName, `[${anexoSemTexto}]`, senderId);
+      const entregou = await sendMetaReply(tenant.page_access_token, senderId, fala);
+      await ingestInbound(env, tenant.client_email, channel, "",
+        entregou ? `🤖 Gui pediu texto (${anexoSemTexto})` : `⚠️ NÃO entregue: pedido de texto após ${anexoSemTexto}`, senderId);
+      return;
+    }
+
     await ingestInbound(env, tenant.client_email, channel, fromName, text, senderId);
     await crmUpsert(env, tenant.client_email, senderId, fromName, channel.toLowerCase()); // CRM captures the customer instantly
 
