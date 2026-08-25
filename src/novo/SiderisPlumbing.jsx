@@ -113,6 +113,7 @@ function useReveal() {
 export default function SiderisPlumbing() {
   const [form, setForm] = useState({ nome: "", tel: "", servico: "", oque: "" });
   const [enviado, setEnviado] = useState(false);
+  const [erroEnvio, setErroEnvio] = useState("");
   const [heroRef, heroOk] = useReveal();
   /* O DADO VIVO desta página: os anos de casa, contados a partir de 1963 pelo relógio de AGORA.
      Não é enfeite — é o argumento inteiro deles, e um número que só cresce sozinho. Calculado na
@@ -143,14 +144,24 @@ export default function SiderisPlumbing() {
 
   const enviar = useCallback(async (e) => {
     e.preventDefault();
+    /* 🚨 O FORMULÁRIO NÃO PODE DIZER "RECEBIDO" SEM TER GRAVADO (24/08). A versão anterior
+       postava em /api/marketplace-leads — que exige um tenant com chave, e prospect não é
+       cliente: 401 em toda submissão. O `catch` engolia e a tela dizia "Request received".
+       Era exatamente o defeito que eu tinha acabado de PROVAR no formulário do SR General:
+       sucesso mostrado sobre o vazio. Agora a resposta decide, e falha aparece na tela. */
+    setErroEnvio("");
+    let ok;
     try {
-      await fetch("/api/marketplace-leads", {
+      const r = await fetch("/api/lead-vitrine", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fonte: "novo/sideris-plumbing", nome: form.nome, telefone: form.tel,
-          mensagem: `[${form.servico || "—"}] ${form.oque}`, negocio: "Sideris Plumbing & Heating" }),
+        body: JSON.stringify({ slug: "sideris-plumbing", negocio: "Sideris Plumbing & Heating", nome: form.nome,
+          telefone: form.tel, mensagem: `[${form.servico || "—"}] ${form.oque}` }),
       });
-    } catch { /* sem rede: o telefone na tela é o plano B honesto */ }
-    setEnviado(true);
+      const d = await r.json().catch(() => null);
+      ok = !!(d && d.ok);
+    } catch { ok = false; }
+    if (ok) setEnviado(true);
+    else setErroEnvio("Couldn't send that — please call us, the phone always works.");
   }, [form]);
 
   return (
@@ -297,7 +308,10 @@ export default function SiderisPlumbing() {
                   placeholder="What is happening? (leak, no heat, inspection due…)"
                   className="rounded-2xl border px-4 py-3 text-[15px] outline-none sm:col-span-2"
                   style={{ borderColor: "var(--borda)" }} />
-                <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+                                  {erroEnvio && (
+                    <p className="sm:col-span-2 text-[13.5px] font-semibold" style={{ color: "var(--vermelho)" }}>{erroEnvio}</p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
                   <button type="submit" className="sd-b sd-b-call">Send the request</button>
                   <a href={`tel:${TEL}`} className="text-[13.5px] font-semibold" style={{ color: "var(--vermelho)" }}>
                     or call {TEL_FMT} →

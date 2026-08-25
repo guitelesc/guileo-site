@@ -126,6 +126,7 @@ export default function QueensPlumber() {
   const [aberto, setAberto] = useState(bairroInicial);
   const [form, setForm] = useState(() => ({ nome: "", tel: "", oque: "" }));
   const [enviado, setEnviado] = useState(false);
+  const [erroEnvio, setErroEnvio] = useState("");
   const [heroRef, heroOk] = useReveal();
 
   useEffect(() => {
@@ -151,14 +152,24 @@ export default function QueensPlumber() {
 
   const enviar = useCallback(async (e) => {
     e.preventDefault();
+    /* 🚨 O FORMULÁRIO NÃO PODE DIZER "RECEBIDO" SEM TER GRAVADO (24/08). A versão anterior
+       postava em /api/marketplace-leads — que exige um tenant com chave, e prospect não é
+       cliente: 401 em toda submissão. O `catch` engolia e a tela dizia "Request received".
+       Era exatamente o defeito que eu tinha acabado de PROVAR no formulário do SR General:
+       sucesso mostrado sobre o vazio. Agora a resposta decide, e falha aparece na tela. */
+    setErroEnvio("");
+    let ok;
     try {
-      await fetch("/api/marketplace-leads", {
+      const r = await fetch("/api/lead-vitrine", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fonte: "novo/queens-plumber", nome: form.nome, telefone: form.tel,
-          mensagem: `[${aberto}] ${form.oque}`, negocio: "Queens Plumber" }),
+        body: JSON.stringify({ slug: "queens-plumber", negocio: "Queens Plumber", nome: form.nome,
+          telefone: form.tel, mensagem: `[${aberto}] ${form.oque}` }),
       });
-    } catch { /* sem rede: o telefone na tela é o plano B honesto */ }
-    setEnviado(true);
+      const d = await r.json().catch(() => null);
+      ok = !!(d && d.ok);
+    } catch { ok = false; }
+    if (ok) setEnviado(true);
+    else setErroEnvio("Couldn't send that — please call us, the phone always works.");
   }, [form, aberto]);
 
   return (
@@ -297,7 +308,10 @@ export default function QueensPlumber() {
                   placeholder="What is happening? (leak, blocked drain, no hot water…)"
                   className="rounded-2xl px-4 py-3 text-[15px] outline-none sm:col-span-2"
                   style={{ background: "rgba(255,255,255,.05)", border: "1px solid var(--line)", color: "var(--ivory)" }} />
-                <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+                                  {erroEnvio && (
+                    <p className="sm:col-span-2 text-[13.5px] font-semibold" style={{ color: "var(--laranja)" }}>{erroEnvio}</p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
                   <button type="submit" className="qp-b qp-b-2">Send the request</button>
                   <a href={`tel:${TEL}`} className="text-[13.5px] font-semibold" style={{ color: "var(--laranja)" }}>
                     or call {TEL_FMT} →
