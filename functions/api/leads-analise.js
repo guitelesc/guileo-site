@@ -24,7 +24,12 @@ export async function onRequestPost({ request, env }) {
     const alvo = (b.id || "").toString().trim();
     const nota = (b.nota || "").toString().slice(0, 1500);
     if (!alvo || !vendedor) return json({ ok: false, error: "id e seller obrigatorios" }, 400);
-    const r = await svcRpc(env, "sp_upsert", { p_secret: ING, p_seller_email: vendedor, p_id: alvo, p_note: nota });
+    // O e-mail tambem: o do CRM (hello@astoriaplumbers.nyc) vive no dominio cujo site esta
+    // quebrado; os diretorios publicam outro. Depois do bounce do Nonstop, endereco nao
+    // confirmado nao vale envio — corrigir o cadastro faz parte do trabalho, nao e detalhe.
+    const args = { p_secret: ING, p_seller_email: vendedor, p_id: alvo, p_note: nota };
+    if (b.email) args.p_email = String(b.email).slice(0, 200);
+    const r = await svcRpc(env, "sp_upsert", args);
     if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 502);
     const row = await r.json().catch(() => null);
     // Sem a linha de volta não houve gravação — "ok" sem o registro é promessa sem lastro.

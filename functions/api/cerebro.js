@@ -14,6 +14,7 @@
 // ⚠️ Gasta o MÍNIMO possível: um "ping" com teto de 5 tokens. Se o saldo acabou, nem isso passa —
 // e é exatamente essa recusa que a gente quer ler.
 import { json, sameOrigin, rateLimited } from "../lib/guard.js";
+import { falarComAgente } from "../lib/chatEleven.js";
 import { askClaude, MODEL_CHAIN } from "../lib/guiBrain.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -31,6 +32,22 @@ export async function onRequestPost(context) {
       body: JSON.stringify({ p_token: (b.token || "").toString().slice(0, 200), p_email: "" }),
     });
     if (!gate.ok) return json({ error: "unauthorized" }, 401);
+
+    // ── O SEGUNDO CÉREBRO (Chat Mode da ElevenLabs) ─────────────────────────────────────────────
+    // Este endpoint respondia "por que a IA calou?" olhando UMA conta só. Desde 25/08 existe um
+    // segundo cérebro — o próprio agente de voz atendendo por texto — e um diagnóstico que ignora
+    // metade da verdade manda consertar o que talvez nem precise. Consulta explícita (`agente`),
+    // porque abrir socket em toda checagem de painel seria cobrar caro por uma pergunta barata.
+    if (b.agente) {
+      const t1 = Date.now();
+      const r = await falarComAgente(env, {
+        agentId: String(b.agente).slice(0, 80),
+        texto: (b.texto || "Hi! What do you do and how much does it cost?").toString().slice(0, 500),
+        vars: { name: "", business: "", need: "", lang: (b.lang || "en").toString().slice(0, 5), canal: "texto", contato: "" },
+        tetoMs: 25000,
+      });
+      return json({ cerebro: "elevenlabs", ms: Date.now() - t1, ...r });
+    }
 
     const diag = [];
     const t0 = Date.now();

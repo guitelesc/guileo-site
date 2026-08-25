@@ -142,6 +142,8 @@ const PITCH = {
    é verdadeiro (mede, mostra e aponta o relatório). Chave = slug em src/pages/Novo.jsx. */
 const SITE_RECONSTRUIDO = {
   "nonstopplumbers.com": "nonstop-plumbers",
+  "astoriaplumbers.nyc": "astoria-plumbers",
+  "astoriaplumbers.com": "astoria-plumbers",   // o .com deles redireciona pra uma pagina estacionada
 };
 const siteNovoDe = (site) => {
   const d = String(site || "").replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0].toLowerCase();
