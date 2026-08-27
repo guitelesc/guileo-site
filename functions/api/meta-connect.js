@@ -7,6 +7,7 @@
 // Gate: mesmo blitz_stats das outras admin (onboard-client/company-finance). O token da página é
 // COLADO pelo dono (Claude nunca digita segredo) e vai direto pro meta_creds_store (INGEST-gated).
 import { json, sameOrigin, rateLimited } from "../lib/guard.js";
+import { svcJson } from "../lib/sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -38,21 +39,225 @@ export async function onRequestPost(context) {
   try {
     if (!sameOrigin(request)) return json({ error: "forbidden" }, 403);
     if (await rateLimited(request, env, "meta-connect", 30)) return json({ error: "too many requests" }, 429);
-    const b = await request.json().catch(() => ({}));
+    // ── ACEITA JSON **OU** FORMULÁRIO ────────────────────────────────────────────────────────
+    // POR QUE (25/08): a linha com JSON dentro de aspas simples travou o terminal do Luis DUAS
+    // vezes em `quote>` — aspa dentro de aspa, comando longo, colagem duplicada. Um contrato que
+    // só aceita JSON transfere para quem chama um problema de citação que é nosso de resolver.
+    // Com formulário, `curl -d action=auto -d user_token=EAA...` é UMA linha, sem aspa nenhuma,
+    // impossível de quebrar na colagem.
+    const ct = (request.headers.get("content-type") || "").toLowerCase();
+    let b = {};
+    if (ct.includes("application/x-www-form-urlencoded")) {
+      const f = await request.formData().catch(() => null);
+      if (f) for (const [k, v] of f.entries()) b[k] = typeof v === "string" ? v : "";
+      // Formulário não tem booleano: "true"/"1" viram true, para `gravar` funcionar igual.
+      if (b.gravar === "true" || b.gravar === "1") b.gravar = true;
+    } else {
+      b = await request.json().catch(() => ({}));
+    }
     const ING = env.INGEST_SECRET || "";
     // ADMIN gate (mesma RPC do onboard-client). Token errado → non-200 → 401.
     const gate = await rpc("blitz_stats", { p_token: s(b.token, 200), p_email: "" });
     if (!gate.ok) return json({ error: "unauthorized" }, 401);
 
     const email = s(b.email, 160).toLowerCase();
-    if (!email.includes("@")) return json({ error: "email inválido" }, 400);
     const action = (b.action || "connect").toString();
+    // ⚠️ `auto` NÃO é sobre um tenant: ele lê as Páginas da conta inteira e grava pelo `mapa`.
+    // Exigir e-mail aqui fazia a chamada morrer com "email inválido" antes de qualquer trabalho —
+    // uma validação copiada das outras ações que não pertence a esta.
+    if (action !== "auto" && !email.includes("@")) return json({ error: "email inválido" }, 400);
 
     if (action === "status") {
       const r = await rpc("meta_creds_get", { p_secret: ING, p_email: email }).catch(() => null);
       const t = r && r.ok ? await r.json().catch(() => null) : null;
       const tok = t && typeof t === "object" ? t : {};
-      return json({ ok: true, connected: !!(tok.page_id || tok.ig_id), page_id: tok.page_id || "", ig_id: tok.ig_id || "", business: tok.business_name || "" });
+      const guardado = !!(tok.page_id || tok.ig_id);
+
+      // ⚠️ "CONECTADO" PASSA A SIGNIFICAR "A META ACEITA", não "existe um token no nosso banco".
+      // Encontrado em 25/08: o painel dizia conectado para o Natura enquanto a Meta respondia
+      // «Error validating access token: the session has been invalidated because the user changed
+      // their password». Ou seja, a página estava MUDA e a tela dizia que estava no ar — a mesma
+      // doença do WhatsApp em agosto (chave presente ≠ chave viva). Regra da casa desde então:
+      // sinal de canal se pergunta ao PROVEDOR.
+      // TRÊS ESTADOS, nunca dois: vivo / morto (com o motivo da Meta) / não deu para checar.
+      let vivo = null, motivo = "";
+      if (guardado && tok.has_token && tok.page_id) {
+        try {
+          const tr = await svcJson(env, "meta_token_for_email", { p_secret: ING, p_email: email }).catch(() => null);
+          const tkn = (typeof tr === "string") ? tr : "";
+          if (!tkn) { vivo = false; motivo = "o token não está mais guardado"; }
+          else {
+            // /me com token de Página = a própria Página, e funciona com escopo mínimo. Ler
+            // `/{page_id}?fields=name` exigia escopo que estes tokens não têm e devolvia
+            // `(#100) Object does not exist` para conexão VIVA — vermelho falso.
+            const g = await fetch(`${GRAPH}/me?fields=id,name&access_token=${encodeURIComponent(tkn)}`);
+            const gj = await g.json().catch(() => null);
+            if (g.ok && gj && !gj.error) { vivo = true; motivo = gj.name ? `a Meta confirma: ${gj.name}` : "a Meta aceitou o token"; }
+            else { vivo = false; motivo = s((gj && gj.error && gj.error.message) || `a Meta recusou (HTTP ${g.status})`, 240); }
+          }
+        } catch { vivo = null; motivo = "não consegui falar com a Meta agora — isto NÃO é um ok"; }
+      } else if (guardado) { vivo = false; motivo = "página mapeada mas sem token guardado"; }
+
+      return json({
+        ok: true,
+        connected: vivo === true,          // só é conectado se a META disser que sim
+        guardado, vivo, motivo,
+        instagram_mapeado: !!tok.ig_id,    // sem isto, DM do Instagram não acha o dono
+        page_id: tok.page_id || "", ig_id: tok.ig_id || "", business: tok.business_name || "",
+      });
+    }
+
+    // ── auto: UM TOKEN DE USUÁRIO E O RESTO É NOSSO ─────────────────────────────────────────────
+    // POR QUE (25/08): o caminho manual tem seis passos e cada um tem uma armadilha. A pior: o
+    // token que o Explorer entrega por padrão dura 1-2 HORAS, e o nosso `connect` o RECUSA de
+    // propósito (token curto = página muda amanhã sem ninguém perceber). Trocar por um longo exige
+    // o APP SECRET — que mora aqui no servidor, não na mão do dono. Então o servidor faz:
+    //   1. troca o token de usuário CURTO por um LONGO (fb_exchange_token, com APP_ID+APP_SECRET);
+    //   2. lê `me/accounts` — os tokens de Página derivados de um usuário longo NÃO EXPIRAM;
+    //   3. traz junto o `instagram_business_account` de cada Página — é o `ig_id` que nunca foi
+    //      preenchido e sem o qual a DM do Instagram some sem rastro;
+    //   4. devolve a lista pronta. Guardar é o passo seguinte (`connect`), com o dono ciente.
+    // NUNCA devolve o token de usuário nem os de Página no corpo — só nomes, ids e um resumo.
+    if (action === "auto") {
+      const userToken = s(b.user_token, 600);
+      if (!userToken) return json({ ok: false, motivo: "cole o Token de Usuário do Explorer" }, 400);
+      if (!env.META_APP_ID || !env.META_APP_SECRET) return json({ ok: false, motivo: "META_APP_ID/META_APP_SECRET ausentes no ambiente" }, 200);
+
+      // 1) curto → longo. Se já for longo, a Meta devolve outro longo: a troca é idempotente.
+      const ex = await fetch(`${GRAPH}/oauth/access_token?grant_type=fb_exchange_token&client_id=${encodeURIComponent(env.META_APP_ID)}&client_secret=${encodeURIComponent(env.META_APP_SECRET)}&fb_exchange_token=${encodeURIComponent(userToken)}`);
+      const ej = await ex.json().catch(() => null);
+      if (!ex.ok || !ej || !ej.access_token) {
+        return json({ ok: false, motivo: "a Meta recusou trocar por um token longo", detalhe: s((ej && ej.error && ej.error.message) || `HTTP ${ex.status}`, 240) }, 200);
+      }
+      const longo = ej.access_token;
+
+      // 2+3) as Páginas, com o Instagram de cada uma.
+      const ac = await fetch(`${GRAPH}/me/accounts?fields=name,id,access_token,instagram_business_account{id,username,name}&limit=50&access_token=${encodeURIComponent(longo)}`);
+      const aj = await ac.json().catch(() => null);
+      if (!ac.ok || !aj || aj.error) {
+        return json({ ok: false, motivo: "a Meta recusou listar as Páginas", detalhe: s((aj && aj.error && aj.error.message) || `HTTP ${ac.status}`, 240),
+          dica: "o token precisa de pages_show_list (e instagram_basic para trazer o Instagram)" }, 200);
+      }
+      const paginas = (Array.isArray(aj.data) ? aj.data : []).map((p) => ({
+        page_id: p.id, nome: p.name || "",
+        tem_token: !!p.access_token,
+        instagram: p.instagram_business_account
+          ? { id: p.instagram_business_account.id, usuario: p.instagram_business_account.username || "", nome: p.instagram_business_account.name || "" }
+          : null,
+      }));
+
+      // 4) GUARDA, se pedido. Sem `gravar:true` isto é só um raio-x — ver antes de escrever é a
+      // diferença entre conectar e conectar a coisa certa no cliente certo.
+      // ── MAPA NOMEADO ────────────────────────────────────────────────────────────────────────
+      // `mapa=nossas` evita mandar um array de JSON na linha de comando — que foi exatamente o que
+      // travou o terminal. As empresas do Luis e suas Páginas (lidas da Meta em 25/08) ficam aqui,
+      // onde dá para conferir, em vez de serem redigitadas a cada vez. Empresa nova: uma linha.
+      const MAPA_NOSSAS = [
+        { page_id: "1077756798764895", email: "smart@guileoai.com" },   // Guileo AI
+        { page_id: "1088591857680829", email: "dr@medmundobr.com" },    // MED MUNDO BR
+        { page_id: "473513109188564", email: "visa@chigotravels.com" }, // Chigo Turismo e Negócios
+      ];
+      let mapa = Array.isArray(b.mapa) ? b.mapa : null;
+      if (!mapa && String(b.mapa || "") === "nossas") mapa = MAPA_NOSSAS;
+
+      let gravados = null;
+      if (b.gravar === true && Array.isArray(mapa)) {
+        gravados = [];
+        for (const m of mapa) {
+          const alvoEmail = s(m.email, 160).toLowerCase();
+          const p = (Array.isArray(aj.data) ? aj.data : []).find((x) => String(x.id) === String(m.page_id));
+          if (!alvoEmail.includes("@") || !p || !p.access_token) { gravados.push({ page_id: m.page_id, ok: false, motivo: "página não encontrada ou sem token" }); continue; }
+          const igId = p.instagram_business_account?.id || "";
+          const r = await rpc("meta_creds_store", { p_secret: ING, p_email: alvoEmail,
+            p_tokens: { page_id: String(p.id), ig_id: String(igId), page_access_token: p.access_token, business_name: p.name || "" } });
+          const okS = r.ok ? await r.json().catch(() => null) : null;
+          gravados.push({ page_id: p.id, nome: p.name, email: alvoEmail, ig_id: igId || null, ok: okS === true,
+            motivo: okS === true ? (igId ? "Página + Instagram mapeados ✓" : "Página mapeada (esta Página não tem Instagram ligado)") : "não gravou" });
+        }
+      }
+
+      return json({ ok: true, paginas, total: paginas.length, gravados,
+        recado: paginas.length ? "confira a lista e mande de novo com gravar=true e mapa=nossas" : "nenhuma Página — falta pages_show_list no token, ou esta conta não administra Páginas" });
+    }
+
+    // ── auditar: PERGUNTA À META de quem é a página, e descobre o Instagram sozinho ────────────
+    // POR QUE (25/08): a DM de Instagram nunca foi roteada — não por defeito de código, mas porque
+    // o `ig_id` nunca foi preenchido na conexão. E numa DM do Instagram o `recipient.id` é o ID do
+    // INSTAGRAM, não o da Página: sem essa linha no mapa, nada casa e a mensagem some em silêncio.
+    // Fazer o dono caçar esse número no painel da Meta é pedir para ele errar. A Meta sabe: basta
+    // perguntar `instagram_business_account` com o token que já está guardado.
+    // Também confronta MAPA × CREDENCIAL: o mapa pode apontar para um tenant que não tem token
+    // (foi o estado real encontrado hoje), e aí a mensagem cai no cliente errado, mudo.
+    // Só leitura — não escreve nada. Quem conserta é o `connect`, com o dono ciente.
+    if (action === "auditar") {
+      const r = await rpc("meta_creds_get", { p_secret: ING, p_email: email }).catch(() => null);
+      const t = (r && r.ok) ? await r.json().catch(() => null) : null;
+      const tok = (t && typeof t === "object") ? t : {};
+      const pageId = s(tok.page_id, 60);
+      // ⚠️ O TOKEN NÃO VEM DE `meta_creds_get` DE PROPÓSITO: aquela RPC devolve só `has_token`,
+      // porque o resultado dela vai para uma tela. Aqui o servidor precisa do token de verdade
+      // para PERGUNTAR À META — então usa a leitura server-only (`meta_token_for_email`, revogada
+      // de anon). O token é usado e descartado: ele nunca entra na resposta deste endpoint.
+      const tr = await svcJson(env, "meta_token_for_email", { p_secret: ING, p_email: email }).catch(() => null);
+      const token = (typeof tr === "string") ? tr : "";
+      if (!pageId || !token) return json({ ok: false, motivo: `${email} não tem página + token guardados (página: ${pageId ? "sim" : "não"}, token: ${token ? "sim" : "não"}) — conecte primeiro` }, 409);
+
+      // A FONTE É A META, não o nosso banco. Pergunta o nome da página e o Instagram ligado a ela.
+      const g = await fetch(`${GRAPH}/me?fields=id,name,instagram_business_account{id,username,name}&access_token=${encodeURIComponent(token)}`);
+      const gj = await g.json().catch(() => null);
+      if (!g.ok || !gj || gj.error) {
+        // ⚠️ NÃO USAR 502 AQUI. O Cloudflare SUBSTITUI o corpo de um 502 pela página de erro dele
+        // — a explicação que a gente escreveu com cuidado nunca chega em quem chamou. Foi o que
+        // aconteceu na primeira execução desta auditoria (e antes, no cadastro de cliente).
+        // Motivo que precisa ser LIDO viaja em 200 com `ok:false`, ou em 409.
+        return json({ ok: false, motivo: `a Meta recusou a leitura da página (HTTP ${g.status})`, detalhe: s((gj && gj.error && gj.error.message) || "", 220) }, 200);
+      }
+      const iba = gj.instagram_business_account || null;
+
+      // Quem o MAPA diz que é o dono deste id (pode não ser este email — é justamente o que caça).
+      const dono = await rpc("meta_tenant_for_page", { p_secret: ING, p_page_id: pageId }).catch(() => null);
+      const dj = (dono && dono.ok) ? await dono.json().catch(() => null) : null;
+
+      return json({
+        ok: true, email,
+        pagina: { id: pageId, nome: gj.name || "", segundo_a_meta: true },
+        instagram: iba ? { id: iba.id, usuario: iba.username || "", nome: iba.name || "" } : null,
+        ig_id_guardado: tok.ig_id || "",
+        // 🚨 os dois desencontros que fazem a DM sumir sem rastro:
+        falta_mapear_instagram: !!(iba && iba.id && String(tok.ig_id || "") !== String(iba.id)),
+        mapa_aponta_para: dj?.client_email || null,
+        mapa_diverge: !!(dj?.client_email && dj.client_email !== email),
+        recado: !iba ? "esta Página não tem conta do Instagram ligada — conecte o Instagram à Página no painel da Meta antes"
+          : (String(tok.ig_id || "") !== String(iba.id)
+            ? `o Instagram @${iba.username || iba.id} existe mas NÃO está mapeado — refaça o connect incluindo ig_id=${iba.id}`
+            : "Instagram mapeado ✓"),
+      });
+    }
+
+    // ── mapear_ig: liga o Instagram descoberto pela auditoria, SEM pedir o token de novo ────────
+    // A auditoria já perguntou à Meta qual é o `instagram_business_account` da Página. Obrigar o
+    // dono a gerar e colar o token outra vez só para gravar um número que nós já sabemos é
+    // convidar ao erro (é onde ele desiste, ou cola um token curto que morre amanhã).
+    // `meta_creds_store` MESCLA o jsonb (`tokens || excluded`), então mandar só o `ig_id` preserva
+    // page_id e token — e a própria RPC cria a linha `ig` no mapa, que é o que faltava para uma DM
+    // do Instagram achar o dono.
+    if (action === "mapear_ig") {
+      const ig_id = s(b.ig_id, 60);
+      if (!ig_id) return json({ ok: false, motivo: "informe o ig_id" }, 400);
+      const r0 = await rpc("meta_creds_get", { p_secret: ING, p_email: email }).catch(() => null);
+      const t0 = (r0 && r0.ok) ? await r0.json().catch(() => null) : null;
+      // Sem página conectada antes, mapear só o Instagram deixaria um mapa órfão (sem token para
+      // responder). Melhor recusar e mandar conectar a Página primeiro.
+      if (!t0 || !t0.page_id) return json({ ok: false, motivo: `${email} não tem Página conectada — conecte a Página primeiro, depois o Instagram` }, 409);
+      const r = await rpc("meta_creds_store", { p_secret: ING, p_email: email, p_tokens: { ig_id } });
+      const okStored = r.ok ? await r.json().catch(() => null) : null;
+      if (okStored !== true) return json({ ok: false, motivo: "não consegui gravar o ig_id" }, 200);
+      // CONFERE relendo — "gravou" sem reler é promessa sem lastro.
+      const r2 = await rpc("meta_creds_get", { p_secret: ING, p_email: email }).catch(() => null);
+      const t2 = (r2 && r2.ok) ? await r2.json().catch(() => null) : null;
+      const gravado = String(t2?.ig_id || "");
+      return json({ ok: gravado === ig_id, ig_id: gravado, page_id: t2?.page_id || "",
+        motivo: gravado === ig_id ? "Instagram mapeado ✓ — a DM já acha o dono" : `gravei mas ao reler veio "${gravado}"` });
     }
 
     // subscribe — (re)inscreve a página JÁ conectada no webhook do app, usando o token guardado.

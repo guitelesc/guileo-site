@@ -13,9 +13,10 @@
 // owner alert; we have no deduct RPC so credits are revoked by hand).
 import { verifyMpSignature } from "../lib/mpSignature.js";
 import { json, safeEq } from "../lib/guard.js";
-import { ownerAlertEmail } from "../lib/emailTemplates.js";
+import { ownerAlertEmail, sellerCommissionEmail } from "../lib/emailTemplates.js";
 import { emitFailure } from "../lib/failure.js";
 import { svcRpc } from "../lib/sb.js";
+import { BRL_CREDITS_MAP, BRL_PLAN_MAP } from "../../src/data/guileoPlans.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -26,11 +27,17 @@ const rpc = (name, body) => fetch(`${SB_URL}/rest/v1/rpc/${name}`, {
   method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" }, body: JSON.stringify(body),
 });
 
-// BRL PLAN ANCHOR — the exact-price → credits map, mirroring the USD plans' credit ratio
-// (stripe-webhook PLAN_CREDITS 14900→500 / 44900→2000 / 99900→6000). Values in BRL CENTS.
-// An amount NOT in this map is NEVER credited by a fallback — it becomes paid_but_uncredited.
-const BRL_CREDITS = { 79900: 500, 249900: 2000, 549900: 6000 };   // R$799 / R$2.499 / R$5.499
-const BRL_PLAN = { 79900: "Essential", 249900: "Personalized", 549900: "Full Operation" };
+// BRL PLAN ANCHOR — o mapa preço-exato → créditos, DERIVADO de src/data/guileoPlans.js (2026-08-25).
+// Antes era literal aqui ({79900:500, 249900:2000, 549900:6000}) e estava DESATUALIZADO: os planos
+// já eram $149/500, $897/3000, $1997/9000, e este arquivo ainda creditava pela tabela velha. Duas
+// tabelas de preço = uma delas está errada e ninguém sabe qual. Agora existe UMA: o plano.
+// ⚠️ Plano com `amountBRL: null` simplesmente NÃO existe no mapa — MAPA VAZIO = NENHUM CRÉDITO BR
+// até o dono definir o preço em real. Isso é de propósito: pagamento de valor desconhecido vira
+// `brl_price_indefinido` via emitFailure (o dono credita à mão) em vez de creditar errado.
+// Valores em CENTAVOS de real.
+const BRL_CREDITS = BRL_CREDITS_MAP;
+const BRL_PLAN = BRL_PLAN_MAP;
+const BRL_PRECO_DEFINIDO = Object.keys(BRL_CREDITS).length > 0;
 
 // Mercado Pago x-signature validation (official manifest: `id:<data.id>;request-id:<x-request-id>;ts:<ts>;`,
 // HMAC-SHA256 with the webhook secret, hex, compared to the v1 part). data.id is lowercased for alphanumerics.
@@ -89,7 +96,10 @@ export async function onRequestPost(context) {
     // checagem que não depende de ninguém lembrar dessa sutileza no futuro.
     if (extRef.startsWith("cli:")) return json({ received: true, ignored: "tenant-collection" });
 
-    const [refTenant, refPlan] = extRef.split("|").map((s) => (s || "").trim());
+    // external_reference tem HOJE 3 partes: "tenant|plano|ref_do_vendedor" (o /api/pay-link-br
+    // carimba as três). Links antigos (2 partes, do /api/pay-link) continuam valendo — a 3ª volta
+    // vazia e a atribuição simplesmente não acontece, sem quebrar nada.
+    const [refTenant, refPlan, refSeller] = extRef.split("|").map((s) => (s || "").trim());
     const email = (refTenant && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(refTenant) ? refTenant : payerEmail).toLowerCase();
     const payId = (pay.id || dataId).toString();
 
@@ -107,7 +117,10 @@ export async function onRequestPost(context) {
         const label = status === "charged_back" ? "Chargeback" : "Refund";
         // REVOKE credits the refunded BRL bought — exact plan match first (BRL_CREDITS), else a
         // conservative per-real estimate (never over-deduct); clamped ≥ 0, idempotent by payId.
-        const revoke = BRL_CREDITS[refundedCents] || Math.round((refundedCents / 100) * 0.6);
+        // ⚠️ com o mapa BRL vazio (preço em real ainda não definido) NUNCA estimamos: nenhum
+        // crédito foi concedido por este trilho, então "estimar" só tiraria crédito que o cliente
+        // comprou por outro caminho. Sem preço definido, revoke = 0 e o alerta abaixo diz o porquê.
+        const revoke = BRL_CREDITS[refundedCents] || (BRL_PRECO_DEFINIDO ? Math.round((refundedCents / 100) * 0.6) : 0);
         let balanceAfter = null;
         if (email && revoke > 0) {
           try {
@@ -159,6 +172,15 @@ export async function onRequestPost(context) {
     const credits = BRL_CREDITS[cents];
     const plan = (refPlan || BRL_PLAN[cents] || "").toString();
 
+    // PREÇO EM REAL AINDA NÃO DEFINIDO — o mapa BRL está VAZIO porque nenhum plano tem `amountBRL`
+    // em src/data/guileoPlans.js. Não dá para saber quantos créditos R$X compra sem que o dono
+    // decida o preço, e chutar uma conversão de dólar seria inventar. Grita e para: o dono credita
+    // à mão e define o preço. (Some sozinho no dia em que amountBRL for preenchido.)
+    if (!BRL_PRECO_DEFINIDO) {
+      await emitFailure(env, "brl_price_indefinido", email, `MP aprovou R$${(cents / 100).toFixed(2)} mas NENHUM plano tem preço em real definido (amountBRL null em guileoPlans.js) — NADA creditado; defina o preço e credite à mão`, { payment: payId, cents, plano: plan || null });
+      return json({ received: true, uncredited: "brl-price-undefined" });
+    }
+
     // CLIENT-CHARGE GUARD — the MP webhook URL is registered account-wide, so a tenant's own
     // customer paying a PIX close&collect link (no external_reference tenant) can land here with
     // a plan-priced amount. Without a verified tenant email in external_reference we must NEVER
@@ -186,6 +208,39 @@ export async function onRequestPost(context) {
         p_summary: `Pagamento PIX/MP · R$${(cents / 100).toFixed(2)} → +${credits} créditos${plan ? " · " + plan : ""}`,
         p_amount: cents / 100, p_payload: { payment: payId },
       });
+
+      // [GANCHO AUTO-APPROVE — outro agente]
+      // (ponto logo depois do crédito somado: é aqui que entra o snippet que aprova/provisiona
+      //  sozinho o draft do cliente quando o pagamento em real cai.)
+
+      // ATRIBUIÇÃO DO VENDEDOR — espelho EXATO do caminho Stripe (stripe-webhook.js §SELLER
+      // ATTRIBUTION): grava um client_event 'attribution' com { seller_ref } no tenant NOVO (é o
+      // que o motor de comissão lê depois) e avisa o vendedor que a carteira dele rendeu. Aqui o
+      // ref não vem de client_reference_id e sim da 3ª parte do external_reference, carimbada pelo
+      // /api/pay-link-br a partir da AUTH do vendedor — ninguém minta comissão para si.
+      if (refSeller) {
+        try {
+          await svcRpc(env, "ingest_client_event", {
+            p_secret: ING, p_email: email, p_type: "attribution", p_channel: "system",
+            p_summary: `👤 Atribuição de vendedor · ${refSeller.slice(0, 60)}`,
+            p_amount: 0, p_payload: { seller_ref: refSeller.slice(0, 200), payment: payId, plan },
+          });
+          if (env.RESEND_API_KEY) {
+            const sr = await rpc("seller_by_ref", { p_secret: ING, p_ref: refSeller.slice(0, 200) });
+            const sellerRow = sr.ok ? await sr.json().catch(() => null) : null;
+            if (sellerRow && sellerRow.email) {
+              const { subject, html } = sellerCommissionEmail({
+                sellerName: sellerRow.name || "", business: email.split("@")[0],
+                amount: `R$${(cents / 100).toFixed(2)}`, plan, lang: "pt",
+              });
+              await fetch("https://api.resend.com/emails", {
+                method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: [sellerRow.email], subject, html }),
+              });
+            }
+          }
+        } catch { /* atribuição é aditiva — o crédito acima já landed */ }
+      }
       return json({ received: true, credited: credits });
     }
 

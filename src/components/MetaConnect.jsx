@@ -7,6 +7,37 @@ export default function MetaConnect({ token }) {
   const [f, setF] = useState({ email: "", page_id: "", page_access_token: "", ig_id: "", business: "" });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
+  // ── CONFERIR: o estado vem do PROVEDOR, não do nosso banco ──────────────────────────────────
+  // Este cartão só sabia ESCREVER. Em 25/08 o painel dava "conectado" para uma página cujo token a
+  // Meta já tinha invalidado ("the session has been invalidated because the user changed their
+  // password") — ou seja, a página estava muda e a tela dizia que estava no ar. Quem conecta
+  // precisa poder conferir na mesma tela, com as palavras da Meta, e não descobrir dias depois.
+  const [ver, setVer] = useState(null);
+  const [vendo, setVendo] = useState(false);
+
+  const conferir = async () => {
+    if (!f.email.includes("@")) { setMsg({ err: "Informe o email do cliente para conferir." }); return; }
+    setVendo(true); setVer(null); setMsg(null);
+    try {
+      const st = await fetch("/api/meta-connect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "status", token, email: f.email }) }).then((x) => x.json());
+      // A auditoria pergunta à Meta o nome real da página E qual Instagram está ligado nela — é
+      // assim que a gente descobre o `ig_id` sem mandar o dono caçar número em painel.
+      let au = null;
+      try { au = await fetch("/api/meta-connect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "auditar", token, email: f.email }) }).then((x) => x.json()); } catch { /* auditoria é bônus */ }
+      setVer({ st, au });
+    } catch { setMsg({ err: "Erro de rede." }); }
+    setVendo(false);
+  };
+
+  const mapearIg = async (ig_id) => {
+    setVendo(true);
+    try {
+      const r = await fetch("/api/meta-connect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "mapear_ig", token, email: f.email, ig_id }) }).then((x) => x.json());
+      setMsg(r.ok ? { ok: r.motivo } : { err: r.motivo || "não deu" });
+      if (r.ok) await conferir();
+    } catch { setMsg({ err: "Erro de rede." }); }
+    setVendo(false);
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -23,10 +54,43 @@ export default function MetaConnect({ token }) {
   };
 
   const inp = "mt-1 block w-full rounded-lg border border-g-line bg-white/[0.05] px-2.5 py-1.5 text-[12px] text-g-word placeholder:text-g-muted";
+  // TRÊS estados, nunca dois: verde = a Meta aceitou · vermelho = a Meta recusou (com o motivo
+  // dela) · cinza = não deu para perguntar, que NÃO é um ok.
+  const sinal = (v) => (v === true ? "🟢" : v === false ? "🔴" : "⚪");
   return (
     <div className="mt-6 rounded-2xl border border-g-line bg-white/[0.04] p-5 backdrop-blur-sm">
       <div className="text-[12px] font-bold uppercase tracking-wider text-g-gold">🔗 Conectar Meta (Instagram / Messenger)</div>
       <p className="text-[12px] text-g-muted">Cole o <b>Page Access Token</b> (gerado na Meta em "Gere tokens de acesso") pra ligar a Página do FB / Instagram a um cliente. Depois disso a Gui recebe e responde os DMs.</p>
+      <div className="mt-3 flex items-center gap-2">
+        <button type="button" onClick={conferir} disabled={vendo}
+          className="rounded-lg border border-g-line px-3 py-1.5 text-[12px] font-bold text-g-word disabled:opacity-50">
+          {vendo ? "conferindo…" : "Conferir na Meta"}
+        </button>
+        <span className="text-[11px] text-g-muted">pergunta ao provedor, não ao nosso banco</span>
+      </div>
+
+      {ver && (
+        <div className="mt-3 rounded-xl border border-g-line bg-black/10 p-3 text-[12px] leading-relaxed">
+          <div><b>{sinal(ver.st?.vivo)} Página:</b> {ver.st?.page_id || "—"} {ver.st?.motivo ? <span className="text-g-muted">· {ver.st.motivo}</span> : null}</div>
+          <div className="mt-1">
+            <b>{ver.st?.instagram_mapeado ? "🟢" : "🔴"} Instagram:</b>{" "}
+            {ver.st?.ig_id
+              ? ver.st.ig_id
+              : (ver.au?.instagram?.id
+                ? <>não mapeado — achei <b>@{ver.au.instagram.usuario || ver.au.instagram.id}</b>{" "}
+                    <button type="button" onClick={() => mapearIg(ver.au.instagram.id)} disabled={vendo}
+                      className="ml-1 rounded-md bg-g-gold/20 px-2 py-0.5 font-bold text-g-gold disabled:opacity-50">mapear agora</button></>
+                : "nenhum Instagram ligado a esta Página na Meta")}
+          </div>
+          {ver.au?.mapa_diverge && (
+            <div className="mt-2 rounded-lg border border-g-gold/40 bg-g-gold/10 px-2 py-1 text-g-gold">
+              🚨 o mapa manda as mensagens desta página para <b>{ver.au.mapa_aponta_para}</b>, não para {f.email} — reconecte pelo dono certo
+            </div>
+          )}
+          {ver.au && ver.au.ok === false && <div className="mt-1 text-g-muted">auditoria: {ver.au.motivo}</div>}
+        </div>
+      )}
+
       <form onSubmit={submit} className="mt-3 grid gap-2 sm:grid-cols-2">
         <label className="text-[11px] font-bold text-g-muted">Email do cliente Guileo
           <input value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="ex.: naturaspaadm@gmail.com" className={inp} /></label>
