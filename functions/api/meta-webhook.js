@@ -484,8 +484,31 @@ export async function onRequestPost(context) {
     const raw = await request.text();
 
     // 2) verify the payload is really from Meta — unsigned/forged → 401.
+    // ── DOIS SEGREDOS, E ISSO NÃO É PARANOIA (2026-08-27) ────────────────────────────────────
+    // Este app tem DOIS pares de credenciais: o do Facebook (META_APP_ID 2252636211962171) e o do
+    // APP DO INSTAGRAM (1426846219297405, com chave secreta PRÓPRIA — está no console, em
+    // "Configuração da API com login do Instagram"). Qual deles a Meta usa para assinar depende do
+    // caminho de conexão, e adivinhar custa caro: com o segredo errado a assinatura não bate e o
+    // webhook morre AQUI. Tentamos os dois — assim não dependemos de acertar o palpite.
     const sig = request.headers.get("X-Hub-Signature-256") || request.headers.get("x-hub-signature-256") || "";
-    if (!(await validMetaSig(raw, sig, env.META_APP_SECRET))) {
+    const segredos = [env.META_APP_SECRET, env.INSTAGRAM_APP_SECRET].filter(Boolean);
+    let assinaturaOk = false;
+    for (const seg of segredos) { if (await validMetaSig(raw, sig, seg)) { assinaturaOk = true; break; } }
+    if (!assinaturaOk) {
+      // 🚨 O PONTO CEGO QUE ESTE BLOCO FECHA. Até hoje isto era `return 401` MUDO: nem log, nem
+      // evento, nem alarme. Um comentário real chegava, a assinatura não batia, e o resultado era
+      // indistinguível de "ninguém comentou" — zero linhas em lugar nenhum para investigar.
+      // Foi exatamente o que aconteceu no 1º teste real do comentário→DM.
+      // Só grita quando o cabeçalho de assinatura EXISTE: sem isso é varredura de robô, não a Meta,
+      // e alarmar em cima de scanner é transformar o alarme em ruído até ninguém mais olhar.
+      if (sig) {
+        let objeto = "";
+        try { objeto = String((JSON.parse(raw) || {}).object || ""); } catch { objeto = "(corpo ilegível)"; }
+        context.waitUntil(emitFailure(env, "meta_assinatura_recusada", "",
+          `webhook da Meta RECUSADO por assinatura (objeto "${objeto}") — nenhum dos ${segredos.length} segredo(s) do ambiente bate. Se for Instagram, falta INSTAGRAM_APP_SECRET no Cloudflare.`,
+          { objeto, segredos_tentados: segredos.length, tem_instagram_secret: !!env.INSTAGRAM_APP_SECRET, bytes: raw.length })
+          .catch(() => {}));
+      }
       return json({ error: "bad signature" }, 401);
     }
 

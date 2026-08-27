@@ -20,17 +20,49 @@ const SUBSCRIBE_FIELDS = "messages,messaging_postbacks"; // campos válidos p/ M
 // Without this, the page has the token but Meta never POSTs the message → the Gui never sees it.
 // Uses the page's OWN access token (server-side only, never echoed). Best-effort: returns a small
 // status object; a failure never breaks connect (the owner can also toggle it in the dashboard).
+// ── A INSCRIÇÃO TEM DOIS NÍVEIS, E ISSO CUSTOU UM TESTE REAL (2026-08-27) ────────────────────
+// (1) APP → OBJETO: `/{app_id}/subscriptions` com object=instagram e fields=comments,messages.
+// (2) PÁGINA → APP: esta função. A Meta só entrega evento de uma conta quando os DOIS existem.
+// O `empresas.js` responde "inscrita no webhook ✓" olhando só se EXISTE app inscrito — nunca
+// olhou QUAIS campos. E a constante do projeto sempre foi "messages,messaging_postbacks": uma
+// Página inscrita sem `comments` recebe DM e ignora comentário, com o painel dizendo verde.
+//
+// 🚨 `subscribed_fields` SOBRESCREVE a lista inteira, igual ao nível do app. Passar só `comments`
+// aqui APAGARIA `messages` e mataria a DM. Por isso: lê o que já está lá, manda a UNIÃO, e relê
+// para devolver antes/depois. Nunca escreve às cegas.
 async function subscribePage(pageId, pageToken, fields) {
   if (!pageId || !pageToken) return { subscribed: false, reason: "missing page_id/token" };
   if (!/^\d+$/.test(String(pageId))) return { subscribed: false, reason: "page_id inválido (só números)" };
+  const lerCampos = async () => {
+    try {
+      const g = await fetch(`${GRAPH}/${encodeURIComponent(pageId)}/subscribed_apps?access_token=${encodeURIComponent(pageToken)}`);
+      if (!g.ok) return null;
+      const d = await g.json().catch(() => null);
+      const linhas = (d && Array.isArray(d.data)) ? d.data : [];
+      const meu = linhas[0] || null;   // o token é da Página; a lista traz o(s) app(s) inscrito(s)
+      return meu && Array.isArray(meu.subscribed_fields) ? meu.subscribed_fields.map(String) : [];
+    } catch { return null; }
+  };
   try {
+    const pedidos = String(fields || SUBSCRIBE_FIELDS).split(",").map((f) => f.trim()).filter(Boolean);
+    const antes = await lerCampos();
+    if (antes === null) return { subscribed: false, reason: "não consegui LER os campos atuais — não escrevi nada (fail-closed)" };
+    const uniao = [...new Set([...antes, ...pedidos])];
+    if (antes.length && pedidos.every((f) => antes.includes(f))) {
+      return { subscribed: true, ja_estava: true, antes, depois: antes };
+    }
     const r = await fetch(`${GRAPH}/${encodeURIComponent(pageId)}/subscribed_apps`, {
       method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ subscribed_fields: fields || SUBSCRIBE_FIELDS, access_token: pageToken }).toString(),
+      body: new URLSearchParams({ subscribed_fields: uniao.join(","), access_token: pageToken }).toString(),
     });
     const d = await r.json().catch(() => ({}));
-    if (r.ok && d && d.success) return { subscribed: true };
-    return { subscribed: false, reason: s((d && d.error && d.error.message) || `HTTP ${r.status}`, 160) };
+    if (!(r.ok && d && d.success)) {
+      return { subscribed: false, antes, tentou: uniao, reason: s((d && d.error && d.error.message) || `HTTP ${r.status}`, 160) };
+    }
+    const depois = (await lerCampos()) || [];
+    const faltou = uniao.filter((f) => !depois.includes(f));
+    return { subscribed: faltou.length === 0, antes, depois, adicionados: pedidos.filter((f) => !antes.includes(f)),
+      ...(faltou.length ? { aviso: `a Meta disse success mas ao reler faltou: ${faltou.join(", ")}` } : {}) };
   } catch (e) { return { subscribed: false, reason: s(e, 120) }; }
 }
 

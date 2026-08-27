@@ -124,12 +124,19 @@ const reqRuim = new Request("https://www.guileoai.com/api/meta-webhook", {
   method: "POST", headers: { "X-Hub-Signature-256": "sha256=" + "0".repeat(64) }, body: raw,
 });
 chamadas.length = 0;
+const esperaRuim = [];
 const resRuim = await onRequestPost({
   request: reqRuim, env: { META_APP_ID: "app", META_APP_SECRET: APP_SECRET, INGEST_SECRET: INGEST },
-  waitUntil: () => {},
+  waitUntil: (p) => esperaRuim.push(p),
 });
+await Promise.all(esperaRuim);
 ok(resRuim.status === 401, "assinatura errada → 401, e nada é processado");
 ok(!dmEnviado(), "payload forjado não gera direct nenhum");
+// 🚨 O 401 MUDO foi o que escondeu a falha do 1º teste real (27/08): a Meta entregava, a
+// assinatura não batia, e o resultado era idêntico a "ninguém comentou". Recusar é certo;
+// recusar em silêncio não é.
+ok(chamadas.some((c) => JSON.stringify(c.body || {}).includes("meta_assinatura_recusada")),
+   "a recusa por assinatura GRITA (emitFailure), em vez de sumir");
 
 console.log("\n— o post IMPULSIONADO (o dia em que o dono anuncia) —");
 res = await dispara(payloadComentario("preço", { media: { id: "MEDIA_DO_ANUNCIO", original_media_id: "POST_DO_REEL" } }));
