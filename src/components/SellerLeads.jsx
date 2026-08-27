@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { STAGES } from "./SellerFollowup.jsx";
 import { pernaMeta, PERNAS } from "./RelatorioEspelho.jsx";
@@ -465,6 +465,10 @@ export default function SellerLeads({ lang = "pt", seller, market = "us", nav, h
   // comprovantes vivem NO PAI, por identidade natural — ver a nota do `idNatural` acima.
   const [recibos, setRecibos] = useState({});
   const abertoRef = useRef(null);
+  // Espelho de `avals` só para o guarda de fetch dentro de `abrir`. Ler o estado direto ali
+  // faria `abrir` mudar de identidade a cada avaliação carregada — e um callback novo
+  // re-renderiza TODOS os cards, que é exatamente o custo que estamos matando.
+  const avalsRef = useRef({});
 
   // ── COMPLETAR TELEFONE (2026-08-20) ───────────────────────────────────────────────────────
   // A fila herdou negócios medidos ANTES de o telefone entrar na máscara do Google — reais,
@@ -734,12 +738,24 @@ export default function SellerLeads({ lang = "pt", seller, market = "us", nav, h
     }
   }, []);
 
-  const abrir = (item) => {
-    const nova = aberto === item.chave ? null : item.chave;
+  useEffect(() => { avalsRef.current = avals; }, [avals]);
+
+  // ⚡ INP (2026-08-27). Este callback precisa ser ESTÁVEL. Antes ele nascia de novo a cada
+  // render e ia como prop para cada card — o que anulava qualquer memo e fazia um clique
+  // re-renderizar a lista inteira. O Cloudflare Web Analytics mediu 576ms de INP neste botão
+  // (a capa do card), acima dos 500ms que o Google classifica como "Poor": o vendedor toca e
+  // acha que não pegou. `abertoRef` já é mantido em sincronia aqui e no `avancar`.
+  const abrir = useCallback((item) => {
+    const nova = abertoRef.current === item.chave ? null : item.chave;
     setAberto(nova);
     abertoRef.current = nova;
-    if (nova && item.avaliacaoId && !avals[item.avaliacaoId]) carregaAval(item.avaliacaoId);
-  };
+    if (nova && item.avaliacaoId && !avalsRef.current[item.avaliacaoId]) carregaAval(item.avaliacaoId);
+  }, [carregaAval]);
+
+  // Estável pelo mesmo motivo: recebe a identidade natural em vez de fechar sobre o item.
+  const setRecibo = useCallback((idNatural, r) => {
+    setRecibos((m) => ({ ...m, [idNatural]: r }));
+  }, []);
 
   // ── ESCRITA COM COMPROVANTE ────────────────────────────────────────────────────────────────
   // Só devolve sucesso depois de ler `ok:true` **com o `id` da linha**. `r.ok` do fetch é só "o
@@ -961,12 +977,12 @@ export default function SellerLeads({ lang = "pt", seller, market = "us", nav, h
             <PaginaDoLead
               key={item.chave} t={t} lang={lang} locale={locale} item={item}
               agora={agora} aberto={aberto === item.chave}
-              onAbrir={() => abrir(item)}
+              onAbrir={abrir}
               aval={item.avaliacaoId ? avals[item.avaliacaoId] : null}
-              salvar={(patch) => salvar(item, patch)}
+              salvar={salvar}
               recibo={recibos[item.idNatural] || null}
-              setRecibo={(r) => setRecibos((m) => ({ ...m, [item.idNatural]: r }))}
-              avancar={() => avancar(item.chave)}
+              setRecibo={setRecibo}
+              avancar={avancar}
               nav={nav}
             />
           ))}
@@ -1018,7 +1034,11 @@ function Falha({ t, titulo, corpo, motivo, onRetry }) {
 }
 
 // ═══ A PÁGINA DE UM LEAD ═══════════════════════════════════════════════════════════════════════
-function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, salvar, avancar, nav, recibo, setRecibo }) {
+// ⚡ memo: sem ele, trocar `aberto` re-renderizava TODOS os cards da fila, e cada um é um
+// `motion.div layout` — ou seja, N medições de layout síncronas por clique. Com as props do pai
+// agora estáveis (abrir/salvar/avancar/setRecibo), só re-renderizam os dois cards que mudaram:
+// o que fecha e o que abre. `t` e `locale` já eram estáveis (`D[lang]` e uma string).
+const PaginaDoLead = memo(function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, salvar, avancar, nav, recibo, setRecibo }) {
   const [note, setNote] = useState(item.note || "");
   const [salvando, setSalvando] = useState(false);
   const [copiado, setCopiado] = useState(false);
@@ -1145,25 +1165,28 @@ function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, sal
     try {
       const nova = anexaApontamento(note, t.logMail, locale);
       setNote(nova);
+      // ⚠️ DOIS argumentos de propósito: `salvar` agora é o do pai, assinatura (item, patch).
+      // Até 27/08 a prop era de UM argumento e esta chamada gravava o item no lugar do patch —
+      // a promessa de crédito de $50 aparecia na tela e NUNCA entrava na ficha.
       salvar(item, { note: nova });
     } catch { /* o canal é mais importante que o registro */ }
   };
 
   const comRecibo = async (patch, seguir) => {
-    setSalvando(true); setRecibo(null);
-    const r = await salvar(patch);
+    setSalvando(true); setRecibo(item.idNatural, null);
+    const r = await salvar(item, patch);
     setSalvando(false);
-    setRecibo(r.ok ? { ok: true, id: String(r.id).slice(0, 8) } : { ok: false, motivo: r.motivo });
+    setRecibo(item.idNatural, r.ok ? { ok: true, id: String(r.id).slice(0, 8) } : { ok: false, motivo: r.motivo });
     // A tela só AVANÇA quando o banco confirmou. Avançar em cima de uma falha faria o vendedor
     // acreditar num estado que o banco não tem — o defeito exato que já aconteceu aqui.
-    if (r.ok && seguir) setTimeout(avancar, 900);
+    if (r.ok && seguir) setTimeout(() => avancar(item.chave), 900);
   };
 
   return (
     <motion.div layout className="overflow-hidden rounded-2xl border bg-white/[0.04] min-w-0 backdrop-blur-xl"
       style={{ borderColor: aberto ? `${u.hex}55` : "rgba(255,255,255,0.10)" }}>
       {/* ── CAPA (a tira que se escolhe) — o relógio é o herói ────────────────────────────── */}
-      <button type="button" onClick={onAbrir}
+      <button type="button" onClick={() => onAbrir(item)}
         className="flex w-full min-h-[72px] items-center gap-3 p-4 text-left">
         <span className="relative inline-flex h-3 w-3 shrink-0">
           {u.k === "agora" && <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 motion-reduce:hidden" style={{ background: u.hex }} />}
@@ -1482,9 +1505,9 @@ function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, sal
 
               {/* a fila continua: seguir para o próximo sem voltar para a lista */}
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={avancar}
+                <button type="button" onClick={() => avancar(item.chave)}
                   className="inline-flex min-h-[48px] items-center rounded-full border border-white/15 bg-white/[0.04] px-5 text-[13px] font-bold text-g-word hover:border-g-green/40">{t.next}</button>
-                <button type="button" onClick={onAbrir}
+                <button type="button" onClick={() => onAbrir(item)}
                   className="inline-flex min-h-[48px] items-center rounded-full border border-white/15 px-4 text-[13px] font-bold text-g-muted hover:text-g-word">{t.close}</button>
                 {/* DO LEAD DIRETO PARA O DOCUMENTO, com o negócio, e-mail e telefone já na mão.
                     O handoff evita o pior momento da venda: o vendedor no telefone, redigitando. */}
@@ -1507,7 +1530,7 @@ function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, sal
       </AnimatePresence>
     </motion.div>
   );
-}
+});
 
 // alvo de toque 48px em TODA ação — o número de quem usa o hub na rua, não sentado.
 function Acao({ href, externo, verde, children, aoClicar }) {
