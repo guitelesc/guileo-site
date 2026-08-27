@@ -71,7 +71,15 @@ export async function onRequestPost({ request, env }) {
     if (op === "horarios") {
       const servico = s(b.servico, 120);
       if (!servico) return json({ ok: false, error: "servico obrigatorio" }, 400);
-      const r = await motor({ op: "availability", service: servico, day: s(b.dia, 30) || undefined });
+      // ⚠️ SEM FILTRO DE DIA, E ISSO É DE PROPÓSITO (2026-08-27). Este `motor()` mandava
+      // `day: s(b.dia,30)`, mas o op "availability" do agent-schedule.js NÃO aceita data: ele
+      // chama biz_availability com serviço/unidade/profissional/limite e devolve as próximas
+      // vagas, ponto. O parâmetro não filtrava nada — só parecia que filtrava.
+      // Hoje ninguém é enganado porque as telas de booking não mandam `dia`. Mas um parâmetro que
+      // finge existir é armadilha para o próximo: quem colocar um seletor de data na vitrine vai
+      // confiar nele e mostrar sexta para quem pediu sábado. Melhor não existir do que mentir.
+      // Para filtrar por dia de verdade, o filtro tem que nascer no motor (e no biz_availability).
+      const r = await motor({ op: "availability", service: servico });
       if (!r.ok) return json({ ok: false, error: `motor respondeu ${r.status}` }, 502);
       const d = await r.json().catch(() => null);
       if (!d) return json({ ok: false, error: "motor nao respondeu" }, 502);
@@ -82,7 +90,15 @@ export async function onRequestPost({ request, env }) {
     if (op === "marcar") {
       const nome = s(b.nome, 120), tel = s(b.telefone, 40), servico = s(b.servico, 120), quando = s(b.quando, 60);
       if (!nome || !tel || !servico || !quando) return json({ ok: false, error: "faltam dados" }, 400);
-      const r = await motor({ op: "book", service: servico, when: quando, customer_name: nome, customer_phone: tel });
+      // ⚠️ OS NOMES DOS CAMPOS SÃO O CONTRATO (corrigido 2026-08-27). Este bloco mandava
+      // `customer_name`/`customer_phone` — nomes que NÃO existem em agent-schedule.js, que lê
+      // `b.name` e `b.contact`. O motor gravava a reserva com nome e contato VAZIOS: o horário
+      // ficava preso na agenda e o negócio não tinha quem chamar. E como o motor devolvia um id
+      // de verdade, o comprovante exigido logo abaixo passava e a tela dizia "agendado".
+      // Comprovante certo sobre o campo errado é o pior tipo de falha: ela se parece com sucesso.
+      // O contrato agora é travado por vitrine-agenda.test.mjs, que compara o que sai daqui
+      // com o que o motor realmente lê.
+      const r = await motor({ op: "book", service: servico, when: quando, name: nome, contact: tel });
       if (!r.ok) return json({ ok: false, error: `motor respondeu ${r.status}` }, 502);
       const d = await r.json().catch(() => null);
       const id = d && (d.appointment_id || d.id || d.booking_id);

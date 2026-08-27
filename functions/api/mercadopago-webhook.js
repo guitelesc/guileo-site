@@ -99,7 +99,23 @@ export async function onRequestPost(context) {
     // external_reference tem HOJE 3 partes: "tenant|plano|ref_do_vendedor" (o /api/pay-link-br
     // carimba as três). Links antigos (2 partes, do /api/pay-link) continuam valendo — a 3ª volta
     // vazia e a atribuição simplesmente não acontece, sem quebrar nada.
-    const [refTenant, refPlan, refSeller] = extRef.split("|").map((s) => (s || "").trim());
+    const partes = extRef.split("|").map((s) => (s || "").trim());
+    // ⚠️ DEFESA EM PROFUNDIDADE (2026-08-27). Quem monta este campo é /api/pay-link-br, que agora
+    // recusa "|" nas três partes. Mas link mintado ANTES daquela correção continua pagável, e um
+    // tenant com pipe desloca o split: a 3ª parte deixa de ser o ref carimbado pela AUTH e passa a
+    // ser texto escolhido por quem pediu o link — que é exatamente a comissão sendo forjada.
+    // Mais de 3 partes = a string não veio do nosso formato. Creditamos o pagamento normalmente
+    // (o dinheiro é real e o tenant é validado por regex logo abaixo), mas NÃO atribuímos vendedor:
+    // atribuição errada é pior que atribuição nenhuma, porque paga a pessoa errada em silêncio.
+    const [refTenant, refPlan] = partes;
+    const refSeller = partes.length > 3 ? "" : (partes[2] || "");
+    if (partes.length > 3) {
+      try {
+        await emitFailure(env, "mp_external_ref_malformado", refTenant || "(sem tenant)",
+          `external_reference com ${partes.length} partes (esperado 2 ou 3) — atribuição de vendedor IGNORADA por segurança; confira quem gerou este link`,
+          { external_reference: extRef.slice(0, 200), partes: partes.length });
+      } catch { /* o diagnóstico nunca pode impedir o crédito do cliente */ }
+    }
     const email = (refTenant && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(refTenant) ? refTenant : payerEmail).toLowerCase();
     const payId = (pay.id || dataId).toString();
 
@@ -233,10 +249,22 @@ export async function onRequestPost(context) {
                 sellerName: sellerRow.name || "", business: email.split("@")[0],
                 amount: `R$${(cents / 100).toFixed(2)}`, plan, lang: "pt",
               });
-              await fetch("https://api.resend.com/emails", {
+              // 🚨 "await" NÃO É "ENVIADO" (corrigido 2026-08-27). Este fetch não conferia o
+              // retorno, e o bloco inteiro vive num catch mudo: um 422 do Resend (domínio não
+              // verificado, endereço inválido, rate limit) sumia sem deixar UMA linha. O vendedor
+              // não era avisado da comissão, concluía que a venda não foi atribuída a ele, e
+              // abria disputa sobre um pagamento que tinha sido creditado direitinho.
+              // O irmão deste código — functions/lib/avisoLeadVendedor.js — já fazia certo.
+              const er = await fetch("https://api.resend.com/emails", {
                 method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
                 body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: [sellerRow.email], subject, html }),
               });
+              if (!er.ok) {
+                const cru = await er.text().catch(() => "");
+                await emitFailure(env, "aviso_comissao_nao_saiu", sellerRow.email,
+                  `o aviso de COMISSÃO não saiu (HTTP ${er.status}) — a venda FOI creditada, avise o vendedor à mão`,
+                  { ref: refSeller.slice(0, 60), pagamento: payId, cru: cru.slice(0, 160) }).catch(() => {});
+              }
             }
           }
         } catch { /* atribuição é aditiva — o crédito acima já landed */ }
