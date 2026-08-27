@@ -1,5 +1,3 @@
-/experience.html   /experience.html   200
-
 # ── Canonical consolidation (301) — one URL per page, aliases forward here (SEO dedup).
 # Order matters: these MUST sit ABOVE the SPA catch-all or /index.html would swallow them.
 /plans             /planos            301
