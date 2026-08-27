@@ -31,6 +31,12 @@ import { readdirSync, readFileSync } from "node:fs";
 
 const DIR = new URL("../api/", import.meta.url);
 // variável que RECEBE uma resposta de rede: const r = await fetch(...) / await rpc(...) / etc.
+// ── ISENÇÕES REVISADAS À MÃO (a sonda erra; o código está certo) ─────────────────────────────
+// meta-connect.js:318 — `const dj = await dbg.json().catch(() => null)` PARECE fallback-para-vazio,
+// mas o null cai duas linhas abaixo em `if (!info || info.is_valid !== true)` e vira 400 com o
+// motivo da Meta. Não existe caminho em que erro de rede vire "zero" ali. Conferido 2026-08-25.
+const ISENTOS = new Set(["meta-connect.js:318"]);
+
 const DA_REDE = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*await\s+(?:fetch|rpc|svcRpc|svcJson|sapi|graph|el)\s*\(/g;
 // `svcJson` entrou na lista acima em 2026-08-11 — e ISSO SOZINHO NÃO PEGAVA NADA. Registro o erro
 // porque ele é instrutivo: a checagem de baixo procura `await r.json().catch(() => [])`, um
@@ -74,6 +80,7 @@ for (const nome of readdirSync(DIR).filter((f) => f.endsWith(".js"))) {
     const volta = linhas.slice(Math.max(0, i - JANELA), Math.min(linhas.length, i + JANELA)).join("\n");
     if (new RegExp(`\\b${resp}\\s*\\.(ok|status)\\b`).test(volta)) return;   // guarda por STATUS
     if (PROTEGIDOS_POR_VALOR.has(`${nome}:${i + 1}`)) return;                    // guarda por VALOR, auditada
+    if (ISENTOS.has(`${nome}:${i + 1}`)) return;   // conferido à mão — ver bloco ISENTOS
     achados.push({ arquivo: nome, linha: i + 1, resp, trecho: linha.trim().slice(0, 96) });
   });
 }
@@ -89,8 +96,22 @@ for (const nome of readdirSync(DIR).filter((f) => f.endsWith(".js"))) {
   const linhas = texto.split("\n");
   const deSvc = new Set([...texto.matchAll(DA_SVCJSON)].map((m) => m[1]));
   if (!deSvc.size) continue;
+  // 🚨 FALSO POSITIVO CORRIGIDO 2026-08-25: a sonda casava pelo NOME da variável no arquivo
+  // inteiro. Em admin-comando.js existe `const d = await svcJson(...)` num lugar e, noutro,
+  // `const d = await r.json()` de um fetch à API do STRIPE — onde `d.error.message` é o formato
+  // CERTO da resposta do Stripe. A sonda acusava o Stripe de ser svcJson.
+  // Regra nova: a linha só conta se o mesmo nome não tiver sido REATRIBUÍDO por outra fonte
+  // (fetch/json) antes dela. Escopo por nome é aproximação; sem isso a sonda vira ruído, e
+  // sonda que grita errado é sonda que ninguém lê.
+  const reatribuido = new Map();   // nome → linhas onde ele passou a vir de OUTRA fonte
+  linhas.forEach((linha, i) => {
+    const m = linha.match(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*await\s+(?!svcJson)/);
+    if (m) { if (!reatribuido.has(m[1])) reatribuido.set(m[1], []); reatribuido.get(m[1]).push(i); }
+  });
+  const veioDeOutraFonte = (v, i) => (reatribuido.get(v) || []).some((li) => li < i && li > (linhas.findLastIndex((l, k) => k < i && new RegExp(`(?:const|let|var)\\s+${v}\\s*=\\s*await\\s+svcJson`).test(l))));
   linhas.forEach((linha, i) => {
     for (const v of deSvc) {
+      if (veioDeOutraFonte(v, i)) continue;
       // `r.error` / `r?.error` — mas não `r.erro_http`, que é o campo certo
       if (new RegExp(`\\b${v}\\s*\\??\\.\\s*error\\b`).test(linha)) {
         svcErros.push({ arquivo: nome, linha: i + 1, v, trecho: linha.trim().slice(0, 96) });

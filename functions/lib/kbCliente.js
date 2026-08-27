@@ -28,7 +28,12 @@ const PROIBIDOS = [
   { re: /\bstripe\b/i, porque: "nosso processador — o cliente não precisa saber qual é" },
   { re: /\b(call\.js|lead\.js|biz_[a-z_]+|gui_actions|client_[a-z_]+)\b/i, porque: "nome de arquivo ou tabela nossa" },
   { re: /\/api\//i, porque: "rota interna" },
-  { re: /\b(webhook|cron|RPC|endpoint|tenant|multi-tenant|Supabase|dial gate|DNC)\b/i, porque: "termo de arquitetura" },
+  // ⚠️ "tenant" SAIU DA LISTA (25/08). No nosso vocabulário é o negócio-cliente; no vocabulário de
+  // um encanador é o INQUILINO — e o documento precisa dizer "um inquilino normalmente não autoriza
+  // a obra", que é uma das regras mais úteis do ramo. Um portão que reprova palavra legítima de
+  // negócio faz a pessoa apagar conteúdo CORRETO para conseguir publicar, que é o oposto do que ele
+  // existe para fazer. O vazamento real seria "multi-tenant" ou "tenant_id", e esses continuam.
+  { re: /\b(webhook|cron|RPC|endpoint|multi-tenant|tenant_id|Supabase|dial gate|DNC)\b/i, porque: "termo de arquitetura" },
   { re: /↳\s*\*?needs?:/i, porque: "nota de implementação do playbook interno" },
   { re: /\b(cockpit|portal do cliente|painel do dono)\b/i, porque: "superfície nossa, não do negócio" },
 ];

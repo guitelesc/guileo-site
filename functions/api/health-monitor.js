@@ -5,6 +5,7 @@
 // effective than waiting). Driven by the weekly cron.
 import { json, isOwnerEmail, safeEq } from "../lib/guard.js";
 import { sbKey } from "../lib/sb.js";
+import { opsAlertEmail } from "../lib/emailTemplates.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -48,7 +49,13 @@ async function opsAlert(env, out, email, kind, summary, payload = {}) {
 }
 
 async function silentSweep(env) {
-  const days = Math.max(1, parseInt(env.SILENT_DAYS, 10) || 5);
+  // ⚙️ SILENT_DAYS agora obedece o /admin (platform_settings) com a env como reserva — a própria
+  // tela de Regras de cobrança dizia "hoje quem manda é a env"; esta linha fecha essa dívida.
+  // Falha na leitura do settings degrada pra env em silêncio: regra de saúde nunca pode parar
+  // de rodar porque a tabela de configuração engasgou.
+  let cfg = {};
+  try { const r = await rpc(env, "platform_settings_get", {}); if (r && typeof r === "object" && !Array.isArray(r)) cfg = r; } catch { /* env manda */ }
+  const days = Math.max(1, parseInt(cfg.silent_days ?? env.SILENT_DAYS, 10) || 5);
   const out = { ready: true, claimReady: true, configClaimReady: true, days, silent: [], config: [] };
   const clients = await rpc(env, "clients_list", {});
   if (!Array.isArray(clients)) { out.ready = false; return out; }
@@ -264,6 +271,73 @@ async function runBalanceChecks(env) {
       }
     } catch (e) { out.notReady.push({ provider: "elevenlabs", why: String(e).slice(0, 80) }); }
   } else out.notReady.push({ provider: "elevenlabs", why: "sem credencial" });
+
+  // ── ANTHROPIC: O CÉREBRO TEM SALDO? (2026-08-25) ───────────────────────────────────
+  // O INCIDENTE REAL, DUAS VEZES: o saldo da Anthropic zerou e TODO canal de texto caiu junto
+  // (gui-chat da landing, widget do cliente, suporte, criativo, orçamento) — e o painel ficou
+  // VERDE, porque a voz (que roda na ElevenLabs) continuava atendendo do lado. Ninguém foi
+  // avisado; descobriu-se pelo chat respondendo enlatado em inglês numa conversa em português.
+  //
+  // ⚠️ A ANTHROPIC DEVOLVE 400, NÃO 402, QUANDO O SALDO ACABA. É por isso que este bloco não pode
+  // se contentar com "não foi 200": um 400 pode ser pedido malformado (culpa nossa, e a sonda é
+  // fixa, então não é o caso) — mas um 400 cuja mensagem fala em CRÉDITO/BILLING é a operação
+  // parada. Por isso o corpo é LIDO, não só o status.
+  //   400 + "credit balance"/"billing"/"quota" → CRÍTICO (cérebro sem saldo)
+  //   401/403                                  → CRÍTICO (chave morta/revogada — mesmo efeito prático)
+  //   429 / 5xx                                → passageiro: não é falta de saldo, não acorda ninguém
+  // Custo da sonda: max_tokens 1 — o menor pedido que ainda prova que a conta responde.
+  // Honesto-inerte: sem a chave, "notReady" — nunca verde por ausência.
+  if (env.ANTHROPIC_API_KEY) {
+    try {
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 1, messages: [{ role: "user", content: "ping" }] }),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (r.ok) out.ok.push({ provider: "anthropic" });
+      else {
+        const body = (await r.text().catch(() => "")) || "";
+        const semSaldo = r.status === 400 && /credit balance|billing|insufficient|quota/i.test(body);
+        const chaveMorta = r.status === 401 || r.status === 403;
+        if (semSaldo || chaveMorta) {
+          const motivo = semSaldo
+            ? "SALDO ZERADO na Anthropic — todo canal de TEXTO (chat do site, widget do cliente, suporte, criativo) está respondendo enlatado ou morto. A VOZ continua funcionando, então o painel parece normal."
+            : `CHAVE DA ANTHROPIC RECUSADA (HTTP ${r.status}) — mesmo efeito prático: nenhum canal de texto pensa.`;
+          // 1×/dia: a chave da trava carrega o DIA (health_claim tem TTL de 7 dias, então uma chave
+          // que muda a cada dia UTC = no máximo um aviso por dia). Mesmo padrão do canary.js.
+          const dia = new Date().toISOString().slice(0, 10);
+          const podeAvisar = await rpc(env, "health_claim", { p_email: OWNER, p_kind: `brain_no_credit_${dia}` });
+          let alerted = false;
+          if (podeAvisar === true) {
+            await rpc(env, "ingest_client_event", {
+              p_email: OWNER, p_type: "ops_alert", p_channel: "system",
+              p_summary: `🧠 CÉREBRO SEM SALDO — ${motivo}`.slice(0, 300), p_amount: 0,
+              p_payload: { provider: "anthropic", httpStatus: r.status, body: body.slice(0, 200) },
+            });
+            // E SAI POR E-MAIL: foi exatamente por ficar só no feed que duas quedas passaram batidas.
+            if (env.RESEND_API_KEY) {
+              const { subject, html } = opsAlertEmail({
+                type: semSaldo ? "credito_zerado_anthropic" : "chave_anthropic_recusada",
+                client: "Guileo (plataforma)", detail: `${motivo}\n\nHTTP ${r.status} · ${body.slice(0, 300)}`,
+                cta: "Abrir o console da Anthropic →", ctaUrl: "https://console.anthropic.com/settings/billing",
+              });
+              const er = await fetch("https://api.resend.com/emails", {
+                method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: OWNER, subject, html }),
+              });
+              alerted = er.ok;
+              if (!er.ok) console.error(JSON.stringify({ alarme_cerebro: r.status, resend: er.status }));
+            }
+          }
+          out.low.push({ provider: "anthropic", httpStatus: r.status, semSaldo, alerted });
+        } else {
+          // 429/5xx: a conta existe e responde — só está ocupada. Nem verde nem alarme: "não deu para provar".
+          out.notReady.push({ provider: "anthropic", why: `HTTP ${r.status} (passageiro — não é falta de saldo)` });
+        }
+      }
+    } catch (e) { out.notReady.push({ provider: "anthropic", why: String(e).slice(0, 80) }); }
+  } else out.notReady.push({ provider: "anthropic", why: "sem credencial" });
 
   return out;
 }

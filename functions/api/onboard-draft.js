@@ -14,6 +14,7 @@
 // sees a secret. Same SB/ANON constants + json() helper pattern as the other functions/api files.
 import { json, sameOrigin, rateLimited, safeEq } from "../lib/guard.js";
 import { voiceByKey } from "../../src/data/agentVoices.js";
+import { tentarAutoAprovar } from "../lib/autoApprove.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -182,6 +183,28 @@ export async function onRequestPost(context) {
       });
       if (!r.ok) return json({ error: "save failed (paste db/onboard_completo.sql)" }, 500);
       const id = await r.json().catch(() => null);
+      // ═══ O CAMINHO INVERSO: o cliente JÁ PAGOU e o cadastro chegou depois ═══════════════════
+      // O gancho do Stripe cobre "pagou com o cadastro pronto". Falta o contrário, que é comum:
+      // o cliente paga primeiro (self-serve) e o vendedor só termina o cadastro completo horas
+      // depois. Sem isto, esse cadastro rico ficaria parado na fila esperando um clique enquanto
+      // o cliente já pagou — o mesmo buraco, invertido.
+      // `cents: 999999` porque aqui o pagamento NÃO é uma promessa a validar: client_has_paid só
+      // devolve true com SALDO real em client_credits (dinheiro que já entrou). O piso de valor
+      // existe para separar recarga de plano no webhook; aqui essa pergunta já está respondida.
+      // BEST-EFFORT DE VERDADE: nada disto pode atrasar ou derrubar a resposta do save — o
+      // vendedor precisa ver "salvo" na hora, tenha a auto-aprovação funcionado ou não.
+      if (clientEmail && ING) {
+        const autoAprovar = async () => {
+          try {
+            const pago = await rpc("client_has_paid", { p_secret: ING, p_email: clientEmail });
+            if (!pago.ok) return;                       // sem leitura = "não sei" → não age
+            if ((await pago.json().catch(() => false)) !== true) return;
+            await tentarAutoAprovar(env, request, { email: clientEmail, source: "draft_save", cents: 999999 });
+          } catch { /* nunca toca a resposta do save */ }
+        };
+        if (context && typeof context.waitUntil === "function") context.waitUntil(autoAprovar());
+        else await autoAprovar();
+      }
       return json({ ok: true, id });
     }
 
@@ -223,6 +246,18 @@ export async function onRequestPost(context) {
       if (!gr.ok) return json({ error: "not found" }, 404);
       const row = await gr.json().catch(() => null);
       const draft = row && row.payload ? row.payload : row;
+      // ═══ PORTÃO DO NÚMERO NO SERVIDOR (2026-08-25) ═══════════════════════════════════════
+      // Antes o pré-check de número compartilhado era um window.confirm no NAVEGADOR e o
+      // approve seguia mesmo se a checagem falhasse — exatamente o meio-provisionado que o
+      // health-monitor depois acusa (e o incidente real: a linha de demo atendendo pelo spa).
+      // Número compartilhado é decisão CONSCIENTE, não default: o front manda confirm:true só
+      // depois do humano confirmar, e "não sei" (precheck falhou) nunca é mais permissivo que
+      // "sei que tem problema".
+      const modoNumero = ((draft && draft.number_mode) || "shared").toString();
+      if ((modoNumero === "shared" || b.precheck === "falhou") && b.confirm !== true) {
+        return json({ error: "confirm_required",
+          motivo: "Este cadastro iria ao ar no número COMPARTILHADO (ou o pré-check falhou). Reenvie com confirm:true para assumir isso." }, 409);
+      }
       if (!draft || !draft.business) return json({ error: "draft not found" }, 404);
       const body = mapDraftToOnboard(draft);
       if (!body.email || !body.email.includes("@")) return json({ error: "draft is missing client_email" }, 400);

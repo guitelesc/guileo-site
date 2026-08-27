@@ -7,3 +7,9 @@ pages_build_output_dir = "dist"
 [[kv_namespaces]]
 binding = "RATE_LIMIT"
 id = "f0adeb4c389646acb311741102f2cc2a"
+
+# Workers AI — o gerador de imagem dos sites que a gente cria (functions/lib/imagemSite.js).
+# Escolhido por ser da MESMA conta onde o site já roda: nenhum fornecedor novo, nenhuma chave nova
+# para o Luis buscar, e nada que quebre quando um contrato externo mudar.
+[ai]
+binding = "AI"

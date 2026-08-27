@@ -7,6 +7,7 @@ import { leadReceivedEmail, leadAlertEmail } from "../lib/emailTemplates.js";
 import { emitFailure } from "../lib/failure.js";
 import { atribuicaoDoPedido, gravarAtribuicao } from "../lib/atribuicao.js";
 import { svcRpc } from "../lib/sb.js";
+import { avisaVendedorDoLead } from "../lib/avisoLeadVendedor.js";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -114,6 +115,17 @@ export async function onRequestPost(context) {
         });
         if (er.ok) stored = true; // a delivered owner email IS durable delivery — the lead reached Luis
       } catch { /* never block the capture */ }
+    }
+
+    // 4c) 🔥 O LEAD VOLTA PRA QUEM O TROUXE. Se veio pelo `?ref=` de um vendedor, ele recebe o
+    //     aviso AGORA — antes disto, o lead era gravado com "👤ref:<slug>" e ficava mudo até o
+    //     vendedor lembrar de abrir a aba 📥 Leads. Quem responde primeiro fecha; uma hora depois
+    //     a chance despenca. O destinatário vem do ROSTER (seller_by_ref), nunca do formulário.
+    //     Best-effort e AWAITED (a Cloudflare cancela promessa solta): nunca bloqueia a captura.
+    if (lead.ref) {
+      try {
+        await avisaVendedorDoLead(env, { ref: lead.ref, name: lead.name || lead.business, phone: lead.phone || lead.contact, source: lead.source, lang: leadLang === "en" ? "en" : "pt" });
+      } catch { /* a captura do lead vale mais que o aviso */ }
     }
 
     // 5) COMPLIANCE: log TCPA consent for this lead (proof against fines). The form sends

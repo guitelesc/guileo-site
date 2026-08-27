@@ -11,6 +11,7 @@ import { provisionClientAgent, buyAndBindNumber, forwardingInstructions, buildDe
 import { svcRpc } from "../lib/sb.js";
 import { emitFailure } from "../lib/failure.js";
 import { reportPurchase } from "../lib/adsConversions.js";
+import { tentarAutoAprovar } from "../lib/autoApprove.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -474,6 +475,18 @@ export async function onRequestPost(context) {
         })());
 
         if (isCheckout) context.waitUntil((async () => {
+        // ═══ AUTO-APROVAÇÃO DE CADASTRO PAGO (antes do nascimento magro) ═══════════════════════
+        // Se este pagador JÁ tem um cadastro COMPLETO em rascunho (o vendedor preencheu tudo em
+        // /vendedor: preços, unidades, canais, nome e voz do agente), aprovar esse rascunho dá à
+        // luz uma Gui com CÉREBRO RICO. O caminho abaixo, por definição, nasce uma Gui magra
+        // (é o `thin_agent_born` que ele mesmo denuncia). Então: se a auto-aprovação nasceu o
+        // agente, saímos daqui — deixar os dois rodarem criaria DOIS agentes e compraria DOIS
+        // números para o mesmo cliente.
+        // Só o `approved` interrompe. "Falta 1 clique" (número compartilhado), "desligado",
+        // "sem rascunho" ou falha NÃO interrompem: nesses casos o cliente pagou e ainda não tem
+        // agente nenhum, e a Gui magra de hoje é melhor do que linha muda. O módulo nunca lança.
+        const aa = await tentarAutoAprovar(env, request, { email, source: "stripe", cents });
+        if (aa && aa.approved) return;
         let provNumber = "", provLang = langFromCountry((obj.customer_details?.address?.country || "").toString().toUpperCase()), fwd = null, pend = null, bizName = "";
         if (env.ELEVENLABS_API_KEY) {
           try {

@@ -5,10 +5,47 @@
 // across every tenant, our platform inventory (numbers/hardware/accounts), and health.
 import { json, rateLimited, sameOrigin } from "../lib/guard.js";
 import { svcRpc } from "../lib/sb.js";
+import { supportRepliedEmail } from "../lib/emailTemplates.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
 const rpc = (name, body) => fetch(`${SB}/rest/v1/rpc/${name}`, { method: "POST", headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+// Avisa o CLIENTE que o chamado dele foi respondido. Best-effort: nunca derruba a resposta.
+// Cópia consciente do `avisaCliente` de support-hub.js (dono único por arquivo; o gêmeo está
+// anotado nos dois lados). Assunto e idioma vêm do template único em emailTemplates.js.
+async function avisaCliente(env, ticketId, replyText) {
+  try {
+    if (!env.RESEND_API_KEY || !env.SCHED_SECRET) return false;
+    const lr = await svcRpc(env, "support_ticket_list", { p_secret: env.SCHED_SECRET, p_email: "", p_limit: 1000 });
+    if (!lr.ok) return false;
+    const lista = (await lr.json().catch(() => [])) || [];
+    const t = (Array.isArray(lista) ? lista : []).find((x) => String(x.id) === String(ticketId));
+    const to = ((t && t.client_email) || "").toString().trim().toLowerCase();
+    if (!to.includes("@")) return false;
+    let lang = "pt", name = "";
+    try {
+      const pr = await svcRpc(env, "get_client_profile", { p_secret: env.INGEST_SECRET || "", p_email: to });
+      if (pr.ok) {
+        const p = await pr.json().catch(() => null);
+        if (p && typeof p === "object") {
+          lang = ["pt", "es", "en", "hi"].includes(p.lang) ? p.lang : "pt";
+          name = (p.owner || p.business_name || "").toString().slice(0, 80);
+        }
+      }
+    } catch { /* defaults */ }
+    const { subject, html } = supportRepliedEmail({
+      name, lang, ticketSubject: (t && t.subject) || "", replyPreview: String(replyText || "").slice(0, 400),
+    });
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to, subject, html }),
+    });
+    // Checar o retorno do envio — "avisado" sem olhar a resposta da Resend é promessa sem lastro.
+    if (!r.ok) { console.error(JSON.stringify({ aviso_chamado: ticketId, resend: r.status })); return false; }
+    return true;
+  } catch (e) { console.error(JSON.stringify({ aviso_chamado: ticketId, erro: String(e).slice(0, 120) })); return false; }
+}
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -34,7 +71,13 @@ export async function onRequestPost(context) {
     if (action === "ticket_reply") {
       const r = await rpc("support_ticket_reply", { p_secret: secret, p_id: b.id, p_role: b.role || "human", p_text: b.text || "" });
       const okv = r.ok ? await r.json().catch(() => false) : false;
-      return json({ ok: okv === true });
+      // O CLIENTE PRECISA SABER QUE RESPONDEMOS (2026-08-25). Antes, a resposta do BROTO ficava
+      // esperando ele lembrar de abrir o portal — atendimento rápido que o cliente sente como
+      // demora. Só sai quando a gravação foi confirmada pelo BOOLEANO da RPC (não pelo 200 do
+      // HTTP): avisar sobre uma resposta que não entrou na thread é pior que não avisar.
+      // ⚠️ GÊMEO em support-hub.js (`avisaCliente`) — mexeu num, mexa no outro no mesmo commit.
+      const avisado = okv === true ? await avisaCliente(env, b.id, b.text || "") : false;
+      return json({ ok: okv === true, avisado });
     }
     if (action === "inv_upsert") {
       const r = await rpc("inventory_upsert", { p_secret: secret, p_id: b.id || null, p_kind: b.kind || "number", p_label: b.label || "", p_status: b.status || "available", p_assigned: b.assigned || null, p_meta: b.meta || {} });
@@ -48,6 +91,16 @@ export async function onRequestPost(context) {
     if (action === "activations") {
       const has = (k) => !!(env[k] && String(env[k]).trim());
       const req = (arr) => arr.every(has);        // all required vars present
+      // 🚨 REVISOR 2026-08-25: o dunning migrou pra platform_settings (o /admin edita, o sweep
+      // obedece) e este card continuava lendo SÓ a env — o Luis ligava a cobrança no /admin e o
+      // BROTO mostrava a chave apagada. Duas verdades na mesma plataforma é o defeito que a onda
+      // inteira combate. Banco primeiro, env de reserva; falha de leitura degrada pra env.
+      let cfgCobranca = {};
+      try {
+        const cr = await svcRpc(env, "platform_settings_get", { p_secret: env.INGEST_SECRET || "" });
+        if (cr && cr.ok) { const j = await cr.json().catch(() => null); if (j && typeof j === "object" && !Array.isArray(j)) cfgCobranca = j; }
+      } catch { /* env manda */ }
+      const dunningLigado = String(cfgCobranca.dunning_enforce ?? env.DUNNING_ENFORCE ?? "") === "1";
       // REAL Stripe Connect status — GET /v1/accounts succeeds ONLY on a Connect-enabled platform.
       // "off" = key works but Connect not enabled (Stripe says so); "unknown" = no key / network hiccup.
       let stripeConnect = "unknown";
@@ -109,7 +162,7 @@ export async function onRequestPost(context) {
         { id: "gbp",      detect: true,  ready: req(["GOOGLE_BUSINESS_CLIENT_ID", "GOOGLE_BUSINESS_CLIENT_SECRET"]), vars: ["GOOGLE_BUSINESS_CLIENT_ID", "GOOGLE_BUSINESS_CLIENT_SECRET"] },
         { id: "mindbody", detect: true,  ready: has("MINDBODY_API_KEY"),       vars: ["MINDBODY_API_KEY"] },
         { id: "voicecost",detect: true,  ready: has("VOICE_COST_CENTS_PER_MIN"),vars: ["VOICE_COST_CENTS_PER_MIN"] },
-        { id: "dunning",  detect: true,  ready: String(env.DUNNING_ENFORCE || "") === "1", vars: ["DUNNING_ENFORCE"] },
+        { id: "dunning",  detect: true,  ready: dunningLigado, nota: cfgCobranca.dunning_enforce != null ? "regra no banco (/admin)" : "regra na env", vars: ["DUNNING_ENFORCE"] },
         // MP credits with the TOKEN alone (the webhook re-fetches the payment from MP as source of
         // truth). MP_WEBHOOK_SECRET is optional signature hardening, NOT a requirement — so readiness
         // is token-presence. Either MP_ACCESS_TOKEN or MERCADOPAGO_TOKEN counts (the webhook reads both).

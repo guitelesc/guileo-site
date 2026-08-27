@@ -96,8 +96,22 @@ function umaRodada(ws, { texto, vars, override, tetoMs }) {
         // abriu com "Thank you for calling". `contextual_update` entrega esse contexto SEM gastar um
         // turno e SEM tocar na configuração do agente — nada aqui altera o que atende no telefone,
         // que é justamente o que não pode quebrar. Vale só para esta conversa.
+        // ⚠️ O IDIOMA É DITO, NÃO ADIVINHADO. Medido em 25/08 no agente da Chigo (base pt-br): a
+        // MESMA pergunta em inglês voltou 2× em inglês e 1× em português. Não é falha, é
+        // MOEDA — e no canal de texto o cliente que escreve em inglês e recebe português some.
+        // O agente tem a regra "responda no idioma do cliente", mas regra que depende de o modelo
+        // reparar é sugestão; às vezes ele cai no idioma-base. Aqui do lado de cá eu JÁ SEI em que
+        // idioma a mensagem chegou (o canal informa), então eu nomeio o idioma em vez de torcer.
+        // A mensagem ainda manda: se ela vier em outro idioma, ela vence — o `lang` do canal pode
+        // ser só o padrão da conta, e o cliente é quem decide como quer ser atendido.
+        const IDIOMA = { pt: "Brazilian Portuguese", en: "English", es: "Spanish", hi: "Hindi",
+          fr: "French", it: "Italian", de: "German" };
+        const alvo = IDIOMA[String(vars?.lang || "").slice(0, 2).toLowerCase()] || "";
+        const regraIdioma = alvo
+          ? `The customer is writing in ${alvo} — reply in ${alvo}. If their message is clearly in another language, follow the message instead.`
+          : "Reply in exactly the same language the customer wrote in.";
         ws.send(JSON.stringify({ type: "contextual_update",
-          text: "SYSTEM: this conversation is happening over TEXT (WhatsApp/Instagram/web chat), not a phone call. Never say 'calling' or 'on the line'. Write numbers, prices and times as digits ($149, 2pm), never spelled out. Keep it short — 2 or 3 sentences, no greeting, they already said hello. Reply in the customer's language." }));
+          text: `SYSTEM: this conversation is happening over TEXT (WhatsApp/Instagram/web chat), not a phone call. Never say 'calling' or 'on the line'. Write numbers, prices and times as digits ($149, 2pm), never spelled out. Keep it short — 2 or 3 sentences, no greeting, they already said hello. ${regraIdioma}` }));
         ws.send(JSON.stringify({ type: "user_message", text: texto, source_medium: "text" }));
       } catch (e) { fim({ ok: false, motivo: `não consegui perguntar: ${(e && e.message) || "?"}` }); }
     };

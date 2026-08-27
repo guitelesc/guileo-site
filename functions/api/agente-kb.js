@@ -6,7 +6,7 @@
 //
 //   guileo     → o nosso Gui: a companhia inteira, montada de `productFacts` (que por sua vez lê
 //                `GUILEO_PLANS`). Zero cópia à mão — preço tem uma fonte e várias bocas.
-//   vertical   → "Gui Spa", "Gui Plumber": o playbook do RAMO (db/playbooks/*.md), enviado no corpo
+//   vertical   → "Gui Spa", "Gui Plumber": o playbook do RAMO (os .md em db/playbooks/), enviado no corpo
 //                da requisição. Não fica embutido no bundle de propósito: são ~20 mil caracteres
 //                cada, sobem UMA vez e passam a viver na ElevenLabs, herdados por todo cliente do
 //                ramo. Guardar 250 KB de manual no Worker para escrever uma vez seria carregar o
@@ -217,6 +217,16 @@ export async function onRequestPost({ request, env }) {
       return json({ acao: "vertical-cliente", vertical: vert, id: up.id, nome, chars: up.chars, agente: alvo, ...anexo });
     }
 
+    // ── TIRAR UM DOCUMENTO DO AGENTE ─────────────────────────────────────────────────────────
+    if (b.acao === "desanexar") {
+      const alvo = (b.agente || "").toString();
+      const nomes = Array.isArray(b.nomes) ? b.nomes.map(String) : (b.nome ? [String(b.nome)] : []);
+      if (!alvo || !nomes.length) return json({ error: "informe agente e nome(s) do documento" }, 400);
+      const { kbDesanexar } = await import("../lib/agentKB.js");
+      const r = await kbDesanexar(env, { agentId: alvo, nomes });
+      return json({ acao: "desanexar", agente: alvo, ...r }, r.ok ? 200 : 502);
+    }
+
     // ── VER OS MOLDES (só leitura) ────────────────────────────────────────────────────────────
     // Nasceu de uma necessidade boba e reveladora: para PERGUNTAR uma coisa a um molde eu estava
     // chamando de novo a rota que CRIA — só para descobrir o id. Usar uma escrita como leitura é
@@ -231,7 +241,11 @@ export async function onRequestPost({ request, env }) {
         lista: moldes.map((a) => ({ nome: a.name, id: a.agent_id || a.id })),
         // Os que NÃO são molde aparecem também: é como se vê, de relance, que criar 13 gabaritos
         // não atropelou nenhum agente que atende cliente de verdade.
-        clientes: todos.filter((a) => !(a?.name || "").startsWith("MOLDE · ")).map((a) => a.name) });
+        // Com ID: a lista existia para PROVAR que os moldes não atropelaram ninguém, e para isso
+        // o nome bastava. Mas na hora de agir sobre um agente de cliente o nome não serve — e eu
+        // acabei lendo o agente errado por adivinhar o id a partir do e-mail do tenant.
+        clientes: todos.filter((a) => !(a?.name || "").startsWith("MOLDE · "))
+          .map((a) => ({ nome: a.name, id: a.agent_id || a.id })) });
     }
 
     // ── CRIAR (ou atualizar) O MOLDE DE UM RAMO ──────────────────────────────────────────────

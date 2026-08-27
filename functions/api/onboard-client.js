@@ -220,8 +220,16 @@ export async function onRequestPost(context) {
     // plano. Rodar isto de novo num cliente vivo não dá erro: dá crédito a mais e troca o plano
     // dele em silêncio. Quase aconteceu com a primeira cliente real, por um e-mail digitado no
     // formulário de cima em vez do de baixo. Fail-closed: só passa com `reativar: true` explícito.
+    // 🚨 SERVICE_ROLE, NÃO ANON (corrigido 25/08). Estas três RPCs foram REVOGADAS do anon na
+    // faxina de segurança, e este arquivo continuou chamando com a chave anon. Resultado:
+    // `client_ja_existe` devolvia 401, o portão é fail-closed, e **cadastrar cliente novo estava
+    // quebrado em produção** — para qualquer um, não só para este. Ninguém percebeu porque a
+    // resposta saía como 502 e o Cloudflare TROCA o corpo de um 502 pela página de erro dele: a
+    // nossa frase "não consegui verificar, não vou ativar no escuro" nunca chegou a ninguém.
+    // Lição dupla: (1) revogar do anon exige varrer quem chamava; (2) 502 é status mudo — motivo
+    // que precisa ser lido não pode viajar nele.
     if (!(b.reativar === true || b.reativar === "true")) {
-      const jr = await rpc("client_ja_existe", { p_secret: ING, p_email: email });
+      const jr = await svcRpc(env, "client_ja_existe", { p_secret: ING, p_email: email });
       if (jr.ok) {
         const j = await jr.json().catch(() => null);
         if (j && j.existe === true) {
@@ -233,7 +241,7 @@ export async function onRequestPost(context) {
         }
       }
       // jr.ok falso = não consegui perguntar. Não sigo no escuro: escrever aqui é irreversível.
-      else return json({ error: "checagem_falhou", motivo: `não consegui verificar se ${email} já é cliente (HTTP ${jr.status}) — não vou ativar no escuro` }, 502);
+      else return json({ error: "checagem_falhou", motivo: `não consegui verificar se ${email} já é cliente (HTTP ${jr.status}) — não vou ativar no escuro` }, 409);
     }
 
     const business = b.business.toString().slice(0, 160);
@@ -337,7 +345,7 @@ export async function onRequestPost(context) {
       // $50 em um plano e outra coisa em outro — e a conta do cliente não bateria com a promessa.
       let bonus = 0, promessa = null;
       try {
-        const pr = await rpc("promessa_do_lead", { p_secret: ING, p_email: email, p_business: business });
+        const pr = await svcRpc(env, "promessa_do_lead", { p_secret: ING, p_email: email, p_business: business });
         if (pr.ok) {
           const pd = await pr.json().catch(() => null);
           if (pd?.tem === true) {
@@ -522,7 +530,7 @@ export async function onRequestPost(context) {
         // one (provision.js:370 does the same). A re-clicked approve / webhook re-delivery must NOT buy a
         // 2nd $/mo line. If found, reuse it — step 5 re-binds it to the agent (identical outcome).
         let already = "";
-        try { const lr = await rpc("client_number_lookup", { p_secret: ING, p_email: email }); if (lr.ok) already = ((await lr.json()) || "").toString(); } catch { /* lookup best-effort → proceed to buy */ }
+        try { const lr = await svcRpc(env, "client_number_lookup", { p_secret: ING, p_email: email }); if (lr.ok) already = ((await lr.json()) || "").toString(); } catch { /* lookup best-effort → proceed to buy */ }
         if (already) {
           result.number = already; result.steps.number = "reused (client já tinha número — não comprei outro)";
         } else {

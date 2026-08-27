@@ -158,3 +158,59 @@ export async function kbSincronizar(env, { agentId, camadas = [] }) {
     erros,
   };
 }
+
+// ── kbDesanexar: TIRAR um documento do agente ───────────────────────────────────────────────────
+// POR QUE ISTO FALTAVA E POR QUE DÓI (2026-08-25)
+// Eu disse ao Luis que um KB anexado "volta em um comando", apontando o `?voltar=1` da
+// referência-ouro. Estava errado, e só descobri conferindo: o `voltar` restaura VOZ e PRESETS de
+// idioma — está escrito no próprio arquivo, por desenho — e o `sync-agent` reconstrói o prompt.
+// Nenhum dos dois REMOVE um documento do KB. Pior: o `voltar` respondeu `ok:true` e o documento
+// continuou anexado, porque o snapshot foi tirado quando o agente tinha ZERO documentos e a
+// ElevenLabs simplesmente não inclui o campo vazio — um PATCH que omite o campo MESCLA.
+//
+// A lição que fica: **desfazer não é o inverso automático de fazer.** Quem constrói um "anexar"
+// precisa construir o "desanexar" no mesmo dia, senão a única saída vira mexer na mão no painel —
+// exatamente o que a referência-ouro existe para evitar.
+export async function kbDesanexar(env, { agentId, nomes = [] }) {
+  const g = await ler(await fetch(`${API}/v1/convai/agents/${encodeURIComponent(agentId)}`, { headers: H(env) }));
+  if (!g.ok) return { ok: false, motivo: `não consegui ler o agente (HTTP ${g.status})` };
+  const prompt = g.d?.conversation_config?.agent?.prompt;
+  if (!prompt || typeof prompt !== "object") return { ok: false, motivo: "não consegui ler o prompt do agente — não vou escrever por cima às cegas" };
+
+  const antes = Array.isArray(prompt.knowledge_base) ? prompt.knowledge_base : [];
+  const tirar = new Set(nomes);
+  const depois = antes.filter((x) => !tirar.has(x?.name || ""));
+  if (depois.length === antes.length) {
+    return { ok: true, nada_a_fazer: true, motivo: "esses documentos já não estavam anexados", kb_total: antes.length };
+  }
+
+  // Mesma armadilha do kbAnexar: o GET devolve `tools` E `tool_ids`, e mandar os dois dá 400.
+  const pLimpo = { ...prompt };
+  if (Array.isArray(pLimpo.tool_ids) && pLimpo.tool_ids.length) delete pLimpo.tools;
+  else if (Array.isArray(pLimpo.tools) && pLimpo.tools.length) delete pLimpo.tool_ids;
+  const ferramentasAntes = (Array.isArray(prompt.tool_ids) ? prompt.tool_ids.length : 0) || (Array.isArray(prompt.tools) ? prompt.tools.length : 0);
+
+  // ⚠️ O CAMPO VAI EXPLÍCITO, MESMO VAZIO. Foi exatamente a omissão de `knowledge_base` que fez a
+  // volta "dar certo" sem tirar nada: campo ausente = mescla = o antigo sobrevive.
+  const r = await ler(await fetch(`${API}/v1/convai/agents/${encodeURIComponent(agentId)}`, {
+    method: "PATCH", headers: H(env),
+    body: JSON.stringify({ conversation_config: { agent: { prompt: { ...pLimpo, knowledge_base: depois } } } }),
+  }));
+  if (!r.ok) return { ok: false, motivo: `a ElevenLabs recusou o PATCH (HTTP ${r.status})`, detalhe: (r.t || "").slice(0, 400) };
+
+  // CONFERE NA FONTE — "200" não é prova de que saiu.
+  const c = await ler(await fetch(`${API}/v1/convai/agents/${encodeURIComponent(agentId)}`, { headers: H(env) }));
+  const pD = c.d?.conversation_config?.agent?.prompt || {};
+  const kbD = pD.knowledge_base || [];
+  const sobrou = kbD.filter((x) => tirar.has(x?.name || "")).map((x) => x.name);
+  const ferramentasDepois = (Array.isArray(pD.tool_ids) ? pD.tool_ids.length : 0) || (Array.isArray(pD.tools) ? pD.tools.length : 0);
+  return {
+    ok: sobrou.length === 0 && ferramentasDepois >= ferramentasAntes && (pD.prompt || "").length > 0,
+    removidos: antes.filter((x) => tirar.has(x?.name || "")).map((x) => x.name),
+    ainda_anexado: sobrou,
+    kb_total: kbD.length,
+    prompt_chars: (pD.prompt || "").length,
+    ferramentas: `${ferramentasAntes} → ${ferramentasDepois}`,
+    motivo: sobrou.length ? "o PATCH passou mas o documento continua no agente" : "",
+  };
+}

@@ -144,6 +144,15 @@ export async function onRequest(context) {
       // Gui replies to new Google reviews (inert until GOOGLE_BUSINESS_* + a tenant connects)
       targets.push({ name: "review-responder", url: `${base}/api/review-responder?token=${t}` });
       targets.push({ name: "collections", url: `${base}/api/collections?sweep=1&token=${t}` });
+      // 🚨 ÓRFÃO DESDE QUE NASCEU (achado da auditoria, 2026-08-25). O cabeçalho de
+      // credit-alerts.js diz «driven by the */15 cron» — e NENHUM cron jamais o chamou. Ou seja:
+      // desde o dia em que foi escrito, o cliente que zerava os créditos via o Gui parar de ligar
+      // e NUNCA recebia o aviso do porquê. Motor pronto, testado, e desligado da tomada.
+      // De hora em hora (não a cada 15 min): o endpoint é latch-dedupado por cliente
+      // (mark_credit_alerted), então re-rodar nunca duplica; e 24 varreduras/dia já entregam o
+      // aviso com folga sobre um saldo que leva dias para cair.
+      // Agora também faz o PRÉ-alerta de 20% — avisar só no zero é avisar depois que parou.
+      targets.push({ name: "credit-alerts", url: `${base}/api/credit-alerts?token=${t}` });
       // dunning grace-period sweep — dry-run until DUNNING_ENFORCE='1'; claim-deduped so an
       // hourly re-run never spams the last-call email or double-pauses (safe to run every hour).
       targets.push({ name: "dunning-sweep", url: `${base}/api/dunning-sweep?token=${t}` });
@@ -246,6 +255,11 @@ export async function onRequest(context) {
       // decisão a tomar — dinheiro queimando ou campanha que merece mais orçamento. É o que
       // separa agência de painel: chega antes do prejuízo virar mês fechado. Silencioso quando
       // não há nada a decidir, de propósito.
+      // ⚠️ ELE RODA NAS DUAS JANELAS (13h E 14h) DE PROPÓSITO — e só depois de 2026-08-25 isso é
+      // seguro: até então o vigia NÃO era claim-dedupado e cada cliente com alerta recebia o mesmo
+      // e-mail DUAS vezes toda segunda. A trava agora mora no próprio endpoint (`ops_run_claim`,
+      // janela de 20h), que é onde ela protege também a chamada manual. Mantido nas duas janelas
+      // porque um tique falho não pode custar a semana inteira do aviso.
       if (new Date().getUTCDay() === 1) targets.push({ name: "ads-vigia", url: `${base}/api/ads-vigia?token=${t}` });
       // MOTOR DE AGENTE (diário, 13h) — encontra os agentes que ficaram numa versão de cérebro
       // antiga e os atualiza. É o que transforma "consertei uma lição" em "a frota inteira
@@ -259,6 +273,17 @@ export async function onRequest(context) {
       // Company OS owner brief — "sua empresa se operou hoje". 13h ONLY (not the 14h retry) so the
       // owner gets exactly ONE daily brief (it isn't claim-deduped; a missed day is harmless).
       if (hourUTC === 13) targets.push({ name: "company-os-brief", url: `${base}/api/company-os-brief?token=${t}` });
+      // 🚨 O OUTRO ÓRFÃO (auditoria 2026-08-25): /api/daily-digest existe, é token-gated
+      // (DIGEST_TOKEN via `safeEq`) e NUNCA foi chamado por cron nenhum. O resumo dos leads das
+      // últimas 24h — o e-mail que diz "estes procuraram você ontem" — simplesmente não saía.
+      // 13h APENAS (não na repetição das 14h): o endpoint NÃO é claim-dedupado — ele varre uma
+      // janela fixa de 24h e manda. Na repetição das 14h o dono receberia o MESMO digest duas
+      // vezes por dia, com quase os mesmos leads. Um dia perdido é barato; digest duplicado
+      // treina o dono a ignorar o e-mail que existe para ele abrir.
+      // Silencioso quando não há lead: a rota devolve `sent:false` sem mandar nada.
+      // `lang=pt` explícito: o padrão da rota é "en" e quem lê este digest é o Luis. Digest em
+      // inglês para leitor de português é o mesmo "meio em inglês" que a lei de i18n proíbe.
+      if (hourUTC === 13) targets.push({ name: "daily-digest", url: `${base}/api/daily-digest?lang=pt&token=${t}` });
     }
 
     const results = {};

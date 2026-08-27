@@ -39,14 +39,22 @@ export async function onRequestPost(context) {
         p_secret: ING, p_id: (b.id || "").toString(),
         p_step: (b.passo || "").toString(), p_done: !!b.feito,
       });
-      // svcRpc devolve o objeto cru da RPC; a linha atualizada volta pro front redesenhar
-      return json({ ok: true, entrega: r ?? null });
+      // 🚨 CORRIGIDO (2026-08-25): svcRpc devolve a RESPOSTA HTTP, não o JSON — o comentário
+      // antigo estava errado e o front recebia um objeto Response serializado como {}. A lição
+      // já está escrita no próprio sb.js ("os DOIS erros opostos no mesmo dia").
+      const entrega = r && r.ok ? await r.json().catch(() => null) : null;
+      if (entrega == null) return json({ ok: false, erro: "dfy_step_set não confirmou a gravação" }, 502);
+      return json({ ok: true, entrega });
     }
 
-    const lista = await svcRpc(env, "dfy_list", { p_secret: ING, p_status: (b.status || null) || null });
-    // RPC inexistente (SQL ainda não colado) → honesto, não finge lista vazia
-    if (lista == null) return json({ ok: false, note: "RPC dfy_list não existe — cole db/dfy_entregas.sql no SQL Editor" });
-    return json({ ok: true, entregas: Array.isArray(lista) ? lista : [] });
+    // 🚨 CORRIGIDO (2026-08-25): `lista` era o Response — `Array.isArray(Response)` é sempre
+    // false, então a lista de entregas do /admin vinha SEMPRE vazia, com cara de "nenhuma
+    // entrega". O badge de idade das entregas só passou a funcionar depois deste conserto.
+    const lr = await svcRpc(env, "dfy_list", { p_secret: ING, p_status: (b.status || null) || null });
+    if (!lr || !lr.ok) return json({ ok: false, note: "RPC dfy_list não existe ou recusou — cole db/dfy_entregas.sql no SQL Editor" });
+    const lista = await lr.json().catch(() => null);
+    if (!Array.isArray(lista)) return json({ ok: false, note: "dfy_list respondeu formato inesperado" });
+    return json({ ok: true, entregas: lista });
   } catch (e) {
     return json({ ok: false, error: (e && e.message) || "erro" }, 500);
   }

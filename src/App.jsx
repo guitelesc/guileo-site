@@ -138,6 +138,7 @@ const AgentePronto = lazyRetry(() => import("./pages/AgentePronto")); // Motor d
 const DemoPage = lazyRetry(() => import("./pages/DemoPage")); // public "vitrine" — any product rendered in the client's brand (/vitrine/:token?)
 const Apresentacao = lazyRetry(() => import("./pages/Apresentacao")); // owner-facing growth report / quote (/apresentacao/:id — id = uuid da avaliação)
 const RaioX = lazyRetry(() => import("./pages/RaioX")); // /raio-x — pedido PÚBLICO do Guileo X-Ray (quiz → relatório medido → call de 15 min)
+const OrcamentoPublico = lazyRetry(() => import("./pages/OrcamentoPublico")); // /orcamento/:token — o orçamento do vendedor que o CLIENTE abre e aceita (sem login; o token é a capacidade)
 
 // Privacy-first visit beacon → /api/hit (page + referrer host + lang only; no cookies,
 // no IDs). Fires once per pageload + on SPA route changes via history patching.
@@ -210,6 +211,8 @@ export default function App() {
             <Route path="/deck" element={<Deck />} />
             <Route path="/menu" element={<Menu />} />
             <Route path="/novo/:slug" element={<Novo />} />
+            {/* A página de booking da vitrine — mesmo domínio, mesma marca. Ver Novo.jsx (BOOK). */}
+            <Route path="/novo/:slug/book" element={<Novo book />} />
             <Route path="/vendedor" element={<Vendedor />} />
             {/* Hub interno da equipe — /tecnico e /marketing abrem a mesma página na aba certa */}
             <Route path="/equipe" element={<Equipe />} />
@@ -270,6 +273,7 @@ export default function App() {
             <Route path="/vitrine" element={<DemoPage />} />
             <Route path="/vitrine/:token" element={<DemoPage />} />
             <Route path="/apresentacao/:id" element={<Apresentacao />} />
+            <Route path="/orcamento/:token" element={<OrcamentoPublico />} />
             <Route path="/raio-x" element={<RaioX />} />
             <Route path="/x-ray" element={<RaioX />} />
             <Route path="/xray" element={<Navigate to="/raio-x" replace />} />

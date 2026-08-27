@@ -83,9 +83,11 @@ const CH_LABEL = {
 const CH_PH = { whatsapp: "+1 305 555 0100", instagram: "@perfil", facebook: "@perfil", linkedin: "https://linkedin.com/company/…", tiktok: "@perfil", youtube: "https://youtube.com/@canal", google_business: "https://g.page/…", reviews: "https://g.page/r/…/review" };
 
 // Fallback channel list (canonical order) used only if the shared data module ships empty.
+// ⚠️ SMS é PENDING (A2P 10DLC reprovado, erro Twilio 30034) — a fonte da verdade é
+// functions/lib/productFacts.js, e ARQUITETURA §3 proíbe este arquivo de discordar dela.
 const FALLBACK_CHANNELS = [
-  { key: "phone", status: "live" }, { key: "widget", status: "live" }, { key: "email", status: "live" }, { key: "sms", status: "live" },
-  { key: "whatsapp", status: "pending" }, { key: "instagram", status: "pending" }, { key: "facebook", status: "pending" }, { key: "linkedin", status: "pending" },
+  { key: "phone", status: "live" }, { key: "widget", status: "live" }, { key: "email", status: "live" },
+  { key: "sms", status: "pending" }, { key: "whatsapp", status: "pending" }, { key: "instagram", status: "pending" }, { key: "facebook", status: "pending" }, { key: "linkedin", status: "pending" },
   { key: "tiktok", status: "pending" }, { key: "youtube", status: "pending" }, { key: "google_business", status: "pending" }, { key: "ads", status: "pending" }, { key: "reviews", status: "pending" },
 ];
 
@@ -802,7 +804,9 @@ export default function OnboardWizard({ token, mode = "seller", lang = "pt", sel
                 {chList.map((ch, idx) => {
                   const key = keyOf(ch);
                   if (!key || key === "phone") return null; // o telefone tem tela própria
-                  const isLive = liveKeys.has(key) ? true : pendKeys.has(key) ? false : ch.status ? ch.status === "live" : key === "widget" || key === "email" || key === "sms";
+                  // último fallback: só widget e e-mail são LIVE sem consultar o catálogo. SMS saiu daqui
+                  // (ARQUITETURA §3 · productFacts.js): A2P 10DLC reprovado, erro Twilio 30034.
+                  const isLive = liveKeys.has(key) ? true : pendKeys.has(key) ? false : ch.status ? ch.status === "live" : key === "widget" || key === "email";
                   const label = chLabel[key] || CH_LABEL.en[key] || key;
                   const icon = ch.emoji || ch.icon || CH_ICON[key] || "•";
                   const on = key === "widget" ? widgetEnabled : key === "ads" ? adsEnabled : !!chOn[key];

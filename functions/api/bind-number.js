@@ -22,6 +22,25 @@ export async function onRequestPost(context) {
     const number = (b.number || "").toString().replace(/[^0-9+]/g, "");
     if (!email.includes("@")) return json({ error: "email required" }, 400);
     if (!/^\+?[0-9]{8,15}$/.test(number)) return json({ error: "número inválido (use E.164, ex: +13055551234)" }, 400);
+    /* 🚫 TRAVA DO DONO OCUPADO (Luis, 25/08: «nunca perca a linha da Lilian ou a do Natura Spa;
+       a nossa nunca use pra nada»).
+       O portão abaixo protege a linha da própria Guileo. Faltava a outra metade: um número que
+       JÁ atende por um cliente real podia ser reapontado para outro tenant sem um único aviso —
+       e o telefone do cliente pagante passaria a atender como outra empresa. Não é hipótese:
+       a linha de demo da Guileo já atendeu como o spa da Natura por causa disso.
+       Regra: reapontar um número que pertence a OUTRO tenant exige `forcar: true` explícito.
+       Reamarrar o número ao MESMO dono continua livre (é o conserto normal, não a troca). */
+    const donoAtual = await rpc("client_email_by_number", { p_secret: env.INGEST_SECRET || "", p_number: number })
+      .then((r) => (r && r.ok ? r.json() : null)).then((v) => (v || "").toString().trim().toLowerCase()).catch(() => null);
+    // ⚠️ `null` aqui é "não consegui checar", NÃO "está livre". Falhar a leitura e seguir em
+    // frente é como se perde a linha de um cliente sem ninguém perceber.
+    if (donoAtual === null) {
+      return json({ error: "não consegui verificar de quem é este número — recuso mapear às cegas" }, 503);
+    }
+    if (donoAtual && donoAtual !== email && b.forcar !== true) {
+      return json({ error: `🚫 ${number} já atende por ${donoAtual}. Reapontar tiraria o telefone desse cliente. Se é isso mesmo, repita com "forcar": true.` }, 409);
+    }
+
     // GUARD: the platform demo/outbound line is RESERVED — never bind it to a client agent.
     // A lista vive em lib/reserved.js porque o /api/provision-number precisa da MESMA — duas
     // cópias divergem no dia em que alguém acrescenta um número só numa delas.

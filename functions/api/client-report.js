@@ -1,11 +1,14 @@
 // Cloudflare Pages Function — GET/POST /api/client-report?token=DIGEST_TOKEN
 // Weekly client report: for each real client, pulls the last 7 days of client_events
-// and emails the owner-facing "Your Gui this week" report. Clients with zero events are
-// skipped (no spam). Wired into the weekly cron Worker.
+// and emails the owner-facing "Your Gui this week" report. Wired into the weekly cron Worker.
+// Cliente com ZERO evento não recebe o relatório (relatório de zeros não é valor) — recebe o
+// e-mail de GUI OCIOSA ("sua linha está encaminhada?"), no máximo 1× a cada 14 dias. Ver o
+// comentário longo no laço: pular esse cliente era pular exatamente quem está prestes a sair.
 // TEST: ?email=X limits to one client; ?to=Y sends to Y instead of the client, but ONLY
 // if Y is an owner inbox (so we can safely preview by emailing ourselves).
 import { json, isOwnerEmail, safeEq } from "../lib/guard.js";
-import { weeklyReportEmail, valueBlock } from "../lib/emailTemplates.js";
+import { weeklyReportEmail, valueBlock, guiIdleEmail } from "../lib/emailTemplates.js";
+import { emitFailure } from "../lib/failure.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -79,13 +82,61 @@ export async function onRequest(context) {
     if (onlyEmail) clients = clients.filter((c) => (c.client_email || "").toLowerCase() === onlyEmail);
     clients = clients.slice(0, 50);
 
-    let reports = 0, skipped = 0;
+    let reports = 0, skipped = 0, idle = 0;
     for (const c of clients) {
       const email = c.client_email;
       if (!email) { skipped++; continue; }
 
       const events = (await rpc("client_events_since", { p_secret: env.INGEST_SECRET || "", p_email: email, p_since: sinceISO })) || [];
-      if (!Array.isArray(events) || events.length === 0) { skipped++; continue; }
+      // ── O CLIENTE OCIOSO NÃO É "NADA A DIZER" (2026-08-25) ──────────────────────────────────
+      // Este `continue` existia com a melhor das intenções ("sem evento, não enche a caixa dele") e
+      // era exatamente ao contrário: o cliente com ZERO evento na semana é o de MAIOR risco de
+      // churn — ou o encaminhamento da linha nunca foi ligado, ou ele desistiu em silêncio. O
+      // relatório semanal pulava justamente quem precisava de um toque.
+      // Continua NÃO mandando o relatório (relatório de zeros é humilhação, não valor): manda um
+      // e-mail DIFERENTE, que pergunta a coisa certa — "a sua linha está encaminhada?" — com um
+      // teste de 20 segundos.
+      // TRAVA DE 14 DIAS por cliente, pela mesma `alarme_uma_vez` que o cron já usa em produção:
+      // semanal seria cobrança, e cobrança semanal sobre silêncio empurra o churn em vez de evitá-lo.
+      // Sem poder consultar a trava, NÃO manda (fail-closed): aqui o risco de spam é pior que o de
+      // atrasar uma semana — a varredura roda toda segunda de novo.
+      if (!Array.isArray(events) || events.length === 0) {
+        skipped++;
+        // CONTA INTERNA NÃO LEVA CUTUCADA (mesma marca que health-monitor.js respeita): sim@,
+        // demo@ e a conta modelo passam semanas sem evento por projeto, e cutucá-las todo mês
+        // treina a gente a ignorar este e-mail justamente quando ele for sobre um cliente real.
+        if (c && c.internal === true) continue;
+        try {
+          const pode = await rpc("alarme_uma_vez", { p_secret: env.INGEST_SECRET || "", p_chave: `gui_ociosa:${email}`, p_minutos: 20160 });
+          if (pode === true) {
+            const prof = (await rpc("get_client_profile", { p_secret: env.INGEST_SECRET || "", p_email: email })) || {};
+            const lgRaw = (prof.lang || "").toString().toLowerCase().slice(0, 2);
+            const lg = ["pt", "es", "en", "hi"].includes(lgRaw) ? lgRaw : "en";
+            const biz = prof.business_name || "";
+            // NUNCA INVENTAR NÚMERO: só vai no e-mail o que o banco devolver de verdade.
+            const num = await rpc("client_number_lookup", { p_secret: env.INGEST_SECRET || "", p_email: email });
+            const tpl = guiIdleEmail({
+              name: prof.owner || biz || email.split("@")[0], business: biz, lang: lg,
+              agentName: prof.agent_name || "Gui", number: typeof num === "string" ? num : "",
+            });
+            const ir = await fetch("https://api.resend.com/emails", {
+              method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ from: FROM, to: [testTo || email], subject: tpl.subject, html: tpl.html }),
+            });
+            // Checar o `ok`: um "avisei o ocioso" que a Resend recusou deixaria o cliente de maior
+            // risco sem contato E com a trava de 14 dias queimada.
+            if (ir.ok) idle++;
+            else {
+              // 🚨 REVISOR 2026-08-25: a trava de 14 dias já foi queimada ANTES do envio; se a
+              // Resend falhar, o cliente mais frio da carteira fica duas semanas sem aviso e
+              // ninguém sabe. Falha de envio aqui vira alarme ao dono (o padrão da própria onda).
+              console.error(JSON.stringify({ gui_ociosa: email, resend: ir.status }));
+              await emitFailure(env, "gui_ociosa_email_failed", email, `Resend ${ir.status} — trava de 14d já queimada`, {});
+            }
+          }
+        } catch (e) { console.error(JSON.stringify({ gui_ociosa: email, erro: String(e).slice(0, 120) })); }
+        continue;
+      }
 
       const stats = {
         conversations: events.filter((e) => e.type === "call").length + events.filter((e) => e.type === "message").length,
@@ -197,7 +248,7 @@ export async function onRequest(context) {
       if (sr.ok) reports++; else skipped++;
     }
 
-    return json({ ok: true, reports, skipped });
+    return json({ ok: true, reports, skipped, idle });
   } catch (e) {
     return json({ error: String(e).slice(0, 120) }, 500);
   }

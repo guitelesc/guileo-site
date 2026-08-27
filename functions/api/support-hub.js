@@ -20,6 +20,7 @@
 // ═════════════════════════════════════════════════════════════════════════════
 import { json, sameOrigin, rateLimited, safeEq } from "../lib/guard.js";
 import { svcRpc } from "../lib/sb.js";
+import { supportRepliedEmail } from "../lib/emailTemplates.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -90,6 +91,51 @@ async function techAuth(env, email, code, token) {
 const clean = (s, n = 4000) => (s == null ? "" : String(s).slice(0, n));
 const isUuid = (s) => /^[0-9a-f-]{36}$/i.test(String(s || ""));
 
+// ── "CHAMADO RESPONDIDO" CHEGA NO CLIENTE (2026-08-25) ────────────────────────────────────────
+// O buraco: o vendedor ou o técnico respondia, a resposta entrava na thread, e o CLIENTE só
+// descobriria se lembrasse de voltar no portal e abrir a aba. Na prática, resposta rápida nossa
+// virava demora sentida por ele — o pior tipo de bug de suporte, porque é invisível dos dois lados.
+// Best-effort e SEMPRE depois da gravação: o e-mail nunca pode fazer a resposta se perder.
+// ⚠️ GÊMEO EM broto.js (ticket_reply) — o BROTO responde os mesmos chamados por outra porta.
+// Mexeu aqui, mexa lá no mesmo commit.
+async function avisaCliente(env, ticketId, replyText) {
+  try {
+    if (!env.RESEND_API_KEY || !env.SCHED_SECRET) return false;
+    // Quem é o dono do chamado e qual era o assunto: a RPC de lista com p_email:'' devolve a fila
+    // inteira (é a mesma que o BROTO usa) e a filtramos pelo id.
+    const lr = await svcRpc(env, "support_ticket_list", { p_secret: env.SCHED_SECRET, p_email: "", p_limit: 1000 });
+    if (!lr.ok) return false;
+    const lista = (await lr.json().catch(() => [])) || [];
+    const t = (Array.isArray(lista) ? lista : []).find((x) => String(x.id) === String(ticketId));
+    const to = ((t && t.client_email) || "").toString().trim().toLowerCase();
+    if (!to.includes("@")) return false;
+    // Idioma do cliente — sem perfil legível cai em pt (o cockpit nasce em pt), nunca em inglês
+    // silencioso para quem não fala inglês.
+    let lang = "pt", name = "";
+    try {
+      const pr = await svcRpc(env, "get_client_profile", { p_secret: env.INGEST_SECRET || "", p_email: to });
+      if (pr.ok) {
+        const p = await pr.json().catch(() => null);
+        if (p && typeof p === "object") {
+          lang = ["pt", "es", "en", "hi"].includes(p.lang) ? p.lang : "pt";
+          name = (p.owner || p.business_name || "").toString().slice(0, 80);
+        }
+      }
+    } catch { /* defaults */ }
+    const { subject, html } = supportRepliedEmail({
+      name, lang, ticketSubject: (t && t.subject) || "", replyPreview: String(replyText || "").slice(0, 400),
+    });
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to, subject, html }),
+    });
+    // Conferir o `ok`: "avisei o cliente" sem olhar a resposta da Resend é a promessa sem lastro
+    // que já custou dois bugs invisíveis neste repo.
+    if (!r.ok) { console.error(JSON.stringify({ aviso_chamado: ticketId, resend: r.status })); return false; }
+    return true;
+  } catch (e) { console.error(JSON.stringify({ aviso_chamado: ticketId, erro: String(e).slice(0, 120) })); return false; }
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
@@ -148,7 +194,13 @@ export async function onRequestPost(context) {
           // fazia a RPC recusar em silêncio se SCHED faltasse. Sem SCHED → erro honesto, nunca falso-ok.
           if (!env.SCHED_SECRET) return json({ ok: false, note: "SCHED_SECRET ausente — resposta não enviada." });
           const r = await svcRpc(env, "support_ticket_reply", { p_secret: env.SCHED_SECRET, p_id: b.id, p_role: "human", p_text: `${seller.name}: ${clean(b.text, 2000)}` });
-          return json({ ok: r.ok });
+          // 🚨 REVISOR 2026-08-25: support_ticket_reply é BOOLEANA (returns found). `r.ok` é o
+          // status HTTP — 200 com `false` quando o UPDATE não achou o ticket. Ler o HTTP aqui
+          // mostrava "✓ enviado" (e mandava o e-mail "te respondemos"!) sobre resposta que não
+          // entrou na thread. O gêmeo do broto.js sempre parseou o booleano; agora este também.
+          const okv = r.ok ? (await r.json().catch(() => false)) === true : false;
+          const avisado = okv ? await avisaCliente(env, b.id, clean(b.text, 2000)) : false;
+          return json({ ok: okv, avisado });
         } catch { return json({ ok: false }); }
       }
 
@@ -190,7 +242,11 @@ export async function onRequestPost(context) {
         try {
           if (!env.SCHED_SECRET) return json({ ok: false, note: "SCHED_SECRET ausente — resposta não enviada." });
           const r = await svcRpc(env, "support_ticket_reply", { p_secret: env.SCHED_SECRET, p_id: b.id, p_role: "human", p_text: `[téc] ${tech.name}: ${clean(b.text, 4000)}` });
-          return json({ ok: r.ok });
+          // mesmo conserto do seller_reply (revisor 2026-08-25): a RPC é booleana; e o tier
+          // técnico nem passa por ownsTicket, então uuid de ticket apagado dava "✓" falso.
+          const okv = r.ok ? (await r.json().catch(() => false)) === true : false;
+          const avisado = okv ? await avisaCliente(env, b.id, clean(b.text, 4000)) : false;
+          return json({ ok: okv, avisado });
         } catch { return json({ ok: false }); }
       }
 

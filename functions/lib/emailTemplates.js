@@ -210,6 +210,23 @@ const HEAD_STYLE = `
     /* Inter — the site's exact typeface. Honored by Apple Mail & co; Gmail falls back to the
        SF/Segoe stack (closest metrics). This is what makes the lettering match the site. */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+    /* ── O BOTÃO QUE RESPIRA ────────────────────────────────────────────────────────────
+       Luis: «acendendo lentamente, pra dar a intuição do clique».
+       O halo cresce e volta em 3.4s — devagar o bastante para ser convite, não alarme. Vive
+       no <style> do <head>: Apple Mail e Gmail app animam; Outlook ignora e fica com o halo
+       parado, que já é o estado bonito. Animar box-shadow (e nao transform/opacity) e o
+       que mantém o clique no lugar em cliente nenhum. */
+    @keyframes g-acende{
+      0%,100%{ box-shadow:0 14px 34px -14px rgba(255,138,51,.42),inset 0 1px 0 rgba(255,255,255,.38),inset 0 -1px 0 rgba(120,50,0,.22),0 0 0 1px rgba(255,138,51,.45); }
+      50%    { box-shadow:0 22px 54px -10px rgba(255,138,51,.78),inset 0 1px 0 rgba(255,255,255,.46),inset 0 -1px 0 rgba(120,50,0,.22),0 0 0 1px rgba(255,138,51,.7); }
+    }
+    @keyframes g-acende2{
+      0%,100%{ box-shadow:0 14px 34px -16px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.14); }
+      50%    { box-shadow:0 22px 52px -12px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.22); }
+    }
+    .g-pulse{ animation:g-acende 3.4s ease-in-out infinite; }
+    .g-pulse2{ animation:g-acende2 3.4s ease-in-out .9s infinite; }
+    @media (prefers-reduced-motion:reduce){ .g-pulse,.g-pulse2{ animation:none; } }
     /* base reset */
     body,table,td,a{ -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
     img{ -ms-interpolation-mode:bicubic; }
@@ -253,7 +270,13 @@ const HEAD_STYLE = `
 // ⚠️ Esta razão vivia num comentário <!-- --> DENTRO do template — ou seja, viajava em todo
 // e-mail enviado, legível por quem abrisse o código-fonte da mensagem. Comentário de obra é para
 // quem mantém o código, não para o cliente. Explicação fica aqui; o HTML sai limpo.
-function shell({ preheader = "", eyebrow = "", body = "", lang = "en", brand = null, unsub = "", address = "", canais = false }) {
+function shell({ preheader = "", eyebrow = "", body = "", lang = "en", brand = null, unsub = "", address = "", canais = false,
+  /* 🚨 O RODAPÉ MENTIA NO E-MAIL FRIO (achado 24/08). O padrão é «You're receiving this because
+     you started with Guileo» — verdade pra quem já é cliente, FALSO pro dono de salão que nunca
+     ouviu falar da gente. Um e-mail que abre dizendo "eu medi o seu site com cuidado" e fecha
+     inventando um relacionamento que não existe destrói a própria credibilidade no rodapé.
+     `recv` deixa cada template dizer a verdade do SEU caso. */
+  recv = "" }) {
   const bz = brand && brand.business ? esc(String(brand.business).slice(0, 80)) : "";
   // Só aceitamos http(s) na logo: uma URL `javascript:`/`data:` vinda do perfil do cliente não pode
   // virar conteúdo do e-mail. Sem logo válida, cai no monograma com a inicial do negócio.
@@ -272,6 +295,10 @@ function shell({ preheader = "", eyebrow = "", body = "", lang = "en", brand = n
     pt: { desc: "Sistemas de IA para Negócios", tag: "Trabalhe com inteligência. Cresça mais rápido. Durma melhor.", recv: "Você recebe este email porque começou com a Guileo." },
     es: { desc: "Sistemas de IA para Negocios", tag: "Trabaje con inteligencia. Crezca más rápido. Duerma mejor.", recv: "Recibe este correo porque comenzó con Guileo." },
     en: { desc: "AI Systems for Business", tag: "Work smart. Grow faster. Sleep better.", recv: "You're receiving this because you started with Guileo." },
+    // hi ENTROU AQUI (2026-08-25): a UI tem 4 idiomas e o rodapé só tinha 3 — um e-mail em hindi
+    // saía com o rodapé em inglês, exatamente o "meio em inglês" que a lei de i18n proíbe.
+    // Aditivo: antes, `hi` caía em `en`; ninguém que já recebia rodapé certo perde nada.
+    hi: { desc: "व्यवसाय के लिए AI सिस्टम", tag: "समझदारी से काम करें. तेज़ी से बढ़ें. चैन से सोएं.", recv: "आपको यह ईमेल इसलिए मिला क्योंकि आपने Guileo के साथ शुरुआत की." },
   };
   const f = F[lang] || F.en;
   // ── UM CLIQUE JÁ FALA COM A GENTE (Luis, 24/08) ───────────────────────────────────────────────
@@ -310,6 +337,7 @@ function shell({ preheader = "", eyebrow = "", body = "", lang = "en", brand = n
       : lang === "es" ? `Recibe este correo de ${esc(String(brand.business).slice(0, 80))}.`
       : `You're receiving this from ${esc(String(brand.business).slice(0, 80))}.`)
     : f.recv;
+  const _recvFinal = recv ? esc(String(recv).slice(0, 240)) : _recv;
   const _addr = esc(String(address || "").slice(0, 200));
   const htmlLang = lang === "pt" ? "pt-BR" : lang === "es" ? "es" : "en";
   // UNIFORM dark surfaces (one tone everywhere) → if Gmail dark-mode inverts, it inverts CONSISTENTLY,
@@ -359,7 +387,7 @@ ${eyebrow ? `<tr><td class="g-pad-head" style="padding:20px 40px 0 40px;backgrou
   </div>`}
 </td></tr>
 </table>
-<div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:11.5px;color:${_u || _addr ? B.muted : B.faint};margin-top:18px;line-height:1.7;">${_recv}${_u ? ` &nbsp;·&nbsp; <a href="${_u}" style="color:${B.muted};text-decoration:underline;">${_uTxt}</a>` : ""}${_addr ? `<br/>${_addr}` : ""}</div>
+<div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:11.5px;color:${_u || _addr ? B.muted : B.faint};margin-top:18px;line-height:1.7;">${_recvFinal}${_u ? ` &nbsp;·&nbsp; <a href="${_u}" style="color:${B.muted};text-decoration:underline;">${_uTxt}</a>` : ""}${_addr ? `<br/>${_addr}` : ""}</div>
 </td></tr>
 </table>
 </body></html>`;
@@ -386,8 +414,20 @@ function cta2(label, href) {
 }
 
 // Glassy graphite panel wrapper (card with top light-edge + soft depth gradient).
+/* A SUPERFÍCIE DA CASA, EM E-MAIL. Três camadas empilhadas, na ordem em que a luz cai:
+     1. o VERNIZ diagonal — a faixa de reflexo do ambiente que separa vidro de papel fosco;
+     2. a luz de estúdio de cima-direita (radial), a mesma do body da plataforma;
+     3. o corpo: branco levíssimo caindo de cima, porque a luz vem de cima, sempre.
+   Mais aro claro no topo (a quina devolvendo luz), aro escuro embaixo (espessura real) e as
+   DUAS sombras: contato curta (o objeto pousa) + ambiente longa (dá o espaço).
+   🚨 A cor NUNCA entra na superfície — cor no vidro vira plástico néon. */
+const VERNIZ = "linear-gradient(104deg,transparent 20%,rgba(255,255,255,0.045) 34%,transparent 48%)";
+const LUZ = "radial-gradient(120% 70% at 82% -12%,rgba(255,255,255,0.055),transparent 55%)";
+const CORPO = "linear-gradient(168deg,rgba(255,255,255,0.05),rgba(255,255,255,0.012) 34%,transparent 62%)";
+const RELEVO = `inset 0 1px 0 rgba(255,255,255,0.10),inset 0 -1px 0 rgba(0,0,0,0.34),0 2px 4px -2px rgba(0,0,0,0.55),0 30px 66px -36px rgba(0,0,0,0.9)`;
+
 function panel(inner, pad = "18px 20px") {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${B.panel};background-image:linear-gradient(180deg,#1f1d18 0%,${B.panel} 60%);border:1px solid ${B.line};border-radius:16px;box-shadow:inset 0 1px 0 ${B.edge},0 18px 40px -30px rgba(0,0,0,0.8);">
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${B.panel};background-image:${VERNIZ},${LUZ},${CORPO},linear-gradient(180deg,#1f1d18 0%,${B.panel} 60%);border:1px solid ${B.line};border-radius:16px;box-shadow:${RELEVO};">
     <tr><td style="padding:${pad};">${inner}</td></tr></table>`;
 }
 
@@ -2858,6 +2898,47 @@ export function sellerClientLiveEmail({ sellerName = "", business = "", clientEm
   return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang: pt ? "pt" : "en" }) };
 }
 
+// 🔥 LEAD NOVO ATRIBUÍDO AO VENDEDOR (2026-08-25) — o terceiro momento de ouro, e o mais urgente
+// dos três: os outros dois avisam de dinheiro que JÁ aconteceu; este avisa de dinheiro que só
+// acontece se alguém ligar agora. O lead entrava por /api/lead, era gravado com "👤ref:<slug>" e
+// esperava mudo até o vendedor lembrar de abrir a aba. Quem responde primeiro leva ~78% das
+// vendas — e a diferença entre 5 minutos e 1 hora é ordens de grandeza. O e-mail vai para o
+// vendedor DONO do ref (roster), nunca para um endereço vindo do formulário.
+export function sellerLeadInboundEmail({ sellerName = "", leadName = "", leadPhone = "", veio_de = "", lang = "pt" } = {}) {
+  sellerName = esc(sellerName); leadName = esc(leadName); leadPhone = esc(leadPhone); veio_de = esc(veio_de);
+  const pt = lang !== "en";
+  const t = pt ? {
+    subject: "🔥 Lead novo pra você — ligue em 5 minutos",
+    pre: `${leadName || "Um lead"} acabou de chegar pelo SEU link. Ligue agora.`,
+    eyebrow: "Sua carteira · lead novo",
+    h1: `${sellerName ? sellerName + ", c" : "C"}hegou um lead pra você 🔥`,
+    intro: `<b style="color:${B.ink};">${leadName || "Um lead"}</b> acabou de chegar pelo <b style="color:${B.ink};">seu link</b>. Ligue nos próximos <b style="color:${B.ink};">5 minutos</b>: quem atende primeiro fecha — depois de uma hora a chance despenca.`,
+    fNome: "Nome", fFone: "Telefone", fOrigem: "Veio de", semFone: "sem telefone — abra o hub e use o e-mail",
+    note: "O dossiê completo (o que ele pediu, os números medidos do negócio dele e o roteiro da ligação) está na aba 📥 Leads do seu hub.",
+    cta: "Abrir meu hub e ligar →",
+  } : {
+    subject: "🔥 New lead for you — call within 5 minutes",
+    pre: `${leadName || "A lead"} just came in through YOUR link. Call now.`,
+    eyebrow: "Your wallet · new lead",
+    h1: `${sellerName ? sellerName + ", a" : "A"} new lead just landed 🔥`,
+    intro: `<b style="color:${B.ink};">${leadName || "A lead"}</b> just came in through <b style="color:${B.ink};">your link</b>. Call within <b style="color:${B.ink};">5 minutes</b>: whoever answers first closes — after an hour the odds collapse.`,
+    fNome: "Name", fFone: "Phone", fOrigem: "Came from", semFone: "no phone — open the hub and use email",
+    note: "The full dossier (what they asked for, their measured business numbers and the call script) is in the 📥 Leads tab of your hub.",
+    cta: "Open my hub and call →",
+  };
+  const row = (k, v) => v ? `<tr><td style="padding:4px 14px 4px 0;color:${B.muted};white-space:nowrap;vertical-align:top;font-size:13px;">${k}</td><td style="padding:4px 0;color:${B.ink2};font-weight:700;font-size:14px;">${v}</td></tr>` : "";
+  const body = `
+  <h1 style="font-size:24px;font-weight:800;color:${B.ink};margin:0 0 6px;">${t.h1}</h1>
+  <div style="font-size:16px;color:${B.ink2};line-height:1.7;margin-top:8px;">${t.intro}</div>
+  <div style="height:16px;line-height:16px;font-size:0;">&nbsp;</div>
+  ${panel(`<table style="font-size:14px;border-collapse:collapse;width:100%;">${row(t.fNome, leadName)}${row(t.fFone, leadPhone || t.semFone)}${row(t.fOrigem, veio_de)}</table>`)}
+  <div style="height:16px;line-height:16px;font-size:0;">&nbsp;</div>
+  ${panel(`<div style="font-size:13px;color:${B.muted};">${t.note}</div>`)}
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(t.cta, B.site + "/vendedor")}</div>`;
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang: pt ? "pt" : "en" }) };
+}
+
 export function sellerCommissionEmail({ sellerName = "", business = "", amount = "", plan = "", lang = "pt" } = {}) {
   sellerName = esc(sellerName); business = esc(business); amount = esc(amount); plan = esc(plan);
   const pt = lang !== "en";
@@ -3447,6 +3528,58 @@ export function growthReportEmail({ business = "", agentName = "Gui", score = 0,
   };
 }
 
+/* ── O CONVITE PRA RESPONDER ────────────────────────────────────────────────────────────────────
+   Luis (24/08): «eles têm que responder o e-mail, eles têm que SABER disso — tem que ser
+   convidativo, a caixa de resposta já aberta».
+   O `reply_to` já estava certo (a resposta cai em smart@guileoai.com), mas a única menção era uma
+   linha de 12px no rodapé, do lado de fora do conteúdo. Ninguém responde um e-mail que não pediu
+   resposta em voz alta — e responder é a ação mais barata que existe pro dono: sem clique, sem
+   site, sem formulário, só apertar Responder no aparelho que ele já está segurando.
+   Vai como BLOCO, não como rodapé: nome de gente, o que acontece depois, e um exemplo do que ele
+   pode escrever — porque "responda" trava quem não sabe o que dizer. */
+function blocoResponder(lang, de = "Luis", exemplos = null) {
+  const t = ({
+    pt: { tag: "Responder é o caminho mais curto",
+      h: `Aperta Responder — quem lê é o ${de}, não um robô.`,
+      p: "Cai direto na minha caixa. Uma linha basta:",
+      ex: ["“manda mais sobre o atendimento das ligações”", "“quanto fica só o site?”", "“não tenho interesse”"],
+      fim: "Até o “não tenho interesse” ajuda — eu paro de te escrever." },
+    es: { tag: "Responder es el camino más corto",
+      h: `Pulsa Responder — lee ${de}, no un robot.`,
+      p: "Llega directo a mi bandeja. Una línea basta:",
+      ex: ["“cuéntame más sobre la atención de llamadas”", "“¿cuánto cuesta solo el sitio?”", "“no me interesa”"],
+      fim: "Incluso el “no me interesa” ayuda — dejo de escribirte." },
+    en: { tag: "Replying is the shortest path",
+      h: `Just hit Reply — ${de} reads it, not a robot.`,
+      p: "It lands straight in my inbox. One line is enough:",
+      ex: ["“tell me more about the call answering”", "“what does just the site cost?”", "“not interested”"],
+      fim: "Even “not interested” helps — I stop writing to you." },
+  })[lang] || null;
+  const L = t || {
+    tag: "Replying is the shortest path", h: `Just hit Reply — ${de} reads it, not a robot.`,
+    p: "It lands straight in my inbox. One line is enough:",
+    ex: ["“tell me more about the call answering”", "“what does just the site cost?”", "“not interested”"],
+    fim: "Even “not interested” helps — I stop writing to you.",
+  };
+  /* Os exemplos têm que caber NESTE negócio: oferecer «quanto fica só o site?» a quem não vai
+     ganhar site nenhum entrega que o e-mail é template. O terceiro exemplo é sempre o "não" —
+     pedir o não também é resposta, e limpa a lista. */
+  const ex = (Array.isArray(exemplos) && exemplos.length ? exemplos.slice(0, 2).concat(L.ex[2]) : L.ex);
+  return `
+  <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
+  <div style="border:1px solid ${B.line};border-radius:18px;background:${B.panel};padding:18px;">
+    <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:${B.gold};font-weight:800;">${L.tag}</div>
+    <div style="color:#ffffff;font-size:18px;font-weight:800;margin-top:7px;line-height:1.35;">${esc(L.h)}</div>
+    <div style="color:${B.ink};font-size:14.5px;line-height:1.7;margin-top:8px;">${esc(L.p)}</div>
+    <table role="presentation" width="100%" style="margin-top:10px;border-collapse:collapse;">
+      ${ex.map((x) => `<tr><td style="padding:5px 0;">
+        <span style="display:inline-block;border:1px dashed ${B.line};border-radius:999px;padding:6px 13px;color:${B.ink2};font-size:13.5px;">${esc(x)}</span>
+      </td></tr>`).join("")}
+    </table>
+    <div style="color:${B.muted};font-size:13px;line-height:1.6;margin-top:10px;">${esc(L.fim)}</div>
+  </div>`;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // WEBSITE UPGRADE — o e-mail que leva o site reconstruído pro dono do negócio.
 // A chave da venda (Luis 2026-08-21): mostra (1) o link do site novo DELE, já no ar,
@@ -3467,8 +3600,20 @@ export function websiteUpgradeEmail({
   // primeira tela — não a nossa. `capa` é a foto do site novo; `logo`/`accent` vestem o shell.
   // ⚠️ JPG/PNG apenas: Gmail e Outlook não renderizam .webp nem .svg, e um quadrado quebrado no
   // topo é pior que não ter imagem (foi assim que um logo sumiu nesta base).
-  capa = "", logo = "", accent = "", presente = null,
+  capa = "", logo = "", accent = "", presente = null, remetente = "Luis",
+  /* DOIS LINKS (Luis, 26/08): «tem que colocar 2 links — o do website e o do booking, já no
+     padrão deles». O site prova o trabalho; a página de booking prova que FUNCIONA. Um link só
+     obriga o dono a caçar o resto, e dono não caça. `link2` só desenha quando existe. */
+  link2 = "", link2Texto = "",
+  /* 🚨 A INTRO AFIRMAVA O QUE NÃO SABIA (achado 24/08, antes de sair pro Urban Standard).
+     O texto fixo dizia «com o seu vídeo, sua marca, as fotos da sua equipe» — e o Urban Standard
+     não tem vídeo nenhum nem foto de equipe. A frase que existe pra provar que a gente OLHOU o
+     negócio dele era justamente a que provava que a gente não olhou.
+     `usou` diz o que de fato entrou. Sem `usou`, a frase não afirma nada — some. */
+  usou = null, exemplos = null,
 } = {}) {
+  const listar = (a, e) => (a.length > 1 ? `${a.slice(0, -1).join(", ")} ${e} ${a[a.length - 1]}` : a[0]);
+  const _u = Array.isArray(usou) ? usou.filter(Boolean).slice(0, 5) : [];
   /* 🚨 ASSUNTO É TEXTO PURO, NÃO HTML (achado 24/08, antes de sair para um cliente real).
      `esc()` transforma "&" em "&amp;" — certo dentro do corpo, desastre no assunto: a caixa de
      entrada do dono mostraria "Sideris Plumbing &amp; Heating". Guardo a versão CRUA para o
@@ -3489,10 +3634,12 @@ export function websiteUpgradeEmail({
     subject: presente
       ? `${_n ? `${_n}, o` : "O"} site novo do ${businessRaw} está no ar — e $50 são seus`
       : `${businessRaw}: seu site novo está no ar — e o que cada peça soma em receita`,
-    pre: "Nada pra instalar, nada pra assinar. Os $50 são um mês grátis do Guileo Pulse.",
+    pre: presente
+      ? "Nada pra instalar, nada pra assinar. Os $50 são um mês grátis do Guileo Pulse."
+      : "Nada pra instalar, nada pra assinar. O site já está no ar — é só abrir e julgar.",
     eyebrow: "Website Upgrade · pronto pra ver",
     h1: `${_pre.pt}${_n ? "refizemos" : "Refizemos"} o site do ${business}`,
-    intro: `Ninguém te mandou uma proposta. A gente reconstruiu seu site — com o seu vídeo, sua marca, as fotos da sua equipe e seus serviços — e colocou no ar pra você julgar, não imaginar. <strong style="color:${B.ink};">Está no ar agora.</strong> Dois minutos abaixo: o que já vem nele e o que dá pra ligar.`,
+    intro: `Ninguém te mandou uma proposta. A gente reconstruiu seu site${_u.length ? ` — com ${listar(_u, "e")} —` : ""} e colocou no ar pra você julgar, não imaginar. <strong style="color:${B.ink};">Está no ar agora.</strong> Dois minutos abaixo: o que já vem nele e o que dá pra ligar.`,
     cta: "Abrir meu site novo →",
     ctaSub: "Já está no ar. Sem login, sem instalar, sem assinar nada.",
     inclusoT: "O que já vem no modelo",
@@ -3507,10 +3654,12 @@ export function websiteUpgradeEmail({
     subject: presente
       ? `${_n ? `${_n} — the` : "The"} new ${businessRaw} site is live, and $50 is yours`
       : `${businessRaw}: your new site is live — and what each piece adds to revenue`,
-    pre: "Nothing to install, nothing to sign. The $50 is a free month of Guileo Pulse.",
+    pre: presente
+      ? "Nothing to install, nothing to sign. The $50 is a free month of Guileo Pulse."
+      : "Nothing to install, nothing to sign. The site is already live — just open it and judge.",
     eyebrow: "Website Upgrade · ready to view",
     h1: `${_pre.en}${_n ? "we" : "We"} rebuilt the ${business} website`,
-    intro: `Nobody sent you a proposal. We just rebuilt your site — with your own video, logo, crew photos and services — and put it online so you can judge it, not imagine it. <strong style="color:${B.ink};">It is live right now.</strong> Two minutes below: what is already in it, and what you can switch on.`,
+    intro: `Nobody sent you a proposal. We just rebuilt your site${_u.length ? ` — with your own ${listar(_u, "and")} —` : ""} and put it online so you can judge it, not imagine it. <strong style="color:${B.ink};">It is live right now.</strong> Two minutes below: what is already in it, and what you can switch on.`,
     cta: "Open my new site →",
     ctaSub: "It’s live right now. No login, nothing to install, nothing to sign.",
     inclusoT: "What already comes in it",
@@ -3541,7 +3690,7 @@ export function websiteUpgradeEmail({
         </td>
       </tr>`).join("");
     return `
-    <div style="margin-top:20px;border:1px solid ${B.line};border-radius:16px;overflow:hidden;background:${B.panel};">
+    <div style="margin-top:20px;border:1px solid ${B.line};border-radius:16px;overflow:hidden;background:${B.panel};background-image:${VERNIZ},${LUZ},${CORPO};box-shadow:${RELEVO};">
       <div style="padding:12px 16px;border-bottom:1px solid ${B.line};background:linear-gradient(180deg,${cor}1f,transparent);">
         <span style="display:inline-block;padding:3px 10px;border-radius:999px;background:${cor}22;border:1px solid ${cor}55;color:${cor};font-size:11px;font-weight:800;letter-spacing:.14em;">${esc(bl.leg || "")}</span>
         <span style="color:${B.ink2};font-size:14px;font-weight:700;">&nbsp;&nbsp;${esc(bl.titulo || "")}</span>
@@ -3562,26 +3711,67 @@ export function websiteUpgradeEmail({
   // ele vem em 64px com o nome do negócio ao lado e um filete na cor dele: quem abre vê o PRÓPRIO
   // negócio antes de ver a gente. Alteração local — os outros 64 templates seguem intactos.
   const logoOk = /^https?:\/\//i.test(String(logo)) && !/\.svg(\?|#|$)/i.test(String(logo)) ? String(logo).slice(0, 400) : "";
-  const barraMarca = (logoOk || business) ? `
-  <table role="presentation" width="100%" style="border-collapse:collapse;margin-bottom:16px;">
-    <tr>
-      ${logoOk ? `<td width="64" style="padding-right:14px;"><img src="${logoOk}" width="64" alt="${business}" style="display:block;width:64px;height:auto;border:0;border-radius:12px;" /></td>` : ""}
-      <td valign="middle" style="border-left:3px solid ${acc};padding-left:14px;">
-        <div style="color:#ffffff;font-size:17px;font-weight:800;line-height:1.25;">${business}</div>
-        <div style="color:${acc};font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-top:3px;">Website Upgrade</div>
-      </td>
-    </tr>
-  </table>` : "";
+  /* A antiga `barraMarca` (logo 64px + nome, numa linha acima da capa) foi ABSORVIDA pelo
+     cartão de perfil abaixo. Mantê-la significava o e-mail dizer "Website Upgrade" duas vezes,
+     uma sobre a outra — foi o que a prova pegou. */
+  /* ── CAPA + FOTO DE PERFIL (Luis, 26/08: «a foto de perfil, capa, tudo») ────────────────
+     Antes a capa era uma imagem solta e a marca aparecia numa barra acima — dois elementos
+     separados dizendo a mesma coisa. Agora é UM cartão de PERFIL: a capa por cima, a foto de
+     perfil pousada sobre ela, o nome do negócio embaixo. É a gramática que todo dono já lê sem
+     pensar (é o cabeçalho do Instagram/Facebook dele), e é a primeira tela do e-mail dizendo
+     "isto é SEU", não "isto é uma proposta".
+     ⚠️ E-mail não tem CSS moderno: nada de position/absolute/negative-margin, que o Outlook
+     ignora. A sobreposição é feita com TABELA e uma célula de altura fixa — a técnica velha,
+     que é a única que renderiza igual em Gmail, Outlook e Apple Mail. */
+  const perfil = (capaOk || logoOk) ? `
+  <table role="presentation" width="100%" style="border-collapse:collapse;border:1px solid ${B.line};border-radius:16px;overflow:hidden;background:${B.panel};background-image:${VERNIZ},${LUZ},${CORPO};box-shadow:${RELEVO};">
+    ${capaOk ? `<tr><td style="padding:0;line-height:0;">
+      <a href="${esc(link)}" style="text-decoration:none;display:block;">
+        <img src="${esc(capaOk)}" width="100%" alt="${business}" style="display:block;width:100%;max-width:100%;height:auto;border:0;" />
+      </a>
+    </td></tr>` : ""}
+    <tr><td style="padding:14px 16px;">
+      <table role="presentation" style="border-collapse:collapse;">
+        <tr>
+          ${logoOk ? `<td width="62" valign="middle" style="padding-right:13px;">
+            <img src="${logoOk}" width="62" alt="${business}" style="display:block;width:62px;height:62px;border-radius:14px;border:2px solid ${acc};background:#ffffff;object-fit:contain;" />
+          </td>` : ""}
+          <td valign="middle">
+            <div style="color:#ffffff;font-size:18px;font-weight:800;line-height:1.25;">${business}</div>
+            <div style="color:${acc};font-size:11.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-top:4px;">Website Upgrade · ready to view</div>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+  <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>` : "";
+
   const body = `
-  ${barraMarca}
-  ${capaOk ? `<a href="${esc(link)}" style="text-decoration:none;display:block;">
-    <img src="${esc(capaOk)}" width="100%" alt="${business}" style="display:block;width:100%;max-width:100%;height:auto;border:0;border-radius:16px;border:1px solid ${B.line};" />
-  </a>
-  <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>` : ""}
+  ${perfil}
   <div style="font-size:26px;line-height:1.2;color:${B.ink2};font-weight:700;">${t.h1}</div>
   <div class="g-intro" style="font-size:16px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
   <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
-  <div align="center">${cta(t.cta, link, true)}</div>
+  ${/^https:\/\//i.test(String(link2)) ? `
+  <!-- ── OS DOIS BOTÕES, LADO A LADO (Luis, 26/08: «é aí que a venda acontece») ──────────
+       Empilhados, o segundo lia como rodapé do primeiro. Lado a lado eles são um PAR: ver o
+       site (a prova) e ver o booking (a prova de que funciona). Ambos com o halo da casa —
+       laranja Guileo no principal, o ouro DELE no segundo, para o e-mail ser nosso e dele ao
+       mesmo tempo. Tabela de duas células: é o único jeito de manter lado a lado no Outlook,
+       e no celular o Gmail quebra sozinho em duas linhas, que é o comportamento certo. -->
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:6px auto 0 auto;">
+    <tr>
+      <td align="center" class="g-pulse" style="padding:0 6px 8px 6px;border-radius:999px;background:linear-gradient(180deg,#ff9d4d 0%,#ff8a33 52%,#f2731a 100%);box-shadow:0 18px 44px -12px rgba(255,138,51,.6),inset 0 1px 0 rgba(255,255,255,.38),inset 0 -1px 0 rgba(120,50,0,.22),0 0 0 1px rgba(255,138,51,.45);">
+        <a href="${esc(link)}" style="display:inline-block;padding:17px 32px;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;font-weight:800;color:#ffffff;text-decoration:none;border-radius:999px;text-shadow:0 1px 1px rgba(120,50,0,.4);">${t.cta}</a>
+      </td>
+      <td width="12" style="font-size:0;line-height:0;">&nbsp;</td>
+      <!-- O segundo botão era um véu translúcido da cor dele e sumia ao lado do laranja. Agora
+           é a cor dele SÓLIDA com texto escuro: o par fica equilibrado e o dourado vira destaque
+           de verdade, não sombra do primeiro. -->
+      <td align="center" class="g-pulse2" style="padding:0 6px 8px 6px;border-radius:999px;background:${acc};background-image:linear-gradient(180deg,rgba(255,255,255,.32) 0%,rgba(255,255,255,0) 55%,rgba(0,0,0,.14) 100%);box-shadow:0 18px 44px -14px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.4);">
+        <a href="${String(link2).slice(0, 400)}" style="display:inline-block;padding:17px 30px;font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;font-weight:800;color:#1c1608;text-decoration:none;border-radius:999px;text-shadow:0 1px 0 rgba(255,255,255,.28);">${esc(link2Texto || "See the booking page →")}</a>
+      </td>
+    </tr>
+  </table>` : `<div align="center">${cta(t.cta, link, true)}</div>`}
   <div style="text-align:center;font-size:12.5px;color:${B.muted};margin-top:9px;">${t.ctaSub}</div>
   ${presente ? `
   <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
@@ -3639,14 +3829,19 @@ export function websiteUpgradeEmail({
     </table>
     ${avaliacao.fecho ? `<div style="color:#b7afa1;font-size:13px;line-height:1.6;margin-top:12px;">${esc(avaliacao.fecho)}</div>` : ""}
   </div>` : ""}
-  ${destaque ? `
+  ${(destaque && (destaque.t || destaque.d)) ? `
   <div style="height:26px;line-height:26px;font-size:0;">&nbsp;</div>
+  <!-- 🚨 A MOLDURA VAZIA (achado 24/08): mandar o destaque com as chaves erradas não falhava —
+       cada campo caía no ou-vazio e o e-mail saía com uma caixa de borda laranja e NADA dentro.
+       Sem titulo nem descricao não existe destaque nenhum: não desenha. Erro de contrato tem que
+       sumir da tela, não virar decoração.
+       (E nada de crase aqui dentro: isto vive num template literal — crase FECHA a string.) -->
   <!-- ⚠️ CONTRASTE, NÃO ESTILO (Luis 24/08: "o Guileo Pulse tá muito xinxa, não dá pra ler").
        O bloco usava ink/muted sobre gradiente escuro: no celular, com brilho baixo, o texto
        simplesmente sumia. Este é o produto de ENTRADA — o de $49 que abre a porta — e era o
        menos legível do e-mail. Agora: fundo sólido (gradiente em e-mail é loteria de cliente),
        borda de 2px, título em branco puro e corpo no tom mais claro da paleta. -->
-  <div style="border:2px solid ${acc};border-radius:18px;background:${B.panel2};padding:20px;">
+  <div style="border:2px solid ${acc};border-radius:18px;background:${B.panel2};background-image:${VERNIZ},${LUZ},${CORPO};box-shadow:${RELEVO};padding:20px;">
     <div style="font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:${acc};font-weight:800;">${esc(destaque.tag || "")}</div>
     <div style="color:#ffffff;font-size:22px;font-weight:800;margin-top:7px;line-height:1.25;">${esc(destaque.t || "")}</div>
     <div style="color:${B.ink2};font-size:15.5px;line-height:1.75;margin-top:10px;">${esc(destaque.d || "")}</div>
@@ -3661,8 +3856,15 @@ export function websiteUpgradeEmail({
     </div>
   </div>` : ""}
   ${nota ? `<div style="margin-top:18px;padding:12px 14px;border:1px solid ${B.line};border-radius:12px;color:${B.muted};font-size:13px;line-height:1.6;">${esc(nota)}</div>` : ""}
+  ${blocoResponder(lang, remetente, exemplos)}
   <div style="font-size:12.5px;color:${B.muted};text-align:center;margin-top:20px;line-height:1.65;">${t.foot}</div>`;
-  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang, brand: { business, logo_url: logo, accent: acc }, canais: true }) };
+  const _frio = (lang === "pt" ? 'Você recebe este e-mail porque eu olhei o site de {b} e achei que valia escrever. Responda “parar” e eu não escrevo de novo.'
+    : lang === "es" ? 'Recibe este correo porque miré el sitio de {b} y me pareció que valía escribir. Responda “parar” y no vuelvo a escribir.'
+    : "You're receiving this because I looked at the {b} website and thought it was worth an email. Reply “stop” and I won't write again.").replace("{b}", businessRaw);
+  /* O eyebrow do shell dizia exatamente o que o cartão de perfil diz 40px abaixo. Repetir a
+     mesma frase duas vezes na primeira tela é ruído — some do shell, fica no cartão, que a
+     entrega junto da marca dele. */
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: "", body, lang, brand: { business, logo_url: logo, accent: acc }, canais: true, recv: _frio }) };
 }
 
 
@@ -3682,7 +3884,11 @@ export function websiteUpgradeEmail({
 export function achadoEmail({
   name = "", business = "your business", lang = "en",
   achados = [],           // [{ t, evidencia, custo }]
-  peca = "", pecaSub = "", assinatura = "",
+  peca = "", pecaSub = "", assinatura = "", remetente = "Luis", exemplos = null,
+  /* O achado só descrevia o problema. Quando existe algo PRONTO para entregar junto — a marcação
+     escrita para o salão dele, um relatório, um conserto — o e-mail precisa de um botão que leve
+     até lá. Sem `link`, nada muda: o achado continua sendo só o achado. */
+  link = "", linkTexto = "",
 } = {}) {
   const bizRaw = String(business);
   business = esc(business);
@@ -3725,10 +3931,15 @@ export function achadoEmail({
   ${peca ? `<div style="margin-top:24px;border:2px solid ${B.green};border-radius:16px;background:${B.green}14;padding:16px 18px;">
       <div style="color:#ffffff;font-size:17px;font-weight:800;line-height:1.4;">${esc(peca)}</div>
       ${pecaSub ? `<div style="margin-top:7px;font-size:14px;color:${B.ink};line-height:1.65;">${esc(pecaSub)}</div>` : ""}
+      ${/^https:\/\//i.test(String(link)) ? `<div style="margin-top:15px;">${cta(esc(linkTexto || (lang === "pt" ? "Ver o que eu preparei" : lang === "es" ? "Ver lo que preparé" : "See what I prepared")), String(link).slice(0, 400), true)}</div>` : ""}
     </div>` : ""}
+  ${blocoResponder(lang, remetente, exemplos)}
   ${assinatura ? `<div style="margin-top:18px;font-size:14.5px;color:${B.ink};line-height:1.7;">${esc(assinatura)}</div>` : ""}
   <div style="font-size:12.5px;color:${B.muted};margin-top:22px;line-height:1.65;">${t.foot}</div>`;
-  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang, canais: true }) };
+  const _frio = (lang === "pt" ? 'Você recebe este e-mail porque eu olhei o site de {b} e achei que valia escrever. Responda “parar” e eu não escrevo de novo.'
+    : lang === "es" ? 'Recibe este correo porque miré el sitio de {b} y me pareció que valía escribir. Responda “parar” y no vuelvo a escribir.'
+    : "You're receiving this because I looked at the {b} website and thought it was worth an email. Reply “stop” and I won't write again.").replace("{b}", bizRaw);
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang, canais: true, recv: _frio }) };
 }
 
 // ── MOTOR DE ORÇAMENTO — o orçamento na mão do cliente do cliente ───────────────────────────────
@@ -3819,4 +4030,326 @@ export function quoteToCustomerEmail({ brand = null, logo = "", accent = "", bus
       ctaText: link ? T.cta : "", ctaUrl: link || "", footerNote: T.nota, lang: lg,
     }),
   };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// ONDA "ALARME QUE SAI DA PLATAFORMA" (2026-08-25)
+// A lei já estava escrita em cron-tick.js: «alarme que fica dentro da plataforma é alarme que não
+// existe». Três motores gravavam evento no feed e paravam por aí (falha urgente, canário do funil,
+// chamado respondido). Os templates abaixo são a saída desses alarmes — pelo único canal que a
+// Guileo tem LIVE hoje e que acorda alguém: e-mail.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+// 40) OPS ALERT — e-mail INTERNO (Luis/dono) para falha urgente da plataforma: provisionamento
+// quebrado, chamado escalado, crédito zerado, número sumido, sonda do funil no chão.
+// Assunto direto e sempre no mesmo formato, para virar filtro/label no Gmail sem ambiguidade.
+// PT fixo de propósito: é e-mail interno, não vai para cliente nenhum.
+export function opsAlertEmail({ type = "falha", client = "", detail = "", cta: ctaLabel = "", ctaUrl = "" } = {}) {
+  const t = esc(String(type).slice(0, 80));
+  const c = esc(String(client || "—").slice(0, 120));
+  const d = esc(String(detail || "sem detalhe").slice(0, 900));
+  const subject = `⚠️ [Guileo Ops] ${String(type).slice(0, 80)}${client ? ` · ${String(client).slice(0, 80)}` : ""}`;
+  const body = `
+  <h1 style="font-size:23px;font-weight:800;color:${B.ink};margin:0 0 6px;">⚠️ Falha urgente na plataforma</h1>
+  <div style="font-size:15px;color:${B.ink2};line-height:1.7;margin-top:8px;">Um motor da Guileo levantou a mão. Este e-mail existe porque alarme que fica só no feed do /admin é alarme que ninguém lê às 2h da manhã.</div>
+  <div style="height:16px;line-height:16px;font-size:0;">&nbsp;</div>
+  ${panel(`
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin-bottom:8px;">Tipo</div>
+    <div style="font-size:15px;font-weight:800;color:${B.ink};">${t}</div>
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin:14px 0 8px;">Cliente afetado</div>
+    <div style="font-size:14px;color:${B.ink2};">${c}</div>
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin:14px 0 8px;">Detalhe</div>
+    <div style="font-size:13.5px;color:${B.ink2};line-height:1.6;word-break:break-word;">${d}</div>`)}
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(esc(ctaLabel) || "Abrir o admin →", ctaUrl || (B.site + "/admin"))}</div>`;
+  return { subject, html: shell({ preheader: `${t} · ${c} — ${d.slice(0, 90)}`, eyebrow: "Interno · ops", body, lang: "pt" }) };
+}
+
+// 41) CHAMADO RESPONDIDO — o cliente abriu um chamado, alguém (vendedor/técnico/BROTO) respondeu,
+// e até 2026-08-25 a resposta ficava esperando ele lembrar de voltar no portal. Agora ele é avisado.
+// 4 idiomas (pt/es/en/hi), porque a lei de i18n vale para TODA superfície, não só a landing.
+// O corpo leva um PREVIEW da resposta (não a thread inteira): o valor é "te responderam, e é sobre
+// isto" — o texto completo mora no portal, onde ele pode responder de volta.
+export function supportRepliedEmail({ name = "", ticketSubject = "", replyPreview = "", lang = "pt" } = {}) {
+  const lg = ["pt", "es", "en", "hi"].includes(lang) ? lang : "pt";
+  const n = esc(String(name || "").slice(0, 80));
+  const subj = esc(String(ticketSubject || "").slice(0, 160));
+  const prev = esc(String(replyPreview || "").slice(0, 600));
+  const T = {
+    pt: { subject: "Seu chamado foi respondido", eyebrow: "Suporte · resposta", h1: `${n ? n + ", s" : "S"}eu chamado foi respondido`,
+      intro: "Nossa equipe respondeu o chamado que você abriu. O texto completo — e a caixa para responder de volta — está no seu painel, na aba <b style=\"color:" + B.ink + ";\">Relacionamento</b>.",
+      lbl: "Chamado", prevLbl: "Trecho da resposta", cta: "Ver a resposta no painel →", semAssunto: "(sem assunto)" },
+    es: { subject: "Su ticket fue respondido", eyebrow: "Soporte · respuesta", h1: `${n ? n + ", s" : "S"}u ticket fue respondido`,
+      intro: "Nuestro equipo respondió el ticket que usted abrió. El texto completo — y el espacio para contestar — está en su panel, en la pestaña <b style=\"color:" + B.ink + ";\">Relacionamento</b>.",
+      lbl: "Ticket", prevLbl: "Fragmento de la respuesta", cta: "Ver la respuesta en el panel →", semAssunto: "(sin asunto)" },
+    en: { subject: "Your support ticket has a reply", eyebrow: "Support · reply", h1: `${n ? n + ", y" : "Y"}our ticket has a reply`,
+      intro: "Our team replied to the ticket you opened. The full message — and the box to reply back — is in your dashboard, under the <b style=\"color:" + B.ink + ";\">Relacionamento</b> tab.",
+      lbl: "Ticket", prevLbl: "Reply preview", cta: "See the reply in my dashboard →", semAssunto: "(no subject)" },
+    hi: { subject: "आपके सपोर्ट टिकट का जवाब आया है", eyebrow: "सपोर्ट · जवाब", h1: `${n ? n + ", आ" : "आ"}पके टिकट का जवाब आया है`,
+      intro: "हमारी टीम ने आपके टिकट का जवाब दे दिया है. पूरा संदेश — और जवाब देने का बॉक्स — आपके डैशबोर्ड में <b style=\"color:" + B.ink + ";\">Relacionamento</b> टैब में है.",
+      lbl: "टिकट", prevLbl: "जवाब का अंश", cta: "डैशबोर्ड में जवाब देखें →", semAssunto: "(कोई विषय नहीं)" },
+  }[lg];
+  const body = `
+  <h1 style="font-size:24px;font-weight:800;color:${B.ink};margin:0 0 6px;">${T.h1}</h1>
+  <div style="font-size:16px;color:${B.ink2};line-height:1.7;margin-top:8px;">${T.intro}</div>
+  <div style="height:16px;line-height:16px;font-size:0;">&nbsp;</div>
+  ${panel(`
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin-bottom:8px;">${T.lbl}</div>
+    <div style="font-size:15px;font-weight:700;color:${B.ink};">${subj || T.semAssunto}</div>
+    ${prev ? `<div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin:14px 0 8px;">${T.prevLbl}</div>
+    <div style="font-size:14px;color:${B.ink2};line-height:1.65;">“${prev}”</div>` : ""}`)}
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(T.cta, B.site + "/portal?tab=relacionamento")}</div>`;
+  return { subject: T.subject, html: shell({ preheader: `${T.subject} — ${subj || T.semAssunto}`, eyebrow: T.eyebrow, body, lang: lg }) };
+}
+
+// 42) CRÉDITO BAIXO (pré-alerta de 20%) — o irmão ANTES do creditDepletedEmail. Avisar só quando
+// zera é avisar depois que o Gui já parou: o cliente sente a queda antes de ler o e-mail.
+// Upsell SUAVE, não pressão: diz quantos atendimentos ainda cabem (número REAL de créditos, nunca
+// inventado) e oferece o plano de cima. Sem número de atendimentos confiável, o texto não promete.
+export function creditLowEmail({ name = "there", business = "", lang = "en", credits = 0, pct = 0, planName = "", upgradeName = "", upgradePrice = 0, upgradeUrl = "" } = {}) {
+  const lg = ["pt", "es", "en", "hi"].includes(lang) ? lang : "en";
+  const n = esc(name); const bz = esc(business || "");
+  const cr = Math.max(0, Math.round(Number(credits) || 0));
+  const pc = Math.max(0, Math.min(100, Math.round(Number(pct) || 0)));
+  const up = esc(String(upgradeName || "").slice(0, 40));
+  const price = Number(upgradePrice) > 0 ? `$${Math.round(Number(upgradePrice))}` : "";
+  const url = /^https?:\/\//i.test(String(upgradeUrl || "")) ? String(upgradeUrl) : `${B.site}/planos`;
+  const T = {
+    pt: { subject: `⚡ Restam ${cr} créditos do Gui — dá pra recarregar sem pressa`, eyebrow: "Um aviso · créditos",
+      h1: `${n}, seus créditos estão em ${pc}%`,
+      intro: `O Gui de ${bz || "seu negócio"} já usou a maior parte dos créditos do ciclo — <b style="color:${B.ink};">restam ${cr}</b>. Nada parou ainda; este é o aviso com folga, para você não descobrir no meio de um dia cheio.`,
+      note: up ? `No <b style="color:${B.ink};">${up}</b>${price ? ` (${price}/mês)` : ""} o Gui atende bem mais sem você pensar em recarga.` : "Você pode recarregar ou subir de plano quando quiser.",
+      cta: up ? `Subir para o ${up} →` : "Ver planos →" },
+    es: { subject: `⚡ Quedan ${cr} créditos de Gui — hay tiempo de recargar`, eyebrow: "Un aviso · créditos",
+      h1: `${n}, sus créditos están en ${pc}%`,
+      intro: `Gui de ${bz || "su negocio"} ya usó la mayor parte de los créditos del ciclo — <b style="color:${B.ink};">quedan ${cr}</b>. Nada se detuvo todavía; este es el aviso con margen, para que no lo descubra en pleno día ocupado.`,
+      note: up ? `Con <b style="color:${B.ink};">${up}</b>${price ? ` (${price}/mes)` : ""} Gui atiende mucho más sin que usted piense en recargas.` : "Puede recargar o subir de plan cuando quiera.",
+      cta: up ? `Subir a ${up} →` : "Ver planes →" },
+    en: { subject: `⚡ ${cr} Gui credits left — plenty of time to top up`, eyebrow: "A heads-up · credits",
+      h1: `${n}, your credits are at ${pc}%`,
+      intro: `Gui has used most of ${bz || "your business"}'s credits for this cycle — <b style="color:${B.ink};">${cr} left</b>. Nothing has stopped; this is the early heads-up, so you don't find out in the middle of a busy day.`,
+      note: up ? `On <b style="color:${B.ink};">${up}</b>${price ? ` (${price}/mo)` : ""} Gui handles a lot more without you thinking about top-ups.` : "You can top up or move up a plan whenever you like.",
+      cta: up ? `Move up to ${up} →` : "See plans →" },
+    hi: { subject: `⚡ ${cr} Gui क्रेडिट बचे हैं — रिचार्ज का समय है`, eyebrow: "सूचना · क्रेडिट",
+      h1: `${n}, आपके क्रेडिट ${pc}% पर हैं`,
+      intro: `${bz || "आपके व्यवसाय"} के लिए Gui ने इस चक्र के अधिकांश क्रेडिट उपयोग कर लिए — <b style="color:${B.ink};">${cr} बचे हैं</b>. अभी कुछ रुका नहीं है; यह पहले से दी गई सूचना है.`,
+      note: up ? `<b style="color:${B.ink};">${up}</b>${price ? ` (${price}/माह)` : ""} पर Gui बहुत अधिक कॉल संभालता है.` : "आप कभी भी रिचार्ज कर सकते हैं या प्लान बढ़ा सकते हैं.",
+      cta: up ? `${up} पर जाएं →` : "प्लान देखें →" },
+  }[lg];
+  const body = `
+  <h1 style="font-size:24px;font-weight:800;color:${B.ink};margin:0 0 6px;">${T.h1}</h1>
+  <div style="font-size:16px;color:${B.ink2};line-height:1.7;margin-top:8px;">${T.intro}</div>
+  <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
+  ${panel(`<div style="font-size:13px;color:${B.muted};line-height:1.6;">${T.note}${planName ? `<br><span style="color:${B.faint};">${esc(String(planName).slice(0, 40))}</span>` : ""}</div>`)}
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(T.cta, url)}</div>`;
+  return { subject: T.subject, html: shell({ preheader: T.subject, eyebrow: T.eyebrow, body, lang: lg }) };
+}
+
+// 43) GUI OCIOSA — o cliente com ZERO ligações na semana. O relatório semanal PULAVA exatamente
+// este cliente ("sem evento, não enche a caixa dele") — e ele é o de maior risco: ou o
+// encaminhamento nunca foi ligado, ou ele desistiu em silêncio. Silêncio não é boa notícia.
+// O e-mail não cobra nem culpa: pergunta se o encaminhamento está ativo e dá UM caminho de teste.
+export function guiIdleEmail({ name = "there", business = "", lang = "en", agentName = "Gui", number = "" } = {}) {
+  const lg = ["pt", "es", "en", "hi"].includes(lang) ? lang : "en";
+  const n = esc(name); const bz = esc(business || ""); const ag = esc(String(agentName || "Gui").slice(0, 40));
+  // NUNCA INVENTAR NÚMERO: só imprime a linha se o número veio do banco.
+  const num = /^\+?[0-9()\-.\s]{7,20}$/.test(String(number || "")) ? esc(String(number).trim()) : "";
+  const T = {
+    pt: { subject: `${ag} não recebeu nenhuma ligação esta semana`, eyebrow: "Uma verificação · linha",
+      h1: `${n}, a ${ag} passou a semana sem tocar`,
+      intro: `Nenhuma ligação chegou até a ${ag} de ${bz || "seu negócio"} nos últimos 7 dias. Na maioria das vezes isso não é falta de cliente — é o <b style="color:${B.ink};">encaminhamento da linha</b> que ficou desligado (ou voltou ao normal depois de uma mudança na operadora).`,
+      note: num ? `Teste em 20 segundos: ligue para <b style="color:${B.ink};">${num}</b> do seu celular. Se a ${ag} atender, a linha está certa e é só o encaminhamento do seu número principal que falta.` : `Teste em 20 segundos: ligue para o número do seu negócio do seu celular e veja se a ${ag} atende.`,
+      cta: "Conferir minha linha no painel →" },
+    es: { subject: `${ag} no recibió ninguna llamada esta semana`, eyebrow: "Una revisión · línea",
+      h1: `${n}, ${ag} pasó la semana sin sonar`,
+      intro: `Ninguna llamada llegó a ${ag} de ${bz || "su negocio"} en los últimos 7 días. Casi siempre no es falta de clientes — es el <b style="color:${B.ink};">desvío de la línea</b> que quedó apagado.`,
+      note: num ? `Pruebe en 20 segundos: llame a <b style="color:${B.ink};">${num}</b> desde su celular. Si ${ag} contesta, la línea está bien y solo falta el desvío de su número principal.` : `Pruebe en 20 segundos: llame al número de su negocio desde su celular y vea si ${ag} contesta.`,
+      cta: "Revisar mi línea en el panel →" },
+    en: { subject: `${ag} didn't take a single call this week`, eyebrow: "A quick check · your line",
+      h1: `${n}, ${ag} went all week without ringing`,
+      intro: `No call reached ${bz || "your business"}'s ${ag} in the last 7 days. Most of the time that isn't a lack of customers — it's <b style="color:${B.ink};">call forwarding</b> that got switched off (or reset by the carrier).`,
+      note: num ? `A 20-second test: call <b style="color:${B.ink};">${num}</b> from your phone. If ${ag} answers, the line is fine and only the forwarding on your main number is missing.` : `A 20-second test: call your business number from your phone and see whether ${ag} answers.`,
+      cta: "Check my line in the dashboard →" },
+    hi: { subject: `${ag} को इस हफ्ते एक भी कॉल नहीं मिली`, eyebrow: "एक जाँच · आपकी लाइन",
+      h1: `${n}, ${ag} पूरे हफ्ते नहीं बजी`,
+      intro: `पिछले 7 दिनों में ${bz || "आपके व्यवसाय"} की ${ag} तक कोई कॉल नहीं पहुँची. अक्सर यह ग्राहकों की कमी नहीं होती — <b style="color:${B.ink};">कॉल फ़ॉरवर्डिंग</b> बंद हो जाती है.`,
+      note: num ? `20 सेकंड की जाँच: अपने फ़ोन से <b style="color:${B.ink};">${num}</b> पर कॉल करें. अगर ${ag} उठाती है, तो लाइन ठीक है.` : `20 सेकंड की जाँच: अपने फ़ोन से अपने व्यवसाय के नंबर पर कॉल करें और देखें कि ${ag} उठाती है या नहीं.`,
+      cta: "डैशबोर्ड में मेरी लाइन देखें →" },
+  }[lg];
+  const body = `
+  <h1 style="font-size:24px;font-weight:800;color:${B.ink};margin:0 0 6px;">${T.h1}</h1>
+  <div style="font-size:16px;color:${B.ink2};line-height:1.7;margin-top:8px;">${T.intro}</div>
+  <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
+  ${panel(`<div style="font-size:13.5px;color:${B.ink2};line-height:1.65;">${T.note}</div>`)}
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(T.cta, B.site + "/portal?tab=settings")}</div>`;
+  return { subject: T.subject, html: shell({ preheader: T.subject, eyebrow: T.eyebrow, body, lang: lg }) };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+// 45) AUTO-APROVAÇÃO · FALTA 1 CLIQUE — o cliente PAGOU, o cadastro completo dele já está pronto
+// em rascunho, e a auto-aprovação parou de propósito num único ponto: o número seria o
+// COMPARTILHADO (onboard-draft.js devolve 409 confirm_required). Esse portão é humano por
+// decisão — o incidente real de 2026 foi a linha de demo da plataforma atendendo pelo spa de um
+// cliente. Então a máquina faz tudo, menos assumir isso: manda este e-mail e espera o clique.
+// PT fixo: é e-mail interno para o dono, não vai para cliente nenhum.
+export function autoApproveNeedsClickEmail({ business = "", clientEmail = "", motivo = "", draftId = "" } = {}) {
+  const biz = esc(String(business || "(negócio sem nome)").slice(0, 120));
+  const cli = esc(String(clientEmail || "—").slice(0, 120));
+  const mot = esc(String(motivo || "o cadastro iria ao ar no número COMPARTILHADO — isso precisa de decisão humana").slice(0, 500));
+  const did = esc(String(draftId || "").slice(0, 60));
+  const subject = `🖐️ [Guileo] ${String(business || clientEmail || "cliente").slice(0, 70)} pagou — falta 1 clique`;
+  const body = `
+  <h1 style="font-size:23px;font-weight:800;color:${B.ink};margin:0 0 6px;">🖐️ Pagou. Cadastro pronto. Falta você.</h1>
+  <div style="font-size:15px;color:${B.ink2};line-height:1.7;margin-top:8px;">Tentei aprovar sozinho e parei num ponto só — o do <b style="color:${B.ink};">número</b>. Tudo o mais já está preenchido e verificado; é 1 clique em <b style="color:${B.ink};">/admin → Aprovar</b>.</div>
+  <div style="height:16px;line-height:16px;font-size:0;">&nbsp;</div>
+  ${panel(`
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin-bottom:8px;">Negócio</div>
+    <div style="font-size:15px;font-weight:800;color:${B.ink};">${biz}</div>
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin:14px 0 8px;">Cliente</div>
+    <div style="font-size:14px;color:${B.ink2};">${cli}</div>
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin:14px 0 8px;">Por que parei</div>
+    <div style="font-size:13.5px;color:${B.ink2};line-height:1.6;word-break:break-word;">${mot}</div>
+    ${did ? `<div style="font-size:11px;color:${B.ink2};margin-top:12px;opacity:.8;">rascunho ${did}</div>` : ""}`)}
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta("Aprovar no /admin →", B.site + "/admin")}</div>`;
+  return { subject, html: shell({ preheader: `${biz} pagou — o cadastro está pronto, falta a decisão do número`, eyebrow: "Interno · auto-aprovação", body, lang: "pt" }) };
+}
+
+// 46) AUTO-APROVEI SOZINHO — o cliente pagou, tinha cadastro completo em rascunho e a Gui dele
+// NASCEU sem ninguém clicar. O e-mail existe porque «aprovado» sem dizer O QUE nasceu é a
+// promessa sem lastro de sempre: aqui vai o comprovante passo a passo (agente, número, agenda),
+// exatamente o que /api/onboard-client devolveu. PT fixo: e-mail interno.
+export function autoApprovedEmail({ business = "", clientEmail = "", agentId = "", number = "", steps = null, draftId = "" } = {}) {
+  const biz = esc(String(business || "(negócio sem nome)").slice(0, 120));
+  const cli = esc(String(clientEmail || "—").slice(0, 120));
+  const ag = esc(String(agentId || "").slice(0, 80));
+  const num = esc(String(number || "").slice(0, 40));
+  const did = esc(String(draftId || "").slice(0, 60));
+  // steps vem do provisionador como objeto ou lista; renderizamos o que VEIO, sem inventar
+  // linha nenhuma. Sem steps o e-mail diz "o provisionador não detalhou" — não uma checklist falsa.
+  let passos = "";
+  try {
+    if (Array.isArray(steps) && steps.length) {
+      passos = steps.map((s) => `<div style="font-size:13px;color:${B.ink2};line-height:1.7;">• ${esc(String(typeof s === "string" ? s : JSON.stringify(s)).slice(0, 200))}</div>`).join("");
+    } else if (steps && typeof steps === "object") {
+      passos = Object.entries(steps).map(([k, v]) => `<div style="font-size:13px;color:${B.ink2};line-height:1.7;">• <b style="color:${B.ink};">${esc(String(k).slice(0, 60))}</b>: ${esc(String(typeof v === "object" ? JSON.stringify(v) : v).slice(0, 160))}</div>`).join("");
+    }
+  } catch { passos = ""; }
+  if (!passos) passos = `<div style="font-size:13px;color:${B.ink2};line-height:1.7;">O provisionador não detalhou os passos nesta resposta — confira o cliente no /admin.</div>`;
+  const subject = `🤖 [Guileo] Aprovei sozinho: ${String(business || clientEmail || "cliente").slice(0, 70)}`;
+  const body = `
+  <h1 style="font-size:23px;font-weight:800;color:${B.ink};margin:0 0 6px;">🤖 Aprovei sozinho — a Gui de ${biz} nasceu</h1>
+  <div style="font-size:15px;color:${B.ink2};line-height:1.7;margin-top:8px;">Pagamento confirmado + cadastro completo em rascunho = agente dedicado no ar, sem esperar clique. Abaixo, o comprovante do que realmente nasceu.</div>
+  <div style="height:16px;line-height:16px;font-size:0;">&nbsp;</div>
+  ${panel(`
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin-bottom:8px;">Cliente</div>
+    <div style="font-size:15px;font-weight:800;color:${B.ink};">${biz}</div>
+    <div style="font-size:14px;color:${B.ink2};margin-top:2px;">${cli}</div>
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin:14px 0 8px;">Nasceu</div>
+    <div style="font-size:13.5px;color:${B.ink2};line-height:1.6;">Agente: <b style="color:${B.ink};">${ag || "(id não devolvido)"}</b><br>Número: <b style="color:${B.ink};">${num || "(nenhum vinculado)"}</b></div>
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin:14px 0 8px;">Passos do provisionamento</div>
+    ${passos}
+    ${did ? `<div style="font-size:11px;color:${B.ink2};margin-top:12px;opacity:.8;">rascunho ${did}</div>` : ""}`)}
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta("Conferir no /admin →", B.site + "/admin")}</div>`;
+  return { subject, html: shell({ preheader: `${biz} (${cli}) — agente ${ag || "sem id"} · número ${num || "nenhum"}`, eyebrow: "Interno · auto-aprovação", body, lang: "pt" }) };
+}
+
+// 47) ORÇAMENTO ACEITO → AVISA O VENDEDOR. A página pública do orçamento promete ao cliente, na
+// hora em que ele clica "Aceitar", que «seu contato já foi avisado» — e até hoje ninguém era
+// avisado. Venda aceita esfriando em silêncio é o pior tipo de vazamento: o cliente já disse SIM.
+// Vai para o VENDEDOR (dono do orçamento), com o link do próprio orçamento no corpo.
+export function quoteAcceptedSellerEmail({ sellerName = "", clientName = "", total = "", quoteUrl = "", lang = "pt" } = {}) {
+  const sn = esc(String(sellerName || "").slice(0, 80));
+  const cn = esc(String(clientName || "").slice(0, 120));
+  const tot = esc(String(total || "").slice(0, 40));
+  // link só é renderizado quando é http(s) nosso — nunca um href vindo de campo livre
+  const url = /^https?:\/\//i.test(String(quoteUrl || "")) ? String(quoteUrl).slice(0, 400) : "";
+  const urlEsc = esc(url);
+  const pt = lang !== "en";
+  const t = pt ? {
+    subject: `✅ Orçamento aceito — ${String(clientName || "cliente").slice(0, 80)}${tot ? ` (${String(total).slice(0, 40)})` : ""}`,
+    pre: "O cliente clicou em aceitar. Fale com ele agora, enquanto está quente.",
+    eyebrow: "Sua carteira · orçamento",
+    h1: `${sn ? sn + ", o" : "O"}rçamento ACEITO ✅`,
+    intro: `<b style="color:${B.ink};">${cn || "Um cliente"}</b> acabou de aceitar o orçamento${tot ? ` de <b style="color:${B.green};">${tot}</b>` : ""} pelo link público. Ele já viu o valor e disse sim — o próximo passo é seu.`,
+    quem: "Quem aceitou", valor: "Total", link: "Orçamento",
+    note: "A página avisa o cliente que você foi notificado. Ligar hoje é o que transforma o sim em dinheiro.",
+    cta: "Abrir meus orçamentos →",
+  } : {
+    subject: `✅ Quote accepted — ${String(clientName || "customer").slice(0, 80)}${tot ? ` (${String(total).slice(0, 40)})` : ""}`,
+    pre: "The customer hit accept. Reach out now, while it's hot.",
+    eyebrow: "Your wallet · quote",
+    h1: `${sn ? sn + ", q" : "Q"}uote ACCEPTED ✅`,
+    intro: `<b style="color:${B.ink};">${cn || "A customer"}</b> just accepted the quote${tot ? ` for <b style="color:${B.green};">${tot}</b>` : ""} on the public link. They've seen the price and said yes — the next step is yours.`,
+    quem: "Who accepted", valor: "Total", link: "Quote",
+    note: "The page tells the customer you were notified. Calling today is what turns the yes into money.",
+    cta: "Open my quotes →",
+  };
+  const body = `
+  <h1 style="font-size:24px;font-weight:800;color:${B.ink};margin:0 0 6px;">${t.h1}</h1>
+  <div style="font-size:16px;color:${B.ink2};line-height:1.7;margin-top:8px;">${t.intro}</div>
+  <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
+  ${panel(`
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin-bottom:8px;">${t.quem}</div>
+    <div style="font-size:15px;font-weight:800;color:${B.ink};">${cn || "—"}</div>
+    ${tot ? `<div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin:14px 0 8px;">${t.valor}</div>
+    <div style="font-size:19px;font-weight:800;color:${B.green};">${tot}</div>` : ""}
+    ${url ? `<div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin:14px 0 8px;">${t.link}</div>
+    <div style="font-size:13px;word-break:break-all;"><a href="${urlEsc}" style="color:${B.gold};text-decoration:underline;">${urlEsc}</a></div>` : ""}
+    <div style="font-size:13px;color:${B.muted};margin-top:14px;line-height:1.6;">${t.note}</div>`)}
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(t.cta, url || (B.site + "/vendedor"))}</div>`;
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang: pt ? "pt" : "en" }) };
+}
+
+// 44) RECARGA COM 1 CLIQUE — o e-mail de quem LIGOU a preferência de recarga e zerou o saldo.
+// ⚠️ CAMINHO DE DINHEIRO, E A HONESTIDADE É O PRODUTO AQUI: este e-mail NÃO diz que cobramos.
+// A Guileo não passa o cartão sozinha (cobrança off-session de verdade exige mandato salvo — é o
+// próximo passo, não este). O que a preferência liga é ISTO: o link do pacote chega pronto no
+// e-mail, e o dono conclui em um clique, sem procurar nada dentro do painel. Prometer "recarga
+// automática" e mandar um link seria a mesma promessa sem lastro que o botão do cockpit fazia
+// quando gravava só no navegador.
+export function autoTopupLinkEmail({ name = "there", business = "", lang = "en", credits = 0, price = 0, url = "" } = {}) {
+  const lg = ["pt", "es", "en", "hi"].includes(lang) ? lang : "en";
+  const n = esc(name); const bz = esc(business || "");
+  const cr = (Number(credits) || 0).toLocaleString("en-US");
+  const pr = Number(price) > 0 ? `$${Number(price)}` : "";
+  // NUNCA INVENTAR LINK: sem URL o e-mail não sai (quem chama trata) — botão que leva a lugar
+  // nenhum num e-mail de dinheiro é pior que e-mail nenhum.
+  const link = String(url || "");
+  const T = {
+    pt: { subject: "⚡ Recarga automática: falta 1 clique", eyebrow: "Recarga · 1 clique",
+      h1: `${n}, o saldo zerou — o link já está aqui`,
+      intro: `Você deixou a recarga com 1 clique LIGADA para ${bz || "seu negócio"}, então assim que o saldo zerou este e-mail saiu com o link do seu pacote${cr !== "0" ? ` de <b style="color:${B.ink};">${cr} créditos</b>` : ""}${pr ? ` (${pr})` : ""}. Um clique e o Gui volta a atender.`,
+      note: "Para sua segurança, não passamos o seu cartão sozinhos — a recarga só acontece quando você confirma no link acima.",
+      cta: "Recarregar agora →" },
+    es: { subject: "⚡ Recarga automática: falta 1 clic", eyebrow: "Recarga · 1 clic",
+      h1: `${n}, el saldo llegó a cero — el enlace ya está aquí`,
+      intro: `Usted dejó la recarga con 1 clic ACTIVADA para ${bz || "su negocio"}, así que apenas el saldo llegó a cero salió este correo con el enlace de su paquete${cr !== "0" ? ` de <b style="color:${B.ink};">${cr} créditos</b>` : ""}${pr ? ` (${pr})` : ""}. Un clic y Gui vuelve a atender.`,
+      note: "Por su seguridad, no cobramos su tarjeta por nuestra cuenta — la recarga ocurre solo cuando usted confirma en el enlace de arriba.",
+      cta: "Recargar ahora →" },
+    en: { subject: "⚡ Auto top-up: one click away", eyebrow: "Top-up · one click",
+      h1: `${n}, your balance hit zero — the link is right here`,
+      intro: `You left one-click top-up ON for ${bz || "your business"}, so the moment the balance hit zero this email went out with the link to your${cr !== "0" ? ` <b style="color:${B.ink};">${cr}-credit</b>` : ""} pack${pr ? ` (${pr})` : ""}. One click and Gui is answering again.`,
+      note: "For your safety we don't charge your card on our own — the top-up happens only when you confirm through the link above.",
+      cta: "Top up now →" },
+    hi: { subject: "⚡ ऑटो टॉप-अप: बस एक क्लिक बाकी", eyebrow: "टॉप-अप · एक क्लिक",
+      h1: `${n}, बैलेंस शून्य हो गया — लिंक यहीं है`,
+      intro: `आपने ${bz || "अपने व्यवसाय"} के लिए एक-क्लिक टॉप-अप चालू रखा था, इसलिए बैलेंस शून्य होते ही यह ईमेल आपके${cr !== "0" ? ` <b style="color:${B.ink};">${cr} क्रेडिट</b>` : ""} पैक के लिंक के साथ भेजा गया${pr ? ` (${pr})` : ""}. एक क्लिक और Gui फिर से जवाब देने लगेगी.`,
+      note: "आपकी सुरक्षा के लिए हम आपका कार्ड अपने आप चार्ज नहीं करते — टॉप-अप तभी होता है जब आप ऊपर के लिंक से पुष्टि करते हैं.",
+      cta: "अभी टॉप-अप करें →" },
+  }[lg];
+  const body = `
+  <h1 style="font-size:24px;font-weight:800;color:${B.ink};margin:0 0 6px;">${T.h1}</h1>
+  <div style="font-size:16px;color:${B.ink2};line-height:1.7;margin-top:8px;">${T.intro}</div>
+  <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
+  ${panel(`<div style="font-size:13px;color:${B.muted};line-height:1.6;">${T.note}</div>`)}
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(T.cta, link)}</div>`;
+  return { subject: T.subject, html: shell({ preheader: T.subject, eyebrow: T.eyebrow, body, lang: lg }) };
 }

@@ -56,17 +56,35 @@ export default function OnboardApprovals({ token }) {
     // has no dedicated caller-ID: outbound is silenced by US carriers until A2P, and inbound shares the
     // demo line. Make Luis confirm that's intended before birthing the agent. Reuse the loaded detail if
     // this draft is already open; otherwise do one lightweight fetch just to read number_mode.
+    //
+    // ⚠️ O PRÉ-CHECK NÃO É O PORTÃO (2026-08-25). Ele roda no NAVEGADOR, e o `catch` abaixo dizia
+    // "se falhar, não bloqueia — segue". Ou seja: leitura quebrada = aprovação sem aviso nenhum, e
+    // qualquer chamada direta ao endpoint passava por cima do confirm. A regra de arquitetura é a
+    // do número: cada cliente = 1 número PRÓPRIO, o compartilhado é da plataforma.
+    // Agora o front só manda `confirm:true` quando o humano REALMENTE confirmou o conflito, e
+    // manda `precheck:"falhou"` quando não conseguiu nem verificar — o servidor decide com isso.
+    // (O portão do lado servidor vive em functions/api/onboard-draft.js, que não é meu arquivo:
+    //  o patch exato está no relatório desta onda, para o orquestrador aplicar.)
+    let confirmado = false, precheck = "ok";
     try {
       let mode = (detail && detail.id === id) ? (detail.draft?.number_mode) : undefined;
       if (mode === undefined) { const g = await call("get", { id }); mode = (g?.draft?.payload || g?.draft || {})?.number_mode; }
       if ((mode || "shared") === "shared") {
         const ok = window.confirm("⚠️ Este cliente vai ao ar no NÚMERO COMPARTILHADO da plataforma (sem número dedicado).\n\nSem número próprio: as ligações de saída podem ser silenciadas pelas operadoras dos EUA até o A2P, e a linha é a mesma do demo.\n\nMapeie um número dedicado depois em \"Mapear número\". Aprovar mesmo assim?");
         if (!ok) return;
+        confirmado = true;
       }
-    } catch { /* if the pre-check fails, don't block the approve — just proceed */ }
+    } catch {
+      // Não dá para saber se há conflito → tratamos como conflito e pedimos confirmação humana.
+      // "Não consegui verificar" nunca pode ser mais permissivo que "verifiquei e há problema".
+      precheck = "falhou";
+      const ok = window.confirm("⚠️ Não consegui verificar o modo de número deste cadastro.\n\nPode ser que ele vá ao ar no número COMPARTILHADO da plataforma (sem linha própria).\n\nAprovar mesmo sem essa verificação?");
+      if (!ok) return;
+      confirmado = true;
+    }
     setBusyId(id);
     try {
-      const d = await call("approve", { id });
+      const d = await call("approve", { id, confirm: confirmado, precheck });
       setResults((m) => ({ ...m, [id]: d }));
       if (d.ok) setDrafts((a) => a.map((x) => (x.id === id ? { ...x, status: "live" } : x)));
     } catch { setResults((m) => ({ ...m, [id]: { error: "Erro de rede." } })); }

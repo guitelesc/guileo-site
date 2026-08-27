@@ -23,7 +23,7 @@
 //
 // GATE: DIGEST_TOKEN, igual a client-report.js — é o cron quem chama, não o navegador.
 import { json, safeEq } from "../lib/guard.js";
-import { svcJson } from "../lib/sb.js";
+import { svcJson, svcRpc } from "../lib/sb.js";
 import { adsAlertEmail } from "../lib/emailTemplates.js";
 import { brandFor } from "../lib/clientBrand.js";
 
@@ -36,6 +36,25 @@ async function vigiar(request, env) {
   // `seco=1` varre e mostra QUEM seria avisado sem mandar nada. Existe porque testar um disparo
   // em massa mandando de verdade é como se testa uma vez só — e depois se pede desculpa.
   const seco = url.searchParams.get("seco") === "1";
+
+  // ── UMA VARREDURA POR DIA, MESMO QUE O CRON CHAME DUAS VEZES ─────────────────────────────────
+  // O `cron-tick` dispara os alvos de segunda-feira nas DUAS janelas (13h e 14h UTC) — a segunda
+  // existe para que um tique que falhou não perca a semana inteira. Isso é seguro para quem é
+  // claim-dedupado; este vigia NÃO era. Resultado real: todo cliente com alerta recebia o MESMO
+  // e-mail duas vezes, toda segunda. E-mail repetido não é aviso: é o que ensina o dono a não
+  // abrir o próximo — exatamente a regra nº 1 deste arquivo ("silêncio quando não há nada")
+  // violada pelo outro lado.
+  //
+  // `ops_run_claim` (a mesma trava que o agent-eval e o eval-report já usam em produção) devolve
+  // false na segunda chamada dentro da janela de 20h. Sem a trava colada, o pior caso é o
+  // comportamento de hoje — nunca deixamos de avisar por causa dela.
+  if (!seco) {
+    try {
+      const cr = await svcRpc(env, "ops_run_claim", { p_secret: env.INGEST_SECRET || "", p_kind: "ads-vigia", p_hours: 20 });
+      const cd = cr.ok ? await cr.json().catch(() => null) : null;
+      if (cd === false || (cd && cd.ja_rodou_hoje)) return json({ ok: true, pulou: "ja_varreu_hoje" });
+    } catch { /* sem a trava o pior caso é o aviso repetido — não bloqueia o aviso */ }
+  }
 
   const r = await svcJson(env, "ads_alertas", { p_secret: env.INGEST_SECRET || "", p_days: dias });
   if (!r || r.erro_http) return json({ ok: false, error: `não consegui varrer (${r?.erro_http || "?"})` }, 502);
