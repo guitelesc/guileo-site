@@ -4,4 +4,4 @@
 O contexto permanente (leis, motores, incidentes) vive na memória do Claude, não aqui.
 
 ## Handoffs
-- [2026-08-27](handoffs/2026-08-27.md) — gstack instalado; 4 defeitos silenciosos de produção (todos devolvendo HTTP 200); 178 arquivos que rodavam sem versionamento entraram no git
+- [2026-08-27](handoffs/2026-08-27.md) — gstack instalado; 6 defeitos silenciosos de produção; 178 arquivos versionados; Analytics confirmado com dado real; INP do hub do vendedor. ⚠️ outra sessão commitou no mesmo repo em paralelo
