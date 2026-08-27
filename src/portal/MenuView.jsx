@@ -53,8 +53,13 @@ function MenuView({ V, real, email, dataKey }) {
           </div>
         </div>
       )}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {(V.menu || []).map((m, i) => {
+      {/* 🚨 A AMOSTRA NÃO CONVIVE COM O REAL (2026-08-25). Esta grade de cartões inventados
+          desenhava LOGO ABAIXO do catálogo verdadeiro: o dono via os seus 23 serviços e, na
+          sequência, itens que ele nunca cadastrou com estoque que ninguém mediu — sem nenhuma
+          marca separando os dois. Meia-verdade na mesma tela é pior que amostra declarada.
+          Em modo real a grade não existe; em demo, nada muda. */}
+      <div className={`grid sm:grid-cols-2 lg:grid-cols-3 gap-4 ${reais ? "hidden" : ""}`}>
+      {(reais ? [] : (V.menu || [])).map((m, i) => {
         const stock = stockOf(i, m);
         return (
           <button key={i} onClick={() => setSel({ m, i })} className="text-left">

@@ -1,11 +1,67 @@
 /* Split out of Portal.jsx (performance): AIInsights tab view — code moved verbatim. */
+import { useState, useEffect } from "react";
 import { FaArrowTrendUp } from "react-icons/fa6";
-import { toast } from "../lib/portalApi.js";
+import { toast, fetchCallLogs } from "../lib/portalApi.js";
 import { genRecommendations, genForecast, aiMissed, Card, GuiMark, tr, Empty, genBenchmarks } from "../pages/Portal.jsx";
+
+/* ── UM INSIGHT DE VERDADE, DE GRAÇA (2026-08-25) ──────────────────────────────────────────────
+   Esta aba inteira era amostra em modo real: demanda, no-show e benchmark saem de `vnum` (semente
+   determinística por setor), e a honestidade se resumia a carimbar "Sample" em cada cartão. Um
+   cliente pagante abria "AI Insights" e não havia UM número dele ali dentro.
+   Não precisou de RPC nova nem de crédito de IA: `fetchCallLogs` é a MESMA leitura que a aba
+   Analytics já faz, e cada ligação traz `intent`. Contar intenção por frequência responde a
+   pergunta que o dono faz de verdade — "pra que as pessoas me ligam?" — com dado dele.
+   🚨 SEM LIGAÇÃO COM INTENÇÃO, O BLOCO NÃO DESENHA. Zero ligação não vira gráfico vazio nem
+   percentual de nada: null ≠ 0, e barra sem lastro é a mesma ficção que o resto da aba declara. */
+function IntencoesReais({ email, dataKey }) {
+  const [calls, setCalls] = useState(null);   // null = carregando; [] = lido e vazio
+  useEffect(() => {
+    let vivo = true;
+    if (!email || !dataKey) { setCalls([]); return () => { vivo = false; }; }
+    fetchCallLogs(email, dataKey).then((c) => { if (vivo) setCalls(Array.isArray(c) ? c : []); }).catch(() => { if (vivo) setCalls([]); });
+    return () => { vivo = false; };
+  }, [email, dataKey]);
+  if (calls === null || calls.length === 0) return null;
+
+  const mapa = new Map();
+  calls.forEach((x) => { const k = (x.intent || "").toString().trim(); if (k) mapa.set(k, (mapa.get(k) || 0) + 1); });
+  const top = [...mapa.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+  if (!top.length) return null;   // ligações existem mas nenhuma tem intenção gravada → nada a dizer
+
+  const comIntencao = top.reduce((s, [, n]) => s + n, 0);
+  const maior = top[0][1];
+  return (
+    <Card className="p-0 overflow-hidden border-g-green/30">
+      <div className="px-5 py-3 border-b border-white/10 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Why people call you — your own calls")}</span>
+        <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wide text-g-green">
+          <span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("LIVE — from your real calls")}
+        </span>
+      </div>
+      <div className="p-5 space-y-3">
+        {top.map(([rotulo, n]) => (
+          <div key={rotulo}>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="font-bold text-g-word truncate pr-2">{rotulo}</span>
+              {/* o número é a CONTAGEM crua, não um percentual derivado de amostra pequena */}
+              <span className="text-g-muted tabular-nums shrink-0">{n}</span>
+            </div>
+            <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+              <div className="h-full rounded-full bg-gradient-to-r from-g-green to-g-gold" style={{ width: `${Math.max(6, (n / maior) * 100)}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="px-5 py-2.5 border-t border-white/[0.06] text-[11px] text-g-muted">
+        {comIntencao} {tr("of")} {calls.length} {tr("calls with a recorded intent.")}
+      </div>
+    </Card>
+  );
+}
 
 // Consolidated AI Insights tab — recommendations (apply in 1 click) + demand/no-show
 // forecast + industry benchmarks, all in one place.
-function AIInsights({ V, onNav, sections = [], real = null }) {
+function AIInsights({ V, onNav, sections = [], real = null, email = "", dataKey = "" }) {
   // HONESTY (real mode): demand/no-show/benchmarks are a sector SAMPLE (vnum-derived),
   // not this tenant's live data — so in real we label them "Sample" and disable the
   // actions that only toast (they don't place a real call/deposit yet).
@@ -21,6 +77,9 @@ function AIInsights({ V, onNav, sections = [], real = null }) {
         <div className="text-sm font-extrabold text-g-word flex items-center gap-2"><GuiMark size={24} /> {tr("AI Insights")}</div>
         <div className="text-xs text-g-muted mt-0.5">{tr("What your AI sees in your numbers — and the exact moves to grow faster. Apply any of them in one click.")}</div>
       </Card>
+
+      {/* o único bloco desta aba feito do dado DELE — vem antes de tudo que é amostra */}
+      {real && <IntencoesReais email={email} dataKey={dataKey} />}
 
       <Card className="border-g-gold/30 bg-g-gold/[0.05] p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("⚡ Recommended by your AI · apply in one click")}</div>

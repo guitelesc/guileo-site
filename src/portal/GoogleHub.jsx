@@ -14,6 +14,7 @@ import { FaLocationDot, FaStar, FaChartLine, FaBullhorn, FaCircleCheck, FaArrowR
 import { portalApi, toast } from "../lib/portalApi.js";
 import { genReviews, Card, Empty, SectionSkeleton, UI_LANG } from "../pages/Portal.jsx";
 import { GoogleConnectCard } from "../components/GoogleConnect.jsx";
+import NoSeuPlano from "./NoSeuPlano.jsx";
 
 // ── local 4-language copy (self-contained; keeps dict files untouched) ──
 const t = (o) => o[UI_LANG] || o.en;
@@ -143,6 +144,8 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
 
   return (
     <div className="space-y-4 stagger">
+      {/* convite, nunca cadeado: diz que este recurso mora no degrau de cima (ver NoSeuPlano.jsx) */}
+      <NoSeuPlano real={real} produto="seo_aeo" />
       {/* Header */}
       <div className="rounded-2xl border border-[#4285F4]/25 bg-gradient-to-br from-[#4285F4]/[0.08] to-white/[0.02] p-5">
         <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider" style={{ color: "#4285F4" }}>

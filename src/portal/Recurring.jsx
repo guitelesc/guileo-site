@@ -32,8 +32,41 @@ async function giftApi(body) {
   } catch { return null; }
 }
 
+// ── MOEDA DO TENANT (primeiro passo — 2026-08-25) ───────────────────────────
+// Esta tela rotulava os três campos como "Price (USD)" e formatava tudo com `en-US` fixo. Um cliente
+// brasileiro cadastrava 450 pensando em reais e o painel (e o link de pagamento) tratavam como
+// dólares — o MESMO defeito que já apareceu na landing (planos em R$ com add-ons em $, 5× mais caro).
+//
+// TODO: campo `currency` no perfil do tenant — O DADO AINDA NÃO EXISTE NO BANCO.
+//   `biz_services` guarda `price_cents` e NÃO guarda moeda (ver a nota em
+//   functions/lib/dadosEstruturados.js, que precisou derivar moeda do fuso/país justamente por isso),
+//   e `get_client_data` não devolve país nem moeda em `identity`. Falta:
+//     alter table clients add column currency text check (currency ~ '^[A-Z]{3}$');
+//   e subir esse campo em `identity` — aí este helper lê o campo e o fallback morre.
+// Enquanto isso: leio a moeda se ela APARECER (identity.currency/country/tz), senão USD declarado.
+// 🚨 NADA DE CONVERSÃO. Trocar o rótulo não converte valor nenhum: 450 continua 450, muda o símbolo.
+const MOEDA_POR_PAIS = { US: "USD", BR: "BRL", PT: "EUR", ES: "EUR", MX: "MXN", CA: "CAD", GB: "GBP", IN: "INR" };
+const MOEDA_POR_FUSO = { "America/Sao_Paulo": "BRL", "America/Bahia": "BRL", "America/Recife": "BRL", "America/Fortaleza": "BRL", "Europe/Lisbon": "EUR", "Europe/Madrid": "EUR", "Asia/Kolkata": "INR" };
+export function moedaDoTenant(real) {
+  const id = real?.identity || {};
+  const direta = String(id.currency || "").trim().toUpperCase();
+  if (/^[A-Z]{3}$/.test(direta)) return direta;
+  const porPais = MOEDA_POR_PAIS[String(id.country || "").trim().toUpperCase()];
+  if (porPais) return porPais;
+  const porFuso = MOEDA_POR_FUSO[String(id.tz || id.timezone || "").trim()];
+  if (porFuso) return porFuso;
+  return "USD"; // fallback declarado — o rótulo diz USD, então ninguém digita achando outra coisa
+}
+const LOCALE_DA_MOEDA = { USD: "en-US", BRL: "pt-BR", EUR: "pt-PT", MXN: "es-MX", CAD: "en-CA", GBP: "en-GB", INR: "en-IN" };
 // ── helpers ─────────────────────────────────────────────────────────────────
-const money = (cents) => `$${((Number(cents) || 0) / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+// `money` continua com a MESMA assinatura (cents) — a moeda entra como 2º argumento opcional para
+// não quebrar nenhuma chamada existente, e sem moeda o comportamento antigo é bit-a-bit o mesmo.
+const money = (cents, moeda) => {
+  const v = (Number(cents) || 0) / 100;
+  const cur = moeda || "USD";
+  try { return new Intl.NumberFormat(LOCALE_DA_MOEDA[cur] || "en-US", { style: "currency", currency: cur, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(v); }
+  catch { return `$${v.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`; }
+};
 const toCents = (dollars) => Math.round((Number(String(dollars).replace(/[^0-9.]/g, "")) || 0) * 100);
 const copy = (text) => { try { navigator.clipboard?.writeText(text); toast(tr("Link copied ✓ — send it to your customer")); } catch { toast(tr("Copy failed — select and copy manually.")); } };
 const upsertLocal = (arr, row) => { const i = (arr || []).findIndex((x) => x.id === row.id); if (i < 0) return [row, ...(arr || [])]; const n = [...arr]; n[i] = row; return n; };
@@ -76,6 +109,9 @@ function Field({ label, ...props }) {
 
 function Recurring({ V, real = null, email = "", dataKey = "" }) {
   const live = !!(real && email && dataKey);
+  // a moeda do negócio, resolvida uma vez; `$$` formata e `MOEDA` rotula os campos de entrada.
+  const MOEDA = moedaDoTenant(real);
+  const $$ = (cents) => money(cents, MOEDA);
 
   const [packs, setPacks] = useState(live ? null : demoPackages());
   const [members, setMembers] = useState(live ? null : demoMemberships());
@@ -186,7 +222,7 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
             ? <span className="inline-flex items-center gap-1 text-g-green normal-case font-black text-[9px]"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("LIVE — real data")}</span>
             : <span className="text-g-muted normal-case font-bold text-[9px] border border-white/10 rounded-full px-1.5 py-px">{tr("sample")}</span>}
         </div>
-        <div className="mt-1 text-xl font-black text-g-word">{tr("Packages, memberships & gift cards")} · <span className="text-g-green">{money(mrr)}<span className="text-sm text-g-muted font-bold">/mo</span></span></div>
+        <div className="mt-1 text-xl font-black text-g-word">{tr("Packages, memberships & gift cards")} · <span className="text-g-green">{$$(mrr)}<span className="text-sm text-g-muted font-bold">/mo</span></span></div>
         <p className="mt-1 text-xs text-g-muted max-w-xl">{tr("Recurring revenue is the biggest lever. Sell it from here — Gui renews, reminds and rescues it automatically.")}</p>
       </div>
 
@@ -207,7 +243,7 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
             <Field label={tr("Name")} value={pForm.name} onChange={(e) => setPForm({ ...pForm, name: e.target.value })} placeholder={tr("10-session pack")} />
             <Field label={tr("Service")} value={pForm.service} onChange={(e) => setPForm({ ...pForm, service: e.target.value })} placeholder={tr("Massage")} />
             <Field label={tr("Sessions")} type="number" min="1" value={pForm.sessions} onChange={(e) => setPForm({ ...pForm, sessions: e.target.value })} />
-            <Field label={tr("Price (USD)")} inputMode="decimal" value={pForm.price} onChange={(e) => setPForm({ ...pForm, price: e.target.value })} placeholder="450" />
+            <Field label={`${tr("Price")} (${MOEDA})`} inputMode="decimal" value={pForm.price} onChange={(e) => setPForm({ ...pForm, price: e.target.value })} placeholder="450" />
             <div className="sm:col-span-2 flex items-center gap-2">
               <button onClick={savePack} disabled={busy} className="btn-bright text-sm disabled:opacity-50">{tr("Save package")}</button>
               <button onClick={() => setPForm(null)} className="btn-ghost text-sm">{tr("Cancel")}</button>
@@ -221,7 +257,7 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
                 <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm shrink-0">🎟️</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold text-g-word truncate">{r.name}{r.service ? <span className="text-g-muted font-normal"> · {r.service}</span> : null}</div>
-                  <div className="text-[11px] text-g-muted">{r.sessions} {tr("sessions")} · {money(r.price_cents)}{r.purchases ? ` · ${r.purchases} ${tr("active")}` : ""}</div>
+                  <div className="text-[11px] text-g-muted">{r.sessions} {tr("sessions")} · {$$(r.price_cents)}{r.purchases ? ` · ${r.purchases} ${tr("active")}` : ""}</div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button onClick={() => sellPackage(r, "package")} className="rounded-full border border-g-green/35 bg-g-green/10 px-3 py-1.5 text-[11px] font-bold text-g-word hover:bg-g-green/20 transition whitespace-nowrap inline-flex items-center gap-1.5"><FaLink size={10} /> {tr("Sell link")}</button>
@@ -245,7 +281,7 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
         {mForm && (
           <div className="px-5 py-4 border-b border-white/10 bg-white/[0.015] grid gap-3 sm:grid-cols-2">
             <Field label={tr("Name")} value={mForm.name} onChange={(e) => setMForm({ ...mForm, name: e.target.value })} placeholder={tr("VIP Club")} />
-            <Field label={tr("Price (USD)")} inputMode="decimal" value={mForm.price} onChange={(e) => setMForm({ ...mForm, price: e.target.value })} placeholder="99" />
+            <Field label={`${tr("Price")} (${MOEDA})`} inputMode="decimal" value={mForm.price} onChange={(e) => setMForm({ ...mForm, price: e.target.value })} placeholder="99" />
             <label className="block">
               <span className="block text-[10px] font-bold uppercase tracking-wider text-g-muted mb-1">{tr("Billing")}</span>
               <select value={mForm.interval} onChange={(e) => setMForm({ ...mForm, interval: e.target.value })} className="w-full rounded-lg border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-g-word outline-none focus:border-g-gold/50 transition">
@@ -267,7 +303,7 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
                 <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm shrink-0">🌟</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold text-g-word truncate">{r.name}</div>
-                  <div className="text-[11px] text-g-muted truncate">{money(r.price_cents)}/{r.interval === "year" ? tr("yr") : tr("mo")}{r.perks ? ` · ${r.perks}` : ""}{r.subscribers ? ` · ${r.subscribers} ${tr("members")}` : ""}</div>
+                  <div className="text-[11px] text-g-muted truncate">{$$(r.price_cents)}/{r.interval === "year" ? tr("yr") : tr("mo")}{r.perks ? ` · ${r.perks}` : ""}{r.subscribers ? ` · ${r.subscribers} ${tr("members")}` : ""}</div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button onClick={() => sellPackage(r, "membership")} className="rounded-full border border-g-green/35 bg-g-green/10 px-3 py-1.5 text-[11px] font-bold text-g-word hover:bg-g-green/20 transition whitespace-nowrap inline-flex items-center gap-1.5"><FaLink size={10} /> {tr("Sell link")}</button>
@@ -290,7 +326,7 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
         </div>
         {cForm && (
           <div className="px-5 py-4 border-b border-white/10 bg-white/[0.015] grid gap-3 sm:grid-cols-2">
-            <Field label={tr("Amount (USD)")} inputMode="decimal" value={cForm.amount} onChange={(e) => setCForm({ ...cForm, amount: e.target.value })} placeholder="100" />
+            <Field label={`${tr("Amount")} (${MOEDA})`} inputMode="decimal" value={cForm.amount} onChange={(e) => setCForm({ ...cForm, amount: e.target.value })} placeholder="100" />
             <Field label={tr("Recipient (optional)")} value={cForm.recipient} onChange={(e) => setCForm({ ...cForm, recipient: e.target.value })} placeholder={tr("name or email")} />
             <div className="sm:col-span-2 flex items-center gap-2">
               <button onClick={issueCard} disabled={busy} className="btn-bright text-sm disabled:opacity-50">{tr("Issue gift card")}</button>
@@ -306,7 +342,7 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
                 <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm shrink-0">🎁</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold text-g-word font-mono truncate">{r.code}</div>
-                  <div className="text-[11px] text-g-muted truncate">{money(r.balance_cents)} {tr("of")} {money(r.amount_cents)}{r.recipient_contact ? ` · ${r.recipient_contact}` : ""}</div>
+                  <div className="text-[11px] text-g-muted truncate">{$$(r.balance_cents)} {tr("of")} {$$(r.amount_cents)}{r.recipient_contact ? ` · ${r.recipient_contact}` : ""}</div>
                 </div>
                 <button onClick={() => sellGift(r)} className="rounded-full border border-g-green/35 bg-g-green/10 px-3 py-1.5 text-[11px] font-bold text-g-word hover:bg-g-green/20 transition whitespace-nowrap inline-flex items-center gap-1.5 shrink-0"><FaLink size={10} /> {tr("Pay link")}</button>
               </div>

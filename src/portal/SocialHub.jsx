@@ -16,6 +16,7 @@ import { useState, useEffect } from "react";
 import { FaInstagram, FaFacebook, FaWhatsapp, FaCircleCheck, FaRobot, FaPenToSquare, FaCheck, FaXmark } from "react-icons/fa6";
 import { portalApi, toast } from "../lib/portalApi.js";
 import { Card, Empty, SectionSkeleton, UI_LANG, genInbox } from "../pages/Portal.jsx";
+import NoSeuPlano from "./NoSeuPlano.jsx";
 
 // ── local 4-language copy (self-contained; leaves the shared dicts untouched) ──
 const t = (o) => o[UI_LANG] || o.en;
@@ -238,6 +239,8 @@ function SocialHub({ V, real = null, email = "", dataKey = "" }) {
 
   return (
     <div className="space-y-4 stagger">
+      {/* convite, nunca cadeado: diz que este recurso mora no degrau de cima (ver NoSeuPlano.jsx) */}
+      <NoSeuPlano real={real} produto="social_manage" />
       {/* Header */}
       <div className="rounded-2xl border border-[#E4405F]/25 bg-gradient-to-br from-[#E4405F]/[0.08] via-[#1877F2]/[0.05] to-white/[0.02] p-5">
         <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider" style={{ color: "#E4405F" }}>

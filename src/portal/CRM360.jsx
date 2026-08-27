@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { fetchCrmDeals, fetchCrmTimeline, fetchCRM } from "../lib/portalApi.js";
 import { waTo } from "../data/contact.js";
 import { Card, genCustomers, tr, MiniStats, Empty, Drawer, SectionSkeleton } from "../pages/Portal.jsx";
+import NoSeuPlano from "./NoSeuPlano.jsx";
 
 // Pipeline board — crm_deals grouped by stage (the sales motor: inquiry → quoted → booked → won).
 // Kanban columns scroll horizontally on mobile.
@@ -245,6 +246,8 @@ function CRM360({ V, onNav, real = null, email = "", dataKey = "" }) {
 
   return (
     <div className="space-y-4 stagger">
+      {/* convite, nunca cadeado: diz que este recurso mora no degrau de cima (ver NoSeuPlano.jsx) */}
+      <NoSeuPlano real={real} produto="crm_email" />
       <MiniStats items={[
         [tr("Total contacts"), `${data.count || all.length}`],
         [tr("Active leads"), `${leads}`, "good"],

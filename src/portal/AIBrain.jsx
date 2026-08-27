@@ -107,6 +107,8 @@ function AIBrain({ V, me }) {
   );
 }
 
+// 🚨 Os placeholders deste formulário eram os ÚNICOS textos EN sem tr() da tela: o dono em PT/ES/HI
+// via o próprio exemplo em inglês. Placeholder é texto visível — passa pelo dicionário como o resto.
 function KBForm({ entry, onSave, onCancel }) {
   const [topic, setTopic] = useState(entry.topic || "");
   const [triggers, setTriggers] = useState(entry.triggers || "");
@@ -116,11 +118,11 @@ function KBForm({ entry, onSave, onCancel }) {
   return (
     <div className="space-y-3">
       <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr("Topic")}</span>
-        <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="e.g. Parking & access" className={`mt-1 ${field}`} /></label>
+        <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={tr("e.g. Parking & access")} className={`mt-1 ${field}`} /></label>
       <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr("When customers ask about…")} <span className="normal-case font-normal text-g-muted/70">{tr("(keywords, optional)")}</span></span>
-        <input value={triggers} onChange={(e) => setTriggers(e.target.value)} placeholder="parking park garage valet" className={`mt-1 ${field}`} /></label>
+        <input value={triggers} onChange={(e) => setTriggers(e.target.value)} placeholder={tr("parking park garage valet")} className={`mt-1 ${field}`} /></label>
       <label className="block"><span className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{tr("Your AI should reply")}</span>
-        <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} rows={4} placeholder="Free parking is available right behind the building…" className={`mt-1 ${field} resize-none`} /></label>
+        <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} rows={4} placeholder={tr("Free parking is available right behind the building…")} className={`mt-1 ${field} resize-none`} /></label>
       <div className="flex gap-2 pt-1">
         <button disabled={!valid} onClick={() => onSave({ ...entry, topic: topic.trim(), triggers: triggers.trim(), answer: answer.trim() })} className="btn-bright text-sm flex-1 disabled:opacity-40 disabled:cursor-not-allowed">{tr("Save & retrain")}</button>
         <button onClick={onCancel} className="rounded-full border border-white/15 px-4 py-2 text-sm font-bold text-g-muted hover:text-g-word transition">{tr("Cancel")}</button>

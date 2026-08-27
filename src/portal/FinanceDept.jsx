@@ -2,6 +2,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { fetchCrmInvoices } from "../lib/portalApi.js";
 import { genCustomers, SectionSkeleton, RetryState, DeptTabs, Card, tr, Empty, UI_LANG, Toggle } from "../pages/Portal.jsx";
+import NoSeuPlano from "./NoSeuPlano.jsx";
 
 // Which invoice statuses are open/collectible. crm_invoices_list flags 'overdue' at read
 // time (sent + past due); the /api/collections nudge engine (finance_overdue_list) can only
@@ -191,7 +192,9 @@ function Receivables({ demo, email, dataKey, V, fmtMoney }) {
   );
 }
 
-function FinanceDept({ V, onNav, email = "", dataKey = "" }) {
+// `real` chega null enquanto o shell (Portal.jsx, view "finance") não a passar: NoSeuPlano
+// devolve null sem plano conhecido, então o convite simplesmente não aparece — nunca acusa errado.
+function FinanceDept({ V, onNav, email = "", dataKey = "", real = null }) {
   const demo = !dataKey;
   const [invoices, setInvoices] = useState([]);
   const [state, setState] = useState(demo ? "ok" : "loading");
@@ -246,6 +249,8 @@ function FinanceDept({ V, onNav, email = "", dataKey = "" }) {
 
   return (
     <div className="space-y-4 stagger">
+      {/* convite, nunca cadeado: diz que este recurso mora no degrau de cima (ver NoSeuPlano.jsx) */}
+      <NoSeuPlano real={real} produto="close_collect" />
       <DeptTabs cur="finance" onNav={onNav} items={[["finance", "Finance"], ["payments", "Payments"]]} />
       <div className="grid gap-3 sm:grid-cols-3">
         <Card tone="green"><div className="text-[11px] uppercase tracking-wide text-g-muted">{tr("Paid")}</div><div className="text-2xl font-extrabold text-g-green money-glow mt-1">{fmtMoney(paid)}</div></Card>

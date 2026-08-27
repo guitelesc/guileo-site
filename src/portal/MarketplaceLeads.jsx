@@ -14,6 +14,7 @@ import { useState, useEffect } from "react";
 import { FaBullseye, FaLink, FaBolt, FaEnvelope, FaPlug, FaChevronDown } from "react-icons/fa6";
 import { toast, requestGuiCallback } from "../lib/portalApi.js";
 import { tr, Card, Empty, SectionSkeleton, relTime } from "../pages/Portal.jsx";
+import NoSeuPlano from "./NoSeuPlano.jsx";
 
 // ── API seam — never throws to the UI ─────────────────────────────────────────
 async function api(body) {
@@ -152,6 +153,8 @@ function MarketplaceLeads({ V, real = null, email = "", dataKey = "" }) {
 
   return (
     <div className="space-y-5 stagger">
+      {/* convite, nunca cadeado: diz que este recurso mora no degrau de cima (ver NoSeuPlano.jsx) */}
+      <NoSeuPlano real={real} produto="speedlead" />
       {/* Header */}
       <div className="rounded-2xl border border-[#FF8A33]/25 bg-gradient-to-br from-[#FF8A33]/[0.07] to-white/[0.02] p-5">
         <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider" style={{ color: "#FF8A33" }}>

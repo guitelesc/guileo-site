@@ -2,7 +2,13 @@
 import { useState, useEffect } from "react";
 import { fetchAppointments, toast } from "../lib/portalApi.js";
 import { waLink } from "../data/contact.js";
-import { loadCreated, genWaitlist, pushCreated, logImpact, vnum, Card, GuiMark, tr, DEPOSIT, staffOf, Drawer, roomOf, _dur } from "../pages/Portal.jsx";
+import { loadCreated, genWaitlist, pushCreated, logImpact, vnum, Card, GuiMark, tr, DEPOSIT, staffOf, Drawer, roomOf, _dur, UI_LANG } from "../pages/Portal.jsx";
+
+// 🚨 IDIOMA. Esta tela formatava TODA data com ["Dom","Seg",...] cravado: um cliente em inglês,
+// espanhol ou hindi lia a agenda dele em português. O formato sai do idioma da sessão, nunca de um
+// literal — a mesma armadilha do fmt() com "en-US" fixo que já fez a agente falar o idioma errado.
+const LOCALE = { pt: "pt-BR", es: "es-ES", hi: "hi-IN", en: "en-US" };
+const loc = () => LOCALE[UI_LANG] || LOCALE.en;
 
 // Status → signal color (the booking's meaning at a glance).
 const APPT_COLOR = { booked: "#3FB4FF", confirmed: "#2FE39A", hold: "#FFC23D", reschedule: "#FF3D8B" };
@@ -26,7 +32,7 @@ function ScheduleScreen({ V, real = null, email = "", dataKey = "" }) {
     if (real && email && dataKey) fetchAppointments(email, dataKey).then((a) => { if (alive) setAppts(Array.isArray(a) ? a : []); });
     return () => { alive = false; };
   }, [real, email, dataKey]);
-  const fmtAppt = (iso) => { try { const d = new Date(iso); const D = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]; return `${D[d.getDay()]} ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")} · ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; } catch { return ""; } };
+  const fmtAppt = (iso) => { try { const d = new Date(iso); return `${new Intl.DateTimeFormat(loc(), { weekday: "short", day: "2-digit", month: "2-digit" }).format(d)} · ${new Intl.DateTimeFormat(loc(), { hour: "2-digit", minute: "2-digit" }).format(d)}`; } catch { return ""; } };
   // ── 🏖️ SPECIAL DATES (vacation/holiday/reduced hours) — Gui stops booking these days. ──
   // Real mode: /api/agent-schedule action special_list/special_set (per-tenant gate: email+dataKey
   // via get_client_data server-side). Demo mode: sample rows, actions disabled.
@@ -88,7 +94,7 @@ function ScheduleScreen({ V, real = null, email = "", dataKey = "" }) {
   };
 
   const spRows = real ? spDates : SP_DEMO;
-  const fmtSpDate = (ds) => { try { const d = new Date(`${ds}T00:00:00`); const D = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]; return `${D[d.getDay()]} ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`; } catch { return ds; } };
+  const fmtSpDate = (ds) => { try { const d = new Date(`${ds}T00:00:00`); return new Intl.DateTimeFormat(loc(), { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" }).format(d); } catch { return ds; } };
   const fillFromWaitlist = () => {
     // HONESTY: in real mode the waitlist here is a sample, so we never write a fabricated
     // dollar value into Guileo Impact. The real fill happens through the booking motor.
@@ -200,11 +206,24 @@ function ScheduleScreen({ V, real = null, email = "", dataKey = "" }) {
           {o.stats.map((s) => (<Card key={s.label}><div className="text-[11px] uppercase tracking-wide text-g-muted">{s.label}</div><div className={`text-2xl font-extrabold mt-1 ${s.tone === "good" ? "text-g-green" : "text-g-word"}`}>{s.value}</div></Card>))}
         </div>
       )}
-      {DEPOSIT[V.label] > 0 && (
+      {/* 🚨 PROTEÇÃO DE NO-SHOW — SÓ NA DEMONSTRAÇÃO (2026-08-25).
+          Este card afirmava "$X de depósito retido por agendamento" para cliente REAL a partir de
+          uma tabela ESTÁTICA por setor (DEPOSIT[V.label]) — ninguém tinha retido nada. E o botão
+          "Manage rules" respondia "Deposit rules updated ✓" sem back-end nenhum: regra que o dono
+          acha que salvou e nunca existiu. O sinal real (Stripe Connect do tenant + depósitos
+          efetivamente retidos) NÃO chega a esta tela hoje — e afirmar sem lastro é pior que calar.
+          Quando o endpoint existir, este card volta lendo o estado REAL da conta. */}
+      {!real && DEPOSIT[V.label] > 0 && (
         <Card className="border-g-green/25 bg-g-green/[0.05]">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div><div className="text-sm font-extrabold text-g-word">🛡️ No-show protection · on</div><div className="text-xs text-g-muted mt-0.5">${DEPOSIT[V.label]} deposit held per booking{real ? <> · <span className="text-g-muted">{tr("prevented no-shows appear here as bookings are secured")}</span></> : <> · <b className="text-g-green">7 no-shows prevented</b> · $980 secured this month</>}</div></div>
-            <div className="flex gap-2"><button onClick={fillFromWaitlist} className="btn-bright text-sm">{tr("Fill from waitlist →")}</button><button onClick={() => toast("Deposit rules updated ✓")} className="btn-ghost text-sm">{tr("Manage rules")}</button></div>
+            <div>
+              <div className="text-sm font-extrabold text-g-word flex items-center gap-2">
+                🛡️ {tr("No-show protection")}
+                <span className="rounded-full border border-white/15 bg-white/[0.05] px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-g-muted">{tr("Demo — sample data")}</span>
+              </div>
+              <div className="text-xs text-g-muted mt-0.5">${DEPOSIT[V.label]} deposit held per booking · <b className="text-g-green">7 no-shows prevented</b> · $980 secured this month</div>
+            </div>
+            <div className="flex gap-2"><button onClick={fillFromWaitlist} className="btn-bright text-sm">{tr("Fill from waitlist →")}</button></div>
           </div>
         </Card>
       )}

@@ -26,14 +26,16 @@ function ReferralCard() {
     return () => { on = false; };
   }, []);
   const link = `https://guileoai.com?ref=${b64url(email || "demo@guileoai.com") || "demo"}`;
-  // Offer + share copy are Luis's exact words (his offer to honor) — PT on purpose.
-  const waMsg = `Conhece a Gui? É uma IA que atende meu telefone 24/7… usa meu link e a gente ganha um mês grátis: ${link}`;
+  // 🚨 IDIOMA (2026-08-25). A chamada e a mensagem de compartilhar estavam em PORTUGUÊS cravado
+  // para os 4 idiomas: cliente americano lia a própria oferta em outra língua. A oferta do Luis
+  // é a mesma — o que muda é a língua em que ela é dita. Vai pelo dicionário da tela, como o resto.
+  const waMsg = `${tr("Know Gui? It's an AI that answers my phone 24/7… use my link and we both get a free month:")} ${link}`;
   const copy = async () => {
     try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2200); } catch { /* clipboard blocked → they can select the visible link */ }
   };
   return (
     <Card className="bg-gradient-to-br from-g-gold/[0.12] to-g-green/[0.05] border-g-gold/40">
-      <div className="text-sm font-extrabold text-g-word">🎁 Indique um negócio amigo — vocês DOIS ganham 1 mês grátis</div>
+      <div className="text-sm font-extrabold text-g-word">🎁 {tr("Refer a business friend — you BOTH get 1 month free")}</div>
       <p className="text-xs text-g-muted mt-1">{tr("Share your personal link — when a friend's business joins Guileo through it, you both get one month free.")}</p>
       <div className="mt-3 flex flex-col sm:flex-row items-stretch gap-2">
         <div className="flex-1 rounded-full border border-white/15 bg-black/25 px-4 py-2.5 text-xs text-g-light font-mono truncate select-all" title={link}>{link}</div>

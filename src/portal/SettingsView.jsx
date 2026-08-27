@@ -54,8 +54,65 @@ function SettingsView({ V, real = null, me = null }) {
   const [st, setSt] = useState(() => ({ ...defS, ...portalApi.loadState(`${V.label}:settings`, {}) }));
   useEffect(() => { setSt({ ...defS, ...portalApi.loadState(`${V.label}:settings`, {}) }); }, [V.label]); // eslint-disable-line
   const setS = (k, v) => setSt((s) => { const n = { ...s, [k]: v }; portalApi.saveState(`${V.label}:settings`, n); return n; });
-  const [payg, setPaygS] = useState(() => portalApi.loadState("gui_payg", true));
-  const flipPayg = () => setPaygS((p) => { const v = !p; portalApi.saveState("gui_payg", v); window.dispatchEvent(new Event("gui:credits")); toast(v ? "Auto top-up on ✓" : "Auto top-up off"); return v; });
+  // ── RECARGA COM 1 CLIQUE — a preferência agora mora no SERVIDOR (2026-08-25) ────────────────
+  // Até hoje este botão gravava `gui_payg` só no localStorage e NENHUM arquivo em functions/ lia
+  // esse valor. O cliente ligava, via "Auto top-up on ✓", zerava o crédito no sábado e nada
+  // acontecia — com a certeza de ter ligado. Num caminho de dinheiro, promessa sem lastro é a
+  // pior classe de defeito, e o rótulo mudou junto: o que este botão liga é o e-mail com o LINK
+  // do pacote quando o saldo zera. A Guileo NÃO passa o cartão sozinha (isso exige mandato salvo
+  // — próximo passo). O rótulo não pode prometer o que o código não faz.
+  //
+  // TRÊS ESTADOS, de propósito: ligado · desligado · NÃO DEU PRA LER. Desenhar o terceiro como
+  // "desligado" é o fallback que esconde erro — e aqui esconderia uma preferência de cobrança.
+  const [payg, setPaygS] = useState(null);
+  const [paygEstado, setPaygEstado] = useState("carregando"); // carregando | pronto | salvando | erro
+  const [paygMotivo, setPaygMotivo] = useState("");
+  // SEM CHAVE não é um estado do servidor, é uma condição da tela — por isso é DERIVADO, e não
+  // mais um setState dentro do efeito (que a regra de hooks proíbe, com razão: escrever estado no
+  // corpo do efeito provoca um segundo render a cada montagem).
+  const paygSemChave = !dataKey || !me?.email;
+  useEffect(() => {
+    let vivo = true;
+    if (paygSemChave) return undefined;
+    (async () => {
+      try {
+        const r = await fetch("/api/auto-topup", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: me.email, token: dataKey, action: "get" }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!vivo) return;
+        // LER A RESPOSTA, não só o status: a rota devolve 200 com `pronto:false` quando a RPC
+        // ainda não foi colada. Isso NÃO é "desligado".
+        if (r.ok && d?.ok === true && d.pronto === true) { setPaygS(d.enabled === true); setPaygEstado("pronto"); setPaygMotivo(""); }
+        else { setPaygS(null); setPaygMotivo(d?.motivo || d?.error || `HTTP ${r.status}`); setPaygEstado("erro"); }
+      } catch { if (vivo) { setPaygS(null); setPaygMotivo("network"); setPaygEstado("erro"); } }
+    })();
+    return () => { vivo = false; };
+  }, [dataKey, me?.email, paygSemChave]);
+  const flipPayg = async () => {
+    if (paygSemChave) { toast(tr("Paste your connection code first — this setting lives on your account, not in this browser.")); return; }
+    if (paygEstado === "salvando") return;
+    const alvo = payg !== true;
+    setPaygEstado("salvando");
+    try {
+      const r = await fetch("/api/auto-topup", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: me?.email || "", token: dataKey, action: "set", enabled: alvo }),
+      });
+      const d = await r.json().catch(() => ({}));
+      // O ESTADO VEM DO BANCO, não do que a tela pediu. Sem isso, um erro de RPC pintaria o botão
+      // de verde sobre nada gravado — que é exatamente o defeito que este bloco veio consertar.
+      if (r.ok && d?.ok === true && d.pronto === true) {
+        setPaygS(d.enabled === true); setPaygEstado("pronto"); setPaygMotivo("");
+        window.dispatchEvent(new Event("gui:credits"));
+        toast(d.enabled ? tr("Saved ✓ — when your balance hits zero, the top-up link comes by e-mail.") : tr("Saved ✓ — one-click top-up is off."));
+      } else {
+        setPaygMotivo(d?.error || d?.motivo || `HTTP ${r.status}`); setPaygEstado("erro");
+        toast(`⚠️ ${tr("Couldn't save this on your account")} — ${d?.error || d?.motivo || `HTTP ${r.status}`}`);
+      }
+    } catch { setPaygMotivo("network"); setPaygEstado("erro"); toast(`⚠️ ${tr("Couldn't save this on your account")} — network`); }
+  };
   return (
     <div className="space-y-4 stagger">
       <Card className="p-0 overflow-hidden">
@@ -138,7 +195,20 @@ function SettingsView({ V, real = null, me = null }) {
           {[["on_booking", "New booking or order"], ["on_missed", "Missed call or lead"], ["on_review", "New review"], ["daily_summary", "Daily summary from Gui"]].map(([k, label]) => (
             <div key={k} className="flex items-center justify-between px-5 py-3.5"><span className="text-sm text-g-word font-semibold">{tr(label)}</span><Toggle on={st[k] !== false} onClick={() => setS(k, st[k] === false)} /></div>
           ))}
-          <div className="flex items-center justify-between px-5 py-3.5"><div><div className="text-sm text-g-word font-semibold">{tr("Auto top-up Gui credits")}</div><div className="text-[11px] text-g-muted">{tr("Never let the AI pause mid-task — refill when low (pay-as-you-go).")}</div></div><Toggle on={payg} onClick={flipPayg} /></div>
+          {/* ⚠️ RÓTULO HONESTO. Dizia "Auto top-up … refill when low" — uma recarga automática que não
+              existe (e não gravava nada fora deste navegador). O que existe é o e-mail com o link
+              pronto no momento em que o saldo zera; a cobrança continua sendo um clique do dono. */}
+          <div className="flex items-center justify-between px-5 py-3.5">
+            <div className="pr-3">
+              <div className="text-sm text-g-word font-semibold">{tr("One-click top-up by e-mail when credits hit zero")}</div>
+              <div className="text-[11px] text-g-muted">{tr("The moment your balance hits zero we e-mail you the top-up link, ready to pay. We never charge your card on our own.")}</div>
+              {paygSemChave && <div className="mt-1 text-[11px] text-g-gold">{tr("Add your connection code above to turn this on.")}</div>}
+              {!paygSemChave && paygEstado === "carregando" && <div className="mt-1 text-[11px] text-g-muted">{tr("Loading your setting…")}</div>}
+              {paygEstado === "salvando" && <div className="mt-1 text-[11px] text-g-muted">{tr("Saving…")}</div>}
+              {!paygSemChave && paygEstado === "erro" && <div className="mt-1 text-[11px] text-[#FF9E9E]">⚠️ {tr("Couldn't read this from your account")}{paygMotivo ? ` — ${paygMotivo}` : ""}</div>}
+            </div>
+            <Toggle on={payg === true && !paygSemChave} onClick={flipPayg} />
+          </div>
           <div className="flex items-center justify-between px-5 py-3.5"><div className="flex items-center gap-3"><span className="text-sm text-g-word font-semibold">{tr("Quiet hours")}</span></div><Toggle on={!!st.quiet_enabled} onClick={() => setS("quiet_enabled", !st.quiet_enabled)} /></div>
           {st.quiet_enabled && (
             <div className="flex items-center gap-3 px-5 py-3">

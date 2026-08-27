@@ -26,7 +26,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { FaCalendarDays, FaPhone, FaUsers, FaHeartPulse, FaGlobe, FaSackDollar, FaRotateRight, FaArrowRight } from "react-icons/fa6";
 import { tr, UI_LANG, Card } from "../pages/Portal.jsx";
-import { fetchNoshowRadar } from "../lib/portalApi.js";
+import { fetchNoshowRadar, fetchAppointments } from "../lib/portalApi.js";
 
 // ── idioma ──────────────────────────────────────────────────────────────────────────────────────
 // fmt() com "en-US" cravado já fez a agente falar metade em inglês numa ligação em português.
@@ -38,6 +38,19 @@ const hhmm = (ts) => { try { return new Date(ts).toLocaleTimeString(loc(), { hou
 // o cliente leu um número 5× mais caro do que era. A receita vem em centavos de USD do ledger.
 const usd = (n) => { try { return new Intl.NumberFormat(loc(), { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n); } catch { return `$${Math.round(n)}`; } };
 const num = (n) => { try { return new Intl.NumberFormat(loc()).format(n); } catch { return String(n); } };
+
+// ── ligações que seriam perdidas ────────────────────────────────────────────────────────────────
+// As marcas vêm do BACKEND, lidas do código que as grava — não de chute:
+//   functions/api/twilio-voice.js:64-68  → "📵 Missed call from <n> — text-back sent"
+//                                          ou "📵 Missed call from <n> — ⚠️ TEXT-BACK FALHOU …"
+//   functions/api/voice-fallback.js:196  → "📵 Voice platform down — inbound call … (text-back sent)"
+//   functions/api/twilio-voice.js:192    → "📞 Auto-callback placed to <n>" (ou "failed")
+// ⚠️ `get_client_data` devolve os eventos SEM payload (db/inbox.sql explica), então a única
+// evidência disponível aqui é o texto do summary. Por isso casamos o texto, e só o que está
+// escrito conta: "FALHOU"/"failed" NUNCA entra em recuperadas.
+const ehPerdida = (e) => (e?.summary || "").includes("📵");
+const foiTextBack = (e) => /text-back sent/i.test(e?.summary || "");
+const foiCallback = (e) => /auto-callback placed/i.test(e?.summary || "");
 
 // ── guarda-dia offline (leitura carimbada) ──────────────────────────────────────────────────────
 // IndexedDB, não localStorage: localStorage é síncrono e nem existe dentro de um service worker.
@@ -130,6 +143,7 @@ export default function Hoje({ V, onNav, real = null, email = "", dataKey = "", 
   const [guardado, setGuardado] = useState(null);                // último resumo lido (IndexedDB)
   const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
   const [graca, setGraca] = useState(true);                      // 1.2s antes de acusar falha no boot
+  const [agenda, setAgenda] = useState(null);                    // quem vem hoje (biz_appointments)
   const chave = `hoje:${(email || "anon").toLowerCase()}`;
   const montado = useRef(true);
 
@@ -186,14 +200,37 @@ export default function Hoje({ V, onNav, real = null, email = "", dataKey = "", 
   useEffect(() => { lerDinheiro(); }, [lerDinheiro]);
   useEffect(() => { lerAtencao(); }, [lerAtencao]);
 
+  // ── 📅 QUEM VEM HOJE — a agenda real (biz_appointments) resumida na primeira tela ────────────
+  // `fetchAppointments` devolve [] tanto para "nenhum" quanto para "não deu pra ler", então esta
+  // seção só aparece quando há agendamento de hoje PARA MOSTRAR. Ela nunca diz "ninguém vem hoje",
+  // porque essa é justamente a frase que eu não posso provar com um [] ambíguo.
+  useEffect(() => {
+    let vivo = true;
+    if (!conectado || !real) return () => { vivo = false; };
+    fetchAppointments(email, dataKey).then((a) => { if (vivo) setAgenda(Array.isArray(a) ? a : []); }).catch(() => { /* [] ambíguo → seção some */ });
+    return () => { vivo = false; };
+  }, [conectado, real, email, dataKey]);
+
   // ── o que a IA fez hoje: contado dos eventos reais do próprio tenant, janela do dia LOCAL.
   const hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0);
   const doDia = real && Array.isArray(real.events)
     ? real.events.filter((e) => { const t = new Date(e.created_at).getTime(); return Number.isFinite(t) && t >= hoje0.getTime(); })
     : null;
   const conta = (tipo) => (doDia ? doDia.filter((e) => e.type === tipo).length : null);
+  // "Ligações atendidas" não pode incluir as PERDIDAS: elas entram como type "call" (é o mesmo
+  // ingest do twilio-voice), e contá-las aqui transformava telefone tocando sem resposta em prova
+  // de atendimento. Elas têm o card próprio logo acima.
   const feito = doDia
-    ? { calls: conta("call"), booked: conta("booking"), msgs: conta("message"), leads: conta("lead") }
+    ? { calls: doDia.filter((e) => e.type === "call" && !ehPerdida(e)).length, booked: conta("booking"), msgs: conta("message"), leads: conta("lead") }
+    : null;
+
+  // ☎️ LIGAÇÕES QUE SERIAM PERDIDAS — a conta que o dono nunca vê em lugar nenhum.
+  // Sem janela de eventos (`doDia === null`) o card não existe: não sei, logo não afirmo.
+  // Recuperadas nunca passa de perdidas — um retorno automático é a recuperação DE uma perdida,
+  // não um evento a mais; somar os dois faria "8 recuperadas de 5 perdidas".
+  const perdidas = doDia ? doDia.filter(ehPerdida) : null;
+  const recuperadas = perdidas
+    ? Math.min(perdidas.length, perdidas.filter(foiTextBack).length + doDia.filter(foiCallback).length)
     : null;
 
   // Guarda o resumo do dia assim que ele fecha — é ele que aparece (carimbado) quando a leitura
@@ -264,6 +301,12 @@ export default function Hoje({ V, onNav, real = null, email = "", dataKey = "", 
   }
 
   // ── ESTADO 4: tudo lido. ─────────────────────────────────────────────────────────────────────
+  // Agendamentos de HOJE, em ordem de horário. A janela é o dia LOCAL do dono (a mesma de `doDia`),
+  // não UTC: às 21h de Nova York, UTC já é amanhã e a agenda do dia sumiria da tela.
+  const amanha0 = hoje0.getTime() + 86400000;
+  const hojeAgenda = (Array.isArray(agenda) ? agenda : [])
+    .filter((a) => { const t = new Date(a.when).getTime(); return Number.isFinite(t) && t >= hoje0.getTime() && t < amanha0; })
+    .sort((a, b) => new Date(a.when) - new Date(b.when));
   const pedidos = [];
   if (atencao.px === "ok" && atencao.detratores > 0) pedidos.push({ k: "px", n: atencao.detratores, txt: atencao.detratores === 1 ? tr("unhappy customer waiting") : tr("unhappy customers waiting"), view: "experience" });
   if (atencao.ns === "ok" && atencao.risco > 0) pedidos.push({ k: "ns", n: atencao.risco, txt: atencao.risco === 1 ? tr("booking at risk of a no-show") : tr("bookings at risk of a no-show"), view: "riskradar" });
@@ -271,6 +314,26 @@ export default function Hoje({ V, onNav, real = null, email = "", dataKey = "", 
   return (
     <div className="space-y-4">
       <Cabecalho V={V} onRefresh={recarregar} refreshing={refreshing} />
+
+      {/* 0 — ☎️ o que teria ido embora. Só entra quando HOUVE perdida medida na janela do dia. */}
+      {perdidas && perdidas.length > 0 && (
+        <button type="button" onClick={() => onNav?.("calllogs")}
+          className="flex w-full items-center gap-3 rounded-xl2 border border-[#FF8A33]/35 bg-[#FF8A33]/[0.08] px-4 py-3.5 text-left transition hover:border-[#FF8A33]/70">
+          <span aria-hidden className="text-xl">☎️</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13.5px] font-bold leading-snug text-g-word">
+              {num(perdidas.length)} {tr(perdidas.length === 1 ? "call that would have been lost" : "calls that would have been lost")}
+            </span>
+            <span className="block text-[12px] leading-snug text-g-muted">
+              {num(recuperadas)} {tr("recovered by Gui")}
+              {recuperadas < perdidas.length
+                ? <span className="text-g-gold"> · {num(perdidas.length - recuperadas)} {tr("still need a call back from you")}</span>
+                : null}
+            </span>
+          </span>
+          <FaArrowRight aria-hidden className="shrink-0 text-g-muted" />
+        </button>
+      )}
 
       {/* 1 — o que a IA fez hoje */}
       <Bloco title={tr("What your AI did for you today")} right={guardado?.at ? <Carimbo at={guardado.at} online={online} vivo /> : null}>
@@ -293,6 +356,28 @@ export default function Hoje({ V, onNav, real = null, email = "", dataKey = "", 
           </>
         )}
       </Bloco>
+
+      {/* 2.5 — 📅 quem vem hoje. Some inteira quando não há o que mostrar (ver o comentário da
+          leitura: [] aqui é ambíguo, então ele nunca vira a frase "ninguém vem hoje"). */}
+      {hojeAgenda.length > 0 && (
+        <Bloco title={tr("Coming in today")}
+          right={<button type="button" onClick={() => onNav?.("schedule")} className="text-[11px] font-bold text-g-gold hover:underline">{tr("See agenda →")}</button>}>
+          <div className="divide-y divide-white/[0.06]">
+            {hojeAgenda.slice(0, 5).map((a, i) => (
+              <div key={a.id || i} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
+                <span className="w-14 shrink-0 text-[12.5px] font-bold tabular-nums text-g-light">{hhmm(a.when)}</span>
+                <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-g-word">
+                  {a.customer || tr("Customer")}
+                  {a.service ? <span className="font-normal text-g-muted"> · {a.service}</span> : null}
+                </span>
+              </div>
+            ))}
+          </div>
+          {hojeAgenda.length > 5 && (
+            <p className="mt-2 text-[11.5px] text-g-muted">+{num(hojeAgenda.length - 5)} {tr("more today")}</p>
+          )}
+        </Bloco>
+      )}
 
       {/* 3 — tem algo pedindo você? */}
       <Bloco title={tr("Needs you")}>

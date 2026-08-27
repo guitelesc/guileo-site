@@ -1,5 +1,4 @@
 /* Split out of Portal.jsx (performance): Docs tab view — code moved verbatim. */
-import { toast } from "../lib/portalApi.js";
 import { Card, tr, DOCS } from "../pages/Portal.jsx";
 
 function Docs({ real = null } = {}) {
@@ -14,13 +13,16 @@ function Docs({ real = null } = {}) {
   );
   return (
     <Card className="p-0 overflow-hidden">
-      <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Documents & billing")}</div>
+      <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between gap-2"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Documents & billing")}</span><span className="text-[10px] font-black uppercase tracking-wide text-g-muted">{tr("Demo — sample data")}</span></div>
       <div className="divide-y divide-white/[0.06]">
-        {DOCS.map(([ic, name, meta, action]) => (
+        {DOCS.map(([ic, name, meta]) => (
           <div key={name} className="flex items-center gap-3 px-5 py-3.5">
             <span className="text-xl">{ic}</span>
             <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word">{name}</div><div className="text-[11px] text-g-muted">{meta}</div></div>
-            <button onClick={() => toast(action === "View" ? `Opening ${name}…` : `${name} · ${action}`)} aria-label={`${action} — ${name}`} className="text-xs font-bold text-g-gold hover:underline">{action}</button>
+            {/* 🚨 View/Download só ABRIAM UM TOAST (2026-08-25): não há arquivo por trás destas linhas
+                de amostra. Botão que não faz o que diz treina o dono a não confiar no que faz.
+                Vira rótulo — a demonstração continua legível, e ninguém clica esperando um PDF. */}
+            <span className="shrink-0 rounded-full border border-white/12 bg-white/[0.04] px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-g-muted">{tr("Sample")}</span>
           </div>
         ))}
       </div>
