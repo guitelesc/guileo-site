@@ -302,18 +302,35 @@ async function processMessagingEvent(env, origin, object, pageId, ev) {
 //    COMENTÁRIO (`recipient.comment_id`), e a Meta abre a conversa a partir dele. Janela de 7
 //    dias, uma vez por comentário. Devolve o MOTIVO real: "não entregue" sem o erro do Graph é
 //    um diagnóstico que não diagnostica (a regra que nasceu das 13 ligações "com sucesso").
-async function enviarPrivateReply(pageToken, igId, commentId, text) {
-  if (!pageToken || !igId || !commentId || !text) return { ok: false, motivo: "faltou token/id/texto" };
-  try {
-    const r = await fetch(`${GRAPH}/${encodeURIComponent(igId)}/messages?access_token=${encodeURIComponent(pageToken)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ recipient: { comment_id: String(commentId) }, message: { text: text.slice(0, 900) } }),
-    });
-    if (r.ok) return { ok: true, motivo: "" };
-    const corpo = await r.text().catch(() => "");
-    return { ok: false, motivo: `graph ${r.status}: ${corpo.slice(0, 180)}` };
-  } catch (e) { return { ok: false, motivo: `rede: ${String(e).slice(0, 120)}` }; }
+// ⚠️ DUAS FORMAS DO MESMO ENDPOINT, E O CAMINHO DECIDE QUAL (2026-08-27).
+// O private reply é `POST /{no}/messages` com `recipient.comment_id` — mas QUAL "nó" depende de
+// como a conta foi conectada:
+//   • Instagram API com Instagram Login  → /{ig_user_id}/messages  (graph.instagram.com)
+//   • Instagram Messaging via Facebook Login (o NOSSO caminho, token de Página) → /{page_id}/messages
+// O 1º comentário real recusou com "(#3) Application does not have the capability to make this API
+// call" chamando o ig_id. Esse erro é sobre CAPACIDADE do app, e é exatamente o que a Meta devolve
+// quando se bate no nó do outro caminho. Errar contrato de identificador já custou duas horas hoje
+// (customer_name→name, INGEST→AGENT_ACTION), então aqui não se adivinha: tenta as duas e devolve o
+// erro REAL de cada uma. Quando uma passar, o log diz qual — e aí isto vira uma linha só.
+async function enviarPrivateReply(pageToken, igId, commentId, text, pageId) {
+  if (!pageToken || !commentId || !text) return { ok: false, motivo: "faltou token/comentário/texto" };
+  const corpo = JSON.stringify({ recipient: { comment_id: String(commentId) }, message: { text: text.slice(0, 900) } });
+  const tentar = async (rotulo, no) => {
+    if (!no) return { ok: false, motivo: `${rotulo}: sem id` };
+    try {
+      const r = await fetch(`${GRAPH}/${encodeURIComponent(no)}/messages?access_token=${encodeURIComponent(pageToken)}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: corpo,
+      });
+      if (r.ok) return { ok: true, motivo: "", via: rotulo };
+      const cru = await r.text().catch(() => "");
+      return { ok: false, motivo: `${rotulo} → graph ${r.status}: ${cru.slice(0, 160)}` };
+    } catch (e) { return { ok: false, motivo: `${rotulo} → rede: ${String(e).slice(0, 100)}` }; }
+  };
+  const a = await tentar("ig_id", igId);
+  if (a.ok) return a;
+  const b = await tentar("page_id", pageId);
+  if (b.ok) return b;
+  return { ok: false, motivo: `${a.motivo} | ${b.motivo}` };
 }
 
 // ── RESPOSTA PÚBLICA sob o comentário (opcional). Vale porque quem está lendo os comentários vê
@@ -419,9 +436,9 @@ async function processCommentChange(env, origin, entryId, value) {
       `💬 comentou "${texto.slice(0, 120)}" → casou com "${alvo.palavra}"`, pessoa);
 
     const dm = montarDm(alvo.campanha.dm_text, { usuario, link: alvo.campanha.link_url });
-    const envio1 = await enviarPrivateReply(tenant.page_access_token, contaIg, commentId, dm);
+    const envio1 = await enviarPrivateReply(tenant.page_access_token, contaIg, commentId, dm, tenant.page_id);
     await ingestInbound(env, tenant.client_email, "Instagram", envio1.ok ? "Gui" : "⚠️ Gui",
-      envio1.ok ? `🤖 DM enviado: ${dm.slice(0, 140)}`
+      envio1.ok ? `🤖 DM enviado (via ${envio1.via || "?"}): ${dm.slice(0, 140)}`
               : `⚠️ DM NÃO entregue (${envio1.motivo}) — texto: ${dm.slice(0, 100)}`, pessoa);
 
     // A resposta pública é um extra: se falhar, o DM (que é o produto) já saiu. Nunca deixa de
