@@ -142,6 +142,11 @@ export async function onRequest(context) {
     // deixou de ser "lembrar" e virou teste: functions/lib/rotas.test.mjs compara os
     // path="/x" do App.jsx com esta lista e falha se alguma sobrar de fora.
     "heroi",
+    // /orcamento/:token — o ORÇAMENTO que o vendedor manda pro cliente aceitar (2026-08-25).
+    // QUARTO caso do mesmo esquecimento — e desta vez a sonda rotas.test.mjs pegou ANTES de ir
+    // pro ar: sem esta linha, o vendedor manda o link no momento mais quente do funil e o
+    // cliente abre um 404 real. A rota é pública de propósito: o token É a credencial.
+    "orcamento",
     // /apresentacao/:id — o Growth Report/quote que o dono do negócio abre (motor de avaliação).
     // QUINTO caso da rota-que-nasce-404. A lista continua sendo a porta; o teste rotas.test.mjs
     // compara com o App.jsx — se você está lendo isto porque deu 404, a rota ficou de fora DAQUI.
@@ -155,6 +160,11 @@ export async function onRequest(context) {
     // versão em PORTUGUÊS do mesmo Growth Report (payload próprio, escrito pelo motor em pt —
     // não é a mesma página traduzida na moldura: as evidências e premissas nascem em pt).
     "natura-pt",
+    // SEXTO caso da rota-que-nasce-404 (24/08). /presente/<negocio> são páginas ESTÁTICAS de
+    // prospecção — um HTML por prospect, servido de public/, fora do SPA. O link vai dentro de um
+    // e-mail para o dono de um negócio real: um 404 aqui não custa tráfego, custa a única chance
+    // de primeira impressão que existe. Estático em public/ NÃO basta — este middleware roda antes.
+    "presente",
   ]);
   const meta = ROUTES[path];
   if (meta) {
@@ -178,9 +188,22 @@ export async function onRequest(context) {
   // inteiro. `manifest.WEBMANIFEST` tem 11, não coube, caiu na rota desconhecida e voltou 404
   // servindo o conteúdo CERTO com o status ERRADO — e navegador não instala PWA em cima de 404.
   // Agora até 12, e os arquivos de raiz do app entram por nome, que é à prova de régua.
-  const RAIZ = new Set(["manifest.webmanifest", "sw.js", "robots.txt", "sitemap.xml", "favicon.ico"]);
+  const RAIZ = new Set(["manifest.webmanifest", "sw.js", "robots.txt", "sitemap.xml", "favicon.ico",
+    // /index.html existe de verdade (o Pages responde 308 -> /). Sem estar aqui, a regra do
+    // .html abaixo o trataria como página desconhecida e devolveria 404 em cima do redirect.
+    "index.html"]);
+  // ⚠️ .html NÃO É ASSET — É PÁGINA (corrigido 2026-08-27).
+  // A régua da extensão dava passe livre a QUALQUER coisa terminada em ponto+extensão, e
+  // `.html` cabia nela. Resultado: `/lorem-ipsum-123.html` — uma URL que nunca existiu —
+  // voltava 200 servindo a HOME INTEIRA. Soft-404 infinito: incontáveis endereços com o
+  // mesmo conteúdo e status de sucesso, diluindo o sinal das páginas reais de vertical×cidade.
+  // Só apareceu quando concept.html/experience.html foram apagados e caíram neste balde.
+  // Página tem que passar pela checagem de rota conhecida; asset de verdade continua passando.
+  // Os .html legítimos ficam cobertos: /index.html entra por nome no RAIZ acima, e
+  // /presente/<negocio>/index.html entra porque "presente" está em KNOWN_SEGMENTS.
+  const isPaginaHtml = /\.html?$/i.test(path);
   const isAssetish = first === "" || first === "api" || first === "assets" || first === ".well-known"
-    || RAIZ.has(first) || /\.[a-z0-9]{2,12}$/i.test(path);
+    || RAIZ.has(first) || (!isPaginaHtml && /\.[a-z0-9]{2,12}$/i.test(path));
   // 🚨 ARQUIVO QUE NÃO EXISTE EM /assets NUNCA PODE VOLTAR 200 COM HTML (2026-08-20).
   // Foi assim que o HUB DO VENDEDOR ficou com a tela preta em produção: pedi um
   // /assets/<chunk>.js ANTES do deploy propagar, o Pages respondeu com o index.html da SPA
