@@ -75,7 +75,7 @@ declare
   v_faq   jsonb := '[]'::jsonb;
   v_tz    text;
 begin
-  if coalesce(p_secret,'') <> 'glo_ing_7f3da9c2b4e8' then
+  if coalesce(p_secret,'') <> 'glo_ing_c7f2a9e4b8d16350' then
     return jsonb_build_object('ok', false, 'error', 'forbidden');
   end if;
 
@@ -150,7 +150,7 @@ set search_path to 'public'
 as $$
 declare v jsonb;
 begin
-  if coalesce(p_secret,'') <> 'glo_ing_7f3da9c2b4e8' then
+  if coalesce(p_secret,'') <> 'glo_ing_c7f2a9e4b8d16350' then
     return jsonb_build_object('ok', false, 'error', 'forbidden');
   end if;
   begin
@@ -175,8 +175,8 @@ commit;
 
 -- ── PROVA (rodar depois de aplicar) ────────────────────────────────────────────────────────────
 -- select public.client_site_aeo('errado','natura-spa');            -- espera: {"ok":false,...}
--- select public.client_site_aeo('glo_ing_7f3da9c2b4e8','natura-spa');
--- select public.client_sites_publicos('glo_ing_7f3da9c2b4e8');
+-- select public.client_site_aeo('glo_ing_c7f2a9e4b8d16350','natura-spa');
+-- select public.client_sites_publicos('glo_ing_c7f2a9e4b8d16350');
 -- Para liberar UMA resposta da KB como pública (decisão humana, uma a uma):
 -- update client_kb set aeo_publico = true
 --  where client_email = '...' and question = 'Do you sell gift cards?';

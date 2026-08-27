@@ -45,13 +45,13 @@ globalThis.fetch = async (url, init) => {
     return new Response(JSON.stringify(PUB[b.p_slug] || { found: false }), { headers: { "content-type": "application/json" } });
   }
   if (u.includes("/rpc/client_site_aeo")) {
-    if (b.p_secret !== "glo_ing_7f3da9c2b4e8") return new Response(JSON.stringify({ ok: false, error: "forbidden" }));
+    if (b.p_secret !== "glo_ing_c7f2a9e4b8d16350") return new Response(JSON.stringify({ ok: false, error: "forbidden" }));
     return new Response(JSON.stringify(AEO[b.p_slug] || { ok: true, found: false }));
   }
   return new Response("{}", { status: 404 });
 };
 
-const env = { INGEST_SECRET: "glo_ing_7f3da9c2b4e8" };
+const env = { INGEST_SECRET: "glo_ing_c7f2a9e4b8d16350" };
 const pedir = (slug, e = env) => onRequestGet({ params: { slug }, env: e, request: new Request("https://guileoai.com/") });
 
 // ── 1. 404 honesto ──────────────────────────────────────────────────────────────────────────────

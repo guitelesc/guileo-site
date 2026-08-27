@@ -29,7 +29,7 @@ LIGAÇÃO/CANAL → ElevenLabs (só a VOZ) → NOSSOS webhooks (Cloudflare funct
 
 | Portão | Literal/fonte | Usado por |
 |---|---|---|
-| INGEST | `'glo_ing_7f3da9c2b4e8'` = env `INGEST_SECRET` | RPCs de dados/CRM/marketing |
+| INGEST | `'glo_ing_c7f2a9e4b8d16350'` = env `INGEST_SECRET` | RPCs de dados/CRM/marketing |
 | SCHED | `_gui_sched_ok('gss_Kp9mX4vR2tZ7nQ5wL8bc')` = env `SCHED_SECRET` | RPCs que tocam agenda (`biz_*`) |
 | Tenant HTTP | `get_client_data(email, key)` | Endpoints do cockpit (padrão: `noshow-radar.js`) |
 | Admin/Cron | `ADMIN_TOKEN` (via `blitz_stats`) · `DIGEST_TOKEN` (`safeEq`) | /admin actions · sweeps de cron |

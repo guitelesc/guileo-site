@@ -30,7 +30,9 @@
 // Per-tenant page access tokens live in client_integrations (provider='meta') via db/meta_integration.sql.
 // ═════════════════════════════════════════════════════════════════════════════
 import { json, safeEq } from "../lib/guard.js";
+import { emitFailure } from "../lib/failure.js";
 import { ouvirDeUrl, recadoDeAnexo } from "../lib/whatsappAudio.js";
+import { escolherCampanha, montarDm, REGRA_PADRAO, TETO_HORA_META } from "../lib/comentarios.js";
 import { svcRpc } from "../lib/sb.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -231,7 +233,22 @@ async function processMessagingEvent(env, origin, object, pageId, ev) {
 
     // MULTI-TENANT: unknown page = IGNORE. Never answer as the wrong tenant.
     const tenant = await tenantForPage(env, businessPageId);
-    if (!tenant || !tenant.client_email) return;
+    if (!tenant || !tenant.client_email) {
+      // ⚠️ IGNORAR É CERTO, IGNORAR EM SILÊNCIO NÃO É. Descoberto em 25/08: o roteamento de
+      // INSTAGRAM nunca existiu — não por defeito de código (a RPC grava a linha `ig` direitinho),
+      // mas porque ninguém nunca preencheu o `ig_id` na hora de conectar. E numa DM do Instagram o
+      // `recipient.id` é o ID do INSTAGRAM, não o da Página: sem essa linha, nada casa.
+      // O `return` mudo fazia a mensagem sumir sem nenhum registro em lugar nenhum — dono achando
+      // que conectou, cliente falando sozinho, e nós sem uma linha para investigar.
+      // Agora o ID QUE CHEGOU fica gravado. É ele que precisa ser mapeado — e ter o número na mão
+      // transforma "não funcionou" em uma linha de SQL.
+      try {
+        await emitFailure(env, "meta_pagina_nao_mapeada", String(businessPageId || "?"),
+          `chegou ${object === "instagram" ? "DM do Instagram" : "mensagem do Messenger"} para um ID que não está ligado a nenhum cliente — mapeie este ID (é o ig_id, não o page_id) em /admin → Conectar Meta`,
+          { id_recebido: String(businessPageId || ""), object: String(object || ""), tinha_texto: !!text });
+      } catch { /* diagnóstico nunca pode impedir o ignore seguro */ }
+      return;
+    }
 
     // exactly-once per mid (Meta re-delivers). Duplicate → stop before we reply twice.
     if (!(await markSeen(env, tenant.client_email, msg.mid))) return;
@@ -271,6 +288,154 @@ async function processMessagingEvent(env, origin, object, pageId, ev) {
   } catch { /* one event failing must not break the batch */ }
 }
 
+
+// ═════════════════════════════════════════════════════════════════════════════════════════════
+// COMENTÁRIO → DM  (o ramo novo: entry.changes[] com field:"comments")
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// A MESMA porta, de propósito. Um app Meta tem UMA callback URL de Instagram: se o comentário
+// fosse pra outro serviço, ou a Gui saía do ar no direct, ou o mesmo DM chegava nos dois e o
+// cliente recebia resposta dobrada. Aqui isso é impossível — assinatura, tenant, dedup e o 200
+// rápido são os mesmos de cima, já provados em produção.
+// ═════════════════════════════════════════════════════════════════════════════════════════════
+
+// ── PRIVATE REPLY: o DM que responde a um comentário. Não é /me/messages — o destinatário é o
+//    COMENTÁRIO (`recipient.comment_id`), e a Meta abre a conversa a partir dele. Janela de 7
+//    dias, uma vez por comentário. Devolve o MOTIVO real: "não entregue" sem o erro do Graph é
+//    um diagnóstico que não diagnostica (a regra que nasceu das 13 ligações "com sucesso").
+async function enviarPrivateReply(pageToken, igId, commentId, text) {
+  if (!pageToken || !igId || !commentId || !text) return { ok: false, motivo: "faltou token/id/texto" };
+  try {
+    const r = await fetch(`${GRAPH}/${encodeURIComponent(igId)}/messages?access_token=${encodeURIComponent(pageToken)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recipient: { comment_id: String(commentId) }, message: { text: text.slice(0, 900) } }),
+    });
+    if (r.ok) return { ok: true, motivo: "" };
+    const corpo = await r.text().catch(() => "");
+    return { ok: false, motivo: `graph ${r.status}: ${corpo.slice(0, 180)}` };
+  } catch (e) { return { ok: false, motivo: `rede: ${String(e).slice(0, 120)}` }; }
+}
+
+// ── RESPOSTA PÚBLICA sob o comentário (opcional). Vale porque quem está lendo os comentários vê
+//    que a conta responde — prova social que o DM, sendo privado, não dá.
+async function enviarRespostaPublica(pageToken, commentId, text) {
+  if (!pageToken || !commentId || !text) return { ok: false, motivo: "faltou token/id/texto" };
+  try {
+    const r = await fetch(`${GRAPH}/${encodeURIComponent(commentId)}/replies?access_token=${encodeURIComponent(pageToken)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text.slice(0, 280) }),
+    });
+    if (r.ok) return { ok: true, motivo: "" };
+    const corpo = await r.text().catch(() => "");
+    return { ok: false, motivo: `graph ${r.status}: ${corpo.slice(0, 180)}` };
+  } catch (e) { return { ok: false, motivo: `rede: ${String(e).slice(0, 120)}` }; }
+}
+
+// ── as campanhas ativas desta conta (INGEST-gated). Sem db/meta_comment_dm.sql colado a RPC não
+//    existe → lista vazia → NADA dispara. Inerte honesto, igual mindbody.js: o código já está
+//    aqui, acende sozinho quando o SQL entrar.
+async function campanhasDaConta(env, email, igId) {
+  try {
+    if (!env.INGEST_SECRET) return [];
+    const r = await rpc("meta_campanhas_ativas", { p_secret: env.INGEST_SECRET, p_email: email, p_ig_id: String(igId) });
+    if (!r.ok) return [];
+    const v = await r.json().catch(() => null);
+    return Array.isArray(v) ? v : [];
+  } catch { return []; }
+}
+
+// ── a reserva atômica (dedup + freio por pessoa + teto/hora da conta), tudo no banco porque só
+//    o banco é atômico entre invocações concorrentes do Worker. FAIL-CLOSED: erro aqui = não
+//    manda. Ao contrário do dedup de DM (que abre), o pior caso deste caminho não é uma resposta
+//    repetida — é rajada de direct sem freio nenhum na conta DO CLIENTE.
+async function reservarEnvio(env, email, igId, pessoa, commentId, campanhaId) {
+  try {
+    if (!env.INGEST_SECRET) return { ok: false, motivo: "sem INGEST_SECRET" };
+    const r = await rpc("meta_comment_claim", {
+      p_secret: env.INGEST_SECRET, p_email: email, p_ig_id: String(igId), p_pessoa: String(pessoa),
+      p_comment_id: String(commentId), p_campaign_id: campanhaId || null,
+      p_espera_min: REGRA_PADRAO.esperaMinutos, p_max_janela: REGRA_PADRAO.maxPorJanela,
+      p_janela_horas: REGRA_PADRAO.janelaHoras, p_teto_hora: TETO_HORA_META,
+    });
+    if (!r.ok) return { ok: false, motivo: `rpc ${r.status}` };
+    const v = await r.json().catch(() => null);
+    if (v && typeof v === "object") return v;
+    return { ok: false, motivo: "resposta inesperada" };
+  } catch (e) { return { ok: false, motivo: `erro: ${String(e).slice(0, 80)}` }; }
+}
+
+// ── processa UM comentário. Guardado inteiro: um comentário ruim nunca aborta o lote nem o 200.
+async function processCommentChange(env, origin, entryId, value) {
+  try {
+    const commentId = String((value && (value.id || value.comment_id)) || "");
+    const mediaId = String((value && ((value.media && value.media.id) || value.media_id)) || "");
+    const de = (value && value.from) || {};
+    const pessoa = String(de.id || "");
+    const usuario = String(de.username || "");
+    const texto = String((value && value.text) || "").trim();
+    // O `entry.id` de um webhook de Instagram é o ID DA CONTA que recebeu — o mesmo que a DM usa.
+    const contaIg = String(entryId || "");
+    if (!commentId || !pessoa || !contaIg || !texto) return;
+    // Comentário da própria conta nunca dispara: a Meta recusa DM pra si mesmo, então isso só
+    // geraria log de erro e retentativa à toa. (E o dono testando o próprio post é comum.)
+    if (pessoa === contaIg) return;
+
+    // ANÚNCIO IMPULSIONADO: o comentário num post promovido chega com o media_id DO ANÚNCIO,
+    // enquanto a campanha foi criada no post orgânico. Sem carregar os dois, toda campanha morre
+    // no dia em que o dono promove o post — o dia de mais comentário.
+    const originalMediaId = (value && value.media && value.media.original_media_id) || "";
+
+    const tenant = await tenantForPage(env, contaIg);
+    if (!tenant || !tenant.client_email) {
+      try {
+        await emitFailure(env, "meta_pagina_nao_mapeada", contaIg,
+          "chegou COMENTÁRIO do Instagram para um ID que não está ligado a nenhum cliente — mapeie este ID (é o ig_id) em /admin → Conectar Meta",
+          { id_recebido: contaIg, object: "instagram", origem: "comments" });
+      } catch { /* diagnóstico nunca impede o ignore seguro */ }
+      return;
+    }
+
+    const campanhas = await campanhasDaConta(env, tenant.client_email, contaIg);
+    if (!campanhas.length) return; // conta sem campanha: silêncio é o certo, não é falha
+    const alvo = escolherCampanha(campanhas, { texto, mediaId, originalMediaId });
+    if (!alvo) return; // comentário normal, sem palavra-chave — a maioria. Nunca vira ruído no feed.
+
+    const reserva = await reservarEnvio(env, tenant.client_email, contaIg, pessoa, commentId, alvo.campanha.id);
+    if (!reserva.ok) {
+      // 'duplicado' é a Meta reentregando: esperado, não é notícia. O resto o dono PRECISA ver —
+      // "o freio segurou" é informação, e sem ela ele conclui que a automação está quebrada.
+      if (reserva.motivo && reserva.motivo !== "duplicado") {
+        await ingestInbound(env, tenant.client_email, "Instagram", "",
+          `⏸️ comentário "${texto.slice(0, 60)}" casou com "${alvo.palavra}" mas o DM foi segurado (${reserva.motivo})`, pessoa);
+      }
+      return;
+    }
+
+    // CRM: a pessoa que comenta é um lead. Capturada no MESMO instante, com o mesmo id estável
+    // (o PSID/IG id) que a conversa por direct usa — um contato, não um por canal.
+    await crmUpsert(env, tenant.client_email, pessoa, usuario, "instagram-comentario");
+    await ingestInbound(env, tenant.client_email, "Instagram", usuario || pessoa,
+      `💬 comentou "${texto.slice(0, 120)}" → casou com "${alvo.palavra}"`, pessoa);
+
+    const dm = montarDm(alvo.campanha.dm_text, { usuario, link: alvo.campanha.link_url });
+    const envio1 = await enviarPrivateReply(tenant.page_access_token, contaIg, commentId, dm);
+    await ingestInbound(env, tenant.client_email, "Instagram", envio1.ok ? "Gui" : "⚠️ Gui",
+      envio1.ok ? `🤖 DM enviado: ${dm.slice(0, 140)}`
+              : `⚠️ DM NÃO entregue (${envio1.motivo}) — texto: ${dm.slice(0, 100)}`, pessoa);
+
+    // A resposta pública é um extra: se falhar, o DM (que é o produto) já saiu. Nunca deixa de
+    // registrar o motivo real, mas também nunca derruba o caminho principal.
+    if (alvo.campanha.public_reply) {
+      const envio2 = await enviarRespostaPublica(tenant.page_access_token, commentId, alvo.campanha.public_reply);
+      if (!envio2.ok) {
+        await ingestInbound(env, tenant.client_email, "Instagram", "⚠️ Gui",
+          `⚠️ resposta pública não publicada (${envio2.motivo})`, pessoa);
+      }
+    }
+  } catch { /* um comentário falhando não pode quebrar o lote */ }
+}
+
 // Walk the Meta webhook payload → each messaging event.
 async function processPayload(env, origin, payload) {
   const object = payload && payload.object; // "page" (Messenger) | "instagram" (IG DM)
@@ -280,6 +445,14 @@ async function processPayload(env, origin, payload) {
     // Messenger + IG both deliver DMs under entry.messaging[]; IG can also use entry.standby (skip).
     const events = Array.isArray(entry && entry.messaging) ? entry.messaging : [];
     for (const ev of events) await processMessagingEvent(env, origin, object, pageId, ev);
+    // COMENTÁRIOS chegam noutro ramo do MESMO payload: entry.changes[] com field:"comments".
+    // Só Instagram — comentário de Página do Facebook é outro produto e não está no escopo.
+    if (object === "instagram") {
+      const changes = Array.isArray(entry && entry.changes) ? entry.changes : [];
+      for (const ch of changes) {
+        if (ch && ch.field === "comments" && ch.value) await processCommentChange(env, origin, pageId, ch.value);
+      }
+    }
   }
 }
 

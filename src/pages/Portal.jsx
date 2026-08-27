@@ -77,7 +77,11 @@ export const CATALOG = [
     { ic: "💬", name: "More channels (WhatsApp, Instagram, Messenger, SMS)", desc: "The same AI answering wherever your customer writes.", note: "Each channel waits on an outside approval (Meta / carrier). We connect it the moment it clears — we never pretend it's live before that.", view: "socialhub" },
     { ic: "📣", name: "Ads on Meta & Google", desc: "Paid campaigns to bring in new customers, tracked down to the booking.", note: "Measurement is automatic. Creating and managing the campaigns is done by hand, by our team.", view: "ads" },
     { ic: "🔎", name: "SEO & Google Business", desc: "Show up when people search nearby, with reviews answered for you.", view: "googlehub" },
-    { ic: "🎁", name: "Loyalty & win-back", desc: "Customers who stopped coming get invited back, automatically.", view: "retention" },
+    /* VERDADE (2026-08-25): esta linha dizia "Loyalty & win-back — Included" enquanto Loyalty.jsx
+       responde "coming soon" para pontos e indicação. O que EXISTE de pé é gift card (motor real,
+       /api/giftcards) e a reconquista de quem sumiu (churn + reengage, que a Gui já dispara).
+       Catálogo e tela não podem discordar: o dono clica no que o catálogo promete. */
+    { ic: "🎁", name: "Gift cards & win-back", desc: "Issue real gift cards today, and customers who stopped coming get invited back.", note: "Loyalty points and customer referrals are still being built — we switch them on when they're real, not before.", view: "retention" },
     { ic: "🏷️", name: "Coupons & promotions", desc: "Build an offer in one minute and send it to the right people.", view: "coupons" },
     { ic: "💳", name: "Payment links & collections", desc: "Charge on the call, and chase what's overdue without you having to ask.", view: "finance" },
     { ic: "📝", name: "Forms & photo quotes", desc: "Capture leads on your site and quote from a photo.", view: "capture" },
@@ -629,6 +633,7 @@ const MarketingDates = lazy(() => import("../portal/MarketingDates.jsx"));
 const Coupons = lazy(() => import("../portal/Coupons.jsx"));
 const GrowthIntel = lazy(() => import("../portal/GrowthIntel.jsx"));
 const CaptureTools = lazy(() => import("../portal/CaptureTools.jsx"));
+const Comentarios = lazy(() => import("../portal/Comentarios.jsx"));
 const QuoteEngine = lazy(() => import("../portal/QuoteEngine.jsx")); // Motor de Orçamento — fila de aprovação (teto/auto-envio)
 const MarketplaceLeads = lazy(() => import("../portal/MarketplaceLeads.jsx"));
 const StormMode = lazy(() => import("../portal/StormMode.jsx"));
@@ -742,6 +747,7 @@ function sectionsFor(vid, V) {
     l = inject(l, "ads", "Anúncios · Resultado", "coupons");
     l = inject(l, "growthintel", "Inteligência", "ads"); // LTV + lead sources + forecast + abandoned bookings
     l = inject(l, "capture", "Captura", "growthintel"); // intake forms + photo-quote + Google Business
+    l = inject(l, "comentarios", "Comentário → DM", "capture"); // IG: comentou a palavra → recebe o direct (mesmo webhook da Gui)
     l = inject(l, "orcamentos", "Orçamentos", "capture"); // Motor de Orçamento — a IA orça, acima do teto o dono aprova
     l = inject(l, "experience", "Experience", "capture"); // XM — how THIS business's own customers feel (NPS/CSAT/sentiment/drivers/detractors)
     l = inject(l, "timeline", "Linha do tempo", "experience"); // Do fornecedor ao cliente — custo→lucro→risco numa timeline só
@@ -782,11 +788,26 @@ function sectionsFor(vid, V) {
     ["grow", "Everything you have"], ["locations", "Locations"], ["team", "Team"], ["billing", "Billing & Plan"], ["relacionamento", "Relationship"], ["settings", "Settings"],
   ]));
 }
+/* ── NAV: TELA SEM FEED NÃO ENTRA NO MENU DE QUEM PAGA (2026-08-25) ────────────────────────────
+   Pedidos ao vivo e Cozinha só existem quando ALGUMA plataforma de entrega manda pedido para o
+   `delivery-webhook` (que grava evento `type:"order"`). Sem esse feed as duas telas não têm o que
+   mostrar em modo real: viram faixa de amostra permanente, e um restaurante pagante abre o menu e
+   encontra duas telas de mentira honesta lado a lado com as suas reais.
+   A trava é o PRÓPRIO dado — nenhuma flag de vertical foi inventada: se existe um pedido, existem
+   as telas; se não existe, elas somem do nav. Volta ao nav sozinho quando o feed existir.
+   Em modo DEMO nada muda: o vendedor precisa delas para vender.
+   ⚠️ Só ESCONDE do menu — a view continua no roteador, então um link/⌘K antigo não quebra. */
+function ocultaSemFeed(sections, real) {
+  if (!real) return sections;
+  const temPedido = Array.isArray(real.events) && real.events.some((e) => e && e.type === "order");
+  if (temPedido) return sections;
+  return sections.filter(([k]) => k !== "liveorders" && k !== "kitchen");
+}
 // Red notification counts per menu item — drives urgency badges in the sidebar
 // Views that render REAL tenant data when connected — ONLY these earn the LIVE badge.
 // Everything else shows an honest "Sample preview" chip even when the account is linked.
 const REAL_VIEWS = new Set(["hoje", "overview", "impact", "billing", "inbox", "calllogs", "convos", "whatsapp", "sms",
-  "mycompany", "crm", "command", "finance", "leadstoday", "dates", "coupons", "growthintel", "capture", "orcamentos", "experience", "timeline", "mktleads", "storm", "meusite",
+  "mycompany", "crm", "command", "finance", "leadstoday", "dates", "coupons", "growthintel", "capture", "comentarios", "orcamentos", "experience", "timeline", "mktleads", "storm", "meusite",
   "riskradar", "emergency", "locations", "recurring", "kb", "brain", "settings", "support", "relacionamento", "trainer", "grow", "documents", "schedulesync", "googlehub", "socialhub", "operations"]);
 
 function notifFor(key, V, real = null) {
@@ -820,7 +841,7 @@ const SECTION_ICON = {
   impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock, recurring: FaIdCard, reputation: FaStar, loyalty: FaGift, payments: FaReceipt,
   channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, relacionamento: FaHeadset, docs: FaFileLines, settings: FaGear, team: FaUsers, locations: FaLocationDot,
   crm: FaIdCard, command: FaGaugeHigh, finance: FaCreditCard, marketing: FaBullhorn, retention: FaArrowsRotate, documents: FaFileLines,
-  riskradar: FaTriangleExclamation, emergency: FaBell, schedulesync: FaCalendarDays, googlehub: FaGoogle, socialhub: FaShareNodes, leadstoday: FaUsers, dates: FaGift, coupons: FaTag, growthintel: FaChartLine, capture: FaListCheck, orcamentos: FaFileInvoiceDollar, experience: FaFaceSmile, timeline: FaChartLine, mktleads: FaBullseye, storm: FaBell, meusite: FaGlobe,
+  riskradar: FaTriangleExclamation, emergency: FaBell, schedulesync: FaCalendarDays, googlehub: FaGoogle, socialhub: FaShareNodes, leadstoday: FaUsers, dates: FaGift, coupons: FaTag, growthintel: FaChartLine, capture: FaListCheck, comentarios: FaComments, orcamentos: FaFileInvoiceDollar, experience: FaFaceSmile, timeline: FaChartLine, mktleads: FaBullseye, storm: FaBell, meusite: FaGlobe,
   trainer: FaGraduationCap, kb: FaBrain, mycompany: FaBuilding,
 };
 // Group the (long) nav into scannable categories
@@ -834,7 +855,7 @@ const NAV_GROUPS = [
   ["Operations", ["liveorders", "kitchen", "menu", "schedule", "riskradar", "storm", "catalog", "deliveries", "operations"]],
   ["Conversations", ["inbox", "calllogs", "dialer", "whatsapp", "sms", "social"]],
   ["Customers", ["crm"]],
-  ["Grow revenue", ["impact", "finance", "marketing", "dates", "coupons", "growthintel", "capture", "orcamentos", "experience", "timeline", "retention", "integrations"]],
+  ["Grow revenue", ["impact", "finance", "marketing", "dates", "coupons", "growthintel", "capture", "comentarios", "orcamentos", "experience", "timeline", "retention", "integrations"]],
   ["Account", ["locations", "team", "billing", "documents", "relacionamento", "support", "settings"]],
 ];
 // Portal UI translations (PT/ES/HI) — each dictionary now lives in its own lazy
@@ -893,8 +914,9 @@ const EXTRA_ROWS = [
   ["Measurement is automatic. Creating and managing the campaigns is done by hand, by our team.", "A medição é automática. Criar e gerenciar a campanha é feito na mão, por gente do nosso time.", "La medición es automática. Crear y gestionar la campaña lo hace a mano nuestro equipo.", "मापन स्वचालित है। कैंपेन बनाना और चलाना हमारी टीम हाथ से करती है।"],
   ["SEO & Google Business", "SEO e Google Meu Negócio", "SEO y Google Business", "SEO और Google Business"],
   ["Show up when people search nearby, with reviews answered for you.", "Aparecer quando procuram perto de você, com as avaliações respondidas.", "Aparecer cuando buscan cerca de ti, con las reseñas respondidas.", "जब लोग पास में खोजें तो दिखें, समीक्षाओं के उत्तर के साथ।"],
-  ["Loyalty & win-back", "Fidelidade e reconquista", "Fidelidad y recuperación", "लॉयल्टी और वापसी"],
-  ["Customers who stopped coming get invited back, automatically.", "Quem parou de vir recebe um convite de volta, automaticamente.", "Quien dejó de venir recibe una invitación de vuelta, automáticamente.", "जो ग्राहक आना बंद कर चुके हैं, उन्हें अपने आप वापस बुलाया जाता है।"],
+  ["Gift cards & win-back", "Vale-presente e reconquista", "Tarjetas de regalo y recuperación", "गिफ़्ट कार्ड और वापसी"],
+  ["Issue real gift cards today, and customers who stopped coming get invited back.", "Emita vale-presente de verdade hoje, e quem parou de vir recebe um convite de volta.", "Emite tarjetas de regalo reales hoy, y quien dejó de venir recibe una invitación de vuelta.", "आज ही असली गिफ़्ट कार्ड जारी करें, और जो ग्राहक आना बंद कर चुके हैं उन्हें वापस बुलाया जाता है।"],
+  ["Loyalty points and customer referrals are still being built — we switch them on when they're real, not before.", "Pontos de fidelidade e indicação ainda estão sendo construídos — a gente liga quando forem reais, não antes.", "Los puntos de fidelidad y las recomendaciones aún se están construyendo — los activamos cuando sean reales, no antes.", "लॉयल्टी पॉइंट और रेफ़रल अभी बन रहे हैं — जब वे असली होंगे तभी चालू करेंगे, उससे पहले नहीं।"],
   ["Coupons & promotions", "Cupons e promoções", "Cupones y promociones", "कूपन और प्रोमोशन"],
   ["Build an offer in one minute and send it to the right people.", "Monte uma oferta em um minuto e mande para as pessoas certas.", "Crea una oferta en un minuto y envíala a las personas correctas.", "एक मिनट में ऑफ़र बनाएँ और सही लोगों को भेजें।"],
   ["Payment links & collections", "Links de pagamento e cobrança", "Enlaces de pago y cobranza", "पेमेंट लिंक और वसूली"],
@@ -958,7 +980,26 @@ const EXTRA_ROWS = [
   ["Top up in Billing →", "Recarregar em Cobrança →", "Recargar en Facturación →", "बिलिंग में टॉप-अप करें →"],
   // ── follow-ups honesty ───────────────────────────────────────────────────────────────────────
   ["Closed here. Your real revenue is counted from what's actually collected.", "Fechado aqui. A sua receita real é contada pelo que foi de fato recebido.", "Cerrado aquí. Tus ingresos reales se cuentan por lo que realmente se cobró.", "यहाँ बंद कर दिया। आपकी असली आमदनी उसी से गिनी जाती है जो वास्तव में वसूल हुआ।"],
-  ["Heads up: this list is still a sample layout — there's no live follow-up feed behind it yet. Your real contacts that went quiet are in CRM 360.", "Atenção: esta lista ainda é um layout de amostra — não existe um feed de follow-up ao vivo por trás dela. Os seus contatos reais que sumiram estão no CRM 360.", "Atención: esta lista todavía es una maqueta — aún no hay un feed de seguimiento en vivo detrás. Tus contactos reales que se apagaron están en CRM 360.", "ध्यान दें: यह सूची अभी नमूना है — इसके पीछे कोई लाइव फ़ॉलो-अप फ़ीड नहीं है। आपके असली शांत पड़े संपर्क CRM 360 में हैं।"],
+  /* A linha que ficava aqui era o aviso "esta lista ainda é um layout de amostra". Ela sumiu porque
+     a tela parou de ser amostra: Followups.jsx agora lê abandoned + churn (dado real do tenant).
+     As linhas abaixo são o vocabulário dessa tela real. */
+  // ── barra de baixo (celular) — "Money"/"Today"/"Schedule"/"Inbox" já existem nos dicts ────────
+  ["Quick navigation", "Navegação rápida", "Navegación rápida", "त्वरित नेविगेशन"],
+  // ── AI Insights: o bloco de intenções reais ("LIVE — from your real calls" e "of" já existem) ─
+  ["Why people call you — your own calls", "Por que te ligam — das suas próprias ligações", "Por qué te llaman — de tus propias llamadas", "लोग आपको क्यों कॉल करते हैं — आपकी अपनी कॉल से"],
+  ["calls with a recorded intent.", "ligações com intenção registrada.", "llamadas con intención registrada.", "कॉल जिनमें इरादा दर्ज है।"],
+  ["Who's waiting on a follow-up — from your own contacts", "Quem está esperando um retorno — dos seus próprios contatos", "Quién espera un seguimiento — de tus propios contactos", "किसे फ़ॉलो-अप का इंतज़ार है — आपके अपने संपर्कों में से"],
+  ["Waiting on a follow-up", "Esperando retorno", "Esperando seguimiento", "फ़ॉलो-अप का इंतज़ार"],
+  ["Almost booked", "Quase agendou", "Casi reservó", "लगभग बुक हुआ"],
+  ["Almost booked — dropped off mid-way", "Quase agendou — parou no meio do caminho", "Casi reservó — se detuvo a mitad de camino", "लगभग बुक हुआ — बीच में छोड़ दिया"],
+  ["At risk of leaving", "Em risco de sumir", "En riesgo de irse", "छोड़ने के जोखिम में"],
+  ["Loyal customer past their usual return window", "Cliente fiel passou do intervalo de sempre", "Cliente fiel pasó su intervalo habitual", "वफ़ादार ग्राहक अपनी सामान्य वापसी अवधि पार कर चुका"],
+  ["Gui follows up →", "A Gui dá o retorno →", "Gui da el seguimiento →", "Gui फ़ॉलो-अप करेगी →"],
+  ["Gui will follow up with", "A Gui vai dar retorno para", "Gui dará seguimiento a", "Gui फ़ॉलो-अप करेगी"],
+  ["queued ✓", "na fila ✓", "en cola ✓", "क़तार में ✓"],
+  ["No follow-up pending 🎉", "Nenhum retorno pendente 🎉", "Ningún seguimiento pendiente 🎉", "कोई फ़ॉलो-अप बाक़ी नहीं 🎉"],
+  ["Couldn't send that follow-up — try again.", "Não consegui enviar esse retorno — tente de novo.", "No pude enviar ese seguimiento — inténtalo de nuevo.", "वह फ़ॉलो-अप नहीं भेज पाया — फिर कोशिश करें।"],
+  ["The follow-up engine isn't switched on for your account yet — so this isn't a zero, it's a blank. Ask your team to turn it on.", "O motor de retorno ainda não está ligado na sua conta — então isto não é zero, é vazio. Peça para o seu time ligar.", "El motor de seguimiento aún no está activado en tu cuenta — así que esto no es un cero, es un vacío. Pídele a tu equipo que lo active.", "आपके खाते में फ़ॉलो-अप इंजन अभी चालू नहीं है — यह शून्य नहीं, खाली है। अपनी टीम से इसे चालू करने को कहें।"],
   // ── Hoje (the app's first screen) ────────────────────────────────────────────────────────────
   ["Today", "Hoje", "Hoy", "आज"],
   ["What your AI did for you today", "O que a sua IA fez por você hoje", "Lo que tu IA hizo por ti hoy", "आज आपकी AI ने आपके लिए क्या किया"],
@@ -1142,7 +1183,7 @@ function Toaster() {
     setTimeout(() => setItems((x) => x.filter((i) => i.id !== id)), 2600);
   }), []);
   return (
-    <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 pointer-events-none">
+    <div className="fixed bottom-36 md:bottom-20 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 pointer-events-none">
       <AnimatePresence>
         {items.map((i) => (
           <motion.div key={i.id} initial={{ opacity: 0, y: 14, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}
@@ -2287,7 +2328,7 @@ function Gui({ V, onNav, real = null }) {
   return (
     <>
       {!open && (
-        <button onClick={() => { setOpen(true); greetOnce(); }} aria-label={alertCount ? `Open Gui assistant — ${alertCount} items need action` : "Open Gui assistant"} className="gui-breathe fixed bottom-5 right-5 z-[55] grid place-items-center h-14 w-14 rounded-full hover:scale-105 active:scale-95 transition" style={{ background: "#1A1610", border: "2px solid #FF8A33", boxShadow: "0 0 20px rgba(255,138,51,.6), 0 0 0 1px rgba(255,138,51,.35), 0 6px 18px rgba(0,0,0,.45)" }}>
+        <button onClick={() => { setOpen(true); greetOnce(); }} aria-label={alertCount ? `Open Gui assistant — ${alertCount} items need action` : "Open Gui assistant"} className="gui-breathe fixed bottom-20 right-5 md:bottom-5 z-[55] grid place-items-center h-14 w-14 rounded-full hover:scale-105 active:scale-95 transition" style={{ background: "#1A1610", border: "2px solid #FF8A33", boxShadow: "0 0 20px rgba(255,138,51,.6), 0 0 0 1px rgba(255,138,51,.35), 0 6px 18px rgba(0,0,0,.45)" }}>
           <img src={logo} alt="Gui" className="h-7 w-7 object-contain" />
           {alertCount > 0 ? (
             <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 grid place-items-center rounded-full text-[11px] font-black text-black border-2 animate-pulse" style={{ background: "#FF8A33", borderColor: "#17150F" }}>{alertCount > 9 ? "9+" : alertCount}</span>
@@ -2297,7 +2338,7 @@ function Gui({ V, onNav, real = null }) {
         </button>
       )}
       {open && (
-        <motion.div initial={{ opacity: 0, y: 20, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="fixed bottom-5 right-5 z-[55] w-[92vw] max-w-sm rounded-xl3 border border-white/15 bg-[#0c100d]/98 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden" style={{ height: "min(78vh, 560px)" }}>
+        <motion.div initial={{ opacity: 0, y: 20, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="fixed bottom-20 right-5 md:bottom-5 z-[55] w-[92vw] max-w-sm rounded-xl3 border border-white/15 bg-[#0c100d]/98 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden" style={{ height: "min(78vh, 560px)" }}>
           <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2.5 shrink-0">
             <GuiMark size={38} />
             <div className="flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word flex items-center gap-1.5">Gui <span className="text-[9px] font-black uppercase" style={{ color: "#FF8A33" }}>{tr("· AI assistant")}</span></div><div className="text-[10px] text-g-muted">{tr("Executes tasks for you, 24/7")}</div></div>
@@ -2541,7 +2582,7 @@ export default function Portal() {
     }
     return base;
   })();
-  const sections = sectionsFor(vertical, V);
+  const sections = ocultaSemFeed(sectionsFor(vertical, V), real);
   const nf = (k) => (notifsRead ? 0 : notifFor(k, V, real));
   const totalNotif = sections.reduce((s, [k]) => s + nf(k), 0);
   const notifList = notifsRead ? [] : sections.map(([k, l]) => ({ k, l, n: notifFor(k, V, real) })).filter((x) => x.n > 0);
@@ -2635,9 +2676,9 @@ export default function Portal() {
     deliveries: () => <Deliveries V={V} />,
     inbox: () => <Inbox V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
     impact: () => <GuileoImpact V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
-    // Followups.jsx:9 gates its REAL sender on `real && email && dataKey`. Mounting it with only
-    // {V} left `live` permanently false: the /api/growth-intel "reengage" call was dead code and every
-    // Nudge fell through to the demo toast "Done — I've nudged X for you." without contacting anyone.
+    // Followups.jsx troca de tela inteira com `real && email && dataKey`: em modo real ele lê as duas
+    // listas verdadeiras do /api/growth-intel (abandoned + churn) em vez de genFollowups. Montar sem
+    // email/dataKey devolveria a amostra a um cliente pagante — os 3 props andam juntos, sempre.
     followups: () => <Followups V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     waitlist: () => <Waitlist V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     recurring: () => <Recurring V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
@@ -2656,7 +2697,9 @@ export default function Portal() {
     catalog: () => <CatalogScreen V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     social: () => <SocialInbox V={V} />,
     analytics: () => <AIAnalytics V={V} onNav={setView} sections={sections} real={real} email={me?.email} dataKey={loadDataKey()} />,
-    insights: () => <AIInsights V={V} real={real} onNav={setView} sections={sections} />,
+    // email/dataKey: AIInsights lê as intenções REAIS das ligações (mesma fonte da aba Analytics) —
+    // sem os dois props o único bloco não-amostra da aba não desenha.
+    insights: () => <AIInsights V={V} real={real} onNav={setView} sections={sections} email={me?.email} dataKey={loadDataKey()} />,
     integrations: () => <Integrations V={V} onNav={setView} lang={lang} me={me} />,
     liveorders: () => <LiveOrders V={V} real={real} />,
     kitchen: () => <Kitchen V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
@@ -2664,7 +2707,9 @@ export default function Portal() {
     customers: () => <Customers V={V} onNav={setView} />,
     crm: () => <CRM360 V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
     command: () => <CommandCenter V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
-    finance: () => <FinanceDept V={V} onNav={setView} email={me?.email} dataKey={loadDataKey()} />,
+    // `real` entrou para o convite NoSeuPlano (close_collect) poder gatear por plano — sem a
+    // prop o convite fica mudo de propósito (o componente não chuta plano que não conhece).
+    finance: () => <FinanceDept V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
     marketing: () => <MarketingDept V={V} onNav={setView} email={me?.email} dataKey={loadDataKey()} />,
     dates: () => <MarketingDates V={V} onNav={setView} email={me?.email} dataKey={loadDataKey()} />,
     coupons: () => <Coupons V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
@@ -2673,6 +2718,7 @@ export default function Portal() {
     experience: () => <Experience V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     timeline: () => <Timeline V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     capture: () => <CaptureTools V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    comentarios: () => <Comentarios V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     orcamentos: () => <QuoteEngine V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     mktleads: () => <MarketplaceLeads V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     storm: () => <StormMode V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
@@ -2911,7 +2957,8 @@ export default function Portal() {
         )}
 
         {/* content — keyed by view+vertical = clean remount/fade per switch */}
-        <div className="p-5 sm:p-8">
+        {/* pb-28 no celular: a barra de baixo é `fixed` e cobriria a última linha do conteúdo. */}
+        <div className="p-5 pb-28 sm:p-8 md:pb-8">
           <motion.div key={view + vertical} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
             <Suspense fallback={<div className="p-8 text-g-muted text-sm">{tr("Loading your cockpit…")}</div>}>
               {content}
@@ -2919,6 +2966,45 @@ export default function Portal() {
           </motion.div>
         </div>
       </main>
+
+      {/* ── BARRA DE BAIXO, SÓ NO CELULAR (2026-08-25) ────────────────────────────────────────
+          61 telas atrás de um hambúrguer, e a busca (⌘K) é `hidden md:flex` — no celular não havia
+          NENHUM atalho: para ver a agenda o dono abria o menu, rolava a lista e caçava o item.
+          Quatro destinos, os quatro que ele abre todo dia. Alvo de toque ≥44px (h-14 = 56px) e
+          safe-area do iPhone respeitada, senão o último item fica embaixo da barra do sistema.
+          Não toca no slide-over: o hambúrguer continua abrindo as 61 telas. */}
+      {(() => {
+        // cada slot escolhe a PRIMEIRA view que existe neste setor — nunca um botão que leva a lugar
+        // nenhum (a nav do restaurante e a dos serviços não têm as mesmas chaves).
+        const primeira = (...ks) => ks.find((k) => sections.some((s) => s[0] === k)) || null;
+        const itens = [
+          ["hoje", primeira("hoje", "overview"), FaCalendarDays],
+          ["Schedule", primeira("schedule", "operations", "riskradar"), FaListCheck],
+          ["Inbox", primeira("inbox", "calllogs"), FaComments],
+          ["Money", primeira("finance", "impact", "billing"), FaCreditCard],
+        ].filter(([, k]) => !!k);
+        if (itens.length < 2) return null;   // setor sem destinos suficientes → barra não aparece
+        return (
+          <nav aria-label={tr("Quick navigation")}
+            className="fixed inset-x-0 bottom-0 z-[45] md:hidden border-t border-white/10 bg-[#161512]/98 backdrop-blur-xl"
+            style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+            <div className="flex">
+              {itens.map(([rotulo, key, Icon]) => {
+                const on = view === key;
+                return (
+                  <button key={key} onClick={() => { setView(key); setNavOpen(false); }}
+                    aria-current={on ? "page" : undefined}
+                    className={`relative flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-bold transition-colors ${on ? "text-g-green" : "text-g-muted"}`}>
+                    <Icon size={17} />
+                    <span className="truncate px-1">{tr(rotulo === "hoje" ? "Today" : rotulo, lang)}</span>
+                    {on && <span className="absolute top-0 h-0.5 w-10 rounded-full bg-g-green" />}
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+        );
+      })()}
 
       {/* Gui — the AI assistant that executes tasks (floating, from any view) */}
       <Gui V={V} onNav={setView} real={real} />

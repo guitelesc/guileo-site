@@ -2,7 +2,7 @@
 
 > Cada ROTA é uma receita testada. Antes de qualquer uma, o contrato de 3s é o [ARQUITETURA.md](ARQUITETURA.md).
 > Convenção: `ROTA-NOME` · **Quando** · **Passos** · **Prova**. Tudo escopado por `client_email` (tenant).
-> Segredos: INGEST `glo_ing_7f3da9c2b4e8` · SCHED `gss_Kp9mX4vR2tZ7nQ5wL8bc` · deploy `npx wrangler pages deploy dist --project-name=guileoai --branch=main`.
+> Segredos: INGEST `glo_ing_c7f2a9e4b8d16350` · SCHED `gss_Kp9mX4vR2tZ7nQ5wL8bc` · deploy `npx wrangler pages deploy dist --project-name=guileoai --branch=main`.
 
 ---
 
@@ -198,7 +198,7 @@ Depois: as 3 aparecem em `call_logs` do tenant (`select … from call_logs where
 1. `POST {token:<admin>, list:true}` → lista agentes + números da conta ElevenLabs (o `/convai/agents` às vezes dá 422; o `/convai/phone-numbers` sempre traz `phone_number → agent_id + phone_number_id`, então dá pra achar o agente pelo número/label).
 2. `POST {token, email, match_number?, match_name?}` (dry) → mostra o agente que vai gravar; confira o label/nome.
 3. `POST {token, email, match_number?, match_name?, apply:true}` → grava no `client_agents`.
-Ou, sabendo o `agent_id`, direto: `select public.client_agent_upsert('glo_ing_7f3da9c2b4e8', email, agent_id, el_phone_number_id, number);`. **Prova:** `client_agent_resolve(email)` devolve `{agent_id, el_phone_number_id, number}`. **Exemplo real:** Natura backfilled 2026-07-20 → `agent_8701kxnfhgmgefzbbwda8d86mqwj` + +19298288170. **Cuidado:** nunca use o número RESERVADO do demo (+19864443334) como caller-ID de cliente.
+Ou, sabendo o `agent_id`, direto: `select public.client_agent_upsert('glo_ing_c7f2a9e4b8d16350', email, agent_id, el_phone_number_id, number);`. **Prova:** `client_agent_resolve(email)` devolve `{agent_id, el_phone_number_id, number}`. **Exemplo real:** Natura backfilled 2026-07-20 → `agent_8701kxnfhgmgefzbbwda8d86mqwj` + +19298288170. **Cuidado:** nunca use o número RESERVADO do demo (+19864443334) como caller-ID de cliente.
 
 ## ROTA-MOTOR · ligar / alterar um motor de canal (agenda, Google, Meta, etc.)
 **Quando:** acender um motor novo pro cliente OU mexer num existente. **Mapa:** [MOTORES.md](MOTORES.md) = estado + arquivos + chave externa + como gasta crédito de CADA motor. **Passos:** (1) achar o motor no MOTORES.md; (2) conector = padrão inerte-que-acende-sozinho: `functions/api/<motor>.js` com connect/status/ações, retorna `ready:false` sem a env/cred (NUNCA finge); (3) cred por-tenant em `client_integrations` (provider=<motor>, via store_integration INGEST-gated); (4) se é canal de AGENDA → registrar no `scheduleAdapter.js` (prioridade + service_map); se é canal de MENSAGEM → rotear pro mesmo cérebro (widget-chat/support brain); (5) **todo motor que a Gui opera GASTA CRÉDITO** — garantir que a ação debita/loga (motor financeiro é o medidor); (6) portal: card em ScheduleSync/GoogleHub/Integrations pro cliente conectar; (7) done-for-you (Ads/posts complexos) = pedido→/admin→status honesto, não fingir automação. **Prova:** conector `ready:false` sem chave (honesto) → acende com a cred; crédito debitado; screenshot do card. **Regra:** cada motor no MOTORES.md tem UMA chave externa clara — o sistema fica inerte e verdadeiro até o Luis tê-la.
@@ -979,3 +979,71 @@ O código já está escrito pra ganhar sms/whatsapp numa linha quando destravare
 **⚠️ Depende do SQL:** cole `db/quote_engine.sql` no SQL Editor (ynihodbknhjirkdogxby).
 **Prova:** os comandos no fim do .sql — um orçamento abaixo do teto nasce `aprovado`, um acima nasce
 `aguardando_aprovacao`, e `quote_decidir` com o tenant ERRADO tem que dar erro.
+
+## ROTA-MANYCHAT-RESPOSTA — o ManyChat pergunta, o agente do cliente responde
+
+**Quando:** conectar o Instagram/WhatsApp de um cliente ao cérebro dele. Vale para qualquer
+negócio — cada um usa a conta ManyChat DELE e as credenciais DELE.
+
+**1. No ManyChat, na conta do cliente:** conecte o Instagram/Facebook do negócio (isso é login
+do dono na Meta — nós não entramos na conta dele).
+
+**2. Na automação (Default Reply ou o passo de conversa), adicione uma ação
+`External Request`:**
+
+- Método: `POST` · URL: `https://guileoai.com/api/manychat-reply`
+- Header: `Content-Type: application/json`
+- Body:
+```json
+{ "email": "<e-mail do tenant>",
+  "key": "<access_key do cliente>",
+  "text": "{{last_input_text}}",
+  "name": "{{first_name}}",
+  "from": "{{user_id}}",
+  "lang": "pt",
+  "channel": "instagram" }
+```
+
+**3. Mapeie a resposta:** `reply` → uma variável (ex.: `gui_reply`) e envie essa variável.
+Trate também `ok:false` (encaminhar para humano) e `vazio:true` (não enviar nada).
+
+**Prova (rode antes de publicar):**
+```
+curl -s -X POST https://guileoai.com/api/manychat-reply -H "Content-Type: application/json" \
+  -d '{"email":"<tenant>","key":"<key>","text":"quanto custa?","lang":"pt"}'
+```
+Deve voltar `{"ok":true,"reply":"..."}`. Com a chave de OUTRO cliente tem que voltar
+`credencial não confere` — esse teste é obrigatório: é o que prova que um ManyChat comprometido
+não alcança o tenant do vizinho.
+
+⚠️ **A chave é por cliente, de propósito.** Ela vive dentro de uma ferramenta de terceiro; se
+vazar, abre exatamente um tenant. Um segredo único da Guileo aqui deixaria qualquer cliente pedir
+a resposta — e os preços e o KB — de outro.
+
+### ROTA-COMENTARIO · comentário do Instagram vira direct (2026-08-27)
+
+**Quando:** o cliente quer que quem comenta uma palavra num post/reel receba a resposta no direct.
+
+**Por que dentro do `meta-webhook.js` e não num serviço à parte:** um app Meta tem UMA callback URL
+de Instagram. Apontar pra outro serviço tira a Gui do ar no direct; assinar `messages` em dois apps
+entrega o mesmo DM duas vezes (cliente respondido em dobro). Compartilhando o webhook isso é
+impossível por construção — e o direct que o comentário abre já é conversa da Gui.
+
+**Passos**
+1. Cole `db/meta_comment_dm.sql` no Supabase (tabelas + `meta_comment_claim` atômica).
+2. No app Meta (2252636211962171) → Instagram → Configure webhooks → assine o campo **`comments`**
+   (o `messages` JÁ está assinado, não mexa).
+3. Descubra o `ig_id` da conta: é o `entry.id` que chega no webhook. Se não souber, comente qualquer
+   coisa no post e leia `emitFailure` tipo `meta_pagina_nao_mapeada` — o id vem no diagnóstico.
+4. Cockpit do cliente → **Comentário → DM** → Nova campanha (palavras-chave, texto do direct, link).
+5. Para o link render dinheiro: aponte pro formulário de speed-to-lead → lead no CRM → Gui liga em ~60s.
+
+**Prova**
+- `node functions/api/meta-webhook.test.mjs` (payload real da Meta → private reply, 16 casos).
+- Real: comente a palavra de OUTRA conta (a própria conta é ignorada de propósito) e veja a linha
+  `💬 comentou … → casou com …` no feed do cockpit, seguida de `🤖 DM enviado`.
+- `select * from meta_comment_sends order by created_at desc limit 5;` — sem linha, não saiu DM.
+
+**Limite honesto:** conta de TERCEIRO só conecta com **Advanced Access** (App Review + verificação
+de empresa). Sem isso, só contas com papel no app (tester convidado que ACEITOU o convite dentro do
+Instagram). Publicar o app NÃO substitui isso.
