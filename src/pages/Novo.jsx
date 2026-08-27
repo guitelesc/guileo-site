@@ -16,6 +16,7 @@ import DonoMode from "../novo/DonoMode.jsx"; // raio-X do dono (?dono=1) — inv
 const BOOK = {
   "three-degrees": lazy(() => import("../novo/ThreeDegreesBook.jsx")),
   "ws-hairstyling": lazy(() => import("../novo/WSHairstylingBook.jsx")),
+  "hair-art-designs": lazy(() => import("../novo/HairArtDesignsBook.jsx")),
 };
 
 const REGISTRY = {
@@ -26,7 +27,8 @@ const REGISTRY = {
   "sideris-plumbing": lazy(() => import("../novo/SiderisPlumbing.jsx")),
   "sr-general": lazy(() => import("../novo/SRGeneral.jsx")),
   "three-degrees": lazy(() => import("../novo/ThreeDegrees.jsx")), // PROSPECT REAL — 5,0★/214, digital perm East Village; o site deles se contradiz sobre segunda-feira
-  "ws-hairstyling": lazy(() => import("../novo/WSHairstyling.jsx")), // PROSPECT REAL — 5,0★/111, colado na NYU; o botao de agendar do site deles mostra {{ bookingButtonText }} na tela
+  "ws-hairstyling": lazy(() => import("../novo/WSHairstyling.jsx")),
+  "hair-art-designs": lazy(() => import("../novo/HairArtDesigns.jsx")), // PROSPECT REAL — 5,0★/190, Green Circle certified; o link do Instagram deles é literalmente instagram.com/h e o site mostra filler@godaddy.com // PROSPECT REAL — 5,0★/111, colado na NYU; o botao de agendar do site deles mostra {{ bookingButtonText }} na tela
   "urban-standard": lazy(() => import("../novo/UrbanStandard.jsx")), // PROSPECT REAL — 5,0★, portfolio MLS, e ZERO tel:/mailto:/formulario no site inteiro
   "penn-plaza-dental": lazy(() => import("../novo/PennPlazaDental.jsx")), // PROSPECT REAL — hero de BANCO DE IMAGEM vendendo "individualized care" // PROSPECT REAL — DOB certified, brownstone, e o unico JSON-LD deles esta SEM @type // PROSPECT REAL — desde 1963, 5 depoimentos publicados e ZERO dado estruturado // PROSPECT REAL — queensnyplumber.com e um app Lovable inacabado (Google so ve a casca) // PROSPECT REAL — astoriaplumbers.nyc está FORA DO AR (525); ativos vieram do arquivo da web
 };
@@ -82,6 +84,11 @@ export default function Novo({ book = false }) {
     /* Mascote = a TESOURA, na cor champanhe da logo deles. */
     "ws-hairstyling": { business: "WS Hairstyling NYC", label: "Ask WS", accent: "#DACB96", surface: "#262728", phone: "+12125333344",
       mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DACB96" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="18" r="2.6"/><circle cx="18" cy="18" r="2.6"/><path d="M7.6 16.2 18.5 4M16.4 16.2 5.5 4"/></svg> },
+    /* Mascote = o CORAÇÃO DE FOLHAS da logo deles, com a tesoura dentro — o motivo botânico é
+       a marca inteira: coração de folhagem no logo, ramo florido no papel de parede do salão,
+       e "organic beauty is our guiding light" escrito na política. Sálvia medida no pixel. */
+    "hair-art-designs": { business: "Hair Art Designs", label: "Ask Hair Art", accent: "#A8C8C0", surface: "#2C3330", phone: "+12123004407",
+      mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A8C8C0" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20.5C6.8 16.8 3.5 13.9 3.5 10.2A4.2 4.2 0 0 1 12 8a4.2 4.2 0 0 1 8.5 2.2c0 3.7-3.3 6.6-8.5 10.3Z"/><path d="M12 20.5V9.4" stroke="#D4A078"/><path d="M12 12.4c-1.6-.2-2.6-1.1-2.9-2.6 1.6.2 2.6 1.1 2.9 2.6Zm0 0c1.6-.2 2.6-1.1 2.9-2.6-1.6.2-2.6 1.1-2.9 2.6Z" stroke="#D4A078"/></svg> },
     /* Mascote = o VOLUME da logo deles, partido nas duas faces reais (âmbar e azul). */
     "urban-standard": { business: "Urban Standard", label: "Ask Urban Standard", accent: "#E09327", surface: "#141517", phone: "+17186690526",
       mascot: <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.4 9.6 11.6 5v13.2L3.4 16.4V9.6Z" fill="#FBB856"/><path d="M12.4 5l8.2 4.6v6.8l-8.2 1.8V5Z" fill="#2983C7"/></svg> },
