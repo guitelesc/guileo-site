@@ -12,7 +12,7 @@
 //
 // Lembrar não é um mecanismo. Isto é.
 //   node functions/lib/rotas.test.mjs
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
 const app = readFileSync(new URL("../../src/App.jsx", import.meta.url), "utf8");
 const mid = readFileSync(new URL("../_middleware.js", import.meta.url), "utf8");
@@ -37,3 +37,19 @@ if (faltando.length) {
   process.exit(1);
 }
 console.log(`✅ ${new Set(rotas).size} rotas do App.jsx · todas na lista branca do middleware`);
+
+// ── SEGUNDA GUARDA: nenhum teste pode morar em functions/api/ ────────────────────────────────
+// functions/api/ é o diretório de ROTAS do Cloudflare Pages — todo arquivo ali entra no bundle do
+// Worker. Um .test.mjs que importa `node:fs` (inexistente no runtime do Workers) DERRUBA o bundle,
+// e a rota vizinha passa a devolver 502 do EDGE. Sem erro de build, de lint, ou no output do
+// deploy: a única pista é a rota parar de responder. Foi assim que /api/vitrine-agenda caiu em
+// produção em 27/08. Mesma tese do teste acima — lembrar não é um mecanismo; isto é.
+const testesEmRotas = readdirSync(new URL("../api/", import.meta.url))
+  .filter((f) => f.endsWith(".test.mjs") || f.endsWith(".test.js"));
+if (testesEmRotas.length) {
+  console.log(`❌ ${testesEmRotas.length} arquivo(s) de teste dentro de functions/api/:`);
+  for (const f of testesEmRotas) console.log(`     ${f}  → entra no bundle do Worker`);
+  console.log("   conserto: mova para functions/lib/ (é onde os testes que leem arquivo já vivem)");
+  process.exit(1);
+}
+console.log("✅ functions/api/ sem arquivo de teste · o bundle do Worker só carrega rota");

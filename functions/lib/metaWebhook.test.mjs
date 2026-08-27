@@ -1,3 +1,10 @@
+// ⚠️ MORA EM functions/lib/ E NÃO AO LADO DO QUE TESTA — de propósito.
+// functions/api/ é o diretório de ROTAS do Cloudflare Pages: todo arquivo ali entra no bundle do
+// Worker. Este teste usa só `node:crypto` (que existe no runtime do Workers) e por isso sobreviveu
+// deployado, mas o vizinho que importava `node:fs` derrubou o bundle e fez /api/vitrine-agenda
+// devolver 502 do EDGE em produção, em 27/08 — sem erro de build, de lint ou de deploy.
+// Um `node:fs` acrescentado aqui um dia derrubaria o webhook do Instagram do mesmo jeito.
+// Regra: teste nenhum mora em functions/api/. Os que leem arquivo vivem aqui ou em functions/site/.
 // COMENTÁRIO → DM: a prova de que o payload da Meta atravessa o webhook e vira direct.
 // ═════════════════════════════════════════════════════════════════════════════════════════════
 // POR QUE ESTE TESTE EXISTE
@@ -49,7 +56,7 @@ globalThis.fetch = async (url, init = {}) => {
   return new Response(JSON.stringify({ ok: true }), { status: 200 });
 };
 
-const { onRequestPost } = await import("./meta-webhook.js");
+const { onRequestPost } = await import("../api/meta-webhook.js");
 
 // ── o payload EXATO de um comentário de Instagram ────────────────────────────────────────────
 function payloadComentario(texto, extra = {}) {
