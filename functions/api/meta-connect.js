@@ -275,22 +275,64 @@ export async function onRequestPost(context) {
       return json({ ok: sub.subscribed, ...sub, page_id: pid, fields });
     }
 
-    // app_subscribe — inscreve o APP (não a página) no webhook do objeto 'page' pro campo `messages`.
-    // É a 2ª inscrição que a Meta exige (a página→app é o subscribe acima; esta é app→messages).
+    // app_subscribe — inscreve o APP (não a página) no webhook de um OBJETO da Meta.
+    // É a 2ª inscrição que a Meta exige (a página→app é o subscribe acima; esta é app→objeto).
     // Roda 100% server-side com o app-token = META_APP_ID|META_APP_SECRET — o secret NUNCA é exposto.
+    //
+    //   { action:"app_subscribe" }                                     → object "page"  (Messenger)
+    //   { action:"app_subscribe", object:"instagram", fields:"comments" } → comentário do Instagram
+    //
+    // 🚨 UNIÃO, NUNCA SUBSTITUIÇÃO (2026-08-27). O parâmetro `fields` deste endpoint da Meta
+    // SOBRESCREVE a lista inteira do objeto. Mandar `fields=comments` em `instagram` APAGARIA
+    // `messages` — e a Gui pararia de responder direct, em silêncio, sem erro em lugar nenhum.
+    // Por isso lemos a inscrição atual primeiro e mandamos a UNIÃO. Um campo que já está no ar
+    // nunca sai por causa de uma chamada que só queria acrescentar outro.
     if (action === "app_subscribe") {
       const appId = s(env.META_APP_ID, 60), appSecret = env.META_APP_SECRET, verify = s(env.META_VERIFY_TOKEN, 200);
       if (!appId || !appSecret) return json({ error: "META_APP_ID/META_APP_SECRET não estão setados no Cloudflare" }, 400);
+      const appTok = `${appId}|${appSecret}`;
+      const objeto = s(b.object, 30) || "page";
       const callback = s(b.callback, 300) || "https://guileoai.com/api/meta-webhook";
-      const fields = s(b.fields, 200) || SUBSCRIBE_FIELDS;
+      const pedidos = (s(b.fields, 200) || SUBSCRIBE_FIELDS).split(",").map((f) => f.trim()).filter(Boolean);
       try {
+        // 1) O QUE JÁ ESTÁ NO AR. Falha aqui é fail-CLOSED: sem saber o estado atual não dá para
+        //    montar a união com segurança, e escrever às cegas é justamente o risco.
+        const gr = await fetch(`${GRAPH}/${appId}/subscriptions?access_token=${encodeURIComponent(appTok)}`);
+        if (!gr.ok) {
+          const cru = await gr.text().catch(() => "");
+          return json({ ok: false, motivo: `não consegui LER a inscrição atual (HTTP ${gr.status}) — não escrevi nada`, cru: s(cru, 200) });
+        }
+        const atual = await gr.json().catch(() => null);
+        const linha = ((atual && atual.data) || []).find((x) => x && x.object === objeto) || null;
+        const antes = ((linha && linha.fields) || []).map((f) => (typeof f === "string" ? f : f && f.name)).filter(Boolean);
+        const uniao = [...new Set([...antes, ...pedidos])];
+
+        // 2) NADA A FAZER É UMA RESPOSTA. Reescrever à toa é chance de estragar de graça.
+        if (antes.length && pedidos.every((f) => antes.includes(f))) {
+          return json({ ok: true, ja_estava: true, object: objeto, fields: antes, callback: linha && linha.callback_url });
+        }
+
         const r = await fetch(`${GRAPH}/${appId}/subscriptions`, {
           method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({ object: "page", callback_url: callback, verify_token: verify, fields, access_token: `${appId}|${appSecret}` }).toString(),
+          body: new URLSearchParams({ object: objeto, callback_url: callback, verify_token: verify, fields: uniao.join(","), access_token: appTok }).toString(),
         });
         const d = await r.json().catch(() => ({}));
-        if (r.ok && d && d.success) return json({ ok: true, app_subscribed: true, object: "page", fields, callback });
-        return json({ ok: false, app_subscribed: false, reason: s((d && d.error && d.error.message) || `HTTP ${r.status}`, 200) });
+        if (!(r.ok && d && d.success)) {
+          return json({ ok: false, app_subscribed: false, object: objeto, tentou: uniao, reason: s((d && d.error && d.error.message) || `HTTP ${r.status}`, 200) });
+        }
+        // 3) COMPROVANTE: reler da Meta. "success:true" é o que ELA diz ter feito; a releitura é o
+        //    que de fato ficou. Sucesso sem conferir já custou caro neste projeto.
+        const vr = await fetch(`${GRAPH}/${appId}/subscriptions?access_token=${encodeURIComponent(appTok)}`);
+        const vd = vr.ok ? await vr.json().catch(() => null) : null;
+        const vlinha = ((vd && vd.data) || []).find((x) => x && x.object === objeto) || null;
+        const depois = ((vlinha && vlinha.fields) || []).map((f) => (typeof f === "string" ? f : f && f.name)).filter(Boolean);
+        const faltou = uniao.filter((f) => !depois.includes(f));
+        return json({
+          ok: faltou.length === 0, app_subscribed: true, object: objeto,
+          antes, depois, adicionados: pedidos.filter((f) => !antes.includes(f)),
+          callback: (vlinha && vlinha.callback_url) || callback,
+          ...(faltou.length ? { aviso: `a Meta disse success mas ao reler faltou: ${faltou.join(", ")}` } : {}),
+        });
       } catch (e) { return json({ error: s(e, 160) }, 500); }
     }
 

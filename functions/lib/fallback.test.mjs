@@ -35,7 +35,12 @@ const DIR = new URL("../api/", import.meta.url);
 // meta-connect.js:318 — `const dj = await dbg.json().catch(() => null)` PARECE fallback-para-vazio,
 // mas o null cai duas linhas abaixo em `if (!info || info.is_valid !== true)` e vira 400 com o
 // motivo da Meta. Não existe caminho em que erro de rede vire "zero" ali. Conferido 2026-08-25.
-const ISENTOS = new Set(["meta-connect.js:318"]);
+// ⚠️ 2026-08-27: esta chave é ancorada em NÚMERO DE LINHA, e por isso ela se desatualiza sozinha
+// toda vez que alguém insere código acima dela — foi o que aconteceu quando o app_subscribe do
+// meta-connect.js cresceu e empurrou a linha de 318 para 360. Ver o bloco de AVISO no fim deste
+// arquivo: a mesma fragilidade atinge PROTEGIDOS_POR_VALOR, cujas chaves eu conferi e a maioria
+// JÁ não aponta para a linha que o comentário descreve.
+const ISENTOS = new Set(["meta-connect.js:360"]);
 
 const DA_REDE = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*await\s+(?:fetch|rpc|svcRpc|svcJson|sapi|graph|el)\s*\(/g;
 // `svcJson` entrou na lista acima em 2026-08-11 — e ISSO SOZINHO NÃO PEGAVA NADA. Registro o erro
@@ -133,3 +138,20 @@ if (achados.length) {
   process.exit(1);
 }
 console.log("✅ todo fallback de resposta de REDE tem portão de status — erro nunca vira zero");
+
+// ═════════════════════════════════════════════════════════════════════════════════════════════
+// ⚠️ AVISO SOBRE AS ÂNCORAS DESTE ARQUIVO (levantado 2026-08-27, NÃO corrigido — decisão do dono)
+// ISENTOS e PROTEGIDOS_POR_VALOR identificam a linha auditada por `arquivo:número`. Número de
+// linha não identifica linha nenhuma: qualquer inserção acima desloca tudo, em silêncio, e a
+// isenção passa a cobrir uma linha que ninguém auditou — ou nenhuma.
+// Conferido hoje, lendo o que cada chave aponta HOJE:
+//   google-oauth-callback.js:59  → linha vazia
+//   google-oauth-callback.js:71  → um comentário
+//   meta-connect.js:113          → um comentário
+//   sms-check.js:54              → um rateLimited, não o fallback descrito
+// Ou seja: as descrições ao lado das chaves descrevem código que já não está ali. O teste segue
+// VERDE porque as linhas reais deixaram de casar com o padrão, não porque foram auditadas.
+// CONSERTO PROPOSTO: chavear por `arquivo::texto-da-linha` em vez de `arquivo:número`. Sobrevive a
+// inserção, e uma isenção só vale enquanto o código exato que foi auditado continuar existindo.
+// Não fiz agora porque este arquivo não é do escopo da tarefa que me trouxe aqui.
+// ═════════════════════════════════════════════════════════════════════════════════════════════
