@@ -326,9 +326,14 @@ async function enviarPrivateReply(pageToken, igId, commentId, text, pageId) {
       return { ok: false, motivo: `${rotulo} → graph ${r.status}: ${cru.slice(0, 160)}` };
     } catch (e) { return { ok: false, motivo: `${rotulo} → rede: ${String(e).slice(0, 100)}` }; }
   };
-  const a = await tentar("ig_id", igId);
+  // MEDIDO 2026-08-27, 10:54: o 1º DM real saiu "via page_id". A ordem importa — tentar o ig_id
+  // primeiro queimava uma chamada CONDENADA em todo envio (a 750 DM/h da Meta, são 750 chamadas
+  // perdidas por hora e ~1s a mais entre o comentário e o direct). O page_id vai na frente porque
+  // é o nó do NOSSO caminho (Facebook Login); o ig_id fica como reserva para o dia em que um
+  // cliente entrar pelo Instagram Login, onde o certo é o contrário.
+  const a = await tentar("page_id", pageId);
   if (a.ok) return a;
-  const b = await tentar("page_id", pageId);
+  const b = await tentar("ig_id", igId);
   if (b.ok) return b;
   return { ok: false, motivo: `${a.motivo} | ${b.motivo}` };
 }
