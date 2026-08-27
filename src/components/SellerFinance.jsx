@@ -227,7 +227,7 @@ export default function SellerFinance({ lang = "pt", seller, market = "us", nav 
     <div className="rounded-2xl border border-g-green/25 bg-g-green/[0.04] p-5">
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm font-extrabold text-g-green">{t.title}</div>
-        <button type="button" onClick={() => { load(); loadPay(); }} className="rounded-full border border-white/15 px-3 py-1 text-[11.5px] font-bold text-g-muted hover:text-g-word">{t.refresh}</button>
+        <button type="button" onClick={() => { load(); loadPay(); }} className="inline-flex min-h-[44px] items-center rounded-full border border-white/15 px-4 text-[11.5px] font-bold text-g-muted hover:text-g-word">{t.refresh}</button>
       </div>
       <p className="mt-1 text-[12.5px] text-g-muted max-w-2xl">{t.sub}</p>
 
@@ -271,7 +271,7 @@ export default function SellerFinance({ lang = "pt", seller, market = "us", nav 
           <div className="mt-4">
             <div className="flex items-center justify-between gap-3">
               <div className="text-[11px] font-black uppercase tracking-wide text-g-gold">{t.ledger}</div>
-              <button type="button" onClick={() => setShowStmt(true)} className="rounded-full border border-g-green/35 bg-g-green/[0.10] px-3 py-1 text-[11.5px] font-bold text-g-green hover:bg-g-green/20">{t.gen}</button>
+              <button type="button" onClick={() => setShowStmt(true)} className="inline-flex min-h-[44px] shrink-0 items-center rounded-full border border-g-green/35 bg-g-green/[0.10] px-4 text-[11.5px] font-bold text-g-green hover:bg-g-green/20">{t.gen}</button>
             </div>
             <div className="mt-2 overflow-x-auto rounded-xl border border-white/10">
               <table className="w-full min-w-[460px] text-left text-[12.5px]">

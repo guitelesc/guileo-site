@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 
 // 📊 SellerDashboard — the seller's PANEL. Big signal-dotted KPI tiles (clients / attributed
@@ -60,6 +60,14 @@ const D = {
 };
 D.hi = { ...D.en, title: "📊 पैनल", rankYou: "आप", goalDone: "लक्ष्य पूरा! 🎉" };
 
+// ── UMA META SÓ (corrigido 2026-08-25) ────────────────────────────────────────────────────────
+// Este painel guardava a meta APENAS no localStorage enquanto a aba "Minhas Metas" gravava no
+// servidor (/api/seller-stats action `goals`, campo `deals`). Duas metas para o mesmo vendedor:
+// ele escrevia 10 numa tela, via 3 na outra, e a barra de progresso deixava de significar coisa
+// alguma — meta que se contradiz é meta que ninguém persegue.
+// Agora o SERVIDOR é a fonte; o localStorage vira só cache offline (e a semente de quem já tinha
+// meta antes desta correção). Gravar escreve nos dois, e o servidor recebe as metas COMPLETAS
+// (espalhadas com o que já estava lá) — mandar só `deals` zeraria demos/revenue da outra aba.
 const GOAL_KEY = (email) => `guileo_seller_goal:${(email || "").toString().trim().toLowerCase()}`;
 function loadGoal(email) {
   try { return Math.max(0, parseInt(localStorage.getItem(GOAL_KEY(email)), 10) || 0); } catch { return 0; }
@@ -137,6 +145,9 @@ export default function SellerDashboard({ lang = "pt", seller, market = "us", na
   const [data, setData] = useState(null);   // null = loading · {} = loaded
   const [err, setErr] = useState(false);
   const [goal, setGoal] = useState(() => loadGoal(seller?.email));
+  // metas COMPLETAS do servidor (demos/deals/revenue/…) — guardadas pra não apagar as outras
+  // ao gravar só o número de clientes fechados daqui.
+  const [srvGoals, setSrvGoals] = useState(null);
 
   const load = async () => {
     setErr(false);
@@ -156,6 +167,24 @@ export default function SellerDashboard({ lang = "pt", seller, market = "us", na
       else { setData((prev) => prev || { dashboard: {}, leaderboard: [] }); setErr(true); }
     } catch { setData((prev) => prev || { dashboard: {}, leaderboard: [] }); setErr(true); }
   };
+  // META DO SERVIDOR — a MESMA que a aba "Minhas Metas" grava. Só sobrescreve o que está na tela
+  // quando o servidor REALMENTE tem meta (> 0); leitura falha ou meta ausente mantém o cache
+  // local, nunca zera o alvo do vendedor (zero seria "erro disfarçado de meta zerada").
+  useEffect(() => {
+    if (!seller?.email) return;
+    let vivo = true;
+    fetch("/api/seller-stats", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "me", email: seller.email, ref: seller.ref || "", seller_code: seller.code || "" }),
+    }).then((r) => r.json()).then((d) => {
+      if (!vivo || !d || !d.goals) return;
+      setSrvGoals(d.goals);
+      const n = Math.max(0, parseInt(d.goals.deals, 10) || 0);
+      if (n > 0) { setGoal(n); try { localStorage.setItem(GOAL_KEY(seller.email), String(n)); } catch { /* private mode */ } }
+    }).catch(() => { /* offline → o cache local segue valendo */ });
+    return () => { vivo = false; };
+  }, [seller?.email]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!seller?.email) return;
     load();
@@ -169,6 +198,15 @@ export default function SellerDashboard({ lang = "pt", seller, market = "us", na
     const n = Math.max(0, parseInt(v, 10) || 0);
     setGoal(n);
     try { localStorage.setItem(GOAL_KEY(seller?.email), String(n)); } catch { /* private mode */ }
+    // …e no SERVIDOR, que é a fonte compartilhada com a aba Minhas Metas. Espalha as metas que
+    // já existiam pra não apagar demos/receita ao mexer só em clientes fechados.
+    if (!seller?.email) return;
+    const merged = { ...(srvGoals || {}), deals: n };
+    setSrvGoals(merged);
+    fetch("/api/seller-stats", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "goals", email: seller.email, goals: merged, seller_code: seller.code || "" }),
+    }).catch(() => { /* o cache local já guardou; a próxima gravação tenta de novo */ });
   };
 
   const db = data?.dashboard || {};
@@ -186,7 +224,7 @@ export default function SellerDashboard({ lang = "pt", seller, market = "us", na
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div><h2 className="text-xl font-black text-g-word">{d.title}</h2><p className="text-[13px] text-g-muted mt-1 max-w-2xl">{d.sub}</p></div>
-        <button type="button" onClick={load} className="shrink-0 rounded-full border border-white/15 px-3 py-1 text-[11.5px] font-bold text-g-muted hover:text-g-word">{d.refresh}</button>
+        <button type="button" onClick={load} className="inline-flex min-h-[44px] shrink-0 items-center rounded-full border border-white/15 px-4 text-[11.5px] font-bold text-g-muted hover:text-g-word">{d.refresh}</button>
       </div>
 
       {data === null && (
@@ -225,14 +263,14 @@ export default function SellerDashboard({ lang = "pt", seller, market = "us", na
                 <span className="text-2xl font-black text-g-green">{convertedMonth}</span>
                 <span className="text-g-muted"> {d.goalOf} </span>
                 <input type="number" min="0" value={goal} onChange={(e) => saveGoal(e.target.value)} aria-label={d.goalSet}
-                  className="w-16 rounded border border-white/15 bg-white/[0.06] px-2 py-1 text-center text-[14px] font-bold text-g-word focus:outline-none focus:border-g-green/50" />
+                  className="h-[44px] w-16 rounded border border-white/15 bg-white/[0.06] px-2 text-center text-[14px] font-bold text-g-word focus:outline-none focus:border-g-green/50" />
                 <span className="text-g-muted"> {d.goalDeals}</span>
               </div>
               {goal > 0 && goalPct >= 100 && <span className="rounded-full bg-g-green/15 px-3 py-1 text-[11.5px] font-black text-g-green ring-1 ring-g-green/30">{d.goalDone}</span>}
               {/* goal hit → keep the momentum: jump straight to target-generation (only when nav is wired) */}
               {go && goal > 0 && goalPct >= 100 && (
                 <button type="button" onClick={() => go("alvos")}
-                  className="rounded-full border border-g-green/40 bg-g-green/10 px-3 py-1 text-[11.5px] font-black text-g-green transition-colors hover:bg-g-green/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-g-green/40">
+                  className="inline-flex min-h-[44px] items-center rounded-full border border-g-green/40 bg-g-green/10 px-4 text-[11.5px] font-black text-g-green transition-colors hover:bg-g-green/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-g-green/40">
                   {d.goalMore}
                 </button>
               )}

@@ -41,6 +41,22 @@ export async function onRequestPost(context) {
     const summary = s(body.summary, 4000);
     const lang = s(body.lang, 5) || "en";
 
+    // ── O LINK DO CLIENTE VAI JUNTO (2026-08-25) ────────────────────────────────────────────
+    // Este e-mail é o modelo FORWARD: o vendedor recebe o orçamento e repassa. Antes ele
+    // repassava um texto sem nenhum caminho de volta — o cliente lia e não tinha o que APERTAR.
+    // Agora, quando o orçamento foi salvo (/api/quote → seller_quotes), o link público entra no
+    // corpo e o repasse já leva o botão de aceitar.
+    // ⚠️ SÓ ACEITO O TOKEN, NUNCA UMA URL DO CORPO. Montar link com o que o cliente mandou é
+    // abrir um redirecionador com a marca Guileo dentro de um e-mail nosso. O caminho é fixo
+    // aqui no servidor e o token é validado como hex.
+    const quoteToken = s(body.quoteToken, 120);
+    const quoteUrl = /^[a-f0-9]{24,64}$/i.test(quoteToken)
+      ? `${new URL(request.url).origin}/orcamento/${quoteToken}`
+      : "";
+    const corpo = quoteUrl
+      ? `${summary}\n\n🔗 ${lang === "en" ? "Client link (open & accept)" : lang === "es" ? "Enlace del cliente (abrir y aceptar)" : lang === "hi" ? "ग्राहक लिंक (खोलें और स्वीकारें)" : "Link do cliente (abrir e aceitar)"}: ${quoteUrl}`
+      : summary;
+
     // O e-mail vem do crachá, então já é o do vendedor; a validação sintática continua como
     // rede de segurança contra um crachá antigo com formato estranho.
     if (!EMAIL_RE.test(to)) return json({ error: "invalid recipient" }, 400);
@@ -49,7 +65,7 @@ export async function onRequestPost(context) {
     if (!env.RESEND_API_KEY) return json({ ok: false, note: "email unavailable" });
 
     const FROM = env.EMAIL_FROM || "Guileo <noreply@guileoai.com>";
-    const mail = sellerQuoteEmail({ sellerName, clientName, summary, lang });
+    const mail = sellerQuoteEmail({ sellerName, clientName, summary: corpo, lang });
 
     const er = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -59,7 +75,7 @@ export async function onRequestPost(context) {
     });
     if (!er.ok) return json({ ok: false, note: "send failed" });
 
-    return json({ ok: true, enviado_para: to });
+    return json({ ok: true, enviado_para: to, link: quoteUrl || null });
   } catch {
     return json({ error: "bad request" }, 400);
   }

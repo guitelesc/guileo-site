@@ -174,6 +174,8 @@ const D = {
     errTeamT: "The funnel needs your PERSONAL code",
     errTeamP: "You are signed in with the shared team code, and it cannot open another seller's private funnel. Ask Luis for your personal code and sign in again.",
     errSessT: "Your session expired", errSessP: "Sign out and back in to load your queue.",
+    soLocalT: "Saved in THIS browser only",
+    soLocalP: "You are signed in with the shared team code, so the server does not store your board. Ask Luis for your personal code — otherwise this work is lost when you change device.",
     errNet: "Network error — couldn't reach the server.",
     reason: "Reason", retry: "Try again",
     emptyT: "Nothing in your queue.", emptyP: "No lead is attributed to your link in the last 12 months. Leads only land here when they arrive through a link carrying your ?ref= — otherwise they sit unowned in admin.",
@@ -181,6 +183,8 @@ const D = {
     now: "just now", minAgo: (n) => `${n} min ago`, hAgo: (n) => `${n}h ago`, dAgo: (n) => `${n}d ago`,
     uAgora: "Call now", uHoje: "Still warm", uDia: "Today", uAntigo: "Cooling", uSemData: "No arrival time",
     arrived: "Arrived", channel: "Channel", unknown: "not informed",
+    canalAlvo: "target you added", canalPronto: "★ preview live — just send it", aPreview: "👁 Open the preview",
+    buscaPh: "Search — name, email, phone, site, anything", buscaLimpa: "clear", buscaN: (n, m) => `${n} of ${m}`, buscaVazia: (q) => `Nothing matches "${q}". Try part of the name, the area code, or the domain.`,
     open: "Open", close: "Close", next: "Next lead →", queueEnd: "That was the last one in the queue.",
     dorT: "What we measured", score: "Overall score", notMeasured: "not measured",
     ficha: "Google profile", fichaNota: "rating", fichaAv: (n) => `${n} reviews`,
@@ -217,6 +221,8 @@ const D = {
     errTeamT: "O funil exige o seu código PESSOAL",
     errTeamP: "Você entrou com o código de time, e ele não pode abrir o funil particular de outro vendedor. Peça o seu código pessoal ao Luis e entre de novo.",
     errSessT: "Sua sessão expirou", errSessP: "Saia e entre de novo pra carregar a fila.",
+    soLocalT: "Salvo só NESTE navegador",
+    soLocalP: "Você entrou com o código de time (compartilhado), então o servidor não guarda o seu quadro. Peça o seu código pessoal ao Luis — senão este trabalho some quando você trocar de aparelho.",
     errNet: "Erro de rede — não deu pra falar com o servidor.",
     reason: "Motivo", retry: "Tentar de novo",
     emptyT: "Nada na sua fila.", emptyP: "Nenhum lead atribuído ao seu link nos últimos 12 meses. Lead só cai aqui quando chega por um link com o seu ?ref= — sem isso ele fica sem dono no admin.",
@@ -224,6 +230,8 @@ const D = {
     now: "agora mesmo", minAgo: (n) => `há ${n} min`, hAgo: (n) => `há ${n}h`, dAgo: (n) => `há ${n}d`,
     uAgora: "Liga agora", uHoje: "Ainda quente", uDia: "Hoje", uAntigo: "Esfriando", uSemData: "Sem hora de chegada",
     arrived: "Chegou", channel: "Canal", unknown: "não informado",
+    canalAlvo: "alvo que você adicionou", canalPronto: "★ preview no ar — é só mandar", aPreview: "👁 Abrir o preview",
+    buscaPh: "Buscar — nome, e-mail, telefone, site, qualquer coisa", buscaLimpa: "limpar", buscaN: (n, m) => `${n} de ${m}`, buscaVazia: (q) => `Nada casa com "${q}". Tente parte do nome, o DDD, ou o domínio.`,
     open: "Abrir", close: "Fechar", next: "Próximo lead →", queueEnd: "Esse era o último da fila.",
     dorT: "O que a gente mediu", score: "Score geral", notMeasured: "não medido",
     ficha: "Ficha do Google", fichaNota: "nota", fichaAv: (n) => `${n} avaliações`,
@@ -260,6 +268,8 @@ const D = {
     errTeamT: "El embudo exige tu código PERSONAL",
     errTeamP: "Entraste con el código de equipo, y no puede abrir el embudo privado de otro vendedor. Pídele a Luis tu código personal y vuelve a entrar.",
     errSessT: "Tu sesión expiró", errSessP: "Sal y entra de nuevo para cargar la fila.",
+    soLocalT: "Guardado solo en ESTE navegador",
+    soLocalP: "Entraste con el código de equipo (compartido), así que el servidor no guarda tu tablero. Pide tu código personal a Luis — si no, este trabajo se pierde al cambiar de dispositivo.",
     errNet: "Error de red — no se pudo hablar con el servidor.",
     reason: "Motivo", retry: "Intentar de nuevo",
     emptyT: "Nada en tu fila.", emptyP: "Ningún lead atribuido a tu enlace en los últimos 12 meses. Un lead solo cae aquí cuando llega por un enlace con tu ?ref= — sin eso queda sin dueño en el admin.",
@@ -303,6 +313,8 @@ const D = {
     errTeamT: "फ़नल के लिए आपका निजी कोड चाहिए",
     errTeamP: "आपने टीम कोड से लॉगिन किया है, जो किसी और सेलर का निजी फ़नल नहीं खोल सकता। Luis से अपना निजी कोड लेकर दोबारा लॉगिन करें।",
     errSessT: "आपका सेशन समाप्त हो गया", errSessP: "लॉगआउट करके दोबारा लॉगिन करें।",
+    soLocalT: "सिर्फ़ इसी ब्राउज़र में सेव",
+    soLocalP: "आपने साझा टीम कोड से लॉगिन किया है, इसलिए सर्वर आपका बोर्ड नहीं रखता। Luis से अपना निजी कोड माँगें — वरना डिवाइस बदलते ही यह काम खो जाएगा।",
     errNet: "नेटवर्क त्रुटि — सर्वर से बात नहीं हो सकी।",
     reason: "कारण", retry: "दोबारा कोशिश करें",
     emptyT: "आपकी कतार खाली है।", emptyP: "पिछले 12 महीनों में आपके लिंक से कोई लीड नहीं आई। लीड यहाँ तभी आती है जब वह आपके ?ref= वाले लिंक से आए — वरना वह बिना मालिक के admin में रह जाती है।",
@@ -462,12 +474,21 @@ export default function SellerLeads({ lang = "pt", seller, market = "us", nav, h
   const [buscandoFone, setBuscandoFone] = useState(null); // null | {feitos, total, achados, recusados}
   const sidLocal = () => { try { return (JSON.parse(localStorage.getItem("guileo_seller") || "null") || {}).sid || ""; } catch { return ""; } };
 
+  // 🚨 `local:true` NÃO É SUCESSO (2026-08-25). /api/seller-leads responde {ok:true, local:true}
+  // quando quem chamou entrou pelo CÓDIGO DE TIME: o servidor RECUSA gravar (decisão de segurança
+  // correta — o código compartilhado aceita qualquer e-mail digitado), mas o `ok:true` fazia esta
+  // tela comemorar em cima de um banco que não recebeu nada. O mesmo defeito que o SellerProspect
+  // já tinha corrigido: um "ok" que ninguém confere é promessa sem lastro, e aqui custava o
+  // pipeline inteiro na troca de aparelho. Toda resposta passa por aqui, então o aviso vale para
+  // qualquer ação (list/save/inbound/upgrade) sem repetir a checagem em cada botão.
+  const [soNesteNavegador, setSoNesteNavegador] = useState(false);
   const post = useCallback(async (url, body) => {
     const r = await fetch(url, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...body, seller_email: seller?.email, seller_code: seller?.code || "", seller: { name: seller?.name, email: seller?.email, ref: seller?.ref } }),
     });
     const d = await r.json().catch(() => null);
+    if (d && d.local === true) setSoNesteNavegador(true);
     return { r, d };
   }, [seller?.email, seller?.code, seller?.name, seller?.ref]);
 
@@ -583,7 +604,12 @@ export default function SellerLeads({ lang = "pt", seller, market = "us", nav, h
         nome: p.contact_name || "",
         telefone: p.phone || "",
         email: p.email || "",
-        canal: "",
+        /* ⚠️ "não informado" ao lado de um botão de LIGAR que funciona foi o defeito nº1 da
+           auditoria do hub (Luis 26/08: «o hub tá falando coisa»). Este campo é o CANAL de
+           chegada — prospect não chega por canal, foi você que adicionou. Dizer isso é honesto;
+           "não informado" faz o vendedor achar que a ficha está vazia e pular o lead pronto. */
+        canal: (p.note || "").includes("PRONTO:") ? t.canalPronto : t.canalAlvo,
+        previewSite: ((p.note || "").match(/site (https:\/\/guileoai\.com\/novo\/[a-z0-9-]+)/) || [])[1] || "",
         resumo: "",
         // 🚨 O FIO QUE LIGA O LEAD À MEDIÇÃO (2026-08-20). Isto era `null` fixo — e `avaliacaoId`
         // é a chave de CINCO blocos do dossiê: a dor medida, os 3 Guileos (Brain·AD·Build) daquele
@@ -656,14 +682,25 @@ export default function SellerLeads({ lang = "pt", seller, market = "us", nav, h
       itens.sort((a, b) => (b.chegou ?? -Infinity) - (a.chegou ?? -Infinity));
     }
     return itens;
-  }, [inbox, funil, market, meuLocal]);
+  }, [inbox, funil, market, meuLocal, t.canalAlvo, t.canalPronto]);
 
   const visiveis = useMemo(() => {
     let l = fila;
     if (filtro === "novos") l = l.filter((x) => !x.noFunil);
     else if (filtro) l = l.filter((x) => x.stage === filtro);
     const q = busca.trim().toLowerCase();
-    if (q) l = l.filter((x) => `${x.negocio} ${x.nome} ${x.email} ${x.telefone}`.toLowerCase().includes(q));
+    if (q) {
+      /* ⚠️ O TELEFONE CASA POR DÍGITO. O lead está gravado "+12122548174" e o vendedor digita
+         "(212) 254-8174" ou "212 254" — comparar as strings cruas não acha NADA e a tela parece
+         vazia de leads em vez de vazia de resultado. Mesma lição da chave canônica de telefone.
+         E o palheiro inclui SITE e NOTA: é por "threedegreesnyc.com" que ele lembra do lead. */
+      const dig = q.replace(/\D/g, "");
+      l = l.filter((x) => {
+        const texto = `${x.negocio} ${x.nome} ${x.email} ${x.telefone} ${x.previewSite || ""} ${x.note || ""} ${x.canal || ""}`.toLowerCase();
+        if (texto.includes(q)) return true;
+        return dig.length >= 3 && `${x.telefone || ""}`.replace(/\D/g, "").includes(dig);
+      });
+    }
     return l;
   }, [fila, filtro, busca]);
 
@@ -804,6 +841,14 @@ export default function SellerLeads({ lang = "pt", seller, market = "us", nav, h
         </div>
       </div>
 
+      {/* ⚠️ O SERVIDOR AVISOU QUE NÃO GRAVOU — e agora a tela fala (mesmo aviso do SellerProspect). */}
+      {soNesteNavegador && (
+        <div className="mb-3 rounded-xl border border-g-gold/30 bg-g-gold/[0.06] px-3.5 py-2.5">
+          <div className="text-[12.5px] font-bold text-g-gold">⚠️ {t.soLocalT}</div>
+          <p className="mt-1 text-[12px] leading-relaxed text-g-muted">{t.soLocalP}</p>
+        </div>
+      )}
+
       {(geoEstado === "negado" || geoEstado === "indisponivel") && (
         <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-[12px]" style={{ color: NOT_MEASURED }}>
           {geoEstado === "negado" ? t.geoNegado : t.geoIndisp}
@@ -843,18 +888,34 @@ export default function SellerLeads({ lang = "pt", seller, market = "us", nav, h
         motivo={funil.tipo === "team" || funil.tipo === "sessao" ? null : funil.motivo} onRetry={carregaFunil} />}
       </>)}
 
+      {/* ── BUSCA ───────────────────────────────────────────────────────────────────────────
+          Luis 26/08: «tem que ter o search bar». O filtro por texto já existia por dentro (o
+          handoff de outra aba o usava) — só não havia campo. Fila de 40+ sem busca obriga o
+          vendedor a rolar procurando com o olho, e o lead que ele quer é justamente o que o
+          cliente acabou de citar no telefone. */}
+      {fila.length > 0 && (
+        <div className="relative mb-3">
+          <span aria-hidden className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[15px] opacity-60">🔎</span>
+          <input
+            type="search" value={busca} onChange={(e) => setBusca(e.target.value)}
+            placeholder={t.buscaPh} aria-label={t.buscaPh}
+            className="min-h-[48px] w-full rounded-full border border-white/12 bg-white/[0.04] pl-11 pr-24 text-[14px] text-g-word placeholder:text-g-muted/60 focus:border-g-green/50 focus:outline-none"
+          />
+          {busca.trim() && (
+            <span className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
+              <span className="text-[11.5px] font-bold tabular-nums text-g-muted">{t.buscaN(visiveis.length, fila.length)}</span>
+              <button type="button" onClick={() => setBusca("")} aria-label={t.buscaLimpa}
+                className="rounded-full px-2 py-1 text-[13px] text-g-muted hover:text-g-word">✕</button>
+            </span>
+          )}
+        </div>
+      )}
+
       {/* ── FILTROS ────────────────────────────────────────────────────────────────────────── */}
       {fila.length > 0 && (
         <div className="mb-3 -mx-1 flex flex-wrap gap-2 px-1">
           {/* handoff de outra aba (nav("leads", {business})) — a fila abre já naquele negócio.
               Sempre com o ✕: filtro que o vendedor não consegue tirar vira "sumiu tudo". */}
-          {busca.trim() && (
-            <button type="button" onClick={() => setBusca("")}
-              className="inline-flex min-h-[48px] items-center gap-2 rounded-full px-4 text-[12.5px] font-bold text-g-word ring-1"
-              style={{ background: "#FF8A3322", "--tw-ring-color": "#FF8A3380" }}>
-              <span className="max-w-[10rem] truncate">{busca.trim()}</span> ✕
-            </button>
-          )}
           <Chip ativo={filtro === null} onClick={() => setFiltro(null)} label={t.filterAll} n={fila.length} />
           <Chip ativo={filtro === "novos"} onClick={() => setFiltro(filtro === "novos" ? null : "novos")}
             label={t.filterNew} n={fila.filter((x) => !x.noFunil).length} hex="#FF8A33" />
@@ -878,6 +939,19 @@ export default function SellerLeads({ lang = "pt", seller, market = "us", nav, h
           <div className="text-3xl">📭</div>
           <div className="mt-1.5 text-[14px] font-extrabold text-g-word">{t.emptyT}</div>
           <p className="mx-auto mt-1 max-w-sm text-[12.5px] leading-relaxed text-g-muted">{t.emptyP}</p>
+        </div>
+      )}
+
+      {/* ⚠️ VAZIO DE BUSCA ≠ VAZIO DE FILA. Sem este estado a lista some inteira e o vendedor lê
+          "acabaram meus leads" — o pânico errado. Diz o que foi buscado e como tentar de novo. */}
+      {!carregando && !tudoFalhou && fila.length > 0 && visiveis.length === 0 && busca.trim() && (
+        <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-6 text-center backdrop-blur-xl">
+          <div className="text-3xl">🔎</div>
+          <p className="mx-auto mt-2 max-w-sm text-[13px] leading-relaxed text-g-muted">{t.buscaVazia(busca.trim())}</p>
+          <button type="button" onClick={() => setBusca("")}
+            className="mt-3 inline-flex min-h-[44px] items-center rounded-full border border-white/15 bg-white/[0.04] px-4 text-[13px] font-bold text-g-word hover:border-g-green/40">
+            ✕ {t.buscaLimpa}
+          </button>
         </div>
       )}
 
@@ -1145,6 +1219,14 @@ function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, sal
               {t.aMail}
             </a>
           )}
+          {/* O PREVIEW NA CAPA. O lead já atendeu e está ESPERANDO isto — se o link mora dentro
+              do dossiê, o vendedor liga sem ter o que mandar. Verde, não dourado: é outra coisa. */}
+          {item.previewSite && (
+            <a href={item.previewSite} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+              className="inline-flex min-h-[48px] items-center gap-1.5 rounded-full bg-g-green/15 px-4 text-[12.5px] font-bold text-g-green ring-1 ring-g-green/40 hover:bg-g-green/25">
+              {t.aPreview}
+            </a>
+          )}
           {/* O RELATÓRIO NA CAPA. Ele é o motivo da ligação ("medi o seu negócio, olha o que achei")
               — exigir abrir o dossiê pra alcançá-lo põe um clique entre o vendedor e o argumento. */}
           {relatorio && (
@@ -1292,7 +1374,7 @@ function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, sal
                     <span className="text-[11px] font-bold uppercase tracking-wide text-g-gold">{t.pitchT}</span>
                     <button type="button"
                       onClick={(e) => { e.stopPropagation(); navigator.clipboard?.writeText(pitch); setPitchCopiado(true); setTimeout(() => setPitchCopiado(false), 1600); }}
-                      className="rounded-full border border-white/15 px-2.5 py-1 text-[11px] font-bold text-g-word hover:border-g-gold/50">
+                      className="inline-flex min-h-[44px] shrink-0 items-center rounded-full border border-white/15 px-3.5 text-[11px] font-bold text-g-word hover:border-g-gold/50">
                       {pitchCopiado ? t.copied : t.aCopy}
                     </button>
                   </div>

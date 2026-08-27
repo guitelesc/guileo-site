@@ -32,6 +32,7 @@ import SellerProdutos from "../components/SellerProdutos.jsx";
 import SellerVertical from "../components/SellerVertical.jsx";
 // PROCESSO POR GUILEO — a entrega (3 pernas → produtos → prazo) que só existia em dado.
 import SellerProcesso from "../components/SellerProcesso.jsx";
+import SellerCriativo from "../components/SellerCriativo.jsx";
 import SellerPitch from "../components/SellerPitch.jsx";
 import { ACTIVATION_STEPS, ACTIVATION_SECTORS, pickL } from "../data/activation.js";
 
@@ -89,10 +90,10 @@ const T = {
     yourGoals: "Meta do mês", gDemos: "Demos agendadas", gDeals: "Clientes fechados", gRevenue: "Receita (US$)",
     done: "Feito", target: "Meta", save: "Salvar meta", saved: "Salvo ✓", logHint: "Toque + quando agendar uma demo ou fechar um cliente.",
     refTitle: "Seu link de indicação", refSub: "Toda venda que vier por este link conta como sua (comissão Track-A).", copyLink: "Copiar link", linkCopied: "Link copiado ✓", share: "Compartilhar",
-    comTitle: "Comissões", comLeads: "Leads atribuídos", comConv: "Conversões confirmadas", comEarned: "Comissão ganha", comPotential: "Comissão potencial (estimativa)",
-    comEarnedNote: "sobre os pagamentos registrados dos clientes que vieram pelo seu link.",
-    comPotentialNote: "Estimativa se cada lead fechar o plano Growth ($149/mês) — NÃO é dinheiro ganho.",
-    comManual: "Conversões são confirmadas pelo Luis — fechou um cliente? Avisa ele pra registrar.",
+    comTitle: "Comissões", comLeads: "Leads atribuídos", comConv: "Clientes que pagaram", comEarned: "Comissão ganha",
+    comEarnedNote: "sobre os pagamentos registrados (líquido de reembolso) dos clientes da sua carteira — o MESMO número da aba 🧾 Financeiro.",
+    comErrT: "Não consegui ler a sua comissão",
+    comErrP: "Isto NÃO quer dizer que ela é zero. Toque em atualizar; se continuar, avise o Luis com o motivo abaixo.",
     objTitle: "Quebra-objeção com IA", objSub: "Digite o que o cliente falou — a IA te dá a resposta calma, sem ser agressivo.", objPh: "Ex: \"tá caro\", \"já tenho recepcionista\", \"vou pensar\"…", objGo: "Me ajuda", objGoing: "Pensando…",
     invTitle: "Convidar o time", invSub: "Mande o link + o código pro seu time entrar no Hub.", invCopy: "Copiar convite", invCopied: "Convite copiado ✓", invWa: "Enviar no WhatsApp",
     trainTitle: "Treino", trainSub: "Pratique com um cliente difícil. A IA faz o dono cético do nicho — você treina o pitch antes da reunião de verdade.",
@@ -140,10 +141,10 @@ const T = {
     yourGoals: "Monthly goal", gDemos: "Demos booked", gDeals: "Clients closed", gRevenue: "Revenue (US$)",
     done: "Done", target: "Goal", save: "Save goal", saved: "Saved ✓", logHint: "Tap + when you book a demo or close a client.",
     refTitle: "Your referral link", refSub: "Every sale from this link counts as yours (Track-A commission).", copyLink: "Copy link", linkCopied: "Link copied ✓", share: "Share",
-    comTitle: "Commissions", comLeads: "Attributed leads", comConv: "Confirmed conversions", comEarned: "Commission earned", comPotential: "Potential commission (estimate)",
-    comEarnedNote: "of the registered payments from clients who came through your link.",
-    comPotentialNote: "Estimate if every lead closes on the Growth plan ($149/mo) — NOT earned money.",
-    comManual: "Conversions are confirmed by Luis — closed a client? Tell him so it gets registered.",
+    comTitle: "Commissions", comLeads: "Attributed leads", comConv: "Clients who paid", comEarned: "Commission earned",
+    comEarnedNote: "of the registered payments (refund-net) from the clients in your wallet — the SAME number as the 🧾 Finance tab.",
+    comErrT: "I couldn\u2019t read your commission",
+    comErrP: "This does NOT mean it is zero. Tap refresh; if it persists, send Luis the reason below.",
     objTitle: "AI objection-buster", objSub: "Type what the client said — AI gives you the calm, non-aggressive reply.", objPh: "e.g. \"too expensive\", \"I have a receptionist\", \"I'll think about it\"…", objGo: "Help me", objGoing: "Thinking…",
     invTitle: "Invite your team", invSub: "Send the link + code for your team to join the Hub.", invCopy: "Copy invite", invCopied: "Invite copied ✓", invWa: "Send on WhatsApp",
     trainTitle: "Practice", trainSub: "Practice with a tough client. AI plays the skeptical owner of the niche — rehearse your pitch before the real meeting.",
@@ -187,10 +188,10 @@ const T = {
     yourGoals: "Meta del mes", gDemos: "Demos agendadas", gDeals: "Clientes cerrados", gRevenue: "Ingresos (US$)",
     done: "Hecho", target: "Meta", save: "Guardar meta", saved: "Guardado ✓", logHint: "Toca + cuando agendes una demo o cierres un cliente.",
     refTitle: "Tu enlace de referido", refSub: "Cada venta desde este enlace cuenta como tuya (comisión Track-A).", copyLink: "Copiar enlace", linkCopied: "Enlace copiado ✓", share: "Compartir",
-    comTitle: "Comisiones", comLeads: "Leads atribuidos", comConv: "Conversiones confirmadas", comEarned: "Comisión ganada", comPotential: "Comisión potencial (estimación)",
-    comEarnedNote: "sobre los pagos registrados de los clientes que llegaron por tu enlace.",
-    comPotentialNote: "Estimación si cada lead cierra el plan Growth ($149/mes) — NO es dinero ganado.",
-    comManual: "Las conversiones las confirma Luis — ¿cerraste un cliente? Avísale para registrarlo.",
+    comTitle: "Comisiones", comLeads: "Leads atribuidos", comConv: "Clientes que pagaron", comEarned: "Comisión ganada",
+    comEarnedNote: "sobre los pagos registrados (neto de reembolsos) de los clientes de tu cartera — el MISMO número de la pestaña 🧾 Finanzas.",
+    comErrT: "No pude leer tu comisión",
+    comErrP: "Esto NO significa que sea cero. Toca actualizar; si sigue, avísale a Luis con el motivo de abajo.",
     objTitle: "Rompe-objeciones con IA", objSub: "Escribe lo que dijo el cliente — la IA te da la respuesta calmada, sin ser agresivo.", objPh: "Ej: \"está caro\", \"ya tengo recepcionista\", \"lo pensaré\"…", objGo: "Ayúdame", objGoing: "Pensando…",
     invTitle: "Invitar al equipo", invSub: "Envía el enlace + el código para que tu equipo entre al Hub.", invCopy: "Copiar invitación", invCopied: "Invitación copiada ✓", invWa: "Enviar por WhatsApp",
     trainTitle: "Práctica", trainSub: "Practica con un cliente difícil. La IA hace de dueño escéptico del nicho — ensaya tu pitch antes de la reunión real.",
@@ -226,7 +227,9 @@ const T = {
 // Reserva é INGLÊS, nunca o português do autor. Um bloco `hi` traduzido de verdade são 60+ chaves
 // e é trabalho de tradução, não de código — fica declarado como pendente, não fingido.
 T.hi = T.en;
-T.hi = { ...T.en, eyebrow: "विक्रेता क्षेत्र", logout: "साइन आउट", hi: "नमस्ते" };
+T.hi = { ...T.en, eyebrow: "विक्रेता क्षेत्र", logout: "साइन आउट", hi: "नमस्ते",
+  comConv: "भुगतान करने वाले ग्राहक", comEarned: "अर्जित कमीशन",
+  comErrT: "आपका कमीशन नहीं पढ़ पाया", comErrP: "इसका मतलब शून्य नहीं है। रिफ़्रेश करें; फिर भी न चले तो नीचे दिया कारण Luis को भेजें।" };
 
 // Pocket-academy content (sales copy reused from the field cards). pt/en/es; hi falls back to en.
 const ACAD = {
@@ -603,7 +606,8 @@ function Start({ t, go }) {
 function Metas({ t, seller }) {
   const [act, setAct] = useState(null);
   const [leads, setLeads] = useState(null);
-  const [comm, setComm] = useState(null); // commission block from /api/seller-stats (earned vs potential)
+  const [comm, setComm] = useState(null);      // comissão REAL (seller_commission_ledger) ou null
+  const [commErro, setCommErro] = useState(""); // motivo quando não deu pra ler — nunca vira "$0"
   const [goals, setGoals] = useState({ demos: 0, deals: 0, revenue: 0, doneDemos: 0, doneDeals: 0, doneRevenue: 0 });
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -628,7 +632,7 @@ function Metas({ t, seller }) {
 
   useEffect(() => {
     fetch("/api/seller-stats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "me", email: seller.email, ref: seller.ref, seller_code: seller.code || "" }) })
-      .then((r) => r.json()).then((d) => { setAct(d.act || {}); setLeads(typeof d.attributedLeads === "number" ? d.attributedLeads : null); setComm(d.commissions || null); if (d.goals) setGoals((g) => ({ ...g, ...d.goals })); }).catch(() => setAct({}));
+      .then((r) => r.json()).then((d) => { setAct(d.act || {}); setLeads(typeof d.attributedLeads === "number" ? d.attributedLeads : null); setComm(d.commissions || null); setCommErro(d.commissions ? "" : (d.commissionsErro || "")); if (d.goals) setGoals((g) => ({ ...g, ...d.goals })); }).catch(() => { setAct({}); setCommErro("rede"); });
   }, [seller.email]);
 
   const saveGoals = async () => {
@@ -676,23 +680,31 @@ function Metas({ t, seller }) {
         </div>
       </div>
 
-      {/* 💰 Commissions — EARNED (pct × real registered payments, via seller_conversions) when the
-          server can detect it, otherwise a clearly-labeled POTENTIAL estimate. Never fake money. */}
+      {/* 💰 COMISSÃO — O MESMO LEDGER DO FINANCEIRO (2026-08-25).
+          Este bloco mostrava, quando o servidor não achava conversão, uma "comissão potencial"
+          = leads × $897 × pct. Dinheiro que ninguém pagou, com cara de número. Sumiu.
+          Agora só existem dois estados: o valor REAL do `seller_commission_ledger` (o mesmo que
+          a aba 🧾 Financeiro imprime no extrato), ou o ERRO com o motivo — porque "não consegui
+          ler" é informação e um zero inventado é diagnóstico falso. */}
       {comm && (
-        <div className={`rounded-2xl border p-5 ${comm.kind === "earned" ? "border-g-green/25 bg-g-green/[0.05]" : "border-g-gold/25 bg-g-gold/[0.05]"}`}>
-          <div className={`text-sm font-extrabold ${comm.kind === "earned" ? "text-g-green" : "text-g-gold"}`}>💰 {t.comTitle}</div>
+        <div className="rounded-2xl border border-g-green/25 bg-g-green/[0.05] p-5">
+          <div className="text-sm font-extrabold text-g-green">💰 {t.comTitle}</div>
           <div className="mt-3 grid grid-cols-3 gap-3">
-            <div className="card p-4 text-center"><div className="text-2xl font-black text-g-word">{leads ?? comm.leads ?? "—"}</div><div className="mt-1 text-[11px] uppercase tracking-wide text-g-muted">{t.comLeads}</div></div>
-            <div className="card p-4 text-center"><div className="text-2xl font-black text-g-word">{comm.kind === "earned" ? comm.converted : "—"}</div><div className="mt-1 text-[11px] uppercase tracking-wide text-g-muted">{t.comConv}</div></div>
+            <div className="card p-4 text-center"><div className="text-2xl font-black text-g-word">{leads ?? "—"}</div><div className="mt-1 text-[11px] uppercase tracking-wide text-g-muted">{t.comLeads}</div></div>
+            <div className="card p-4 text-center"><div className="text-2xl font-black text-g-word">{comm.converted}</div><div className="mt-1 text-[11px] uppercase tracking-wide text-g-muted">{t.comConv}</div></div>
             <div className="card p-4 text-center">
-              <div className={`text-2xl font-black ${comm.kind === "earned" ? "text-g-green" : "text-g-gold"}`}>${(comm.kind === "earned" ? comm.earned : comm.potential).toLocaleString("en-US")}</div>
-              <div className="mt-1 text-[11px] uppercase tracking-wide text-g-muted">{comm.kind === "earned" ? t.comEarned : t.comPotential}</div>
+              <div className="text-2xl font-black text-g-green">${(Number(comm.earned) || 0).toLocaleString("en-US")}</div>
+              <div className="mt-1 text-[11px] uppercase tracking-wide text-g-muted">{t.comEarned}</div>
             </div>
           </div>
-          <p className="mt-3 text-[12px] leading-relaxed text-g-muted">
-            {comm.kind === "earned" ? `${comm.pct}% ${t.comEarnedNote}` : `${comm.pct}% · ${t.comPotentialNote}`}
-          </p>
-          {comm.kind !== "earned" && <p className="mt-1 text-[12px] leading-relaxed text-g-muted">{t.comManual}</p>}
+          <p className="mt-3 text-[12px] leading-relaxed text-g-muted">{`${comm.pct}% ${t.comEarnedNote}`}</p>
+        </div>
+      )}
+      {!comm && commErro && (
+        <div className="rounded-2xl border border-g-gold/25 bg-g-gold/[0.05] p-5">
+          <div className="text-sm font-extrabold text-g-gold">⚠️ {t.comErrT}</div>
+          <p className="mt-1.5 text-[12.5px] leading-relaxed text-g-muted">{t.comErrP}</p>
+          <p className="mt-1.5 text-[11.5px] leading-relaxed text-g-muted/80">{commErro}</p>
         </div>
       )}
 
@@ -1079,7 +1091,7 @@ const GRUPOS = [
   // antes de decidir "o que eu faço com ela" — e a resposta certa some no meio da pergunta errada.
   // Agora `leads` é a vida inteira: chegou → trabalhado → etapa → fechado, sem trocar de tela.
   { id: "agora",    ico: "🔥", rot: { pt: "Agora",    en: "Now",      es: "Ahora",    hi: "अभी" },     abas: ["ligar", "leads", "prospec"] },
-  { id: "vender",   ico: "🎯", rot: { pt: "Vender",   en: "Sell",     es: "Vender",   hi: "बेचें" },   abas: ["cards", "produtos", "vertical", "raiox", "quote", "contrato", "alvos", "fechar"] },
+  { id: "vender",   ico: "🎯", rot: { pt: "Vender",   en: "Sell",     es: "Vender",   hi: "बेचें" },   abas: ["cards", "produtos", "vertical", "raiox", "criativo", "quote", "contrato", "alvos", "fechar"] },
   { id: "cliente",  ico: "🤝", rot: { pt: "Cliente",  en: "Client",   es: "Cliente",  hi: "क्लाइंट" },  abas: ["cadastro", "relacao", "ativ", "google"] },
   { id: "meu",      ico: "💰", rot: { pt: "Meu",      en: "Mine",     es: "Mío",      hi: "मेरा" },    abas: ["painel", "financeiro", "metas"] },
   { id: "aprender", ico: "🎓", rot: { pt: "Aprender", en: "Learn",    es: "Aprender", hi: "सीखें" },   abas: ["processo", "start", "treino", "jogadas", "academy"] },
@@ -1093,15 +1105,18 @@ const ABA_EXTRA = {
   leads:   { pt: "📥 Leads",     en: "📥 Leads",     es: "📥 Leads",     hi: "📥 लीड्स" },
   produtos:{ pt: "🧰 Produtos",  en: "🧰 Products",  es: "🧰 Productos",  hi: "🧰 प्रोडक्ट" },
   relacao: { pt: "🤝 Relacionamento", en: "🤝 Relationship", es: "🤝 Relación", hi: "🤝 रिश्ता" },
-  followup:{ pt: "📥 Leads",     en: "📥 Leads",     es: "📥 Leads",     hi: "📥 लीड्स" },
-  nyc:     { pt: "🗽 Leads NYC", en: "🗽 NYC leads", es: "🗽 Leads NYC", hi: "🗽 NYC लीड्स" },
+  // (followup · nyc · demo saíram daqui em 2026-08-25: rotas removidas em 2026-08-20, e rótulo
+  //  de aba que não existe mais é convite pra recriar a aba por engano.)
   suporte: { pt: "🚨 Urgente",   en: "🚨 Urgent",    es: "🚨 Urgente",   hi: "🚨 अर्जेंट" },
-  demo:    { pt: "🎬 Demo",      en: "🎬 Demo",      es: "🎬 Demo",      hi: "🎬 डेमो" },
   raiox:   { pt: "🩻 X-Ray",     en: "🩻 X-Ray",     es: "🩻 X-Ray",     hi: "🩻 X-Ray" },
   prospec: { pt: "🎯 Fila de ataque", en: "🎯 Attack queue", es: "🎯 Fila de ataque", hi: "🎯 अटैक क्यू" },
   processo: { pt: "🧬 Processo", en: "🧬 Process", es: "🧬 Proceso", hi: "🧬 प्रक्रिया" },
   google:   { pt: "🔗 Google do cliente", en: "🔗 Client's Google", es: "🔗 Google del cliente", hi: "🔗 क्लाइंट का Google" },
   vertical: { pt: "🧭 Vertical", en: "🧭 Vertical", es: "🧭 Vertical", hi: "🧭 वर्टिकल" },
+  // A peça de anúncio DAQUELE negócio, escrita na reunião. Entra depois do raio-X (que MEDE) e
+  // antes do orçamento (que COTA) porque essa é a ordem da conversa real: mostrei o vazamento,
+  // mostro o anúncio que o tampa, aí falo de preço.
+  criativo: { pt: "🎨 Criativo", en: "🎨 Creative", es: "🎨 Creativo", hi: "🎨 क्रिएटिव" },
 };
 
 export default function Vendedor() {
@@ -1127,9 +1142,13 @@ export default function Vendedor() {
   if (!seller) return <Login t={t} lang={lang} setLang={setLang} onIn={setSeller} />;
 
   const logout = () => { try { localStorage.removeItem(SELLER_KEY); } catch { /* ignore */ } setSeller(null); };
-  // 🚨 "suporte" fica logo depois de Alvos e renderiza em VERMELHO: é a prioridade nº1 do
-  // vendedor — cliente esperando resposta vem antes de prospectar (regra do Luis).
-  const NAV = [["start", t.nav.start], ["painel", t.nav.painel], ["alvos", t.nav.alvos], ["nyc", "🗽 NYC"], ["suporte", "🚨 SUPORTE"], ["followup", t.nav.followup], ["fechar", t.nav.fechar], ["demo", t.nav.demo || "🎬 Demo"], ["cards", t.nav.cards], ["quote", t.nav.quote], ["contrato", t.nav.contrato], ["financeiro", t.nav.financeiro], ["cadastro", t.nav.cadastro], ["treino", t.nav.treino], ["ativ", t.nav.ativ], ["metas", t.nav.metas], ["jogadas", t.nav.jogadas], ["academy", t.nav.academy], ["support", t.nav.support]];
+  // NAV = SÓ o dicionário de rótulos de reserva do `rotulo()` (ABA_EXTRA vem primeiro). Ele
+  // listava `nyc`, `demo` e `followup` — as três rotas REMOVIDAS em 2026-08-20 — e misturava
+  // chaves do dicionário com strings cruas em português ("🗽 NYC", "🚨 SUPORTE"), que apareciam
+  // em português numa interface em inglês/espanhol/hindi. Aba morta no rótulo é aba que volta a
+  // ser criada por engano; string crua fere a lei de i18n (ARQUITETURA §8). Agora só existem aqui
+  // as abas que o `main` de fato renderiza, e todo rótulo vem de dicionário.
+  const NAV = [["start", t.nav.start], ["painel", t.nav.painel], ["alvos", t.nav.alvos], ["fechar", t.nav.fechar], ["cards", t.nav.cards], ["quote", t.nav.quote], ["contrato", t.nav.contrato], ["financeiro", t.nav.financeiro], ["cadastro", t.nav.cadastro], ["treino", t.nav.treino], ["ativ", t.nav.ativ], ["metas", t.nav.metas], ["jogadas", t.nav.jogadas], ["academy", t.nav.academy], ["support", t.nav.support]];
 
   return (
     <div className="surface-real min-h-screen text-g-ink">
@@ -1141,7 +1160,11 @@ export default function Vendedor() {
             <div className="text-[13px] font-extrabold text-g-word truncate">{t.brand}</div>
             <div className="hidden sm:block text-[11px] text-g-muted truncate">{t.hi}, {seller.name} 👋</div>
           </div>
-          <div className="ml-auto flex items-center gap-1.5">
+          {/* 👆 ALVO DE TOQUE ≥44px (2026-08-25). O vendedor trabalha NO CELULAR: bandeira de 24px
+              e pílula de py-1 erram o dedo, e errar o seletor de MERCADO cota na moeda errada.
+              O grupo agora QUEBRA LINHA (flex-wrap) — sem isso, quatro alvos de 44px estouravam
+              a largura de um iPhone SE e empurravam o botão de sair pra fora da tela. */}
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
             {/* 🚨 DOIS SELETORES, DOIS SIGNIFICADOS — antes eram duas fileiras de BANDEIRA CRUA,
                    lado a lado: 🇺🇸🇧🇷 | 🇧🇷🇺🇸🇪🇸🇮🇳. Pareciam a mesma coisa duplicada, e não são.
                    MERCADO decide preço, moeda e roteiro (US ou Brasil). IDIOMA decide a interface.
@@ -1153,14 +1176,14 @@ export default function Vendedor() {
               <span className="text-[9px] font-black uppercase tracking-wider text-g-muted">{t.mercado || "Mercado"}</span>
               {[["us", "🇺🇸"], ["br", "🇧🇷"]].map(([m, f]) => (
                 <button key={m} onClick={() => setMarketG(m)} aria-label={`Mercado ${m.toUpperCase()}`} aria-pressed={market === m}
-                  className={`rounded-full px-1.5 py-1 text-[13px] transition ${market === m ? "bg-g-green/20 ring-1 ring-g-green/40" : "opacity-40 hover:opacity-80"}`}>{f}</button>
+                  className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[15px] transition ${market === m ? "bg-g-green/20 ring-1 ring-g-green/40" : "opacity-40 hover:opacity-80"}`}>{f}</button>
               ))}
             </div>
             <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-1.5 py-0.5 backdrop-blur-xl">
               <span className="text-[9px] font-black uppercase tracking-wider text-g-muted">{t.idioma || "Idioma"}</span>
-              {LANGS.map(([c, f]) => <button key={c} onClick={() => setLang(c)} aria-label={`Idioma ${c.toUpperCase()}`} aria-pressed={lang === c} className={`h-6 w-6 rounded-full text-[13px] ${lang === c ? "bg-g-green/15 ring-1 ring-g-green/30" : "opacity-40"}`}>{f}</button>)}
+              {LANGS.map(([c, f]) => <button key={c} onClick={() => setLang(c)} aria-label={`Idioma ${c.toUpperCase()}`} aria-pressed={lang === c} className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-[15px] ${lang === c ? "bg-g-green/15 ring-1 ring-g-green/30" : "opacity-40"}`}>{f}</button>)}
             </div>
-            <button onClick={logout} className="ml-1 rounded-full border border-white/15 px-3 py-1.5 text-[12px] font-bold text-g-muted hover:text-g-word">{t.logout}</button>
+            <button onClick={logout} className="ml-1 inline-flex min-h-[44px] items-center rounded-full border border-white/15 px-3 text-[12px] font-bold text-g-muted hover:text-g-word">{t.logout}</button>
           </div>
         </div>
         {(() => {
@@ -1176,7 +1199,7 @@ export default function Vendedor() {
                   const urgente = g.id === "ajuda";
                   return (
                     <button key={g.id} onClick={() => nav(g.abas[0])} aria-current={on ? "true" : undefined}
-                      className={`whitespace-nowrap rounded-full px-4 py-1.5 text-[12.5px] font-black transition ${
+                      className={`inline-flex min-h-[44px] items-center whitespace-nowrap rounded-full px-4 text-[12.5px] font-black transition ${
                         urgente
                           ? (on ? "bg-[#E5484D]/20 text-[#FF7A7E] ring-1 ring-[#E5484D]/60" : "text-[#E5484D] ring-1 ring-[#E5484D]/35 hover:bg-[#E5484D]/10")
                           : (on ? "bg-g-green/15 text-g-word ring-1 ring-g-green/40" : "text-g-muted hover:text-g-word")
@@ -1190,7 +1213,7 @@ export default function Vendedor() {
               <div className="mt-1.5 flex gap-1 overflow-x-auto border-t border-white/[0.06] pt-1.5">
                 {grupoAtivo.abas.map((k) => (
                   <button key={k} onClick={() => nav(k)} aria-current={tab === k ? "page" : undefined}
-                    className={`whitespace-nowrap rounded-full px-3 py-1 text-[12px] font-bold transition ${
+                    className={`inline-flex min-h-[44px] items-center whitespace-nowrap rounded-full px-3 text-[12px] font-bold transition ${
                       tab === k ? "bg-white/10 text-g-word ring-1 ring-white/20" : "text-g-muted hover:text-g-word"
                     }`}>{rotulo(k)}</button>
                 ))}
@@ -1225,6 +1248,7 @@ export default function Vendedor() {
           {tab === "relacao" && <SellerRelacionamento lang={lang} seller={seller} />}
           {tab === "fechar" && <SellerCloser lang={lang} seller={seller} market={market} nav={nav} handoff={handoff} />}
           {tab === "raiox" && <SellerXray lang={lang} seller={seller} sid={sellerSid()} market={market} handoff={handoff} />}
+          {tab === "criativo" && <SellerCriativo lang={lang} sid={sellerSid()} />}
           {tab === "prospec" && <SellerProspeccao lang={lang} sid={sellerSid()} seller={seller} market={market} />}
           {tab === "vertical" && <SellerVertical lang={lang} />}
           {tab === "processo" && <SellerProcesso lang={lang} />}

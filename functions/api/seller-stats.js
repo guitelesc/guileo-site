@@ -64,20 +64,8 @@ async function sellerAuthFull(env, email, code) {
   return (await sellerAuthDB(env, email, code)) || sellerAuth(env, email, code);
 }
 
-// REAL per-seller commission rate — the SAME source /api/seller-dashboard uses (seller_dashboard RPC,
-// field commission_pct). Falls back to 10 (the roster default), NEVER the old hardcoded 20, so a rep
-// sees ONE honest number in Metas and Financeiro. INGEST-gated; any error just yields the 10 default.
-async function commissionPct(env, sellerEmail, ref) {
-  const ING = env && env.INGEST_SECRET;
-  if (!ING || !sellerEmail) return 10;
-  try {
-    const r = await rpc("seller_dashboard", { p_secret: ING, p_seller_email: sellerEmail, p_ref: (ref || "").toString().slice(0, 40) });
-    if (!r.ok) return 10;
-    const d = await r.json().catch(() => null);
-    const pct = d && Number(d.commission_pct);
-    return pct > 0 ? pct : 10;
-  } catch { return 10; }
-}
+// (commissionPct saiu daqui em 2026-08-25: o pct agora vem DO MESMO ledger que devolve o
+//  valor da comissão — duas fontes para a mesma taxa era como as duas comissões nasceram.)
 
 // Count the website leads attributed to a seller's ?ref= (lives in gui_actions.details as
 // "👤ref:<ref>"). Gated by the same SCHED_SECRET RPC every server function uses. Returns null
@@ -96,35 +84,38 @@ async function leadCount(env, ref) {
   } catch { return null; }
 }
 
-// TRUTHFUL conversion signal — seller_conversions (db/seller_conversions.sql) joins the seller's
-// attributed leads (gui_actions '👤ref:<ref>', contact email) to client_events type 'payment'.
-// INGEST-gated. Returns { converted, paid } or null until the SQL is pasted / on any error —
-// null makes the commission math fall back to a clearly-labeled ESTIMATE, never fake earnings.
-async function conversions(env, ref) {
-  const secret = env && env.INGEST_SECRET;
-  if (!secret || !ref) return null;
+// ── UM SÓ NÚMERO DE COMISSÃO (corrigido 2026-08-25) ─────────────────────────────────────────
+// Metas lia `seller_conversions` (atribuição por 2 caminhos) enquanto Financeiro lia
+// `seller_commission_ledger` (3 caminhos, com corte por transferência de carteira e refund-net).
+// Resultado: DUAS comissões diferentes para o MESMO vendedor, nas duas abas do mesmo hub — e a
+// primeira coisa que um vendedor faz ao ver dois números do próprio dinheiro é parar de acreditar
+// nos dois. Agora Metas lê O MESMO LEDGER que o Financeiro. Contagem de LEADS continua vindo do
+// `seller_lead_count` (é outra métrica: quem chegou, não quem pagou).
+//
+// ⚠️ SEM ESTIMATIVA DISFARÇADA DE FATO. Existia um `kind:"potential"` = leads × $897 × pct. Isso
+// é dinheiro INVENTADO: nenhum desses leads pagou nada. Falhou a leitura → devolve o MOTIVO e a
+// tela mostra estado de erro. "Não consegui ler" é informação; um número bonito e falso não é.
+async function ledgerCommission(env, sellerEmail, ref) {
+  const ING = env && env.INGEST_SECRET;
+  if (!ING) return { erro: "INGEST_SECRET ausente no ambiente" };
+  if (!sellerEmail) return { erro: "vendedor sem e-mail" };
   try {
-    const r = await fetch(`${SB}/rest/v1/rpc/seller_conversions`, {
-      method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ p_secret: secret, p_ref: ref }),
-    });
-    if (!r.ok) return null;
-    const d = await r.json();
-    return d && typeof d.converted === "number" ? { converted: d.converted, paid: Number(d.paid) || 0 } : null;
-  } catch { return null; }
-}
-
-// Commission math. kind:"earned" = pct × REAL registered payments from converted leads.
-// kind:"potential" = an estimate (leads × mid Track-A plan × pct) — the UI must label it as
-// such; NEVER present estimates as earned money. Returns null when there's nothing to compute.
-// `pct` is the seller's REAL roster rate (via commissionPct → seller_dashboard RPC), NOT a hardcoded
-// 20 — so Metas and Financeiro show ONE honest number.
-const PLAN_MID = 897; // Track-A plans are $149/$897/$1,997 — the estimate uses the middle one
-function commission(attributedLeads, conv, pct) {
-  const p = Math.min(100, Math.max(0, Number(pct) || 10));
-  if (conv) return { kind: "earned", pct: p, converted: conv.converted, paid: conv.paid, earned: Math.round(conv.paid * p) / 100 };
-  if (typeof attributedLeads !== "number") return null;
-  return { kind: "potential", pct: p, leads: attributedLeads, planPrice: PLAN_MID, potential: Math.round(attributedLeads * PLAN_MID * p) / 100 };
+    const r = await rpc("seller_commission_ledger", { p_secret: ING, p_seller_email: sellerEmail, p_ref: (ref || "").toString().slice(0, 40) });
+    if (!r.ok) return { erro: `banco respondeu ${r.status} (cole db/seller_finance.sql)` };
+    const d = await r.json().catch(() => null);
+    // objeto ausente é ERRO, não "zero" — `|| {}` aqui viraria "$0 ganhos" para quem ganhou.
+    if (!d || typeof d !== "object" || !d.totals || typeof d.totals !== "object") return { erro: "resposta do ledger vazia/sem totais" };
+    return {
+      comissao: {
+        kind: "earned",
+        pct: Number(d.pct) || 10,
+        // `clients` do ledger = clientes que REALMENTE pagaram (o ledger só lista paid > 0).
+        converted: Number(d.totals.clients) || 0,
+        paid: Number(d.totals.paid) || 0,
+        earned: Number(d.totals.commission) || 0,
+      },
+    };
+  } catch (e) { return { erro: String(e).slice(0, 140) }; }
 }
 
 export async function onRequestPost(context) {
@@ -151,8 +142,9 @@ export async function onRequestPost(context) {
         const act = await kvGetJson(kv, actKey(email), {});
         const goals = await kvGetJson(kv, goalKey(email), {});
         const attributedLeads = await leadCount(env, act.ref);
-        const commissions = commission(attributedLeads, await conversions(env, act.ref), await commissionPct(env, email, act.ref));
-        sellers.push({ email, name: act.name || email.split("@")[0], ref: act.ref || "", act, goals, attributedLeads, commissions });
+        const lc = await ledgerCommission(env, email, act.ref);
+        sellers.push({ email, name: act.name || email.split("@")[0], ref: act.ref || "", act, goals, attributedLeads,
+          commissions: lc.comissao || null, commissionsErro: lc.erro || null });
       }
       return json({ ok: true, ready: true, count: sellers.length, sellers });
     }
@@ -211,8 +203,10 @@ export async function onRequestPost(context) {
     const goals = await kvGetJson(kv, goalKey(email), null);
     const ref = (seller.ref || b.ref || act.ref || "").toString().slice(0, 40);
     const attributedLeads = await leadCount(env, ref);
-    const commissions = commission(attributedLeads, await conversions(env, ref), await commissionPct(env, email, ref));
-    return json({ ok: true, ready: true, act, goals, attributedLeads, commissions });
+    // MESMO ledger do /api/seller-finance — um vendedor, um número de comissão.
+    const lc = await ledgerCommission(env, email, ref);
+    return json({ ok: true, ready: true, act, goals, attributedLeads,
+      commissions: lc.comissao || null, commissionsErro: lc.erro || null });
   } catch (e) {
     return json({ error: String(e).slice(0, 160) }, 400);
   }

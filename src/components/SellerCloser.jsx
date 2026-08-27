@@ -53,8 +53,12 @@ const TXT = {
     brCloseBtn: "💬 Mandar fechamento no WhatsApp →", brNeedWa: "Escreva o WhatsApp do cliente pra abrir a conversa.",
     brScriptTitle: "Script de fechamento (relacional · WhatsApp)",
     brScript: "“Adorei conversar com você! Vou te mandar tudo certinho no WhatsApp — o valor, como funciona o PIX e o link de pagamento. Aí você fecha com calma e a sua Gui já começa a trabalhar. Pode ser?”",
-    brWaMsg: (plan, price) => `Oi! Foi ótimo falar com você 🙌\n\nComo combinamos, o plano ${plan} sai por ${price} — pode pagar via PIX / Mercado Pago.\nJá te mando o link de pagamento pra fechar. Qualquer dúvida é só chamar aqui!`,
+    brWaMsg: (plan, price, link) => `Oi! Foi ótimo falar com você 🙌\n\nComo combinamos, o plano ${plan} sai por ${price} — pode pagar via PIX / Mercado Pago.\n${link ? `Aqui está o link de pagamento: ${link}` : "Já te mando o link de pagamento pra fechar."}\nQualquer dúvida é só chamar aqui!`,
     brMpNote: "Nota: o link de pagamento do plano em R$ (Mercado Pago/PIX) é gerado com o time — mande a mensagem e o time libera o link na hora (até o pay-link BR de plano ficar self-serve).",
+    brGenBtn: "💳 Gerar link PIX/cartão (R$)", brGenLoading: "Gerando…",
+    brNeedEmail: "Escreva o e-mail do cliente pra gerar o link em R$.",
+    brLinkTitle: "Link de pagamento (R$)", brCopyLink: "📋 Copiar link", brLinkCopied: "Copiado ✓",
+    brWhy: "Motivo",
     openWa: "Abrir WhatsApp",
     toCadastro: "Cadastrar cliente agora →",
   },
@@ -84,8 +88,12 @@ const TXT = {
     brCloseBtn: "💬 Send close on WhatsApp →", brNeedWa: "Type the client's WhatsApp to open the chat.",
     brScriptTitle: "Closing script (relational · WhatsApp)",
     brScript: "“Loved talking with you! I'll send everything on WhatsApp — the price, how PIX works, and the payment link. You close at your pace and your Gui starts working. Sound good?”",
-    brWaMsg: (plan, price) => `Hi! It was great talking to you 🙌\n\nAs we discussed, the ${plan} plan is ${price} — you can pay via PIX / Mercado Pago.\nI'll send you the payment link to close. Any questions, just reach out here!`,
+    brWaMsg: (plan, price, link) => `Hi! It was great talking to you 🙌\n\nAs we discussed, the ${plan} plan is ${price} — you can pay via PIX / Mercado Pago.\n${link ? `Here is the payment link: ${link}` : "I'll send you the payment link to close."}\nAny questions, just reach out here!`,
     brMpNote: "Note: the BRL plan payment link (Mercado Pago/PIX) is generated with the team — send the message and the team releases the link right away (until the BR plan pay-link is self-serve).",
+    brGenBtn: "💳 Generate PIX/card link (R$)", brGenLoading: "Generating…",
+    brNeedEmail: "Type the client's email to generate the BRL link.",
+    brLinkTitle: "Payment link (R$)", brCopyLink: "📋 Copy link", brLinkCopied: "Copied ✓",
+    brWhy: "Reason",
     openWa: "Open WhatsApp",
     toCadastro: "Register client now →",
   },
@@ -115,8 +123,12 @@ const TXT = {
     brCloseBtn: "💬 Enviar cierre por WhatsApp →", brNeedWa: "Escribe el WhatsApp del cliente para abrir el chat.",
     brScriptTitle: "Script de cierre (relacional · WhatsApp)",
     brScript: "“¡Me encantó hablar contigo! Te mando todo por WhatsApp — el precio, cómo funciona PIX y el link de pago. Cierras con calma y tu Gui empieza a trabajar. ¿Te parece?”",
-    brWaMsg: (plan, price) => `¡Hola! Fue genial hablar contigo 🙌\n\nComo hablamos, el plan ${plan} sale por ${price} — puedes pagar vía PIX / Mercado Pago.\nYa te mando el link de pago para cerrar. ¡Cualquier duda me avisas aquí!`,
+    brWaMsg: (plan, price, link) => `¡Hola! Fue genial hablar contigo 🙌\n\nComo hablamos, el plan ${plan} sale por ${price} — puedes pagar vía PIX / Mercado Pago.\n${link ? `Aquí está el link de pago: ${link}` : "Ya te mando el link de pago para cerrar."}\n¡Cualquier duda me avisas aquí!`,
     brMpNote: "Nota: el link de pago del plan en R$ (Mercado Pago/PIX) se genera con el equipo — manda el mensaje y el equipo libera el link al instante (hasta que el pay-link BR sea self-serve).",
+    brGenBtn: "💳 Generar link PIX/tarjeta (R$)", brGenLoading: "Generando…",
+    brNeedEmail: "Escribe el email del cliente para generar el link en R$.",
+    brLinkTitle: "Link de pago (R$)", brCopyLink: "📋 Copiar link", brLinkCopied: "Copiado ✓",
+    brWhy: "Motivo",
     openWa: "Abrir WhatsApp",
     toCadastro: "Registrar cliente ahora →",
   },
@@ -193,8 +205,43 @@ export default function SellerCloser({ lang = "pt", seller, market: marketProp, 
     try { navigator.clipboard?.writeText(txt); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch { /* ignore */ }
   };
 
+  // ── PAY-LINK BR SELF-SERVE ────────────────────────────────────────────────────────────────
+  // O vendedor gera o link em REAL (PIX/cartão) na hora, sem depender do time. O valor NUNCA sai
+  // daqui: quem decide o preço é `guileoPlans.js`, lido no servidor. Três respostas possíveis e
+  // TODAS aparecem na tela — link, "falta credencial" (503) e "falta preço" (configurado:false).
+  // Nunca fingimos que gerou: sem URL real, o vendedor vê o motivo e o caminho antigo (falar com
+  // o time) continua ali como saída.
+  const [brPay, setBrPay] = useState(null);     // { url } quando deu certo
+  const [brPayErr, setBrPayErr] = useState(""); // motivo REAL quando não deu
+  const [brPayLoading, setBrPayLoading] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const gerarLinkBR = async () => {
+    setBrPayLoading(true); setBrPayErr(""); setBrPay(null);
+    try {
+      const r = await fetch("/api/pay-link-br", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sid: seller?.sid || "", seller_email: seller?.email || "", seller_code: seller?.code || "",
+          tenant: clientEmail.trim(), plan: growth.key,
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (d?.ok && d.url) setBrPay({ url: d.url });
+      // inerte-que-acende: 503 {ready:false} = falta credencial · {configurado:false} = falta preço.
+      else setBrPayErr(d?.motivo || d?.note || d?.error || `HTTP ${r.status}`);
+    } catch (e) { setBrPayErr(String(e).slice(0, 140)); }
+    setBrPayLoading(false);
+  };
+
+  const copyLink = () => {
+    if (!brPay?.url) return;
+    try { navigator.clipboard?.writeText(brPay.url); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 1600); } catch { /* ignore */ }
+  };
+
   const usUrl = payLink(clientEmail.trim(), seller?.ref || "");
-  const brUrl = waLink(clientWa, t.brWaMsg(growth.name, planPrice));
+  // O link gerado ENTRA na mensagem de WhatsApp — o fechamento sai completo numa tacada só.
+  const brUrl = waLink(clientWa, t.brWaMsg(growth.name, planPrice, brPay?.url || ""));
 
   const inp = "w-full rounded-xl border border-white/15 bg-white/[0.06] px-4 py-2.5 text-[14px] text-g-word placeholder:text-g-muted/60 focus:outline-none focus:border-g-green/50";
   const lbl = "mb-1.5 text-[11px] font-bold uppercase tracking-wide text-g-muted";
@@ -338,15 +385,44 @@ export default function SellerCloser({ lang = "pt", seller, market: marketProp, 
         ) : (
           <div className="mt-5 space-y-3">
             <div>
+              <div className={lbl}>{t.clientEmail}</div>
+              <input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} placeholder={t.clientEmailPh} className={inp + " max-w-md"} />
+            </div>
+            <div>
               <div className={lbl}>{t.clientWa}</div>
               <input value={clientWa} onChange={(e) => setClientWa(e.target.value)} placeholder={t.clientWaPh} className={inp + " max-w-md"} />
             </div>
+
+            {/* GERAR O LINK EM R$ — self-serve. Sem e-mail do cliente não há tenant pra amarrar. */}
+            {clientEmail.trim() ? (
+              <button onClick={gerarLinkBR} disabled={brPayLoading} className="btn-ghost text-[13px] disabled:opacity-60">
+                {brPayLoading ? t.brGenLoading : t.brGenBtn}
+              </button>
+            ) : (
+              <div className="text-[12.5px] text-g-gold">{t.brNeedEmail}</div>
+            )}
+
+            {brPay?.url && (
+              <div className="rounded-2xl border border-g-green/30 bg-g-green/[0.06] p-4">
+                <div className="text-[10.5px] font-black uppercase tracking-wider text-g-green">{t.brLinkTitle}</div>
+                <a href={brPay.url} target="_blank" rel="noopener" className="mt-2 block break-all text-[12.5px] font-semibold text-g-word underline decoration-g-green/50">{brPay.url}</a>
+                <button onClick={copyLink} className="btn-ghost mt-3 text-[12px]">{linkCopied ? t.brLinkCopied : t.brCopyLink}</button>
+              </div>
+            )}
+
             {clientWa.replace(/\D/g, "") ? (
               <a href={brUrl} target="_blank" rel="noopener" className="btn-bright text-[14px]">{t.brCloseBtn}</a>
             ) : (
               <div className="text-[12.5px] text-g-gold">{t.brNeedWa}</div>
             )}
-            <p className="text-[11.5px] leading-relaxed text-g-muted">🛡️ {t.brMpNote}</p>
+
+            {/* FALLBACK HONESTO: não gerou → o caminho antigo (falar com o time) + o motivo REAL. */}
+            {(!brPay?.url) && (
+              <p className="text-[11.5px] leading-relaxed text-g-muted">
+                🛡️ {t.brMpNote}
+                {brPayErr ? <span className="block mt-1 text-g-gold">{t.brWhy}: {brPayErr}</span> : null}
+              </p>
+            )}
             <div className="rounded-2xl border border-g-green/25 bg-g-green/[0.05] p-4">
               <div className="text-[10.5px] font-black uppercase tracking-wider text-g-green">{t.brScriptTitle}</div>
               <p className="mt-2 text-[13.5px] leading-relaxed text-g-word">{t.brScript}</p>
