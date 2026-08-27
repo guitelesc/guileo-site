@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>What Google thinks Capizzi is — Guileo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,600;6..96,700&family=Inter+Tight:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* A paleta vem do MUNDO deles: forno a lenha em Hell's Kitchen — carvão da boca do forno,
+     brasa, e o creme da massa. Nada de cimento Guileo: a página é sobre a pizzaria. */
+  :root{
+    --carvao:#14100E; --carvao2:#1E1815; --creme:#F6F1E7; --creme2:#CFC5B4;
+    --brasa:#D9541F; --brasa-c:#F2762F; --linha:#2E2622;
+    --verde:#6FBF8B; --tijolo:#B8462B;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--carvao);color:var(--creme);
+    font-family:'Inter Tight',system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.65;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:47rem;margin:0 auto;padding:2.5rem 1.15rem 5rem}
+  .disp{font-family:'Bodoni Moda',Didot,Georgia,serif}
+  .mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:.7rem;font-weight:500;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--brasa-c)}
+  h1{font-family:'Bodoni Moda',Didot,Georgia,serif;font-weight:700;
+    font-size:clamp(2rem,5.6vw,3.1rem);line-height:1.08;margin:.5rem 0 0;text-wrap:balance}
+  .lede{color:var(--creme2);font-size:1.05rem;margin:.9rem 0 0;max-width:34rem}
+  .card{background:var(--carvao2);border:1px solid var(--linha);border-radius:16px;
+    padding:1.2rem 1.3rem;margin-top:1rem}
+  .card h2{font-size:1.1rem;margin:0;font-weight:600;line-height:1.35;color:#fff}
+  .card p{margin:.5rem 0 0;color:var(--creme2);font-size:.95rem}
+  .tag{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:.65rem;letter-spacing:.16em;
+    text-transform:uppercase;padding:.24rem .6rem;border-radius:999px;margin-bottom:.6rem}
+  .tag--f{background:rgba(184,70,43,.18);color:#F08A6B;border:1px solid rgba(184,70,43,.5)}
+  .tag--k{background:rgba(111,191,139,.14);color:var(--verde);border:1px solid rgba(111,191,139,.4)}
+  .rule{height:1px;background:var(--linha);margin:2.6rem 0 0;border:0}
+  pre{background:#0C0908;color:#EDE5D8;border:1px solid var(--linha);border-radius:14px;
+    padding:1rem 1.1rem;overflow-x:auto;font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;line-height:1.62;margin:1rem 0 0}
+  .k{color:#E3A857}.s{color:#8FCBA3}
+  code{font-family:'IBM Plex Mono',monospace;font-size:.88em;background:#0C0908;
+    padding:.12rem .35rem;border-radius:6px;color:#EDE5D8}
+  button{font:inherit;font-weight:600;font-size:.94rem;border:0;cursor:pointer;border-radius:999px;
+    padding:.72rem 1.4rem;color:#1A0E07;margin-top:.9rem;
+    background:linear-gradient(180deg,var(--brasa-c),var(--brasa))}
+  button:hover{filter:brightness(1.08)}
+  .ok{display:inline-block;margin-left:.7rem;color:var(--verde);font-size:.88rem;opacity:0;transition:opacity .2s}
+  .ok[data-on="1"]{opacity:1}
+  ol{padding-left:1.15rem;margin:.7rem 0 0;color:var(--creme2);font-size:.95rem}
+  ol li{margin:.45rem 0}
+  .par{display:grid;gap:.6rem;margin-top:.8rem}
+  .par div{background:#0C0908;border:1px solid var(--linha);border-radius:10px;padding:.6rem .8rem;
+    font-family:'IBM Plex Mono',monospace;font-size:.82rem;color:#EDE5D8;overflow-x:auto;white-space:nowrap}
+  .foot{margin-top:2.4rem;padding-top:1.2rem;border-top:1px solid var(--linha);
+    color:var(--creme2);font-size:.86rem}
+  a{color:var(--brasa-c)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Guileo · for Capizzi Pizza</div>
+  <h1>Google thinks your Twitter<br>belongs to Shopify.</h1>
+  <p class="lede">
+    I looked at capizzinyc.com today from the outside, the way a customer would. The site is
+    handsome and the menu reads beautifully. But the block that tells Google who you are was never
+    filled in — it still carries the theme's demo data. Below is what I measured, and the
+    replacement, written for your restaurant, free to paste.
+  </p>
+
+  <hr class="rule">
+
+  <div class="card">
+    <span class="tag tag--f">Measured today</span>
+    <h2>Your structured data names someone else's social accounts as yours.</h2>
+    <p>This is the <code>sameAs</code> block live on your homepage right now — it is how Google
+      links a business to its official profiles:</p>
+    <div class="par">
+      <div>"//www.facebook.com/ugmedia"      ← not yours</div>
+      <div>"//twitter.com/shopify"           ← Shopify's own account</div>
+      <div>"…instagram.com/capizzinyc/?hl=enenter url"  ← "enter url" still pasted in</div>
+    </div>
+    <p>
+      The Instagram link does still open — Instagram ignores the malformed part — so nothing is
+      visibly broken to a customer. But to Google, Capizzi's official Facebook is a web agency's
+      page and Capizzi's official Twitter is Shopify. That is the theme's placeholder content,
+      never replaced.
+    </p>
+  </div>
+
+  <div class="card">
+    <span class="tag tag--f">Measured today</span>
+    <h2>Google is told you are an “Organization”, not a restaurant.</h2>
+    <p>
+      Your markup says <code>"@type": "Organization"</code>. A pizzeria is a
+      <code>Restaurant</code> — and the difference is not cosmetic. Your full menu is published,
+      your hours are published, your address is on every page, and none of it is marked up. So
+      none of it can appear in the results that show hours, cuisine, price range or an order
+      button. Your <code>"url"</code> is also just <code>"/"</code>, which points nowhere from
+      outside the page.
+    </p>
+  </div>
+
+  <div class="card">
+    <span class="tag tag--f">Measured today</span>
+    <h2>Two different phone numbers, and neither one can be tapped.</h2>
+    <p>
+      Your header shows <span class="mono">(646) 476-5120</span>. Your footer shows
+      <span class="mono">(212) 695-6900</span>. Both are plain text — there is not a single
+      tap-to-call link anywhere on the site, and no email link either.
+    </p>
+    <p style="color:#F08A6B">
+      More than half of the people reading your menu are holding a phone. Right now, calling you
+      means memorising a number and choosing between two.
+    </p>
+  </div>
+
+  <hr class="rule">
+
+  <div class="card" style="border-color:rgba(111,191,139,.45)">
+    <span class="tag tag--k">Yours to keep</span>
+    <h2>The replacement markup, written for Capizzi.</h2>
+    <p>
+      Built from what is published on your own site: the 547 9th Ave address, your real hours
+      including the 3:30–5pm break, your menu page, your actual Instagram, and your DoorDash
+      ordering link as a proper order action.
+    </p>
+    <p style="color:#F08A6B">
+      I left <code>telephone</code> empty on purpose — your site shows two different numbers and I
+      am not going to guess which one rings the restaurant and publish it in your name. Put the
+      right one in and it is done.
+    </p>
+    <pre id="ld"></pre>
+    <button id="copy" type="button">Copy the markup</button><span class="ok" id="ok">Copied</span>
+    <ol>
+      <li>Shopify admin → Online Store → Themes → … → Edit code → <code>layout/theme.liquid</code>.</li>
+      <li>Paste the whole block, including the <code>&lt;script&gt;</code> tags, just before <code>&lt;/head&gt;</code>. Delete the old <code>Organization</code> block while you are in there — two competing blocks is worse than one.</li>
+      <li>Check it at <a href="https://search.google.com/test/rich-results" target="_blank" rel="noopener">search.google.com/test/rich-results</a> — it should report Restaurant.</li>
+    </ol>
+  </div>
+
+  <p class="foot">
+    Everything on this page was measured on capizzinyc.com today, not assumed. If I read something
+    wrong, tell me and I will correct it — I would rather be wrong than hand you bad information.
+    <br><br>
+    — Luis, <a href="https://guileoai.com">Guileo</a>. Reply to the email and it comes straight to me.
+  </p>
+</div>
+<script src="capizzi.js" defer></script>
+</body>
+</html>

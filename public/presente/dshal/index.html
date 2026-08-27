@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>The markup D'Shal Salon is missing — Guileo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter+Tight:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* A paleta é a DELES: o greige da cortina da hero, o creme do logo, o carvão do texto.
+     Nada de cimento Guileo aqui — a página é sobre o salão, não sobre nós. */
+  :root{
+    --areia:#EFEAE3; --papel:#FFFFFF; --carvao:#1E1B18; --carvao2:#5B554D;
+    --linha:#DED7CC; --bronze:#A8794A; --verde:#3E7A5E; --vermelho:#A63A2E;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--areia);color:var(--carvao);
+    font-family:'Inter Tight',system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.65;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:47rem;margin:0 auto;padding:2.5rem 1.15rem 5rem}
+  .disp{font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;letter-spacing:-.005em}
+  .mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:.7rem;font-weight:500;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--bronze)}
+  h1{font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;
+    font-size:clamp(2.1rem,6vw,3.2rem);line-height:1.06;margin:.5rem 0 0;text-wrap:balance}
+  .lede{color:var(--carvao2);font-size:1.06rem;margin:.9rem 0 0;max-width:34rem}
+  .card{background:var(--papel);border:1px solid var(--linha);border-radius:18px;padding:1.25rem 1.35rem;margin-top:1rem}
+  .card h2{font-size:1.12rem;margin:0;font-weight:600;line-height:1.35}
+  .card p{margin:.5rem 0 0;color:var(--carvao2);font-size:.95rem}
+  .tag{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:.66rem;letter-spacing:.16em;
+    text-transform:uppercase;padding:.25rem .6rem;border-radius:999px;margin-bottom:.6rem}
+  .tag--f{background:rgba(166,58,46,.1);color:var(--vermelho);border:1px solid rgba(166,58,46,.25)}
+  .tag--k{background:rgba(62,122,94,.1);color:var(--verde);border:1px solid rgba(62,122,94,.25)}
+  .rule{height:1px;background:var(--linha);margin:2.6rem 0 0;border:0}
+  pre{background:#1E1B18;color:#EDE7DE;border-radius:16px;padding:1.05rem 1.15rem;overflow-x:auto;
+    font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.62;margin:1rem 0 0}
+  .k{color:#C9A227}.s{color:#9CC5A1}
+  button{font:inherit;font-weight:600;font-size:.94rem;border:0;cursor:pointer;border-radius:999px;
+    padding:.72rem 1.4rem;background:var(--carvao);color:var(--areia);margin-top:.9rem}
+  button:hover{background:#000}
+  .ok{display:inline-block;margin-left:.7rem;color:var(--verde);font-size:.88rem;opacity:0;transition:opacity .2s}
+  .ok[data-on="1"]{opacity:1}
+  ol{padding-left:1.15rem;margin:.7rem 0 0;color:var(--carvao2);font-size:.95rem}
+  ol li{margin:.45rem 0}
+  .foot{margin-top:2.4rem;padding-top:1.2rem;border-top:1px solid var(--linha);
+    color:var(--carvao2);font-size:.86rem}
+  a{color:var(--bronze)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Guileo · for D'Shal Salon</div>
+  <h1>Your prices are on the page.<br>Google can't read them.</h1>
+  <p class="lede">
+    I looked at dshalnyc.com today from the outside, the way a customer would. The salon is in
+    good shape — the booking works, the menu is published, the site is fast on a phone. What is
+    missing is the layer that machines read. Below is what I measured, and the markup itself,
+    written for your salon, free to paste.
+  </p>
+
+  <hr class="rule">
+
+  <div class="card">
+    <span class="tag tag--f">Measured today</span>
+    <h2>There is no structured data anywhere on the site.</h2>
+    <p>
+      Zero <span class="mono">application/ld+json</span> blocks on the homepage and zero on the
+      service menu. Google has no machine-readable statement that D'Shal is a hair salon in
+      Gramercy, what it charges, when it opens, or where to book. Every competitor with that
+      markup is eligible for results yours cannot appear in — and the AI assistants people now
+      ask for salon recommendations read exactly this layer.
+    </p>
+  </div>
+
+  <div class="card">
+    <span class="tag tag--f">Measured today</span>
+    <h2>Share your link and nothing shows up.</h2>
+    <p>
+      No <span class="mono">meta description</span> and no Open Graph tags on any page. When
+      someone drops dshalnyc.com in a DM, a story or a group chat, it renders as naked text — no
+      photo, no name, no line about the salon. For a business whose customers arrive from
+      Instagram, that is the preview doing none of the work.
+    </p>
+  </div>
+
+  <div class="card">
+    <span class="tag tag--f">Measured today</span>
+    <h2>The page title is 109 characters and repeats itself.</h2>
+    <p class="mono" style="font-size:.82rem;color:var(--carvao);background:var(--areia);padding:.6rem .75rem;border-radius:10px;border:1px solid var(--linha)">
+      D'Shal Salon NYC – Blowout – Color – Keratin Treatments – Hair Blowouts – Colors – Keratin Treatments – 10010
+    </p>
+    <p>
+      “Blowout”, “Color” and “Keratin” each appear twice. Google shows roughly the first 60
+      characters, so what a searcher actually sees is the repetition. Something like
+      <em>D'Shal Salon — Hair Color, Keratin &amp; Blowouts in Gramercy, NYC</em> says more in
+      less space.
+    </p>
+  </div>
+
+  <hr class="rule">
+
+  <div class="card" style="border-color:rgba(62,122,94,.4)">
+    <span class="tag tag--k">Yours to keep</span>
+    <h2>The markup, written for your salon.</h2>
+    <p>
+      Built from what is published on your own site: the name, the Gramercy address, the phone,
+      the hours from your contact page, your Vagaro booking link, your Instagram, and the
+      services you list.
+    </p>
+    <p style="color:var(--vermelho)">
+      I deliberately left the individual prices out. Your menu uses ranges and conditions
+      (“for coarse hair / extensions”, “price upon consultation”) and I would rather hand you a
+      range you can confirm than guess a number and put it in front of Google in your name.
+    </p>
+    <pre id="ld"></pre>
+    <button id="copy" type="button">Copy the markup</button><span class="ok" id="ok">Copied</span>
+    <ol>
+      <li>WordPress admin → Appearance → Theme File Editor → <span class="mono">header.php</span>, or any “insert header scripts” plugin you already have.</li>
+      <li>Paste the whole block, including the <span class="mono">&lt;script&gt;</span> tags, just before <span class="mono">&lt;/head&gt;</span>.</li>
+      <li>Check it at <a href="https://search.google.com/test/rich-results" target="_blank" rel="noopener">search.google.com/test/rich-results</a> — paste your URL and it should report HairSalon.</li>
+    </ol>
+  </div>
+
+  <p class="foot">
+    Everything on this page was measured on dshalnyc.com today, not assumed. If I read something
+    wrong, tell me and I will correct it — I would rather be wrong than hand you bad information.
+    <br><br>
+    — Luis, <a href="https://guileoai.com">Guileo</a>. Reply to the email and it comes straight to me.
+  </p>
+</div>
+
+<script src="dshal.js" defer></script>
+</body>
+</html>
