@@ -99,7 +99,13 @@ let res = await dispara(payloadComentario("Quanto é o preço?"));
 ok(res.status === 200, "a Meta recebe 200 (senão ela reentrega e depois para de entregar)");
 const dm = dmEnviado();
 ok(!!dm, "saiu um private reply pro Graph");
-ok(dm && dm.url.includes(`/${IG_CONTA}/messages`), "endereçado à CONTA do cliente (entry.id), não a /me");
+// ⚠️ O NÓ CERTO É O page_id, e isso foi MEDIDO, não escolhido (2026-08-27, 10:54). O 1º DM real
+// recusou em /{ig_id}/messages com "(#3) Application does not have the capability to make this API
+// call" — que é o que a Meta devolve quando se chama o nó do OUTRO caminho de conexão. No nosso
+// (Instagram Messaging via Facebook Login, token de Página) o nó é a PÁGINA. O ig_id continua no
+// código como reserva, para o dia de um cliente conectado via Instagram Login.
+ok(dm && dm.url.includes("/PAGINA/messages"), "private reply endereçado à PÁGINA (o nó do caminho Facebook-Login)");
+ok(dm && !dm.url.includes("/me/messages"), "e nunca a /me, que é o caminho da DM normal");
 ok(dm && dm.body.recipient.comment_id === COMMENT_ID, "o destinatário é o COMENTÁRIO (recipient.comment_id)");
 ok(dm && dm.body.message.text.startsWith("Oi @ana.silva!"), "{nome} virou o @ de quem comentou");
 ok(dm && dm.body.message.text.includes("https://www.guileoai.com/lp/salao"), "o link entrou no DM");
