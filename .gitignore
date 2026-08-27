@@ -15,6 +15,18 @@ dist-ssr
 # wrangler local state/cache (KV simulado, tmp de build) — nunca versionar
 .wrangler/
 
+# 🔑 SEGREDO NUNCA VAI PRO GIT (2026-08-27). Os segredos da Guileo vivem nas env vars do
+# Cloudflare, e por isso nunca existiu um .env aqui — o .gitignore tambem nao tinha regra
+# nenhuma pra eles. Enquanto o repo era 100% local o descuido morria no disco. Desde que
+# existe um `origin` (github.com/guitelesc/guileo-site, privado), um `git add . && git push`
+# publicaria o arquivo. Regra fechada ANTES do acidente, que e a unica hora em que ela
+# funciona: chave vazada continua vazada mesmo depois do commit que a remove.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
