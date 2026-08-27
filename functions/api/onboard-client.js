@@ -605,7 +605,17 @@ export async function onRequestPost(context) {
     //      it exists) + first steps, so the handoff scales without Luis copy-pasting codes.
     //      Best-effort: a mail hiccup never blocks activation — but it alerts, never silent.
     try {
-      if (env.RESEND_API_KEY && result.connection_code) {
+      /* 🚨 O E-MAIL DE BOAS-VINDAS NÃO PODE SAIR PARA QUEM NÃO COMPROU (achado 27/08).
+         O COMBO MOTOR cadastra PROSPECTS para nascer o agente da vitrine — e este bloco mandava
+         "sua IA nasceu, aqui está sua chave de ativação" direto para o e-mail do negócio, tratando
+         como cliente quem nunca falou com a gente e entregando uma chave. Aconteceu de verdade com
+         o Hair Art Designs. A lei da casa é: e-mail para prospect só com o "envia" do Luis, por
+         destinatário. `demo:true` (ou um tenant *.demo@guileoai.com) cria tudo e NÃO escreve
+         para ninguém. O motivo fica no resultado — pular em silêncio esconderia a decisão. */
+      const ehDemo = b.demo === true || b.demo === "true" || /\.demo@guileoai\.com$/i.test(email);
+      if (ehDemo) {
+        result.steps.birth_email = "pulado (demo/prospect — nao se escreve para quem nao comprou)";
+      } else if (env.RESEND_API_KEY && result.connection_code) {
         const { subject, html } = welcomeSelfServeEmail({
           name: (b.owner_name || b.agent_name || "").toString() || email.split("@")[0],
           business: (b.business || "").toString(), lang: (b.lang || "pt").toString(),

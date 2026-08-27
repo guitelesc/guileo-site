@@ -1,7 +1,8 @@
 /* ══════════════════════════════════════════════════════════════════════════════════════════════
    HAIR ART DESIGNS — página de agendamento, no NOSSO domínio.
    PADRAO-VITRINE.md §6: cardápio COMPLETO lido do sistema de booking DELE (Phorest, 32 serviços),
-   foto do profissional na linha, regra da casa NA ESCOLHA, mesmo header/selo/material da vitrine.
+   regra da casa NA ESCOLHA, mesmo header/selo/material da vitrine. A foto do profissional NÃO vai
+   na linha aqui (o Phorest deles não mapeia quem faz o quê) — vai no cartão do pedido, onde é verdade.
    O Phorest fica como saída SECUNDÁRIA no rodapé.
 
    ⚠️ DURAÇÃO não aparece: o Phorest deles não publica. Sem fonte, não se escreve — inventar
@@ -249,17 +250,10 @@ export default function HairArtDesignsBook() {
                 <button key={nome} type="button" data-on={sel === nome ? "1" : "0"}
                   onClick={() => { setSel(nome); cesta.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }}
                   className="ha-linha">
-                  {/* Foto de quem faz: só aparece quando UM artista foi escolhido — senão seria
-                      dizer que aquela pessoa faz aquele serviço sem o sistema deles ter dito. */}
-                  {quemFaz?.foto ? (
-                    <img src={B + "/staff/" + quemFaz.foto + ".jpg"} alt={quemFaz.nome} width="38" height="38" loading="lazy"
-                      className="h-[38px] w-[38px] shrink-0 rounded-full object-cover" style={{ border: "1.5px solid var(--salvia)" }} />
-                  ) : (
-                    <span className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full ha-serif text-[15px] font-semibold"
-                      style={{ background: "rgba(168,200,192,.22)", color: "var(--salvia-f)" }}>
-                      {quemFaz ? quemFaz.nome[0] : "✁"}
-                    </span>
-                  )}
+                  {/* SEM AVATAR NA LINHA — de propósito. O Phorest deles não diz QUEM faz cada
+                      serviço, então uma foto aqui afirmaria o que ninguém disse. E o mesmo ícone
+                      repetido 20 vezes é decoração, não informação: é o que dá cara de AI.
+                      O rosto aparece uma vez só, no cartão do pedido, onde significa algo. */}
                   <span className="min-w-0 flex-1">
                     <span className="block text-[15px] font-medium leading-snug">{nome}</span>
                     {/* A REGRA DA CASA APARECE NA ESCOLHA, não no rodapé */}

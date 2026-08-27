@@ -30,7 +30,7 @@ const SUBSCRIBE_FIELDS = "messages,messaging_postbacks"; // campos válidos p/ M
 // 🚨 `subscribed_fields` SOBRESCREVE a lista inteira, igual ao nível do app. Passar só `comments`
 // aqui APAGARIA `messages` e mataria a DM. Por isso: lê o que já está lá, manda a UNIÃO, e relê
 // para devolver antes/depois. Nunca escreve às cegas.
-async function subscribePage(pageId, pageToken, fields) {
+export async function subscribePage(pageId, pageToken, fields) {
   if (!pageId || !pageToken) return { subscribed: false, reason: "missing page_id/token" };
   if (!/^\d+$/.test(String(pageId))) return { subscribed: false, reason: "page_id inválido (só números)" };
   const lerCampos = async () => {
