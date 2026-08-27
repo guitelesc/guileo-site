@@ -978,6 +978,7 @@ export default function SellerLeads({ lang = "pt", seller, market = "us", nav, h
               key={item.chave} t={t} lang={lang} locale={locale} item={item}
               agora={agora} aberto={aberto === item.chave}
               onAbrir={abrir}
+              post={post}
               aval={item.avaliacaoId ? avals[item.avaliacaoId] : null}
               salvar={salvar}
               recibo={recibos[item.idNatural] || null}
@@ -1038,7 +1039,7 @@ function Falha({ t, titulo, corpo, motivo, onRetry }) {
 // `motion.div layout` — ou seja, N medições de layout síncronas por clique. Com as props do pai
 // agora estáveis (abrir/salvar/avancar/setRecibo), só re-renderizam os dois cards que mudaram:
 // o que fecha e o que abre. `t` e `locale` já eram estáveis (`D[lang]` e uma string).
-const PaginaDoLead = memo(function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, aval, salvar, avancar, nav, recibo, setRecibo }) {
+const PaginaDoLead = memo(function PaginaDoLead({ t, lang, locale, item, agora, aberto, onAbrir, post, aval, salvar, avancar, nav, recibo, setRecibo }) {
   const [note, setNote] = useState(item.note || "");
   const [salvando, setSalvando] = useState(false);
   const [copiado, setCopiado] = useState(false);
@@ -1300,12 +1301,22 @@ const PaginaDoLead = memo(function PaginaDoLead({ t, lang, locale, item, agora, 
                       setEnviandoUp(true); setUpMsg("");
                       // A RESPOSTA MANDA, não o status HTTP: o motor só devolve id quando o
                       // Resend aceitou de verdade. Sem id eu digo que NÃO enviou.
-                      const { d } = await post("/api/seller-leads", {
-                        action: "upgrade", para: item.email,
-                        dados: { business: item.negocio || item.nome, link: upgradeUrl, lang, site: item.site || "" },
-                      });
-                      setEnviandoUp(false);
-                      setUpMsg(d?.ok && d?.id ? t.upOk : (d?.motivo || d?.error || t.upErr));
+                      // ⚠️ O try/catch NÃO é decorativo (2026-08-27). `post` faz `await fetch`, que
+                      // LANÇA quando a rede cai. Sem catch, a exceção escapa de um onClick async,
+                      // `setEnviandoUp(false)` nunca roda e o botão fica preso em "enviando" para
+                      // sempre — o vendedor não consegue nem tentar de novo. Foi exatamente assim
+                      // que este botão se comportou enquanto `post` estava fora de escopo aqui.
+                      try {
+                        const { d } = await post("/api/seller-leads", {
+                          action: "upgrade", para: item.email,
+                          dados: { business: item.negocio || item.nome, link: upgradeUrl, lang, site: item.site || "" },
+                        });
+                        setUpMsg(d?.ok && d?.id ? t.upOk : (d?.motivo || d?.error || t.upErr));
+                      } catch (err) {
+                        setUpMsg(`${t.upErr} · ${String(err).slice(0, 80)}`);
+                      } finally {
+                        setEnviandoUp(false);
+                      }
                     }}
                     className="inline-flex min-h-[48px] items-center rounded-full border border-g-gold/40 bg-g-gold/10 px-4 text-[13px] font-bold text-g-gold hover:bg-g-gold/20 disabled:opacity-50">
                     {enviandoUp ? t.upSending : t.aUpgrade}
