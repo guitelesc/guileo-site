@@ -292,6 +292,37 @@ export async function onRequestPost(context) {
         motivo: gravado === ig_id ? "Instagram mapeado ✓ — a DM já acha o dono" : `gravei mas ao reler veio "${gravado}"` });
     }
 
+    // token_escopos — O QUE ESTE TOKEN REALMENTE PODE (2026-08-27).
+    // Permissão adicionada no app NÃO entra em token já emitido: o escopo é congelado no momento
+    // em que o dono autorizou. É por isso que "a permissão está lá" e mesmo assim o evento não vem
+    // — a Meta decide a ENTREGA pelo que aquela conta CONCEDEU, não pelo que o app declara.
+    // Perguntar ao debug_token transforma essa suposição em fato antes de mandar alguém reconectar.
+    if (action === "token_escopos") {
+      const tkn = await svcJson(env, "meta_token_for_email", { p_secret: ING, p_email: email });
+      if (typeof tkn !== "string" || !tkn) {
+        const httpErro = tkn && typeof tkn === "object" ? tkn.erro_http : null;
+        return json({ ok: false, motivo: httpErro ? `não consegui LER o token (RPC ${httpErro})` : "sem token guardado" }, 409);
+      }
+      if (!env.META_APP_ID || !env.META_APP_SECRET) return json({ ok: false, motivo: "META_APP_ID/SECRET ausentes" }, 400);
+      try {
+        const r = await fetch(`${GRAPH}/debug_token?input_token=${encodeURIComponent(tkn)}&access_token=${encodeURIComponent(`${env.META_APP_ID}|${env.META_APP_SECRET}`)}`);
+        const d = await r.json().catch(() => null);
+        const info = d && d.data;
+        if (!r.ok || !info) return json({ ok: false, motivo: s((d && d.error && d.error.message) || `HTTP ${r.status}`, 200) });
+        const escopos = Array.isArray(info.scopes) ? info.scopes.map(String) : [];
+        const precisa = ["instagram_manage_comments", "instagram_manage_messages", "instagram_basic"];
+        return json({
+          ok: true, valido: info.is_valid === true, tipo: s(info.type, 40),
+          expira: info.expires_at === 0 ? "nunca" : info.expires_at || null,
+          escopos,
+          faltando: precisa.filter((p) => !escopos.includes(p)),
+          veredito: precisa.every((p) => escopos.includes(p))
+            ? "o token já concede tudo que o comentário→DM precisa"
+            : "ESTE token foi autorizado ANTES da permissão nova — reconecte a conta para reemitir com o escopo novo",
+        });
+      } catch (e) { return json({ ok: false, motivo: s(e, 160) }, 500); }
+    }
+
     // descobrir_ig — PERGUNTA À META qual conta do Instagram está ligada à Página já conectada.
     // Só LÊ; quem grava é o `mapear_ig` acima, de propósito: ver antes de escrever é a diferença
     // entre mapear o Instagram certo e carimbar o errado no cliente errado.
