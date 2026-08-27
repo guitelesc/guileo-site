@@ -260,6 +260,70 @@ export async function onRequestPost(context) {
         motivo: gravado === ig_id ? "Instagram mapeado ✓ — a DM já acha o dono" : `gravei mas ao reler veio "${gravado}"` });
     }
 
+    // descobrir_ig — PERGUNTA À META qual conta do Instagram está ligada à Página já conectada.
+    // Só LÊ; quem grava é o `mapear_ig` acima, de propósito: ver antes de escrever é a diferença
+    // entre mapear o Instagram certo e carimbar o errado no cliente errado.
+    //
+    // POR QUE ISSO PRECISOU EXISTIR (2026-08-27): o `ig_id` estava vazio nos três tenants, e o
+    // único caminho documentado para descobri-lo era esperar alguém comentar/mandar DM e ler o
+    // `meta_pagina_nao_mapeada`. Ou seja: para o Instagram funcionar, alguém tinha que primeiro
+    // usar o Instagram e falhar. Isso não é descoberta, é armadilha — o número está a uma
+    // pergunta de distância da própria Meta, com o token que já guardamos.
+    //
+    // ⚠️ O ESCOPO É A PARTE DIFÍCIL. `/{page_id}?fields=…` e `/me?fields=name` já devolveram
+    // "(#100) requires pages_read_engagement" para tokens PERFEITAMENTE VIVOS (ver empresas.js).
+    // Por isso tentamos as duas formas e devolvemos o erro REAL de cada uma — vermelho falso manda
+    // consertar o que não está quebrado.
+    if (action === "descobrir_ig") {
+      // ⚠️ svcJson (SERVICE ROLE), não o `rpc` anônimo daqui de cima. `meta_token_for_email` é
+      // servidor-only de propósito — o anon leva 401 e devolve null. Na 1ª versão eu usei o anon e
+      // a resposta virou "não tem token guardado" para três tenants que TÊM token: a mensagem
+      // acusou o dado em vez de acusar o acesso, que é o diagnóstico falso clássico deste projeto.
+      // Agora os dois casos têm frases diferentes, porque o conserto de cada um é diferente.
+      const tkn = await svcJson(env, "meta_token_for_email", { p_secret: ING, p_email: email });
+      if (typeof tkn !== "string" || !tkn) {
+        const httpErro = tkn && typeof tkn === "object" ? tkn.erro_http : null;
+        return json({
+          ok: false,
+          motivo: httpErro
+            ? `não consegui LER o token guardado (RPC respondeu ${httpErro}) — o token pode existir; o acesso é que falhou`
+            : `${email} não tem token de Página guardado — conecte a Página primeiro`,
+          detalhe: (tkn && typeof tkn === "object" && tkn.detalhe) || null,
+        }, 409);
+      }
+      const cred = await svcJson(env, "meta_creds_get", { p_secret: ING, p_email: email });
+      const pageId = s(cred && typeof cred === "object" ? cred.page_id : "", 60);
+
+      const tentativas = [];
+      const perguntar = async (rotulo, caminho) => {
+        try {
+          const r = await fetch(`${GRAPH}/${caminho}${caminho.includes("?") ? "&" : "?"}access_token=${encodeURIComponent(tkn)}`);
+          const d = await r.json().catch(() => null);
+          if (!r.ok || !d || d.error) {
+            tentativas.push({ via: rotulo, erro: s((d && d.error && d.error.message) || `HTTP ${r.status}`, 200) });
+            return null;
+          }
+          const ig = d.instagram_business_account;
+          if (!ig || !ig.id) { tentativas.push({ via: rotulo, erro: "a Meta respondeu, mas esta Página não tem Instagram ligado" }); return null; }
+          return { id: String(ig.id), usuario: s(ig.username, 60), nome: s(ig.name, 120), via: rotulo };
+        } catch (e) { tentativas.push({ via: rotulo, erro: s(e, 160) }); return null; }
+      };
+
+      // `/me` primeiro: o token de Página É a Página, e essa forma passa com escopo mínimo.
+      let achado = await perguntar("/me", "me?fields=instagram_business_account{id,username,name}");
+      if (!achado && pageId) achado = await perguntar("/{page_id}", `${encodeURIComponent(pageId)}?fields=instagram_business_account{id,username,name}`);
+
+      if (!achado) {
+        return json({ ok: false, motivo: "não consegui descobrir o Instagram desta Página", tentativas, page_id: pageId || null });
+      }
+      return json({
+        ok: true, ig_id: achado.id, usuario: achado.usuario, nome: achado.nome,
+        page_id: pageId || null, descoberto_por: achado.via,
+        ja_mapeado: String((cred && typeof cred === "object" && cred.ig_id) || "") === achado.id,
+        proximo_passo: `action:"mapear_ig" com ig_id:"${achado.id}" para gravar`,
+      });
+    }
+
     // subscribe — (re)inscreve a página JÁ conectada no webhook do app, usando o token guardado.
     // Resolve o token via meta_tenant_for_page (o mesmo RPC do webhook). Nunca expõe o token.
     // Passe page_id no body; se faltar, tenta o valor colado em b.page_id.
