@@ -480,6 +480,7 @@ export async function onRequestPost(context) {
     // é válido? expira quando? Se expira em menos de 30 dias, RECUSAMOS — melhor não conectar
     // do que conectar por uma tarde. Token de Página derivado de um token longo não expira
     // (expires_at = 0), que é exatamente o que queremos guardar.
+    let escoposDoToken = null;
     if (env.META_APP_ID && env.META_APP_SECRET) {
       try {
         const app = `${env.META_APP_ID}|${env.META_APP_SECRET}`;
@@ -490,6 +491,13 @@ export async function onRequestPost(context) {
           return json({ error: "a Meta recusou este token (inválido ou de outro app). Gere de novo em Ferramentas → Graph API Explorer com o app Guileo selecionado.",
                         detalhe: s((dj && dj.error && dj.error.message) || (info && info.error && info.error.message) || "", 200) }, 400);
         }
+        // ── O QUE ESTE TOKEN CONCEDE (2026-08-27) ───────────────────────────────────────────
+        // Guardar um token sem a permissão do evento é montar uma armadilha silenciosa: o painel
+        // fica verde, o webhook fica "Assinado", e a Meta simplesmente não entrega — porque ela
+        // decide a ENTREGA pelo que a conta CONCEDEU, não pelo que o app declara. Foi exatamente
+        // essa a hora perdida no 1º comentário→DM real. Não RECUSA (tem tenant que não usa
+        // comentário), mas avisa alto, na resposta, no momento em que dá para consertar.
+        escoposDoToken = Array.isArray(info.scopes) ? info.scopes.map(String) : [];
         const exp = Number(info.expires_at || 0);           // 0 = não expira, que é o alvo
         if (exp > 0) {
           const horas = Math.round((exp * 1000 - Date.now()) / 3600000);
@@ -509,6 +517,17 @@ export async function onRequestPost(context) {
     if (okStored !== true) return json({ error: "meta_creds_store recusou" }, 500);
     // AUTO-SUBSCRIBE: liga a entrega de DMs pro webhook agora (o passo que faltava). Best-effort.
     const sub = page_id ? await subscribePage(page_id, page_access_token) : { subscribed: false, reason: "sem page_id" };
-    return json({ ok: true, connected: true, page_id, ig_id, business, subscribed: sub.subscribed, subscribe_note: sub.reason || null, note: `Página ${page_id || ig_id} ligada a ${email}${sub.subscribed ? " e inscrita no webhook ✓ — a Gui já recebe e responde." : " — token guardado, mas a inscrição no webhook falhou: " + (sub.reason || "?") + " (verifique no painel Meta)."}` });
+    // AVISO DE ESCOPO — o que este token NÃO concede, dito agora e não daqui a uma hora.
+    const querem = ["instagram_manage_comments", "instagram_manage_messages", "instagram_basic"];
+    const faltandoEscopo = escoposDoToken ? querem.filter((q) => !escoposDoToken.includes(q)) : null;
+    return json({
+      ok: true, connected: true, page_id, ig_id, business,
+      subscribed: sub.subscribed, subscribe_note: sub.reason || null,
+      escopos: escoposDoToken, faltando_escopo: faltandoEscopo,
+      ...(faltandoEscopo && faltandoEscopo.length ? {
+        aviso: `⚠️ este token NÃO concede: ${faltandoEscopo.join(", ")}. A Meta não vai ENTREGAR os eventos dessas permissões, mesmo com o webhook assinado e a permissão no app — o escopo congela no instante da autorização. Gere um token NOVO depois de a permissão existir no app.`,
+      } : {}),
+      note: `Página ${page_id || ig_id} ligada a ${email}${sub.subscribed ? " e inscrita no webhook ✓ — a Gui já recebe e responde." : " — token guardado, mas a inscrição no webhook falhou: " + (sub.reason || "?") + " (verifique no painel Meta)."}`,
+    });
   } catch (e) { return json({ error: String(e).slice(0, 160) }, 400); }
 }
