@@ -46,5 +46,40 @@ export async function onRequestPost({ request, env }) {
     let corpo = ""; try { corpo = (await r.text()).slice(0, 160); } catch { /* */ }
     return json({ ok: false, error: `nao gravou${corpo ? `: ${corpo}` : ""}` }, 502);
   }
-  return json({ ok: true, recebido: true });
+  /* ── O MOTOR DE ATIVAÇÃO DE LEADS (Luis, 25/08) ────────────────────────────────────────────
+     «os formulários sempre ativos pra IA ligar de volta — essa é uma das partes mais
+     importantes». Capturar e parar é formulário morto com etiqueta viva. Se o site-demo do
+     prospect tem a ligação de volta LIGADA (client_sites.config.ligar_de_volta = true), o
+     mesmo envio dispara a IA DAQUELE negócio ligando pro telefone digitado — o visitante
+     preenche, o telefone toca, e é o salão dele falando. É a demo que fecha sozinha.
+
+     Salvaguardas, porque ligação de saída custa dinheiro e toca no mundo real:
+     • OPT-IN por slug (config no banco; padrão desligado) — o Luis liga por demo, não por padrão.
+     • O tenant vem do SERVIDOR (client_site_owner), nunca do corpo — mesmo desenho do voice-web.
+     • O /api/call é o portão blindado de discagem (DNC + caps + rate) — nada é rediscado aqui.
+     • Falha na discagem NÃO desfaz a captura: o lead já está gravado; a resposta diz as duas
+       verdades separadas (recebido ✓, ligação ✗ e por quê). */
+  let ligacao = "desligada";
+  try {
+    const cfgR = await svcRpc(env, "client_site_public", { p_slug: slug });
+    const cfg = cfgR && cfgR.ok ? await cfgR.json().catch(() => null) : null;
+    if (cfg && cfg.config && cfg.config.ligar_de_volta === true) {
+      const donoR = await svcRpc(env, "client_site_owner", { p_secret: env.INGEST_SECRET || "", p_slug: slug });
+      const dono = donoR && donoR.ok ? ((await donoR.json()) || "").toString().trim().toLowerCase() : "";
+      if (dono && env.DIGEST_TOKEN) {
+        const cr = await fetch(new URL("/api/call", request.url).toString(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Origin: new URL(request.url).origin,
+            "x-guileo-internal": env.DIGEST_TOKEN },
+          body: JSON.stringify({ phone: tel, name: nome, business: negocio,
+            client_email: dono, need: msg || "asked for a time on the new site", lang: "en" }),
+        });
+        const cd = await cr.json().catch(() => null);
+        ligacao = cd && (cd.ok || cd.queued || cd.sid) ? "disparada"
+          : `falhou: ${(cd && (cd.error || cd.motivo)) || `HTTP ${cr.status}`}`.slice(0, 120);
+      } else ligacao = dono ? "sem token interno" : "slug sem dono";
+    }
+  } catch (e) { ligacao = `falhou: ${String(e).slice(0, 80)}`; }
+
+  return json({ ok: true, recebido: true, ligacao });
 }

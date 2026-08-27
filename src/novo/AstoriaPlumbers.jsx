@@ -30,6 +30,7 @@
    banco de imagem no lugar — foto falsa de equipe é a mentira mais fácil de detectar e a mais
    cara. O que existe são os ativos de marca, e é com eles que a página é feita. */
 import { useState, useEffect, useRef, useCallback } from "react";
+import Mascote from "./Mascote.jsx";
 
 const TEL = "+16469191074";
 const TEL_FMT = "(646) 919-1074";
@@ -340,10 +341,20 @@ export default function AstoriaPlumbers() {
             A linha EXPANDE ali mesmo (acordeão, sem modal, sem rolar) e já traz o pedido com a
             área preenchida. Enfeite que não trabalha vira cara de AI; esta linha é um formulário. */}
         <section id="areas" className="mx-auto max-w-6xl px-5 py-10">
-          <h2 className="ap-disp text-[clamp(1.9rem,4.6vw,3rem)] leading-none">Where are you?</h2>
-          <p className="mt-2 max-w-xl text-[15px]" style={{ color: "var(--mute)" }}>
-            Pick the borough and tell us what is happening. Emergencies get dispatched first.
-          </p>
+          <div className="flex items-start justify-between gap-6">
+            <div>
+              <h2 className="ap-disp text-[clamp(1.9rem,4.6vw,3rem)] leading-none">Where are you?</h2>
+              <p className="mt-2 max-w-xl text-[15px]" style={{ color: "var(--mute)" }}>
+                Pick the borough and tell us what is happening. Emergencies get dispatched first.
+              </p>
+            </div>
+            {/* O site arquivado deles não tinha NENHUMA foto de equipe, van ou obra — só a marca.
+                Em vez de encher com banco de imagem (que mentiria dizendo "somos nós"), a chave
+                desenhada na cor neon deles ocupa o vazio sem afirmar nada. */}
+            <div className="hidden shrink-0 sm:block" aria-hidden="true">
+              <Mascote variante="chave" cor="var(--neon)" tamanho={150} />
+            </div>
+          </div>
 
           <div className="mt-6 overflow-hidden rounded-[26px]" style={{ border: "1px solid var(--line)" }}>
             {AREAS.map((a, i) => {

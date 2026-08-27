@@ -43,13 +43,38 @@ export default function GuiLayer({
   surface = "#0c1a2e",
   phone = "",
   label = "Ask us",
+  /* `slug` liga o painel ao MOTOR DE ATIVAÇÃO: o pedido feito aqui entra no mesmo
+     /api/lead-vitrine do formulário da página — e, se a ligação de volta estiver ligada
+     para este slug, a IA do negócio disca pro visitante em segundos. Sem slug a aba Book
+     não aparece: melhor não ter o botão do que ter um que não entrega. */
+  slug = "",
 }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("voice");   // voice | call | chat | what
   const [past, setPast] = useState(false);
   const [sel, setSel] = useState(() => new Set([0, 1]));
+  const [ped, setPed] = useState({ nome: "", tel: "", servico: "", quando: "" });
+  const [envio, setEnvio] = useState(null);   // null | "indo" | {ok, ligacao} | {erro}
   const hours = useMemo(isBusinessHours, []);
   const panelRef = useRef(null);
+
+  /* Handoff da página → painel: qualquer seção pode disparar `gui-abrir` (ex.: o quote vivo
+     entregando a conversa pra voz). Evento DOM, não prop: o GuiLayer é montado pelo Novo.jsx,
+     longe de quem pede a abertura. */
+  useEffect(() => {
+    /* O evento pode trazer o que a página já sabe (serviço/estilista escolhidos no quote vivo):
+       o painel abre com o pedido meio preenchido, e a pessoa só põe nome e telefone. */
+    const abrir = (e) => {
+      const d = (e && e.detail) || null;
+      if (d && (d.servico || d.estilista)) {
+        setPed((p) => ({ ...p, servico: [d.servico, d.estilista && `with ${d.estilista}`].filter(Boolean).join(" ") }));
+        setTab("book");
+      }
+      setOpen(true); setMini(false);
+    };
+    window.addEventListener("gui-abrir", abrir);
+    return () => window.removeEventListener("gui-abrir", abrir);
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setPast(window.scrollY > 560);
@@ -89,7 +114,24 @@ export default function GuiLayer({
 
   const toggle = (i) => setSel((p) => { const n = new Set(p); n.has(i) ? n.delete(i) : n.add(i); return n; });
   const wa = waLink(`Hi Guileo! On the ${business} site I want: ${FEATURES.filter((_, i) => sel.has(i)).map((f) => f[0]).join(", ")}`);
-  const TABS = [["voice", "Talk now"], ["call", "Get a call"], ...(hours ? [["chat", "Chat"]] : []), ["what", "What is this"]];
+  const TABS = [...(slug ? [["book", "Book"]] : []), ["voice", "Talk now"], ["call", "Get a call"], ...(hours ? [["chat", "Chat"]] : []), ["what", "What is this"]];
+
+  /* O PEDIDO PELO PAINEL — mesma porta do formulário da página. A resposta é lida do CORPO,
+     nunca do status, e as duas verdades ficam separadas: recebido ✓ e ligação (disparada ou
+     não). Dizer "marcado" seria mentira: quem confirma é o balcão. */
+  const enviarPedido = async (e) => {
+    e.preventDefault();
+    setEnvio("indo");
+    try {
+      const r = await fetch("/api/lead-vitrine", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, negocio: business, nome: ped.nome, telefone: ped.tel,
+          mensagem: `[${ped.servico || "service?"}] ${ped.quando || "any time"}` }),
+      });
+      const d = await r.json().catch(() => null);
+      setEnvio(d && d.ok ? { ok: true, ligacao: d.ligacao } : { erro: (d && d.error) || `HTTP ${r.status}` });
+    } catch (err) { setEnvio({ erro: String(err).slice(0, 90) }); }
+  };
 
   return (
     <div ref={panelRef}
@@ -128,6 +170,39 @@ export default function GuiLayer({
 
           <div className="px-3 pb-4 pt-3">
             <Suspense fallback={<div className="py-8 text-center text-[12.5px] text-white/45">…</div>}>
+              {tab === "book" && (
+                envio && envio.ok ? (
+                  <div className="px-1 py-2">
+                    <div className="text-[14px] font-black text-white">Got it.</div>
+                    <p className="mt-1 text-[12px] leading-snug text-white/65">
+                      {envio.ligacao === "disparada"
+                        ? "Your phone is about to ring — that's the salon's own assistant calling you back."
+                        : "The front desk will confirm your exact time."}
+                    </p>
+                    <button onClick={() => { setEnvio(null); setPed({ nome: "", tel: "", servico: "", quando: "" }); }}
+                      className="mt-3 text-[11.5px] font-bold" style={{ color: accent }}>Send another</button>
+                  </div>
+                ) : (
+                  <form onSubmit={enviarPedido} className="space-y-2 px-1">
+                    <p className="text-[11.5px] leading-snug text-white/60">
+                      Tell {business} what you want. {phone ? "The front desk confirms the exact time." : ""}
+                    </p>
+                    {[["nome", "Your name", "text", true], ["tel", "Phone", "tel", true],
+                      ["servico", "What do you want?", "text", false], ["quando", "When? (e.g. this week, mornings)", "text", false]].map(([k, ph, tp, req]) => (
+                      <input key={k} required={req} type={tp} value={ped[k]} placeholder={ph}
+                        onChange={(ev) => setPed((p) => ({ ...p, [k]: ev.target.value }))}
+                        className="w-full rounded-xl px-3 py-2 text-[13px] text-white outline-none placeholder:text-white/35"
+                        style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.14)" }} />
+                    ))}
+                    {envio && envio.erro && <p className="text-[11.5px] font-bold" style={{ color: "#F08A6B" }}>Didn't send: {envio.erro}</p>}
+                    <button type="submit" disabled={envio === "indo"}
+                      className="w-full rounded-full py-2.5 text-[13px] font-black transition disabled:opacity-60"
+                      style={{ background: accent, color: "#1a1206" }}>
+                      {envio === "indo" ? "Sending…" : "Send to the front desk"}
+                    </button>
+                  </form>
+                )
+              )}
               {tab === "voice" && <VoiceWeb brand={accent} business={business} lang="en" phone={phone} tema="escuro" />}
               {tab === "call" && <LiveCallBar source={`novo:${business}`} compacto />}
               {tab === "chat" && hours && <GuiChat />}

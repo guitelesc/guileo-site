@@ -26,6 +26,7 @@
    (Nonstop = despacho · Astoria = van · Queens = a rede · Sideris = o emblema · SR = a fiada ·
    Penn Plaza = o quadro de partidas.) */
 import { useState, useEffect, useRef, useCallback } from "react";
+import Mascote from "./Mascote.jsx";
 
 const TEL = "+12127360670";
 const TEL_FMT = "(212) 736-0670";
@@ -233,6 +234,13 @@ export default function PennPlazaDental() {
       {/* ── ONDE FICA: o ativo que o site atual só cita no rodapé. */}
       <section className="mx-auto max-w-6xl px-5 py-8">
         <div className="pp-card p-6 sm:p-8">
+          {/* O consultório não tem UMA foto própria — nem da equipe, nem da sala. O site atual
+              enche o vazio com banco de imagem; a regra da casa proíbe isso, porque uma foto de
+              estúdio ali AFIRMA "esta é a nossa sala" e é mentira. O desenho não afirma nada:
+              é visivelmente um desenho, na cor da logo deles, e resolve o vazio sem inventar prova. */}
+          <div className="float-right ml-5 hidden sm:block" aria-hidden="true">
+            <Mascote variante="dente" cor="var(--cobalto)" tamanho={168} />
+          </div>
           <h2 className="pp-disp text-[clamp(1.7rem,4.2vw,2.4rem)] leading-tight">
             You already walk past the door.
           </h2>
