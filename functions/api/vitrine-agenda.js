@@ -52,7 +52,13 @@ export async function onRequestPost({ request, env }) {
   // A chamada ao motor sai daqui COM o segredo do servidor — o navegador nunca o vê.
   const motor = (corpo) => fetch(new URL("/api/agent-schedule", request.url).toString(), {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-guileo-secret": env.INGEST_SECRET || "" },
+    // ⚠️ AGENT_ACTION_SECRET, NÃO INGEST_SECRET (corrigido 2026-08-27). O /api/agent-schedule
+    // gateia em `safeEq(provided, env.AGENT_ACTION_SECRET)` — é o segredo que guiBrain.js e
+    // provision.js usam para falar com ele. Esta rota mandava o INGEST e levava 401 em TODA
+    // chamada: a vitrine nunca listou um serviço nem marcou um horário em produção.
+    // Achado provando o deploy: o menu do three-degrees devolvia "motor respondeu 401" também
+    // no deployment sem nenhuma alteração minha, o que descartou regressão e apontou para cá.
+    headers: { "Content-Type": "application/json", "x-guileo-secret": env.AGENT_ACTION_SECRET || "" },
     body: JSON.stringify({ email: dono, ...corpo }),
   });
 
