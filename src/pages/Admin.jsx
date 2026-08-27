@@ -18,6 +18,10 @@ import ComprarNumero from "../components/ComprarNumero.jsx";
 import ClientWallet from "../components/ClientWallet.jsx";
 import SellerManager from "../components/SellerManager.jsx";
 import PainelComando from "../components/PainelComando.jsx";
+// Cobrança (MRR/vencidos/churn + regras) e o semáforo consolidado da plataforma — ambos no topo
+// da Visão geral, porque decidem o dia.
+import AdminCobranca from "../components/AdminCobranca.jsx";
+import AdminPlataforma from "../components/AdminPlataforma.jsx";
 import DemoEngine from "../components/DemoEngine.jsx";
 import { ACTIVATION_STEPS, ACTIVATION_SECTORS, pickL } from "../data/activation.js";
 import { GUILEO_PLANS, planByKey } from "../data/guileoPlans.js";
@@ -32,16 +36,11 @@ const supabase = createClient(
   { auth: { persistSession: false } }
 );
 
-// Second, lightweight client for the AUTH project (ynihodbknhjirkdogxby) where the
-// `clients` table lives. Anon key copied from src/lib/supabase.js — public by design.
-// NOTE: the `clients` RLS policies only let an `authenticated` user read their OWN row,
-// so this anon read will return nothing until Luis adds an admin-read RLS policy (or a
-// service-role-backed function). We do NOT put service-role keys in the frontend.
-const authSupabase = createClient(
-  "https://ynihodbknhjirkdogxby.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E",
-  { auth: { persistSession: false } }
-);
+// (O segundo cliente Supabase `authSupabase` foi REMOVIDO em 2026-08-25. Ele existia só para ler
+//  a tabela `clients` com a chave anon — leitura que o RLS nega devolvendo lista vazia SEM erro, o
+//  que fazia o painel imprimir "0 clientes". A contagem agora vem de /api/admin-comando
+//  {action:"clients_count"}, por RPC SECURITY DEFINER. Chave pública nunca mais responde a uma
+//  pergunta cuja resposta o RLS esconde.)
 
 // SECURITY: the admin password is NOT hardcoded here anymore (would ship in the JS bundle).
 // It is verified SERVER-SIDE by the `admin_actions(token)` Postgres RPC, which only returns lead
@@ -80,6 +79,19 @@ const PASSO_ROTULO = {
   encaminhamento: "Telefone encaminhado", site_no_ar: "Site no ar", painel: "Painel entregue",
   configurado: "Módulo configurado", provado: "Provado com o cliente",
 };
+// IDADE DA ENTREGA — uma lista de trabalho humano sem idade não cobra ninguém. O cliente pagou
+// numa data; a pergunta que importa é "há quantos dias ele está esperando?", não "quantos passos
+// faltam". Vermelho a partir de 7 dias PARADO (sem nenhum passo novo desde então): é o ponto em
+// que o silêncio deixa de ser prazo e vira cliente abandonado.
+function idadeEntrega(e) {
+  const dias = (iso) => { try { return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000); } catch { return null; } };
+  const nasceu = dias(e.created_at);
+  // `updated_at` só muda quando um passo é marcado — então ele É a data do último passo. Sem ele,
+  // o parado é a própria idade (nunca ninguém tocou).
+  const parado = e.updated_at ? dias(e.updated_at) : nasceu;
+  return { nasceu, parado };
+}
+
 function Entregas({ token }) {
   const [lista, setLista] = useState(null);
   const [nota, setNota] = useState("");
@@ -112,10 +124,19 @@ function Entregas({ token }) {
       {nota && <p className="mt-3 rounded-xl border border-g-gold/25 bg-g-gold/[0.06] px-3 py-2 text-[12.5px] text-g-ink">{nota}</p>}
       {lista && lista.length === 0 && !nota && <p className="mt-3 text-[12.5px] text-g-muted">Nenhuma entrega ainda — a primeira nasce no pagamento.</p>}
       <div className="mt-3 space-y-3">
-        {(lista || []).map((e) => (
-          <div key={e.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+        {(lista || []).map((e) => {
+          const { nasceu, parado } = idadeEntrega(e);
+          const atrasada = e.status !== "entregue" && parado != null && parado >= 7;
+          return (
+          <div key={e.id} className={`rounded-xl border p-3 ${atrasada ? "border-[#e0855f]/60 bg-[#e0855f]/[0.07]" : "border-white/10 bg-white/[0.03]"}`}>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[13px] font-black text-g-word">{e.client_email}</span>
+              {/* IDADE SEMPRE VISÍVEL — e "—" quando a data não veio, nunca "0 dias". */}
+              <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold ${atrasada ? "bg-[#e0855f]/20 text-[#c8623c]" : "bg-white/10 text-g-ink"}`}
+                title={atrasada ? "7 dias ou mais sem nenhum passo novo" : "idade desde o pagamento · último passo"}>
+                {atrasada ? "🔴 " : "⏳ "}{nasceu == null ? "—" : `${nasceu}d`}
+                {parado != null && parado !== nasceu ? ` · ${parado}d sem passo` : (parado != null && e.status !== "entregue" ? " · sem passo nenhum" : "")}
+              </span>
               <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10.5px] font-bold text-g-ink">
                 {e.produto === "website_upgrade" ? "Website Upgrade" : (e.slug || "módulo")}
               </span>
@@ -133,7 +154,8 @@ function Entregas({ token }) {
               ))}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -174,7 +196,8 @@ export default function Admin() {
   // Qual feed falhou (nome da RPC) — nunca `true` genérico: saber QUAL some com a adivinhação.
   const [feedErr, setFeedErr] = useState(null);
   const [state, setState] = useState("loading");
-  const [clients, setClients] = useState([]);
+  // Contagem de clientes vinda do SERVIDOR (ver o efeito abaixo) — não há mais lista anon aqui.
+  const [clientsN, setClientsN] = useState(null);
   const [clientsState, setClientsState] = useState("loading"); // loading | ok | err
   const [sentMap, setSentMap] = useState({}); // `${id}:${step}` -> "sending" | "ok" | "err"
   // connection-code lookup (hand the code to a client → their portal flips to REAL data)
@@ -250,38 +273,35 @@ export default function Admin() {
     return () => { alive = false; clearInterval(id); };
   }, [unlocked, token, tick]);
 
-  // Registered clients (AUTH project). Graceful: anon reads are blocked by the current
-  // RLS policies, so this falls back to a muted "not set up yet" note until an admin-read
-  // policy (or service-role function) exists.
+  // ── CONTAGEM DE CLIENTES — CONSERTADA NA FONTE (2026-08-25) ────────────────────────────────
+  // Este bloco lia a tabela `clients` com a chave ANON. O RLS nega e o PostgREST devolve LISTA
+  // VAZIA SEM ERRO: o tile imprimia 0 clientes com cara de certeza, ao lado da Carteira listando
+  // os pagantes — dois números divergentes na MESMA página. A correção anterior foi honesta mas
+  // parcial (mostrar "—" e uma caixa de aviso enorme ocupando tela desde 17/08); "não sei" ainda
+  // não é o número, e o aviso virou mobília.
+  // Agora o número vem de /api/admin-comando {action:"clients_count"} — SECURITY DEFINER, que
+  // ignora RLS por construção — e é EXATAMENTE o mesmo `clientes_reais` que o Painel de Comando
+  // mostra logo acima. Uma pergunta, uma resposta, um número.
   useEffect(() => {
     if (!unlocked) return;
     let alive = true;
-    const loadClients = async () => {
+    const contar = async () => {
       try {
-        const { data, error } = await authSupabase
-          .from("clients")
-          .select("uid,email,name,business,sector,plan,created_at")
-          .order("created_at", { ascending: false })
-          .limit(100);
+        const r = await fetch("/api/admin-comando", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, action: "clients_count" }),
+        });
+        const j = await r.json().catch(() => null);
         if (!alive) return;
-        if (error) { setClientsState("err"); return; }
-        // ⚠️ ZERO LINHAS COM A CHAVE ANON NÃO PROVA ZERO CLIENTES (auditoria 2026-08-17).
-        // Esta leitura usa a chave pública; o RLS da tabela `clients` NEGA e o PostgREST devolve
-        // LISTA VAZIA SEM ERRO. O código então marcava "ok" e o tile imprimia 0 — o dono lia
-        // "não tenho cliente" no mesmo instante em que a carteira, ao lado, listava os pagantes.
-        // Dois números divergentes na MESMA página, e o errado com cara de certo.
-        // Não dá para distinguir "vazio" de "negado" por este caminho — então a resposta honesta
-        // é NÃO AFIRMAR: estado próprio, e o tile mostra "—" em vez de 0. A fonte com autoridade
-        // é a carteira (token-gated); enquanto o tile não for religado nela, ele se cala.
-        const linhas = data || [];
-        if (linhas.length === 0) { setClients([]); setClientsState("indeterminado"); return; }
-        setClients(linhas); setClientsState("ok");
+        // `n` só é número quando o servidor disse um número; qualquer outra coisa fica "—".
+        if (r.ok && j && j.ok && typeof j.n === "number") { setClientsN(j.n); setClientsState("ok"); }
+        else setClientsState("err");
       } catch { if (alive) setClientsState("err"); }
     };
-    loadClients();
-    const id = setInterval(loadClients, 15000);
+    contar();
+    const id = setInterval(contar, 30000);
     return () => { alive = false; clearInterval(id); };
-  }, [unlocked]);
+  }, [unlocked, token]);
 
   if (!unlocked) {
     return (
@@ -302,7 +322,16 @@ export default function Admin() {
   }
 
   const counts = rows.reduce((m, r) => { m[r.action] = (m[r.action] || 0) + 1; return m; }, {});
-  const revenue = rows.filter((r) => ["sale", "order", "invoice"].includes(r.action)).reduce((s, r) => s + (parseFloat(String(r.amount).replace(/[^0-9.]/g, "")) || 0), 0);
+  // ── UMA RECEITA SÓ (2026-08-25) ────────────────────────────────────────────────────────────
+  // Este número era uma TERCEIRA receita na mesma página: somava `gui_actions` por regex sobre o
+  // texto do valor (`replace(/[^0-9.]/g,"")`), enquanto "Dinheiro & pulso" somava os eventos reais
+  // e o Painel de Comando somava os pagamentos de 30 dias. Três totais diferentes, todos rotulados
+  // "receita" — o dono não tinha como saber qual acreditar, e a soma por regex era a única sem
+  // lastro nenhum (o texto "sale" do feed não é um pagamento confirmado).
+  // Agora existe UM predicado de dinheiro (`ehDinheiro`), usado aqui e no bloco "Dinheiro & pulso".
+  // Mudou um, muda o outro — não dá mais para divergirem.
+  const ehDinheiro = (e) => ["sale", "payment"].includes(e.type || "") && Number(e.amount) > 0;
+  const revenue = realEvents.filter(ehDinheiro).reduce((s, e) => s + Number(e.amount || 0), 0);
   const top = ["lead", "book", "sale", "review", "callback", "quote"];
 
   // ── System health vitals (computed from data already loaded) ──
@@ -468,17 +497,23 @@ export default function Admin() {
                 mas nenhuma dessas coisas decide o dia, e o que decide tem que estar no topo. */}
             <PainelComando token={token} />
 
+            {/* 🚦 O veredito do cron, que antes só existia via curl. */}
+            <AdminPlataforma token={token} />
+
+            {/* 💰 MRR real · vencidos · churn 30d + as regras de cobrança editáveis. */}
+            <AdminCobranca token={token} />
+
             <div className="grid items-start gap-5 sm:grid-cols-2">
               <ColBanner tag="🎛️ Operação · Comando" tone="orange" tiles={[
                 { label: "Saúde", value: sysOnline ? "OK" : "—", tone: sysOnline ? "green" : "red" },
                 { label: "Leads", value: counts.lead || 0, tone: "orange" },
-                { label: "Receita", value: "$" + revenue.toLocaleString("en-US"), tone: "amber" },
+                // Rótulo diz a JANELA e a fonte: "receita" sem janela é o que criou a confusão.
+                { label: "Receita (eventos reais)", value: "$" + revenue.toLocaleString("en-US"), tone: "amber" },
               ]} />
               <ColBanner tag="🟢 Clientes ao vivo" tone="green" tiles={[
-                { label: "Clientes", value: clientsState === "ok" ? clients.length : "—",
-                  // "—" cobre loading, erro E o indeterminado do RLS. Melhor não dizer nada que
-                  // dizer zero: a carteira logo abaixo é a fonte com autoridade.
-                  tone: "blue" },
+                // MESMA fonte do Painel de Comando (carteira, sem contas internas), lida por RPC
+                // SECURITY DEFINER — acabou o 0 falso do RLS. "—" só quando a leitura falhou.
+                { label: "Clientes", value: clientsState === "ok" ? clientsN : "—", tone: "blue" },
                 { label: "Eventos hoje", value: eventsToday, tone: "orange" },
                 { label: "Total eventos", value: realEvents.length, tone: "green" },
               ]} />
@@ -541,10 +576,9 @@ export default function Admin() {
             {(() => {
               const isToday = (e) => { try { return new Date(e.created_at).toDateString() === todayStr; } catch { return false; } };
               const todayEv = realEvents.filter(isToday);
-              const money = (e) => ["sale", "payment"].includes(e.type || "") && Number(e.amount) > 0;
-              const payToday = todayEv.filter(money);
+              const payToday = todayEv.filter(ehDinheiro);
               const $today = payToday.reduce((s, e) => s + Number(e.amount || 0), 0);
-              const recentPays = realEvents.filter(money).slice(0, 6);
+              const recentPays = realEvents.filter(ehDinheiro).slice(0, 6);
               const cnt = (t) => todayEv.filter((e) => (e.type || "") === t).length;
               return (
                 <div className="rounded-2xl border border-g-green/25 bg-white/[0.04] p-4 backdrop-blur-sm">
@@ -954,44 +988,19 @@ export default function Admin() {
               );
             })()}
 
-            {/* registered clients */}
-            <div>
-              <div className="mb-2 flex items-center gap-2 text-[12px] font-bold uppercase tracking-wider text-g-muted">
-                Registered clients
-                {clientsState === "ok" && <span className="rounded-full border border-g-line bg-white/[0.04] px-2 py-0.5 text-[11px] text-g-word">{clients.length}</span>}
-              </div>
-              {clientsState === "loading" && <div className="text-center text-sm text-g-muted">Loading…</div>}
-              {clientsState === "err" && (
-                <div className="rounded-xl border border-g-line bg-white/[0.04] p-4 text-sm text-g-muted">
-                  Clients registry not available with current policies — run <span className="font-mono text-g-word">db/clients.sql</span> and add an admin-read RLS policy to list all clients.
-                </div>
-              )}
-              {/* ⚠️ ESTA MENSAGEM JÁ DIZIA A VERDADE — e estava presa numa condição que nunca mais
-                  ia acontecer. Ela explicava "anon reads are blocked by RLS" quatrocentas linhas
-                  ABAIXO do tile que imprimia 0 clientes com cara de certeza. O texto honesto
-                  existia; só não estava onde o número estava. Agora ela responde ao estado
-                  `indeterminado` — o mesmo que faz o tile mostrar "—" em vez de zero. */}
-              {clientsState === "indeterminado" && (
-                <div className="rounded-xl border border-g-gold/40 bg-g-gold/10 p-6 text-center text-[13px] font-semibold leading-relaxed text-g-gold">
-                  ⚠️ Não consigo LER a lista de clientes por aqui — a chave pública é bloqueada pelo RLS e o banco devolve lista vazia SEM erro.<br />
-                  Isto <b>não</b> quer dizer que você não tem clientes: a <b>Carteira</b> logo acima é a fonte com autoridade.<br />
-                  <span className="font-normal opacity-80">Para esta lista funcionar: política de leitura para admin em <span className="font-mono">clients</span> (ou rodar <span className="font-mono">db/clients.sql</span>).</span>
-                </div>
-              )}
-              {clientsState === "ok" && clients.length > 0 && (
-                <div className="space-y-2">
-                  {clients.map((c) => (
-                    <div key={c.uid} className="flex items-start gap-3 rounded-xl border border-g-line bg-white/[0.04] p-3.5">
-                      <span className="text-lg">👤</span>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[13px] font-bold text-g-word">{[c.name, c.business].filter(Boolean).join(" · ") || c.email}</div>
-                        <div className="text-[12px] text-g-muted">{[c.email, c.sector, c.plan].filter(Boolean).join(" · ")}</div>
-                      </div>
-                      <span className="whitespace-nowrap text-[11px] text-g-muted">{timeAgo(c.created_at)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+            {/* ── CLIENTES REGISTRADOS ────────────────────────────────────────────────────
+                A LISTA ANON E A CAIXA DE AVISO SAÍRAM DAQUI (2026-08-25). Elas existiam porque a
+                leitura com a chave pública era bloqueada pelo RLS e devolvia lista vazia SEM erro
+                — e o remendo (uma caixa amarela de seis linhas explicando por que o painel não
+                sabia) ocupava tela desde 17/08 sem nunca virar informação. Aviso que não pode ser
+                resolvido pelo leitor é mobília.
+                Agora a CONTAGEM vem do servidor (SECURITY DEFINER, ignora RLS) no tile lá em cima,
+                e QUEM são os clientes está na Carteira — a fonte com autoridade, com nome, agente,
+                número e vendedor de cada um. Uma lista só, no lugar certo. */}
+            <div className="rounded-2xl border border-g-line bg-white/[0.03] px-4 py-3 text-[12.5px] text-g-muted">
+              👥 Clientes registrados: <b className="text-g-word">{clientsState === "ok" ? clientsN : "—"}</b>
+              {clientsState !== "ok" && <span> (não consegui contar agora — não é zero)</span>}
+              <span className="ml-1">· quem são, com agente/número/vendedor, está na <b className="text-g-word">Carteira</b> logo acima.</span>
             </div>
           </div>
         )}

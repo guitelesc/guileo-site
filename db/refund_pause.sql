@@ -67,28 +67,36 @@ end $$;
 -- ── set_client_paused(secret,email,paused,reason) → jsonb ─────────────────────
 -- Pauses/unpauses a tenant's agent ACTIONS (booking, charging, outbound dial). Reversible:
 -- a successful payment webhook calls this with paused=false. Idempotent (re-set is a no-op flip).
-create or replace function public.set_client_paused(
-  p_secret text, p_email text, p_paused boolean, p_reason text default null
-) returns jsonb
-language plpgsql security definer set search_path = public as $$
-declare v_tenant text := lower(trim(p_email)); v_now timestamptz;
+create or replace function public.set_client_paused(p_secret text, p_email text, p_paused boolean, p_reason text default null::text)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
+-- ═══ UPDATE-ONLY NOS DOIS SENTIDOS (corrigido 2026-08-25) ═════════════════════════════════════
+-- A versão anterior fazia UPSERT no pause: pausar um e-mail digitado errado devolvia paused:true
+-- e CUNHAVA uma client_credits fantasma (credits 0) — sucesso sem comprovante + carteira
+-- inventada entrando nas contagens (a lição da métrica honesta). Todo tenant real já tem
+-- carteira (nasce no onboard); sem carteira a resposta certa é {paused:false, motivo:'sem_carteira'}.
+declare v_tenant text := lower(trim(p_email)); v_now timestamptz; v_hit int;
 begin
   if p_secret is distinct from 'glo_ing_c7f2a9e4b8d16350' then raise exception 'unauthorized' using errcode = '28000'; end if;
   if v_tenant = '' then raise exception 'tenant required' using errcode = '22023'; end if;
   v_now := case when coalesce(p_paused, false) then now() else null end;
   if coalesce(p_paused, false) then
-    -- PAUSE: upsert so a paused tenant always has a row carrying the flag.
-    insert into client_credits (client_email, credits, plan, paused_at, pause_reason, updated_at)
-    values (v_tenant, 0, '', v_now, left(coalesce(p_reason,'past_due'),120), now())
-    on conflict (client_email) do update
-      set paused_at = v_now, pause_reason = left(coalesce(p_reason,'past_due'),120), updated_at = now();
+    update client_credits
+       set paused_at = v_now, pause_reason = left(coalesce(p_reason,'past_due'),120), updated_at = now()
+     where client_email = v_tenant;
   else
-    -- UNPAUSE: UPDATE-only — a payment from a random consumer email must NOT mint a junk row.
     update client_credits set paused_at = null, pause_reason = null, updated_at = now()
      where client_email = v_tenant;
   end if;
+  get diagnostics v_hit = row_count;
+  if v_hit = 0 then
+    return jsonb_build_object('paused', false, 'motivo', 'sem_carteira', 'email', v_tenant);
+  end if;
   return jsonb_build_object('paused', coalesce(p_paused,false), 'at', v_now);
-end $$;
+end $function$;
 
 -- ── is_client_paused(secret,email) → boolean (the gate calls this; absent = NOT paused). ──
 create or replace function public.is_client_paused(p_secret text, p_email text)

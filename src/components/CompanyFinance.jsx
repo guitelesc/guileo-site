@@ -13,6 +13,8 @@ export default function CompanyFinance({ token }) {
   const [state, setState] = useState("loading");
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState(null); // { ok, texto } — resultado da sincronização com o Stripe
   const [f, setF] = useState({ department: "finance", kind: "expense", category: "", vendor: "", description: "", amount: "", recurring: "monthly", notes: "" });
 
   const call = (body) => fetch("/api/company-finance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, ...body }) }).then((r) => r.json());
@@ -47,6 +49,22 @@ export default function CompanyFinance({ token }) {
     } finally { setBusy(false); }
   };
 
+  // Sincronização da receita real. O resultado volta DISCRIMINADO (novos · já existentes ·
+  // recusados): "sincronizado" sem dizer quantos entraram é o "ok" sem comprovante de sempre.
+  const sync = async () => {
+    setSyncing(true); setSyncMsg(null);
+    try {
+      const d = await call({ action: "sync_revenue" });
+      if (!d || d.ok !== true) {
+        setSyncMsg({ ok: false, texto: (d && (d.motivo || d.error)) || "não consegui sincronizar" });
+        return;
+      }
+      setSyncMsg({ ok: true, texto: `${d.lidas} invoice(s) paga(s) no Stripe nos últimos 30 dias · ${d.novos} lançada(s) agora · ${d.repetidos} já estavam no razão.` });
+      await load();
+    } catch (e) { setSyncMsg({ ok: false, texto: String(e).slice(0, 140) }); }
+    finally { setSyncing(false); }
+  };
+
   const kindTone = (k) => k === "revenue" ? "text-g-green" : k === "investment" ? "text-sky-600" : "text-[#c8623c]";
 
   return (
@@ -56,14 +74,27 @@ export default function CompanyFinance({ token }) {
           <div className="text-[12px] font-bold uppercase tracking-wider text-g-gold">💰 Finanças da Companhia</div>
           <p className="text-[12px] text-g-muted">Despesas, investimentos e receita da própria Guileo — separado do custo por cliente.</p>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           <button onClick={load} className="rounded-full border border-g-line px-3 py-1.5 text-[12px] font-bold text-g-muted hover:text-g-word">↻</button>
+          {/* 🔄 A RECEITA DEIXA DE SER DIGITADA À MÃO. Espelha as invoices PAGAS do Stripe (30d)
+              como `revenue`, idempotente pelo id da invoice — clicar de novo não duplica nada.
+              Sem a chave do Stripe o servidor diz isso; nunca "0 sincronizados". */}
+          <button onClick={sync} disabled={syncing}
+            className="rounded-full border border-g-gold/50 px-3.5 py-1.5 text-[12px] font-bold text-g-gold disabled:opacity-50">
+            {syncing ? "Sincronizando…" : "🔄 Sincronizar receita Stripe"}
+          </button>
           <button onClick={() => setOpen((o) => !o)} className="rounded-full bg-gradient-to-r from-g-green to-g-dark px-3.5 py-1.5 text-[12px] font-bold text-white">{open ? "Fechar" : "+ Lançar"}</button>
         </div>
       </div>
 
       {state === "loading" && <div className="mt-4 text-[13px] text-g-muted">Carregando…</div>}
       {state === "err" && <div className="mt-4 text-[13px] text-[#c8623c]">Não consegui carregar — confira o token de admin (ou aplique as RPCs do company_ledger).</div>}
+
+      {syncMsg && (
+        <div className={`mt-3 rounded-xl border px-3 py-2 text-[12.5px] ${syncMsg.ok ? "border-g-green/40 text-g-green" : "border-[#c8623c]/40 text-[#c8623c]"}`}>
+          {syncMsg.ok ? "✅ " : "⛔ "}{syncMsg.texto}
+        </div>
+      )}
 
       {state === "ok" && sum && (
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">

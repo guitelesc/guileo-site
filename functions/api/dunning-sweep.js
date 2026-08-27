@@ -19,8 +19,13 @@
 //                                    switch-off that doesn't exist.
 //
 // SAFETY:
-//   • DRY-RUN BY DEFAULT — with DUNNING_ENFORCE !== "1" the sweep only REPORTS what it
-//     WOULD do (no email, no ops_alert, no claim burned). Luis flips the env when ready.
+//   • DRY-RUN BY DEFAULT — with dunning_enforce !== "1" the sweep only REPORTS what it
+//     WOULD do (no email, no ops_alert, no claim burned). O valor vem do BANCO
+//     (platform_settings, editável em /admin → "⚙️ Regras de cobrança") e cai na env
+//     DUNNING_ENFORCE quando a tabela não existe. Ver lerSettings() abaixo.
+//   • PAUSAR UM CLIENTE À MÃO é outro caminho, de propósito: /api/admin-comando
+//     {action:"pause_client"} (botão na lista de vencidos do /admin). Este interruptor
+//     aqui liga a pausa para TODOS; cortar um cliente é decisão comercial, um a um.
 //   • Idempotent — a 7-day atomic claim per (email, kind) is taken BEFORE acting, so the
 //     15-min cron never spams or double-pauses. Claim is only taken when enforcing.
 //   • Cap 10 tenants/run (oldest-delinquent first) — bounded subrequests.
@@ -47,11 +52,39 @@ async function rpc(env, fn, args) {
   } catch { return null; }
 }
 
+// ── A REGRA VEM DO BANCO PRIMEIRO, DA ENV DEPOIS (2026-08-25) ─────────────────────────────────
+// GRACE_DAYS e DUNNING_ENFORCE são decisões de NEGÓCIO ("quantos dias de tolerância eu dou antes
+// de pausar") e estavam presas como env var no Cloudflare: mudar exigia acesso ao painel e só
+// valia no PRÓXIMO deploy (feedback_secret_exige_redeploy). Agora o dono edita em
+// /admin → "⚙️ Regras de cobrança" e vale no ciclo seguinte do cron.
+// ⚠️ A ENV CONTINUA VALENDO COMO FALLBACK, de propósito: enquanto db/platform_settings.sql não
+// estiver colado, a tabela não existe, `platform_settings_get` degrada para {} e a cobrança segue
+// com a regra atual. Nenhuma janela sem regra — a paste liga, não troca.
+async function lerSettings(env) {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/platform_settings_get`, {
+      method: "POST",
+      headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_secret: env.INGEST_SECRET || "" }),
+    });
+    if (!r.ok) return {};                       // SQL não colado / indisponível → env manda
+    const d = await r.json().catch(() => null);
+    return (d && typeof d === "object" && !Array.isArray(d)) ? d : {};
+  } catch { return {}; }
+}
+
 async function sweep(env) {
-  const grace = Math.max(1, parseInt(env.GRACE_DAYS, 10) || 10);
+  const cfg = await lerSettings(env);
+  const grace = Math.max(1, parseInt(cfg.grace_days ?? env.GRACE_DAYS, 10) || 10);
   const grace2 = grace * 2;
-  const enforce = env.DUNNING_ENFORCE === "1";
-  const out = { ready: true, enforce, grace, candidatesReady: true, claimReady: true, actions: [] };
+  const enforce = String(cfg.dunning_enforce ?? env.DUNNING_ENFORCE ?? "") === "1";
+  // `fonte` aparece na resposta do cron: saber SE a regra veio do banco ou da env é o que evita o
+  // próximo "mudei e não mudou nada" (a env sem redeploy).
+  const fonte = {
+    grace: cfg.grace_days != null ? "banco" : "env",
+    enforce: cfg.dunning_enforce != null ? "banco" : "env",
+  };
+  const out = { ready: true, enforce, grace, fonte, candidatesReady: true, claimReady: true, actions: [] };
 
   const candidates = await rpc(env, "dunning_candidates", { p_grace_days: grace });
   if (!Array.isArray(candidates)) { out.ready = false; out.candidatesReady = false; return out; } // db/dunning_grace.sql not pasted

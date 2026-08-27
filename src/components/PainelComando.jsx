@@ -44,6 +44,86 @@ function Celula({ rot, v, cor, prefixo, sufixo, nota }) {
   );
 }
 
+/* ═══ ➕ CRÉDITOS — o botão que faltava embaixo da acusação ════════════════════════════════════
+   O painel dizia "N cliente(s) com crédito negativo — cobrar ou recarregar" e não oferecia AÇÃO
+   nenhuma: recarregar era SQL na mão no editor do Supabase, sem rastro de quem fez nem por quê.
+   Acusação sem botão treina o dono a ignorar a linha inteira.
+
+   🚨 MOTIVO É OBRIGATÓRIO (o servidor também recusa sem ele): crédito sem motivo é dinheiro sem
+   história, e daqui a um mês ninguém sabe por que aquele cliente ganhou 500.
+   🚨 O SALDO NOVO VOLTA NA TELA. "ok" sem comprovante é promessa sem lastro — se o banco não
+   disser o saldo, isto não diz "pronto". */
+function Creditos({ token, aoAjustar }) {
+  const [aberto, setAberto] = useState(false);
+  const [email, setEmail] = useState("");
+  const [qtd, setQtd] = useState("");
+  const [motivo, setMotivo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState(null); // { ok, texto }
+  // Um id por tentativa: clique duplo ou retry de rede NÃO viram crédito dobrado (o banco
+  // devolve o mesmo resultado da 1ª chamada). Só troca depois de um sucesso.
+  const [reqId, setReqId] = useState(() => novoId());
+
+  const enviar = async (e) => {
+    e.preventDefault();
+    const n = Math.trunc(Number(qtd));
+    if (!email.includes("@")) { setRes({ ok: false, texto: "e-mail do cliente inválido" }); return; }
+    if (!Number.isFinite(n) || n === 0) { setRes({ ok: false, texto: "quantidade tem que ser diferente de zero" }); return; }
+    if (!motivo.trim()) { setRes({ ok: false, texto: "escreva o motivo — crédito sem motivo é dinheiro sem história" }); return; }
+    setBusy(true); setRes(null);
+    try {
+      const r = await fetch("/api/admin-comando", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, action: "grant_credits", email: email.trim(), amount: n, reason: motivo.trim(), request_id: reqId }),
+      });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j || j.ok !== true) { setRes({ ok: false, texto: (j && (j.motivo || j.error)) || `HTTP ${r.status}` }); return; }
+      setRes({ ok: true, texto: `${j.repetido ? "já tinha sido feito — " : ""}${j.amount > 0 ? "+" : ""}${j.amount} para ${j.email}. Saldo agora: ${j.saldo}${j.auditoria === false ? " (⚠️ sem rastro no feed: " + (j.nota || "") + ")" : ""}` });
+      setReqId(novoId()); setQtd(""); setMotivo("");
+      if (aoAjustar) aoAjustar();
+    } catch (err) { setRes({ ok: false, texto: String(err).slice(0, 120) }); }
+    finally { setBusy(false); }
+  };
+
+  const campo = "min-h-[44px] rounded-xl border border-white/15 bg-white/[0.05] px-3 text-[12.5px] text-g-word placeholder:text-g-muted focus:outline-none";
+  return (
+    <div className="mt-3">
+      <button type="button" onClick={() => setAberto((a) => !a)}
+        className="inline-flex min-h-[44px] items-center rounded-full border px-4 text-[12px] font-bold"
+        style={{ borderColor: `${OK}55`, color: OK }}>
+        {aberto ? "Fechar" : "➕ Créditos"}
+      </button>
+      {aberto && (
+        <form onSubmit={enviar} className="mt-2.5 grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 sm:grid-cols-4">
+          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e-mail do cliente" className={`${campo} sm:col-span-2`} />
+          <input value={qtd} onChange={(e) => setQtd(e.target.value)} type="number" step="1" placeholder="quantidade (± )" className={campo} />
+          <input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="motivo (obrigatório)" className={campo} />
+          <button disabled={busy} className="min-h-[44px] rounded-xl px-4 text-[12.5px] font-black text-black disabled:opacity-60 sm:col-span-4"
+            style={{ background: OK }}>
+            {busy ? "Ajustando…" : "Ajustar crédito"}
+          </button>
+          <p className="text-[11px] sm:col-span-4" style={{ color: NAO_MEDIDO }}>
+            Negativo estorna (ex.: −200 desfaz um crédito dado por engano). Fica registrado no feed do cliente.
+          </p>
+          {res && (
+            <div className="rounded-lg border px-3 py-2 text-[12px] sm:col-span-4"
+              style={{ borderColor: `${res.ok ? OK : RUIM}55`, color: res.ok ? OK : RUIM }}>
+              {res.ok ? "✅ " : "⛔ "}{res.texto}
+            </div>
+          )}
+        </form>
+      )}
+    </div>
+  );
+}
+
+// id de tentativa — crypto.randomUUID não existe em todo navegador antigo; o fallback ainda é único
+// o bastante para o que ele guarda (uma janela de clique), e nunca fica vazio (id vazio = sem trava).
+function novoId() {
+  try { if (crypto && crypto.randomUUID) return crypto.randomUUID(); } catch { /* */ }
+  return `req-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export default function PainelComando({ token }) {
   const [d, setD] = useState(null);
   const [estado, setEstado] = useState("carregando");
@@ -156,6 +236,8 @@ export default function PainelComando({ token }) {
           </button>
           {d.avisos_24h > 0 && <span className="text-[11.5px] text-g-muted">{d.avisos_24h} aviso(s) de sistema em 24h — não são problema</span>}
         </div>
+        {/* A AÇÃO MORA EMBAIXO DA ACUSAÇÃO. "cobrar ou recarregar" com o recarregar a um clique. */}
+        <Creditos token={token} aoAjustar={ler} />
       </Bloco>
     </div>
   );
