@@ -138,6 +138,7 @@ export const PULSE_COPY = {
     ],
     price: "$49",
     per: "/mo · flat, all locations",
+    degrau: "Start here for $49 — and it becomes credit on your plan when you're ready.",
     ctaLine: "See your Pulse score — Gui calls you now.",
     placeholder: "Your phone number",
     cta: "Call me",
@@ -179,6 +180,7 @@ export const PULSE_COPY = {
     ],
     price: "US$ 49",
     per: "/mês · fixo, todas as unidades",
+    degrau: "Comece aqui por $49 — e ele vira crédito no seu plano quando você quiser subir.",
     ctaLine: "Veja seu score Pulse — a Gui te liga agora.",
     placeholder: "Seu número de telefone",
     cta: "Me ligar",
@@ -219,6 +221,7 @@ export const PULSE_COPY = {
     ],
     price: "$49",
     per: "/mes · fijo, todos los locales",
+    degrau: "Empieza aquí por $49 — y se vuelve crédito en tu plan cuando quieras subir.",
     ctaLine: "Ve tu score Pulse — Gui te llama ahora.",
     placeholder: "Tu número de teléfono",
     cta: "Llamarme",
@@ -259,6 +262,7 @@ export const PULSE_COPY = {
     ],
     price: "$49",
     per: "/माह · फ़्लैट, सभी लोकेशन",
+    degrau: "यहाँ से $49 में शुरू करें — और तैयार होने पर यह आपके प्लान में क्रेडिट बन जाता है।",
     ctaLine: "अपना Pulse स्कोर देखें — Gui अभी आपको कॉल करती है।",
     placeholder: "आपका फ़ोन नंबर",
     cta: "मुझे कॉल करें",
@@ -361,7 +365,7 @@ export default function PulseSection() {
           Pelo mesmo motivo não existe aqui nenhum "incluído/sem custo/on us" e o $49 aparece como
           PREÇO — nunca riscado. Riscar o preço da coisa que estamos vendendo é anunciar desconto
           que não existe. ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="gp-sim relative mx-auto max-w-4xl overflow-hidden rounded-xl3 border-2 p-6 shadow-lift backdrop-blur sm:p-9"
+      <div className="gp-sim relative mx-auto max-w-4xl overflow-hidden rounded-xl3 border-2 p-6 backdrop-blur sm:p-9"
         style={{ borderColor: `rgba(${GOLD_RGB},0.55)`, background: `linear-gradient(135deg, rgba(${GOLD_RGB},0.10), transparent 68%)`, animation: "pureveal .8s ease both" }}>
         <span aria-hidden="true" className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full blur-3xl" style={{ background: `rgba(${GOLD_RGB},0.16)` }} />
 
@@ -374,7 +378,11 @@ export default function PulseSection() {
           {/* O PREÇO, como preço. Moeda e formato vêm do dicionário do idioma (PULSE_COPY[lang]),
               nunca de "$" cravado — pt mostra R$149/mês, en/es/hi mostram $49/mo. */}
           <div className="mt-3.5 flex items-end justify-center gap-1.5">
-            <span className="bg-gradient-to-r from-g-gold via-g-light to-g-gold bg-clip-text text-[40px] font-black leading-none tracking-tight tabular-nums text-transparent sm:text-[46px]"
+            {/* CHAMPANHE DE VERDADE (Luis, 2026-08-25: «dá aquela champanhe pro Pulse, dourado
+                tava indo»). O gradiente passava por `g-light`, que é VERDE — no meio do degradê o
+                número saía esverdeado e perdia o ouro. Agora o percurso é champanhe → creme →
+                cobre: três tons da MESMA família, então o brilho corre sem trocar de cor. */}
+            <span className="bg-gradient-to-r from-g-gold via-[#F0E4C8] to-g-copper bg-clip-text text-[40px] font-black leading-none tracking-tight tabular-nums text-transparent sm:text-[46px]"
               style={{ backgroundSize: "220% auto", animation: "pushine 6s linear infinite" }}>{G.price}</span>
             <span className="pb-1 text-[12.5px] font-bold text-g-ink">{G.per}</span>
           </div>
@@ -463,71 +471,19 @@ export default function PulseSection() {
           <p className="mt-3 text-center text-[11.5px] leading-snug text-g-muted">▶ {G.simNote}</p>
         </div>
 
-        {/* ── OS DOIS CAMINHOS — os dois existem no código (leitura passiva da conversa +
-               /api/cx-survey mandando a pesquisa de 1 toque). Um não substitui o outro. ────── */}
-        <div className="mt-7">
-          <div className="text-center text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: GOLD }}>🔀 {G.ways}</div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {[G.way1, G.way2].map(([icon, t, b]) => (
-              <div key={t} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur">
-                <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[16px]"
-                  style={{ background: `rgba(${GOLD_RGB},.13)`, boxShadow: `inset 0 0 0 1px rgba(${GOLD_RGB},.4)` }}>{icon}</span>
-                <div className="min-w-0">
-                  <div className="text-[13px] font-bold leading-tight text-g-word">{t}</div>
-                  <p className="mt-1 text-[12px] leading-snug text-g-ink">{b}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── MELHOR QUE QUALTRICS — a comparação de preço aprovada.
-               ⚠️ Os NOMES ficam (Qualtrics · Birdeye · Medallia · Podium): o Luis já reverteu uma
-               remoção minha disso. Âncora com nome é o que dá tamanho ao $49; categoria genérica
-               não ancora nada. Fonte única: PULSE_COPY. ─────────────────────────────────────── */}
-        <div className="mt-7 border-t pt-5" style={{ borderColor: `rgba(${GOLD_RGB},0.22)` }}>
-          <div className="text-center text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: GOLD }}>{G.compare}</div>
-          <div className="mt-3 flex flex-col gap-2.5 sm:flex-row sm:items-stretch sm:justify-center">
-            <div className="rounded-2xl border px-5 py-3.5 backdrop-blur"
-              style={{ borderColor: `rgba(${GOLD_RGB},0.55)`, background: `rgba(${GOLD_RGB},0.12)` }}>
-              <div className="text-[15px] font-black text-g-word">✅ {G.us}</div>
-              <div className="mt-0.5 text-[11.5px] font-semibold" style={{ color: GOLD }}>{G.usSub}</div>
-            </div>
-            {G.rivals.map((r) => (
-              <div key={r.n} className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3.5 opacity-80 backdrop-blur">
-                <div className="text-[13.5px] font-bold text-g-ink line-through decoration-g-copper/50">{r.n}</div>
-                <div className="mt-0.5 text-[12px] font-semibold text-g-muted">{r.p}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── O FECHAMENTO: a ligação da Gui (o mesmo funil /api/lead noCall + /api/call) ───── */}
-        <div className="mt-7 rounded-2xl border p-5 backdrop-blur sm:p-6" style={{ borderColor: `rgba(${GOLD_RGB},0.35)`, background: "rgba(255,255,255,0.04)" }}>
-          <p className="text-center text-[14.5px] font-semibold text-g-word">{G.ctaLine}</p>
-          {st === "done" ? (
-            <div className="mt-4 rounded-2xl border border-g-green/40 bg-g-green/15 px-5 py-4 text-center text-[15px] font-bold text-g-light">{G.done}</div>
-          ) : (
-            <form onSubmit={submit} className="mt-4 space-y-3">
-              <div className="flex flex-col gap-2.5 sm:flex-row">
-                {/* 16px é obrigatório: abaixo disso o iOS dá zoom no foco e quebra a página no telefone */}
-                <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={G.placeholder} aria-label={G.placeholder}
-                  className="min-h-[48px] flex-1 rounded-full border border-white/20 bg-black/20 px-5 py-3.5 text-[16px] text-g-word placeholder:text-g-muted outline-none transition focus:border-g-green/70" />
-                <button type="submit" disabled={st === "calling"} aria-label={G.cta}
-                  className="group relative inline-flex min-h-[48px] items-center justify-center gap-2 overflow-hidden rounded-full px-7 py-3.5 text-[15px] font-extrabold text-[#1a1a1a] ring-1 ring-white/40 shadow-[0_16px_42px_-12px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.85)] transition-transform hover:scale-[1.03] active:scale-95 disabled:opacity-60"
-                  style={{ background: "linear-gradient(180deg,#f5f6f8 0%,#dde1e7 42%,#bcc2cc 100%)" }}>
-                  <span aria-hidden="true" className="pointer-events-none absolute inset-0 -translate-x-[120%] bg-gradient-to-r from-transparent via-white/80 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-[120%]" />
-                  <span className="relative">📞 {st === "calling" ? G.calling : G.cta}</span>
-                </button>
-              </div>
-              <label className={`flex min-h-[48px] items-center gap-2 text-[11px] leading-snug ${err && !consent ? "text-g-gold" : "text-g-muted"}`}>
-                <input type="checkbox" required checked={consent} onChange={(e) => { setConsent(e.target.checked); if (e.target.checked) setErr(false); }} className="h-5 w-5 shrink-0 accent-g-green" />
-                <span><ConsentText lang={lang} /></span>
-              </label>
-              {err && (!phone.trim() || !consent) && <p role="alert" className="text-center text-[12px] font-semibold text-g-gold">{G.consentErr}</p>}
-            </form>
-          )}
-          <p className="mt-4 text-center text-[11.5px] font-semibold text-g-muted">{G.foot}</p>
+        {/* ═══ O DEGRAU (Luis, 2026-08-25) ═══════════════════════════════════════════════════
+            O Pulse subiu para ANTES dos planos, e nessa posição ele tinha que encolher ou
+            atropelaria o preço. Saíram daqui, e continuam vivos em /pulse:
+              · a comparação com Birdeye · Podium · Qualtrics · Medallia
+              · o bloco "os dois caminhos" (leitura passiva × pesquisa de 1 toque)
+              · o formulário próprio de "me liga"
+            Três máquinas de decisão empilhadas antes do quadro de planos não somam — dividem.
+            🚨 O QUE ENTRA NO LUGAR é a única linha que impede a inversão de desqualificar o
+            plano de $449: dizer que o $49 é CRÉDITO, não alternativa. Uma escada lida de baixo
+            para cima funciona; dois produtos lado a lado, não. */}
+        <div className="mt-7 rounded-xl3 border border-white/10 bg-white/[0.035] px-5 py-4 text-center backdrop-blur-sm"
+>
+          <p className="text-[14.5px] font-semibold leading-snug text-g-word">{G.degrau}</p>
         </div>
 
         {/* a porta para /pulse — página que não se alcança é página que não existe */}

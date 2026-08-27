@@ -39,9 +39,15 @@
 // 🚨 CLIENTE ATUAL FICA NA CONDIÇÃO ANTIGA. O preço vive aqui e vale para quem ENTRA; quem já
 // paga tem o valor gravado em `client_credits`. Mexer no que já foi vendido é a única coisa pior
 // que cobrar pouco.
+// ═══ amountBRL — O PREÇO EM REAL DE VERDADE (2026-08-25) ════════════════════════════════════
+// ⚠️ preço BRL = decisão do dono, ainda não definida (2026-08-25). null = o pay-link BR responde
+// nao_configurado. Definir aqui E no BRL_CREDITS do mercadopago-webhook no MESMO commit.
+// (`priceBR`/`amountBR` acima continuam sendo o preço REAL COBRADO hoje — em DÓLAR. `amountBRL`
+// é outra coisa: o valor em R$ que o checkout do Mercado Pago cobraria. Nunca converta por conta
+// própria — câmbio não é decisão de código, é decisão de preço.)
 export const GUILEO_PLANS = [
   {
-    key: "starter", name: "Essential", price: "$149/mo", amount: 149, priceBR: "US$ 149/mês", amountBR: 149, credits: 500,
+    key: "starter", name: "Essential", price: "$149/mo", amount: 149, priceBR: "US$ 149/mês", amountBR: 149, amountBRL: null, credits: 500,
     tag: { pt: "Comece simples", en: "Start simple", es: "Empieza simple", hi: "सरल शुरुआत" },
     feats: {
       pt: ["Recepcionista IA de voz 24/7 (1 agente)", "Agendamentos + lembretes", "500 créditos/mês", "Garantia de 30 dias"],
@@ -51,7 +57,7 @@ export const GUILEO_PLANS = [
     },
   },
   {
-    key: "growth", name: "Personalized", price: "$897/mo", amount: 897, priceBR: "US$ 897/mês", amountBR: 897, credits: 3000, featured: true,
+    key: "growth", name: "Personalized", price: "$897/mo", amount: 897, priceBR: "US$ 897/mês", amountBR: 897, amountBRL: null, credits: 3000, featured: true,
     tag: { pt: "Mais popular", en: "Most popular", es: "Más popular", hi: "सबसे लोकप्रिय" },
     feats: {
       pt: ["Voz + chat já no ar; WhatsApp e redes ligam quando Meta/operadora aprovarem", "Vendas & marketing automáticos", "3.000 créditos/mês", "Suporte prioritário"],
@@ -61,7 +67,7 @@ export const GUILEO_PLANS = [
     },
   },
   {
-    key: "scale", name: "Full Operation", price: "$1,997/mo", amount: 1997, priceBR: "US$ 1.997/mês", amountBR: 1997, credits: 9000,
+    key: "scale", name: "Full Operation", price: "$1,997/mo", amount: 1997, priceBR: "US$ 1.997/mês", amountBR: 1997, amountBRL: null, credits: 9000,
     tag: { pt: "Operação completa", en: "We run it all", es: "Operación completa", hi: "पूरा संचालन" },
     feats: {
       pt: ["Todos os canais que já estão no ar + campanhas (WhatsApp/SMS entram na aprovação)", "9.000 créditos/mês", "Implantação profunda", "Time dedicado"],
@@ -75,3 +81,16 @@ export const planByKey = (k) => GUILEO_PLANS.find((p) => p.key === k) || GUILEO_
 // Payment page a seller hands the client (ref = permanent attribution).
 export const payLink = (clientEmail, ref) =>
   `https://guileoai.com/planos?email=${encodeURIComponent(clientEmail || "")}&ref=${encodeURIComponent(ref || "")}`;
+
+// ── Mapa BRL derivado (fonte única do preço em real) ────────────────────────────────────────
+// Plano com `amountBRL: null` simplesmente NÃO existe neste mapa. Mapa vazio = nenhum crédito BR
+// até o dono definir preço — é isso que faz o pay-link BR responder `nao_configurado` e o
+// mercadopago-webhook recusar creditar por valor desconhecido em vez de creditar errado.
+// Chave = CENTAVOS de real (o webhook compara com transaction_amount × 100).
+export const brlCents = (p) => (p && Number.isFinite(Number(p.amountBRL)) && Number(p.amountBRL) > 0 ? Math.round(Number(p.amountBRL) * 100) : null);
+export const BRL_CREDITS_MAP = Object.fromEntries(
+  GUILEO_PLANS.map((p) => [brlCents(p), p.credits]).filter(([c]) => c !== null && c !== "null")
+);
+export const BRL_PLAN_MAP = Object.fromEntries(
+  GUILEO_PLANS.map((p) => [brlCents(p), p.name]).filter(([c]) => c !== null && c !== "null")
+);

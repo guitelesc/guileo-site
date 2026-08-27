@@ -97,7 +97,10 @@ export default function PricingTiers() {
             return (
               <Item key={p.key} variant="up">
                 <article className={`relative flex h-full flex-col overflow-hidden rounded-2xl border p-6 backdrop-blur transition-all duration-300 ${pop ? "border-g-green/45 bg-g-green/[0.06] lg:-translate-y-2" : "border-white/10 bg-white/[0.03] hover:-translate-y-1"}`}
-                  style={{ boxShadow: pop ? "0 40px 100px -34px rgba(62,148,104,0.5)" : "0 22px 60px -34px rgba(0,0,0,0.9)" }}>
+                  // 🔆 SÓ O PLANO DESTACADO GUARDA SOMBRA PRÓPRIA — e ela SOMA à receita global em
+                  // vez de substituí-la: as 4 camadas de vidro continuam vindo do index.css, e o
+                  // halo verde é o extra que diz "é este". Os outros dois herdam o padrão puro.
+                  style={pop ? { boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(0,0,0,0.34), 0 2px 4px -2px rgba(0,0,0,0.7), 0 40px 100px -34px rgba(62,148,104,0.45)" } : undefined}>
                   {pop && <span aria-hidden className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-transparent via-g-green to-transparent" />}
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-[15px] font-black tracking-tight text-g-word">{p.name}</div>
@@ -138,7 +141,7 @@ export default function PricingTiers() {
             PREÇO: vem de salesKit.js (a mesma fonte do vendedor). Número digitado à mão na
             landing é número que diverge do que o vendedor fala na semana seguinte. */}
         <Reveal className="mt-6">
-          <div className="relative overflow-hidden rounded-xl3 border border-g-gold/30 bg-gradient-to-br from-g-gold/[0.07] via-white/[0.02] to-transparent p-7 shadow-lift sm:p-9">
+          <div className="relative overflow-hidden rounded-xl3 border border-g-gold/30 bg-gradient-to-br from-g-gold/[0.07] via-white/[0.02] to-transparent p-7 backdrop-blur-sm sm:p-9">
             <div className="grid items-center gap-7 lg:grid-cols-[1.35fr_1fr]">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-g-gold/35 bg-g-gold/10 px-3 py-1 text-[10.5px] font-black uppercase tracking-[0.18em] text-g-gold">

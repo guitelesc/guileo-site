@@ -158,7 +158,7 @@ export default function ResultsV2() {
       </div>
 
       {/* combined panel: what Gui does (+ action chips) → leak → result */}
-      <div className="mx-auto mt-6 max-w-3xl overflow-hidden rounded-xl3 border border-g-line bg-white/[0.04] p-7 shadow-[0_40px_90px_-50px_rgba(0,0,0,0.85)] backdrop-blur-sm sm:p-8">
+      <div className="mx-auto mt-6 max-w-3xl overflow-hidden rounded-xl3 border border-g-line bg-white/[0.04] p-7 backdrop-blur-sm sm:p-8">
         <div key={idx} style={{ animation: "rvsoft .5s ease both" }}>
           <div className="mb-3 flex items-center justify-center gap-2 text-center text-[14px] text-g-ink">
             <span className="text-xl">{b.icon}</span>

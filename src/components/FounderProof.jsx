@@ -1,5 +1,11 @@
 // FounderProof — social proof: an honest first-person note from Luis (why Guileo exists),
 // plus a testimonials row that ONLY renders once real client quotes exist. No fake reviews,
+// ✂️ TEXTO ENCURTADO E CORRIGIDO (Luis, 2026-08-25): saiu "cresci cercado de negócios como o
+// seu" e saiu "famílias imigrantes". A biografia real é outra e é MAIS forte para vender:
+// médico, desenvolvedor e empresário de tecnologia. Médico dá autoridade em clínica (a vertical
+// de maior ticket), desenvolvedor explica por que o produto existe, e empresário diz que ele
+// vive a mesma dor do leitor. "Imigrante" restringia o público sem necessidade — o problema do
+// telefone que ninguém atende não tem nacionalidade.
 // no invented metrics — the founder's word is the proof until clients speak. Sits right
 // above the live "Let Gui call you" demo: read why it exists, then watch it work.
 
@@ -16,25 +22,25 @@ import { Reveal } from "../lib/ui.jsx";
 const COPY = {
   en: {
     eyebrow: "A note from the founder",
-    note: "I grew up around businesses like yours. For years I watched restaurants, clinics and salons — many run by immigrant families — lose customers every single day, simply because nobody could pick up the phone. Big companies had front desks and call centers; the little guy had a voicemail. I built Guileo so every small business gets the same 24/7 team — one that answers in your customer's language, and never lets a call go unanswered.",
+    note: "I'm a physician, a developer and a technology entrepreneur. For years I watched clinics, restaurants and salons lose customers for one reason — nobody picked up the phone. Big companies have call centers; everyone else has voicemail. I built Guileo so any business gets that same 24/7 team.",
     role: "Founder, Guileo (ORIGEM LTDA)",
     quotesHead: "What clients say",
   },
   pt: {
     eyebrow: "Uma carta do fundador",
-    note: "Cresci cercado de negócios como o seu. Por anos vi restaurantes, clínicas e salões — muitos de famílias imigrantes — perderem clientes todos os dias, simplesmente porque ninguém conseguia atender o telefone. As grandes empresas tinham recepção e call center; o pequeno tinha caixa postal. Criei a Guileo para que todo pequeno negócio tenha a mesma equipe 24/7 — que atende no idioma do seu cliente e nunca deixa uma ligação sem resposta.",
+    note: "Sou médico, desenvolvedor e empresário de tecnologia. Por anos vi clínicas, restaurantes e salões perderem cliente por um motivo só — ninguém atendia o telefone. Empresa grande tem call center; o resto tem caixa postal. Construí a Guileo pra qualquer negócio ter esse mesmo time 24/7.",
     role: "Fundador, Guileo (ORIGEM LTDA)",
     quotesHead: "O que os clientes dizem",
   },
   es: {
     eyebrow: "Una nota del fundador",
-    note: "Crecí rodeado de negocios como el tuyo. Durante años vi restaurantes, clínicas y salones — muchos de familias inmigrantes — perder clientes todos los días, simplemente porque nadie podía contestar el teléfono. Las grandes empresas tenían recepción y call centers; el pequeño tenía un buzón de voz. Creé Guileo para que cada pequeño negocio tenga el mismo equipo 24/7 — uno que contesta en el idioma de tu cliente y nunca deja una llamada sin respuesta.",
+    note: "Soy médico, desarrollador y empresario de tecnología. Por años vi clínicas, restaurantes y salones perder clientes por una sola razón — nadie contestaba el teléfono. Las grandes empresas tienen call center; el resto tiene buzón de voz. Construí Guileo para que cualquier negocio tenga ese mismo equipo 24/7.",
     role: "Fundador, Guileo (ORIGEM LTDA)",
     quotesHead: "Lo que dicen los clientes",
   },
   hi: {
     eyebrow: "संस्थापक की ओर से",
-    note: "मैं आपके जैसे व्यवसायों के बीच बड़ा हुआ। सालों तक मैंने रेस्टोरेंट, क्लीनिक और सैलून — जिनमें कई अप्रवासी परिवारों के थे — को हर दिन ग्राहक खोते देखा, सिर्फ इसलिए कि फोन उठाने वाला कोई नहीं था। बड़ी कंपनियों के पास रिसेप्शन और कॉल सेंटर थे; छोटे व्यवसाय के पास सिर्फ वॉइसमेल। मैंने Guileo इसलिए बनाया ताकि हर छोटे व्यवसाय को वही 24/7 टीम मिले — जो आपके ग्राहक की भाषा में जवाब देती है और कोई कॉल अनुत्तरित नहीं छोड़ती।",
+    note: "मैं एक चिकित्सक, डेवलपर और टेक्नोलॉजी उद्यमी हूँ। सालों तक मैंने क्लिनिक, रेस्तराँ और सैलून को सिर्फ़ एक वजह से ग्राहक खोते देखा — कोई फ़ोन नहीं उठाता था। बड़ी कंपनियों के पास कॉल सेंटर है; बाक़ी सबके पास वॉइसमेल। मैंने Guileo इसलिए बनाया कि हर व्यवसाय को वही 24/7 टीम मिले।",
     role: "संस्थापक, Guileo (ORIGEM LTDA)",
     quotesHead: "ग्राहक क्या कहते हैं",
   },
@@ -61,7 +67,7 @@ export default function FounderProof() {
 
       {/* Founder note — one quiet card, hotel-stationery energy */}
       <Reveal className="mx-auto max-w-2xl">
-        <div className="relative overflow-hidden rounded-xl3 border border-white/10 bg-white/[0.03] p-8 backdrop-blur-xl shadow-lift sm:p-10">
+        <div className="relative overflow-hidden rounded-xl3 border border-white/10 bg-white/[0.03] p-8 backdrop-blur-xl sm:p-10">
           <div className="pointer-events-none absolute -top-20 -right-14 h-56 w-56 rounded-full bg-g-gold/10 blur-3xl" />
           <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold">{C.eyebrow}</div>
           <p className="mt-5 text-[16px] leading-relaxed text-g-word sm:text-[17px]">{C.note}</p>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import mark from "../assets/guileo-mark.png";
+import { FaPhone, FaHandshake, FaCalendarCheck } from "react-icons/fa6";
 import { useLang } from "../i18n.jsx";
 import { waLink } from "../data/contact.js";
 import { normalizePhoneWithCc, phonePlaceholder } from "../lib/intl.js";
@@ -106,8 +107,11 @@ export default function LiveCall() {
 
   const field = "rounded-full border border-white/20 bg-black/25 px-5 py-3 text-base text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70 transition w-full";
 
+  // VIDRO NO PADRÃO GLOBAL (2026-08-25): era a única superfície da landing com gradiente
+  // colorido pesado (white/.16 → green/.08) e sombra própria — parecia importada de outro
+  // site. `backdrop-blur-xl` matricula na lei do index.css; o resto sai.
   return (
-    <div className="relative overflow-hidden rounded-xl3 bg-gradient-to-br from-white/[0.16] via-white/[0.08] to-g-green/[0.08] backdrop-blur-xl border border-white/25 ring-1 ring-white/10 shadow-[0_40px_90px_-30px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.18)] p-6 sm:p-8 max-w-xl mx-auto">
+    <div className="relative mx-auto max-w-xl overflow-hidden rounded-xl3 border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl sm:p-8">
       <style>{`@keyframes lcwave{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}@keyframes lcember{0%,100%{opacity:.5}50%{opacity:.9}}@media (prefers-reduced-motion: reduce){[style*="lcwave"],[style*="lcember"]{animation:none !important}}`}</style>
       {/* screen sheen — premium device feel */}
       <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.10] to-transparent" />
@@ -138,12 +142,17 @@ export default function LiveCall() {
 
       {/* value strip — what happens on the call (boosts activation) */}
       <div className="mt-4 grid grid-cols-3 gap-2">
-        {L.chips.map(([ic, tx]) => (
-          <div key={tx} className="rounded-xl2 border border-white/10 bg-white/[0.04] px-2 py-2.5 text-center">
-            <div className="text-lg leading-none">{ic}</div>
-            <div className="mt-1 text-[11px] font-semibold text-g-word leading-tight">{tx}</div>
-          </div>
-        ))}
+        {L.chips.map(([, tx], ci) => {
+          const CHIP_ICO = [FaPhone, FaHandshake, FaCalendarCheck];   // 1:1 com os 3 chips
+          const I = CHIP_ICO[ci] || FaPhone;
+          return (
+            <div key={tx} className="rounded-xl2 border border-white/10 bg-white/[0.04] px-2 py-2.5 text-center">
+              <span aria-hidden="true" className="mx-auto grid h-7 w-7 place-items-center rounded-full text-[12px] text-g-gold"
+                style={{ background: "rgba(255,255,255,0.05)", boxShadow: "inset 0 0 0 1px rgba(214,194,154,0.4)" }}><I /></span>
+              <div className="mt-1.5 text-[11px] font-semibold leading-tight text-g-word">{tx}</div>
+            </div>
+          );
+        })}
       </div>
 
       {state === "done" ? (

@@ -55,21 +55,37 @@ body::after {
 }
 
 /* ── 4K SCREEN REALISM ─────────────────────────────────────────────────────
-   Every glass panel gets real studio lighting: a soft top reflection sweeping
-   down (light hitting the glass), an edge highlight on the top rim, and a dark
-   inner shade at the bottom rim (glass with thickness). nvidia-render feel.
+   UNIFORMIZADO 2026-08-25 (Luis: «esse padrão nvidia 4k realista hd em todo o
+   website, uniformiza essa referência de realismo e textura na landing inteira»).
+   A receita é a que ele aprovou na faixa de canais, agora promovida a lei global:
+     · corpo em branco levíssimo caindo de cima (a luz vem de cima, sempre)
+     · VERNIZ diagonal branco — o reflexo do ambiente que separa vidro de papel fosco
+     · aro claro no topo por dentro + aro escuro embaixo (espessura real)
+     · DUAS sombras: contato curta (o objeto pousa) + ambiente longa (dá o espaço)
+   🚨 A cor NUNCA entra na superfície. Vidro não tem cor — ele deixa passar. Tingir a
+   placa na cor da marca vira plástico néon, que foi exatamente o que ele recusou.
+   Qualquer elemento com `backdrop-blur*` herda isso; é assim que se entra no sistema.
    :where() keeps specificity at zero so component classes always win conflicts;
    buttons keep their own shine system. */
 :where([class*="backdrop-blur"]):not(.btn):not(.btn-gold):not(.btn-bright)::before {
   content: ""; position: absolute; inset: 0; border-radius: inherit;
   pointer-events: none; z-index: 1;
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.015) 16%, transparent 38%),
-    radial-gradient(120% 70% at 82% -12%, rgba(255,255,255,0.06), transparent 55%);
+    /* 1. o corpo: branco levíssimo caindo de cima — a luz vem de cima, sempre */
+    linear-gradient(168deg, rgba(255,255,255,0.075), rgba(255,255,255,0.018) 34%, transparent 62%),
+    /* 2. o verniz: faixa de reflexo DIAGONAL. Vidro real carrega um reflexo do ambiente; sem
+          ele a placa lê como papel fosco. Branco — nunca colorido (cor na superfície = plástico) */
+    linear-gradient(104deg, transparent 18%, rgba(255,255,255,0.05) 33%, transparent 47%),
+    /* 3. a luz de topo-direita, a mesma do estúdio do body */
+    radial-gradient(120% 70% at 82% -12%, rgba(255,255,255,0.055), transparent 55%);
   mix-blend-mode: screen;
 }
 :where([class*="backdrop-blur"]):not(.btn):not(.btn-gold):not(.btn-bright) {
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.09), inset 0 -1px 0 rgba(0,0,0,0.30), 0 30px 70px -34px rgba(0,0,0,0.85);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.10),   /* quina de cima devolvendo luz */
+    inset 0 -1px 0 rgba(0,0,0,0.34),        /* quina de baixo na própria sombra */
+    0 2px 4px -2px rgba(0,0,0,0.70),        /* sombra de CONTATO — curta: o objeto POUSA */
+    0 30px 66px -36px rgba(0,0,0,0.92);     /* sombra de AMBIENTE — longa: dá o espaço */
 }
 
 @layer components {

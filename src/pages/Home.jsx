@@ -23,6 +23,7 @@ import TrustStrip from "../components/TrustStrip.jsx";
 import PricingTiers from "../components/PricingTiers.jsx";
 import AddOnsV2 from "../components/AddOnsV2";
 import { waLink, bookLink } from "../data/contact.js";
+import { FaCheck, FaMinus, FaXmark } from "react-icons/fa6";
 import { useLang } from "../i18n.jsx";
 import { useSeo } from "../lib/seo.js";
 
@@ -31,6 +32,27 @@ import { useSeo } from "../lib/seo.js";
 // business with Gui → becomes a captured lead feeding the onboarding funnel.
 const DemoEngine = lazy(() => import("../components/DemoEngine.jsx"));
 
+
+/* A MARCA DA TABELA — disco com glifo vetorial. Três estados e uma regra: quem FAZ é verde
+   nítido, quem faz EM PARTE é âmbar (a cor de "precisa de você"), quem NÃO faz é cinza apagado —
+   o vazio é a informação. `forte` só engrossa o da coluna da Guileo. */
+function CompMarca({ k, forte = false }) {
+  const M = {
+    sim:   { Ico: FaCheck,  c: "47,227,154" },
+    parte: { Ico: FaMinus,  c: "255,194,61" },
+    nao:   { Ico: FaXmark,  c: "148,140,123" },
+  }[k] || { Ico: FaMinus, c: "148,140,123" };
+  const { Ico, c } = M;
+  const apagado = k === "nao";
+  return (
+    <span aria-hidden="true" className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full text-[11px]"
+      style={{ color: `rgba(${c},${apagado ? 0.5 : 1})`,
+               background: `rgba(${c},${apagado ? 0.06 : forte ? 0.16 : 0.11})`,
+               boxShadow: `inset 0 0 0 1px rgba(${c},${apagado ? 0.22 : forte ? 0.6 : 0.4})` }}>
+      <Ico />
+    </span>
+  );
+}
 
 /* Shared section header — the LegsV2/MethodV2 pattern: mono uppercase champagne eyebrow
    → big font-black headline (one shimmer phrase) → short greige sub. One language everywhere. */
@@ -153,48 +175,55 @@ export default function Home() {
       <PillarsProducts />    {/* The WHAT — each pillar's REAL products → result → value (replaces WholePicture + old ProductResults; aligns landing to the platform) */}
       <ChannelsStrip />      {/* Reach — a slim logo strip (folded from the old full ChannelsV2 phone section) */}
 
-      {/* SEE-IT-ON-YOUR-BRAND — the personalized visual demo as a landing lead magnet. Visitor types
-          their site → sees their own business with Gui → captured as a lead. Feeds the onboarding funnel. */}
-      <section id="veja" className="relative px-5 py-16">
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(620px_320px_at_50%_0%,rgba(255,138,51,0.08),transparent)]" />
-        <div className="mx-auto max-w-3xl">
-          <SectionHead
-            eyebrow={lang === "pt" ? "🪄 VEJA NA SUA MARCA" : lang === "es" ? "🪄 VELO EN TU MARCA" : lang === "hi" ? "🪄 अपनी ब्रांड में देखें" : "🪄 SEE IT ON YOUR BRAND"}
-            h2={lang === "pt" ? "Veja sua empresa com a Gui — em segundos" : lang === "es" ? "Mira tu empresa con Gui — en segundos" : lang === "hi" ? "अपना व्यवसाय Gui के साथ देखें — सेकंडों में" : "See your business with Gui — in seconds"}
-            sub={lang === "pt" ? "Digite seu site ou @ — montamos uma prévia na sua marca na hora." : lang === "es" ? "Escribe tu sitio o @ — armamos una vista previa en tu marca al instante." : lang === "hi" ? "अपनी साइट या @ डालें — हम तुरंत आपकी ब्रांड में प्रीव्यू बनाते हैं।" : "Type your site or @ — we build a preview in your brand instantly."}
-            className="mb-6" subMax="max-w-2xl" />
-          <Reveal>
-            <Suspense fallback={<div className="rounded-2xl border border-g-line bg-white/[0.03] p-8 text-center text-[13px] text-g-muted">…</div>}>
-              <DemoEngine surface="public" />
-            </Suspense>
-          </Reveal>
-        </div>
-      </section>
+      {/* ⛔ "VEJA NA SUA MARCA" SAIU (Luis, 2026-08-25: «apagar isso aqui») ──────────────────
+          Era o campo "digite seu site ou @" que montava uma prévia na marca do visitante
+          (<DemoEngine surface="public" />). Saiu da landing; o motor continua vivo e é o mesmo
+          que serve /vitrine/:token e o vendedor — só perdeu a vitrine pública.
+          ↩️ Para voltar: reimportar o lazy DemoEngine e devolver a <section id="veja"> aqui. */}
 
       <MethodV2 />           {/* How you start — live in under 7 days, human-led */}
       <ProofV2 />            {/* Trust badges, right before the demo + offer */}
       <FounderProof />       {/* Founder note + (future) real client quotes — the human voice before the demo */}
       {/* (GUILEO PULSE desceu para DEPOIS do preço — ver a nota na nova posição.) */}
 
-      {/* FAENA MOMENT — a luxe divider + dramatic line that hands the stage to Gui */}
-      <Reveal variant="scale" className="relative wrap py-14 text-center">
+      {/* ↩️ A CHAMADA AO VIVO VOLTOU (Luis, 2026-08-25: «volta o LiveCall melhorado») ─────────
+          Tinha saído horas antes na limpeza («deleta isso»); a volta é decisão do dono e vem com
+          quatro melhorias em vez de restauração seca:
+          1. POSIÇÃO — antes morava no fim da página, depois de tudo. Agora vem logo após o
+             Método, cujo passo 2 promete literalmente "você vê: sua Gui atendendo, AO VIVO".
+             A ligação é a prova imediata dessa promessa — promessa e prova coladas.
+          2. O divisor Faena voltou enxuto (uma linha, dois filetes) — ele entrega o palco.
+          3. O cartão entrou na lei do vidro 4K (era a única superfície com gradiente colorido
+             pesado e sombra própria — ver LiveCall.jsx).
+          4. Chips de emoji viraram glifos vetoriais (a regra da casa).
+          Com isso a landing recupera sua captura de telefone mais quente (consentimento TCPA +
+          speed-to-lead) que a limpeza tinha custado. */}
+      <Reveal variant="scale" className="relative wrap py-12 text-center">
         <div className="mx-auto h-px w-40 bg-gradient-to-r from-transparent via-g-gold/55 to-transparent" />
-        <p className="mt-7 mx-auto max-w-2xl font-black leading-[1.05] tracking-tight" style={{ fontSize: "clamp(1.5rem,3.4vw,2.4rem)" }}>
+        <p className="mt-6 mx-auto max-w-2xl font-black leading-[1.05] tracking-tight" style={{ fontSize: "clamp(1.5rem,3.4vw,2.4rem)" }}>
           <span className="text-g-word">{lang === "pt" ? "Agora pare de ler. " : lang === "es" ? "Ahora deja de leer. " : lang === "hi" ? "अब पढ़ना बंद करें। " : "Now stop reading. "}</span>
-          <span style={{ color: "#FF8A33", textShadow: "0 0 30px rgba(255,138,51,0.40)" }}>{lang === "pt" ? "Deixe a Gui te ligar." : lang === "es" ? "Deja que Gui te llame." : lang === "hi" ? "Gui को आपको कॉल करने दें।" : "Let Gui call you."}</span>
+          <span style={{ color: "#FF8A33", textShadow: "0 0 30px rgba(255,138,51,0.40)" }}>{lang === "pt" ? "Ouça a Gui trabalhar." : lang === "es" ? "Escucha a Gui trabajar." : lang === "hi" ? "Gui को काम करते सुनें।" : "Hear Gui work."}</span>
         </p>
-        <div className="mt-7 mx-auto h-px w-40 bg-gradient-to-r from-transparent via-g-gold/55 to-transparent" />
+        <div className="mt-6 mx-auto h-px w-40 bg-gradient-to-r from-transparent via-g-gold/55 to-transparent" />
       </Reveal>
 
-      {/* LIVE DEMO — "Let Gui call you": the product working live + a sales-ready lead */}
-      <section id="try" className="relative px-5 py-20">
+      <section id="try" className="relative px-5 pb-20 pt-4">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(700px_360px_at_50%_0%,rgba(62,148,104,0.10),transparent)]" />
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(520px_280px_at_50%_8%,rgba(255,138,51,0.07),transparent)]" />
-        <SectionHead eyebrow={t.numbers.calleyebrow} h2={t.numbers.callh2} className="mb-8" />
         <LiveCall />
       </section>
 
       {/* REAL PRICE — the 3 canonical tiers with the actual number (audit: the price was hidden on /planos) */}
+      {/* ═══ GUILEO PULSE, DE VOLTA ANTES DO PREÇO (Luis, 2026-08-25: «inverter de lugar com
+          os planos») ═══════════════════════════════════════════════════════════════════════
+          ⚠️ ISSO REVERTE UMA DECISÃO DOCUMENTADA EM 2026-08-11, e o argumento de lá continua
+          verdadeiro: ver $49 antes de $149–$999 não posiciona o Pulse como porta de entrada,
+          DESQUALIFICA o resto ("então o outro é caro"). O barato ao lado do caro não vende — apaga.
+          O que muda agora e torna a inversão defensável: o Pulse foi reescrito como DEGRAU, não
+          como produto concorrente — ele diz explicitamente que o valor vira crédito no plano. Uma
+          escada lida de baixo para cima funciona; dois produtos lado a lado, não.
+          👉 Se a conversão do plano cair, é AQUI que se volta. */}
+      <PulseSection />
+      {/* REAL PRICE — os 3 planos canônicos, agora DEPOIS do degrau de $49 */}
       <PricingTiers />
 
       {/* BUILD-YOUR-PACKAGE — the interactive configurator to tailor + close */}
@@ -209,16 +238,13 @@ export default function Home() {
           número — pede a conversa). Componente vivo em components/PricingConfigurator.jsx; ele
           serve melhor numa página própria, onde é o assunto e não o concorrente do preço. */}
 
-      {/* ── ADD-ONS, AGORA DEPOIS DO PREÇO (Luis, 2026-08-11) ─────────────────────────────────
-          Estavam ANTES dos planos, e a razão registrada era boa: "o cliente vê o menu inteiro de
-          poderes antes do preço". A intenção era MENU DE CAPACIDADES — mas a execução mostra
-          "+$97/mês" em destaque no card, então o que o visitante via não era um menu: era uma
-          lista de preços SEM ÂNCORA. Ele lê "+$97" sem ainda saber que a base é $149, e um número
-          solto no escuro sempre parece caro.
-          Agora a sequência é a de quem fecha venda: PLANO (o $149 ancora) → configurador (desenha
-          o caso dele) → add-ons (o upsell, que agora se lê como "e ainda posso somar isto").
-          Reverter uma decisão documentada foi decisão do dono, não minha — perguntei antes. */}
-      <AddOnsV2 />
+      {/* ⛔ OS ADD-ONS SAÍRAM (Luis, 2026-08-25: «deleta isso») ─────────────────────────────
+          Sete cartões de "+$97/mês", "+$197/mês", "setup $297" depois do quadro de planos. A
+          objeção que ele já tinha levantado em 2026-08-12 ("tá só ocupando espaço") nunca foi
+          resolvida: a seção somava preço em cima de preço na cabeça de quem acabou de decidir.
+          ↩️ Componente vivo em components/AddOnsV2.jsx; os add-ons continuam existindo como
+          PRODUTO (productSystem.js) e são vendidos pelo vendedor no /vendedor — só saíram da
+          vitrine da landing. */}
 
       {/* ── GUILEO PULSE, AGORA DEPOIS DO PREÇO (Luis, 2026-08-11) ────────────────────────────
           Ele estava ANTES dos planos, e o problema não era a seção — era a ARITMÉTICA que ela
@@ -235,28 +261,70 @@ export default function Home() {
           ⏳ AINDA ABERTO: a seção continua LONGA e confusa (herói + 4 cartões + estatística +
           comparação + preço + formulário = uma landing dentro da landing). Encurtar é o próximo
           passo, e é mudança de conteúdo — não misturei com a de posição, uma variável por vez. */}
-      <PulseSection />       {/* GUILEO PULSE — standalone satisfaction/XM product wedge ($49/mo flat vs Birdeye/Qualtrics) */}
 
-      {/* COMPARISON — moved below pricing (decide on price, then see why Guileo wins) */}
+      {/* ═══ A COMPARAÇÃO, AGORA LEGÍVEL (Luis, 2026-08-25: «não tá nada intuitivo pra ninguém»)
+          Três defeitos consertados de uma vez:
+          1) AS LINHAS ERAM NOMES DE RECURSO ("Turns calls into marketing data"). Ninguém acorda
+             querendo "dado de marketing" — o dono pensa em PERGUNTA: "atende domingo às 21h?".
+             Pergunta se responde sozinha; nome de recurso precisa ser traduzido na cabeça dele.
+          2) OS SINAIS ERAM EMOJI (✅⚠️❌), que mudam de desenho por sistema e não aceitam cor.
+             Agora são glifos vetoriais em disco: verde=faz · âmbar=em parte · cinza=não faz.
+          3) A COLUNA DA GUILEO NÃO GANHAVA. Agora ela tem fundo próprio, borda lateral verde e
+             fica grudada no topo ao rolar — o olho não perde qual coluna é a nossa.
+          As células viram "sim|nota", "parte|nota", "nao|nota" ou "txt|valor" — o código decide o
+          desenho, a nota (opcional) explica a exceção sem virar outra linha. ═══════════════════ */}
       <section className="wrap py-20">
-        <SectionHead eyebrow={t.more.comp.eyebrow} h2={t.more.comp.h2} sub={t.more.comp.sub} className="mb-3" subMax="max-w-2xl" />
-        <p className="text-center text-[11px] text-g-muted mb-7">{lang === "pt" ? "✅ = faz bem · ⚠️ = em parte · ❌ = não faz — " : lang === "es" ? "✅ = lo hace bien · ⚠️ = en parte · ❌ = no lo hace — " : lang === "hi" ? "✅ = अच्छे से करता है · ⚠️ = आंशिक · ❌ = बिल्कुल नहीं — " : "✅ = does it well · ⚠️ = partly · ❌ = not at all — "}<span className="text-g-light">{lang === "pt" ? "olhe a coluna verde, é a Guileo" : lang === "es" ? "mira la columna verde, es Guileo" : lang === "hi" ? "हरे कॉलम को देखें, वही Guileo है" : "scan the green column, that's Guileo"}</span></p>
+        <SectionHead eyebrow={t.more.comp.eyebrow} h2={t.more.comp.h2} sub={t.more.comp.sub} className="mb-6" subMax="max-w-2xl" />
+
+        {/* a legenda vem ANTES e usa os MESMOS discos da tabela — legenda que não parece com o
+            que explica obriga o leitor a fazer a tradução duas vezes */}
+        <div className="mb-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-[12px] font-semibold">
+          {[["sim", lang === "pt" ? "faz" : lang === "es" ? "lo hace" : lang === "hi" ? "करता है" : "does it"],
+            ["parte", lang === "pt" ? "em parte" : lang === "es" ? "en parte" : lang === "hi" ? "आंशिक" : "partly"],
+            ["nao", lang === "pt" ? "não faz" : lang === "es" ? "no lo hace" : lang === "hi" ? "नहीं करता" : "doesn't"]].map(([k, rot]) => (
+            <span key={k} className="inline-flex items-center gap-2 text-g-ink">
+              <CompMarca k={k} /><span>{rot}</span>
+            </span>
+          ))}
+        </div>
+
         <Reveal>
-          <div className="overflow-x-auto rounded-xl3 border border-white/15 bg-gradient-to-br from-white/[0.10] to-white/[0.05] backdrop-blur-xl shadow-lift">
-            <table className="w-full text-sm min-w-full md:min-w-[640px]">
+          {/* a moldura herda o vidro global (index.css) — sem sombra própria, senão a tabela
+              vira a única superfície da página com outra profundidade */}
+          <div className="overflow-x-auto rounded-xl3 border border-white/10 bg-white/[0.035] backdrop-blur-sm">
+            <table className="w-full min-w-full text-sm md:min-w-[720px]">
               <thead>
                 <tr>
                   {t.more.comp.cols.map((c, i) => (
-                    <th key={i} scope="col" className={`p-4 text-left font-extrabold ${i === 1 ? "bg-g-green/15 border-b-2 border-g-green/40 text-g-word rounded-t-xl relative after:absolute after:inset-0 after:rounded-t-xl after:shadow-[inset_0_0_30px_rgba(62,148,104,0.18)] after:animate-glowpulse after:pointer-events-none" : "text-g-muted"}`}>{c}</th>
+                    <th key={i} scope="col"
+                      className={`sticky top-0 z-10 p-4 text-[13px] font-black backdrop-blur-md ${i === 0 ? "text-left text-g-muted" : "text-center"} ${i === 1 ? "text-g-word" : "text-g-muted"}`}
+                      style={i === 1
+                        ? { background: "rgba(62,148,104,0.16)", boxShadow: "inset 1px 0 0 rgba(62,148,104,0.45), inset -1px 0 0 rgba(62,148,104,0.45), inset 0 -1px 0 rgba(62,148,104,0.5)" }
+                        : { background: "rgba(22,21,18,0.85)", boxShadow: "inset 0 -1px 0 rgba(255,255,255,0.08)" }}>{c}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {t.more.comp.rows.map((r, i) => (
-                  <tr key={i} className="border-t border-g-line transition-colors duration-300 hover:bg-white/[0.04]">
-                    {r.map((cell, j) => (
-                      <td key={j} className={`p-4 ${j === 0 ? "font-semibold text-g-word" : j === 1 ? "bg-g-green/[0.06] text-center font-bold text-g-light" : "text-center text-g-muted"}`}>{cell}</td>
-                    ))}
+                  <tr key={i} className="border-t border-white/[0.06] transition-colors duration-200 hover:bg-white/[0.035]">
+                    {r.map((cell, j) => {
+                      const [cod, nota] = String(cell).split("|");
+                      const guileo = j === 1;
+                      if (j === 0) return <th key={j} scope="row" className="p-4 text-left text-[13.5px] font-semibold text-g-word">{cell}</th>;
+                      return (
+                        <td key={j} className="p-4 text-center align-middle"
+                          style={guileo ? { background: "rgba(62,148,104,0.07)", boxShadow: "inset 1px 0 0 rgba(62,148,104,0.3), inset -1px 0 0 rgba(62,148,104,0.3)" } : undefined}>
+                          {cod === "txt" ? (
+                            <span className={`text-[13px] font-bold ${guileo ? "text-g-light" : "text-g-muted"}`}>{nota}</span>
+                          ) : (
+                            <span className="inline-flex flex-col items-center gap-1">
+                              <CompMarca k={cod} forte={guileo} />
+                              {nota && <span className="text-[10.5px] leading-tight text-g-muted">{nota}</span>}
+                            </span>
+                          )}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>

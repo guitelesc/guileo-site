@@ -100,6 +100,34 @@ const produtosDoPilar = (pilar, lang, tudo = false) => {
 export const PILLAR_COPY = {
   en: {
     eyebrow: "Three pillars · one system",
+    equipe: {
+      eyebrow: "One team · always on",
+      h1a: "The whole team you'd hire. ", h1b: "Already working.",
+      sub: "Customer service, sales, ads, marketing, content, automations, training and metrics — <b>twelve jobs, three engines, no payroll.</b>",
+      fechoA: "Twelve jobs. Three engines. ", fechoB: "One invoice.",
+      fechoSub: "The team runs while you work. A human supervises. You keep the only job that was ever yours.",
+      resultado: { brain: "Nobody waits", ad: "Nothing is guessed", build: "Built once, runs forever" },
+      funcoes: {
+        brain: [
+          ["📞", "Customer service", "every call & message, 24/7, 16 languages", "gui"],
+          ["🤝", "Sales & follow-up", "quotes, closes, collects on the call", "feito"],
+          ["📅", "Booking & reminders", "fills the real calendar, kills no-shows", "info"],
+          ["🔁", "Win-back", "calls the client who stopped coming", "live"],
+        ],
+        ad: [
+          ["📣", "Ads & marketing", "aimed at people who already called you", "info"],
+          ["✍️", "Content creation", "posts, creative and video in your voice", "live"],
+          ["⚡", "Automations", "every channel wired into one brain", "feito"],
+          ["📊", "Metrics", "what each dollar brought back — by name", "amber"],
+        ],
+        build: [
+          ["🌐", "Site, app & store", "built to book and sell, not to look pretty", "info"],
+          ["🔌", "Systems & integrations", "plugs into what you already use", "feito"],
+          ["🎓", "Training", "your team taught to run it — free Academy", "amber"],
+          ["🛡️", "A human supervises", "real people behind the machine, every day", "gui"],
+        ],
+      },
+    },
     h1a: "Your conversations became ",
     h1b: "your most valuable asset.",
     sub: "Not features — pillars. Each owns a job, delivers a result, and pays for itself.",
@@ -116,6 +144,34 @@ export const PILLAR_COPY = {
   },
   pt: {
     eyebrow: "Três pilares · um sistema",
+    equipe: {
+      eyebrow: "Um time só · sempre de plantão",
+      h1a: "O time inteiro que você contrataria. ", h1b: "Já trabalhando.",
+      sub: "Atendimento, vendas, anúncios, marketing, conteúdo, automações, treinamento e métricas — <b>doze funções, três motores, zero folha de pagamento.</b>",
+      fechoA: "Doze funções. Três motores. ", fechoB: "Uma fatura só.",
+      fechoSub: "O time roda enquanto você trabalha. Um humano supervisiona. Você fica só com o trabalho que sempre foi seu.",
+      resultado: { brain: "Ninguém espera", ad: "Nada é no chute", build: "Feito uma vez, roda pra sempre" },
+      funcoes: {
+        brain: [
+          ["📞", "Atendimento", "toda ligação e mensagem, 24/7, 16 idiomas", "gui"],
+          ["🤝", "Vendas e follow-up", "orça, fecha e cobra na própria ligação", "feito"],
+          ["📅", "Agenda e lembretes", "enche a agenda de verdade e mata a falta", "info"],
+          ["🔁", "Retorno de cliente", "liga pro cliente que parou de vir", "live"],
+        ],
+        ad: [
+          ["📣", "Anúncios e marketing", "mirados em quem já te ligou", "info"],
+          ["✍️", "Criação de conteúdo", "posts, criativo e vídeo na sua voz", "live"],
+          ["⚡", "Automações", "todo canal ligado num cérebro só", "feito"],
+          ["📊", "Métricas", "quanto cada real trouxe de volta — com nome", "amber"],
+        ],
+        build: [
+          ["🌐", "Site, app e loja", "feito pra agendar e vender, não pra enfeitar", "info"],
+          ["🔌", "Sistemas e integrações", "conecta no que você já usa", "feito"],
+          ["🎓", "Treinamento", "seu time aprende a operar — Academia grátis", "amber"],
+          ["🛡️", "Humano supervisiona", "gente de verdade atrás da máquina, todo dia", "gui"],
+        ],
+      },
+    },
     h1a: "Suas conversas viraram ",
     h1b: "seu ativo mais valioso.",
     sub: "Não são recursos — são pilares. Cada um tem um trabalho, entrega um resultado e se paga.",
@@ -132,6 +188,34 @@ export const PILLAR_COPY = {
   },
   es: {
     eyebrow: "Tres pilares · un sistema",
+    equipe: {
+      eyebrow: "Un solo equipo · siempre activo",
+      h1a: "El equipo entero que contratarías. ", h1b: "Ya trabajando.",
+      sub: "Atención, ventas, anuncios, marketing, contenido, automatizaciones, formación y métricas — <b>doce funciones, tres motores, cero nómina.</b>",
+      fechoA: "Doce funciones. Tres motores. ", fechoB: "Una sola factura.",
+      fechoSub: "El equipo trabaja mientras tú trabajas. Un humano supervisa. Te quedas solo con el trabajo que siempre fue tuyo.",
+      resultado: { brain: "Nadie espera", ad: "Nada al azar", build: "Hecho una vez, corre siempre" },
+      funcoes: {
+        brain: [
+          ["📞", "Atención al cliente", "cada llamada y mensaje, 24/7, 16 idiomas", "gui"],
+          ["🤝", "Ventas y seguimiento", "cotiza, cierra y cobra en la misma llamada", "feito"],
+          ["📅", "Agenda y recordatorios", "llena el calendario real y mata la ausencia", "info"],
+          ["🔁", "Recuperación de clientes", "llama al cliente que dejó de venir", "live"],
+        ],
+        ad: [
+          ["📣", "Anuncios y marketing", "apuntados a quien ya te llamó", "info"],
+          ["✍️", "Creación de contenido", "posts, creativos y video con tu voz", "live"],
+          ["⚡", "Automatizaciones", "cada canal conectado a un solo cerebro", "feito"],
+          ["📊", "Métricas", "cuánto devolvió cada dólar — con nombre", "amber"],
+        ],
+        build: [
+          ["🌐", "Sitio, app y tienda", "hecho para agendar y vender, no para adornar", "info"],
+          ["🔌", "Sistemas e integraciones", "se conecta con lo que ya usas", "feito"],
+          ["🎓", "Formación", "tu equipo aprende a operarlo — Academia gratis", "amber"],
+          ["🛡️", "Un humano supervisa", "personas reales detrás de la máquina, cada día", "gui"],
+        ],
+      },
+    },
     h1a: "Tus conversaciones se volvieron ",
     h1b: "tu activo más valioso.",
     sub: "No son funciones — son pilares. Cada uno tiene un trabajo, entrega un resultado y se paga solo.",
@@ -148,6 +232,34 @@ export const PILLAR_COPY = {
   },
   hi: {
     eyebrow: "तीन स्तंभ · एक सिस्टम",
+    equipe: {
+      eyebrow: "एक ही टीम · हमेशा तैनात",
+      h1a: "पूरी टीम जिसे आप रखते। ", h1b: "पहले से काम पर।",
+      sub: "ग्राहक सेवा, बिक्री, विज्ञापन, मार्केटिंग, कॉन्टेंट, ऑटोमेशन, ट्रेनिंग और मेट्रिक्स — <b>बारह काम, तीन इंजन, कोई पेरोल नहीं।</b>",
+      fechoA: "बारह काम। तीन इंजन। ", fechoB: "एक ही बिल।",
+      fechoSub: "आपके काम करते हुए टीम चलती रहती है। एक इंसान निगरानी करता है। आपके पास वही काम बचता है जो हमेशा आपका था।",
+      resultado: { brain: "कोई इंतज़ार नहीं", ad: "कुछ भी अंदाज़े पर नहीं", build: "एक बार बना, हमेशा चले" },
+      funcoes: {
+        brain: [
+          ["📞", "ग्राहक सेवा", "हर कॉल और मैसेज, 24/7, 16 भाषाएँ", "gui"],
+          ["🤝", "बिक्री और फ़ॉलो-अप", "भाव देती है, सौदा बंद करती है, कॉल पर वसूलती है", "feito"],
+          ["📅", "बुकिंग और रिमाइंडर", "असली कैलेंडर भरती है, ग़ैरहाज़िरी ख़त्म", "info"],
+          ["🔁", "वापसी", "उस ग्राहक को कॉल जो आना बंद कर चुका", "live"],
+        ],
+        ad: [
+          ["📣", "विज्ञापन और मार्केटिंग", "उन्हीं पर लक्षित जिन्होंने आपको कॉल किया", "info"],
+          ["✍️", "कॉन्टेंट निर्माण", "पोस्ट, क्रिएटिव और वीडियो — आपकी आवाज़ में", "live"],
+          ["⚡", "ऑटोमेशन", "हर चैनल एक ही दिमाग़ से जुड़ा", "feito"],
+          ["📊", "मेट्रिक्स", "हर रुपया कितना लौटाया — नाम के साथ", "amber"],
+        ],
+        build: [
+          ["🌐", "साइट, ऐप और स्टोर", "बुकिंग और बिक्री के लिए बना, सजावट के लिए नहीं", "info"],
+          ["🔌", "सिस्टम और इंटीग्रेशन", "जो आप पहले से इस्तेमाल करते हैं उससे जुड़ता है", "feito"],
+          ["🎓", "ट्रेनिंग", "आपकी टीम चलाना सीखती है — मुफ़्त Academy", "amber"],
+          ["🛡️", "इंसान निगरानी करता है", "मशीन के पीछे असली लोग, हर दिन", "gui"],
+        ],
+      },
+    },
     h1a: "आपकी बातचीत बन गई ",
     h1b: "आपकी सबसे मूल्यवान संपत्ति।",
     sub: "फ़ीचर नहीं — स्तंभ। हर एक का एक काम, एक नतीजा, और खुद की कीमत निकालता है।",
@@ -164,6 +276,18 @@ export const PILLAR_COPY = {
   },
 };
 
+// ── OS SINAIS (paleta neon-realista oficial) ────────────────────────────────────────────────
+// Cada função carrega um sinal com SIGNIFICADO, não uma cor bonita em rodízio. Ciclar cores por
+// ordem vira arco-íris; aqui 🟠 é a Gui agindo, 🟢 é fechado/feito, 🔵 é informação, 🌸 é o que
+// acontece sozinho ao vivo, 🟡 é o que cobra você (a métrica). Fonte: signal palette 2026-06-18.
+const SINAL = {
+  gui:   "255,138,51",    // a Gui operando
+  feito: "47,227,154",    // fechado / ganho
+  info:  "63,180,255",    // informação
+  live:  "255,61,139",    // acontece agora, sozinho
+  amber: "255,194,61",    // atenção — precisa de você
+};
+
 const hexToRgb = (hex) => {
   const h = (hex || "#FF8A33").replace("#", "");
   const n = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h, 16);
@@ -173,6 +297,7 @@ const hexToRgb = (hex) => {
 export default function PillarsProducts() {
   const { lang } = useLang();
   const t = PILLAR_COPY[lang] || PILLAR_COPY.en;
+  const e = t.equipe || PILLAR_COPY.en.equipe;   // reserva SEMPRE inglês, nunca o idioma do autor
   // Qual pilar está aberto (um por vez). Um-por-vez e não vários: com dois cards expandidos as
   // alturas divergem e a fileira perde o alinhamento do bloco 'O RESULTADO', que é o que ancora
   // a leitura horizontal dos três.
@@ -183,109 +308,107 @@ export default function PillarsProducts() {
     <section className="relative overflow-hidden px-5 py-20">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(760px_380px_at_20%_-5%,rgba(255,138,51,0.07),transparent),radial-gradient(760px_380px_at_85%_105%,rgba(154,160,255,0.07),transparent)]" />
       <div className="mx-auto max-w-6xl">
-        {/* header — champagne eyebrow → font-black h2 w/ ONE shimmer phrase → greige sub */}
+        {/* ═══ CABEÇALHO ═══════════════════════════════════════════════════════════════════
+            Luis (2026-08-25) aprovou virar esta seção de CATÁLOGO em TIME: o dono de negócio local
+            não compara a Guileo com outro software, compara com CONTRATAR — ele já pediu esses
+            orçamentos e já disse não. Por isso a seção lista as VAGAS que ele não vai abrir, e
+            Brain·AD·Build passam a ser a resposta de QUEM executa cada uma.
+            ⚠️ O título antigo ("Suas conversas viraram seu ativo mais valioso") continua vivo em
+            `t.h1a`/`t.h1b` nos 4 idiomas — não foi apagado. Para voltar, troque `e.h1a/e.h1b` por
+            `t.h1a/t.h1b` aqui embaixo e nada mais. */}
         <Reveal className="mx-auto max-w-2xl text-center">
-          <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold">{t.eyebrow}</div>
+          <div className="font-mono text-[11.5px] font-bold uppercase tracking-[0.28em] text-g-gold">◆ {e.eyebrow}</div>
           <h2 className="mt-4 font-black leading-[1.04] tracking-tight text-g-word" style={{ fontSize: "clamp(2rem,4.2vw,3rem)" }}>
-            {t.h1a}
-            <span className="bg-gradient-to-r from-g-green via-g-gold to-g-copper bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "prshine 6s linear infinite" }}>{t.h1b}</span>
+            {e.h1a}
+            <span className="bg-gradient-to-r from-g-green via-g-gold to-g-copper bg-clip-text text-transparent" style={{ backgroundSize: "220% auto", animation: "prshine 6s linear infinite" }}>{e.h1b}</span>
           </h2>
-          {/* ── O SUBTÍTULO SAIU (Luis, 2026-08-12) ───────────────────────────────────────────
-              Ele dizia "Não são recursos — são pilares. Cada um tem um trabalho, entrega um
-              resultado e se paga." — uma frase que DISCUTE TAXONOMIA com quem só quer saber o que
-              ganha. "Recurso × pilar" é uma distinção nossa, interna; o dono de salão não tem essa
-              briga na cabeça, e ler sobre ela é trabalho sem recompensa bem no ponto em que ele
-              deveria estar olhando os números.
-              Somado às etiquetas que agora carregam o resultado (+$2k–11k, 21×, −10–20%), a seção
-              passou a explicar-se sozinha: o título diz o quê, os cards dizem quanto. Uma frase que
-              defende a estrutura em vez de mostrar o ganho é peso, não clareza.
-              O texto continua em `t.sub` (os 4 idiomas) — se um dia fizer falta numa página onde
-              explicar a estrutura SEJA o assunto, ele está aqui, não foi jogado fora. */}
+          <p className="mx-auto mt-5 max-w-[56ch] text-[15.5px] leading-relaxed text-g-ink"
+            dangerouslySetInnerHTML={{ __html: e.sub }} />
         </Reveal>
 
-        <style>{`@keyframes prshine{to{background-position:220% center}}@keyframes pwin{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}`}</style>
+        <style>{`
+          @keyframes prshine{to{background-position:220% center}}
+          @keyframes pwin{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+          @keyframes psinal{0%,100%{transform:scale(.85);filter:brightness(.85)}50%{transform:scale(1.15);filter:brightness(1.35)}}
+        `}</style>
 
-        {/* three pillar columns */}
-        <Stagger className="mt-12 grid grid-cols-1 gap-5 lg:grid-cols-3" gap={0.1}>
+        {/* ═══ OS TRÊS MOTORES ═════════════════════════════════════════════════════════════
+            Cada painel: barra colorida no cabeçalho (a receita de ÊNFASE que o Luis aprovou —
+            saturada, nunca sutil, porque brilho de 6% ele não enxerga), orbe com halo, e cada
+            função num CARTÃO próprio que levanta ao passar o mouse: linha de lista lê como
+            catálogo, cartão com relevo lê como objeto. O resultado fecha centralizado. */}
+        <Stagger className="mt-12 grid grid-cols-1 gap-4 lg:grid-cols-3" gap={0.1}>
           {t.pillars.map((p) => {
             const rgb = hexToRgb(p.accent);
+            const fns = e.funcoes?.[p.pilar] || [];
             return (
               <Item key={p.badge} variant="up">
-                <article className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur"
-                  style={{ boxShadow: "0 22px 60px -34px rgba(0,0,0,0.9)" }}>
-                  {/* accent top edge */}
-                  <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: `linear-gradient(90deg,transparent,rgba(${rgb},0.9),transparent)` }} />
-
-                  {/* pillar identity */}
-                  <div className="flex items-center gap-3">
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-[20px]" style={{ background: `rgba(${rgb},0.13)`, boxShadow: `inset 0 0 0 1px rgba(${rgb},0.4)`, filter: `drop-shadow(0 4px 12px rgba(${rgb},0.45))` }}>{p.icon}</span>
+                <article className="relative flex h-full flex-col overflow-hidden rounded-[20px] border border-white/10 backdrop-blur-sm"
+                  style={{
+                    background: `linear-gradient(180deg, rgba(${rgb},0.16), rgba(28,26,22,0.62) 44%, rgba(22,21,18,0.93))`,
+                    // ⛔ SEM boxShadow AQUI (2026-08-25). Sombra inline VENCE a regra global do
+                    // index.css (`:where()` tem especificidade zero), e era assim que cada seção
+                    // acabava com a sua própria sombra — o oposto de uniformizar. O `backdrop-blur-sm`
+                    // na classe é o que matricula o cartão no sistema 4K: verniz diagonal, aro claro
+                    // em cima, aro escuro embaixo, sombra de contato + sombra de ambiente.
+                  }}>
+                  {/* barra + orbe: o halo do orbe só tem volume porque a barra tingida dá o fundo */}
+                  <div className="flex items-center gap-3 border-b border-white/[0.08] px-4 py-3.5"
+                    style={{ background: `rgba(${rgb},0.18)` }}>
+                    <span className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-[14px] border border-white/[0.14] text-[20px]"
+                      style={{ background: `rgba(${rgb},0.24)`, boxShadow: `0 0 24px rgba(${rgb},0.4), inset 0 1px 0 rgba(255,255,255,0.16)` }}>{p.icon}</span>
                     <div>
-                      <div className="text-[15px] font-black tracking-tight" style={{ color: p.accent }}>{p.badge}</div>
-                      <div className="text-[11px] font-bold uppercase tracking-wide text-g-muted">{p.owns}</div>
+                      <div className="text-[17px] font-black leading-none tracking-tight text-g-word">{p.badge}</div>
+                      <div className="mt-[3px] font-mono text-[9.5px] font-bold uppercase tracking-[0.16em]" style={{ color: p.accent }}>{p.owns}</div>
                     </div>
                   </div>
 
-                  {/* ⛔ A DESCRIÇÃO SAIU (Luis, 2026-08-20): «só os ícones com os nomes e os
-                      resultados, sem muitos textos». O cartão tinha 3 níveis de leitura (linha
-                      + selo de modo + resultado) competindo pelo mesmo olhar; agora tem UM.
-                      O que cada pilar faz já foi dito duas seções acima, no anel do motor. */}
+                  <div className="grid flex-1 gap-2 px-3 pb-1 pt-3">
+                    {fns.map(([ico, nome, desc, sig], fi) => (
+                      <div key={fi}
+                        className="flex items-center gap-2.5 rounded-[13px] border border-white/[0.07] bg-white/[0.025] px-3 py-2.5 transition-[transform,background,border-color] duration-[250ms] hover:-translate-y-0.5 hover:border-white/[0.15] hover:bg-white/[0.06]"
+                        style={{ animation: `pwin .6s cubic-bezier(.2,.7,.2,1) ${0.15 + fi * 0.1}s both` }}>
+                        <span aria-hidden="true" className="w-[21px] shrink-0 text-center text-[17px]">{ico}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[14px] font-semibold leading-snug text-g-word">{nome}</p>
+                          <p className="mt-[3px] text-[12px] leading-snug text-g-muted">{desc}</p>
+                        </div>
+                        <span aria-hidden="true" className="h-[9px] w-[9px] shrink-0 rounded-full"
+                          style={{
+                            background: `rgb(${SINAL[sig] || SINAL.gui})`,
+                            boxShadow: `0 0 10px rgba(${SINAL[sig] || SINAL.gui},0.9), 0 0 22px rgba(${SINAL[sig] || SINAL.gui},0.45)`,
+                            animation: `psinal 2.6s ease-in-out ${fi * 0.35}s infinite`,
+                          }} />
+                      </div>
+                    ))}
+                  </div>
 
-                  {/* ⛔ OS CHIPS DE PRODUTO SAÍRAM (Luis, 2026-08-20): «deixar só as coisas
-                      simples — mais leads, mais vendas, tudo que for de RESULTADO».
-                      O argumento, para poder voltar com consciência: a AMPLITUDE do catálogo já
-                      aparece na ServicesMarquee, na PRIMEIRA tela da página. Aqui os chips
-                      repetiam o que a pessoa acabou de ver e roubavam o espaço do único número que
-                      esta seção existe para entregar.
-                      ↩️ Para voltar: backup em /tmp/Pillars.bak.jsx. O helper `produtosDoPilar` e o
-                      estado `aberto` continuam no arquivo, intactos. */}
-
-
-                  {/* ⚠️ O SELO DE ENTREGA DESCEU (2026-08-17). Ele ficava colado nos chips, e com
-                      isso todo o vazio do card sobrava no fim — que é exatamente o que fazia o card
-                      do Build (2 serviços no catálogo, contra 7 do Brain) parecer um card pela
-                      metade. Colado no resultado, o respiro passa a cair ENTRE dois blocos de
-                      leitura ("o que é" … "como entrega + quanto vale"), e vazio entre blocos lê
-                      como composição, não como falta.
-                      ⚠️ ISSO É REMENDO DE LAYOUT PARA UM BURACO DE CATÁLOGO: o Build entrega site,
-                      app, loja, software e automação, e o productSystem só tem DOIS itens dele.
-                      Enquanto isso não for resolvido na FONTE, o pilar mais caro será sempre o que
-                      parece o mais magro. */}
-                  {/* ✨ OS GANHOS — o vazio do card virou os RESULTADOS que o Luis pediu
-                      («mais leads, mais relacionamento, mais reviews, aniversário»). Vêm do
-                      dicionário `wins` por pilar (dados reais, não produtos), com uma revelação
-                      discreta em cascata — movimento com intenção, não decoração. */}
-                  {(t.wins?.[p.pilar] || []).length > 0 && (
-                    <ul className="mt-5 space-y-2.5">
-                      {t.wins[p.pilar].map((w, wi) => (
-                        <li key={wi} className="flex items-center gap-2.5 text-[13.5px] text-g-ink"
-                          style={{ animation: `pwin .6s cubic-bezier(.2,.7,.2,1) ${0.15 + wi * 0.12}s both` }}>
-                          <span aria-hidden="true" className="grid h-4 w-4 shrink-0 place-items-center rounded-full text-[9px] font-black"
-                            style={{ color: p.accent, background: `rgba(${rgb},0.14)`, boxShadow: `inset 0 0 0 1px rgba(${rgb},0.4)` }}>✓</span>
-                          {w}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-
-                  {/* o resultado — ancorado no pé; agora é o ÚNICO nível de leitura do cartão */}
-                  <div className="mt-auto pt-5">
-                    {/* o modo de entrega virou uma linha fina acima do rótulo: continua sendo dito
-                        (é promessa de que tem humano no circuito, não enfeite), mas sem caixa e sem
-                        bloco próprio, então não disputa o olhar com o número. */}
-                    <div className="mb-2 flex items-center gap-1.5 text-[10.5px] font-semibold text-g-muted">
-                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: p.accent, boxShadow: `0 0 7px ${p.accent}` }} />{toneLabel(p.tone)}
-                    </div>
-                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-g-muted">{t.resultLabel}</div>
-                    <div className="mt-1 flex items-baseline gap-1.5">
-                      <span className="font-black leading-none tracking-tight tabular-nums" style={{ color: p.accent, fontSize: "clamp(1.6rem,3vw,2rem)", textShadow: `0 4px 22px rgba(${rgb},0.35)` }}>{p.result}</span>
-                      <span className="text-[12px] font-semibold text-g-light/80">{p.unit}</span>
-                    </div>
+                  {/* o resultado — centralizado, alinhado entre os três porque o corpo é flex-1 */}
+                  <div className="mx-3 mb-4 mt-3 rounded-[14px] border border-white/[0.09] px-3.5 py-3.5 text-center"
+                    style={{ background: "rgba(0,0,0,0.34)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)" }}>
+                    <div className="mb-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-g-muted">{t.resultLabel}</div>
+                    {/* MAIÚSCULA (Luis, 2026-08-25). O tracking sobe junto: caixa-alta sem folga
+                        entre letras fecha a palavra e perde legibilidade — quanto maior o peso,
+                        mais respiro ela pede. No hindi o uppercase é inócuo (devanágari não tem
+                        caixa), então a mesma regra serve aos 4 idiomas sem exceção. */}
+                    <div className="text-[17px] font-black uppercase leading-tight tracking-[0.04em]"
+                      style={{ color: p.accent, textShadow: `0 4px 22px rgba(${rgb},0.35)` }}>{e.resultado?.[p.pilar]}</div>
                   </div>
                 </article>
               </Item>
             );
           })}
         </Stagger>
+
+        {/* o fecho — a conta que o dono faz sozinho: doze vagas contra uma fatura */}
+        <Reveal className="mx-auto mt-9 max-w-[760px] rounded-[18px] border border-white/10 px-7 py-6 text-center"
+          style={{ background: "rgba(0,0,0,0.3)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}>
+          <p className="text-[21px] font-extrabold leading-snug tracking-tight text-g-word">
+            {e.fechoA}
+            <span className="bg-gradient-to-r from-g-green to-g-gold bg-clip-text text-transparent">{e.fechoB}</span>
+          </p>
+          <p className="mt-2 text-[13px] text-g-muted">{e.fechoSub}</p>
+        </Reveal>
       </div>
     </section>
   );
