@@ -23,10 +23,16 @@
     <!-- preconnect: shaves the TLS handshake off the critical external requests -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Inter: media="print" defers the third-party CSS off first paint; onload swaps it live.
-         display=swap means text renders immediately in the fallback font, no invisible-text flash. -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'" />
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" /></noscript>
+    <!-- Inter. DO NOT reintroduce the media="print" onload="this.media='all'" defer trick here.
+         Our CSP has no 'unsafe-inline'/'unsafe-hashes', so the browser BLOCKS that inline
+         handler: the sheet stayed at media="print" forever and Inter never loaded in
+         production. It failed silently — HTTP 200, no visual error, only a console line —
+         so the site shipped in the system-ui fallback for as long as the trick was there
+         (found 2026-08-27 by reading the console with gstack /browse).
+         A plain stylesheet link always applies. preconnect above already removes the TLS
+         handshake from the critical path, and display=swap still renders text immediately
+         in the fallback, so there is no invisible-text flash. -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
     <link rel="preconnect" href="https://unpkg.com" />
     <link rel="preconnect" href="https://fccwbafkbhkyrvauzshl.supabase.co" />
     <!-- preconnect: ad pixels (only actually load when their IDs are set in src/lib/analytics.js) -->
@@ -42,7 +48,7 @@
       NOTE: public/_headers MUST be updated with the SAME additions (it is the
       authoritative production header and is NOT owned/edited here).
     ──────────────────────────────────────────────────────────────────────── -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'wasm-unsafe-eval' blob: https://unpkg.com https://*.elevenlabs.io https://connect.facebook.net https://www.googletagmanager.com https://analytics.tiktok.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.elevenlabs.io wss://*.elevenlabs.io https://*.livekit.cloud wss://*.livekit.cloud https://unpkg.com https://connect.facebook.net https://www.facebook.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.tiktok.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io; frame-src 'self' https://*.elevenlabs.io; media-src 'self' blob: https://*.elevenlabs.io; worker-src 'self' blob: https://unpkg.com https://*.elevenlabs.io" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'wasm-unsafe-eval' blob: https://static.cloudflareinsights.com https://unpkg.com https://*.elevenlabs.io https://connect.facebook.net https://www.googletagmanager.com https://analytics.tiktok.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://cloudflareinsights.com https://*.supabase.co wss://*.supabase.co https://*.elevenlabs.io wss://*.elevenlabs.io https://*.livekit.cloud wss://*.livekit.cloud https://unpkg.com https://connect.facebook.net https://www.facebook.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.tiktok.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io; frame-src 'self' https://*.elevenlabs.io; media-src 'self' blob: https://*.elevenlabs.io; worker-src 'self' blob: https://unpkg.com https://*.elevenlabs.io" />
     <meta name="theme-color" content="#161512" />
     <meta property="og:title" content="Guileo — AI Systems for Business" />
     <meta property="og:description" content="Work Smart. Grow Faster. Sleep Better. AI that answers, books and closes 24/7." />

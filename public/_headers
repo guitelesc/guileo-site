@@ -7,6 +7,10 @@
 # loader) with wasm allowed for the widget's audio engine; connections only to Supabase +
 # ElevenLabs; styles inline (React) + Google Fonts; no eval, no inline scripts, no wildcards.
 # JSON-LD <script type="application/ld+json"> is data (never executed) so CSP doesn't block it.
+# static.cloudflareinsights.com: o beacon do Cloudflare Web Analytics é INJETADO pelo Pages, não
+# está no nosso HTML — por isso ninguém lembrava dele na allowlist. Ficou 100%% bloqueado e as
+# visitas NÃO eram contadas (achado 2026-08-27). Painel ligado não é painel medindo.
+# cloudflareinsights.com em connect-src é para onde o beacon envia (/cdn-cgi/rum).
 # O ícone do app é lido por outra origem (o painel da Meta, no upload). É uma imagem pública e
 # sem credencial — liberar CORS nela não expõe nada, e é o único arquivo com essa exceção.
 /guileo-app-icon-1024.png
@@ -46,4 +50,4 @@
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
   Permissions-Policy: geolocation=(), camera=(), payment=()
   Cross-Origin-Opener-Policy: same-origin
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'wasm-unsafe-eval' blob: https://unpkg.com https://*.elevenlabs.io https://connect.facebook.net https://www.googletagmanager.com https://analytics.tiktok.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.elevenlabs.io wss://*.elevenlabs.io https://*.livekit.cloud wss://*.livekit.cloud https://unpkg.com https://connect.facebook.net https://www.facebook.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.tiktok.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io; frame-src 'self' https://*.elevenlabs.io; media-src 'self' blob: https://*.elevenlabs.io; worker-src 'self' blob: https://unpkg.com https://*.elevenlabs.io; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'wasm-unsafe-eval' blob: https://static.cloudflareinsights.com https://unpkg.com https://*.elevenlabs.io https://connect.facebook.net https://www.googletagmanager.com https://analytics.tiktok.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://cloudflareinsights.com https://*.supabase.co wss://*.supabase.co https://*.elevenlabs.io wss://*.elevenlabs.io https://*.livekit.cloud wss://*.livekit.cloud https://unpkg.com https://connect.facebook.net https://www.facebook.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.tiktok.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io; frame-src 'self' https://*.elevenlabs.io; media-src 'self' blob: https://*.elevenlabs.io; worker-src 'self' blob: https://unpkg.com https://*.elevenlabs.io; upgrade-insecure-requests
