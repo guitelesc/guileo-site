@@ -40,7 +40,10 @@ const DIR = new URL("../api/", import.meta.url);
 // meta-connect.js cresceu e empurrou a linha de 318 para 360. Ver o bloco de AVISO no fim deste
 // arquivo: a mesma fragilidade atinge PROTEGIDOS_POR_VALOR, cujas chaves eu conferi e a maioria
 // JÁ não aponta para a linha que o comentário descreve.
-const ISENTOS = new Set(["meta-connect.js:360"]);
+const ISENTOS = new Map([
+  ["meta-connect.js :: const dj = await dbg.json().catch(() => null);",
+   "dj nulo → info nulo → `is_valid !== true` recusa o token. Fail-closed, não vira zero."],
+]);
 
 const DA_REDE = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*await\s+(?:fetch|rpc|svcRpc|svcJson|sapi|graph|el)\s*\(/g;
 // `svcJson` entrou na lista acima em 2026-08-11 — e ISSO SOZINHO NÃO PEGAVA NADA. Registro o erro
@@ -59,16 +62,22 @@ const JANELA = 10;
 // a rede caindo quanto o terceiro devolvendo lixo com HTTP 200.
 // Cada linha aqui foi LIDA e o motivo está escrito. Lista curta de propósito: se ela crescer sem
 // justificativa, virou tapete para esconder sujeira em vez de registro de decisão.
+// 🔁 RE-AUDITADA DO ZERO EM 2026-08-27. As 8 chaves antigas eram `arquivo:número` e as 8 estavam
+// podres — nenhuma apontava mais para uma chamada de rede. Rodei o detector com ZERO isenção para
+// ver o que ele acusa hoje: são 3 linhas, não 8. Cinco isenções eram peso morto, e uma delas
+// (`meta-connect.js:113`) descrevia a MESMA linha que o ISENTOS já cobria — duplicata nascida da
+// deriva. Restaram as duas abaixo, cada uma lida e conferida como fail-closed.
 const PROTEGIDOS_POR_VALOR = new Map([
-  ["google-oauth-callback.js:59", "sem refresh_token → back('error','no_refresh_token')"],
-  ["google-oauth-callback.js:71", "descoberta best-effort; falha só deixa o campo vazio, nunca afirma"],
-  ["google-oauth-callback.js:76", "idem — não bloqueia guardar o refresh_token"],
-  ["meta-connect.js:113",         "exige info.is_valid === true; resposta ruim → sem .data → recusa"],
-  ["provision-number.js:163",     "!Number.isFinite(saldo) recusa a compra — ler mal é pior que não ler"],
-  ["provision-number.js:178",     "lista vazia → nenhum número elegível → não compra"],
-  ["provision-number.js:215",     "compra confirmada pelo sid no corpo, não pelo status"],
-  ["sms-check.js:54",             "devolve ok:r.ok + http:r.status na resposta — reporta o status em vez de escondê-lo"],
+  ["provision-number.js :: const bal = Number(((await balR.json().catch(() => ({}))) || {}).balance);",
+   "saldo ilegível vira NaN → `!Number.isFinite(bal)` recusa a compra. Ler mal é pior que não ler."],
+  ["provision-number.js :: const avail = (((await availR.json().catch(() => ({}))).available_phone_numbers) || []).filter((a) => !isReserved(a.phone_number));",
+   "corpo ruim → lista vazia → `if (!avail.length)` devolve blocked:sem_numero_disponivel. Não compra."],
 ]);
+
+// Quem foi de fato usada nesta rodada. Isenção que não é usada é isenção PODRE: ou o código mudou,
+// ou ganhou portão de status e ela virou desnecessária. Nos dois casos o teste reprova lá embaixo,
+// e é isso que impede este arquivo de apodrecer de novo em silêncio.
+const ISENCOES_USADAS = new Set();
 
 const achados = [];
 for (const nome of readdirSync(DIR).filter((f) => f.endsWith(".js"))) {
@@ -84,8 +93,11 @@ for (const nome of readdirSync(DIR).filter((f) => f.endsWith(".js"))) {
     // janela dos DOIS lados: o status pode ser consultado antes ou depois do parse
     const volta = linhas.slice(Math.max(0, i - JANELA), Math.min(linhas.length, i + JANELA)).join("\n");
     if (new RegExp(`\\b${resp}\\s*\\.(ok|status)\\b`).test(volta)) return;   // guarda por STATUS
-    if (PROTEGIDOS_POR_VALOR.has(`${nome}:${i + 1}`)) return;                    // guarda por VALOR, auditada
-    if (ISENTOS.has(`${nome}:${i + 1}`)) return;   // conferido à mão — ver bloco ISENTOS
+    // ⚓ ÂNCORA POR TEXTO, não por número de linha: uma inserção acima não desloca nada, e a
+    // isenção só continua valendo enquanto existir EXATAMENTE o código que foi auditado.
+    const chave = `${nome} :: ${linha.trim()}`;
+    if (PROTEGIDOS_POR_VALOR.has(chave)) { ISENCOES_USADAS.add(chave); return; }  // guarda por VALOR, auditada
+    if (ISENTOS.has(chave)) { ISENCOES_USADAS.add(chave); return; }               // ver bloco ISENTOS
     achados.push({ arquivo: nome, linha: i + 1, resp, trecho: linha.trim().slice(0, 96) });
   });
 }
@@ -137,21 +149,40 @@ if (achados.length) {
   console.log('   conserto: `if (!<resp>.ok) return json({ ok:true, ready:false, note:"..." })` ANTES do fallback.');
   process.exit(1);
 }
-console.log("✅ todo fallback de resposta de REDE tem portão de status — erro nunca vira zero");
+// ── ISENÇÃO ÓRFÃ REPROVA ─────────────────────────────────────────────────────────────────────
+// Este é o conserto de raiz do apodrecimento. Antes, uma isenção que deixava de casar sumia em
+// silêncio: o teste continuava verde, e a lista virava documentação mentindo. Agora, se uma
+// isenção não foi usada nesta rodada, ela é órfã e o teste REPROVA — porque só existem dois
+// motivos, e os dois exigem alguém olhar: ou o código auditado mudou (re-audite), ou ele ganhou
+// portão de status e a isenção virou desnecessária (remova).
+const orfas = [...PROTEGIDOS_POR_VALOR.keys(), ...ISENTOS.keys()].filter((k) => !ISENCOES_USADAS.has(k));
+if (orfas.length) {
+  console.log(`❌ ${orfas.length} isenção(ões) órfã(s) — não foram usadas nesta rodada:`);
+  for (const k of orfas) console.log(`     ${k}`);
+  console.log("   conserto: leia a linha de HOJE. Se ainda merece isenção, atualize o texto da chave;");
+  console.log("             se ganhou `if (!r.ok)`, apague a entrada — ela não é mais necessária.");
+  process.exit(1);
+}
+
+console.log(`✅ todo fallback de resposta de REDE tem portão de status — erro nunca vira zero (${ISENCOES_USADAS.size} isenção(ões) auditada(s), todas em uso)`);
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════
-// ⚠️ AVISO SOBRE AS ÂNCORAS DESTE ARQUIVO (levantado 2026-08-27, NÃO corrigido — decisão do dono)
-// ISENTOS e PROTEGIDOS_POR_VALOR identificam a linha auditada por `arquivo:número`. Número de
-// linha não identifica linha nenhuma: qualquer inserção acima desloca tudo, em silêncio, e a
-// isenção passa a cobrir uma linha que ninguém auditou — ou nenhuma.
-// Conferido hoje, lendo o que cada chave aponta HOJE:
-//   google-oauth-callback.js:59  → linha vazia
-//   google-oauth-callback.js:71  → um comentário
-//   meta-connect.js:113          → um comentário
-//   sms-check.js:54              → um rateLimited, não o fallback descrito
-// Ou seja: as descrições ao lado das chaves descrevem código que já não está ali. O teste segue
-// VERDE porque as linhas reais deixaram de casar com o padrão, não porque foram auditadas.
-// CONSERTO PROPOSTO: chavear por `arquivo::texto-da-linha` em vez de `arquivo:número`. Sobrevive a
-// inserção, e uma isenção só vale enquanto o código exato que foi auditado continuar existindo.
-// Não fiz agora porque este arquivo não é do escopo da tarefa que me trouxe aqui.
+// ✅ ÂNCORAS CONSERTADAS EM 2026-08-27 (o aviso que estava aqui foi resolvido, não apagado)
+// O problema: ISENTOS e PROTEGIDOS_POR_VALOR identificavam a linha auditada por `arquivo:número`.
+// Número de linha não identifica linha nenhuma — qualquer inserção acima desloca tudo, em
+// silêncio. Medido no dia: das 8 chaves, 8 estavam podres; nenhuma apontava mais para uma chamada
+// de rede. As descrições ao lado descreviam código que já não estava ali.
+//
+// O que mudou:
+//   1. Chave passou a ser `arquivo :: texto-exato-da-linha`. Sobrevive a inserção, e a isenção só
+//      vale enquanto existir o código que foi auditado.
+//   2. A lista foi RE-AUDITADA do zero: rodei o detector sem isenção nenhuma para ver o que ele
+//      acusa hoje. Três linhas, não oito. Sobraram duas em PROTEGIDOS + uma em ISENTOS, cada uma
+//      lida e confirmada fail-closed. As outras cinco eram peso morto (uma delas duplicava o
+//      ISENTOS por deriva de linha).
+//   3. Isenção não usada agora REPROVA o teste. Antes ela apodrecia calada; agora ela grita.
+//
+// A lição, que vale para qualquer lista de exceção: uma exceção precisa EXPIRAR sozinha quando o
+// código que a justificava muda. Sem isso, a lista deixa de proteger e passa a mentir — e ninguém
+// descobre, porque o sintoma de uma isenção podre é o teste continuar verde.
 // ═════════════════════════════════════════════════════════════════════════════════════════════
