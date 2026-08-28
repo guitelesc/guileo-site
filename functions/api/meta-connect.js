@@ -367,7 +367,16 @@ export async function onRequestPost(context) {
             return null;
           }
           const ig = d.instagram_business_account;
-          if (!ig || !ig.id) { tentativas.push({ via: rotulo, erro: "a Meta respondeu, mas esta Página não tem Instagram ligado" }); return null; }
+          if (!ig || !ig.id) {
+            // 🚨 AUSÊNCIA DE CAMPO NÃO É AUSÊNCIA DA COISA (corrigido 2026-08-28). Com um token sem
+            // `instagram_basic`, a Meta devolve 200 e simplesmente OMITE `instagram_business_account`
+            // — não dá erro. A 1ª versão lia isso como "esta Página não tem Instagram ligado", e eu
+            // afirmei isso ao dono sobre DUAS empresas dele. Pode ter sido falso: talvez tivessem
+            // Instagram e o token é que não podia ver. Não saber e não ter pedem ações OPOSTAS
+            // (reconectar × ligar o IG no Business Suite), então agora a resposta separa as duas.
+            tentativas.push({ via: rotulo, erro: "a Meta respondeu 200 mas sem o campo do Instagram — pode ser que a Página não tenha Instagram OU que este token não tenha escopo para ver (confira com action:'token_escopos')" });
+            return null;
+          }
           return { id: String(ig.id), usuario: s(ig.username, 60), nome: s(ig.name, 120), via: rotulo };
         } catch (e) { tentativas.push({ via: rotulo, erro: s(e, 160) }); return null; }
       };
@@ -377,7 +386,25 @@ export async function onRequestPost(context) {
       if (!achado && pageId) achado = await perguntar("/{page_id}", `${encodeURIComponent(pageId)}?fields=instagram_business_account{id,username,name}`);
 
       if (!achado) {
-        return json({ ok: false, motivo: "não consegui descobrir o Instagram desta Página", tentativas, page_id: pageId || null });
+        // Diz se o token TEM escopo para enxergar — é isso que separa "não tem" de "não vejo".
+        let temEscopo = null;
+        try {
+          const dbg = await fetch(`${GRAPH}/debug_token?input_token=${encodeURIComponent(tkn)}&access_token=${encodeURIComponent(`${env.META_APP_ID}|${env.META_APP_SECRET}`)}`);
+          if (dbg.ok) {
+            const dj = await dbg.json().catch(() => null);
+            const esc = (dj && dj.data && Array.isArray(dj.data.scopes)) ? dj.data.scopes.map(String) : null;
+            if (esc) temEscopo = esc.includes("instagram_basic");
+          }
+        } catch { /* melhor sem o dado do que com um dado inventado */ }
+        return json({
+          ok: false, motivo: "não consegui descobrir o Instagram desta Página", tentativas,
+          page_id: pageId || null, token_pode_ver_instagram: temEscopo,
+          veredito: temEscopo === false
+            ? "o token NÃO tem instagram_basic — isto NÃO prova que falta Instagram na Página; RECONECTE por /api/meta-oauth-start e pergunte de novo"
+            : temEscopo === true
+              ? "o token PODE ver Instagram e mesmo assim não veio nenhum — aí sim: ligue a conta do Instagram à Página no Business Suite"
+              : "não consegui conferir o escopo do token — não conclua nada",
+        });
       }
       return json({
         ok: true, ig_id: achado.id, usuario: achado.usuario, nome: achado.nome,
