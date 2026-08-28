@@ -153,3 +153,162 @@ export function montarDm(modelo, { usuario, link }) {
   if (link) t += `\n\n${link}`;
   return t.slice(0, 900); // mesmo teto que sendMetaReply já usa pro resto do canal
 }
+
+// ═════════════════════════════════════════════════════════════════════════════════════════════
+// IDIOMA — responder na língua de quem escreveu, sem gastar um centavo.
+//
+// A Gui ATENDE o telefone em 16 idiomas (LANGS_SPOKEN, em provision.js). Um comentário em
+// espanhol respondido em português é a mesma falha que um lead coreano recebendo ligação em
+// inglês: a plataforma sabe o idioma e mesmo assim não usa.
+//
+// NÃO USA IA. Detectar idioma com modelo custaria por comentário, somaria latência ao DM (que
+// vale por ser instantâneo) e erraria justamente nos textos curtos — que são a maioria aqui
+// ("preço?", "how much"). As três camadas abaixo são determinísticas e testáveis:
+//
+//   1. ESCRITA  — 中文 só existe em chinês, 한국어 só em coreano. Sem ambiguidade nenhuma.
+//   2. PALAVRA  — a chave que CASOU já carrega o idioma. "quanto custa" é português e ponto.
+//                 A detecção sai de graça do trabalho que campanhaCasa() já fez.
+//   3. PADRÃO   — empate ou desconhecido cai no idioma da campanha. NUNCA no chute.
+//
+// 🚨 A ARMADILHA: estas funções leem o texto CRU, nunca o de normalizar(). O normalizar()
+// existe pra COMPARAR e por isso arranca acento e tudo que não é [a-z0-9] — ou seja, apaga
+// exatamente o sinal de idioma. "Ελληνικά" e "日本語" viram string vazia; "não" vira "nao" e
+// perde o til que o distinguia do espanhol. Detectar depois de normalizar seria detectar no
+// escuro e ainda achar que enxergou.
+// ═════════════════════════════════════════════════════════════════════════════════════════════
+
+// Ordem IMPORTA. Japonês escreve com kana E com os mesmos ideogramas do chinês: testar Han
+// primeiro classificaria todo japonês como chinês. Kana e Hangul são exclusivos, vêm antes.
+const ESCRITAS = [
+  [/[぀-ヿ]/, "ja"], // hiragana + katakana — exclusivos do japonês
+  [/[가-힯]/, "ko"], // hangul
+  [/[一-鿿]/, "zh"], // han (só sobra chinês, porque o japonês já saiu acima)
+  [/[؀-ۿ]/, "ar"],
+  [/[ऀ-ॿ]/, "hi"], // devanágari
+  [/[฀-๿]/, ""],   // tailandês: reconheço a escrita e assumo NÃO SABER (não está em LANGS_SPOKEN)
+];
+
+// Letras que só existem num idioma de alfabeto latino. Conservador de propósito: "ç" está fora
+// porque é português E francês, e um sinal que aponta pra dois não é sinal — é palpite.
+const LATINAS = [
+  [/[ăâđêôơư]|ệ|ạ|ủ|ớ/i, "vi"],
+  [/[łżźćńśęą]/i, "pl"],
+  [/[ñ]|¿|¡/i, "es"],
+  [/[ãõ]/i, "pt"],
+  [/[ß]|ä.*ö|öffn/i, "de"],
+];
+
+/**
+ * Idioma pela ESCRITA do texto cru. Devolve o código, ou "" quando não dá pra afirmar.
+ * "" é uma resposta legítima e a mais comum — a maior parte do mundo comenta em alfabeto
+ * latino, onde a escrita não decide nada. Quem decide aí é a camada 2.
+ */
+export function idiomaPorEscrita(textoCru) {
+  const t = String(textoCru == null ? "" : textoCru);
+  if (!t) return "";
+  for (const [re, code] of ESCRITAS) if (re.test(t)) return code;
+  // Cirílico: ucraniano tem letras que o russo não tem. Checar as exclusivas ANTES de assumir
+  // russo — senão todo ucraniano vira russo, que além de errado é ofensivo.
+  if (/[іїєґ]/i.test(t)) return "uk";
+  if (/[Ѐ-ӿ]/.test(t)) return "ru";
+  for (const [re, code] of LATINAS) if (re.test(t)) return code;
+  return "";
+}
+
+/**
+ * LÉXICO DE INTENÇÃO — a palavra-chave que casou, mapeada pro idioma dela.
+ * Só entra palavra que pertence a UM idioma. As que servem a vários vivem em AMBIGUAS, e o
+ * ponto de listá-las é a tela poder AVISAR o dono ("'valor' bate em PT e ES") em vez de ele
+ * descobrir por um DM no idioma errado.
+ * Chaves já normalizadas (sem acento, minúsculas) — a busca normaliza antes de olhar aqui.
+ */
+export const LEXICO_IDIOMA = {
+  // inglês
+  "price": "en", "how much": "en", "cost": "en", "pricing": "en", "interested": "en", "want": "en",
+  // português
+  "preco": "pt", "quanto custa": "pt", "quero": "pt", "orcamento": "pt", "quanto e": "pt",
+  // espanhol
+  "precio": "es", "cuanto cuesta": "es", "quiero": "es", "presupuesto": "es", "cuanto vale": "es",
+  // os demais entram junto com a campanha que precisar deles
+  "prix": "fr", "combien": "fr",
+  "prezzo": "it", "quanto costa": "it",
+  "preis": "de", "wieviel": "de",
+  "cena": "pl",
+  "цена": "ru", "скольк": "ru",
+  "가격": "ko", "얼마": "ko",
+  "价格": "zh", "多少钱": "zh",
+  "値段": "ja", "いくら": "ja",
+  "कीमत": "hi", "दाम": "hi",
+  "سعر": "ar", "كم": "ar",
+  "gia": "vi", "bao nhieu": "vi",
+  "magkano": "tl", "presyo": "tl",
+  "ціна": "uk", "скільк": "uk",
+};
+
+/** Palavras que servem a mais de um idioma — nunca decidem sozinhas. */
+export const AMBIGUAS = new Set(["info", "valor", "ok", "promo", "vip", "link", "menu"]);
+
+/** A palavra é ambígua entre idiomas? A tela usa isto pra avisar antes de o DM sair errado. */
+export function palavraAmbigua(palavra) {
+  return AMBIGUAS.has(normalizar(palavra));
+}
+
+/**
+ * DECIDE O IDIOMA DA RESPOSTA. Três camadas, nesta ordem, e devolve TAMBÉM por onde decidiu.
+ *
+ * O `via` não é enfeite: quando um DM sair no idioma errado, a diferença entre "a escrita disse
+ * coreano" e "caiu no padrão porque a palavra era ambígua" é a diferença entre consertar em um
+ * minuto e passar a tarde adivinhando. Motivo na tela, não no meu chute — a mesma regra que
+ * vale pro estado dos canais.
+ *
+ * @param {string}   texto      o comentário CRU (com acento, com ideograma — ver a armadilha acima)
+ * @param {string}   palavra    a palavra-chave que casou (vinda de campanhaCasa)
+ * @param {string[]} permitidos idiomas que ESTE cliente respondeu ter texto pronto
+ * @param {string}   padrao     idioma da campanha, o último recurso
+ */
+export function escolherIdioma({ texto = "", palavra = "", permitidos = [], padrao = "en" } = {}) {
+  const ok = (c) => !!c && (!permitidos.length || permitidos.includes(c));
+
+  const escrita = idiomaPorEscrita(texto);
+  if (ok(escrita)) return { code: escrita, via: "escrita" };
+
+  const chave = normalizar(palavra);
+  // AMBIGUAS vence o léxico de propósito: se a palavra serve a vários idiomas, ela não decide
+  // nem que esteja no mapa. Melhor cair no padrão do dono do que sortear entre PT e ES.
+  if (chave && !AMBIGUAS.has(chave)) {
+    // Sem normalizar do lado do mapa: chaves não-latinas (가격, 价格) morreriam no normalizar().
+    const lex = LEXICO_IDIOMA[chave] || LEXICO_IDIOMA[String(palavra).trim().toLowerCase()];
+    if (ok(lex)) return { code: lex, via: "palavra" };
+  }
+
+  // A escrita/palavra pode ter apontado um idioma que o cliente NÃO tem texto — aí é padrão,
+  // e o `via` diz isso, pra ninguém achar que a detecção falhou quando faltou é tradução.
+  const faltou = (escrita || LEXICO_IDIOMA[chave] || "") || "";
+  return { code: padrao, via: faltou ? `padrao_sem_texto_${faltou}` : "padrao" };
+}
+
+/**
+ * O texto do DM no idioma escolhido, com queda honesta.
+ * `dm_i18n` é o mapa novo ({en, pt, es, …}); `dm_text` é o campo antigo, de uma língua só.
+ * Campanha antiga (sem dm_i18n) continua funcionando exatamente como funcionava — nenhuma
+ * campanha no ar pode parar de responder porque eu adicionei idioma.
+ */
+export function textoDoIdioma(campanha, code, padrao = "") {
+  const mapa = (campanha && typeof campanha.dm_i18n === "object" && campanha.dm_i18n) || null;
+  const pega = (c) => (mapa && typeof mapa[c] === "string" && mapa[c].trim()) ? mapa[c].trim() : "";
+  return pega(code) || pega(padrao) || String((campanha && campanha.dm_text) || "").trim();
+}
+
+/**
+ * Carimba o idioma no link. É o que faz a landing abrir traduzida (i18n.jsx lê ?lang=), o lead
+ * nascer com `lang` e a Gui LIGAR naquele idioma (call.js) — o corredor já existe inteiro; o
+ * comentário só precisava dizer por onde a pessoa entrou.
+ */
+export function linkComIdioma(link, code) {
+  const u = String(link || "").trim();
+  if (!u || !code) return u;
+  if (/[?&]lang=/.test(u)) return u;              // o dono já escolheu na mão: não sobrescrevo
+  const [semHash, hash] = u.split("#");           // ?lang= tem que vir ANTES do #contact
+  const sep = semHash.includes("?") ? "&" : "?";
+  return `${semHash}${sep}lang=${encodeURIComponent(code)}${hash ? "#" + hash : ""}`;
+}

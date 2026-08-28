@@ -32,7 +32,8 @@
 import { json, safeEq } from "../lib/guard.js";
 import { emitFailure } from "../lib/failure.js";
 import { ouvirDeUrl, recadoDeAnexo } from "../lib/whatsappAudio.js";
-import { escolherCampanha, montarDm, REGRA_PADRAO, TETO_HORA_META } from "../lib/comentarios.js";
+import { escolherCampanha, montarDm, escolherIdioma, textoDoIdioma, linkComIdioma,
+         REGRA_PADRAO, TETO_HORA_META } from "../lib/comentarios.js";
 import { svcRpc } from "../lib/sb.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -446,11 +447,33 @@ export async function processCommentChange(env, origin, entryId, value) {
     await ingestInbound(env, tenant.client_email, "Instagram", usuario || pessoa,
       `💬 comentou "${texto.slice(0, 120)}" → casou com "${alvo.palavra}"`, pessoa);
 
-    const dm = montarDm(alvo.campanha.dm_text, { usuario, link: alvo.campanha.link_url });
+    // ── IDIOMA: responder na língua de quem escreveu ────────────────────────────────────────
+    // A Gui atende o telefone em 16 idiomas; o comentário respondia em um só. Quem comentava
+    // "precio" recebia português e sumia. A decisão mora no comentarios.js (puro e testado):
+    // escrita → palavra que casou → padrão do dono. Sem IA: custaria por comentário, somaria
+    // latência ao DM (que vale por ser instantâneo) e erraria justo no texto curto, que é a
+    // maioria aqui. `texto` vai CRU de propósito — normalizar() arranca acento e ideograma, ou
+    // seja, apaga exatamente o sinal que estamos lendo.
+    const i18n = (alvo.campanha.dm_i18n && typeof alvo.campanha.dm_i18n === "object") ? alvo.campanha.dm_i18n : {};
+    const padraoLang = alvo.campanha.lang_padrao || "en";
+    const idioma = escolherIdioma({
+      texto, palavra: alvo.palavra,
+      permitidos: Object.keys(i18n),   // só idioma que ESTE dono tem texto pronto e revisado
+      padrao: padraoLang,
+    });
+    // Campanha sem dm_i18n cai em dm_text e responde exatamente como antes — idioma novo não
+    // pode calar quem já está no ar.
+    const modelo = textoDoIdioma(alvo.campanha, idioma.code, padraoLang);
+    // O link leva o idioma adiante: a landing abre traduzida (i18n.jsx lê ?lang=), o lead nasce
+    // com `lang` e a Gui LIGA naquele idioma. O corredor já existia inteiro; faltava o carimbo.
+    const dm = montarDm(modelo, { usuario, link: linkComIdioma(alvo.campanha.link_url, idioma.code) });
     const envio1 = await enviarPrivateReply(tenant.page_access_token, contaIg, commentId, dm, tenant.page_id);
+    // `idioma.via` no log NÃO é enfeite: quando um DM sair na língua errada, a diferença entre
+    // "a escrita disse coreano" e "caiu no padrão porque faltava tradução" é a diferença entre
+    // consertar em um minuto e passar a tarde adivinhando.
     await ingestInbound(env, tenant.client_email, "Instagram", envio1.ok ? "Gui" : "⚠️ Gui",
-      envio1.ok ? `🤖 DM enviado (via ${envio1.via || "?"}): ${dm.slice(0, 140)}`
-              : `⚠️ DM NÃO entregue (${envio1.motivo}) — texto: ${dm.slice(0, 100)}`, pessoa);
+      envio1.ok ? `🤖 DM enviado (via ${envio1.via || "?"}) 🌐${idioma.code}·${idioma.via}: ${dm.slice(0, 140)}`
+              : `⚠️ DM NÃO entregue (${envio1.motivo}) 🌐${idioma.code} — texto: ${dm.slice(0, 100)}`, pessoa);
 
     // A resposta pública é um extra: se falhar, o DM (que é o produto) já saiu. Nunca deixa de
     // registrar o motivo real, mas também nunca derruba o caminho principal.

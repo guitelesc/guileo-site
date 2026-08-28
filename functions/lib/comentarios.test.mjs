@@ -6,7 +6,8 @@
 //
 // Metade dos casos abaixo prova o que DEVE casar (senão o lead morre calado); a outra metade
 // prova o que NÃO pode casar (senão a conta do cliente apanha). As duas metades são o produto.
-import { normalizar, casaPalavra, campanhaCasa, escolherCampanha, podeMandar, montarDm } from "./comentarios.js";
+import { normalizar, casaPalavra, campanhaCasa, escolherCampanha, podeMandar, montarDm,
+         idiomaPorEscrita, escolherIdioma, textoDoIdioma, linkComIdioma, palavraAmbigua } from "./comentarios.js";
 
 let falhas = 0;
 const ok = (cond, oque) => { if (!cond) { falhas++; console.log("  ✗ " + oque); } else console.log("  ✓ " + oque); };
@@ -60,6 +61,61 @@ ok(montarDm("Oi {nome}, o preço é...", { usuario: "ana", link: "https://g.co/x
    === "Oi @ana, o preço é...\n\nhttps://g.co/x", "{nome} vira @ e o link fica em linha própria");
 ok(!montarDm("Oi {nome}, veja:", { usuario: "" }).includes("{nome}"),
    "sem username o placeholder some (nunca vaza '{nome}' cru pro cliente)");
+
+
+console.log("\n— IDIOMA · camada 1: a escrita decide sozinha —");
+for (const [texto, esperado] of [
+  ["値段はいくらですか", "ja"],   // kana ANTES de han: japonês usa os dois, chinês só han
+  ["가격 얼마예요", "ko"],
+  ["价格多少钱", "zh"],
+  ["какая цена?", "ru"],
+  ["яка ціна?", "uk"],           // ucraniano NÃO pode virar russo
+  ["¿cuánto cuesta?", "es"],
+  ["quanto é a promoção", "pt"],
+]) ok(idiomaPorEscrita(texto) === esperado, `"${texto}" → ${esperado}`);
+ok(idiomaPorEscrita("how much is it") === "", "inglês: a escrita NÃO decide (devolve vazio, não chuta)");
+ok(idiomaPorEscrita("") === "" && idiomaPorEscrita(null) === "", "texto vazio/nulo não explode");
+
+console.log("\n— IDIOMA · a armadilha: detectar depois de normalizar é detectar no escuro —");
+ok(idiomaPorEscrita(normalizar("가격 얼마예요")) === "",
+   "normalizar() APAGA o sinal de idioma — por isso o detector lê o texto CRU");
+
+console.log("\n— IDIOMA · camada 2: a palavra que casou carrega o idioma —");
+ok(escolherIdioma({ texto: "quanto custa?", palavra: "quanto custa", permitidos: ["en","pt","es"] }).code === "pt",
+   '"quanto custa" → pt');
+ok(escolherIdioma({ texto: "how much?", palavra: "how much", permitidos: ["en","pt","es"] }).code === "en",
+   '"how much" → en (sem a escrita ajudar)');
+ok(escolherIdioma({ texto: "precio?", palavra: "precio", permitidos: ["en","pt","es"] }).code === "es",
+   '"precio" → es');
+
+console.log("\n— IDIOMA · camada 3: ambígua NÃO decide, cai no padrão do dono —");
+ok(palavraAmbigua("valor") && palavraAmbigua("info"), '"valor" e "info" são marcadas como ambíguas');
+ok(escolherIdioma({ texto: "valor", palavra: "valor", permitidos: ["pt","es"], padrao: "pt" }).code === "pt",
+   '"valor" (PT e ES) cai no padrão em vez de sortear');
+ok(escolherIdioma({ texto: "info", palavra: "info", padrao: "en" }).via === "padrao",
+   "o motivo volta como 'padrao' — motivo na tela, não no chute");
+
+console.log("\n— IDIOMA · idioma detectado SEM texto pronto: cai no padrão e DIZ que caiu —");
+const semTexto = escolherIdioma({ texto: "가격 얼마예요", palavra: "", permitidos: ["en","pt"], padrao: "en" });
+ok(semTexto.code === "en", "coreano sem tradução → responde no padrão (não fica mudo)");
+ok(semTexto.via === "padrao_sem_texto_ko",
+   "…e o motivo diz que FALTOU TRADUÇÃO, não que a detecção falhou");
+
+console.log("\n— IDIOMA · o texto certo, com queda honesta —");
+const campI18n = { dm_text: "texto antigo", dm_i18n: { en: "Hi!", pt: "Oi!" } };
+ok(textoDoIdioma(campI18n, "pt") === "Oi!", "pega o texto do idioma");
+ok(textoDoIdioma(campI18n, "es", "en") === "Hi!", "sem espanhol, cai no padrão informado");
+ok(textoDoIdioma({ dm_text: "só um idioma" }, "pt") === "só um idioma",
+   "🚨 campanha ANTIGA (sem dm_i18n) continua respondendo — idioma novo não pode calar quem já está no ar");
+
+console.log("\n— IDIOMA · o link carrega o idioma pro resto do corredor —");
+ok(linkComIdioma("https://guileoai.com/?ref=ig#contact", "es") === "https://guileoai.com/?ref=ig&lang=es#contact",
+   "?lang= entra ANTES do #contact (depois da âncora o navegador ignora)");
+ok(linkComIdioma("https://x.com/", "pt") === "https://x.com/?lang=pt", "sem query vira ?lang=");
+ok(linkComIdioma("https://x.com/?lang=fr", "pt") === "https://x.com/?lang=fr",
+   "se o dono já escolheu na mão, eu NÃO sobrescrevo");
+ok(linkComIdioma("", "pt") === "", "sem link não inventa link");
+
 
 console.log(falhas ? `\n❌ ${falhas} falha(s)\n` : "\n✅ comentarios.js: tudo passou\n");
 process.exit(falhas ? 1 : 0);
