@@ -143,11 +143,66 @@ async function provar(request, env) {
   }
   if (!autorizado) return json({ error: "unauthorized", dica: "use o token do cron OU a senha do /admin" }, 401);
 
-  const [sms, whats] = await Promise.all([provarSms(env), provarWhats(env)]);
+// ── INSTAGRAM: A META AINDA ESTÁ NOS ENTREGANDO? ───────────────────────────────────────────────
+// POR QUE EXISTE (2026-08-28): o comentário→DM ficou de pé em 27/08, e no dia seguinte um surto de
+// 5xx da Cloudflare levantou a pergunta que ninguém sabia responder — "e se a Meta desistir?".
+// Duas coisas acontecem quando a entrega falha de forma sustentada, e as duas são SILENCIOSAS:
+//   1. a Meta esgota as retentativas e o comentário some (a requisição nunca chegou aqui);
+//   2. a Meta DESATIVA a assinatura, e aí para de entregar TUDO — sem erro, sem log, sem nada.
+// O (2) é o caro: é o WhatsApp respondendo pro vazio por 19 dias de novo, com outra roupa.
+// A pergunta certa não é ao nosso banco ("tem assinatura guardada?") e sim à Meta ("você ainda
+// considera esta assinatura ativa?"). `active` é campo dela, não nosso.
+//
+// TRÊS ESTADOS, como o resto deste arquivo:
+//   🟢 assinada, ativa, com `comments` E `messages`
+//   🔴 a Meta respondeu e a resposta é ruim — desativada, sem assinatura, ou faltando campo
+//   ⚪ não consegui perguntar. NUNCA vira verde: não saber não é estar bem.
+async function provarInstagram(env) {
+  const appId = (env.META_APP_ID || "").toString();
+  if (!appId || !env.META_APP_SECRET) {
+    return { estado: "cinza", motivo: "META_APP_ID/META_APP_SECRET ausentes — não dá para perguntar à Meta" };
+  }
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${encodeURIComponent(appId)}/subscriptions?access_token=${encodeURIComponent(`${appId}|${env.META_APP_SECRET}`)}`);
+    if (!r.ok) {
+      const cru = await r.text().catch(() => "");
+      return { estado: "cinza", motivo: `a Meta recusou responder (HTTP ${r.status})`, detalhe: cru.slice(0, 160) };
+    }
+    const d = await r.json().catch(() => null);
+    const linha = ((d && d.data) || []).find((x) => x && x.object === "instagram") || null;
+    if (!linha) {
+      return { estado: "vermelho", motivo: "o app NÃO tem assinatura no objeto instagram", falta: "assine o objeto instagram (action app_subscribe do /api/meta-connect)" };
+    }
+    const campos = (Array.isArray(linha.fields) ? linha.fields : []).map((f) => (typeof f === "string" ? f : f && f.name)).filter(Boolean);
+    const faltando = ["comments", "messages"].filter((c) => !campos.includes(c));
+    // `active:false` é a Meta dizendo que nos DESLIGOU. É o pior estado possível e o mais quieto.
+    if (linha.active === false) {
+      return { estado: "vermelho", campos, callback: linha.callback_url || null,
+        motivo: "a META DESATIVOU esta assinatura — nenhum comentário/DM está sendo entregue",
+        falta: "reative no painel (Webhooks → instagram) e investigue a causa: desativação vem de falha sustentada de entrega" };
+    }
+    if (faltando.length) {
+      return { estado: "vermelho", campos, callback: linha.callback_url || null,
+        motivo: `assinatura ativa, mas SEM o(s) campo(s): ${faltando.join(", ")}`,
+        falta: `assine ${faltando.join(", ")} — sem isso a Meta simplesmente não entrega esse evento` };
+    }
+    return { estado: "verde", campos, callback: linha.callback_url || null,
+      motivo: `assinatura ativa com ${campos.join(", ")}` };
+  } catch (e) {
+    return { estado: "cinza", motivo: `não consegui falar com a Meta: ${String(e).slice(0, 120)}` };
+  }
+}
+
+  const [sms, whats, insta] = await Promise.all([provarSms(env), provarWhats(env), provarInstagram(env)]);
   return json({
-    ok: sms.estado === "verde" && whats.estado === "verde",
+    // O Instagram entra no `ok` de propósito. Hoje não muda o resultado (o SMS já está vermelho),
+    // mas deixá-lo de fora seria plantar uma mentira com data marcada: no dia em que SMS e WhatsApp
+    // ficarem verdes com a assinatura do Instagram desativada, este `ok:true` diria que os canais
+    // estão bem enquanto nenhum comentário é entregue.
+    ok: sms.estado === "verde" && whats.estado === "verde" && insta.estado === "verde",
     sms,
     whatsapp: whats,
+    instagram: insta,
     // Resumo em cor para quem lê no celular sem comparar campo por campo.
     // `falta` entra no resumo de propósito: é a única parte acionável, e não é segredo — é a
     // frase que diz o que fazer. Cor sem motivo já mandou "termine o registro" com a marca
@@ -160,6 +215,14 @@ async function provar(request, env) {
       campanha_sms: sms.servicos ? sms.servicos.flatMap((x) => x.campanha || []) : null,
       motivo_campanha: sms.servicos ? sms.servicos.flatMap((x) => x.motivo_falha || []).slice(0, 2) : null,
       falta_whatsapp: whats.falta || whats.motivo || null,
+      // O Instagram entra no MESMO resumo que o semáforo já lê (semaforo.mensagens) — assim a
+      // pergunta "a Meta ainda entrega?" passa a ter dono, em vez de depender de alguém lembrar.
+      instagram: insta.estado,
+      // ⚠️ `falta_*` só existe quando FALTA. A 1ª versão fazia `falta || motivo`, e no verde isso
+      // enchia o campo com "assinatura ativa com comments, messages" — um campo chamado FALTA
+      // carregando mensagem de sucesso. Quem lê no celular vê a palavra "falta" e age. É a mesma
+      // família de "cor sem motivo" que este arquivo já documenta, ao contrário.
+      falta_instagram: insta.estado === "verde" ? null : (insta.falta || insta.motivo || null),
     },
   });
 }
