@@ -76,7 +76,13 @@ export async function varrer(request, env) {
     const linha = { conta: igId, tenant: email, posts: 0, comentarios: 0, processados: 0 };
 
     // O token é do SERVIDOR e nunca sai daqui.
-    const tkn = await svcJson(env, "meta_token_for_email", { p_secret: ING, p_email: email });
+    // ⚠️ POR CONTA, NÃO POR CLIENTE (2026-08-28). Era meta_token_for_email, que devolve o token da
+    // conta PRIMÁRIA do tenant. Com um cliente de duas contas (o MedMundo tem @medmundo.br e
+    // @drmedmundo; a Guileo tem @guileoai e @guileo.ad) isso varreria a segunda conta com o token
+    // da primeira — e a Meta responderia um 400 de permissão. O operador leria "sem acesso" e iria
+    // mexer em escopo, quando o problema era CONTA ERRADA. Erro que aponta pro lugar errado custa
+    // mais caro que erro nenhum. meta_token_for_ig resolve pelo ig_id que estamos varrendo.
+    const tkn = await svcJson(env, "meta_token_for_ig", { p_secret: ING, p_ig_id: igId });
     if (typeof tkn !== "string" || !tkn) {
       linha.erro = (tkn && typeof tkn === "object" && tkn.erro_http)
         ? `não consegui LER o token (RPC ${tkn.erro_http})`   // acesso, não ausência — a diferença importa

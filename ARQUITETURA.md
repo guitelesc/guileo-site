@@ -88,6 +88,32 @@ LIGAÇÃO/CANAL → ElevenLabs (só a VOZ) → NOSSOS webhooks (Cloudflare funct
 - **1 número = 1 agente.** O picker marca 🟢 livre / 🔒 já usado / 🚫 reservado.
 - **Slug reservado `guileo`** (2026-08-18): a landing fala com esse MESMO agente de demo **por voz no navegador** (`/api/voice-web`, `PLATFORM_SLUG`), sem telefone e sem A2P. O atalho roda antes do lookup de cliente — nenhum site de cliente pode reivindicar o slug. Medidor no tenant interno `demo@guileoai.com`. Ver ROTA-VOZWEB-LANDING.
 
+## 📸 Contas Meta (regra de ouro, como a de números)
+
+**Uma Página do Facebook = um Instagram** (regra da Meta, não nossa). Logo: cliente com duas marcas
+= duas Páginas. Isso é o caso NORMAL — restaurante com duas unidades, clínica com duas marcas, a
+própria Guileo com `@guileoai` e `@guileo.ad`.
+
+**A credencial mora por PÁGINA, em `meta_accounts` (`db/meta_multi_conta.sql`).** Um cliente tem
+N linhas. `client_integrations` continua existindo e guarda a conta **primária** — é o que o resto
+da plataforma lê e a queda de compatibilidade.
+
+**A resolução responde sobre o ID QUE FOI PERGUNTADO.** `meta_tenant_for_page(id)` aceita page_id
+*ou* ig_id (o webhook do Instagram entrega o ig_id como `entry.id`; o do Messenger entrega o
+page_id) e devolve o token **daquela** conta. Quem varre conta a conta usa `meta_token_for_ig`,
+nunca `meta_token_for_email` — este devolve o da primária e varreria a conta 2 com o token da 1.
+
+⚠️ **Até 28/08 isto estava errado e falhava calado**, dos dois lados: a resolução achava o cliente
+pelo ID certo e depois buscava a credencial por CLIENTE com `limit 1` (a Página B respondia com o
+token e a identidade da Página A), e `meta_creds_store` fazia `tokens || excluded` na linha do
+cliente (gravar a segunda conta APAGAVA o token da primeira). Mesma família do incidente da linha
+de demo atendida pelo spa de um cliente: a busca começa pelo identificador certo e termina numa
+tabela indexada por outra coisa. Índice único em `meta_accounts.ig_id` agora impede duas Páginas
+reivindicarem o mesmo Instagram.
+
+**Diagnóstico:** `ig_id` vazio com `meta=ok` significa **a conta de Instagram não está amarrada à
+Página** — não é permissão, não é token. Amarrar é no Business Suite e só o dono faz.
+
 ## ⏰ Cron externo (Pages não tem cron) — URLs token-gated
 `/api/proactive` (datas/aniversário/rebooking) · `/api/automations` (radar/slow-day) · `/api/lifecycle` · `/api/collections?sweep=1` · `/api/nps` · `/api/money-reconcile` · `/api/health-monitor`
 
