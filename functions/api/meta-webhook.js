@@ -32,7 +32,7 @@
 import { json, safeEq } from "../lib/guard.js";
 import { emitFailure } from "../lib/failure.js";
 import { ouvirDeUrl, recadoDeAnexo } from "../lib/whatsappAudio.js";
-import { escolherCampanha, montarDm, escolherIdioma, textoDoIdioma, linkComIdioma,
+import { escolherCampanha, montarDm, escolherIdioma, textoDoIdioma, linkComIdioma, escolherTexto,
          REGRA_PADRAO, TETO_HORA_META } from "../lib/comentarios.js";
 import { svcRpc } from "../lib/sb.js";
 
@@ -477,8 +477,11 @@ export async function processCommentChange(env, origin, entryId, value) {
 
     // A resposta pública é um extra: se falhar, o DM (que é o produto) já saiu. Nunca deixa de
     // registrar o motivo real, mas também nunca derruba o caminho principal.
-    if (alvo.campanha.public_reply) {
-      const envio2 = await enviarRespostaPublica(tenant.page_access_token, commentId, alvo.campanha.public_reply);
+    // A resposta pública TAMBÉM sai no idioma da pessoa — ela fica visível pro feed inteiro,
+    // então errar aqui é mais caro que errar no DM.
+    const publica = escolherTexto(alvo.campanha.public_reply_i18n, idioma.code, padraoLang, alvo.campanha.public_reply);
+    if (publica) {
+      const envio2 = await enviarRespostaPublica(tenant.page_access_token, commentId, publica);
       if (!envio2.ok) {
         await ingestInbound(env, tenant.client_email, "Instagram", "⚠️ Gui",
           `⚠️ resposta pública não publicada (${envio2.motivo})`, pessoa);

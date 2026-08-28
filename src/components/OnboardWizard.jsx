@@ -44,21 +44,17 @@ import OnboardProducts from "./OnboardProducts.jsx";
 // 🚨 E "salvo" só aparece depois de LER a resposta e confirmar o `id`. `r.ok` não é prova: um 200
 // com corpo vazio já foi lido como sucesso aqui dentro e virou cliente que nunca existiu.
 
+import { LANGS_ORDENADOS, UI_LANGS } from "../data/langs.js";
+
 const ORANGE = "#FF8A33"; // Gui / agent signal color
 
-// SPOKEN languages — what the client's Gui answers calls in (mirrors LANGS_SPOKEN in
-// functions/lib/provision.js; ElevenLabs multilingual TTS covers all of them). The checked codes flow
-// into payload.languages. The PORTAL/UI itself stays 4 languages (UI_LANGS) — that's the primary select.
-const LANG_OPTS = [
-  ["pt", "🇧🇷 Português"], ["en", "🇺🇸 English"], ["es", "🇪🇸 Español"], ["hi", "🇮🇳 हिन्दी"],
-  // Cantonês, crioulo haitiano, bengali e punjabi saíram em 2026-08-05: a plataforma de voz não os
-  // suporta, e oferecer no cadastro um idioma que a agente não fala é vender o que não existe.
-  ["zh", "🇨🇳 中文 Mandarim"], ["ru", "🇷🇺 Русский Russo"], ["ko", "🇰🇷 한국어 Coreano"],
-  ["fr", "🇫🇷 Français"], ["ar", "🇸🇦 العربية Árabe"], ["vi", "🇻🇳 Tiếng Việt"],
-  ["tl", "🇵🇭 Tagalog"], ["de", "🇩🇪 Deutsch"],
-  ["it", "🇮🇹 Italiano"], ["pl", "🇵🇱 Polski"], ["ja", "🇯🇵 日本語"], ["uk", "🇺🇦 Українська"],
-];
-const UI_LANGS = ["pt", "en", "es", "hi"]; // the owner's portal languages — only these can be PRIMARY
+// SPOKEN languages — what the client's Gui answers calls in. DERIVED from src/data/langs.js, the
+// single source (see the header there). It used to be a hand-kept copy, and the copy's own comment
+// told the story: when four unsupported languages were dropped from the server list in 2026-08-05,
+// someone had to remember to drop them here too. Now a language leaving that file leaves this
+// screen on its own — offering a language Gui cannot speak is selling something that doesn't exist.
+// The PORTAL/UI itself stays 4 languages (UI_LANGS) — that's the primary select.
+const LANG_OPTS = LANGS_ORDENADOS.map((l) => [l.code, `${l.flag} ${l.native}`]);
 const TZ_OPTS = [
   "America/New_York", "America/Chicago", "America/Denver", "America/Phoenix", "America/Los_Angeles",
   "America/Anchorage", "Pacific/Honolulu", "America/Sao_Paulo", "America/Mexico_City", "Europe/Lisbon",

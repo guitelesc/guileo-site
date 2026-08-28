@@ -37,24 +37,15 @@ const rpc = (name, body) => fetch(`${SB_URL}/rest/v1/rpc/${name}`, {
 // Cantonês, crioulo haitiano, bengali e punjabi ESTAVAM nesta lista e não são suportados — a gente
 // prometia no site um idioma que a agente nunca conseguiu falar. Removidos. Se um dia entrarem no
 // catálogo da ElevenLabs, basta voltar a linha aqui: esta lista alimenta o site e o provisionamento.
-export const LANGS_SPOKEN = [
-  { code: "en",  label: "English",          native: "English" },
-  { code: "es",  label: "Spanish",          native: "Español" },
-  { code: "pt",  label: "Portuguese",       native: "Português" },
-  { code: "hi",  label: "Hindi",            native: "हिन्दी" },
-  { code: "zh",  label: "Mandarin Chinese", native: "中文（普通话）" },
-  { code: "ru",  label: "Russian",          native: "Русский" },
-  { code: "ko",  label: "Korean",           native: "한국어" },
-  { code: "fr",  label: "French",           native: "Français" },
-  { code: "ar",  label: "Arabic",           native: "العربية" },
-  { code: "vi",  label: "Vietnamese",       native: "Tiếng Việt" },
-  { code: "tl",  label: "Tagalog",          native: "Tagalog" },
-  { code: "de",  label: "German",           native: "Deutsch" },
-  { code: "it",  label: "Italian",          native: "Italiano" },
-  { code: "pl",  label: "Polish",           native: "Polski" },
-  { code: "ja",  label: "Japanese",         native: "日本語" },
-  { code: "uk",  label: "Ukrainian",        native: "Українська" },
-];
+// ⚠️ A LISTA MUDOU DE CASA (2026-08-28) → src/data/langs.js. Ela era copiada à mão na tela de
+// cadastro (OnboardWizard LANG_OPTS) porque o navegador não pode importar ESTE arquivo: provision.js
+// arrasta constituição, lições e playbook de upsell pro bundle do cliente. Duas cópias já
+// divergiram uma vez (os 4 idiomas removidos em 05/08 tiveram que ser tirados nos dois lugares).
+// Agora existe UMA lista, num arquivo leve, e o servidor importa dela. O re-export mantém
+// `import { LANGS_SPOKEN } from "./provision.js"` funcionando pra quem já fazia isso.
+import { LANGS_SPOKEN } from "../../src/data/langs.js";
+export { LANGS_SPOKEN };
+
 
 // PORTUGUÊS BRASILEIRO, NÃO "PORTUGUÊS". A ElevenLabs separa `pt` (europeu) de `pt-br`, e o Luis
 // ouviu a diferença antes de eu ver na documentação: "tem que ser português brasileiro de verdade".

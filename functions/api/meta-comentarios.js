@@ -18,11 +18,40 @@
 // { ready:false, nota } em vez de 500. A tela mostra o motivo real, nunca uma lista vazia que
 // finge que está tudo certo (lista vazia é o disfarce favorito de erro neste projeto).
 import { json } from "../lib/guard.js";
+// A FONTE ÚNICA DE IDIOMA. Importar daqui (e não redigitar a lista) é o que impede este arquivo
+// de virar a QUARTA lista de idiomas do sistema — depois de LANGS_SPOKEN, do i18n da landing e
+// do dicionário do cockpit. Lista repetida diverge; a que diverge em silêncio é a pior.
+import { LANG_CODES } from "../../src/data/langs.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const CODIGOS_IDIOMA = LANG_CODES;
+
+/**
+ * Limpa um mapa {idioma: texto} vindo da tela.
+ *
+ * `null` (campo AUSENTE no corpo) devolve null de propósito: no banco isso significa "não mexi
+ * nisso" e preserva o que já está lá. Uma tela antiga — ou uma chamada de API que não conhece o
+ * campo — não pode APAGAR as traduções do dono só por não ter mandado nada.
+ *
+ * Idioma fora de LANGS_SPOKEN é DESCARTADO, não rejeitado: guardar texto num idioma que a Gui
+ * não fala criaria uma promessa que o telefone não cumpre.
+ */
+function mapaIdiomas(v, teto = 900) {
+  if (v === undefined || v === null) return null;
+  if (typeof v !== "object" || Array.isArray(v)) return {};
+  const out = {};
+  for (const [k, txt] of Object.entries(v)) {
+    const code = String(k || "").toLowerCase().slice(0, 2);
+    if (!CODIGOS_IDIOMA.has(code)) continue;
+    const t = String(txt == null ? "" : txt).trim();
+    if (t) out[code] = t.slice(0, teto);
+  }
+  return out;
+}
 
 async function rpc(nome, corpo) {
   return fetch(`${SB}/rest/v1/rpc/${nome}`, {
@@ -81,6 +110,13 @@ export async function onRequestPost(context) {
         p_public_reply: (c.public_reply || "").toString().slice(0, 280) || null,
         p_link_url: (c.link_url || "").toString().slice(0, 500) || null,
         p_active: c.active === false ? false : true,
+        // ── IDIOMA ────────────────────────────────────────────────────────────────────────────
+        p_dm_i18n: mapaIdiomas(c.dm_i18n),
+        p_public_reply_i18n: mapaIdiomas(c.public_reply_i18n, 280),
+        // O padrão é a queda quando a detecção não decide (palavra ambígua como "valor", que
+        // serve a PT e ES) ou quando falta tradução. Fora de LANGS_SPOKEN vira null = preserva.
+        p_lang_padrao: CODIGOS_IDIOMA.has(String(c.lang_padrao || "").toLowerCase().slice(0, 2))
+          ? String(c.lang_padrao).toLowerCase().slice(0, 2) : null,
       });
       if (!r.ok) return json({ ok: false, ready: false, nota: `cole db/meta_comment_dm.sql (rpc ${r.status})` });
       const v = await r.json().catch(() => null);

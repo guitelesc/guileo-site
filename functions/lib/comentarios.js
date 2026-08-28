@@ -294,9 +294,21 @@ export function escolherIdioma({ texto = "", palavra = "", permitidos = [], padr
  * campanha no ar pode parar de responder porque eu adicionei idioma.
  */
 export function textoDoIdioma(campanha, code, padrao = "") {
-  const mapa = (campanha && typeof campanha.dm_i18n === "object" && campanha.dm_i18n) || null;
-  const pega = (c) => (mapa && typeof mapa[c] === "string" && mapa[c].trim()) ? mapa[c].trim() : "";
-  return pega(code) || pega(padrao) || String((campanha && campanha.dm_text) || "").trim();
+  return escolherTexto(campanha && campanha.dm_i18n, code, padrao, campanha && campanha.dm_text);
+}
+
+/**
+ * O mesmo, genérico — usado também pela RESPOSTA PÚBLICA, que aparece pra TODO MUNDO embaixo do
+ * comentário. Sair em inglês debaixo de um comentário em espanhol é o mais visível dos dois erros:
+ * o DM errado só quem recebeu vê; a resposta pública o feed inteiro vê.
+ *
+ * A ordem da queda é: idioma pedido → idioma padrão → campo antigo de uma língua só. A última
+ * queda é o que mantém campanha velha respondendo igual — nunca "" só porque o mapa está vazio.
+ */
+export function escolherTexto(mapa, code, padrao = "", queda = "") {
+  const m = (mapa && typeof mapa === "object" && !Array.isArray(mapa)) ? mapa : null;
+  const pega = (c) => (m && typeof m[c] === "string" && m[c].trim()) ? m[c].trim() : "";
+  return pega(code) || pega(padrao) || String(queda || "").trim();
 }
 
 /**
