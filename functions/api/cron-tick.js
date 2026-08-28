@@ -135,6 +135,15 @@ export async function onRequest(context) {
       { name: "lembretes", url: `${base}/api/proactive?apenas=lembretes&token=${t}` },
       { name: "lifecycle", url: `${base}/api/lifecycle?token=${t}` },
       { name: "social-sweep", url: `${base}/api/social-publish?sweep=1&token=${t}` },
+      // REDE DO COMENTÁRIO→DM, todo tique (2026-08-28). O motor depende de a Meta ENTREGAR o
+      // webhook; ela reentrega, mas até certo ponto. Quando desiste, o comentário some sem deixar
+      // linha nenhuma — "ninguém comentou" e "perdemos" ficam com a MESMA cara. Esta varredura lê
+      // os comentários recentes e processa os que escaparam, pela MESMA função do webhook.
+      // POR QUE TODO TIQUE E NÃO DE HORA EM HORA: a promessa é responder em segundos. Recuperar 50
+      // minutos depois é tarde para quem perguntou preço. A 15 min o atraso máximo é 15.
+      // BARATA quando não há nada: janela de 6h, e comentário já tratado morre na reserva atômica
+      // (unique index por comment_id) sem virar DM. Inerte sem campanha ativa — devolve na hora.
+      { name: "comentarios-sweep", url: `${base}/api/comentarios-varredura?token=${t}` },
     ];
     // hourly (first tick of the hour): health + collections opt-in + dunning grace sweep
     if (minute < 15) {

@@ -228,3 +228,21 @@ grant execute on function public.meta_campanhas_listar(text,text)               
 grant execute on function public.meta_campanha_salvar(text,text,uuid,text,text,text,text[],text,text,text,text,boolean) to anon;
 grant execute on function public.meta_campanha_apagar(text,text,uuid)                        to anon;
 grant execute on function public.meta_comment_stats(text,text,int)                           to anon;
+
+-- ── A LISTA QUE A VARREDURA DE RECUPERAÇÃO PERCORRE (2026-08-28) ─────────────────────────────
+-- Quais contas têm campanha ATIVA hoje. Sem isso a varredura teria que adivinhar onde procurar
+-- comentário perdido. Só (email, ig_id): nada de conteúdo, nada de token.
+create or replace function public.meta_campanhas_contas(p_secret text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v jsonb;
+begin
+  if not public._meta_cc_ok(p_secret) then return '[]'::jsonb; end if;
+  select coalesce(jsonb_agg(distinct jsonb_build_object('client_email', c.client_email, 'ig_id', c.ig_id)), '[]'::jsonb)
+    into v
+    from public.meta_comment_campaigns c
+   where c.active = true and coalesce(c.ig_id,'') <> '';
+  return v;
+exception when others then return '[]'::jsonb;
+end $$;
+
+grant execute on function public.meta_campanhas_contas(text) to anon;

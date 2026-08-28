@@ -388,7 +388,13 @@ async function reservarEnvio(env, email, igId, pessoa, commentId, campanhaId) {
 }
 
 // ── processa UM comentário. Guardado inteiro: um comentário ruim nunca aborta o lote nem o 200.
-async function processCommentChange(env, origin, entryId, value) {
+// EXPORTADO para a varredura de recuperação (meta-comentarios-varredura.js). Ela NÃO reimplementa
+// a decisão: monta um `value` com a mesma forma que a Meta manda e chama esta função. Assim o
+// comportamento é idêntico por construção, e a reserva atômica lá dentro já garante que um
+// comentário recuperado nunca vira DM em dobro com o que o webhook porventura entregou.
+// Duplicar a decisão aqui seria criar duas verdades sobre quando mandar DM — o mesmo erro que o
+// sellerAuth documenta sobre autenticação.
+export async function processCommentChange(env, origin, entryId, value) {
   try {
     const commentId = String((value && (value.id || value.comment_id)) || "");
     const mediaId = String((value && ((value.media && value.media.id) || value.media_id)) || "");
