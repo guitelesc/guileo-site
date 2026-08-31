@@ -54,9 +54,22 @@ export default function ChannelStatus({ token }) {
     if (id === "a2p" && e && e.ready === false && e.nota) {
       return { t: "🔴 Campanha reprovada", cls: "text-[#c8623c] border-[#c8623c]/40 bg-[#c8623c]/[0.08]", nota: e.nota };
     }
-    if (!e || e.ready === null) return { t: "⚪ Registro do provedor", cls: "text-g-muted border-g-line" };
-    if (e.ready === true) return { t: "🟢 Ligado", cls: "text-g-green border-g-green/40 bg-g-green/[0.08]" };
-    return { t: "🟡 Aguardando chave", cls: "text-[#C98A00] border-[#E7B008]/40 bg-[#E7B008]/[0.08]" };
+    // A NOTA DO SERVIDOR MANDA. Sem ela, o amarelo dizia "Aguardando chave" mesmo quando a chave
+    // estava lá e o que faltava era CLIENTE CONECTADO — motivo errado manda procurar no lugar
+    // errado, que é o mesmo estrago do A2P "reprovada" sem o porquê.
+    // GRAVIDADE VEM DO SERVIDOR. `falha` = estava configurado e o PROVEDOR RECUSOU. Isso é
+    // quebrado, não "falta ligar" — pintar de amarelo faria o dono adiar o que já está sangrando.
+    if (e && e.falha === true) {
+      return { t: "🔴 Recusado pelo provedor", cls: "text-[#c8623c] border-[#c8623c]/40 bg-[#c8623c]/[0.08]", nota: e.nota || "" };
+    }
+    // ⚪ tem DOIS significados e trocá-los engana: no A2P é "registro do provedor não feito"
+    // (não é falha); nos demais virou "não consegui ler" — que NÃO é "ninguém conectado".
+    if (!e || e.ready === null) {
+      const provedor = (CHANNELS.find((c) => c.id === id) || {}).providerSide;
+      return { t: provedor ? "⚪ Registro do provedor" : "⚪ Não consegui medir", cls: "text-g-muted border-g-line", nota: (e && e.nota) || "" };
+    }
+    if (e.ready === true) return { t: e.nota ? `🟢 Ligado · ${e.nota}` : "🟢 Ligado", cls: "text-g-green border-g-green/40 bg-g-green/[0.08]" };
+    return { t: e.nota ? "🟡 Falta ligar" : "🟡 Aguardando chave", cls: "text-[#C98A00] border-[#E7B008]/40 bg-[#E7B008]/[0.08]", nota: e.nota || "" };
   };
 
   return (

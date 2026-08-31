@@ -152,27 +152,118 @@ export async function onRequestPost(context) {
         } catch { /* rede: mantém ⚪ em vez de acusar falha que não medimos */ }
       }
 
+      // ── CUSTO DE VOZ: o ledger é a prova, não a env var ───────────────────────────────────────
+      // A TARIFA é digitada à mão de propósito: a ElevenLabs não expõe US$/minuto. O
+      // GET /v1/user/subscription devolve character_count/character_limit — CARACTERES, não
+      // minutos nem dólares — então converter caractere em tarifa seria inventar número.
+      // Por isso a sonda não pergunta "a var existe?" e sim "ligação real virou custo?":
+      // 'elevenlabs' em providers_wired significa que recordVoiceCost gravou cost_event de verdade.
+      // Var setada + ZERO evento gravado é o caso perigoso — margem parece real e é piso.
+      // Três estados: ready:null (⚪) quando não deu para ler o ledger, nunca "não está pronto".
+      let voicecost = { detect: false, ready: null, nota: "não deu para ler o ledger de custo — isto NÃO é \"sem custo de voz\"" };
+      try {
+        const desde = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString();
+        const cs = await svcRpc(env, "cost_summary_all", { p_secret: env.INGEST_SECRET || "", p_since: desde });
+        if (cs && cs.ok) {
+          const j = await cs.json().catch(() => null);
+          if (j && j.ready === true) {
+            const wired = Array.isArray(j.providers_wired) ? j.providers_wired : [];
+            voicecost = wired.includes("elevenlabs")
+              ? { detect: true, ready: true, nota: "" }
+              : { detect: true, ready: false, nota: has("VOICE_COST_CENTS_PER_MIN")
+                  ? "tarifa setada mas NENHUM custo de voz gravado neste mês — a margem é piso, não real"
+                  : "sem VOICE_COST_CENTS_PER_MIN: nenhuma ligação vira custo, margem fica parcial" };
+          }
+        }
+      } catch { /* rede: mantém ⚪ em vez de acusar falha que não medimos */ }
+
+      // ── OS 3 CANAIS POR TENANT: quem conectou está no BANCO, não na env var ───────────────────
+      // META_APP_ID, GOOGLE_BUSINESS_CLIENT_ID e MINDBODY_API_KEY são credenciais DO APP: provam
+      // que a Guileo PODE integrar, jamais que alguém integrou. Quem faz o canal funcionar é o
+      // token do TENANT em client_integrations — foi um token vencido de cliente que deixou o
+      // WhatsApp mudo por TRÊS SEMANAS com este card verde (03/08). Mesmo padrão já usado em
+      // prontidao.js para a Google Agenda: conta quem conectou de verdade, e sem leitura devolve
+      // ⚪ (ready:null), nunca "não está pronto" — erro de leitura não é ausência de cliente.
+      const conectados = async (provider) => {
+        try {
+          const r = await svcRpc(env, "client_integrations_count", { p_secret: env.INGEST_SECRET || "", p_provider: provider });
+          if (!r || !r.ok) return null;
+          const n = await r.json().catch(() => null);
+          return typeof n === "number" ? n : null;
+        } catch { return null; }
+      };
+      const [nWhats, nGbp, nMb] = await Promise.all([
+        conectados("whatsapp_cloud"), conectados("google_business"), conectados("mindbody"),
+      ]);
+      // Dois motivos DIFERENTES para não estar ligado, e o dono clica em lugares diferentes:
+      // falta a chave do app (é com ele) vs app pronto e ninguém conectou (é com o cliente).
+      const canal = (n, appOk, faltaApp, semNinguem, vivoNota) =>
+        !appOk ? { detect: true, ready: false, nota: faltaApp }
+        : n === null ? { detect: false, ready: null, nota: "não deu para ler quem conectou — isto NÃO é \"ninguém conectado\"" }
+        : n > 0 ? { detect: true, ready: true, nota: `${n} conectado(s)${vivoNota || ""}` }
+        : { detect: true, ready: false, nota: semNinguem };
+
+      const eWhats = canal(nWhats, req(["META_APP_ID", "META_APP_SECRET", "META_VERIFY_TOKEN", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_APP_SECRET"]),
+        "faltam chaves do app Meta", "app Meta pronto, nenhum cliente conectou o WhatsApp ainda",
+        // CONTAR NÃO É PROVAR QUE O TOKEN ESTÁ VIVO. O veredito ao vivo vem do Graph, token por
+        // token, em /api/whatsapp-connect (auditar) — que o card do /admin já prefere.
+        "");   // o veredito de token vivo é do audit; o selo aqui conta conexões, não vidas.
+      const eGbp = canal(nGbp, req(["GOOGLE_BUSINESS_CLIENT_ID", "GOOGLE_BUSINESS_CLIENT_SECRET"]),
+        "faltam chaves do app Google", "app Google pronto, nenhum cliente conectou o perfil ainda");
+      const eMb = canal(nMb, has("MINDBODY_API_KEY"),
+        "sem MINDBODY_API_KEY (exige aprovação de parceiro na MindBody)", "chave de parceiro ok, nenhum estúdio conectou ainda");
+
+      // ── MERCADO PAGO: posse do token não é validade ───────────────────────────────────────────
+      // O /api/pix já confere TODO token de tenant contra GET /users/me antes de guardar, porque
+      // guardar token quebrado faz o dono ver "conectado ✅" e só descobrir na venda que não
+      // cobrou. O token da PLATAFORMA nunca passou por essa mesma régua. Agora passa — e o selo
+      // diz de QUAL conta MP ele é: token que responde pela conta errada cobra na conta errada.
+      let eMp = { detect: true, ready: false, nota: "falta MP_ACCESS_TOKEN (ou MERCADOPAGO_TOKEN)" };
+      const mpTok = (env.MP_ACCESS_TOKEN || env.MERCADOPAGO_TOKEN || "").toString().trim();
+      if (mpTok) {
+        let viva = null, quem = "";
+        try {
+          const r = await fetch("https://api.mercadopago.com/users/me", {
+            headers: { Authorization: `Bearer ${mpTok}` }, signal: AbortSignal.timeout(6000),
+          });
+          if (r.ok) {
+            const me = await r.json().catch(() => ({}));
+            viva = true;
+            quem = [me.nickname, me.email].filter(Boolean).join(" · ").slice(0, 60);
+          } else {
+            viva = false;
+            quem = `HTTP ${r.status}`;
+          }
+        } catch { viva = null; }   // rede caiu: não medi — e não medir NÃO é acusar
+        const nMp = await conectados("mercadopago");
+        eMp = viva === null
+          ? { detect: false, ready: null, nota: "não consegui falar com o Mercado Pago — isto NÃO é \"token inválido\"" }
+          : viva === false
+            ? { detect: true, ready: false, falha: true, nota: `o Mercado Pago RECUSOU o token da plataforma (${quem})` }
+            : { detect: true, ready: true, nota: `${quem || "conta MP ok"}${nMp ? ` · ${nMp} tenant(s)` : ""}` };
+      }
+
       const engines = [
         // Stripe CONNECT — now detected for real via the live API probe above (stripeConnect).
         // "on" = Connect enabled (money can route to clients); "off" = key works but Connect not on;
         // "unknown" = no key/hiccup → fall back to "verify at provider".
         { id: "stripe",   detect: stripeConnect !== "unknown", ready: stripeConnect === "on", vars: ["STRIPE_WEBHOOK_SECRET"] },
         { id: "a2p",      detect: a2p.detect, ready: a2p.ready, nota: a2p.nota, vars: [] },
-        { id: "whats",    detect: true,  ready: req(["META_APP_ID", "META_APP_SECRET", "META_VERIFY_TOKEN", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_APP_SECRET"]), vars: ["META_APP_ID", "META_APP_SECRET", "META_VERIFY_TOKEN", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_APP_SECRET"] },
-        { id: "gbp",      detect: true,  ready: req(["GOOGLE_BUSINESS_CLIENT_ID", "GOOGLE_BUSINESS_CLIENT_SECRET"]), vars: ["GOOGLE_BUSINESS_CLIENT_ID", "GOOGLE_BUSINESS_CLIENT_SECRET"] },
-        { id: "mindbody", detect: true,  ready: has("MINDBODY_API_KEY"),       vars: ["MINDBODY_API_KEY"] },
-        { id: "voicecost",detect: true,  ready: has("VOICE_COST_CENTS_PER_MIN"),vars: ["VOICE_COST_CENTS_PER_MIN"] },
+        { id: "whats",    detect: eWhats.detect, ready: eWhats.ready, nota: eWhats.nota, vars: ["META_APP_ID", "META_APP_SECRET", "META_VERIFY_TOKEN", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_APP_SECRET"] },
+        { id: "gbp",      detect: eGbp.detect, ready: eGbp.ready, nota: eGbp.nota, vars: ["GOOGLE_BUSINESS_CLIENT_ID", "GOOGLE_BUSINESS_CLIENT_SECRET"] },
+        { id: "mindbody", detect: eMb.detect, ready: eMb.ready, nota: eMb.nota, vars: ["MINDBODY_API_KEY"] },
+        { id: "voicecost",detect: voicecost.detect, ready: voicecost.ready, nota: voicecost.nota, vars: ["VOICE_COST_CENTS_PER_MIN"] },
         { id: "dunning",  detect: true,  ready: dunningLigado, nota: cfgCobranca.dunning_enforce != null ? "regra no banco (/admin)" : "regra na env", vars: ["DUNNING_ENFORCE"] },
         // MP credits with the TOKEN alone (the webhook re-fetches the payment from MP as source of
         // truth). MP_WEBHOOK_SECRET is optional signature hardening, NOT a requirement — so readiness
         // is token-presence. Either MP_ACCESS_TOKEN or MERCADOPAGO_TOKEN counts (the webhook reads both).
-        { id: "mp",       detect: true,  ready: has("MP_ACCESS_TOKEN") || has("MERCADOPAGO_TOKEN"), vars: ["MP_ACCESS_TOKEN", "MERCADOPAGO_TOKEN", "MP_WEBHOOK_SECRET"] },
+        { id: "mp",       detect: eMp.detect, ready: eMp.ready, nota: eMp.nota, falha: eMp.falha === true, vars: ["MP_ACCESS_TOKEN", "MERCADOPAGO_TOKEN", "MP_WEBHOOK_SECRET"] },
       ];
       // per-var presence map (booleans only — safe to send to the browser)
       const present = {};
       engines.forEach((e) => e.vars.forEach((v) => { present[v] = has(v); }));
       const already = { ELEVENLABS_API_KEY: has("ELEVENLABS_API_KEY"), STRIPE_SECRET_KEY: has("STRIPE_SECRET_KEY"), RESEND_API_KEY: has("RESEND_API_KEY"), TWILIO_ACCOUNT_SID: has("TWILIO_ACCOUNT_SID"), DIGEST_TOKEN: has("DIGEST_TOKEN"), INGEST_SECRET: has("INGEST_SECRET") };
-      return json({ ok: true, engines: engines.map(({ id, detect, ready, nota }) => ({ id, detect, ready, nota: nota || "" })), present, already });
+      return json({ ok: true, engines: engines.map(({ id, detect, ready, nota, falha }) => ({ id, detect, ready, nota: nota || "", falha: falha === true })), present, already });
     }
 
     // default: the BROTO dashboard payload — whole queue + inventory in one round-trip.
