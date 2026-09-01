@@ -75,13 +75,29 @@ export async function onRequestPost({ request, env }) {
      não passava por lá. Agora passa: mesma nota, mesmo lugar, com a data e o id. */
   if (b.registrar && b.registrar.seller && b.registrar.id) {
     try {
+      /* 🚨 A NOTA SE APAGAVA (28/08). `sp_upsert` SOBRESCREVE a nota, e este bloco montava o
+         texto a partir de `b.registrar.nota` — o que QUEM CHAMA mandou. Chamei com nota:"" e a
+         ficha do Three Degrees perdeu o PRONTO:, o link do preview e o link do relatório de uma
+         vez: 380 → 168 caracteres. Um "registro" que apaga o histórico é pior que não registrar.
+         Agora a nota vem do BANCO (fonte da verdade), não do corpo da requisição, e a linha nova
+         só entra se ainda não estiver lá — reenvio no mesmo dia não duplica o carimbo. */
       const quando = new Date().toISOString().slice(0, 10);
-      const atual = (b.registrar.nota || "").toString();
       const linha = `✉️ ${quando} — Website Upgrade enviado a ${to} (id ${id.slice(0, 8)})`;
-      await svcRpc(env, "sp_upsert", {
-        p_secret: ING, p_seller_email: String(b.registrar.seller).toLowerCase(),
-        p_id: String(b.registrar.id), p_note: (atual ? atual + "\n" : "") + linha,
-      });
+      let atual = "";
+      try {
+        const r = await svcRpc(env, "sp_get_note", { p_secret: ING, p_id: String(b.registrar.id) });
+        if (r && r.ok) atual = ((await r.json().catch(() => "")) || "").toString();
+      } catch { /* sem leitura confiável, ver abaixo */ }
+      // Fail-closed: se eu não consegui LER a nota atual, não escrevo nada — apagar o histórico
+      // do lead é pior do que ficar sem o carimbo, que dá para repor à mão.
+      if (atual) {
+        if (!atual.includes(linha)) {
+          await svcRpc(env, "sp_upsert", {
+            p_secret: ING, p_seller_email: String(b.registrar.seller).toLowerCase(),
+            p_id: String(b.registrar.id), p_note: atual + "\n" + linha,
+          });
+        }
+      }
     } catch { /* o registro não pode desfazer um envio que já saiu */ }
   }
 

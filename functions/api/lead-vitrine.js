@@ -59,11 +59,18 @@ export async function onRequestPost({ request, env }) {
      • O /api/call é o portão blindado de discagem (DNC + caps + rate) — nada é rediscado aqui.
      • Falha na discagem NÃO desfaz a captura: o lead já está gravado; a resposta diz as duas
        verdades separadas (recebido ✓, ligação ✗ e por quê). */
+  /* 🚨 "desligada" NÃO PODE SIGNIFICAR DUAS COISAS (achado 27/08). Este era o valor inicial, então
+     a resposta dizia "desligada" tanto quando o dono escolheu não ligar quanto quando eu não
+     consegui LER a configuração — e eu perdi tempo caçando o motivo errado. O caso real: o slug
+     existia com `ligar_de_volta:true` mas `published=false`, e a RPC devolvia {found:false}.
+     Agora cada estado tem nome próprio; "não sei" jamais se disfarça de "não". */
   let ligacao = "desligada";
   try {
     const cfgR = await svcRpc(env, "client_site_public", { p_slug: slug });
     const cfg = cfgR && cfgR.ok ? await cfgR.json().catch(() => null) : null;
-    if (cfg && cfg.config && cfg.config.ligar_de_volta === true) {
+    if (!cfg) ligacao = "nao consegui ler a config do site";
+    else if (cfg.found !== true) ligacao = "slug nao encontrado ou nao publicado";
+    else if (cfg.config && cfg.config.ligar_de_volta === true) {
       const donoR = await svcRpc(env, "client_site_owner", { p_secret: env.INGEST_SECRET || "", p_slug: slug });
       const dono = donoR && donoR.ok ? ((await donoR.json()) || "").toString().trim().toLowerCase() : "";
       if (dono && env.DIGEST_TOKEN) {

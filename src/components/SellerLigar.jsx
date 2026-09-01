@@ -38,6 +38,8 @@ export default function SellerLigar({ lang = "pt", sid = "" }) {
           oiFrio: (n) => `Oi, é do ${n}? Meu nome é Luis. Não é uma venda — eu olhei o negócio de vocês e achei uma coisa que achei que iam querer saber.`,
           fim: "Posso te mostrar em cinco minutos?",
           precisaL: "Precisa de", filtroT: "Do que ele precisa", todos: "Todos",
+          catT: "Categoria do negócio", todasCat: "Todas",
+          mais: (n) => `Mostrar mais (+${n})`, mostrando: (n, m) => `${n} de ${m} na tela`,
           pernaNome: { brain: "🧠 Brain — atende e fecha", ad: "🎯 AD — traz e reputação", build: "🏗️ Build — site e sistema" },
           pernaCurto: { brain: "🧠 Brain", ad: "🎯 AD", build: "🏗️ Build" },
           semMedida: "sem medição", vazioFiltro: "Ninguém nesta perna com o filtro atual." },
@@ -58,6 +60,8 @@ export default function SellerLigar({ lang = "pt", sid = "" }) {
           oiFrio: (n) => `Hi, is this ${n}? My name is Luis. This isn't a sale — I looked at your business and found something I thought you'd want to know.`,
           fim: "Can I show you in five minutes?",
           precisaL: "Needs", filtroT: "What they need", todos: "All",
+          catT: "Business category", todasCat: "All",
+          mais: (n) => `Show more (+${n})`, mostrando: (n, m) => `${n} of ${m} on screen`,
           pernaNome: { brain: "🧠 Brain — answers and closes", ad: "🎯 AD — brings them in", build: "🏗️ Build — site and system" },
           pernaCurto: { brain: "🧠 Brain", ad: "🎯 AD", build: "🏗️ Build" },
           semMedida: "not measured", vazioFiltro: "Nobody in this leg with the current filter." },
@@ -66,7 +70,9 @@ export default function SellerLigar({ lang = "pt", sid = "" }) {
 
   const carregar = useCallback(async () => {
     try {
-      const r = await fetch(`/api/lista-ligacao?sid=${encodeURIComponent(sid)}&limite=40`);
+      /* 400, não 40 (Luis 28/08: «a tela precisa mostrar a base inteira»). São ~355 leads únicos e
+         o teto da RPC subiu junto. Uma fila cortada em 40 esconde 315 telefones que já existem. */
+      const r = await fetch(`/api/lista-ligacao?sid=${encodeURIComponent(sid)}&limite=400`);
       const d = await r.json().catch(() => null);
       // O CORPO decide, não o status. `r.ok` sozinho já deixou passar recusa como sucesso aqui.
       if (!d || d.ok !== true || !Array.isArray(d.lista)) { setLista(null); setMotivo(d?.motivo || ""); return; }
@@ -77,6 +83,17 @@ export default function SellerLigar({ lang = "pt", sid = "" }) {
 
   const [copiado, setCopiado] = useState(null);
   const [perna, setPerna] = useState(null);   // null = todas
+  const [cat, setCat] = useState(null);       // null = todas as categorias
+  /* PÁGINA DE 60. Com ~355 cartões (cada um com roteiro, feridas e botões) renderizar tudo de uma
+     vez trava o celular do vendedor no meio da ligação. O corte é só de DESENHO: a busca e os
+     contadores continuam contando a lista filtrada inteira — nada some do número. */
+  const PASSO = 60;
+  const [mostrar, setMostrar] = useState(PASSO);
+  /* Trocar de filtro volta para a 1ª página — pela MÃO de quem clicou, não por um efeito que
+     observa o estado depois (setState dentro de useEffect é render em cascata, e o lint recusa). */
+  const mudaBusca = (v) => { setBusca(v); setMostrar(PASSO); };
+  const mudaPerna = (v) => { setPerna(v); setMostrar(PASSO); };
+  const mudaCat = (v) => { setCat(v); setMostrar(PASSO); };
 
   /* ── A FRASE DE ABERTURA, DITA ─────────────────────────────────────────────────────────────
      Luis (25/08): «o pitch personalizado do lado de todos os leads».
@@ -138,6 +155,16 @@ export default function SellerLigar({ lang = "pt", sid = "" }) {
     return ["brain", "ad", "build"].filter((k) => n[k] !== null && n[k] !== undefined && Number(n[k]) < CORTE);
   };
 
+  /* ONDE FICA, EM UMA LINHA. O endereço vem inteiro ("302 E 19th St, New York, NY 10003") e a
+     cidade/estado/CEP não ajudam quem liga — o que ajuda é reconhecer a RUA. Pego só o trecho
+     antes da primeira vírgula. Sem endereço não desenha nada: nunca um "undefined" na tela. */
+  const ruaCurta = (e) => {
+    const s = String(e || "").trim();
+    if (!s) return "";
+    const rua = s.split(",")[0].trim();
+    return rua.length >= 3 ? rua : "";
+  };
+
   const tel = (p) => String(p || "").replace(/\D/g, "");
   const bonito = (p) => { const d = tel(p); return d.length === 11 && d[0] === "1" ? `(${d.slice(1,4)}) ${d.slice(4,7)}-${d.slice(7)}` : d.length === 10 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : p; };
 
@@ -151,6 +178,7 @@ export default function SellerLigar({ lang = "pt", sid = "" }) {
             <span className="tabular-nums">{bonito(p.phone)}</span>
             {p.nota_google && <span>⭐ {p.nota_google}{p.avaliacoes ? ` · ${p.avaliacoes}` : ""}</span>}
             {p.categoria && <span className="truncate">{p.categoria}</span>}
+            {ruaCurta(p.endereco) && <span className="truncate opacity-80">📍 {ruaCurta(p.endereco)}</span>}
             {/* O selo só aparece quando o carimbo do envio EXISTE na ficha. Nunca "provavelmente". */}
             {p.contatado && (
               <span className="rounded-full border border-g-green/40 bg-g-green/10 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wider text-g-green">
@@ -261,13 +289,44 @@ export default function SellerLigar({ lang = "pt", sid = "" }) {
               const n = k === null ? lista.length : lista.filter((x) => precisaDe(x).includes(k)).length;
               const on = perna === k;
               return (
-                <button key={k || "todos"} type="button" onClick={() => setPerna(k)}
+                <button key={k || "todos"} type="button" onClick={() => mudaPerna(k)}
                   className={`rounded-full border px-3 py-1.5 text-[12px] font-bold transition ${on ? "border-g-green/60 bg-g-green/15 text-g-green" : "border-g-line bg-white/[0.04] text-g-muted hover:text-g-ink"}`}>
                   {k === null ? c.todos : c.pernaNome[k]} <span className="tabular-nums opacity-70">{n}</span>
                 </button>
               );
             })}
           </div>
+
+          {/* ── CATEGORIA (Luis 28/08) ────────────────────────────────────────────────────────
+              «filtro por categoria». As categorias saem dos PRÓPRIOS itens carregados — não de
+              uma lista escrita à mão que envelhece calada. Top 8 por contagem: a cauda longa
+              (1 lead cada) viraria uma parede de chips que ninguém lê. Quem não tem categoria
+              não é inventado em nenhum grupo — ele só existe em "Todas". */}
+          {(() => {
+            const contagem = new Map();
+            for (const x of lista) {
+              const k = String(x.categoria || "").trim();
+              if (k) contagem.set(k, (contagem.get(k) || 0) + 1);
+            }
+            const top = [...contagem.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 8);
+            if (top.length === 0) return null;
+            return (
+              <div className="mt-4">
+                <div className="text-[11px] font-black uppercase tracking-wider text-g-muted">{c.catT}</div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {[[null, lista.length], ...top].map(([k, n]) => {
+                    const on = cat === k;
+                    return (
+                      <button key={k || "todas"} type="button" onClick={() => mudaCat(on && k ? null : k)}
+                        className={`rounded-full border px-3 py-1.5 text-[12px] font-bold transition ${on ? "border-g-gold/60 bg-g-gold/15 text-g-gold" : "border-g-line bg-white/[0.04] text-g-muted hover:text-g-ink"}`}>
+                        {k === null ? c.todasCat : k} <span className="tabular-nums opacity-70">{n}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -277,20 +336,29 @@ export default function SellerLigar({ lang = "pt", sid = "" }) {
         // Telefone casa por DÍGITO: o lead está "+1212…" e o vendedor digita "(212) 254-8174".
         const casa = (x) => {
           if (!q) return true;
-          const txt = `${x.business} ${x.email || ""} ${x.phone || ""} ${x.preview_site || ""} ${x.categoria || ""}`.toLowerCase();
+          const txt = `${x.business} ${x.email || ""} ${x.phone || ""} ${x.preview_site || ""} ${x.categoria || ""} ${x.endereco || ""}`.toLowerCase();
           if (txt.includes(q)) return true;
           return dig.length >= 3 && `${x.phone || ""}`.replace(/\D/g, "").includes(dig);
         };
         const porBusca = lista.filter(casa);
-        const visivel = perna ? porBusca.filter((x) => precisaDe(x).includes(perna)) : porBusca;
+        const porPerna = perna ? porBusca.filter((x) => precisaDe(x).includes(perna)) : porBusca;
+        const visivel = cat ? porPerna.filter((x) => String(x.categoria || "").trim() === cat) : porPerna;
         /* ORDEM POR PRONTIDÃO (Luis 26/08: «os leads atendem e querem receber o preview»).
            1º quem já TEM preview no ar — basta ligar e mandar o link.
            2º quem já recebeu e-mail. 3º frios. 4º os incompletos, que antes SUMIAM da tela:
            o `stage='new'` escondia todo lead já abordado — inclusive os dois prontos. */
-        const prontos = visivel.filter((x) => x.preview_pronto);
-        const quentes = visivel.filter((x) => !x.preview_pronto && x.contatado && !x.falta_fone);
-        const frios = visivel.filter((x) => !x.preview_pronto && !x.contatado && !x.falta_fone);
-        const faltando = visivel.filter((x) => !x.preview_pronto && x.falta_fone);
+        const balde = (l) => [
+          l.filter((x) => x.preview_pronto),
+          l.filter((x) => !x.preview_pronto && x.contatado && !x.falta_fone),
+          l.filter((x) => !x.preview_pronto && !x.contatado && !x.falta_fone),
+          l.filter((x) => !x.preview_pronto && x.falta_fone),
+        ];
+        /* O CORTE RESPEITA A PRIORIDADE: ordeno pelas 4 seções ANTES de fatiar. Fatiar a lista crua
+           deixaria um "preview no ar" — o lead mais quente que existe aqui — fora da primeira
+           página só porque a dor dele foi medida depois. */
+        const ordenado = balde(visivel).flat();
+        const janela = ordenado.slice(0, mostrar);
+        const [prontos, quentes, frios, faltando] = balde(janela);
         if (visivel.length === 0) return <div className="mt-6 text-sm text-g-muted">{c.vazioFiltro}</div>;
         const secao = (titulo, itens, base, nota) => itens.length === 0 ? null : (
           <div className="mt-6">
@@ -307,13 +375,13 @@ export default function SellerLigar({ lang = "pt", sid = "" }) {
               cliente espera no telefone. Sempre visível: some só quando não há lista nenhuma. */}
           <div className="relative mb-3">
             <span aria-hidden className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[15px] opacity-60">🔎</span>
-            <input type="search" value={busca} onChange={(e) => setBusca(e.target.value)}
+            <input type="search" value={busca} onChange={(e) => mudaBusca(e.target.value)}
               placeholder={c.buscaPh} aria-label={c.buscaPh}
               className="min-h-[48px] w-full rounded-full border border-white/12 bg-white/[0.04] pl-11 pr-24 text-[14px] text-g-word placeholder:text-g-muted/60 focus:border-g-green/50 focus:outline-none" />
             {busca.trim() && (
               <span className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
                 <span className="text-[11.5px] font-bold tabular-nums text-g-muted">{c.buscaN(visivel.length, lista.length)}</span>
-                <button type="button" onClick={() => setBusca("")} aria-label={c.buscaLimpa}
+                <button type="button" onClick={() => mudaBusca("")} aria-label={c.buscaLimpa}
                   className="rounded-full px-2 py-1 text-[13px] text-g-muted hover:text-g-word">✕</button>
               </span>
             )}
@@ -323,7 +391,7 @@ export default function SellerLigar({ lang = "pt", sid = "" }) {
             <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-6 text-center">
               <div className="text-3xl">🔎</div>
               <p className="mx-auto mt-2 max-w-sm text-[13px] leading-relaxed text-g-muted">{c.buscaVazia(busca.trim())}</p>
-              <button type="button" onClick={() => setBusca("")}
+              <button type="button" onClick={() => mudaBusca("")}
                 className="mt-3 inline-flex min-h-[44px] items-center rounded-full border border-white/15 bg-white/[0.04] px-4 text-[13px] font-bold text-g-word hover:border-g-green/40">✕ {c.buscaLimpa}</button>
             </div>
           )}
@@ -331,6 +399,15 @@ export default function SellerLigar({ lang = "pt", sid = "" }) {
           {secao(c.quentesT, quentes, prontos.length, c.quenteNota)}
           {secao(c.friosT, frios, prontos.length + quentes.length, null)}
           {secao(c.faltaT, faltando, prontos.length + quentes.length + frios.length, c.faltaNota)}
+          {visivel.length > janela.length && (
+            <div className="mt-6 text-center">
+              <button type="button" onClick={() => setMostrar((n) => n + PASSO)}
+                className="inline-flex min-h-[48px] items-center rounded-full border border-white/15 bg-white/[0.04] px-5 text-[13px] font-bold text-g-word hover:border-g-green/40">
+                {c.mais(Math.min(PASSO, visivel.length - janela.length))}
+              </button>
+              <div className="mt-2 text-[11.5px] tabular-nums text-g-muted">{c.mostrando(janela.length, visivel.length)}</div>
+            </div>
+          )}
         </>);
       })()}
 

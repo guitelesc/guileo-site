@@ -307,7 +307,7 @@ export async function onRequest({ request, env }) {
         method: "POST",
         headers: {
           "Content-Type": "application/json", "X-Goog-Api-Key": env.GOOGLE_PLACES_KEY,
-          "X-Goog-FieldMask": "places.displayName,places.nationalPhoneNumber,places.websiteUri,places.formattedAddress,places.rating,places.userRatingCount",
+          "X-Goog-FieldMask": "places.id,places.displayName,places.nationalPhoneNumber,places.websiteUri,places.formattedAddress,places.rating,places.userRatingCount,places.location",
         },
         body: JSON.stringify({ textQuery: `${nome} ${local}`.slice(0, 200), maxResultCount: 1 }),
       });
@@ -328,6 +328,12 @@ export async function onRequest({ request, env }) {
         ok: true,
         nome_no_google: p0?.displayName?.text || "",
         telefone: p0?.nationalPhoneNumber || "",
+        /* LOCALIDADE (27/08): lat/lng/place_id existem em seller_prospects desde sempre e as 365
+           linhas estavam NULAS — porque este endpoint nunca PEDIU a geometria ao Google. O
+           "Perto de mim" do hub rodava em cima de nada. */
+        lat: typeof p0?.location?.latitude === "number" ? p0.location.latitude : null,
+        lng: typeof p0?.location?.longitude === "number" ? p0.location.longitude : null,
+        place_id: p0?.id || "",
         email: mailAchado,
         site: p0?.websiteUri || "",
         endereco: p0?.formattedAddress || "",

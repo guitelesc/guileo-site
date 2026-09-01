@@ -142,12 +142,12 @@ export default function HairArtDesignsBook() {
   return (
     <div className="ha-raiz">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Jost:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,700;1,6..96,400&family=Jost:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
         .ha-raiz{
-          --papel:#F6F3EE; --papel2:#EDE8E0; --branco:#FFFFFF;
-          --tinta:#2C3330; --tinta2:#5E6B65; --tinta3:#8C978F;
-          --salvia:#A8C8C0; --salvia-e:#6E9A8F; --salvia-f:#4A6B62;
-          --pessego:#D4A078; --pessego-e:#B87B4E; --linha:#DCD5CA;
+          --papel:#F7F5F1; --papel2:#EDEAE3; --branco:#FFFFFF;
+          --tinta:#16191A; --tinta2:#5A625F; --tinta3:#949C97;
+          --salvia:#A8C8C0; --salvia-e:#6E9A8F; --salvia-f:#41615A;
+          --pessego:#D4A078; --pessego-e:#A96C3E; --linha:#D9D3C9;
           background:var(--papel); color:var(--tinta); min-height:100vh;
           font-family:'Jost',system-ui,-apple-system,sans-serif; position:relative; overflow-x:hidden;
         }
@@ -156,10 +156,11 @@ export default function HairArtDesignsBook() {
           background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.42'/%3E%3C/svg%3E");
         }
         .ha-raiz > *{position:relative; z-index:1;}
-        .ha-serif{font-family:'Cormorant Garamond',Georgia,serif;}
+        .ha-vogue{font-family:'Bodoni Moda',Didot,'Playfair Display',Georgia,serif;}
         .ha-mono{font-family:'IBM Plex Mono',ui-monospace,monospace;}
-        .ha-eyebrow{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.2em;
+        .ha-kicker,.ha-eyebrow{font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.26em;
           text-transform:uppercase; color:var(--salvia-f);}
+        .ha-num{font-family:'Bodoni Moda',Didot,serif; font-size:12.5px; letter-spacing:.12em; color:var(--pessego-e);}
         .ha-selo{
           position:relative; display:inline-flex; align-items:center; gap:9px; overflow:hidden;
           min-height:52px; padding:0 24px; border-radius:10px; font-weight:600; font-size:15px;
@@ -174,6 +175,12 @@ export default function HairArtDesignsBook() {
           background:linear-gradient(115deg,transparent 30%,rgba(168,200,192,.55) 48%,transparent 66%);
           transform:translateX(-120%); transition:transform .75s ease;}
         .ha-selo:hover::after{transform:translateX(120%);}
+        .ha-selo:hover{border-color:var(--salvia-f);
+          box-shadow:inset 0 1px 0 rgba(255,255,255,.95), 0 2px 4px rgba(22,25,26,.16),
+                     0 20px 34px -18px rgba(65,97,90,.55), 0 0 0 4px rgba(168,200,192,.22);}
+        .ha-selo-forte:hover{border-color:var(--pessego-e);
+          box-shadow:inset 0 1px 0 rgba(255,255,255,.95), 0 2px 4px rgba(22,25,26,.16),
+                     0 20px 34px -18px rgba(169,108,62,.5), 0 0 0 4px rgba(212,160,120,.26);}
         .ha-selo:active{transform:scale(.985);}
         .ha-selo[disabled],.ha-selo.off{opacity:.55; filter:saturate(.5); pointer-events:none;}
         .ha-selo-forte{border-color:var(--pessego-e); background-image:linear-gradient(180deg,#FFF,#F3E4D6);}
@@ -208,11 +215,14 @@ export default function HairArtDesignsBook() {
       <header className="sticky top-0 z-30 border-b" style={{ borderColor: "var(--linha)", background: "rgba(246,243,238,.86)", backdropFilter: "blur(14px)" }}>
         <div className="mx-auto flex max-w-5xl flex-nowrap items-center gap-3 px-4 py-3">
           <a href={B} className="flex min-w-0 flex-nowrap items-center gap-2.5">
-            <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl"
-              style={{ background: "var(--branco)", border: "1px solid var(--linha)", boxShadow: "inset 0 1px 0 rgba(255,255,255,1), 0 1px 2px rgba(44,51,48,.12)" }}>
-              <img src={B + "/logo.png"} alt="Hair Art Designs" width="34" height="20" className="w-[34px]" />
+            {/* MESMA PLACA da vitrine: proporcional ao logotipo deitado, aro de luz no topo,
+                sombra de contato curta, mesmo raio dos cartões. Arquivo transparente. */}
+            <span className="grid h-12 shrink-0 place-items-center overflow-hidden rounded-xl px-3"
+              style={{ background: "var(--branco)", border: "1px solid var(--linha)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(22,25,26,.05), 0 1px 2px rgba(22,25,26,.14)" }}>
+              <img src={B + "/logo.png"} alt="Hair Art Designs" width="112" height="65" className="h-[32px] w-auto" />
             </span>
-            <span className="ha-serif min-w-0 truncate font-semibold" style={{ fontSize: "clamp(15px,3.6vw,21px)" }}>Hair Art Designs</span>
+            <span className="ha-vogue min-w-0 truncate font-semibold" style={{ fontSize: "clamp(15px,3.6vw,21px)" }}>Hair Art Designs</span>
           </a>
           <span className="flex-1" />
           <a href={"tel:" + TEL} className="ha-selo ha-selo-forte shrink-0" style={{ padding: "0 18px" }}>
@@ -223,7 +233,7 @@ export default function HairArtDesignsBook() {
 
       <main className="mx-auto max-w-5xl px-4 py-10">
         <div className="ha-eyebrow">Booking</div>
-        <h1 className="ha-serif mt-2 font-semibold" style={{ fontSize: "clamp(30px,5.4vw,50px)", lineHeight: 1.06, textWrap: "balance" }}>
+        <h1 className="ha-vogue mt-2 font-semibold" style={{ fontSize: "clamp(30px,5.4vw,50px)", lineHeight: 1.06, textWrap: "balance" }}>
           Pick the service. See the price. Then who does it.
         </h1>
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
@@ -282,7 +292,7 @@ export default function HairArtDesignsBook() {
             <div className="ha-card p-5">
               {enviado ? (
                 <div className="py-4 text-center">
-                  <div className="ha-serif text-[26px] font-semibold" style={{ color: "var(--salvia-f)" }}>Sent.</div>
+                  <div className="ha-vogue text-[26px] font-semibold" style={{ color: "var(--salvia-f)" }}>Sent.</div>
                   <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--tinta2)" }}>
                     The salon has your request. If you would rather not wait, {TEL_FMT} rings the front desk.
                   </p>
@@ -298,7 +308,7 @@ export default function HairArtDesignsBook() {
                             className="h-11 w-11 shrink-0 rounded-full object-cover" style={{ border: "2px solid var(--salvia)" }} />
                         ) : null}
                         <div className="min-w-0">
-                          <div className="ha-serif text-[20px] font-semibold leading-tight">{escolhido.nome}</div>
+                          <div className="ha-vogue text-[20px] font-semibold leading-tight">{escolhido.nome}</div>
                           <div className="ha-mono mt-0.5 text-[14px]" style={{ color: "var(--salvia-f)" }}>
                             {faixa(escolhido.nome, escolhido.base, escolhido.aberto)}
                           </div>

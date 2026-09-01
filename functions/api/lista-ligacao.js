@@ -33,6 +33,11 @@ async function tratar(request, env) {
     const email = await verifySession(env, sid).catch(() => null);
     // O vendedor vê a CARTEIRA DELE. Sem este escopo, um crachá viraria a lista da casa inteira.
     if (typeof email === "string" && email.includes("@")) vendedor = email.toLowerCase();
+    /* O DONO VÊ A CASA INTEIRA (27/08). A base tem 349 leads repartidos entre 3 vendedores e o
+       Luis — dono — enxergava só os 38 dele: decidia a rota do dia em cima de 11% da carteira.
+       O escopo por vendedor continua valendo para todo mundo; só o e-mail do dono abre o todo.
+       (Mesma identidade que o roster protege — o código de time não loga como ele.) */
+    if (vendedor === "luistelesc@gmail.com") tudo = true;
   }
   if (!tudo && !vendedor) return json({ error: "unauthorized" }, 401);
   if (!env.INGEST_SECRET) return json({ ok: false, motivo: "sem INGEST_SECRET" }, 503);
@@ -40,7 +45,7 @@ async function tratar(request, env) {
   const lista = await svcJson(env, "lista_de_ligacao", {
     p_secret: env.INGEST_SECRET,
     p_seller: tudo ? (b.seller || url.searchParams.get("seller") || null) : vendedor,
-    p_limit: Math.min(parseInt(b.limite || url.searchParams.get("limite"), 10) || 30, 100),
+    p_limit: Math.min(parseInt(b.limite || url.searchParams.get("limite"), 10) || 30, 400),
   }).catch(() => null);
 
   // Lista ausente NÃO é "ninguém para ligar" (lei do fallback). Sem esta distinção, uma falha de

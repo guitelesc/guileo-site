@@ -202,7 +202,7 @@ const D = {
     stages: { abordado: "Approached", conversa: "Talking", demo: "Demo", proposta: "Proposal", fechado: "Closed", perdido: "Lost" },
     addFunil: "➕ Add to funnel", adding: "Adding…", inFunil: "In the funnel",
     lastUpdate: "Last update", summary: "What they said",
-    pitchT: "This business's pitch", aUpgrade: "🚀 Send the Website Upgrade", upSending: "Sending…", upOk: "Sent ✓", upErr: "did not go out — check the address", aCall: "📞 Call", aWa: "💬 WhatsApp", aMail: "✉️ Email", aReport: "📄 Report", aCopy: "📋 Copy link", copied: "Copied ✓", aNoWay: "No phone or email on this lead — ask for it on the call", aMeasure: "🩻 Measure with X-Ray", fones: "📞 Fill in phone + email", perto: "📍 Nearest me", pertoOn: "📍 By distance", geoNegado: "you did not allow location — the queue stays in arrival order", geoIndisp: "this device has no location", semLocal: "location unknown", aGmail: "📧 Gmail", aCopiarMail: "📋 Copy the email", aCopiadoMail: "Copied ✓", aQuote: "🧾 Quote", aContract: "📄 Contract", logMail: "email sent · promised $50 credit on month 1",
+    pitchT: "This business's pitch", aUpgrade: "🚀 Send the Website Upgrade", upSending: "Sending…", upOk: "Sent ✓", upErr: "did not go out — check the address", aCall: "📞 Call", aWa: "💬 WhatsApp", aMail: "✉️ Email", aReport: "📄 Report", aCopy: "📋 Copy link", copied: "Copied ✓", aNoWay: "No phone or email on this lead — ask for it on the call", aMeasure: "🩻 Measure with X-Ray", fones: "📞 Fill in phone + email", perto: "📍 Nearest me", pertoOn: "📍 By distance", geoNegado: "you did not allow location — the queue stays in arrival order", geoIndisp: "this device has no location", semLocal: "location unknown", semGeoNenhum: "No lead in this queue has coordinates stored yet — sorting by distance changes nothing until the map is filled in.", aGmail: "📧 Gmail", aCopiarMail: "📋 Copy the email", aCopiadoMail: "Copied ✓", aQuote: "🧾 Quote", aContract: "📄 Contract", logMail: "email sent · promised $50 credit on month 1",
     waMsg: (n, b) => `Hi ${n || "there"}! This is Guileo${b ? ` — about ${b}` : ""}. You reached out about the AI receptionist that answers every call and books for you. Do you have 2 minutes?`,
     mailSubj: (b) => `${b || "Your business"} — I measured what your neighbors publish`,
     mailHi: (n) => `Hi ${n || "there"},`,
@@ -249,7 +249,7 @@ const D = {
     stages: { abordado: "Abordado", conversa: "Conversa", demo: "Demo", proposta: "Proposta", fechado: "Fechado", perdido: "Perdido" },
     addFunil: "➕ Colocar no funil", adding: "Colocando…", inFunil: "No funil",
     lastUpdate: "Última atualização", summary: "O que ele falou",
-    pitchT: "O pitch deste negócio", aUpgrade: "🚀 Mandar o Website Upgrade", upSending: "Enviando…", upOk: "Enviado ✓", upErr: "não saiu — confira o e-mail", aCall: "📞 Ligar", aWa: "💬 WhatsApp", aMail: "✉️ E-mail", aReport: "📄 Relatório", aCopy: "📋 Copiar link", copied: "Copiado ✓", aNoWay: "Sem telefone nem e-mail — peça na ligação", aMeasure: "🩻 Medir no X-Ray", fones: "📞 Completar telefone + e-mail", perto: "📍 Mais perto de mim", pertoOn: "📍 Por distância", geoNegado: "você não permitiu a localização — a fila fica na ordem de chegada", geoIndisp: "este aparelho não tem localização", semLocal: "sem local conhecido", aGmail: "📧 Gmail", aCopiarMail: "📋 Copiar o e-mail", aCopiadoMail: "Copiado ✓", aQuote: "🧾 Orçamento", aContract: "📄 Contrato", logMail: "e-mail enviado · prometido $50 de crédito no 1º mês",
+    pitchT: "O pitch deste negócio", aUpgrade: "🚀 Mandar o Website Upgrade", upSending: "Enviando…", upOk: "Enviado ✓", upErr: "não saiu — confira o e-mail", aCall: "📞 Ligar", aWa: "💬 WhatsApp", aMail: "✉️ E-mail", aReport: "📄 Relatório", aCopy: "📋 Copiar link", copied: "Copiado ✓", aNoWay: "Sem telefone nem e-mail — peça na ligação", aMeasure: "🩻 Medir no X-Ray", fones: "📞 Completar telefone + e-mail", perto: "📍 Mais perto de mim", pertoOn: "📍 Por distância", geoNegado: "você não permitiu a localização — a fila fica na ordem de chegada", geoIndisp: "este aparelho não tem localização", semLocal: "sem local conhecido", semGeoNenhum: "Nenhum lead desta fila tem coordenada gravada ainda — ordenar por distância não muda nada até o mapa ser preenchido.", aGmail: "📧 Gmail", aCopiarMail: "📋 Copiar o e-mail", aCopiadoMail: "Copiado ✓", aQuote: "🧾 Orçamento", aContract: "📄 Contrato", logMail: "e-mail enviado · prometido $50 de crédito no 1º mês",
     waMsg: (n, b) => `Oi ${n || ""}! Aqui é da Guileo${b ? ` — sobre o ${b}` : ""}. Você chamou a gente sobre a recepcionista de IA que atende toda ligação e agenda por você. Tem 2 minutinhos?`,
     mailSubj: (b) => `${b || "Seu negócio"} — medi o que os seus vizinhos publicam`,
     mailHi: (n) => `Oi ${n || ""},`,
@@ -294,7 +294,7 @@ const D = {
     stages: { abordado: "Abordado", conversa: "Conversación", demo: "Demo", proposta: "Propuesta", fechado: "Cerrado", perdido: "Perdido" },
     addFunil: "➕ Poner en el embudo", adding: "Agregando…", inFunil: "En el embudo",
     lastUpdate: "Última actualización", summary: "Lo que dijo",
-    pitchT: "El pitch de este negocio", aUpgrade: "🚀 Enviar el Website Upgrade", upSending: "Enviando…", upOk: "Enviado ✓", upErr: "no salió — revisa el correo", aCall: "📞 Llamar", aWa: "💬 WhatsApp", aMail: "✉️ Correo", aReport: "📄 Informe", aCopy: "📋 Copiar enlace", copied: "Copiado ✓", aNoWay: "Sin teléfono ni correo — pídelo en la llamada", aMeasure: "🩻 Medir con X-Ray", fones: "📞 Completar teléfono + correo", perto: "📍 Más cerca de mí", pertoOn: "📍 Por distancia", geoNegado: "no permitiste la ubicación — la fila queda en orden de llegada", geoIndisp: "este equipo no tiene ubicación", semLocal: "sin ubicación conocida", aGmail: "📧 Gmail", aCopiarMail: "📋 Copiar el correo", aCopiadoMail: "Copiado ✓", aQuote: "🧾 Presupuesto", aContract: "📄 Contrato", logMail: "correo enviado · prometido $50 de crédito en el 1er mes",
+    pitchT: "El pitch de este negocio", aUpgrade: "🚀 Enviar el Website Upgrade", upSending: "Enviando…", upOk: "Enviado ✓", upErr: "no salió — revisa el correo", aCall: "📞 Llamar", aWa: "💬 WhatsApp", aMail: "✉️ Correo", aReport: "📄 Informe", aCopy: "📋 Copiar enlace", copied: "Copiado ✓", aNoWay: "Sin teléfono ni correo — pídelo en la llamada", aMeasure: "🩻 Medir con X-Ray", fones: "📞 Completar teléfono + correo", perto: "📍 Más cerca de mí", pertoOn: "📍 Por distancia", geoNegado: "no permitiste la ubicación — la fila queda en orden de llegada", geoIndisp: "este equipo no tiene ubicación", semLocal: "sin ubicación conocida", semGeoNenhum: "Ningún lead de esta fila tiene coordenadas guardadas todavía — ordenar por distancia no cambia nada hasta que se llene el mapa.", aGmail: "📧 Gmail", aCopiarMail: "📋 Copiar el correo", aCopiadoMail: "Copiado ✓", aQuote: "🧾 Presupuesto", aContract: "📄 Contrato", logMail: "correo enviado · prometido $50 de crédito en el 1er mes",
     waMsg: (n, b) => `¡Hola ${n || ""}! Somos de Guileo${b ? ` — sobre ${b}` : ""}. Nos escribiste por la recepcionista de IA que contesta cada llamada y agenda por ti. ¿Tienes 2 minutos?`,
     mailSubj: (b) => `${b || "Tu negocio"} — medí lo que publican tus vecinos`,
     mailHi: (n) => `Hola ${n || ""},`,
@@ -339,7 +339,7 @@ const D = {
     stages: { abordado: "संपर्क किया", conversa: "बातचीत", demo: "डेमो", proposta: "प्रस्ताव", fechado: "बंद", perdido: "खोया" },
     addFunil: "➕ फ़नल में डालें", adding: "जोड़ा जा रहा…", inFunil: "फ़नल में",
     lastUpdate: "अंतिम अपडेट", summary: "उसने क्या कहा",
-    pitchT: "इस व्यवसाय का पिच", aUpgrade: "🚀 Website Upgrade भेजें", upSending: "भेजा जा रहा…", upOk: "भेजा ✓", upErr: "नहीं गया — ईमेल जाँचें", aCall: "📞 कॉल", aWa: "💬 WhatsApp", aMail: "✉️ ईमेल", aReport: "📄 रिपोर्ट", aCopy: "📋 लिंक कॉपी", copied: "कॉपी ✓", aNoWay: "फ़ोन या ईमेल नहीं — कॉल पर माँगें", aMeasure: "🩻 X-Ray से मापें", fones: "📞 फ़ोन + ईमेल भरें", perto: "📍 मेरे पास", pertoOn: "📍 दूरी से", geoNegado: "आपने स्थान की अनुमति नहीं दी — सूची आगमन क्रम में रहेगी", geoIndisp: "इस डिवाइस में स्थान नहीं है", semLocal: "स्थान अज्ञात", aGmail: "📧 Gmail", aCopiarMail: "📋 ईमेल कॉपी करें", aCopiadoMail: "कॉपी ✓", aQuote: "🧾 कोटेशन", aContract: "📄 अनुबंध", logMail: "ईमेल भेजा · पहले महीने $50 क्रेडिट का वादा",
+    pitchT: "इस व्यवसाय का पिच", aUpgrade: "🚀 Website Upgrade भेजें", upSending: "भेजा जा रहा…", upOk: "भेजा ✓", upErr: "नहीं गया — ईमेल जाँचें", aCall: "📞 कॉल", aWa: "💬 WhatsApp", aMail: "✉️ ईमेल", aReport: "📄 रिपोर्ट", aCopy: "📋 लिंक कॉपी", copied: "कॉपी ✓", aNoWay: "फ़ोन या ईमेल नहीं — कॉल पर माँगें", aMeasure: "🩻 X-Ray से मापें", fones: "📞 फ़ोन + ईमेल भरें", perto: "📍 मेरे पास", pertoOn: "📍 दूरी से", geoNegado: "आपने स्थान की अनुमति नहीं दी — सूची आगमन क्रम में रहेगी", geoIndisp: "इस डिवाइस में स्थान नहीं है", semLocal: "स्थान अज्ञात", semGeoNenhum: "इस सूची के किसी भी लीड का स्थान अभी सहेजा नहीं गया — मानचित्र भरने तक दूरी से क्रम नहीं बदलेगा।", aGmail: "📧 Gmail", aCopiarMail: "📋 ईमेल कॉपी करें", aCopiadoMail: "कॉपी ✓", aQuote: "🧾 कोटेशन", aContract: "📄 अनुबंध", logMail: "ईमेल भेजा · पहले महीने $50 क्रेडिट का वादा",
     waMsg: (n, b) => `Hi ${n || "there"}! This is Guileo${b ? ` — about ${b}` : ""}. You reached out about the AI receptionist that answers every call and books for you. Do you have 2 minutes?`,
     mailSubj: (b) => `${b || "आपका व्यवसाय"} — मैंने मापा कि आपके पड़ोसी क्या दिखाते हैं`,
     mailHi: (n) => `Hi ${n || "there"},`,
@@ -407,6 +407,17 @@ const kmEntre = (a, b) => {
   const dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
   const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(x));
+};
+
+// A UNIDADE É A DO LUGAR, não a do código. Quem dirige em Nova York lê "2.1 mi"; "3.4 km" faz o
+// vendedor converter de cabeça no trânsito. Fora do mercado americano fica km, que é o que se lê lá.
+const distTexto = (km, mercado) => {
+  if (km == null) return "";
+  if ((mercado || "us") === "us") {
+    const mi = km * 0.621371;
+    return mi < 0.1 ? "< 0.1 mi" : `${mi.toFixed(1)} mi`;
+  }
+  return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
 };
 
 const siteDaNota = (nota) => {
@@ -865,6 +876,15 @@ export default function SellerLeads({ lang = "pt", seller, market = "us", nav, h
         </div>
       )}
 
+      {/* 🚨 ORDENAR SEM DADO É TEATRO. Se ele permitiu a localização e NENHUM lead tem coordenada,
+          o botão fica verde e a fila não muda de ordem — parece que o "perto de mim" está quebrado.
+          Dizer que o mapa está vazio é o oposto de esconder a falha atrás de um botão aceso. */}
+      {meuLocal && fila.length > 0 && fila.every((x) => x.distanciaKm == null) && (
+        <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-[12px]" style={{ color: NOT_MEASURED }}>
+          {t.semGeoNenhum}
+        </div>
+      )}
+
       {(geoEstado === "negado" || geoEstado === "indisponivel") && (
         <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-[12px]" style={{ color: NOT_MEASURED }}>
           {geoEstado === "negado" ? t.geoNegado : t.geoIndisp}
@@ -1206,7 +1226,12 @@ const PaginaDoLead = memo(function PaginaDoLead({ t, lang, locale, item, agora, 
           <span className="block text-[17px] font-black leading-none tabular-nums" style={{ color: u.hex }}>{relogio}</span>
           <span className="mt-1 block text-[10px] font-bold uppercase tracking-wider" style={{ color: u.hex, opacity: 0.85 }}>{selo}</span>
           {item.distanciaKm != null && (
-            <span className="mt-1 block text-[10.5px] font-bold tabular-nums text-g-muted">📍 {item.distanciaKm < 1 ? `${Math.round(item.distanciaKm * 1000)} m` : `${item.distanciaKm.toFixed(1)} km`}</span>
+            <span className="mt-1 block text-[10.5px] font-bold tabular-nums text-g-muted">📍 {distTexto(item.distanciaKm, item.market)}</span>
+          )}
+          {/* `null` só existe depois de ele pedir a localização: é "este eu não sei onde fica", e
+              precisa ser DITO — senão o lead aparece no fim da rota sem explicação e parece bug. */}
+          {item.distanciaKm === null && (
+            <span className="mt-1 block text-[10px] font-semibold text-g-muted/70">{t.semLocal}</span>
           )}
         </span>
       </button>

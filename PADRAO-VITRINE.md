@@ -7,6 +7,36 @@
 > aprovado. Este arquivo existe para isso não se repetir: é a lista que se COPIA, não se
 > redescobre. Referência viva: `src/novo/ThreeDegrees.jsx` + `ThreeDegreesBook.jsx`.
 
+## 0. A HERO É VÍDEO (Luis 27/08: «a hero sempre impactante com vídeo, isso converte»)
+- [ ] **Procurar VÍDEO no site dele ANTES das imagens.** `grep '<video'`, `videoSrc`, `.mp4`,
+      `youtube.com/embed`, `vimeo`. No Hair Art eu procurei só imagem e disse que não tinha vídeo
+      sem nunca ter olhado. ⚠️ `.webm` casa com `manifest.webmanifest` — confira o contexto.
+- [ ] **Sem vídeo dele? MONTE UM com as fotos REAIS.** ffmpeg, 5 planos × 4,2s, dissolve de 1s,
+      e o último volta ao primeiro pra o loop não ter corte seco. ~1 MB, 1280×720, sem áudio,
+      `+faststart`, `poster` do primeiro quadro. Banco de imagem continua proibido.
+      🚨 `zoompan` com `-loop 1` gera `d` quadros POR quadro de entrada: sem `-frames:v N` o
+      clipe de 4s vira 441 segundos. Sempre travar a contagem de saída.
+      🚨 Imagem gigante no `zoompan` estoura o tempo — pré-escale para ~1920 antes.
+- [ ] `<video autoPlay muted loop playsInline preload="metadata" poster=…>`. O poster é o
+      fail-open: se o vídeo não carrega, a primeira tela continua sendo o salão dele.
+- [ ] Véu do vídeo é VERTICAL (o texto vive embaixo, sobre a imagem) — o direcional esquerda→
+      direita só funciona no desktop e some com a foto no celular.
+
+## 0.1 A ABERTURA
+- [ ] Cortina que sobe UMA vez (logo dele no centro, papel da marca).
+- [ ] FAIL-OPEN OBRIGATÓRIO: o estado inicial é "já abriu". Só o efeito (que exige JS vivo) a
+      fecha, e um SEGUNDO timer independente a remove aconteça o que acontecer. Cortina presa =
+      o site inteiro perdido.
+- [ ] `prefers-reduced-motion` e aba oculta: a abertura simplesmente não existe.
+
+## 0.2 O TOQUE VOGUE (Luis 27/08: «precisa de um toque vogue de salão»)
+- [ ] Masthead em DIDONE (Bodoni Moda), `clamp()`, tracking −.02em, itálico na cor DELE na
+      segunda linha. Texto SOBRE a foto, alinhado embaixo — não ao lado.
+- [ ] Filete de cabelo (1px) separando título de corpo, e abrindo cada seção.
+- [ ] Numeração editorial `01 … 08` em cada seção — só quando a ordem significa algo.
+- [ ] Bloco de números grandes na didone (nota, avaliações, anos, dias) — Vogue abre com dado.
+- [ ] Fita de fotos horizontal com legenda HONESTA do que a foto mostra.
+
 ## 1. IDENTIDADE — é dele, medida, nunca escolhida
 - [ ] Acento tirado do PIXEL (logo/botão real). No Three Degrees eu tinha escolhido vermelho; o
       pixel disse amarelo `#F5B907`. Medir, não combinar.
@@ -15,6 +45,12 @@
 - [ ] Texto gravado dentro do JPG dele: NENHUM rótulo por cima (vira texto fantasma duplicado).
 
 ## 2. BOTÃO — o SELO (aprovado: «esse estilo tava perfeito»)
+> As 3 ESPÉCIES, e nunca mais que uma primária por viewport:
+> **(a) AÇÃO/TELEFONE** na cor quente dele · **(b) SECUNDÁRIO** na cor fria dele ·
+> **(c) SOBRE FOTO/VÍDEO**: fundo escuro translúcido + `backdrop-filter:blur(6px)` + borda branca.
+> O acabamento completo é: profundidade (sombra em 2 camadas) + realce interno no topo +
+> **varredura de laca no hover** + **GLOW EXTERNO na cor dele** (`0 0 0 4px rgba(cor,.22)`) +
+> `active:scale(.985)`. Faltando o glow, o botão fica "chapado" — foi o que ele apontou.
 - [ ] Massa escura lapidada + borda na cor DELE + o grau/marca dele como sufixo (`°`).
 - [ ] Laca varrendo por dentro no hover (`::after` translateX -120% → 120%, .75s).
 - [ ] Canto suave (10px), **nunca cápsula** — cápsula dourada chapada = «pílula de remédio».
@@ -63,10 +99,29 @@
 
 ## 7. CABEÇALHO E LOGO
 - [ ] Marca + ação na MESMA linha (`flex-nowrap`), nome com `clamp`, telefone vira "Call" <380px.
-- [ ] Logo numa PLACA (aro de luz + sombra de contato + raio dos cartões) — arquivo com fundo
-      branco colado na página lê como adesivo.
+- [ ] **O ARQUIVO TEM QUE SER TRANSPARENTE.** Logo do cliente quase sempre vem em JPG/PNG com
+      fundo branco opaco — colado na página ele lê como ADESIVO, e no fundo escuro vira um bloco
+      branco. Recorte a margem, tire o branco por LUMINÂNCIA com meio-tom nas bordas (senão a
+      linha fina serrilha), e **prove sobre DOIS fundos** (escuro e papel) antes de usar.
+      Guarde também uma versão `-papel.png` achatada: transparência não é confiável em todo
+      cliente de e-mail.
+- [ ] Logo numa PLACA: aro de luz interno no topo, sombra interna embaixo, sombra de contato
+      curta, mesmo raio dos cartões.
+- [ ] **PLACA PROPORCIONAL AO LOGOTIPO.** Logotipo deitado (ex. 1,7:1) dentro de placa QUADRADA
+      fica com 20px de altura e ninguém lê. Placa com `px-3` + altura fixa, logo em `h-[32px]
+      w-auto`. Meça o `getBoundingClientRect` depois — 55×32 lê, 34×20 não.
 
 ## 8. ANTES DE DIZER QUE ACABOU
+- [ ] **DIFF CONTRA A REFERÊNCIA antes de dizer que acabou**: `grep` das seções do ThreeDegrees
+      × as suas. A v1 do Hair Art tinha 736 linhas contra 1071 e faltava vídeo, prova social, a
+      fita de fotos, a ponte do booking e A SEÇÃO QUE MOSTRA O QUE A IA FAZ — a que vende.
+- [ ] `node --test src/novo/crase.test.mjs` — conta crases dentro de `<style>{\` … \`}`. Uma
+      palavra entre crases num COMENTÁRIO fecha a string; o erro aparece 300 linhas depois como
+      "Expected } but found Identifier". Já quebrou a build 5 vezes.
+- [ ] 🚨 `.minha-classe{display:inline-flex}` na sua folha VENCE o `hidden` do Tailwind (a sua
+      folha é injetada depois). Para esconder algo seu, a regra tem que ser SUA, com media query.
+- [ ] **Deploy travado no código de saída**: `if build==0 então deploy`. Rodar os dois soltos
+      sobe dist velho quando o build falha — e o deploy responde 0 do mesmo jeito.
 - [ ] `npx eslint` no arquivo (pegou o canal preso no `useCallback` — defeito de conversão mudo).
 - [ ] Build **e** deploy separados: `npm run build && deploy` sobe dist VELHO quando o build falha.
 - [ ] Abrir a página e SONDAR o DOM (schema, tel, h1, alt, imagens quebradas, overflow, alvos).
