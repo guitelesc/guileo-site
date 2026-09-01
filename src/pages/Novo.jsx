@@ -17,20 +17,25 @@ const BOOK = {
   "three-degrees": lazy(() => import("../novo/ThreeDegreesBook.jsx")),
   "ws-hairstyling": lazy(() => import("../novo/WSHairstylingBook.jsx")),
   "hair-art-designs": lazy(() => import("../novo/HairArtDesignsBook.jsx")),
+  "23rd-street": lazy(() => import("../novo/TwentyThirdStreetBook.jsx")),
+  "ny-medical": lazy(() => import("../novo/NYMedicalBook.jsx")),
 };
 
 const REGISTRY = {
   "clareza-dental": lazy(() => import("../novo/ClarezaDental.jsx")), // clínica dental — modelo
   "nonstop-plumbers": lazy(() => import("../novo/NonstopPlumbers.jsx")), // PROSPECT REAL — reconstrução nonstopplumbers.com
-  "astoria-plumbers": lazy(() => import("../novo/AstoriaPlumbers.jsx")),
-  "queens-plumber": lazy(() => import("../novo/QueensPlumber.jsx")),
-  "sideris-plumbing": lazy(() => import("../novo/SiderisPlumbing.jsx")),
-  "sr-general": lazy(() => import("../novo/SRGeneral.jsx")),
+  "astoria-plumbers": lazy(() => import("../novo/AstoriaPlumbers.jsx")), // PROSPECT REAL — astoriaplumbers.nyc está FORA DO AR (525); ativos vieram do arquivo da web
+  "queens-plumber": lazy(() => import("../novo/QueensPlumber.jsx")), // PROSPECT REAL — queensnyplumber.com e um app Lovable inacabado (Google so ve a casca)
+  "sideris-plumbing": lazy(() => import("../novo/SiderisPlumbing.jsx")), // PROSPECT REAL — desde 1963, 5 depoimentos publicados e ZERO dado estruturado
+  "sr-general": lazy(() => import("../novo/SRGeneral.jsx")), // PROSPECT REAL — DOB certified, brownstone, e o unico JSON-LD deles esta SEM @type
   "three-degrees": lazy(() => import("../novo/ThreeDegrees.jsx")), // PROSPECT REAL — 5,0★/214, digital perm East Village; o site deles se contradiz sobre segunda-feira
-  "ws-hairstyling": lazy(() => import("../novo/WSHairstyling.jsx")),
-  "hair-art-designs": lazy(() => import("../novo/HairArtDesigns.jsx")), // PROSPECT REAL — 5,0★/190, Green Circle certified; o link do Instagram deles é literalmente instagram.com/h e o site mostra filler@godaddy.com // PROSPECT REAL — 5,0★/111, colado na NYU; o botao de agendar do site deles mostra {{ bookingButtonText }} na tela
+  "ws-hairstyling": lazy(() => import("../novo/WSHairstyling.jsx")), // PROSPECT REAL — 5,0★/111, colado na NYU; o botao de agendar do site deles mostra {{ bookingButtonText }} na tela
+  "hair-art-designs": lazy(() => import("../novo/HairArtDesigns.jsx")), // PROSPECT REAL — 5,0★/190, Green Circle certified; o link do Instagram deles é literalmente instagram.com/h e o site mostra filler@godaddy.com
+  "23rd-street": lazy(() => import("../novo/TwentyThirdStreet.jsx")), // PROSPECT REAL — 23rd Street Hair Salon / Gramercy Park Hair Salon (A.M Hair Design Inc.), 248 E 23rd, Kips Bay; extensões são o carro-chefe, Duneisy a estrela dos reviews; roxo #6C00A8 medido no logo
+  "ny-medical": lazy(() => import("../novo/NYMedical.jsx")), // PROSPECT REAL — Dr. Igor Kletsman MD, internal medicine + longevity + aesthetics + supplements; 23 W 45th St Fl 2, NYC 10036 (Midtown), 4,5★/489 no Google; sem preço publicado, horário não confirmado
   "urban-standard": lazy(() => import("../novo/UrbanStandard.jsx")), // PROSPECT REAL — 5,0★, portfolio MLS, e ZERO tel:/mailto:/formulario no site inteiro
-  "penn-plaza-dental": lazy(() => import("../novo/PennPlazaDental.jsx")), // PROSPECT REAL — hero de BANCO DE IMAGEM vendendo "individualized care" // PROSPECT REAL — DOB certified, brownstone, e o unico JSON-LD deles esta SEM @type // PROSPECT REAL — desde 1963, 5 depoimentos publicados e ZERO dado estruturado // PROSPECT REAL — queensnyplumber.com e um app Lovable inacabado (Google so ve a casca) // PROSPECT REAL — astoriaplumbers.nyc está FORA DO AR (525); ativos vieram do arquivo da web
+  "manhattan-dental": lazy(() => import("../novo/ManhattanDental.jsx")), // PROSPECT REAL — Manhattan Dental Studio, 358 Fifth Ave 10º andar; Dr. Gary S. Tomack + Dra. Cindy Behrens; latão #A47847 MEDIDO nas fotos do consultório (o logo deles é preto puro, não serve de paleta); o 2º número do site é FAX
+  "penn-plaza-dental": lazy(() => import("../novo/PennPlazaDental.jsx")), // PROSPECT REAL — hero de BANCO DE IMAGEM vendendo "individualized care"
 };
 
 export default function Novo({ book = false }) {
@@ -68,9 +73,13 @@ export default function Novo({ book = false }) {
     // é a marca do cliente; o crédito da Guileo fica discreto no rodapé.
     // Mascote = o desentupidor do BORDADO deles, o mesmo da camisa da equipe.
     // Mascote = a fiada de tijolos da logo deles.
-    // Mascote = o dente-maca da logo deles.
-    "penn-plaza-dental": { business: "Penn Plaza Dental Center", label: "Ask Penn Plaza", accent: "#00319D", surface: "#0B1626", phone: "+12127360670",
-      mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00319D" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5.4c2.6-2.1 6.6-1 6.6 3.2 0 3.4-1.4 5-2 8.2-.4 2.1-2.2 2.3-2.6.3l-.7-3.3c-.2-1-1.4-1-1.6 0l-.7 3.3c-.4 2-2.2 1.8-2.6-.3-.6-3.2-2-4.8-2-8.2 0-4.2 4-5.3 6.6-3.2Z"/></svg> },
+    /* Mascote = o SKYLINE da logo deles com o dente no lugar de um arranha-céu — é literalmente a
+       marca. Latão medido no pixel das fotos do consultório; o logo é preto puro, não vira paleta. */
+    "manhattan-dental": { business: "Manhattan Dental Studio", label: "Ask Grace", accent: "#A47847", surface: "#3D2814", phone: "+12126852476",
+      mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A47847" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 21V12h3v9M7 21V7.5h3.4V21M12.2 21V10h2.6"/><path d="M18.6 6.6c-1.4-1-3.6-.8-4.1.9-.5 1.5.2 2.9.5 4.5.2 1.1.3 2.5 1.2 2.5.8 0 .9-1.5 1.3-2.6.2-.7 1.2-.7 1.4 0 .4 1.1.5 2.6 1.3 2.6.9 0 1-1.4 1.2-2.5.3-1.6 1-3 .5-4.5-.5-1.7-2.7-1.9-4.1-.9Z"/><path d="M1.5 21h21"/></svg> },
+    // Mascote = as ARCADAS art-déco da Penn Station (o conceito: em cima da estação), no azul deles.
+    "penn-plaza-dental": { business: "Penn Plaza Dental Center", label: "Ask Ivy", accent: "#00248F", surface: "#001A5C", phone: "+12127360670",
+      mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00248F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 21V11a5 5 0 0 1 10 0v10"/><path d="M8 21v-9a2.6 2.6 0 0 1 4.6-1.6"/><path d="M17 21V9a3 3 0 0 1 3-3"/><path d="M3 21h18"/></svg> },
     "sr-general": { business: "SR General Construction", label: "Ask SR", accent: "#F5A623", surface: "#241C15", phone: "+17184507233",
       mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F5A623" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9h18M3 15h18M3 5h18M3 19h18M9 5v4M15 9v6M9 15v4"/></svg> },
     "sideris-plumbing": { business: "Sideris Plumbing & Heating", label: "Ask Sideris", accent: "#EB1F39", surface: "#1B2450", phone: "+17186261836",
@@ -89,6 +98,13 @@ export default function Novo({ book = false }) {
        e "organic beauty is our guiding light" escrito na política. Sálvia medida no pixel. */
     "hair-art-designs": { business: "Hair Art Designs", label: "Ask Hair Art", accent: "#A8C8C0", surface: "#2C3330", phone: "+12123004407",
       mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A8C8C0" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20.5C6.8 16.8 3.5 13.9 3.5 10.2A4.2 4.2 0 0 1 12 8a4.2 4.2 0 0 1 8.5 2.2c0 3.7-3.3 6.6-8.5 10.3Z"/><path d="M12 20.5V9.4" stroke="#D4A078"/><path d="M12 12.4c-1.6-.2-2.6-1.1-2.9-2.6 1.6.2 2.6 1.1 2.9 2.6Zm0 0c1.6-.2 2.6-1.1 2.9-2.6-1.6.2-2.6 1.1-2.9 2.6Z" stroke="#D4A078"/></svg> },
+    /* Mascote = uma MECHA de extensão (o carro-chefe deles), na cor roxa medida no logo. Nunca robozinho. */
+    "23rd-street": { business: "23rd Street Hair Salon", label: "Ask Remi", accent: "#6C00A8", surface: "#1A1420", phone: "+16468629323",
+      mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6C00A8" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3.5c0 4 8 5 8 9.5a4 4 0 0 1-8 0"/><path d="M16 3.5c0 4-8 5-8 9.5"/><path d="M9.5 20.5c1.6-1.2 3.4-1.2 5 0"/></svg> },
+    /* Mascote = uma folha-batimento: caduceu simplificado (haste + folha + linha de pulso) na cor
+       teal deles. Medicina que cuida da longevidade — nunca robozinho. */
+    "ny-medical": { business: "NY Medical", label: "Ask Remy", accent: "#0E4F4F", surface: "#052E2E", phone: "+12129882924",
+      mascot: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0E4F4F" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21V8"/><path d="M12 8c-2.4-.2-3.8-1.6-4.2-4 2.4.2 3.8 1.6 4.2 4Zm0 0c2.4-.2 3.8-1.6 4.2-4-2.4.2-3.8 1.6-4.2 4Z"/><path d="M4 15h3l1.4-2.4L10.6 17l1.6-3 1.2 2h4.6" stroke="#C89660"/></svg> },
     /* Mascote = o VOLUME da logo deles, partido nas duas faces reais (âmbar e azul). */
     "urban-standard": { business: "Urban Standard", label: "Ask Urban Standard", accent: "#E09327", surface: "#141517", phone: "+17186690526",
       mascot: <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.4 9.6 11.6 5v13.2L3.4 16.4V9.6Z" fill="#FBB856"/><path d="M12.4 5l8.2 4.6v6.8l-8.2 1.8V5Z" fill="#2983C7"/></svg> },
