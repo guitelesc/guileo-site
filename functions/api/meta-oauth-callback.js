@@ -105,6 +105,31 @@ export async function onRequestGet(context) {
     });
     if (okStore !== true) return volta(origin, { meta: "erro", motivo: "não consegui guardar as credenciais" });
 
+    // ── ÁREA DE ESPERA (2026-09-01) ───────────────────────────────────────────────────────────
+    // ESTE é o único momento em que a lista de Páginas do dono existe. Ela veio do token de
+    // USUÁRIO, que a gente não guarda — e sem guardá-la aqui ela morre no fim desta função. Foi
+    // exatamente por isso que um cliente com duas marcas (MedMundo: @medmundo.br + @drmedmundo)
+    // não conseguia conectar a segunda: a tela tentava listar com o token da PÁGINA e a Meta
+    // respondia "(#100) Tried accessing nonexisting field (accounts)".
+    //
+    // Guardar NÃO é dar posse. A posse continua sendo escolha explícita do dono, com a trava no
+    // banco — porque a concessão do Facebook é da PESSOA e enxerga Páginas de OUTROS clientes.
+    // Prazo de 60 min: token de Página parado sem dono é superfície de risco; expirou, refaz o
+    // OAuth, que custa 3 cliques.
+    //
+    // BEST-EFFORT DE PROPÓSITO: se isto falhar, a conexão principal (que é o produto) não pode
+    // cair junto. O silêncio aqui só custa um "adicionar 2ª conta" que não aparece.
+    try {
+      await svcJson(env, "meta_ofertas_gravar", {
+        p_secret: env.INGEST_SECRET || "", p_email: email,
+        p_paginas: paginas.filter((p) => p && p.id && p.access_token).map((p) => ({
+          page_id: String(p.id), nome: s(p.name, 80), page_token: p.access_token,
+          ig_id: (p.instagram_business_account && p.instagram_business_account.id) ? String(p.instagram_business_account.id) : "",
+          ig_username: (p.instagram_business_account && p.instagram_business_account.username) ? s(p.instagram_business_account.username, 60) : "",
+        })),
+      });
+    } catch { /* a conexão principal nunca cai por causa da área de espera */ }
+
     const sub = await subscribePage(String(alvo.id), pageToken);
 
     return volta(origin, {

@@ -303,245 +303,54 @@ export async function onRequestPost(context) {
     // o Luis administra todas. "Gravar todas as Páginas concedidas neste cliente" daria a Página
     // do Chigo para a Guileo. Por isso: LISTAR é livre, ESCOLHER é explícito, e a trava de dono
     // mora no banco (meta_conta_adicionar), que é onde a leitura e a escrita são atômicas.
-    if (action === "contas_disponiveis" || action === "adicionar_conta") {
+    // ── contas_disponiveis / adicionar_conta — VÁRIAS CONTAS NO MESMO CLIENTE ─────────────────
+    // A Meta obriga uma Página por Instagram, então cliente com duas marcas tem duas Páginas
+    // (MedMundo: @medmundo.br + @drmedmundo · Guileo: @guileoai + @guileo.ad). O banco já
+    // aguentava (meta_accounts); faltava a porta.
+    //
+    // 🚨 A LISTA NÃO VEM DA GRAPH, VEM DA ÁREA DE ESPERA. A 1ª versão chamava /me/accounts com o
+    // token guardado e levava `(#100) Tried accessing nonexisting field (accounts)`: guardamos o
+    // token da PÁGINA, nunca o do USUÁRIO, e essa lista só existe para token de usuário. Ela
+    // existe uma única vez, dentro do callback do OAuth — que agora a guarda por 60 min
+    // (meta_ofertas_gravar). Aqui a gente só lê o que ele deixou.
+    //
+    // 🚨 E LISTAR NÃO É DAR POSSE. A concessão do Facebook é da PESSOA: o token do smart@guileoai
+    // enxerga a Página do Chigo, do MedMundo, do ART PARA TODOS, porque o Luis administra todas.
+    // Gravar "todas as concedidas" daria a Página do Chigo para a Guileo. Por isso a escolha é
+    // explícita e a trava de dono mora no BANCO, onde ler e escrever é a mesma transação.
+    if (action === "contas_disponiveis") {
+      const contas = await svcJson(env, "meta_ofertas_listar", { p_secret: ING, p_email: email });
+      if (!Array.isArray(contas)) return json({ ok: false, motivo: "não consegui ler a área de espera" });
+      return json({ ok: true, email, contas,
+        // Lista vazia NÃO é "não tem Página" — é "ninguém autorizou nos últimos 60 min". A
+        // diferença é o conserto: uma manda reautorizar, a outra mandaria criar Página à toa.
+        nota: contas.length
+          ? "pronta=false = Página sem Instagram amarrado; amarre no app do Instagram, logado NAQUELE perfil"
+          : "nenhuma oferta válida — refaça a autorização (OAuth) deste cliente para as Páginas aparecerem" });
+    }
+
+    if (action === "adicionar_conta") {
+      const page_id = s(b.page_id, 40);
+      if (!page_id) return json({ ok: false, motivo: "informe o page_id" }, 400);
+      // O token da Página sai da área de espera DENTRO do banco e nunca passa por aqui.
+      const r = await svcJson(env, "meta_conta_adicionar_da_oferta", { p_secret: ING, p_email: email, p_page_id: page_id });
+      if (!r || r.ok !== true) {
+        return json({ ok: false, motivo: (r && r.motivo) || "não consegui adicionar",
+          dono: (r && r.dono) || null, dica: (r && r.dica) || null });
+      }
+      // Página adicionada e não inscrita não entrega comentário nenhum — e o silêncio pareceria
+      // "ninguém comentou". Por isso inscrever faz parte de adicionar, não é passo separado.
+      let inscrita = false;
       try {
-      const tkn = await svcJson(env, "meta_token_for_email", { p_secret: ING, p_email: email });
-      if (typeof tkn !== "string" || !tkn) {
-        const httpErro = tkn && typeof tkn === "object" ? tkn.erro_http : null;
-        // "não vejo" e "não tem" pedem consertos diferentes — a mensagem tem que separar os dois.
-        return json({ ok: false, motivo: httpErro
-          ? `não consegui LER o token de ${email} (RPC ${httpErro})`
-          : `${email} não tem Página conectada — conecte pelo OAuth primeiro` }, 409);
-      }
-      const r = await fetch(`${GRAPH}/me/accounts?fields=name,id,access_token,instagram_business_account{id,username}&limit=50&access_token=${encodeURIComponent(tkn)}`);
-      const j = await r.json().catch(() => null);
-      if (!r.ok || !j || !Array.isArray(j.data)) {
-        // ⚠️ 200 COM ok:false, NUNCA 5xx (2026-09-01). Esta linha devolvia 502 — e o Cloudflare
-        // TROCA o corpo de um 5xx pela página de erro dele. O chamador recebia "error code: 502"
-        // e a mensagem real da Meta morria no caminho. Passei quatro implantações caçando uma
-        // exceção que não existia, porque o canal de erro estava quebrado: quando o mensageiro
-        // falha, todo diagnóstico vira fantasma. É a mesma família do 401 silencioso do webhook.
-        // O resto deste arquivo já responde 200/ok:false — esta era a exceção, e era a errada.
-        // 🚨 O LIMITE QUE MATOU O DESENHO (medido 2026-09-01): guardamos o token da PÁGINA, nunca
-        // o do USUÁRIO — decisão de segurança do sistema, e certa. Só que `/me/accounts` (a lista
-        // de Páginas) SÓ existe para token de usuário: com token de Página, `/me` é a Página, e
-        // Página não tem a aresta `accounts`. A Meta responde exatamente isso:
-        //   (#100) Tried accessing nonexisting field (accounts)
-        // Portanto NÃO É POSSÍVEL listar as Páginas a partir do que está guardado. Essa lista só
-        // existe durante o OAuth e morre quando o callback termina. O caminho certo é o callback
-        // guardar as Páginas concedidas numa área de espera (com o token de cada uma e prazo
-        // curto), e esta ação ler DALI — nunca da Graph. Enquanto isso não existe, dizer isso em
-        // voz alta é melhor que repassar um erro da Meta que aponta para o lugar errado.
-        const erro = s((j && j.error && j.error.message) || "", 200);
-        const semAresta = /nonexisting field \(accounts\)/i.test(erro);
-        return json({ ok: false, http: r.status, motivo: semAresta
-          ? "não dá para listar as Páginas com o token guardado (é da Página, e a lista só existe para token de usuário) — falta a área de espera preenchida pelo OAuth"
-          : (erro || `a Meta recusou listar as Páginas (HTTP ${r.status})`),
-          pendente: semAresta ? "callback do OAuth precisa guardar as Páginas concedidas" : null,
-          tipo: s(j && j.error && j.error.type, 60), codigo: (j && j.error && j.error.code) || null });
-      }
-
-      // De quem é cada Página HOJE. Sem isto a tela ofereceria a Página de outro cliente como se
-      // estivesse livre — e o dono descobriria pelo DM saindo na marca errada.
-      //
-      // ⚠️ UMA PERGUNTA, NÃO UMA POR PÁGINA (corrigido 2026-09-01). A 1ª versão chamava
-      // meta_tenant_for_page dentro do laço: 8 Páginas = 8 subrequisições, e o runtime MATAVA o
-      // Worker antes de responder. O sintoma foi cruel — 502 do edge, que não passa por try/catch
-      // nenhum: eu envolvi o laço, depois o bloco inteiro, e o erro continuou invisível porque
-      // não existia erro, existia execução interrompida. O que denunciou foi as OUTRAS ações da
-      // mesma rota responderem 200: rota viva + ação morta = recurso, não exceção.
-      const ids = j.data.map((pg) => String(pg.id));
-      const donos = (await svcJson(env, "meta_donos_das_paginas", { p_secret: ING, p_ids: ids })) || {};
-      const comDono = j.data.map((pg) => {
-        const id = String(pg.id);
-        const dono = (donos && typeof donos === "object" && donos[id]) ? String(donos[id]) : "";
-        const ig = pg.instagram_business_account || null;
-        return {
-          page_id: id, nome: s(pg.name, 80),
-          ig_id: ig ? String(ig.id) : "", ig_usuario: ig ? s(ig.username, 60) : "",
-          // Sem Instagram amarrado a Página não serve para comentário→DM. Dizer isso aqui evita
-          // o dono adicionar uma Página e ficar esperando um DM que nunca vem.
-          pronta: !!ig,
-          dono, minha: dono === email, livre: !dono,
-        };
-      });
-
-      if (action === "contas_disponiveis") {
-        return json({ ok: true, email, contas: comDono,
-          nota: "pronta=false significa Página sem Instagram amarrado — amarre no app do Instagram, logado NAQUELE perfil" });
-      }
-
-      const alvo = comDono.find((c) => c.page_id === s(b.page_id, 40));
-      if (!alvo) return json({ ok: false, motivo: "essa Página não está nesta autorização — reautorize incluindo ela" }, 404);
-      if (alvo.dono && !alvo.minha) return json({ ok: false, motivo: `essa Página já é de ${alvo.dono}` }, 409);
-      const bruta = j.data.find((x) => String(x.id) === alvo.page_id);
-      const pgToken = (bruta && bruta.access_token) || "";
-      if (!pgToken) return json({ ok: false, motivo: "a Meta não devolveu token para essa Página" }, 502);
-
-      const gravou = await svcJson(env, "meta_conta_adicionar", {
-        p_secret: ING, p_email: email, p_page_id: alvo.page_id, p_ig_id: alvo.ig_id,
-        p_token: pgToken, p_nome: alvo.nome, p_ig_username: alvo.ig_usuario,
-      });
-      if (!gravou || gravou.ok !== true) {
-        return json({ ok: false, motivo: (gravou && gravou.motivo) || "não consegui gravar", dono: gravou && gravou.dono }, 409);
-      }
-      // Webhook: Página adicionada que não está inscrita não entrega comentário nenhum.
-      const sub = await subscribePage(alvo.page_id, pgToken);
-      return json({ ok: true, page_id: gravou.page_id, ig_id: gravou.ig_id, nome: gravou.nome,
-        inscrita: !!sub.subscribed,
-        motivo: alvo.pronta ? "conta adicionada ✓" : "conta adicionada, mas SEM Instagram amarrado — o comentário→DM só liga depois disso" });
-      } catch (e) { return json({ ok:false, ONDE:"bloco", erro:String((e && e.stack) || e).slice(0,500) }, 200); }
+        const tkn = await svcJson(env, "meta_token_for_ig", { p_secret: ING, p_ig_id: r.page_id });
+        if (typeof tkn === "string" && tkn) inscrita = !!(await subscribePage(String(r.page_id), tkn)).subscribed;
+      } catch { /* o motivo abaixo já diz se ficou pendente */ }
+      return json({ ok: true, page_id: r.page_id, ig_id: r.ig_id, nome: r.nome, inscrita,
+        motivo: !r.ig_id ? "conta adicionada, mas SEM Instagram amarrado — o comentário→DM só liga depois disso"
+              : inscrita ? "conta adicionada e inscrita ✓"
+              : "conta adicionada, mas a inscrição no webhook FALHOU — comentário não vai chegar" });
     }
 
-    // token_escopos — O QUE ESTE TOKEN REALMENTE PODE (2026-08-27).
-    // Permissão adicionada no app NÃO entra em token já emitido: o escopo é congelado no momento
-    // em que o dono autorizou. É por isso que "a permissão está lá" e mesmo assim o evento não vem
-    // — a Meta decide a ENTREGA pelo que aquela conta CONCEDEU, não pelo que o app declara.
-    // Perguntar ao debug_token transforma essa suposição em fato antes de mandar alguém reconectar.
-    if (action === "token_escopos") {
-      const tkn = await svcJson(env, "meta_token_for_email", { p_secret: ING, p_email: email });
-      if (typeof tkn !== "string" || !tkn) {
-        const httpErro = tkn && typeof tkn === "object" ? tkn.erro_http : null;
-        return json({ ok: false, motivo: httpErro ? `não consegui LER o token (RPC ${httpErro})` : "sem token guardado" }, 409);
-      }
-      if (!env.META_APP_ID || !env.META_APP_SECRET) return json({ ok: false, motivo: "META_APP_ID/SECRET ausentes" }, 400);
-      try {
-        const r = await fetch(`${GRAPH}/debug_token?input_token=${encodeURIComponent(tkn)}&access_token=${encodeURIComponent(`${env.META_APP_ID}|${env.META_APP_SECRET}`)}`);
-        const d = await r.json().catch(() => null);
-        const info = d && d.data;
-        if (!r.ok || !info) return json({ ok: false, motivo: s((d && d.error && d.error.message) || `HTTP ${r.status}`, 200) });
-        const escopos = Array.isArray(info.scopes) ? info.scopes.map(String) : [];
-        const precisa = ["instagram_manage_comments", "instagram_manage_messages", "instagram_basic"];
-        return json({
-          ok: true, valido: info.is_valid === true, tipo: s(info.type, 40),
-          expira: info.expires_at === 0 ? "nunca" : info.expires_at || null,
-          escopos,
-          faltando: precisa.filter((p) => !escopos.includes(p)),
-          veredito: precisa.every((p) => escopos.includes(p))
-            ? "o token já concede tudo que o comentário→DM precisa"
-            : "ESTE token foi autorizado ANTES da permissão nova — reconecte a conta para reemitir com o escopo novo",
-        });
-      } catch (e) { return json({ ok: false, motivo: s(e, 160) }, 500); }
-    }
-
-    // descobrir_ig — PERGUNTA À META qual conta do Instagram está ligada à Página já conectada.
-    // Só LÊ; quem grava é o `mapear_ig` acima, de propósito: ver antes de escrever é a diferença
-    // entre mapear o Instagram certo e carimbar o errado no cliente errado.
-    //
-    // POR QUE ISSO PRECISOU EXISTIR (2026-08-27): o `ig_id` estava vazio nos três tenants, e o
-    // único caminho documentado para descobri-lo era esperar alguém comentar/mandar DM e ler o
-    // `meta_pagina_nao_mapeada`. Ou seja: para o Instagram funcionar, alguém tinha que primeiro
-    // usar o Instagram e falhar. Isso não é descoberta, é armadilha — o número está a uma
-    // pergunta de distância da própria Meta, com o token que já guardamos.
-    //
-    // ⚠️ O ESCOPO É A PARTE DIFÍCIL. `/{page_id}?fields=…` e `/me?fields=name` já devolveram
-    // "(#100) requires pages_read_engagement" para tokens PERFEITAMENTE VIVOS (ver empresas.js).
-    // Por isso tentamos as duas formas e devolvemos o erro REAL de cada uma — vermelho falso manda
-    // consertar o que não está quebrado.
-    if (action === "descobrir_ig") {
-      // ⚠️ svcJson (SERVICE ROLE), não o `rpc` anônimo daqui de cima. `meta_token_for_email` é
-      // servidor-only de propósito — o anon leva 401 e devolve null. Na 1ª versão eu usei o anon e
-      // a resposta virou "não tem token guardado" para três tenants que TÊM token: a mensagem
-      // acusou o dado em vez de acusar o acesso, que é o diagnóstico falso clássico deste projeto.
-      // Agora os dois casos têm frases diferentes, porque o conserto de cada um é diferente.
-      const tkn = await svcJson(env, "meta_token_for_email", { p_secret: ING, p_email: email });
-      if (typeof tkn !== "string" || !tkn) {
-        const httpErro = tkn && typeof tkn === "object" ? tkn.erro_http : null;
-        return json({
-          ok: false,
-          motivo: httpErro
-            ? `não consegui LER o token guardado (RPC respondeu ${httpErro}) — o token pode existir; o acesso é que falhou`
-            : `${email} não tem token de Página guardado — conecte a Página primeiro`,
-          detalhe: (tkn && typeof tkn === "object" && tkn.detalhe) || null,
-        }, 409);
-      }
-      const cred = await svcJson(env, "meta_creds_get", { p_secret: ING, p_email: email });
-      const pageId = s(cred && typeof cred === "object" ? cred.page_id : "", 60);
-
-      const tentativas = [];
-      const perguntar = async (rotulo, caminho) => {
-        try {
-          const r = await fetch(`${GRAPH}/${caminho}${caminho.includes("?") ? "&" : "?"}access_token=${encodeURIComponent(tkn)}`);
-          const d = await r.json().catch(() => null);
-          if (!r.ok || !d || d.error) {
-            tentativas.push({ via: rotulo, erro: s((d && d.error && d.error.message) || `HTTP ${r.status}`, 200) });
-            return null;
-          }
-          const ig = d.instagram_business_account;
-          if (!ig || !ig.id) {
-            // 🚨 AUSÊNCIA DE CAMPO NÃO É AUSÊNCIA DA COISA (corrigido 2026-08-28). Com um token sem
-            // `instagram_basic`, a Meta devolve 200 e simplesmente OMITE `instagram_business_account`
-            // — não dá erro. A 1ª versão lia isso como "esta Página não tem Instagram ligado", e eu
-            // afirmei isso ao dono sobre DUAS empresas dele. Pode ter sido falso: talvez tivessem
-            // Instagram e o token é que não podia ver. Não saber e não ter pedem ações OPOSTAS
-            // (reconectar × ligar o IG no Business Suite), então agora a resposta separa as duas.
-            tentativas.push({ via: rotulo, erro: "a Meta respondeu 200 mas sem o campo do Instagram — pode ser que a Página não tenha Instagram OU que este token não tenha escopo para ver (confira com action:'token_escopos')" });
-            return null;
-          }
-          return { id: String(ig.id), usuario: s(ig.username, 60), nome: s(ig.name, 120), via: rotulo };
-        } catch (e) { tentativas.push({ via: rotulo, erro: s(e, 160) }); return null; }
-      };
-
-      // `/me` primeiro: o token de Página É a Página, e essa forma passa com escopo mínimo.
-      let achado = await perguntar("/me", "me?fields=instagram_business_account{id,username,name}");
-      if (!achado && pageId) achado = await perguntar("/{page_id}", `${encodeURIComponent(pageId)}?fields=instagram_business_account{id,username,name}`);
-
-      if (!achado) {
-        // Diz se o token TEM escopo para enxergar — é isso que separa "não tem" de "não vejo".
-        let temEscopo = null;
-        try {
-          const dbg = await fetch(`${GRAPH}/debug_token?input_token=${encodeURIComponent(tkn)}&access_token=${encodeURIComponent(`${env.META_APP_ID}|${env.META_APP_SECRET}`)}`);
-          if (dbg.ok) {
-            const dj = await dbg.json().catch(() => null);
-            const esc = (dj && dj.data && Array.isArray(dj.data.scopes)) ? dj.data.scopes.map(String) : null;
-            if (esc) temEscopo = esc.includes("instagram_basic");
-          }
-        } catch { /* melhor sem o dado do que com um dado inventado */ }
-        return json({
-          ok: false, motivo: "não consegui descobrir o Instagram desta Página", tentativas,
-          page_id: pageId || null, token_pode_ver_instagram: temEscopo,
-          veredito: temEscopo === false
-            ? "o token NÃO tem instagram_basic — isto NÃO prova que falta Instagram na Página; RECONECTE por /api/meta-oauth-start e pergunte de novo"
-            : temEscopo === true
-              ? "o token PODE ver Instagram e mesmo assim não veio nenhum — aí sim: ligue a conta do Instagram à Página no Business Suite"
-              : "não consegui conferir o escopo do token — não conclua nada",
-        });
-      }
-      return json({
-        ok: true, ig_id: achado.id, usuario: achado.usuario, nome: achado.nome,
-        page_id: pageId || null, descoberto_por: achado.via,
-        ja_mapeado: String((cred && typeof cred === "object" && cred.ig_id) || "") === achado.id,
-        proximo_passo: `action:"mapear_ig" com ig_id:"${achado.id}" para gravar`,
-      });
-    }
-
-    // subscribe — (re)inscreve a página JÁ conectada no webhook do app, usando o token guardado.
-    // Resolve o token via meta_tenant_for_page (o mesmo RPC do webhook). Nunca expõe o token.
-    // Passe page_id no body; se faltar, tenta o valor colado em b.page_id.
-    if (action === "subscribe") {
-      const pid = s(b.page_id, 60);
-      if (!pid) return json({ error: "informe o page_id" }, 400);
-      const r = await rpc("meta_tenant_for_page", { p_secret: ING, p_page_id: pid }).catch(() => null);
-      const t = r && r.ok ? await r.json().catch(() => null) : null;
-      const tok = t && typeof t === "object" ? t : {};
-      if (!tok.page_access_token) return json({ error: "essa página não tem token guardado (reconecte)" }, 400);
-      const fields = s(b.fields, 300) || SUBSCRIBE_FIELDS;
-      const sub = await subscribePage(pid, tok.page_access_token, fields);
-      return json({ ok: sub.subscribed, ...sub, page_id: pid, fields });
-    }
-
-    // app_subscribe — inscreve o APP (não a página) no webhook de um OBJETO da Meta.
-    // É a 2ª inscrição que a Meta exige (a página→app é o subscribe acima; esta é app→objeto).
-    // Roda 100% server-side com o app-token = META_APP_ID|META_APP_SECRET — o secret NUNCA é exposto.
-    //
-    //   { action:"app_subscribe" }                                     → object "page"  (Messenger)
-    //   { action:"app_subscribe", object:"instagram", fields:"comments" } → comentário do Instagram
-    //
-    // 🚨 UNIÃO, NUNCA SUBSTITUIÇÃO (2026-08-27). O parâmetro `fields` deste endpoint da Meta
-    // SOBRESCREVE a lista inteira do objeto. Mandar `fields=comments` em `instagram` APAGARIA
-    // `messages` — e a Gui pararia de responder direct, em silêncio, sem erro em lugar nenhum.
-    // Por isso lemos a inscrição atual primeiro e mandamos a UNIÃO. Um campo que já está no ar
-    // nunca sai por causa de uma chamada que só queria acrescentar outro.
     if (action === "app_subscribe") {
       const appId = s(env.META_APP_ID, 60), appSecret = env.META_APP_SECRET, verify = s(env.META_VERIFY_TOKEN, 200);
       if (!appId || !appSecret) return json({ error: "META_APP_ID/META_APP_SECRET não estão setados no Cloudflare" }, 400);
