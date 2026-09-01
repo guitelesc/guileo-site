@@ -162,6 +162,12 @@ export async function onRequest(context) {
       // aviso com folga sobre um saldo que leva dias para cair.
       // Agora também faz o PRÉ-alerta de 20% — avisar só no zero é avisar depois que parou.
       targets.push({ name: "credit-alerts", url: `${base}/api/credit-alerts?token=${t}` });
+      // SALDO DA VOZ — o crédito do CLIENTE tem alarme desde sempre (credit-alerts, acima); o
+      // saldo da NOSSA conta de voz não tinha nenhum. Em 21/08 seis ligações para a linha da
+      // Natura morreram com "payment issue" na nossa conta ElevenLabs e ninguém foi avisado: o
+      // caminho da descoberta era o cliente reclamar. De hora em hora porque a sonda do flagrante
+      // olha uma janela de 26h — ligação perdida por pagamento não pode esperar o dia virar.
+      targets.push({ name: "voz-saldo", url: `${base}/api/voz-saldo?token=${t}` });
       // dunning grace-period sweep — dry-run until DUNNING_ENFORCE='1'; claim-deduped so an
       // hourly re-run never spams the last-call email or double-pauses (safe to run every hour).
       targets.push({ name: "dunning-sweep", url: `${base}/api/dunning-sweep?token=${t}` });
