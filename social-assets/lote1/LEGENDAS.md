@@ -23,3 +23,18 @@
 | c07 | CENA | @guileoai | 09/09 22:00 | 14:02, o telefone no porta-copos |
 
 **Equilíbrio:** 11 @guileoai · 6 @guileo.ad novos. Somando os já agendados: 13 × 10. Nenhum dia com duas peças da mesma coluna.
+
+---
+## ✅ AGENDADO E CONFERIDO — 02/09
+As 17 subiram e foram confirmadas lendo o calendário real do Blotato (não os "ok" de cada envio).
+**8 dias seguidos com exatamente 3 posts/dia**, nos horários 9h · 12h · 18h de Nova York.
+Imagens provadas com GET real (não HEAD) — 17/17 respondendo como PNG em guileoai.com/ig/.
+
+### ⚠️ Defeito conhecido, aguardando decisão do Luis
+A **história do salão de unhas aparece duas vezes em 27 horas**:
+- 06/09 13:00 — i03, a versão interativa (decisão fechada, resposta revela o incidente)
+- 07/09 16:00 — post 4024636, a versão narrativa do MESMO incidente
+
+Recomendo manter a interativa (mecânica melhor) e mover a narrativa para 10/09.
+NÃO fiz sozinho: apagar agendamento é irreversível e o Luis não autorizou mexer em post já agendado.
+Basta dizer "move" que eu recrio no dia 10 e só então apago o do dia 7.
