@@ -729,37 +729,37 @@ function sectionsFor(vid, V) {
   // nav própria de verticals.js. Sem isto o app abriria numa das 61 telas de profundidade.
   const ensureHoje = (list) => (list.some((x) => x[0] === "hoje") ? list : [["hoje", "Today"], ...list]);
   const ensureCRM = (list) => {
-    let l = inject(list, "mycompany", "Minha Empresa", "overview"); // flagship overview — the client's OWN 8 departments
+    let l = inject(list, "mycompany", "My Company", "overview"); // flagship overview — the client's OWN 8 departments
     l = inject(l, "command", "Command Center", "overview");
-    l = inject(l, "trainer", "Treinadora", "brain");  // the AI that teaches the owner to use Guileo
-    l = inject(l, "kb", "Cérebro do negócio", "brain"); // per-tenant Knowledge Base the agent reads
-    l = inject(l, "leadstoday", "Leads do dia", "leads"); // today's leads-by-source sits next to the daily digest
-    l = inject(l, "mktleads", "Leads Marketplace", "leadstoday"); // Yelp/Angi/Thumbtack speed-to-lead responder
-    l = inject(l, "meusite", "Meu site", "mktleads"); // publica o site do negocio (produto foundation)
+    l = inject(l, "trainer", "AI Coach", "brain");  // the AI that teaches the owner to use Guileo
+    l = inject(l, "kb", "Business Brain", "brain"); // per-tenant Knowledge Base the agent reads
+    l = inject(l, "leadstoday", "Today's Leads", "leads"); // today's leads-by-source sits next to the daily digest
+    l = inject(l, "mktleads", "Marketplace Leads", "leadstoday"); // Yelp/Angi/Thumbtack speed-to-lead responder
+    l = inject(l, "meusite", "My Website", "mktleads"); // publica o site do negocio (produto foundation)
     l = inject(l, "crm", "CRM 360", "customers");
     l = inject(l, "finance", "Finance", "crm");
     l = inject(l, "marketing", "Marketing", "finance");
-    l = inject(l, "dates", "Datas & Aniversários", "marketing"); // birthday + commemorative-date config
-    l = inject(l, "coupons", "Cupons & Campanhas", "dates"); // per-client branded coupons + campaigns
+    l = inject(l, "dates", "Dates & Birthdays", "marketing"); // birthday + commemorative-date config
+    l = inject(l, "coupons", "Coupons & Campaigns", "dates"); // per-client branded coupons + campaigns
     // ANÚNCIOS ficava INALCANÇÁVEL: a view existia no roteador e nenhum item de menu apontava
     // para ela. Com "resultado de anúncio" sendo metade do produto, a tela mais importante para
     // o cliente era a única sem porta. Fica ao lado de Cupons & Campanhas, dentro de Marketing.
-    l = inject(l, "ads", "Anúncios · Resultado", "coupons");
-    l = inject(l, "growthintel", "Inteligência", "ads"); // LTV + lead sources + forecast + abandoned bookings
-    l = inject(l, "capture", "Captura", "growthintel"); // intake forms + photo-quote + Google Business
-    l = inject(l, "comentarios", "Comentário → DM", "capture"); // IG: comentou a palavra → recebe o direct (mesmo webhook da Gui)
-    l = inject(l, "orcamentos", "Orçamentos", "capture"); // Motor de Orçamento — a IA orça, acima do teto o dono aprova
+    l = inject(l, "ads", "Ads · Results", "coupons");
+    l = inject(l, "growthintel", "Intelligence", "ads"); // LTV + lead sources + forecast + abandoned bookings
+    l = inject(l, "capture", "Capture", "growthintel"); // intake forms + photo-quote + Google Business
+    l = inject(l, "comentarios", "Comment → DM", "capture"); // IG: comentou a palavra → recebe o direct (mesmo webhook da Gui)
+    l = inject(l, "orcamentos", "Quotes", "capture"); // Motor de Orçamento — a IA orça, acima do teto o dono aprova
     l = inject(l, "experience", "Experience", "capture"); // XM — how THIS business's own customers feel (NPS/CSAT/sentiment/drivers/detractors)
-    l = inject(l, "timeline", "Linha do tempo", "experience"); // Do fornecedor ao cliente — custo→lucro→risco numa timeline só
+    l = inject(l, "timeline", "Timeline", "experience"); // Do fornecedor ao cliente — custo→lucro→risco numa timeline só
     l = inject(l, "retention", "Growth & Retention", "marketing");
     l = inject(l, "documents", "Documents", "billing");
     l = inject(l, "relacionamento", "Relationship", "documents"); // Relacionamento — suporte com resposta visível + consultor + nota
     l = inject(l, "riskradar", "Risk Radar", "schedule"); // no-show radar rides with Operations everywhere
-    l = inject(l, "schedulesync", "Conectar agenda", "schedule"); // connect MindBody/Square/Google Cal
+    l = inject(l, "schedulesync", "Connect calendar", "schedule"); // connect MindBody/Square/Google Cal
     l = inject(l, "googlehub", "Google", "reputation"); // GBP reviews + SEO + ads
-    l = inject(l, "socialhub", "Redes sociais", "googlehub"); // Meta DMs + publishing A+B
-    l = inject(l, "storm", "Modo Tempestade", "riskradar"); // 1-click hurricane close+notify+reopen blast
-    l = inject(l, "emergency", "Emergências", "storm"); // owner-visible log of urgent escalations (Gui rang the phone)
+    l = inject(l, "socialhub", "Social accounts", "googlehub"); // Meta DMs + publishing A+B
+    l = inject(l, "storm", "Storm Mode", "riskradar"); // 1-click hurricane close+notify+reopen blast
+    l = inject(l, "emergency", "Emergencies", "storm"); // owner-visible log of urgent escalations (Gui rang the phone)
     l = inject(l, "grow", "Everything you have", "overview"); // the discovery screen — see below
     // The discovery tab has ONE job: answer "what do I actually have with Guileo?". It used to
     // sit inside "Your AI ✨" (an owner shopping for a website never clicks that) and the
@@ -1022,7 +1022,7 @@ const EXTRA_ROWS = [
   ["Calls", "Ligações", "Llamadas", "कॉल"],
   ["Customers", "Clientes", "Clientes", "ग्राहक"],
   ["Pulse", "Pulse", "Pulse", "Pulse"],
-  ["My site", "Meu site", "Mi sitio", "मेरी साइट"],
+  ["My site", "My Website", "Mi sitio", "मेरी साइट"],
   ["Money", "Dinheiro", "Dinero", "पैसा"],
   ["I couldn't load your day", "Não consegui carregar o seu dia", "No pude cargar tu día", "मैं आपका दिन लोड नहीं कर पाया"],
   ["The read failed, so I'm not going to show you numbers I don't have.", "A leitura falhou, então não vou te mostrar números que eu não tenho.", "La lectura falló, así que no voy a mostrarte números que no tengo.", "पढ़ना विफल रहा, इसलिए मैं वे आँकड़े नहीं दिखाऊँगा जो मेरे पास नहीं हैं।"],
