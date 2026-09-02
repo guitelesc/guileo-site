@@ -351,6 +351,187 @@ export async function onRequestPost(context) {
               : "conta adicionada, mas a inscrição no webhook FALHOU — comentário não vai chegar" });
     }
 
+    // ⚠️ RESTAURADO 2026-09-01. Estas três ações foram APAGADAS por engano quando eu reescrevi o
+    // bloco de contas_disponiveis/adicionar_conta: o recorte foi de âncora a âncora e levou junto
+    // tudo que estava no meio. O commit dizia "233 deleções" e eu não olhei — build verde, testes
+    // verdes, e três ações do /admin sumiram da produção sem um único sinal.
+    // Lição: substituição por INTERVALO precisa conferir o que morava dentro do intervalo. Diff
+    // grande com deleção grande é para ser lido, não aprovado pelo tamanho.
+    if (action === "token_escopos") {
+      const tkn = await svcJson(env, "meta_token_for_email", { p_secret: ING, p_email: email });
+      if (typeof tkn !== "string" || !tkn) {
+        const httpErro = tkn && typeof tkn === "object" ? tkn.erro_http : null;
+        return json({ ok: false, motivo: httpErro ? `não consegui LER o token (RPC ${httpErro})` : "sem token guardado" }, 409);
+      }
+      if (!env.META_APP_ID || !env.META_APP_SECRET) return json({ ok: false, motivo: "META_APP_ID/SECRET ausentes" }, 400);
+      try {
+        const r = await fetch(`${GRAPH}/debug_token?input_token=${encodeURIComponent(tkn)}&access_token=${encodeURIComponent(`${env.META_APP_ID}|${env.META_APP_SECRET}`)}`);
+        const d = await r.json().catch(() => null);
+        const info = d && d.data;
+        if (!r.ok || !info) return json({ ok: false, motivo: s((d && d.error && d.error.message) || `HTTP ${r.status}`, 200) });
+        const escopos = Array.isArray(info.scopes) ? info.scopes.map(String) : [];
+        const precisa = ["instagram_manage_comments", "instagram_manage_messages", "instagram_basic"];
+        return json({
+          ok: true, valido: info.is_valid === true, tipo: s(info.type, 40),
+          expira: info.expires_at === 0 ? "nunca" : info.expires_at || null,
+          escopos,
+          faltando: precisa.filter((p) => !escopos.includes(p)),
+          veredito: precisa.every((p) => escopos.includes(p))
+            ? "o token já concede tudo que o comentário→DM precisa"
+            : "ESTE token foi autorizado ANTES da permissão nova — reconecte a conta para reemitir com o escopo novo",
+        });
+      } catch (e) { return json({ ok: false, motivo: s(e, 160) }, 500); }
+    }
+
+    // descobrir_ig — PERGUNTA À META qual conta do Instagram está ligada à Página já conectada.
+    // Só LÊ; quem grava é o `mapear_ig` acima, de propósito: ver antes de escrever é a diferença
+    // entre mapear o Instagram certo e carimbar o errado no cliente errado.
+    //
+    // POR QUE ISSO PRECISOU EXISTIR (2026-08-27): o `ig_id` estava vazio nos três tenants, e o
+    // único caminho documentado para descobri-lo era esperar alguém comentar/mandar DM e ler o
+    // `meta_pagina_nao_mapeada`. Ou seja: para o Instagram funcionar, alguém tinha que primeiro
+    // usar o Instagram e falhar. Isso não é descoberta, é armadilha — o número está a uma
+    // pergunta de distância da própria Meta, com o token que já guardamos.
+    //
+    // ⚠️ O ESCOPO É A PARTE DIFÍCIL. `/{page_id}?fields=…` e `/me?fields=name` já devolveram
+    // "(#100) requires pages_read_engagement" para tokens PERFEITAMENTE VIVOS (ver empresas.js).
+    // Por isso tentamos as duas formas e devolvemos o erro REAL de cada uma — vermelho falso manda
+    // consertar o que não está quebrado.
+    if (action === "descobrir_ig") {
+      // ⚠️ svcJson (SERVICE ROLE), não o `rpc` anônimo daqui de cima. `meta_token_for_email` é
+      // servidor-only de propósito — o anon leva 401 e devolve null. Na 1ª versão eu usei o anon e
+      // a resposta virou "não tem token guardado" para três tenants que TÊM token: a mensagem
+      // acusou o dado em vez de acusar o acesso, que é o diagnóstico falso clássico deste projeto.
+      // Agora os dois casos têm frases diferentes, porque o conserto de cada um é diferente.
+      const tkn = await svcJson(env, "meta_token_for_email", { p_secret: ING, p_email: email });
+      if (typeof tkn !== "string" || !tkn) {
+        const httpErro = tkn && typeof tkn === "object" ? tkn.erro_http : null;
+        return json({
+          ok: false,
+          motivo: httpErro
+            ? `não consegui LER o token guardado (RPC respondeu ${httpErro}) — o token pode existir; o acesso é que falhou`
+            : `${email} não tem token de Página guardado — conecte a Página primeiro`,
+          detalhe: (tkn && typeof tkn === "object" && tkn.detalhe) || null,
+        }, 409);
+      }
+      const cred = await svcJson(env, "meta_creds_get", { p_secret: ING, p_email: email });
+      const pageId = s(cred && typeof cred === "object" ? cred.page_id : "", 60);
+
+      const tentativas = [];
+      const perguntar = async (rotulo, caminho) => {
+        try {
+          const r = await fetch(`${GRAPH}/${caminho}${caminho.includes("?") ? "&" : "?"}access_token=${encodeURIComponent(tkn)}`);
+          const d = await r.json().catch(() => null);
+          if (!r.ok || !d || d.error) {
+            tentativas.push({ via: rotulo, erro: s((d && d.error && d.error.message) || `HTTP ${r.status}`, 200) });
+            return null;
+          }
+          const ig = d.instagram_business_account;
+          if (!ig || !ig.id) {
+            // 🚨 AUSÊNCIA DE CAMPO NÃO É AUSÊNCIA DA COISA (corrigido 2026-08-28). Com um token sem
+            // `instagram_basic`, a Meta devolve 200 e simplesmente OMITE `instagram_business_account`
+            // — não dá erro. A 1ª versão lia isso como "esta Página não tem Instagram ligado", e eu
+            // afirmei isso ao dono sobre DUAS empresas dele. Pode ter sido falso: talvez tivessem
+            // Instagram e o token é que não podia ver. Não saber e não ter pedem ações OPOSTAS
+            // (reconectar × ligar o IG no Business Suite), então agora a resposta separa as duas.
+            tentativas.push({ via: rotulo, erro: "a Meta respondeu 200 mas sem o campo do Instagram — pode ser que a Página não tenha Instagram OU que este token não tenha escopo para ver (confira com action:'token_escopos')" });
+            return null;
+          }
+          return { id: String(ig.id), usuario: s(ig.username, 60), nome: s(ig.name, 120), via: rotulo };
+        } catch (e) { tentativas.push({ via: rotulo, erro: s(e, 160) }); return null; }
+      };
+
+      // `/me` primeiro: o token de Página É a Página, e essa forma passa com escopo mínimo.
+      let achado = await perguntar("/me", "me?fields=instagram_business_account{id,username,name}");
+      if (!achado && pageId) achado = await perguntar("/{page_id}", `${encodeURIComponent(pageId)}?fields=instagram_business_account{id,username,name}`);
+
+      if (!achado) {
+        // Diz se o token TEM escopo para enxergar — é isso que separa "não tem" de "não vejo".
+        //
+        // 🚨 NÃO BASTA `instagram_basic` (corrigido 2026-09-01). Em 28/08 este veredito olhava só
+        // esse escopo e, para um token que O TINHA mas estava sem os `pages_*`, respondeu "o token
+        // PODE ver Instagram — aí sim, ligue a conta no Business Suite". Eu repassei isso ao dono
+        // como diagnóstico. Era FALSO: a Graph estava recusando com
+        //   "Any of the pages_read_engagement, pages_manage_metadata, pages_show_list … must be
+        //    granted before impersonating"
+        // ou seja, o token não conseguia nem OLHAR a Página. Mandei ele mexer no Instagram quando
+        // o conserto era reconectar. Ver o Instagram de uma Página exige DOIS lados: o de
+        // Instagram e o de Página. Conferir um e concluir pelos dois é o erro.
+        let escopos = null, temIG = null, temPagina = null;
+        try {
+          const dbg = await fetch(`${GRAPH}/debug_token?input_token=${encodeURIComponent(tkn)}&access_token=${encodeURIComponent(`${env.META_APP_ID}|${env.META_APP_SECRET}`)}`);
+          if (dbg.ok) {
+            const dj = await dbg.json().catch(() => null);
+            const esc = (dj && dj.data && Array.isArray(dj.data.scopes)) ? dj.data.scopes.map(String) : null;
+            if (esc) {
+              escopos = esc;
+              temIG = esc.includes("instagram_basic");
+              temPagina = ["pages_read_engagement", "pages_show_list", "pages_manage_metadata"].some((x) => esc.includes(x));
+            }
+          }
+        } catch { /* melhor sem o dado do que com um dado inventado */ }
+
+        // A PRÓPRIA RECUSA DA META É PROVA. Erro de acesso ("impersonating", "requires", #100/#200)
+        // significa que a pergunta nem chegou a ser respondida — nesse caso "não veio Instagram"
+        // não é informação sobre o Instagram, é informação sobre o token.
+        const recusaDeAcesso = tentativas.some((t) =>
+          /impersonat|requires|must be granted|#100|#200|permission/i.test(String(t && t.erro || "")));
+        const faltando = (escopos === null) ? null
+          : [temIG ? null : "instagram_basic", temPagina ? null : "pages_read_engagement"].filter(Boolean);
+
+        const veredito =
+          escopos === null
+            ? "não consegui conferir o escopo do token — não conclua nada"
+          : (faltando.length)
+            ? `o token não tem ${faltando.join(" e ")} — isto NÃO prova que falta Instagram na Página; RECONECTE por /api/meta-oauth-start e pergunte de novo`
+          : recusaDeAcesso
+            ? "o token tem os escopos, mas a Meta RECUSOU a leitura (ver `tentativas`) — é problema de acesso, não do Instagram; reconecte antes de mexer em qualquer coisa"
+            : "o token tem os dois lados (Instagram e Página), conseguiu ler, e mesmo assim não veio Instagram — AÍ SIM: amarre a conta do Instagram à Página, no app do Instagram e logado NAQUELE perfil";
+
+        return json({
+          ok: false, motivo: "não consegui descobrir o Instagram desta Página", tentativas,
+          page_id: pageId || null,
+          // Os dois lados separados: um `token_pode_ver` só escondia qual metade faltava.
+          escopo_instagram: temIG, escopo_pagina: temPagina, falta_escopo: faltando,
+          recusa_de_acesso: recusaDeAcesso, veredito,
+        });
+      }
+      return json({
+        ok: true, ig_id: achado.id, usuario: achado.usuario, nome: achado.nome,
+        page_id: pageId || null, descoberto_por: achado.via,
+        ja_mapeado: String((cred && typeof cred === "object" && cred.ig_id) || "") === achado.id,
+        proximo_passo: `action:"mapear_ig" com ig_id:"${achado.id}" para gravar`,
+      });
+    }
+
+    // subscribe — (re)inscreve a página JÁ conectada no webhook do app, usando o token guardado.
+    // Resolve o token via meta_tenant_for_page (o mesmo RPC do webhook). Nunca expõe o token.
+    // Passe page_id no body; se faltar, tenta o valor colado em b.page_id.
+    if (action === "subscribe") {
+      const pid = s(b.page_id, 60);
+      if (!pid) return json({ error: "informe o page_id" }, 400);
+      const r = await rpc("meta_tenant_for_page", { p_secret: ING, p_page_id: pid }).catch(() => null);
+      const t = r && r.ok ? await r.json().catch(() => null) : null;
+      const tok = t && typeof t === "object" ? t : {};
+      if (!tok.page_access_token) return json({ error: "essa página não tem token guardado (reconecte)" }, 400);
+      const fields = s(b.fields, 300) || SUBSCRIBE_FIELDS;
+      const sub = await subscribePage(pid, tok.page_access_token, fields);
+      return json({ ok: sub.subscribed, ...sub, page_id: pid, fields });
+    }
+
+    // app_subscribe — inscreve o APP (não a página) no webhook de um OBJETO da Meta.
+    // É a 2ª inscrição que a Meta exige (a página→app é o subscribe acima; esta é app→objeto).
+    // Roda 100% server-side com o app-token = META_APP_ID|META_APP_SECRET — o secret NUNCA é exposto.
+    //
+    //   { action:"app_subscribe" }                                     → object "page"  (Messenger)
+    //   { action:"app_subscribe", object:"instagram", fields:"comments" } → comentário do Instagram
+    //
+    // 🚨 UNIÃO, NUNCA SUBSTITUIÇÃO (2026-08-27). O parâmetro `fields` deste endpoint da Meta
+    // SOBRESCREVE a lista inteira do objeto. Mandar `fields=comments` em `instagram` APAGARIA
+    // `messages` — e a Gui pararia de responder direct, em silêncio, sem erro em lugar nenhum.
+    // Por isso lemos a inscrição atual primeiro e mandamos a UNIÃO. Um campo que já está no ar
+    // nunca sai por causa de uma chamada que só queria acrescentar outro.
+
     if (action === "app_subscribe") {
       const appId = s(env.META_APP_ID, 60), appSecret = env.META_APP_SECRET, verify = s(env.META_VERIFY_TOKEN, 200);
       if (!appId || !appSecret) return json({ error: "META_APP_ID/META_APP_SECRET não estão setados no Cloudflare" }, 400);

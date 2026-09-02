@@ -53,3 +53,36 @@ identificável em praça pública. Não fazer.
 ## Ritmo
 1 post/dia às 13h de NY (16:00 UTC), alternando as contas. Agendar em lotes de 6 (uma semana), e ler o
 resultado antes do lote seguinte — a partir do 2º lote a gente já decide com DADO NOSSO, não emprestado.
+
+
+---
+
+## 🔁 CADÊNCIA NOVA — 3 posts/dia (decidido com Luis, 2026-09-02)
+
+**A trinca do dia, sempre de colunas DIFERENTES:**
+1. **O IMPORTANTE** — autoridade (a regra, o número, como funciona). É o que faz confiar.
+2. **O INTERATIVO** — decisão fechada com resposta revelada. **Única mecânica com comentário medido:
+   1,46/post contra ZERO do formato genérico.** É o que vira DM.
+3. **O ENTRETENIMENTO** — e aqui a regra que vale ouro: para dono de negócio, entretenimento **não é
+   meme**. É a CENA ABSURDA E REAL ("7h da manhã, o cozinheiro atendendo o telefone e fritando ovo").
+   É o que a pessoa manda pro sócio dizendo "é a gente". Meme genérico de IA queima credibilidade sem
+   comprar alcance.
+
+**A regra que sustenta tudo:** nunca 3 do mesmo tipo. O formato genérico foi publicado 15 vezes e deu
+zero comentário — volume de conteúdo ruim não vira alcance, vira ruído.
+
+**Produção:** lotes SEMANAIS de 21 (3/dia × 7), aprovados de uma vez pelo Luis. O gargalo nunca foi
+ideia (temos 100+ posts de matéria-prima); é a aprovação — e um lote reprovado custa uma semana de
+produção, não um dia de feed.
+
+**⚠️ Reavaliar no dia 8:** hoje as contas têm ~7 posts e ZERO dado próprio (nenhum comentário ou
+alcance medido). Triplicar antes de saber o que funciona é apostar mais fichas sem ver a carta. Rodar
+3/dia por uma semana, ler os números REAIS e então ajustar a mistura das colunas.
+
+## 📋 Auditoria de aderência (2026-09-02) — o que eu mesmo furei
+Conferi os agendamentos reais no Blotato em vez de confiar na memória. Três desvios:
+1. **1º/09 ficou sem post** — buraco de um dia. Corrigido com o post da coluna PERGUNTA.
+2. **@guileo.ad mudo de 4 a 7/09** — 4 dias seguidos só de @guileoai (4 posts contra 8). A trinca
+   diária corrige isso por construção.
+3. **A coluna PERGUNTA, a de melhor desempenho medido, nunca tinha sido usada** — escrevi que era a
+   melhor e agendei seis posts sem ela. Primeiro uso: https://www.instagram.com/p/DcxVUyFlRwn/
