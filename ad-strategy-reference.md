@@ -162,3 +162,14 @@ autorizou o conector**.
 - Conta de anúncios: **Luis Teles** `1891468104495846` (ACTIVE, USD, cartão na conta, mín $1/dia) ✅
 - A conta dedicada Guileo AI `2694627625500551` continua fora do conector — **não é bloqueio**: a
   campanha pode rodar na conta Luis Teles assinando como a Página Guileo AI.
+
+## CAPABILITY UPDATE 2026-06-09 — in-house video production is now possible
+ElevenCreative (ElevenLabs) MCP is connected. Verified runnable in this workspace:
+- **Video:** Veo 3.1 (+Fast/Lite), **Sora 2 / Sora 2 Pro**, Runway Gen-4.5 / Gen-4 Turbo / Aleph 2 / Act-Two, LTX 2 (+Fast/Retake/audio-to-video), Gemini Omni Flash, FLUX 3, **heygen-avatar4**, Creatify Aurora, Sync/Veed lipsync, Topaz upscale. Params: 9:16 aspect, 4/6/8s, up to 4K, audio on.
+- **Audio:** ElevenLabs TTS (v3/v4/multilingual), music, SFX, dubbing (any language), voice changer.
+- **Composition** node stitches video+VO+music into one timeline. Image models: Nano Banana/Pro, GPT Image 2, FLUX.2 Pro, Recraft, Krea, Runway Gen-4 Image.
+- **Meta:** `ads_creative_upload_video` uploads a finished video straight into the ad account → video ads, not just text.
+**NOT available here:** Seedance (Seedream is named only in the image node description and is not in the runnable model list).
+**Cost (estimated, real):** Veo 3.1 Fast 8s ≈ 7,271 credits ≈ **$1.32/shot**, ~90s to render. A 24s 3-shot ad ≈ **$4**.
+**HeyGen constraint:** `heygen-avatar4` REQUIRES an image (a face) as input — it cannot generate a presenter from a prompt. The library is empty. Either Luis uploads a photo (founder-led talking head = strongest trust asset for this brand) or he picks a stock avatar via the canvas Avatar Picker (agents are explicitly forbidden from creating avatar nodes). The standalone `heygen` MCP server is listed but requires OAuth the agent cannot complete in this session.
+**Honesty rule adopted for ad video:** AI generates the STORY/emotion (owner, restaurant, ringing phone); the PRODUCT proof uses real Guileo screens — never AI-fabricated product UI, and no synthetic person posing as a real customer giving a testimonial.
