@@ -32,6 +32,12 @@
 import { json, safeEq } from "../lib/guard.js";
 import { emitFailure } from "../lib/failure.js";
 import { ouvirDeUrl, recadoDeAnexo } from "../lib/whatsappAudio.js";
+import { lerCompartilhado, juntarCompartilhado, resumoAnexos } from "../lib/compartilhado.js";
+// O CÉREBRO UNIFICADO (2026-09-10). Até hoje o direct usava `localGuiReply`, um atalho que só lia
+// nome do negócio + 1.400 caracteres de "facts" — SEM a KB, sem os preços do cadastro, sem as
+// lições e sem a constituição. O comentário abaixo dizia que o adapter "ainda não estava no build";
+// ele está desde agosto (manychat-reply.js e whatsapp-cloud.js já usam). Ninguém voltou aqui.
+import { handleInboundMessage } from "../lib/messageAdapter.js";
 import { escolherCampanha, montarDm, escolherIdioma, textoDoIdioma, linkComIdioma, escolherTexto,
          REGRA_PADRAO, TETO_HORA_META } from "../lib/comentarios.js";
 import { svcRpc } from "../lib/sb.js";
@@ -90,12 +96,12 @@ async function markSeen(env, email, mid) {
 }
 
 // ── portal Inbox event — the inbound DM shows up in the cockpit feed like an SMS/WhatsApp does ─
-async function ingestInbound(env, email, channelLabel, fromName, text, senderId) {
+async function ingestInbound(env, email, channelLabel, fromName, text, senderId, extra = {}) {
   try {
     await svcRpc(env, "ingest_client_event", {
       p_secret: env.INGEST_SECRET || "", p_email: email, p_type: "message", p_channel: channelLabel,
       p_summary: `${fromName || senderId}: ${text}`.slice(0, 300), p_amount: 0,
-      p_payload: { from: senderId, channel: channelLabel },
+      p_payload: { from: senderId, channel: channelLabel, ...(extra && typeof extra === "object" ? extra : {}) },
     });
   } catch { /* additive — never block the reply */ }
 }
@@ -219,6 +225,12 @@ async function processMessagingEvent(env, origin, object, pageId, ev) {
     // resto ganha uma resposta honesta em vez de sumiço.
     const anexos = Array.isArray(msg.attachments) ? msg.attachments : [];
     let anexoSemTexto = "";
+    // ── REEL / POST COMPARTILHADO (2026-09-10) ─────────────────────────────────────────────────
+    // Roda ANTES do `if (!text)` de propósito: o caso comum é "quanto custa isso?" + o reel, e esse
+    // caso nunca entrava no bloco de anexo (o texto não vinha vazio) — o reel sumia sem registro.
+    // Ver functions/lib/compartilhado.js para o que a Meta garante e o que não garante.
+    const compartilhado = lerCompartilhado(anexos);
+    if (compartilhado) text = juntarCompartilhado(text, compartilhado);
     if (!text && anexos.length) {
       const audio = anexos.find((a) => a && (a.type === "audio" || a.type === "voice"));
       if (audio) {
@@ -262,30 +274,51 @@ async function processMessagingEvent(env, origin, object, pageId, ev) {
     if (anexoSemTexto) {
       const tipo = anexos[0] && anexos[0].type;
       const fala = recadoDeAnexo(tenant.lang, tipo);
-      await ingestInbound(env, tenant.client_email, channel, fromName, `[${anexoSemTexto}]`, senderId);
+      await ingestInbound(env, tenant.client_email, channel, fromName, `[${anexoSemTexto}]`, senderId, { anexos: resumoAnexos(anexos) });
       const entregou = await sendMetaReply(tenant.page_access_token, senderId, fala);
       await ingestInbound(env, tenant.client_email, channel, "",
         entregou ? `🤖 Gui pediu texto (${anexoSemTexto})` : `⚠️ NÃO entregue: pedido de texto após ${anexoSemTexto}`, senderId);
       return;
     }
 
-    await ingestInbound(env, tenant.client_email, channel, fromName, text, senderId);
-    await crmUpsert(env, tenant.client_email, senderId, fromName, channel.toLowerCase()); // CRM captures the customer instantly
-
-    const reply = await guiBrainReply(env, {
-      channel: channel.toLowerCase(), email: tenant.client_email, senderId, fromName, text, origin,
-    });
-    if (!reply) return; // honest: no brain/token → we logged the inbound; no fake send
+    // ── O CÉREBRO UNIFICADO (2026-09-10) ────────────────────────────────────────────────────
+    // handleInboundMessage → guiReply: responde pelo agente de voz do cliente PRIMEIRO (mesma KB,
+    // mesmos preços, mesmas ferramentas que atendem o telefone), com a Anthropic de reserva e a
+    // constituição valendo para os dois. O adapter JÁ grava CRM + inbox — por isso as duas
+    // chamadas que existiam aqui (ingestInbound + crmUpsert) saíram: ficar com elas duplicava
+    // cada mensagem no painel do dono.
+    // `lang` vem do perfil do negócio; o cérebro espelha a língua de quem escreveu mesmo assim.
+    // `meta.anexos` leva o formato real do anexo para o evento (a janela do compartilhamento).
+    let reply = "";
+    try {
+      const perfil = await getProfile(env, tenant.client_email);
+      const r = await handleInboundMessage(env, {
+        channel: channel.toLowerCase(), tenantEmail: tenant.client_email, from: senderId,
+        text, name: fromName, lang: (perfil && perfil.lang) || "en", origin,
+        meta: anexos.length ? { anexos: resumoAnexos(anexos) } : {},
+      });
+      // ⚠️ `duplicate` do adapter NÃO impede o envio. Ele deduplica por CONTEÚDO (mesma pessoa,
+      // mesmo texto, 10 min) — quem manda "oi" duas vezes cairia nele e ficaria sem resposta. A
+      // re-entrega da Meta já foi barrada lá em cima pelo `markSeen(mid)`, que é o dedup certo.
+      reply = (r && r.reply) ? String(r.reply).slice(0, 900) : "";
+    } catch {
+      // Adapter quebrado não pode calar o direct: cai no atalho antigo, que ao menos responde.
+      await ingestInbound(env, tenant.client_email, channel, fromName, text, senderId);
+      reply = await guiBrainReply(env, {
+        channel: channel.toLowerCase(), email: tenant.client_email, senderId, fromName, text, origin,
+      });
+    }
+    if (!reply) return; // honesto: sem cérebro/token → a entrada já foi registrada; nada de envio fingido
     // The result MUST be checked: logging the reply without knowing it left would put a
     // message in the cockpit feed that the customer never received (expired page token,
     // 24h window closed, permission revoked). Mirror the truth, not the intention.
     const delivered = await sendMetaReply(tenant.page_access_token, senderId, reply);
-    await ingestInbound(
-      env, tenant.client_email, channel,
-      delivered ? "Gui" : "⚠️ Gui",
-      delivered ? `🤖 ${reply.slice(0, 140)}` : `⚠️ Resposta da Gui NÃO foi entregue (${channel}) — token da Página inválido ou janela de 24h fechada. Texto: ${reply.slice(0, 100)}`,
-      senderId,
-    );
+    // O adapter já registrou a resposta gerada; aqui só grita o que ele não sabe: que ela NÃO saiu.
+    if (!delivered) {
+      await ingestInbound(env, tenant.client_email, channel, "⚠️ Gui",
+        `⚠️ Resposta da Gui NÃO foi entregue (${channel}) — token da Página inválido ou janela de 24h fechada. Texto: ${reply.slice(0, 100)}`,
+        senderId);
+    }
   } catch { /* one event failing must not break the batch */ }
 }
 

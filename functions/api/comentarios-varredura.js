@@ -24,6 +24,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 import { json, safeEq } from "../lib/guard.js";
 import { svcJson } from "../lib/sb.js";
+import { escolherCampanha } from "../lib/comentarios.js";
 import { processCommentChange } from "./meta-webhook.js";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
@@ -37,7 +38,11 @@ const MAX_ACOES = 15;             // teto duro por passada, somando todas as con
 
 export async function varrer(request, env) {
   const url = new URL(request.url);
-  const tok = s(url.searchParams.get("token"), 200);
+  // ⚠️ CABEÇALHO TAMBÉM (2026-09-02). Só o `?token=` significava que o segredo do operador entrava
+  // na URL — e URL vai pra log de acesso, histórico do navegador e Referer. O cron continua
+  // podendo usar a query (é como ele foi configurado); quem chama à mão usa o cabeçalho.
+  // Mesmo portão duplo, duas portas — igual agent-evolve e canais-prova já fazem.
+  const tok = s(url.searchParams.get("token") || request.headers.get("x-guileo-secret"), 200);
 
   // ── PORTÃO DUPLO (mesmo padrão de canais-prova / agente-prova) ────────────────────────────
   let autorizado = !!(env.DIGEST_TOKEN && tok && safeEq(tok, env.DIGEST_TOKEN));
@@ -62,6 +67,15 @@ export async function varrer(request, env) {
   // o operador precisa varrer mais para trás UMA vez — e sem isso a rede só cobre as últimas 6h.
   // O teto de 48h existe porque DM sobre comentário de três dias é pior que DM nenhum: a pessoa já
   // esqueceu, e a conta parece robô atrasado. Fora da faixa cai no padrão em vez de virar erro.
+  // ── MODO "SÓ OLHAR" (?ver=1) ─────────────────────────────────────────────────────────────
+  // Nasceu de um ensaio que não disparou (02/09). O comentário existia, a varredura dizia
+  // "1 processado, 0 enviado", e não havia rastro nenhum: comentário que não casa palavra é
+  // descartado em silêncio DE PROPÓSITO (senão todo "que lindo 😍" viraria linha no painel do
+  // dono). O preço desse silêncio é não dar pra investigar — e eu fiquei duas rodadas adivinhando.
+  // `ver=1` mostra o que a varredura ENXERGA (post, autor, texto, se casou e com qual palavra)
+  // sem chamar processCommentChange, ou seja, sem mandar DM nenhum. Diagnóstico que age é
+  // diagnóstico em que ninguém confia — por isso ver e agir são caminhos separados.
+  const soOlhar = url.searchParams.get("ver") === "1";
   const pedido = Number(url.searchParams.get("horas"));
   const janela = Number.isFinite(pedido) && pedido > 0 ? Math.min(pedido, 48) : JANELA_HORAS;
   const corte = Date.now() - janela * 3600 * 1000;
@@ -90,6 +104,13 @@ export async function varrer(request, env) {
       relatorio.push(linha); continue;
     }
 
+    // No modo "só olhar" precisamos das campanhas para dizer se casaria — a decisão é pura.
+    let campanhas = [];
+    if (soOlhar) {
+      try { const cs = await svcJson(env, "meta_campanhas_ativas", { p_secret: ING, p_email: email, p_ig_id: igId }); if (Array.isArray(cs)) campanhas = cs; } catch { /* sem campanha = nada casaria */ }
+      linha.campanhas = campanhas.length;
+    }
+
     try {
       const mr = await fetch(`${GRAPH}/${encodeURIComponent(igId)}/media?fields=id,timestamp&limit=${POSTS_POR_CONTA}&access_token=${encodeURIComponent(tkn)}`);
       if (!mr.ok) {                                   // portão de status ANTES do fallback:
@@ -112,6 +133,20 @@ export async function varrer(request, env) {
           const quando = Date.parse(com.timestamp || "");
           if (!Number.isFinite(quando) || quando < corte) continue;   // fora da janela: tarde demais
           linha.comentarios += 1;
+          if (soOlhar) {
+            // Roda a MESMA decisão do webhook (função pura, sem rede) só para mostrar o veredito.
+            const alvo = escolherCampanha(campanhas, { texto: String(com.text || ""), mediaId: String(post.id), originalMediaId: "" });
+            const autor = String((com.from && com.from.username) || (com.from && com.from.id) || "?");
+            (linha.vistos = linha.vistos || []).push({
+              autor,
+              texto: String(com.text || "").slice(0, 80),
+              casou: alvo ? alvo.palavra : null,
+              motivo: alvo ? "casaria" : (String((com.from && com.from.id) || "") === String(igId)
+                ? "comentário da PRÓPRIA conta — ignorado de propósito"
+                : "nenhuma palavra-chave casou"),
+            });
+            continue;
+          }
           // A MESMA forma que a Meta manda no webhook — e a MESMA função que o webhook chama.
           // A reserva atômica lá dentro descarta o que já foi tratado ('duplicado'), então rodar
           // isto sobre um comentário já respondido é inofensivo por construção.
