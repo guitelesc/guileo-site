@@ -43,6 +43,24 @@ export async function onRequestPost(context) {
       return json(d);
     }
 
+    // ── DONO: ler as respostas de um formulário DA PLATAFORMA na própria página (2026-10-22) ──────
+    // O Luis queria ver o que a Natura marcou "do jeito que enviei pra elas" (/natura-setup?respostas=1).
+    // Portão: senha do /admin, lida no CORPO de `_admin_ok` (HTTP 200 não é senha certa). Só o
+    // tenant da plataforma: formulário de cliente continua sendo lido pelo cockpit do próprio cliente.
+    if (action === "admin_subs") {
+      if (!sameOrigin(request)) return json({ error: "forbidden" }, 403);
+      if (await rateLimited(request, env, "intake-admin", 10)) return json({ error: "too many requests" }, 429);
+      const formId = s(b.form_id);
+      if (!isUuid(formId)) return json({ error: "bad form_id" }, 400);
+      const { svcJson } = await import("../lib/sb.js");
+      const a = await svcJson(env, "_admin_ok", { p_token: s(b.senha, 200) }).catch(() => null);
+      if (!(a === true || a?.ok === true)) return json({ ok: false, error: "senha" }, 401);
+      const r = await rpc("intake_submissions_list", { p_secret: ING, p_email: TENANT_PLATAFORMA, p_form_id: formId, p_limit: 50 });
+      if (!r.ok) return json({ ok: false, error: "unavailable" }, 503);
+      const subs = await r.json().catch(() => null);
+      return json({ ok: true, submissions: Array.isArray(subs) ? subs : [] });
+    }
+
     // ── PUBLIC: a customer submits a filled form (no tenant auth; tenant derived from the form) ──
     if (action === "submit") {
       if (!sameOrigin(request)) return json({ error: "forbidden" }, 403);
@@ -77,7 +95,7 @@ export async function onRequestPost(context) {
       // implantação): avisa o Luis na hora. Cada envio é um aviso (semTrava) — não é alarme repetido.
       if (sr && sr.tenant === TENANT_PLATAFORMA) {
         context.waitUntil(avisarDono(env, {
-          kind: "formulario-cliente", semTrava: true, link: "/admin",
+          kind: "formulario-cliente", semTrava: true, ignoraMudo: true, link: "/admin",
           summary: `📋 Formulário recebido: ${contact.name || contact.email || "sem nome"}`,
           detail: Object.entries(answers).slice(0, 60).map(([k, v]) => `${k}: ${v}`).join("\n").slice(0, 3000),
           cliente: contact.email || contact.name || "",

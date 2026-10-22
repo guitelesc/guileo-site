@@ -56,7 +56,9 @@ export const TENANT_PLATAFORMA = "smart@guileoai.com";
 // A segunda trava é de propósito: sem ela, qualquer monitor passaria `ignoraMudo` "só desta vez"
 // e o interruptor que o Luis pediu deixaria de significar alguma coisa. Tipo novo que mereça furar
 // o mudo entra NA LISTA, com o porquê escrito aqui — nunca por um `true` solto no chamador.
-const PODE_FURAR_MUDO = ["chamado_escalado", "emergency"];
+//   • "formulario-cliente" (2026-10-22): a Natura mandou o checklist de implantação em 19/10 e o
+//     aviso morreu no mudo — o Luis só soube 3 dias depois. Resposta de cliente é gente, não máquina.
+const PODE_FURAR_MUDO = ["chamado_escalado", "emergency", "formulario-cliente"];
 export function furaMudo(kind, ignoraMudo) {
   const k = (kind || "").toString().toLowerCase();
   return ignoraMudo === true && PODE_FURAR_MUDO.some((p) => k.includes(p));

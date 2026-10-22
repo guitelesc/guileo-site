@@ -125,19 +125,67 @@ function loadDraft() {
   try { return JSON.parse(localStorage.getItem(DRAFT) || "{}") || {}; } catch { return {}; }
 }
 
+// Resposta gravada ("✅ Done — detalhe") → { st, nt } da página, para o dono ver o que foi marcado.
+function lerEnvio(answers) {
+  const st = {}, nt = {};
+  ALL.forEach((it) => {
+    const v = String((answers || {})[it.id] || "");
+    if (!v) return;
+    const i = v.indexOf(" — ");
+    const lab = i >= 0 ? v.slice(0, i) : v;
+    const op = optsOf(it).find((x) => x.t === lab);
+    if (op) st[it.id] = op.k;
+    const det = i >= 0 ? v.slice(i + 3) : (op ? "" : (lab === "Not answered" ? "" : v));
+    if (det) nt[it.id] = det;
+  });
+  return { st, nt };
+}
+
 export default function NaturaSetup() {
-  const d0 = useMemo(loadDraft, []);
+  // ?respostas=1 → modo do DONO: pede a senha do /admin e mostra o que o cliente enviou, travado.
+  const verRespostas = useMemo(() => { try { return new URLSearchParams(window.location.search).has("respostas"); } catch { return false; } }, []);
+  const d0 = useMemo(() => (verRespostas ? {} : loadDraft()), [verRespostas]);
   const [st, setSt] = useState(d0.st || {});
   const [nt, setNt] = useState(d0.nt || {});
   const [who, setWho] = useState(d0.who || { name: "", email: "", phone: "" });
   const [hp, setHp] = useState("");
   const [state, setState] = useState("idle"); // idle | sending | sent | error
   const [err, setErr] = useState("");
+  const [envios, setEnvios] = useState(null);   // modo dono: lista de envios (mais novo primeiro)
+  const [qual, setQual] = useState(0);
+  const [senha, setSenha] = useState("");
+  const [verErr, setVerErr] = useState("");
+  const travado = verRespostas;
 
-  useEffect(() => { document.title = "Natura Spa · Setup checklist"; }, []);
+  useEffect(() => { document.title = verRespostas ? "Natura Spa · Respostas enviadas" : "Natura Spa · Setup checklist"; }, [verRespostas]);
   useEffect(() => {
+    if (verRespostas) return;   // o modo dono nunca sobrescreve o rascunho de quem preenche neste aparelho
     try { localStorage.setItem(DRAFT, JSON.stringify({ st, nt, who })); } catch { /* sem armazenamento: segue sem rascunho */ }
-  }, [st, nt, who]);
+  }, [st, nt, who, verRespostas]);
+
+  function mostrar(lista, i) {
+    const e = lista[i];
+    if (!e) return;
+    const { st: s2, nt: n2 } = lerEnvio(e.answers);
+    setSt(s2); setNt(n2);
+    setWho({ name: e.contact?.name || "", email: e.contact?.email || "", phone: e.answers?._filled_by_phone || "" });
+    setQual(i);
+  }
+
+  async function abrirRespostas(e) {
+    e.preventDefault();
+    setVerErr("");
+    try {
+      const r = await fetch("/api/intake", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "admin_subs", form_id: FORM_ID, senha }) });
+      const d = await r.json().catch(() => ({}));
+      if (r.status === 401) { setVerErr("Senha errada."); return; }
+      if (!r.ok || !d.ok) { setVerErr("Não consegui ler as respostas agora. Tente de novo."); return; }
+      const lista = (d.submissions || []).slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+      setEnvios(lista);
+      if (lista.length) mostrar(lista, 0);
+    } catch { setVerErr("Sem conexão com o servidor."); }
+  }
 
   const statusOf = (it) => it.preset || st[it.id] || "";
   const answered = ALL.filter((it) => statusOf(it)).length;
@@ -189,7 +237,19 @@ export default function NaturaSetup() {
       </header>
 
       <main className="ns-wrap ns-main">
-        {state === "sent" ? (
+        {verRespostas && envios === null ? (
+          <form className="ns-card ns-who" onSubmit={abrirRespostas}>
+            <h2>🔒 Respostas enviadas pela Natura</h2>
+            <p className="ns-gnote">Digite a senha do /admin para ver o que foi enviado.</p>
+            <div className="ns-row3">
+              <label>Senha do /admin<input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="current-password" autoFocus /></label>
+            </div>
+            {verErr && <p className="ns-err" role="alert">{verErr}</p>}
+            <button type="submit" className="ns-btn">Ver respostas</button>
+          </form>
+        ) : verRespostas && !envios.length ? (
+          <section className="ns-done" role="status"><h2>Nenhuma resposta enviada ainda.</h2></section>
+        ) : state === "sent" ? (
           <section className="ns-done" role="status">
             <div className="ns-big">🌿</div>
             <h2>Thank you, {who.name.split(" ")[0] || "Lilian"}.</h2>
@@ -198,6 +258,25 @@ export default function NaturaSetup() {
           </section>
         ) : (
           <form onSubmit={enviar} noValidate>
+            {travado && envios && (
+              <section className="ns-card ns-who" role="status">
+                <h2>📋 Enviado por {envios[qual]?.contact?.name || "—"}</h2>
+                <p className="ns-gnote">
+                  {envios[qual]?.contact?.email} · {new Date(envios[qual]?.created_at).toLocaleString("pt-BR", { dateStyle: "long", timeStyle: "short" })}
+                  {envios.length > 1 && <> · versão {envios.length - qual} de {envios.length}</>}
+                </p>
+                {envios.length > 1 && (
+                  <div className="ns-chips">
+                    {envios.map((e, i) => (
+                      <button type="button" key={e.id} className={i === qual ? "on" : ""} onClick={() => mostrar(envios, i)}>
+                        {new Date(e.created_at).toLocaleDateString("pt-BR")}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+            <fieldset disabled={travado} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
             <section className="ns-card ns-who">
               <h2>👋 Who is filling this in</h2>
               <div className="ns-row3">
@@ -246,11 +325,13 @@ export default function NaturaSetup() {
               </section>
             ))}
 
-            <div className="ns-send">
+            </fieldset>
+
+            {!travado && <div className="ns-send">
               {err && <p className="ns-err" role="alert">{err}</p>}
               <button type="submit" className="ns-btn" disabled={state === "sending"}>{state === "sending" ? "Sending…" : "Send to Guileo"}</button>
               <p className="ns-fine">You can send more than once; we keep every version. Questions: Luis · luistelesc@gmail.com · 929-535-0191</p>
-            </div>
+            </div>}
           </form>
         )}
       </main>
