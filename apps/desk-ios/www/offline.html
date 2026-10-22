@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guileo Desk</title>
+<style>
+  /* Shown by Capacitor (server.errorPath) when guileoai.com can't be reached. Same cement as the site. */
+  html, body { margin: 0; height: 100%; background: #161512; color: #C5BEB0;
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; -webkit-font-smoothing: antialiased; }
+  main { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom)); box-sizing: border-box; text-align: center; }
+  img { width: 88px; height: 88px; border-radius: 20px; margin-bottom: 24px; }
+  h1 { font-size: 20px; margin: 0 0 8px; color: #EDE7DA; }
+  p { margin: 0 0 24px; max-width: 320px; }
+  button { appearance: none; border: 0; border-radius: 999px; padding: 12px 28px; font: inherit; font-weight: 600;
+    background: #D6C29A; color: #161512; }
+</style>
+</head>
+<body>
+<main>
+  <img src="icon.png" alt="">
+  <h1 id="t">No connection</h1>
+  <p id="s">Guileo Desk needs the internet to open your calendar. Check Wi-Fi or mobile data and try again.</p>
+  <button id="b" type="button">Try again</button>
+</main>
+<script>
+  // Language follows the device; PT and EN only, like the rest of the Desk.
+  if ((navigator.language || "").toLowerCase().startsWith("pt")) {
+    document.documentElement.lang = "pt";
+    document.getElementById("t").textContent = "Sem conexão";
+    document.getElementById("s").textContent = "O Guileo Desk precisa de internet para abrir a sua agenda. Confira o Wi-Fi ou os dados móveis e tente de novo.";
+    document.getElementById("b").textContent = "Tentar de novo";
+  }
+  document.getElementById("b").onclick = function () {
+    location.href = "https://guileoai.com/portal?tab=desk&app=desk&src=ios-app";
+  };
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "guileo-desk-ios",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Guileo Desk: native iOS shell (Capacitor) around the live Desk at guileoai.com",
+  "scripts": {
+    "icons": "python3 scripts/make_icons.py",
+    "sync": "npx cap sync ios",
+    "open": "npx cap open ios",
+    "sim": "npx cap run ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.5.3",
+    "@capacitor/ios": "8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}

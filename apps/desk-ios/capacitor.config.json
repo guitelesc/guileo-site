@@ -1,0 +1,18 @@
+{
+  "appId": "com.guileoai.desk",
+  "appName": "Guileo Desk",
+  "webDir": "www",
+  "backgroundColor": "#161512",
+  "server": {
+    "url": "https://guileoai.com/portal?tab=desk&app=desk&src=ios-app",
+    "allowNavigation": ["guileoai.com", "*.guileoai.com"],
+    "errorPath": "offline.html"
+  },
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#161512",
+    "appendUserAgent": "GuileoDeskApp/1.0",
+    "limitsNavigationsToAppBoundDomains": false,
+    "scrollEnabled": true
+  }
+}
