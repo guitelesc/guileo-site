@@ -91,9 +91,14 @@ export const ehIos = () => typeof navigator !== "undefined" && (
   (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
 );
 
+// Dentro do app nativo (apps/desk-ios) o WebView anexa "GuileoDeskApp/x" ao user agent: quem já está
+// no app não pode ver "Instale o app".
+export const ehAppNativo = () => typeof navigator !== "undefined" && /GuileoDeskApp\//.test(navigator.userAgent || "");
+
 export const jaInstalado = () => typeof window !== "undefined" && (
   window.matchMedia?.("(display-mode: standalone)").matches === true ||
-  window.navigator?.standalone === true
+  window.navigator?.standalone === true ||
+  ehAppNativo()
 );
 
 export const temPrompt = () => !!guardado;
