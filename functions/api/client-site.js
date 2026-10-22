@@ -22,7 +22,7 @@ export async function onRequestGet(context) {
       headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
       body: JSON.stringify({ p_slug: slug }),
     });
-    if (!r.ok) return json({ found: false }, 502);
+    if (!r.ok) return json({ found: false }, 503);
     const d = await r.json().catch(() => null);
     if (!d || d.found !== true) return json({ found: false }, 404);
 

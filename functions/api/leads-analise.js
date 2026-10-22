@@ -30,7 +30,7 @@ export async function onRequestPost({ request, env }) {
     const args = { p_secret: ING, p_seller_email: vendedor, p_id: alvo, p_note: nota };
     if (b.email) args.p_email = String(b.email).slice(0, 200);
     const r = await svcRpc(env, "sp_upsert", args);
-    if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 502);
+    if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 503);
     const row = await r.json().catch(() => null);
     // Sem a linha de volta não houve gravação — "ok" sem o registro é promessa sem lastro.
     if (!row) return json({ ok: false, motivo: "nao gravou (id nao e desse vendedor?)" }, 404);
@@ -45,14 +45,14 @@ export async function onRequestPost({ request, env }) {
   // NADA — e diagnosticar um 502 mudo custou mais tempo hoje que o erro em si.
   let r;
   try { r = await svcRpc(env, fn, args); }
-  catch (e) { return json({ ok: false, motivo: `svcRpc lancou: ${String(e).slice(0, 160)}` }, 502); }
+  catch (e) { return json({ ok: false, motivo: `svcRpc lancou: ${String(e).slice(0, 160)}` }, 503); }
   if (!r.ok) {
     let corpo = ""; try { corpo = (await r.text()).slice(0, 200); } catch { /* */ }
-    return json({ ok: false, motivo: `banco respondeu ${r.status}: ${corpo}` }, 502);
+    return json({ ok: false, motivo: `banco respondeu ${r.status}: ${corpo}` }, 503);
   }
   let rows = null;
-  try { rows = await r.json(); } catch (e) { return json({ ok: false, motivo: `resposta ilegivel: ${String(e).slice(0, 120)}` }, 502); }
+  try { rows = await r.json(); } catch (e) { return json({ ok: false, motivo: `resposta ilegivel: ${String(e).slice(0, 120)}` }, 503); }
   // Lista ausente é ERRO, não "carteira vazia" — `|| []` aqui inventaria calma.
-  if (!Array.isArray(rows)) return json({ ok: false, motivo: "resposta do banco nao e lista" }, 502);
+  if (!Array.isArray(rows)) return json({ ok: false, motivo: "resposta do banco nao e lista" }, 503);
   return json({ ok: true, fonte: fn, total: rows.length, leads: rows });
 }

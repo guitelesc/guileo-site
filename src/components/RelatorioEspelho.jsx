@@ -37,6 +37,7 @@ import guileoMark from "../assets/guileo-mark.png";
 import { FaInstagram, FaTiktok, FaMeta, FaGoogle, FaYoutube, FaWhatsapp, FaFacebookF } from "react-icons/fa6";
 import { SiOpenai } from "react-icons/si";
 import { bandColor, aspectLabel, NOT_MEASURED, PERDA, GANHO } from "../lib/reportScale.js";
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 
 /* ── dicionário local, 4 idiomas (padrão da página: Contact.jsx / Apresentacao.jsx) ──────────── */
 const E = {
@@ -150,7 +151,7 @@ const E = {
     closeVs: (v) => `against ${v}/month measured at risk in this report`,
     setupLabel: "Implementation, one time",
     setupWas: "normally",
-    setupWhat: "Everything set up and live in ~7 days: your agent trained on your own catalog, your number connected, calendar wired, channels on and the cockpit handed over.",
+    setupWhat: `Everything set up and live in ~7 days: your agent trained on your own catalog, your number connected, calendar wired, channels on and the ${NOME_DO_PAINEL} handed over.`,
     closeGuarantee: "30 days money-back. If it doesn't hold up, you get your money back.",
     closeNote: "Prices and plans from the Guileo catalog. What each phase activates is the plan above.",
   },
@@ -492,7 +493,7 @@ const E = {
     closeVs: (v) => `इस रिपोर्ट में मापे गए ${v}/माह जोखिम के मुक़ाबले`,
     setupLabel: "इम्प्लीमेंटेशन, एक बार",
     setupWas: "सामान्यतः",
-    setupWhat: "~7 दिनों में सब कुछ चालू: आपकी एजेंट आपके अपने कैटलॉग पर प्रशिक्षित, आपका नंबर जुड़ा, कैलेंडर सेट, चैनल चालू और कॉकपिट आपके हाथ में।",
+    setupWhat: `~7 दिनों में सब कुछ चालू: आपकी एजेंट आपके अपने कैटलॉग पर प्रशिक्षित, आपका नंबर जुड़ा, कैलेंडर सेट, चैनल चालू और ${NOME_DO_PAINEL} आपके हाथ में।`,
     closeGuarantee: "30 दिन मनी-बैक। अगर टिके नहीं, तो पैसा वापस।",
     closeNote: "कीमतें और प्लान Guileo कैटलॉग से। हर चरण जो सक्रिय करता है वह ऊपर की योजना है।",
   },

@@ -1,3 +1,4 @@
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 // Launch Kit — ready-to-use field assets for Guileo sellers, surfaced inside the "Alvos do dia"
 // tab of /vendedor. Everything here is COPY-ready (the UI puts a 📋 button on each block):
 //   • video   — a scene-by-scene sales-video script (the Natura demo: call → Gui answers → books →
@@ -13,7 +14,7 @@ export const KIT_VIDEO = {
     { t: "0:08–0:20", scene: "Celular do salão Natura tocando fora do horário; ninguém por perto", vo: "São 20h. A Natura Spa já fechou. Mas o telefone toca — uma cliente quer marcar." },
     { t: "0:20–0:35", scene: "A Gui atende (áudio real da ligação); legenda com a fala", vo: "A Gui atende na hora, com a voz e o nome do salão: “Natura Spa, boa noite! Quer marcar sua limpeza de pele?”" },
     { t: "0:35–0:48", scene: "Tela do portal: o agendamento aparecendo sozinho", vo: "Ela confirma o horário, manda o lembrete e o agendamento cai direto no painel — sem ninguém digitar nada." },
-    { t: "0:48–1:05", scene: "Cockpit da Natura: receita recuperada, no-shows evitados", vo: "No fim do mês, o dono vê o que voltou: agendamentos que teriam se perdido, no-shows evitados, clientes reativados." },
+    { t: "0:48–1:05", scene: `${NOME_DO_PAINEL} da Natura: receita recuperada, no-shows evitados`, vo: "No fim do mês, o dono vê o que voltou: agendamentos que teriam se perdido, no-shows evitados, clientes reativados." },
     { t: "1:05–1:20", scene: "Logo Guileo + selo 30 dias", vo: "No ar em 7 dias, com garantia de 30. A Guileo instala um time de IA que atende, vende e faz crescer — 24/7. Quer ver a Gui te ligando agora?" },
   ],
   en: [
@@ -21,7 +22,7 @@ export const KIT_VIDEO = {
     { t: "0:08–0:20", scene: "Natura salon phone ringing after hours; no one around", vo: "It's 8pm. Natura Spa is closed. But the phone rings — a client wants to book." },
     { t: "0:20–0:35", scene: "Gui answers (real call audio); caption with the line", vo: "Gui answers instantly, in the salon's own voice and name: “Natura Spa, good evening! Want to book your facial?”" },
     { t: "0:35–0:48", scene: "Portal screen: the booking appearing on its own", vo: "She confirms the time, sends the reminder, and the booking lands right in the dashboard — nobody typed a thing." },
-    { t: "0:48–1:05", scene: "Natura cockpit: revenue recovered, no-shows avoided", vo: "At month's end, the owner sees what came back: bookings that would've been lost, no-shows avoided, customers reactivated." },
+    { t: "0:48–1:05", scene: `Natura ${NOME_DO_PAINEL}: revenue recovered, no-shows avoided`, vo: "At month's end, the owner sees what came back: bookings that would've been lost, no-shows avoided, customers reactivated." },
     { t: "1:05–1:20", scene: "Guileo logo + 30-day badge", vo: "Live in 7 days, 30-day guarantee. Guileo installs an AI team that answers, sells and grows — 24/7. Want to see Gui call you right now?" },
   ],
   es: [
@@ -29,7 +30,7 @@ export const KIT_VIDEO = {
     { t: "0:08–0:20", scene: "Teléfono del salón Natura sonando fuera de horario; nadie cerca", vo: "Son las 20h. Natura Spa ya cerró. Pero el teléfono suena — una clienta quiere reservar." },
     { t: "0:20–0:35", scene: "Gui contesta (audio real de la llamada); subtítulo con la frase", vo: "Gui contesta al instante, con la voz y el nombre del salón: “Natura Spa, ¡buenas noches! ¿Quieres reservar tu limpieza facial?”" },
     { t: "0:35–0:48", scene: "Pantalla del portal: la reserva apareciendo sola", vo: "Confirma la hora, manda el recordatorio y la reserva cae directo en el panel — nadie escribió nada." },
-    { t: "0:48–1:05", scene: "Cockpit de Natura: ingresos recuperados, no-shows evitados", vo: "A fin de mes, el dueño ve lo que volvió: reservas que se habrían perdido, no-shows evitados, clientes reactivados." },
+    { t: "0:48–1:05", scene: `${NOME_DO_PAINEL} de Natura: ingresos recuperados, no-shows evitados`, vo: "A fin de mes, el dueño ve lo que volvió: reservas que se habrían perdido, no-shows evitados, clientes reactivados." },
     { t: "1:05–1:20", scene: "Logo Guileo + sello 30 días", vo: "En vivo en 7 días, garantía de 30. Guileo instala un equipo de IA que atiende, vende y hace crecer — 24/7. ¿Quieres ver a Gui llamándote ahora?" },
   ],
 };

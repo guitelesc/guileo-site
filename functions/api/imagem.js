@@ -21,7 +21,7 @@ export async function onRequestPost({ request, env }) {
     });
     // A RECUSA NÃO É ERRO DE SISTEMA e não pode se parecer com um: 422 com o motivo inteiro, para
     // quem pediu entender que precisa da foto do cliente, não tentar de novo com outra palavra.
-    if (!r.ok) return json({ ok: false, motivo: r.motivo, recusado: !!r.recusado, termo: r.termo || null }, r.recusado ? 422 : 502);
+    if (!r.ok) return json({ ok: false, motivo: r.motivo, recusado: !!r.recusado, termo: r.termo || null }, r.recusado ? 422 : 503);
 
     return new Response(r.bytes, {
       headers: {

@@ -33,7 +33,12 @@ const BOOTSTRAP = [
   { email: "luistelesc@gmail.com", code: "GUILEO-DONO", name: "Luis Teles", ref: "luis" },
   { email: "smart@guileoai.com", code: "GUILEO-DONO", name: "Guileo", ref: "guileo" },
 ];
-const TEAM_CODE_DEFAULT = "GUILEO-TIME-2026";
+// 🚨 SEM CÓDIGO DE TIME COMMITADO (2026-09-27). Aqui morava `TEAM_CODE_DEFAULT`, um literal no
+// repositório usado quando `TEAM_INVITE_CODE` não existia no ambiente: quem lesse o código (ou o
+// bundle) tinha uma credencial válida em produção. Agora é FAIL-CLOSED, igual ao tier técnico:
+// sem `TEAM_INVITE_CODE` configurada, o código de time simplesmente NÃO existe — ninguém entra
+// por ele, e a recusa diz isso com todas as letras (ver `timeConfigurado` no handler).
+const timeConfigurado = (env) => !!(env && env.TEAM_INVITE_CODE && String(env.TEAM_INVITE_CODE).trim());
 const slug = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
 function roster(env) {
   try { if (env && env.SELLER_ROSTER) { const a = JSON.parse(env.SELLER_ROSTER); if (Array.isArray(a) && a.length) return a; } } catch { /* fall back */ }
@@ -45,8 +50,8 @@ function sellerAuth(env, email, code) {
   if (!e || !c) return null;
   const m = roster(env).find((s) => (s.email || "").trim().toLowerCase() === e && safeEq(String(s.code || ""), c));
   if (m) return { email: e, name: m.name || e.split("@")[0], ref: (m.ref || e.split("@")[0]).toString().slice(0, 40), roster: true };
-  const team = (env && env.TEAM_INVITE_CODE) || TEAM_CODE_DEFAULT;
-  if (safeEq(c, team)) return { email: e, name: e.split("@")[0], ref: slug(e.split("@")[0]) || "team", roster: false };
+  // Fail-closed: env ausente/vazia → não há o que comparar, e string vazia nunca autentica.
+  if (timeConfigurado(env) && safeEq(c, String(env.TEAM_INVITE_CODE).trim())) return { email: e, name: e.split("@")[0], ref: slug(e.split("@")[0]) || "team", roster: false };
   return null;
 }
 async function sellerAuthDB(env, email, code) {
@@ -148,7 +153,13 @@ export async function onRequestPost(context) {
     // ─────────── TIER 1 · VENDEDOR (primeira linha do cliente dele) ───────────
     if (action.startsWith("seller_")) {
       const seller = await sellerAuthFull(env, b.seller_email || (b.seller && b.seller.email), b.seller_code || b.token);
-      if (!seller) return json({ error: "unauthorized" }, 401);
+      if (!seller) {
+        // Recusa HONESTA: se o código de time está desligado por falta de env, diz isso — senão
+        // o time fica tentando um código que nunca vai abrir e ninguém sabe o que configurar.
+        const team = timeConfigurado(env);
+        return json({ error: "unauthorized", team_code_configured: team,
+          ...(team ? {} : { note: "Código de time desativado: TEAM_INVITE_CODE não está configurada no ambiente. Entre com o seu código pessoal ou peça ao dono para definir a variável." }) }, 401);
+      }
 
       // FIX #1 (revisor 2026-07-31): o código de TIME compartilhado aceita QUALQUER e-mail digitado —
       // não prova identidade. Como estes dados são PII de cliente (threads de suporte, e-mails, receita),

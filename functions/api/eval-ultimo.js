@@ -26,10 +26,10 @@ export async function onRequestPost({ request, env }) {
   const soReprovados = b.reprovados !== false;   // padrão: só o que interessa consertar
 
   const r = await svcRpc(env, "agent_evals_recent", { p_secret: ING, p_limit: 200 });
-  if (!r.ok) return json({ ok: false, erro: `agent_evals_recent HTTP ${r.status}` }, 502);
+  if (!r.ok) return json({ ok: false, erro: `agent_evals_recent HTTP ${r.status}` }, 503);
   const linhas = await r.json().catch(() => null);
   // Lista ausente é ERRO, não "rodada limpa" — `|| []` aqui inventaria calma.
-  if (!Array.isArray(linhas)) return json({ ok: false, erro: "não devolveu lista" }, 502);
+  if (!Array.isArray(linhas)) return json({ ok: false, erro: "não devolveu lista" }, 503);
 
   // run_id define "uma rodada"; run_at varia entre linhas da mesma run (a corrente leva ~20 min).
   const maisNova = linhas.filter((l) => l && l.run_id)

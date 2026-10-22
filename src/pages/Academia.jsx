@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import logo from "../assets/guileo-mark.png";
 import { waLink } from "../data/contact.js";
+import { NOME_DO_PAINEL } from "../portal/nome.js";
+import { planByKey } from "../data/guileoPlans.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // /academia — GUILEO PARTNER ACADEMY. The collaborator's operating manual as an
@@ -46,7 +48,7 @@ const T = {
     cred: "Cada tarefa que a Gui executa consome créditos (~5 por tarefa: uma ligação atendida, um follow-up, uma mensagem). Os planos incluem créditos mensais — Essential 500 · Personalized 2.000 · Full Operation 6.000 — e dá pra comprar mais. É como o cliente VÊ o que está pagando: cada crédito é trabalho feito.",
     guiJobsH: "🤖 O que a Gui faz, tarefa por tarefa (decore ESTAS)",
     guiJobs: ["🛒 Anota pedidos", "📅 Agenda & confirma", "🎯 Qualifica leads", "💰 Fecha vendas", "🧾 Envia orçamentos", "🎧 Dá suporte", "🔁 Reativa sumidos", "📦 Rastreia pedidos", "📋 Faz fichas/intake", "🔔 Manda lembretes", "↩️ Faz follow-up", "⭐ Pede avaliações"],
-    cockH: "📟 O Growth Cockpit — o painel que o cliente recebe",
+    cockH: `📟 A ${NOME_DO_PAINEL} — o painel que o cliente recebe`,
     cock: "É onde o dono VÊ tudo: visão geral e leads do dia · treinar a IA, análises e insights · operações (pedidos, cozinha, agenda, entregas) · conversas (chamadas, WhatsApp, SMS, social) · clientes · crescer receita (pagamentos, follow-ups, lista de espera, recorrentes, reputação, fidelidade, campanhas, públicos) · conta e plano. ~30 telas. Na demo, mostrar o painel fecha venda.",
     // 1 UNDERSTAND
     s1tag: "Passo 1 · Entenda",
@@ -58,7 +60,7 @@ const T = {
       ["📈", "Guileo AD", "Cada conversa vira dado, dado vira marketing, marketing vira receita repetida."],
       ["🛠️", "Guileo Build", "Sites, apps e software sob medida — construídos pra converter."],
     ],
-    s1portal: "E ele VÊ tudo funcionando no Growth Cockpit: pedidos, agenda, conversas, pagamentos, reputação, campanhas — ~30 telas de operação real. O produto não é promessa: é painel.",
+    s1portal: `E ele VÊ tudo funcionando na ${NOME_DO_PAINEL}: pedidos, agenda, conversas, pagamentos, reputação, campanhas — ~30 telas de operação real. O produto não é promessa: é painel.`,
     honestH: "Venda honesta (regra da casa)",
     honest: [
       ["✅ Pode prometer", "Atendimento 24/7 · agendamentos e vendas no automático · follow-up de todo lead · no ar em 7 dias · garantia de 30 dias · humano supervisionando"],
@@ -115,7 +117,7 @@ const T = {
       ["0–3 min", "Quebra-gelo + as 5 perguntas de ouro", "Deixa ELE falar da dor. Anota os números."],
       ["3–5 min", "A frase + 'deixa eu te mostrar em vez de explicar'", "Não apresente slides ainda. Vá direto pra demo."],
       ["5–9 min", "⚡ A DEMO: a Gui liga pro celular dele", "Silêncio. Deixa ele ouvir. Esse momento vende sozinho."],
-      ["9–12 min", "Mostra o Growth Cockpit + conecta com a dor dele", "\"Lembra das ligações do almoço? Aqui você veria cada uma atendida.\""],
+      ["9–12 min", `Mostra a ${NOME_DO_PAINEL} + conecta com a dor dele`, "\"Lembra das ligações do almoço? Aqui você veria cada uma atendida.\""],
       ["12–15 min", "Próximo passo: proposta + garantia 30 dias", "\"Te mando a proposta hoje. Em 7 dias isso tá rodando no seu negócio.\""],
     ],
     storyH: "🎬 Uma venda de verdade, do \"oi\" ao pago",
@@ -125,7 +127,7 @@ const T = {
       ["Seg, 14:30", "Tony: \"quanto custa?\" — Paula segura o preço e oferece a demo: \"a IA te liga, você precisa ouvir\"", "obj"],
       ["Ter, 16:00", "Reunião de 15 min: 5 perguntas → Tony admite que perde ~10 ligações/dia no rush", "meet"],
       ["Ter, 16:07", "A Gui liga pro celular do Tony e anota um pedido completo com upsell. Tony ri sozinho", "demo"],
-      ["Ter, 16:15", "Paula mostra o Cockpit e fecha o próximo passo: \"te mando a proposta hoje\"", "cock"],
+      ["Ter, 16:15", `Paula mostra a ${NOME_DO_PAINEL} e fecha o próximo passo: "te mando a proposta hoje"`, "cock"],
       ["Ter, 18:00", "Proposta personalizada no WhatsApp: cotada pro negócio dele · recupera ~$3.900/mês", "prop"],
       ["Qui, 09:00", "Tony: \"e se não funcionar?\" — Paula: \"30 dias de garantia, o risco é nosso\" → ✅ ACEITO", "close"],
       ["7 dias depois", "Sistema no ar. Paula passa a receber comissão RECORRENTE todo mês enquanto o Tony for cliente. E ele vira o case dela", "win"],
@@ -223,7 +225,7 @@ const T = {
     cred: "Every task Gui executes spends credits (~5 per task: an answered call, a follow-up, a message). Plans include monthly credits — Essential 500 · Personalized 2,000 · Full Operation 6,000 — and more can be bought. It's how the client SEES what they pay for: every credit is work done.",
     guiJobsH: "🤖 What Gui does, task by task (memorize THESE)",
     guiJobs: ["🛒 Takes orders", "📅 Books & confirms", "🎯 Qualifies leads", "💰 Closes sales", "🧾 Sends quotes", "🎧 Gives support", "🔁 Wins back ghosts", "📦 Tracks orders", "📋 Does intake", "🔔 Sends reminders", "↩️ Follows up", "⭐ Asks for reviews"],
-    cockH: "📟 The Growth Cockpit — the panel the client gets",
+    cockH: `📟 The ${NOME_DO_PAINEL} — the panel the client gets`,
     cock: "Where the owner SEES everything: overview & daily leads · train the AI, analytics & insights · operations (orders, kitchen, schedule, deliveries) · conversations (calls, WhatsApp, SMS, social) · customers · grow revenue (payments, follow-ups, waitlist, recurring, reputation, loyalty, campaigns, audiences) · account & plan. ~30 screens. Showing the panel in the demo closes deals.",
     s1tag: "Step 1 · Understand",
     s1h: "What Guileo is — in one sentence",
@@ -234,7 +236,7 @@ const T = {
       ["📈", "Guileo AD", "Every conversation becomes data, data becomes marketing, marketing becomes repeat revenue."],
       ["🛠️", "Guileo Build", "Tailored sites, apps and software — built to convert."],
     ],
-    s1portal: "And they SEE it all working in the Growth Cockpit: orders, schedule, conversations, payments, reputation, campaigns — ~30 screens of real operations. The product isn't a promise: it's a dashboard.",
+    s1portal: `And they SEE it all working in the ${NOME_DO_PAINEL}: orders, schedule, conversations, payments, reputation, campaigns — ~30 screens of real operations. The product isn't a promise: it's a dashboard.`,
     honestH: "Honest selling (house rule)",
     honest: [
       ["✅ You may promise", "24/7 answering · bookings & sales on autopilot · follow-up on every lead · live in 7 days · 30-day guarantee · human supervision"],
@@ -289,7 +291,7 @@ const T = {
       ["0–3 min", "Icebreaker + the 5 golden questions", "Let THEM talk about the pain. Write down the numbers."],
       ["3–5 min", "The sentence + 'let me show you instead of explaining'", "No slides yet. Go straight to the demo."],
       ["5–9 min", "⚡ THE DEMO: Gui calls their phone", "Silence. Let them listen. This moment sells by itself."],
-      ["9–12 min", "Show the Growth Cockpit + connect to their pain", "\"Remember the lunch-rush calls? Here you'd see every one answered.\""],
+      ["9–12 min", `Show the ${NOME_DO_PAINEL} + connect to their pain`, "\"Remember the lunch-rush calls? Here you'd see every one answered.\""],
       ["12–15 min", "Next step: proposal + 30-day guarantee", "\"Proposal in your inbox today. In 7 days this runs your business.\""],
     ],
     storyH: "🎬 A real sale, from \"hi\" to paid",
@@ -299,7 +301,7 @@ const T = {
       ["Mon, 2:30 PM", "Tony: \"how much?\" — Paula holds the price and offers the demo: \"the AI calls you, you have to hear it\"", "obj"],
       ["Tue, 4:00 PM", "15-min meeting: 5 questions → Tony admits losing ~10 calls/day in the rush", "meet"],
       ["Tue, 4:07 PM", "Gui calls Tony's phone and takes a full order with an upsell. Tony laughs out loud", "demo"],
-      ["Tue, 4:15 PM", "Paula shows the Cockpit and locks the next step: \"proposal today\"", "cock"],
+      ["Tue, 4:15 PM", `Paula shows the ${NOME_DO_PAINEL} and locks the next step: "proposal today"`, "cock"],
       ["Tue, 6:00 PM", "Personalized proposal on WhatsApp: quoted for his business · recovers ~$3,900/mo", "prop"],
       ["Thu, 9:00 AM", "Tony: \"what if it doesn't work?\" — Paula: \"30-day guarantee, the risk is ours\" → ✅ ACCEPTED", "close"],
       ["7 days later", "System live. Paula now earns RECURRING commission every month while Tony stays a client. And he becomes her case study", "win"],

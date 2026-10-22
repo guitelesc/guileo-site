@@ -21,7 +21,7 @@ const ESPERADO = {
     "status", "auto", "auditar", "mapear_ig", "descobrir_ig", "token_escopos",
     "subscribe", "app_subscribe", "contas_disponiveis", "adicionar_conta",
   ],
-  "functions/api/meta-comentarios.js": ["salvar", "apagar"],
+  "functions/api/meta-comentarios.js": ["salvar", "apagar", "metricas"],
 };
 
 for (const [arquivo, acoes] of Object.entries(ESPERADO)) {

@@ -72,13 +72,13 @@ export async function onRequest(context) {
 
     if (eCongelar) {
       const r = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${encodeURIComponent(alvo)}`, { headers: h });
-      if (!r.ok) return json({ ok: false, erro: `não consegui LER o agente: HTTP ${r.status}` }, 502);
+      if (!r.ok) return json({ ok: false, erro: `não consegui LER o agente: HTTP ${r.status}` }, 503);
       const d = await r.json().catch(() => null);
       // guardo só o que a API aceita de volta num PATCH — guardar o envelope inteiro faria a
       // volta falhar em campos read-only, e uma volta que falha é pior que não ter volta.
       const config = { conversation_config: d?.conversation_config || {}, platform_settings: d?.platform_settings || {}, name: d?.name };
       if (!config.conversation_config || !Object.keys(config.conversation_config).length) {
-        return json({ ok: false, erro: "li o agente mas veio sem conversation_config — NÃO gravei um snapshot vazio" }, 502);
+        return json({ ok: false, erro: "li o agente mas veio sem conversation_config — NÃO gravei um snapshot vazio" }, 503);
       }
       const sr = await svcRpc(env, "agent_snapshot_save", {
         p_secret: seg, p_agent_id: alvo, p_config: config,
@@ -86,7 +86,7 @@ export async function onRequest(context) {
         p_aprovado: url.searchParams.get("ouro") === "1", p_nota: null,
       });
       const id = await sr.json().catch(() => null);
-      if (!sr.ok || !id) return json({ ok: false, erro: `gravei nada: HTTP ${sr.status}`, resposta: id }, 502);
+      if (!sr.ok || !id) return json({ ok: false, erro: `gravei nada: HTTP ${sr.status}`, resposta: id }, 503);
       return json({ ok: true, congelado: true, snapshot_id: id, agente: d?.name,
         ouro: url.searchParams.get("ouro") === "1",
         recado: "estado gravado. pra voltar: ?voltar=1&agent_id=" + alvo });
@@ -129,11 +129,11 @@ export async function onRequest(context) {
         method: "PATCH", headers: { ...h, "Content-Type": "application/json" }, body: JSON.stringify(corpoVolta),
       });
     } catch (e) {
-      return json({ ok: false, erro: `PATCH não saiu: ${(e && e.message) || e}` }, 502);
+      return json({ ok: false, erro: `PATCH não saiu: ${(e && e.message) || e}` }, 503);
     }
     if (!pr2.ok) {
       const corpo = await pr2.text().catch(() => "");
-      return json({ ok: false, erro: `PATCH falhou: HTTP ${pr2.status}`, corpo: corpo.slice(0, 300) }, 502);
+      return json({ ok: false, erro: `PATCH falhou: HTTP ${pr2.status}`, corpo: corpo.slice(0, 300) }, 503);
     }
     // RELEITURA — a ElevenLabs já respondeu 200 e guardou null (foi assim que o language_detection
     // sumiu). "Voltou" só vale com o agente lido DEPOIS de aplicar.
@@ -162,7 +162,7 @@ export async function onRequest(context) {
     if (!alvo) return json({ error: "agent_id obrigatório" }, 400);
     const h = { "xi-api-key": env.ELEVENLABS_API_KEY };
     const r = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${encodeURIComponent(alvo)}`, { headers: h });
-    if (!r.ok) return json({ ok: false, erro: `HTTP ${r.status}` }, 502);
+    if (!r.ok) return json({ ok: false, erro: `HTTP ${r.status}` }, 503);
     const d = await r.json().catch(() => ({}));
     // A NORMA MORA EM `lib/padraoAgente.js` (2026-08-21). Ela vivia aqui dentro — e uma regra que
     // só roda quando alguém digita a URL à mão nunca rodou. Agora esta rota e a VARREDURA HORÁRIA
@@ -295,7 +295,7 @@ export async function onRequest(context) {
     const h = { "xi-api-key": env.ELEVENLABS_API_KEY };
     const alvo = (url.searchParams.get("agent_id") || "").trim();
     const lr = await fetch(`https://api.elevenlabs.io/v1/convai/conversations?page_size=${alvo ? 20 : 10}${alvo ? `&agent_id=${encodeURIComponent(alvo)}` : ""}`, { headers: h });
-    if (!lr.ok) return json({ ok: false, erro: `lista HTTP ${lr.status}`, detalhe: (await lr.text().catch(() => "")).slice(0, 300) }, 502);
+    if (!lr.ok) return json({ ok: false, erro: `lista HTTP ${lr.status}`, detalhe: (await lr.text().catch(() => "")).slice(0, 300) }, 503);
     const lista = (await lr.json().catch(() => ({})))?.conversations || [];
     if (!lista.length) return json({ ok: true, nenhuma_ligacao: true, agent_id: alvo || null });
     const quantas = Math.min(Number(url.searchParams.get("n") || 1) || 1, 5);
@@ -338,10 +338,10 @@ export async function onRequest(context) {
     headers: { "xi-api-key": env.ELEVENLABS_API_KEY },
   });
   const txt = await r.text().catch(() => "");
-  if (!r.ok) return json({ ok: false, erro_do_provedor: `HTTP ${r.status}`, detalhe: txt.slice(0, 500) }, 502);
+  if (!r.ok) return json({ ok: false, erro_do_provedor: `HTTP ${r.status}`, detalhe: txt.slice(0, 500) }, 503);
 
   let bruto;
-  try { bruto = JSON.parse(txt); } catch { return json({ ok: false, erro: "resposta não-JSON do provedor", amostra: txt.slice(0, 200) }, 502); }
+  try { bruto = JSON.parse(txt); } catch { return json({ ok: false, erro: "resposta não-JSON do provedor", amostra: txt.slice(0, 200) }, 503); }
 
   const cc = bruto?.conversation_config || {};
   const presets = cc?.language_presets || {};

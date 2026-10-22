@@ -31,7 +31,7 @@ export async function onRequestPost(context) {
       headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: [email], subject: tpl.subject, html: tpl.html }),
     });
-    if (!mr.ok) return json({ error: `email send failed (${mr.status})` }, 502);
+    if (!mr.ok) return json({ error: `email send failed (${mr.status})` }, 503);
     return json({ ok: true, sent: true, to: email, kind, lang });
   } catch (e) { return json({ error: String(e).slice(0, 160) }, 400); }
 }

@@ -5,6 +5,259 @@
 // /for/* and /blog/*. Those two route families have their own functions — they are NOT in this
 // map, so nothing is processed twice. /api/* and non-HTML pass through untouched.
 import { rewriteOg, langFromUrl, pick, SITE } from "./lib/ogMeta.js";
+import { safeEq } from "./lib/guard.js";
+import { svcJson } from "./lib/sb.js";
+import { signOg } from "./lib/signOg.js";
+import { projetoOg, cartaoFixoOg, CARTAO_NATURA_SETUP } from "./lib/projetoOg.js";
+import {
+  ehNosso, hostDeCliente, normalizarHost, semWww, ehEstatico, rotaDoCliente, cabecaDoCliente,
+  reescreverCabeca, robotsTxtDoCliente, sitemapDoCliente, bootDoCliente, VITRINES, NOSSO_SITE,
+} from "./lib/dominio.js";
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// DOMÍNIO PRÓPRIO DO CLIENTE (2026-09-30)
+//
+// O mesmo projeto do Pages passa a responder por domínios de CLIENTE. A decisão é pelo host:
+//
+//   host NOSSO (guileoai.com, www, *.pages.dev, localhost)  → `legado(context)`, que é o
+//     onRequest de sempre, intocado. Nada abaixo roda. É o primeiro `return` do onRequest.
+//   host de CLIENTE → a linha ATIVA dele em tenant_domains (db/dominios.sql) decide tudo:
+//     "/" e as páginas de unidade servem a casca com o <head> DELE, reescrito aqui no servidor;
+//     /robots.txt e /sitemap.xml são gerados para o host dele; estático e /api/ seguem; qualquer
+//     outra rota da Guileo (/portal, /admin, /novo/<outro>…) é 404 — nunca a nossa casa na dele.
+//
+// TRÊS TRAVAS
+//   1. Sem linha ativa → 404 liso. Falha ao consultar → 503 liso. NUNCA o site da Guileo no
+//      domínio do cliente (seria conteúdo duplicado com a nossa marca no endereço dele).
+//   2. A linha só vale se o host dela for o host pedido — uma linha nunca serve outro domínio.
+//   3. PROVA ANTES DO DNS: `x-guileo-host: www.cliente.com` escolhe o host SÓ quando o pedido
+//      chega num host nosso E traz `x-guileo-secret` igual a env.INGEST_SECRET (comparação de
+//      tempo constante). Sem o segredo o cabeçalho é ignorado e a resposta é a de sempre.
+//
+// Hosts nossos extras (um apelido futuro do projeto): env GUILEO_HOSTS="a.com,b.com".
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+const hostsExtras = (env) => String(env?.GUILEO_HOSTS || "").split(",").map((s) => s.trim()).filter(Boolean);
+
+// null → o pedido é NOSSO. Senão { host, prova }: host de cliente (null se malformado).
+function alvoDoPedido(context) {
+  const { request, env } = context;
+  let hostUrl = "";
+  try { hostUrl = new URL(request.url).hostname; } catch { /* host vazio cai em "não é nosso" */ }
+  // Host nosso da lista fixa: decide sem ler env nenhuma. A env só é lida para um host que não
+  // está na lista (apelido em GUILEO_HOSTS) ou quando o pedido traz o cabeçalho de prova.
+  if (ehNosso(hostUrl) || ehNosso(hostUrl, hostsExtras(env))) {
+    const pedido = request.headers.get("x-guileo-host");
+    if (!pedido) return null;
+    const certo = String(env?.INGEST_SECRET || "");
+    if (!certo || !safeEq(request.headers.get("x-guileo-secret") || "", certo)) return null;
+    const h = hostDeCliente(pedido, hostsExtras(env));
+    return h ? { host: h, prova: true } : null;
+  }
+  return { host: normalizarHost(hostUrl), prova: false };
+}
+
+const liso = (status, texto, extra = {}) => new Response(`${texto}\n`, {
+  status,
+  headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", ...extra },
+});
+const fora = () => liso(503, "Temporarily unavailable. Please try again in a minute.", { "retry-after": "60" });
+
+// ── A LINHA DO DOMÍNIO, COM CACHE ────────────────────────────────────────────────────────────
+// Achou: 5 min. Não achou: 1 min (o dia do go-live não espera 5 min pela linha nova). Erro: nunca
+// guardado. Duas camadas: memória do isolate (grátis) e Cache API (vale entre isolates).
+// Se o banco falhar e a memória ainda tiver uma linha boa de até 1 h, ela serve — site de cliente
+// no ar não cai por um soluço do banco. Sem linha boa na memória, falha = 503.
+const TTL_SIM = 300;
+const TTL_NAO = 60;
+const VELHO_MAX_MS = 3600 * 1000;
+const MEMORIA = new Map();
+const chaveDoCache = (raiz) => new Request(`https://tenant-domains.invalid/v1/${raiz}`);
+
+async function buscarDominio(context, host) {
+  const raiz = semWww(host);
+  const agora = Date.now();
+  const m = MEMORIA.get(raiz);
+  if (m && m.ate > agora) return m.val;
+
+  const cache = typeof caches !== "undefined" && caches.default ? caches.default : null;
+  if (cache) {
+    try {
+      const c = await cache.match(chaveDoCache(raiz));
+      if (c) {
+        const val = await c.json();
+        if (val && (val.estado === "ok" || val.estado === "nao")) {
+          MEMORIA.set(raiz, { val, ate: agora + (val.estado === "ok" ? TTL_SIM : TTL_NAO) * 1000, em: agora });
+          return val;
+        }
+      }
+    } catch { /* cache é atalho; a consulta abaixo é a verdade */ }
+  }
+
+  const r = await svcJson(context.env, "domain_lookup", { p_secret: context.env?.INGEST_SECRET || "", p_host: host });
+  let val;
+  if (r === null) {
+    val = { estado: "nao" };
+  } else if (r && typeof r === "object" && r.active === true && typeof r.host === "string"
+    && semWww(normalizarHost(r.host) || "") === raiz) {
+    // Só o que a página precisa. O e-mail do cliente não sai do banco para o cache.
+    val = { estado: "ok", linha: { host: normalizarHost(r.host), kind: String(r.kind || ""), slug: String(r.slug || ""), indexable: r.indexable === true, pixel_meta: r.pixel_meta || null, tag_google: r.tag_google || null } };
+  } else {
+    // Erro de transporte, 401, resposta torta, ou linha de OUTRO host: nada disso é "não existe".
+    if (m && m.val?.estado === "ok" && agora - m.em < VELHO_MAX_MS) return m.val;
+    return { estado: "erro" };
+  }
+
+  const ttl = val.estado === "ok" ? TTL_SIM : TTL_NAO;
+  MEMORIA.set(raiz, { val, ate: agora + ttl * 1000, em: agora });
+  if (cache) {
+    try {
+      const guardar = cache.put(chaveDoCache(raiz), new Response(JSON.stringify(val), {
+        headers: { "content-type": "application/json", "cache-control": `public, max-age=${ttl}` },
+      }));
+      if (context.waitUntil) context.waitUntil(guardar.catch(() => {})); else await guardar;
+    } catch { /* sem cache a consulta só se repete */ }
+  }
+  return val;
+}
+
+// O HSTS do public/_headers diz `includeSubDomains; preload`. Em guileoai.com é o certo. No domínio
+// de um CLIENTE não é decisão nossa: ele pode ter mail.cliente.com ou agenda.cliente.com em outro
+// servidor, e esse cabeçalho (visto no apex) obrigaria HTTPS em todos eles por dois anos. No host
+// do cliente o HSTS vale só para o próprio host.
+function hstsSoDoHost(headers) {
+  if (headers.has("strict-transport-security")) headers.set("strict-transport-security", "max-age=31536000");
+  return headers;
+}
+
+// A casca da SPA, sempre inteira: pedido NOVO para "/", sem If-None-Match (um 304 aqui não teria
+// corpo para reescrever — e o navegador ficaria com o <head> antigo depois de a linha mudar).
+async function pegarCasca(context) {
+  const raiz = new Request(new URL("/", context.request.url).toString(), { method: "GET" });
+  const tentar = [];
+  if (context.env?.ASSETS?.fetch) tentar.push(() => context.env.ASSETS.fetch(raiz));
+  tentar.push(() => context.next(raiz));
+  for (const pegar of tentar) {
+    try {
+      const res = await pegar();
+      if (res && res.status === 200 && (res.headers.get("content-type") || "").includes("text/html")) {
+        return { html: await res.text(), headers: res.headers };
+      }
+    } catch { /* tenta o próximo caminho */ }
+  }
+  return null;
+}
+
+// /api/ no domínio do cliente. As rotas públicas (lead, chat, visita) têm o portão sameOrigin(),
+// que só conhece guileoai.com: sem isto, o formulário e o chat da página do cliente voltariam 403
+// no domínio DELE. O host já foi conferido contra a linha ativa; quando o Origin/Referer do pedido
+// é esse mesmo host, ele segue como o nosso. Origin de qualquer outro lugar segue como veio.
+function comOrigemNossa(request, host, slug) {
+  const raiz = semWww(host);
+  const daqui = (u) => { try { return semWww(new URL(u).hostname.toLowerCase()) === raiz; } catch { return false; } };
+  const origem = request.headers.get("Origin") || "";
+  const ref = request.headers.get("Referer") || "";
+  if (origem ? !daqui(origem) : !(ref && daqui(ref))) return null;
+  const h = new Headers(request.headers);
+  if (origem) h.set("Origin", NOSSO_SITE);
+  if (ref && daqui(ref)) h.set("Referer", `${NOSSO_SITE}/novo/${slug}`);
+  return new Request(request, { headers: h });
+}
+
+async function servirCliente(context, alvo) {
+  const { request } = context;
+  const url = new URL(request.url);
+  const path = url.pathname;
+  const leitura = request.method === "GET" || request.method === "HEAD";
+  if (!alvo.host) return liso(404, "Not found.");
+
+  // Estático não consulta o banco. Reusa a regra de hoje (asset ausente = 404, nunca HTML) e
+  // estende para a mídia: arquivo que não existe não pode devolver a casca da Guileo aqui.
+  if (ehEstatico(path)) {
+    const res = await legado(context);
+    if ((res.headers.get("content-type") || "").includes("text/html")) return liso(404, "Not found.");
+    if (alvo.prova || !res.headers.has("strict-transport-security")) return res;
+    return new Response(res.body, { status: res.status, statusText: res.statusText, headers: hstsSoDoHost(new Headers(res.headers)) });
+  }
+
+  const d = await buscarDominio(context, alvo.host);
+  if (d.estado === "erro") return fora();
+  if (d.estado !== "ok") return liso(404, "This domain is not configured.");
+  const linha = d.linha;
+
+  // apex ↔ www: um site, um endereço. A forma gravada na linha é a canônica.
+  if (alvo.host !== linha.host) {
+    return new Response(null, {
+      status: leitura ? 301 : 308,
+      headers: { location: `https://${linha.host}${path}${url.search}`, "cache-control": "no-store" },
+    });
+  }
+
+  // kind 'site' (/site/<slug>) ainda NÃO tem cabeça de servidor para domínio próprio, e vitrine
+  // sem registro em VITRINES também não: melhor um 503 honesto do que um <head> genérico.
+  if (linha.kind !== "vitrine" || !VITRINES[linha.slug]) {
+    return liso(503, "This site is not ready on this domain yet.", { "retry-after": "3600" });
+  }
+
+  const rota = rotaDoCliente(path, linha.slug);
+  if (rota.tipo === "api") {
+    if (alvo.prova) return legado(context);
+    const trocado = comOrigemNossa(request, linha.host, linha.slug);
+    return trocado ? context.next(trocado) : context.next();
+  }
+  if (!leitura) return liso(405, "Method not allowed.", { allow: "GET, HEAD" });
+
+  if (rota.tipo === "robots") {
+    return new Response(robotsTxtDoCliente(linha), {
+      headers: { "content-type": "text/plain; charset=utf-8", "cache-control": alvo.prova ? "no-store" : "public, max-age=300" },
+    });
+  }
+  if (rota.tipo === "sitemap") {
+    return new Response(sitemapDoCliente(linha), {
+      headers: { "content-type": "application/xml; charset=utf-8", "cache-control": alvo.prova ? "no-store" : "public, max-age=300" },
+    });
+  }
+  // endereço do site ANTIGO do cliente (WordPress) → o equivalente aqui, permanente (dominio.js · ANTIGOS)
+  if (rota.tipo === "redirecionar") {
+    return new Response(null, { status: 301, headers: { location: `https://${linha.host}${rota.para}`, "cache-control": "public, max-age=3600" } });
+  }
+  if (rota.tipo !== "pagina") {
+    return new Response(`<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>Page not found</title><p>Page not found. <a href="/">Go to the home page</a></p>\n`, {
+      status: 404,
+      headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow" },
+    });
+  }
+
+  // "/astoria/" e "/Astoria" são a mesma página de "/astoria": um endereço só.
+  const certo = rota.unidade ? `/${rota.unidade.caminho}` : "/";
+  if (path !== certo) {
+    return new Response(null, { status: 301, headers: { location: `https://${linha.host}${certo}${url.search}`, "cache-control": "no-store" } });
+  }
+
+  const cab = cabecaDoCliente({ slug: linha.slug, host: linha.host, indexable: linha.indexable, unidade: rota.unidade ? rota.unidade.id : null });
+  const casca = await pegarCasca(context);
+  const html = casca && cab ? reescreverCabeca(casca.html, cab, bootDoCliente(linha)) : null;
+  if (!html) return fora();
+
+  const headers = alvo.prova ? new Headers(casca.headers) : hstsSoDoHost(new Headers(casca.headers));
+  ["content-length", "content-encoding", "etag", "last-modified"].forEach((n) => headers.delete(n));
+  headers.set("content-type", "text/html; charset=utf-8");
+  // Na prova o endereço é guileoai.com: esta resposta jamais pode ficar em cache nenhum.
+  headers.set("cache-control", alvo.prova ? "no-store" : "public, max-age=0, must-revalidate");
+  if (!linha.indexable) headers.set("x-robots-tag", "noindex, nofollow");
+  return new Response(request.method === "HEAD" ? null : html, { status: 200, headers });
+}
+
+export async function onRequest(context) {
+  const alvo = alvoDoPedido(context);
+  if (!alvo) return legado(context); // host NOSSO: o comportamento de sempre, e mais nada.
+  try {
+    return await servirCliente(context, alvo);
+  } catch {
+    return fora(); // domínio de cliente nunca cai no site da Guileo — nem por exceção.
+  }
+}
+
 
 // Route → { title, description } — trilingual where the page is a funnel page (?lang=pt|es),
 // plain strings elsewhere. Keep in sync with each page's useSeo().
@@ -94,7 +347,10 @@ const ROUTES = {
   "/compliance": { title: "Compliance | Guileo", description: "Guileo's approach to TCPA, HIPAA-aligned handling, GDPR and responsible AI." },
 };
 
-export async function onRequest(context) {
+// ── O SITE DA GUILEO, COMO SEMPRE FOI ────────────────────────────────────────────────────────
+// Corpo intocado do onRequest anterior. Só mudou o nome: o onRequest (no topo) chama esta função
+// direto, sem mais nada, quando o host é nosso.
+export async function legado(context) {
   const { request } = context;
   // HEAD também: `curl -I` num asset ausente devolvia 200 com HTML e podia semear o cache —
   // a sonda que eu usei pra "provar" a correção estava furando a própria correção.
@@ -105,11 +361,11 @@ export async function onRequest(context) {
   // when a route is added. Generous by design — a missing entry only softens a real 404, never blocks
   // a valid page (which would be far worse).
   const KNOWN_SEGMENTS = new Set([
-    "academia", "admin", "agente", "ai-receptionist", "blog", "calculator", "cola", "colaborador", "compliance",
+    "agendar", "f", "minha-reserva", "minha-conta", "academia", "admin", "agente", "classica", "ai-receptionist", "blog", "nova", "calculator", "cola", "colaborador", "compliance",
     "conectar-stripe", "consulting", "consultoria", "contact", "cookies", "cancellation", "deck", "demo",
     "for", "get-paid", "go-live", "grader", "health-compliance", "hipaa", "home-services", "kit",
     "lead-generation", "leads", "live", "lp", "marketing", "sms", "nossa-gente", "parceiro", "partners", "pitch",
-    "planos", "plans",
+    "planos", "plans", "desk", "balcao", "projeto",
     // 🚨 ROTA NOVA SEM ESTE NOME = 404 REAL EM PRODUÇÃO (o teste `rotas.test.mjs` pegou as duas).
     // A página existe no App.jsx e abre no navegador em desenvolvimento; em produção o middleware
     // devolve 404 porque o primeiro segmento não está nesta lista. É a armadilha que já mordeu
@@ -160,12 +416,23 @@ export async function onRequest(context) {
     // versão em PORTUGUÊS do mesmo Growth Report (payload próprio, escrito pelo motor em pt —
     // não é a mesma página traduzida na moldura: as evidências e premissas nascem em pt).
     "natura-pt",
+    "natura-setup", // checklist da implantação que a Natura preenche (2026-10-18)
     // SEXTO caso da rota-que-nasce-404 (24/08). /presente/<negocio> são páginas ESTÁTICAS de
     // prospecção — um HTML por prospect, servido de public/, fora do SPA. O link vai dentro de um
     // e-mail para o dono de um negócio real: um 404 aqui não custa tráfego, custa a única chance
     // de primeira impressão que existe. Estático em public/ NÃO basta — este middleware roda antes.
     "presente",
+    // Apresentação da Guileo para a dona da Natura (2026-10-01), em português e em inglês. Páginas
+    // ESTÁTICAS em public/, fora do SPA, com noindex — o link vai direto para a cliente.
+    "natura-apresentacao", "natura-presentation",
   ]);
+  // /sign?t=… — prévia do link de assinatura (iMessage/WhatsApp): o <head> certo no HTML cru.
+  // Natura → capa da parceria; resto → cartão neutro. Ver functions/lib/signOg.js.
+  if (path === "/sign" && request.method === "GET") return signOg(context);
+  // /projeto?t=… — prévia do link do acompanhamento de projeto (functions/lib/projetoOg.js).
+  if (path === "/projeto" && request.method === "GET") return projetoOg(context);
+  // /natura-setup — prévia do link com a capa Natura × Guileo (checklist da implantação).
+  if (path === "/natura-setup" && request.method === "GET") return cartaoFixoOg(context, CARTAO_NATURA_SETUP, "https://guileoai.com/natura-setup");
   const meta = ROUTES[path];
   if (meta) {
     const lang = langFromUrl(request.url);

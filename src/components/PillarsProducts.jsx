@@ -71,7 +71,9 @@ import { productsForPilar } from "../data/productSystem.js";
 // TETO DE 4: acima disso o olho para de ler item e passa a ver "lista". O "+N" mantém a promessa
 // honesta (o resto existe) sem transformar o card num inventário — e equilibra os três visualmente,
 // que era metade da confusão.
-const MAX_CHIPS = 4;
+// 2026-09-10 (Luis): a grade dos 18 serviços e os 3 pilares eram duas listas parecidas em sequência.
+// FUNDIDAS: cada pilar mostra TODOS os seus produtos (fonte: productSystem.js), sem "+N".
+const MAX_CHIPS = 99;
 // Rótulo do estado aberto. Fora do dicionário grande de propósito: é a única string que nasceu
 // com o botão, e mantê-la colada nele evita que a próxima pessoa mexa num sem lembrar do outro.
 const MENOS = { en: "− less", pt: "− menos", es: "− menos", hi: "− कम" };
@@ -99,12 +101,12 @@ const produtosDoPilar = (pilar, lang, tudo = false) => {
 // e acrescenta os números MEDIDOS daquele negócio embaixo de cada pilar.
 export const PILLAR_COPY = {
   en: {
-    eyebrow: "Three pillars · one system",
+    eyebrow: "Three pillars · 18 services · one system",
     equipe: {
       eyebrow: "One team · always on",
       h1a: "The whole team you'd hire. ", h1b: "Already working.",
-      sub: "Customer service, sales, ads, marketing, content, automations, training and metrics — <b>twelve jobs, three engines, no payroll.</b>",
-      fechoA: "Twelve jobs. Three engines. ", fechoB: "One invoice.",
+      sub: "Customer service, sales, ads, marketing, content, automations, training and metrics — <b>every job you'd hire, three engines, no payroll.</b>",
+      fechoA: "Every job you'd hire. Three engines. ", fechoB: "One invoice.",
       fechoSub: "The team runs while you work. A human supervises. You keep the only job that was ever yours.",
       resultado: { brain: "Nobody waits", ad: "Nothing is guessed", build: "Built once, runs forever" },
       funcoes: {
@@ -143,12 +145,12 @@ export const PILLAR_COPY = {
     ],
   },
   pt: {
-    eyebrow: "Três pilares · um sistema",
+    eyebrow: "Três pilares · 18 serviços · um sistema",
     equipe: {
       eyebrow: "Um time só · sempre de plantão",
       h1a: "O time inteiro que você contrataria. ", h1b: "Já trabalhando.",
-      sub: "Atendimento, vendas, anúncios, marketing, conteúdo, automações, treinamento e métricas — <b>doze funções, três motores, zero folha de pagamento.</b>",
-      fechoA: "Doze funções. Três motores. ", fechoB: "Uma fatura só.",
+      sub: "Atendimento, vendas, anúncios, marketing, conteúdo, automações, treinamento e métricas — <b>toda função que você contrataria, três motores, zero folha de pagamento.</b>",
+      fechoA: "Toda função que você contrataria. Três motores. ", fechoB: "Uma fatura só.",
       fechoSub: "O time roda enquanto você trabalha. Um humano supervisiona. Você fica só com o trabalho que sempre foi seu.",
       resultado: { brain: "Ninguém espera", ad: "Nada é no chute", build: "Feito uma vez, roda pra sempre" },
       funcoes: {
@@ -187,12 +189,12 @@ export const PILLAR_COPY = {
     ],
   },
   es: {
-    eyebrow: "Tres pilares · un sistema",
+    eyebrow: "Tres pilares · 18 servicios · un sistema",
     equipe: {
       eyebrow: "Un solo equipo · siempre activo",
       h1a: "El equipo entero que contratarías. ", h1b: "Ya trabajando.",
-      sub: "Atención, ventas, anuncios, marketing, contenido, automatizaciones, formación y métricas — <b>doce funciones, tres motores, cero nómina.</b>",
-      fechoA: "Doce funciones. Tres motores. ", fechoB: "Una sola factura.",
+      sub: "Atención, ventas, anuncios, marketing, contenido, automatizaciones, formación y métricas — <b>cada puesto que contratarías, tres motores, cero nómina.</b>",
+      fechoA: "Cada puesto que contratarías. Tres motores. ", fechoB: "Una sola factura.",
       fechoSub: "El equipo trabaja mientras tú trabajas. Un humano supervisa. Te quedas solo con el trabajo que siempre fue tuyo.",
       resultado: { brain: "Nadie espera", ad: "Nada al azar", build: "Hecho una vez, corre siempre" },
       funcoes: {
@@ -231,12 +233,12 @@ export const PILLAR_COPY = {
     ],
   },
   hi: {
-    eyebrow: "तीन स्तंभ · एक सिस्टम",
+    eyebrow: "तीन स्तंभ · 18 सेवाएँ · एक सिस्टम",
     equipe: {
       eyebrow: "एक ही टीम · हमेशा तैनात",
       h1a: "पूरी टीम जिसे आप रखते। ", h1b: "पहले से काम पर।",
-      sub: "ग्राहक सेवा, बिक्री, विज्ञापन, मार्केटिंग, कॉन्टेंट, ऑटोमेशन, ट्रेनिंग और मेट्रिक्स — <b>बारह काम, तीन इंजन, कोई पेरोल नहीं।</b>",
-      fechoA: "बारह काम। तीन इंजन। ", fechoB: "एक ही बिल।",
+      sub: "ग्राहक सेवा, बिक्री, विज्ञापन, मार्केटिंग, कॉन्टेंट, ऑटोमेशन, ट्रेनिंग और मेट्रिक्स — <b>हर वो काम जो आप हायर करते, तीन इंजन, कोई पेरोल नहीं।</b>",
+      fechoA: "हर वो काम जो आप हायर करते। तीन इंजन। ", fechoB: "एक ही बिल।",
       fechoSub: "आपके काम करते हुए टीम चलती रहती है। एक इंसान निगरानी करता है। आपके पास वही काम बचता है जो हमेशा आपका था।",
       resultado: { brain: "कोई इंतज़ार नहीं", ad: "कुछ भी अंदाज़े पर नहीं", build: "एक बार बना, हमेशा चले" },
       funcoes: {
@@ -340,7 +342,23 @@ export default function PillarsProducts() {
         <Stagger className="mt-12 grid grid-cols-1 gap-4 lg:grid-cols-3" gap={0.1}>
           {t.pillars.map((p) => {
             const rgb = hexToRgb(p.accent);
-            const fns = e.funcoes?.[p.pilar] || [];
+            // FUSÃO (Luis, 2026-09-10: "faz o 2"): as 12 funções escritas à mão saem; entram os 18 PRODUTOS
+            // reais do pilar, da fonte única (productSystem.js) — o mesmo alfabeto de sinal ciclando.
+            // A dor (1ª oração do `result`) vira a linha de baixo; o nome do produto, a de cima.
+            const SIG = ["gui", "feito", "info", "live"];
+            // CLAREZA (Luis, 2026-09-10: "a foto 2 precisa ser mais fácil de entender"): a linha de baixo é o
+            // RESULTADO em número (resultMetric: "+$2k–11k /mo recovered", "21× more conversions"), não a
+            // frase da dor cortada no meio. Quem passa o olho leva nome + número.
+            const todos = productsForPilar(p.pilar).map((pr, i) => {
+              const nome = (pr.name && (pr.name[lang] || pr.name.en)) || "";
+              const rm = pr.resultMetric || {};
+              const unidade = (rm.unit && (rm.unit[lang] || rm.unit.en)) || "";
+              const cat = (pr.category && (pr.category[lang] || pr.category.en)) || "";
+              const linha = rm.value ? `${rm.value} ${unidade}`.trim() : cat;
+              return [pr.icon, nome, linha, SIG[i % SIG.length]];
+            });
+            const maisAberto = aberto === p.pilar;
+            const fns = todos;
             return (
               <Item key={p.badge} variant="up">
                 <article className="relative flex h-full flex-col overflow-hidden rounded-[20px] border border-white/10 backdrop-blur-sm"
@@ -363,10 +381,12 @@ export default function PillarsProducts() {
                     </div>
                   </div>
 
-                  <div className="grid flex-1 gap-2 px-3 pb-1 pt-3">
+                  {/* a linha do pilar: o que ele é, em uma frase — antes da lista */}
+                  <p className="px-4 pt-3 text-[12.5px] leading-snug text-g-ink">{p.line}</p>
+                  <div className="grid flex-1 content-start gap-2 px-3 pb-1 pt-3">
                     {fns.map(([ico, nome, desc, sig], fi) => (
                       <div key={fi}
-                        className="flex items-center gap-2.5 rounded-[13px] border border-white/[0.07] bg-white/[0.025] px-3 py-2.5 transition-[transform,background,border-color] duration-[250ms] hover:-translate-y-0.5 hover:border-white/[0.15] hover:bg-white/[0.06]"
+                        className={`${fi >= 4 && !maisAberto ? "hidden sm:flex " : ""}flex items-center gap-2.5 rounded-[13px] border border-white/[0.07] bg-white/[0.025] px-3 py-2.5 transition-[transform,background,border-color] duration-[250ms] hover:-translate-y-0.5 hover:border-white/[0.15] hover:bg-white/[0.06]`}
                         style={{ animation: `pwin .6s cubic-bezier(.2,.7,.2,1) ${0.15 + fi * 0.1}s both` }}>
                         <span aria-hidden="true" className="w-[21px] shrink-0 text-center text-[17px]">{ico}</span>
                         <div className="min-w-0 flex-1">
@@ -381,6 +401,12 @@ export default function PillarsProducts() {
                           }} />
                       </div>
                     ))}
+                    {fns.length > 4 && (
+                      <button type="button" onClick={() => setAberto(maisAberto ? null : p.pilar)}
+                        className="mt-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-[12px] font-bold text-g-word sm:hidden">
+                        {maisAberto ? MENOS[lang] || MENOS.en : `+${fns.length - 4}`}
+                      </button>
+                    )}
                   </div>
 
                   {/* o resultado — centralizado, alinhado entre os três porque o corpo é flex-1 */}

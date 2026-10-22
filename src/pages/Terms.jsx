@@ -33,6 +33,15 @@ const EN_SECTIONS = [
     <p><strong>Message frequency varies</strong> by how you interact with us — typically a few messages per appointment or enquiry. <strong>Message and data rates may apply.</strong></p>
     <p>Reply <strong>STOP</strong> to any message to opt out at any time; you will receive one confirmation and no further messages. Reply <strong>HELP</strong> for help, or contact us at <a href="mailto:smart@guileoai.com">smart@guileoai.com</a>. Carriers are not liable for delayed or undelivered messages. See our <a href="/privacy">Privacy Policy</a>.</p>
   </div> },
+  // SEÇÃO NOVA (2026-09-27). Os Termos cobriam SMS em detalhe (exigência da operadora) e deixavam
+  // a LIGAÇÃO feita pela IA só na Política de Privacidade. Quem pede "me liga" precisa ler aqui,
+  // em língua simples: quem liga é uma IA, pode ser gravado, como parar, e para onde ligamos.
+  // ⚠️ ES_HEADINGS e HI_HEADINGS casam por ÍNDICE — o título novo entrou na mesma posição lá.
+  { h: "Phone calls placed by our AI (US)", body: <div className="space-y-2">
+    <p>When you give us your phone number and ask for a call, that call may be placed by <strong>Gui, our AI voice agent</strong>, using automated technology, and it may be recorded and transcribed. <strong>Consent is never a condition of purchase.</strong></p>
+    <p>To stop receiving calls, say so during the call or write to <a href="mailto:smart@guileoai.com">smart@guileoai.com</a>; we honor the request promptly.</p>
+    <p>We currently place calls only to numbers in the <strong>United States, Canada and Brazil</strong>. Calls depend on our telephony provider: if we cannot call you, a member of our team contacts you through another channel you gave us.</p>
+  </div> },
   { h: "Warranties, results and limitation of liability", body: <p>The service is provided <strong>AS-IS</strong>, without warranty of any specific outcome. Any metrics, gains or figures shown in our marketing are <strong>illustrative</strong> and do not constitute a promise of performance — <strong>results are not guaranteed</strong> and vary by your market, offer and execution. The actual guarantee we offer is the <strong>30-day money-back guarantee</strong> described under "Commercial guarantee." To the maximum extent permitted by law, liability is limited to the fees paid for the <strong>last 3 months</strong> of service. Excluded: business results, lost profits and third-party failures. Two-year limitation period for claims.</p> },
   { h: "Indemnification", body: <p>Each party will indemnify the other for damages arising from breach of these Terms, of law, or of third-party rights. You indemnify Guileo, in particular, for claims related to the content, data or consents you provided.</p> },
   { h: "Force majeure", body: <p>Neither party is liable for delays or failures caused by events beyond its reasonable control (disasters, provider outages, government action, internet failures).</p> },
@@ -70,6 +79,12 @@ const PT_SECTIONS = [
     <p><strong>A frequência de mensagens varia</strong> conforme sua interação — normalmente algumas mensagens por atendimento. <strong>Podem incidir tarifas de mensagem e dados.</strong></p>
     <p>Responda <strong>STOP</strong> em qualquer mensagem para sair a qualquer momento; você recebe uma confirmação e nenhuma mensagem depois disso. Responda <strong>HELP</strong> para ajuda, ou fale com a gente em <a href="mailto:smart@guileoai.com">smart@guileoai.com</a>. As operadoras não se responsabilizam por mensagens atrasadas ou não entregues. Veja nossa <a href="/privacy">Política de Privacidade</a>.</p>
   </div> },
+  // Espelho PT da seção nova (mesma posição da lista em inglês).
+  { h: "Ligações feitas pela nossa IA (EUA)", body: <div className="space-y-2">
+    <p>Quando você informa seu telefone e pede uma ligação, ela pode ser feita pela <strong>Gui, nossa agente de voz com IA</strong>, por tecnologia automatizada, e pode ser gravada e transcrita. O <strong>consentimento nunca é condição de compra</strong>.</p>
+    <p>Para parar de receber ligações, avise durante a chamada ou escreva para <a href="mailto:smart@guileoai.com">smart@guileoai.com</a>; atendemos o pedido prontamente.</p>
+    <p>Hoje ligamos apenas para números dos <strong>Estados Unidos, Canadá e Brasil</strong>. As ligações dependem do nosso provedor de telefonia: se não for possível ligar, alguém do nosso time fala com você por outro canal que você tenha informado.</p>
+  </div> },
   { h: "Garantias, resultados e limitação de responsabilidade", body: <p>O serviço é fornecido <strong>"no estado em que se encontra" (AS-IS)</strong>, sem garantia de resultado específico. Quaisquer métricas, ganhos ou números mostrados em nosso marketing são <strong>ilustrativos</strong> e não constituem promessa de desempenho — <strong>resultados não são garantidos</strong> e variam conforme seu mercado, oferta e execução. A garantia efetiva que oferecemos é a <strong>garantia de reembolso de 30 dias</strong> descrita em "Garantia comercial". Responsabilidade limitada ao <strong>valor dos últimos 3 meses</strong> de serviço. Excluídos: resultados de negócio, lucros cessantes e falhas de terceiros. Prazo prescricional de 2 anos.</p> },
   { h: "Indenização", body: <p>Cada parte indenizará a outra por danos decorrentes de violação destes Termos, da lei ou de direitos de terceiros. Você nos indeniza, em especial, por reclamações ligadas ao conteúdo, dados ou consentimentos que você forneceu.</p> },
   { h: "Força maior", body: <p>Nenhuma parte responde por atrasos ou falhas causados por eventos fora de seu controle razoável (desastres, panes de provedores, ações governamentais, falhas de internet).</p> },
@@ -86,34 +101,34 @@ const PT_SECTIONS = [
 ];
 
 // ---- ES / HI: translated headings over the official English body ----
-const ES_HEADINGS = ["Objeto", "Cuenta y elegibilidad", "Precio y pago", "Planes, créditos y facturación", "Suspensión e impago", "Revisiones y change orders", "Garantía comercial", "Propiedad intelectual", "Confidencialidad", "Aviso sobre la IA", "Servicios de terceros", "Protección de datos y privacidad", "Programa de mensajes SMS (EE. UU.)", "Garantías, resultados y limitación de responsabilidad", "Indemnización", "Fuerza mayor", "Terminación", "Uso aceptable", "No contratación", "Ley aplicable y jurisdicción", "Disposiciones generales", "Cambios y contacto"];
-const HI_HEADINGS = ["सेवाओं का दायरा", "खाता और पात्रता", "शुल्क और भुगतान", "प्लान, क्रेडिट और बिलिंग", "निलंबन और भुगतान-चूक", "संशोधन और चेंज ऑर्डर", "व्यावसायिक गारंटी", "बौद्धिक संपदा", "गोपनीयता (Confidentiality)", "AI संबंधी सूचना", "थर्ड-पार्टी सेवाएँ", "डेटा संरक्षण और गोपनीयता", "SMS मैसेजिंग प्रोग्राम (US)", "वारंटी, परिणाम और दायित्व की सीमा", "क्षतिपूर्ति", "अप्रत्याशित घटना (Force majeure)", "समाप्ति", "स्वीकार्य उपयोग", "प्रत्यक्ष नियुक्ति निषेध", "लागू कानून और क्षेत्राधिकार", "सामान्य प्रावधान", "परिवर्तन और संपर्क"];
+const ES_HEADINGS = ["Objeto", "Cuenta y elegibilidad", "Precio y pago", "Planes, créditos y facturación", "Suspensión e impago", "Revisiones y change orders", "Garantía comercial", "Propiedad intelectual", "Confidencialidad", "Aviso sobre la IA", "Servicios de terceros", "Protección de datos y privacidad", "Programa de mensajes SMS (EE. UU.)", "Llamadas hechas por nuestra IA (EE. UU.)", "Garantías, resultados y limitación de responsabilidad", "Indemnización", "Fuerza mayor", "Terminación", "Uso aceptable", "No contratación", "Ley aplicable y jurisdicción", "Disposiciones generales", "Cambios y contacto"];
+const HI_HEADINGS = ["सेवाओं का दायरा", "खाता और पात्रता", "शुल्क और भुगतान", "प्लान, क्रेडिट और बिलिंग", "निलंबन और भुगतान-चूक", "संशोधन और चेंज ऑर्डर", "व्यावसायिक गारंटी", "बौद्धिक संपदा", "गोपनीयता (Confidentiality)", "AI संबंधी सूचना", "थर्ड-पार्टी सेवाएँ", "डेटा संरक्षण और गोपनीयता", "SMS मैसेजिंग प्रोग्राम (US)", "हमारी AI द्वारा किए गए फ़ोन कॉल (US)", "वारंटी, परिणाम और दायित्व की सीमा", "क्षतिपूर्ति", "अप्रत्याशित घटना (Force majeure)", "समाप्ति", "स्वीकार्य उपयोग", "प्रत्यक्ष नियुक्ति निषेध", "लागू कानून और क्षेत्राधिकार", "सामान्य प्रावधान", "परिवर्तन और संपर्क"];
 
 const D = {
   en: {
     title: "Terms of Service",
-    updated: "June 9, 2026",
+    updated: "September 27, 2026",
     note: <>ℹ️ This is a <span className="font-bold text-g-word">summary of Guileo's standard terms</span>. The signed services agreement between the parties prevails over this summary.</>,
     intro: <>These Terms summarize Guileo's (ORIGEM LTDA) standard service conditions. The signed services agreement between the parties, with its scope and 12 clauses, prevails over this summary. <span className="block mt-2 text-g-muted">Guileo serves customers in the United States (US$ pricing) and in Brazil; the governing-law clause below is split by region.</span></>,
     sections: EN_SECTIONS,
   },
   pt: {
     title: "Termos de Serviço",
-    updated: "9 de junho de 2026",
+    updated: "27 de setembro de 2026",
     note: <>ℹ️ Este é um <span className="font-bold text-g-word">resumo dos termos padrão da Guileo</span>. O contrato assinado entre as partes prevalece.</>,
     intro: <>Estes Termos resumem as condições padrão de prestação de serviços da Guileo (ORIGEM LTDA). O contrato de prestação de serviços assinado entre as partes, com seu escopo e 12 cláusulas, prevalece sobre este resumo. <span className="block mt-2 text-g-muted">A Guileo atende clientes nos Estados Unidos (preços em US$) e no Brasil; a cláusula de lei aplicável abaixo é dividida por região.</span></>,
     sections: PT_SECTIONS,
   },
   es: {
     title: "Términos de Servicio",
-    updated: "9 de junio de 2026",
+    updated: "27 de septiembre de 2026",
     note: <>ℹ️ Este es un <span className="font-bold text-g-word">resumen de los términos estándar de Guileo</span>. El contrato firmado entre las partes prevalece. <span className="block mt-1 font-bold">Versión legal oficial en inglés — el texto de las secciones se muestra en inglés.</span></>,
     intro: <>Estos Términos resumen las condiciones estándar de servicio de Guileo (ORIGEM LTDA). El contrato de servicios firmado entre las partes prevalece sobre este resumen. <span className="block mt-2 text-g-muted">Guileo atiende clientes en Estados Unidos (precios en US$) y en Brasil; la cláusula de ley aplicable está dividida por región.</span></>,
     sections: EN_SECTIONS.map((s, i) => ({ h: ES_HEADINGS[i] || s.h, body: s.body })),
   },
   hi: {
     title: "सेवा की शर्तें",
-    updated: "9 जून 2026",
+    updated: "27 सितंबर 2026",
     note: <>ℹ️ यह Guileo की <span className="font-bold text-g-word">मानक शर्तों का सारांश</span> है। पक्षों के बीच हस्ताक्षरित अनुबंध प्रभावी रहेगा। <span className="block mt-1 font-bold">आधिकारिक कानूनी संस्करण अंग्रेज़ी में है — अनुभागों का पाठ अंग्रेज़ी में दिखाया गया है।</span></>,
     intro: <>ये शर्तें Guileo (ORIGEM LTDA) की मानक सेवा शर्तों का सारांश हैं। पक्षों के बीच हस्ताक्षरित सेवा अनुबंध इस सारांश पर प्रभावी रहेगा। <span className="block mt-2 text-g-muted">Guileo संयुक्त राज्य अमेरिका (US$ मूल्य) और ब्राज़ील में ग्राहकों को सेवा देता है; नीचे लागू-कानून खंड क्षेत्र के अनुसार विभाजित है।</span></>,
     sections: EN_SECTIONS.map((s, i) => ({ h: HI_HEADINGS[i] || s.h, body: s.body })),

@@ -4,8 +4,20 @@ import { portalApi, toast } from "../lib/portalApi.js";
 import { genConvos, tr, Card, EVENT_ICON, relTime, Empty } from "../pages/Portal.jsx";
 
 function Convos({ V, title, real = null }) {
-  const list = V.convos || genConvos(V);
+  // 🚨 TODOS OS HOOKS ANTES DE QUALQUER `return` (2026-09-28). O `if (real) return` ficava ENTRE
+  // o primeiro useState e os outros dois. Recarregar em ?tab=whatsapp / ?tab=sms desenha primeiro
+  // com real=null (3 hooks) e, quando os dados chegam, com real (1 hook): o React acusa "Rendered
+  // fewer hooks than expected" e a tela inteira cai — justo na aba que a cliente deixou aberta.
+  // A amostra só é gerada fora do modo real: conversa inventada não entra nem no estado.
+  const list = real ? [] : (V.convos || genConvos(V));
   const [active, setActive] = useState(0);
+  const [draft, setDraft] = useState("");
+  const [threads, setThreads] = useState(() => Object.fromEntries(list.map((c, i) => [i, [
+    { from: "them", text: c.last },
+    { from: "ai", text: "Hi! Thanks for reaching out 😊 I can take care of that right now." },
+    { from: "them", text: "Perfect, yes please." },
+    { from: "ai", text: "All set ✅ Anything else I can help you with?" },
+  ]])));
   // REAL MODE — every real conversation (calls + messages) your AI handled.
   if (real) {
     // Channel-scoped: the WhatsApp tab shows whatsapp threads, the SMS tab shows sms —
@@ -32,14 +44,10 @@ function Convos({ V, title, real = null }) {
       </div>
     );
   }
-  const [draft, setDraft] = useState("");
-  const [threads, setThreads] = useState(() => Object.fromEntries(list.map((c, i) => [i, [
-    { from: "them", text: c.last },
-    { from: "ai", text: "Hi! Thanks for reaching out 😊 I can take care of that right now." },
-    { from: "them", text: "Perfect, yes please." },
-    { from: "ai", text: "All set ✅ Anything else I can help you with?" },
-  ]])));
-  const send = (e) => { e.preventDefault(); if (!draft.trim()) return; portalApi.sendMessage(title, active, draft); setThreads((t) => ({ ...t, [active]: [...(t[active] || []), { from: "you", text: draft }] })); setDraft(""); toast("Reply sent ✓"); };
+  // Daqui para baixo é só DEMONSTRAÇÃO (o modo real já saiu acima). Como o estado das conversas
+  // nasce uma vez só, quem montou a aba em modo real e depois perdeu a chave vê a lista de amostra
+  // com o fio vazio — nunca o contrário (amostra dentro de conta conectada).
+  const send = (e) => { e.preventDefault(); if (!draft.trim()) return; portalApi.sendMessage(title, active, draft); setThreads((t) => ({ ...t, [active]: [...(t[active] || []), { from: "you", text: draft }] })); setDraft(""); toast(tr("Demo — reply added to this sample thread. Nothing was sent.")); };
   const c = list[active] || {};
   return (
     <div className="grid lg:grid-cols-3 gap-4 lg:h-[34rem]">
@@ -48,7 +56,7 @@ function Convos({ V, title, real = null }) {
         <div className="divide-y divide-white/[0.06] overflow-y-auto">
           {list.map((cc, i) => (
             <button key={i} onClick={() => setActive(i)} className={`w-full text-left flex items-center gap-3 px-4 py-3 transition ${i === active ? "bg-white/[0.06]" : "hover:bg-white/[0.03]"}`}>
-              <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word shrink-0">{cc.name[0]}</span>
+              <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] text-sm font-bold text-g-word shrink-0">{(cc.name || "?")[0]}</span>
               <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{cc.name}</div><div className="text-[11px] text-g-muted truncate">{cc.last}</div></div>
               <div className="text-right shrink-0"><div className="text-[10px] text-g-muted">{cc.t}</div>{cc.unread > 0 && <span className="inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-g-green text-[10px] font-bold text-black mt-0.5">{cc.unread}</span>}</div>
             </button>

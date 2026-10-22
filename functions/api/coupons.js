@@ -182,8 +182,19 @@ export async function onRequestPost(context) {
       }
 
       // Resolve audience → recipient contacts (crm_contacts, else biz_appointments emails).
-      const ar = await rpc("campaign_audience", { p_secret: secret, p_client_email: email, p_segment: (campaign.audience || "all").toString(), p_limit: 500 });
-      const audience = ar.ok ? ((await ar.json().catch(() => [])) || []) : [];
+      // PÚBLICO CRUZADO (2026-10-05, slide 19): "cruzada:<unidade_de>:<unidade_para>" = quem veio à unidade DE e
+      // nunca foi à PARA (desk_publico_cruzado_svc, só service_role; já tira os descadastrados). Leitura que falha
+      // = ninguém (nunca "todo mundo").
+      const seg = (campaign.audience || "all").toString();
+      const cruz = /^cruzada:([0-9a-f-]{36}):([0-9a-f-]{36})$/i.exec(seg);
+      let audience;
+      if (cruz) {
+        const pc = await svcJson(env, "desk_publico_cruzado_svc", { p_tenant: email, p_de: cruz[1], p_para: cruz[2], p_limit: 500 });
+        audience = Array.isArray(pc) ? pc : [];
+      } else {
+        const ar = await rpc("campaign_audience", { p_secret: secret, p_client_email: email, p_segment: seg, p_limit: 500 });
+        audience = ar.ok ? ((await ar.json().catch(() => [])) || []) : [];
+      }
       // Dedup + cap the batch (best-effort broadcast, keep it sane).
       const seen = new Set();
       const recipients = [];
@@ -195,17 +206,23 @@ export async function onRequestPost(context) {
         if (recipients.length >= 300) break;
       }
 
-      // CAN-SPAM (adversarial review 2026-07-30) — drop anyone who unsubscribed from THIS client's
-      // marketing. Best-effort read (service_role, per-tenant): a transient failure never blocks the
-      // whole campaign, but a live suppression is always honored.
+      // CAN-SPAM — tira quem se descadastrou do marketing DESTE negócio. FAIL-CLOSED (2026-10-01):
+      // antes, se a lista não pudesse ser lida, a campanha saía para todo mundo ("raro"). Raro e
+      // caro: mandar promoção a quem pediu para sair é a única falha aqui que não tem conserto.
+      // Lista não lida → a campanha não sai, e a tela diz por quê; o dono tenta de novo.
+      let supLida = false;
       try {
         const supR = await svcRpc(env, "email_suppressed_list", { p_secret: env.INGEST_SECRET || "", p_client_email: email });
         if (supR.ok) {
-          const raw = await supR.json().catch(() => []);
-          const sup = new Set((Array.isArray(raw) ? raw : []).map((x) => String(x).toLowerCase()));
-          if (sup.size) for (let i = recipients.length - 1; i >= 0; i--) if (sup.has(recipients[i].email)) recipients.splice(i, 1);
+          const raw = await supR.json().catch(() => null);
+          if (Array.isArray(raw)) {
+            supLida = true;
+            const sup = new Set(raw.map((x) => String(x).toLowerCase()));
+            if (sup.size) for (let i = recipients.length - 1; i >= 0; i--) if (sup.has(recipients[i].email)) recipients.splice(i, 1);
+          }
         }
-      } catch { /* suppression read failed → send to the resolved audience (rare) */ }
+      } catch { /* supLida fica false → a campanha não sai */ }
+      if (!supLida) return json({ ok: false, sent: 0, reason: "unsubscribe_list_unavailable", note: "Could not read the unsubscribe list, so nothing was sent. Please try again in a moment." }, 503);
 
       // PER-RECIPIENT IDEMPOTENCY (adversarial review 2026-07-30) — for a SAVED campaign, drop anyone
       // this campaign already emailed, so a re-send / partial-retry NEVER double-emails or double-charges.

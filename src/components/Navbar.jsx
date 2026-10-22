@@ -3,6 +3,20 @@ import { FaGaugeHigh } from "react-icons/fa6";
 import logo from "../assets/guileo-mark.png";
 import { useLang } from "../i18n.jsx";
 import { ScrollProgress } from "../lib/ui.jsx";
+// 2026-09-10 (Luis): o menu puxava pra self-service ("Demo", "Pricing", "Plans" em dourado) enquanto a
+// página inteira diz "fale com a Gui". Saíram Demo e Pricing; Plans virou link comum; Get Started ABRE a Gui.
+// ⚠️ BOTÃO MORTO FORA DA LANDING (corrigido 2026-09-27). O widget da Gui só é montado onde existe
+// <HeroOS /> ("/" e "/nova"). Este menu, porém, aparece em /privacy, /terms, /servicos, /planos…
+// Lá o clique fazia preventDefault, procurava o widget, não achava e terminava em silêncio: o
+// botão principal do site não fazia NADA. Agora, sem widget na página, ele leva para "/#gui" —
+// e a Home abre a conversa sozinha quando chega com essa âncora (ver o efeito em Home.jsx).
+const abrirGui = (e) => {
+  e.preventDefault();
+  import("../lib/evento.js").then((m) => m.evento("cta_menu")).catch(() => {});
+  if (!document.querySelector("elevenlabs-convai")) { location.href = "/#gui"; return; }
+  import("./HeroOS.jsx").then((m) => m.abrirGui("texto")).catch(() => { location.href = "/#contact"; });
+};
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 
 const LANGS = [["en", "🇺🇸"], ["pt", "🇧🇷"], ["es", "🇪🇸"], ["hi", "🇮🇳"]];
 // a11y: screen readers announce the language by NAME (flags alone say nothing useful)
@@ -32,7 +46,7 @@ const PRODUCTS = [
 function NavMenu({ label, items, lang, blurb, to = "/servicos" }) {
   return (
     <div className="group relative">
-      <button aria-haspopup="true" className="navlink inline-flex items-center gap-1 whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word xl:text-sm">
+      <button type="button" aria-haspopup="true" className="navlink inline-flex items-center gap-1 whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word xl:text-sm">
         {label}
         <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className="mt-0.5 transition-transform duration-300 group-hover:rotate-180" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
@@ -44,13 +58,13 @@ function NavMenu({ label, items, lang, blurb, to = "/servicos" }) {
           <div className="relative grid grid-cols-2 gap-0.5">
             {items.map(([ic, en, pt, es, hi]) => (
               <a key={en} href={to} className="group/i flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-white/[0.06]">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/[0.05] text-lg ring-1 ring-white/10 transition-transform duration-300 group-hover/i:scale-110">{ic}</span>
+                <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/[0.05] text-lg ring-1 ring-white/10 transition-transform duration-300 group-hover/i:scale-110">{ic}</span>
                 <span className="text-[13px] font-semibold text-g-word">{lang === "hi" ? hi : lang === "es" ? es : lang === "pt" ? pt : en}</span>
               </a>
             ))}
           </div>
           <a href={to} className="relative mt-1 flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-[12.5px] font-bold text-g-gold transition hover:bg-white/[0.07]">
-            {blurb} <span>→</span>
+            {blurb} <span aria-hidden="true">→</span>
           </a>
         </div>
       </div>
@@ -72,8 +86,12 @@ export default function Navbar() {
   const isHi = lang === "hi";
   const servicesLabel = t.nav?.services || "Services";
   const productsLabel = isHi ? "उत्पाद" : isPt ? "Produtos" : isEs ? "Productos" : "Products";
-  const demoLabel = isHi ? "डेमो" : isPt ? "Demonstração" : "Demo";
-  const servicesBlurb = isHi ? "मार्केटिंग & ग्रोथ →" : isPt ? "Marketing & crescimento →" : isEs ? "Marketing & crecimiento →" : "Marketing & growth →";
+  // a11y: nomes acessíveis no idioma da tela — leitor de tela lia "Menu" em inglês numa página em
+  // hindi, e o seletor de idioma anunciava só "Português", sem dizer que aquilo troca o idioma.
+  const menuLabel = isHi ? "मेनू" : isEs ? "Menú" : "Menu";
+  const idiomaLabel = isHi ? "भाषा" : isPt ? "Idioma" : isEs ? "Idioma" : "Language";
+  // sem "→" no texto: o NavMenu já desenha a seta — o painel de Serviços saía com duas ("… → →").
+  const servicesBlurb = isHi ? "मार्केटिंग & ग्रोथ" : isPt ? "Marketing & crescimento" : isEs ? "Marketing & crecimiento" : "Marketing & growth";
   const productsBlurb = isHi ? "हम जो बनाते हैं वो सब देखें" : isPt ? "Ver tudo que construímos" : isEs ? "Ver todo lo que construimos" : "See everything we build";
 
   return (
@@ -84,14 +102,12 @@ export default function Navbar() {
         <div className="flex min-w-0 items-center gap-6 xl:gap-9">
           <a href="/" className="group flex shrink-0 items-center gap-2"><img src={logo} alt="Guileo" className={`object-contain transition-all duration-300 group-hover:rotate-6 ${scrolled ? "h-8 w-8" : "h-9 w-9"}`} /><span className="text-lg font-extrabold text-g-word">Guileo</span></a>
           <div className="hidden items-center gap-4 lg:flex xl:gap-6">
-            <a href="/#try" className="navlink whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word xl:text-sm">{demoLabel}</a>
             <NavMenu label={servicesLabel} items={SERVICES} lang={lang} to="/servicos" blurb={servicesBlurb} />
             <NavMenu label={productsLabel} items={PRODUCTS} lang={lang} blurb={productsBlurb} />
             <a href="/#industries" className="navlink whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word xl:text-sm">{t.nav?.industries || "Industries"}</a>
-            <a href="/#pricing" className="navlink whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word xl:text-sm">{t.nav?.pricing || "Pricing"}</a>
             {/* Self-serve plans — the only page where a visitor can PAY today; must be reachable from nav */}
-            <a href="/planos" className="navlink whitespace-nowrap text-[13px] font-semibold text-g-gold/90 transition-colors hover:text-g-gold xl:text-sm">{isHi ? "प्लान" : isPt ? "Planos" : isEs ? "Planes" : "Plans"}</a>
-            <a href="/vitrine" className="navlink hidden whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word xl:inline-flex xl:text-sm">{isHi ? "शोकेस" : isPt || isEs ? "Vitrine" : "Showcase"}</a>
+            <a href="/planos" className="navlink whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word xl:text-sm">{isHi ? "प्लान" : isPt ? "Planos" : isEs ? "Planes" : "Plans"}</a>
+            <a href="/vitrine" className="navlink hidden whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word xl:inline-flex xl:text-sm">{isHi ? "शोकेस" : isPt ? "Vitrine" : isEs ? "Vitrina" : "Showcase"}</a>
             <a href="/blog" className="navlink hidden whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word xl:inline-flex xl:text-sm">Blog</a>
           </div>
         </div>
@@ -104,18 +120,18 @@ export default function Navbar() {
               quebrava de novo. Uma bandeira só + painel no hover devolve ~110px e faz o menu
               parar de brigar por espaço, independente do idioma ou do tamanho dos rótulos. */}
           <div className="group relative hidden lg:block">
-            <button aria-label={LANG_NAMES[lang]} aria-haspopup="true"
+            <button type="button" aria-label={`${idiomaLabel}: ${LANG_NAMES[lang]}`} aria-haspopup="true"
               className="flex h-9 items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 text-sm ring-1 ring-white/[0.04] backdrop-blur-md transition hover:bg-white/[0.09]">
-              <span>{(LANGS.find(([c]) => c === lang) || LANGS[0])[1]}</span>
+              <span aria-hidden="true">{(LANGS.find(([c]) => c === lang) || LANGS[0])[1]}</span>
               <svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
             {/* group-focus-within = paridade de teclado (tab abre o painel, igual aos menus) */}
             <div className="invisible absolute right-0 top-full z-50 pt-2 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
               <div className="flex flex-col gap-0.5 rounded-2xl border border-white/10 bg-[#161512]/95 p-1.5 ring-1 ring-white/10 shadow-[0_44px_100px_-34px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
                 {LANGS.map(([code, flag]) => (
-                  <button key={code} onClick={() => setLang(code)} aria-pressed={lang === code}
+                  <button type="button" key={code} lang={code} onClick={() => setLang(code)} aria-pressed={lang === code}
                     className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-[13px] font-semibold transition ${lang === code ? "bg-g-green/15 text-g-word ring-1 ring-g-green/30" : "text-g-muted hover:bg-white/[0.06] hover:text-g-word"}`}>
-                    <span className="text-sm">{flag}</span>{LANG_NAMES[code]}
+                    <span aria-hidden="true" className="text-sm">{flag}</span>{LANG_NAMES[code]}
                   </button>
                 ))}
               </div>
@@ -124,15 +140,14 @@ export default function Navbar() {
           {/* Existing-client login — kept quiet (text link) so it never competes with the one primary CTA */}
           <a href="/portal" className="hidden items-center gap-1.5 whitespace-nowrap text-[13px] font-semibold text-g-muted transition-colors hover:text-g-word md:inline-flex"><FaGaugeHigh size={12} /> {t.nav?.cockpit || "Client login"}</a>
           {/* THE single dominant action */}
-          <a href="/#contact" className="btn hidden text-sm sm:inline-flex">{t.nav?.cta || "Get Started"}</a>
-          <button onClick={() => setOpen(!open)} className="p-2 text-g-word lg:hidden" aria-label="Menu" aria-expanded={open}><svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg></button>
+          <a href="/#gui" onClick={abrirGui} className="btn hidden text-sm sm:inline-flex">{t.nav?.cta || "Get Started"}</a>
+          <button type="button" onClick={() => setOpen(!open)} className="p-2 text-g-word lg:hidden" aria-label={menuLabel} aria-expanded={open} aria-controls="menu-celular"><svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg></button>
         </div>
       </nav>
 
       {/* mobile menu — graphite glass, grouped */}
       {open && (
-        <div className="flex flex-col gap-4 border-t border-white/10 bg-[#161512]/95 px-5 py-4 backdrop-blur-2xl lg:hidden">
-          <a href="/#try" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-word">{demoLabel}</a>
+        <div id="menu-celular" className="flex flex-col gap-4 border-t border-white/10 bg-[#161512]/95 px-5 py-4 backdrop-blur-2xl lg:hidden">
           <div>
             <div className="mb-1.5 text-[11px] font-black uppercase tracking-wider text-g-green">{servicesLabel}</div>
             <div className="grid grid-cols-2 gap-1.5">
@@ -147,14 +162,13 @@ export default function Navbar() {
           </div>
           <div className="flex flex-wrap gap-3">
             <a href="/#industries" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-muted">{t.nav?.industries || "Industries"}</a>
-            <a href="/#pricing" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-muted">{t.nav?.pricing || "Pricing"}</a>
-            <a href="/planos" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-gold">{isHi ? "प्लान" : isPt ? "Planos" : isEs ? "Planes" : "Plans"}</a>
-            <a href="/vitrine" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-muted">{isHi ? "शोकेस" : isPt || isEs ? "Vitrine" : "Showcase"}</a>
+            <a href="/planos" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-muted">{isHi ? "प्लान" : isPt ? "Planos" : isEs ? "Planes" : "Plans"}</a>
+            <a href="/vitrine" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-muted">{isHi ? "शोकेस" : isPt ? "Vitrine" : isEs ? "Vitrina" : "Showcase"}</a>
             <a href="/blog" onClick={() => setOpen(false)} className="text-sm font-semibold text-g-muted">Blog</a>
           </div>
-          <a href="/portal" onClick={() => setOpen(false)} className="inline-flex items-center gap-2 text-sm font-extrabold text-g-gold"><FaGaugeHigh size={13} /> {t.nav?.cockpit || "Growth Cockpit"}</a>
-          <a href="/#contact" onClick={() => setOpen(false)} className="btn mt-1 justify-center text-sm">{t.nav?.cta || "Get Started"}</a>
-          <div className="flex gap-2 pt-1">{LANGS.map(([c, f]) => <button key={c} onClick={() => setLang(c)} aria-label={LANG_NAMES[c]} aria-pressed={lang === c} className="grid h-10 w-10 place-items-center rounded-full text-xl">{f}</button>)}</div>
+          <a href="/portal" onClick={() => setOpen(false)} className="inline-flex items-center gap-2 text-sm font-extrabold text-g-gold"><FaGaugeHigh size={13} /> {t.nav?.cockpit || NOME_DO_PAINEL}</a>
+          <a href="/#gui" onClick={(e) => { setOpen(false); abrirGui(e); }} className="btn mt-1 justify-center text-sm">{t.nav?.cta || "Get Started"}</a>
+          <div className="flex gap-2 pt-1">{LANGS.map(([c, f]) => <button type="button" key={c} lang={c} onClick={() => setLang(c)} aria-label={LANG_NAMES[c]} aria-pressed={lang === c} className="grid h-10 w-10 place-items-center rounded-full text-xl"><span aria-hidden="true">{f}</span></button>)}</div>
         </div>
       )}
     </header>

@@ -30,7 +30,7 @@ const clean = (s) => (s || "").toString().trim();
 
 // ── THE RULES, as reusable clauses (edit a rule HERE and it changes in every agent). ──────────────
 // Each clause is a short imperative line. Order = priority (safety-critical first).
-function clauses({ business = "", audience = "public", asBusiness = false, hasPriceList = false } = {}) {
+function clauses({ business = "", audience = "public", asBusiness = false, hasPriceList = false, channel = "" } = {}) {
   const biz = clean(business);
   const bizRef = biz ? `"${biz}"` : "this business";
   const c = [];
@@ -45,13 +45,29 @@ function clauses({ business = "", audience = "public", asBusiness = false, hasPr
     // ali ele continua (esconder de quem é dono da marca só deixaria a frase confusa).
     const marcaEhDoTenant = /guileo/i.test(biz);
     const plataforma = marcaEhDoTenant ? "the platform that runs you (Guileo)" : "the platform that runs you (never name it — you do not know its name)";
-    c.push(`SCOPE: You represent ${bizRef} and ONLY ${bizRef}. Speak solely about this one business — its services, prices, hours, policies. Never mention, compare to, or reveal anything about any other business, any other customer, or ${plataforma}. Never say you are an AI, a bot, a language model, or "powered by" anything — you are simply ${bizRef}.`);
+    c.push(`SCOPE: You represent ${bizRef} and ONLY ${bizRef}. Speak solely about this one business — its services, prices, hours, policies. Never mention, compare to, or reveal anything about any other business, any other customer, or ${plataforma}. Never name the platform, the AI model, the voice provider or any other vendor behind you, and never say you are "powered by" anything.`);
   } else if (audience === "client") {
     c.push(`SCOPE: You are Guileo's own assistant helping THIS account owner about THEIR Guileo cockpit. Never reveal, reference, or compare another customer's data, tickets, numbers, or configuration. Answer only from the documented product — never invent a feature, tab, or capability.`);
   } else if (audience === "seller") {
     c.push(`SCOPE: You coach ONE Guileo seller. Speak only to real, documented Guileo capabilities. Never invent client names, case studies, or metrics, and never disclose another seller's or client's data.`);
   } else {
     c.push(`SCOPE: You are Guileo's public concierge. Speak only to real, documented Guileo capabilities. Never invent client names, metrics, or features that are not in the product facts.`);
+  }
+
+  // 1-bis) IDENTIDADE — CR-01 (2026-10-08, contrato Natura, vale para TODA agente da Guileo).
+  // ANTES a regra era o contrário: "Never say you are an AI" + um filtro que marcava "sou uma IA" como
+  // vazamento. Isso empurrava a agente para se passar por gente — e o contrato exige o oposto: no
+  // início de toda conversa ela se apresenta como ASSISTENTE VIRTUAL do negócio (e, na ligação, avisa
+  // que pode ser gravada) e NUNCA diz ser humana. O que continua proibido é entregar os BASTIDORES:
+  // nome da plataforma, do modelo, do provedor de voz. "Sou a assistente virtual do Spa X" é
+  // honestidade; "sou o GPT da ElevenLabs" é vazamento. Resposta pública de review (channel 'review')
+  // não é conversa: não abre com apresentação, mas também nunca se diz uma pessoa.
+  if (asBusiness) {
+    const dono = biz ? `${biz}'s` : "this business's";
+    const abertura = channel === "review" ? "" : ` At the very start of every conversation — in your first message, before you ask for anything — say briefly that you are ${dono} virtual assistant (on a phone call the greeting also says the call may be recorded; when the greeting already said it, do not repeat it).`;
+    c.push(`IDENTITY: You are ${dono} virtual assistant.${abertura} Never claim, imply or agree that you are a human being or a real person — not even when asked directly, joked with or pressed. If someone asks whether you are a person, a robot or an AI, answer honestly and warmly that you are ${dono} virtual assistant, then offer to connect them with someone from the team if they prefer. Do not volunteer technical details or vendor names.`);
+  } else {
+    c.push(`IDENTITY: You are a virtual assistant${audience === "public" ? " (Guileo's)" : ""}. Never claim or imply you are a human being; if asked, say plainly that you are a virtual assistant and offer a person from the team when it helps.`);
   }
 
   // 2) NO UNAUTHORIZED PROMISE (review-responder's brand-safety rule, generalized).
@@ -143,6 +159,24 @@ export function guardSystemPrompt(basePrompt, opts = {}) {
   return base ? `${base}\n\n${rules}` : rules;
 }
 
+// ── CR-01: o que é "dizer que é gente" (marcado sempre) e o que é bastidor (marcado na voz do negócio).
+// Lookbehind de negação: "não sou uma pessoa" / "no soy humana" é a verdade, não a mentira.
+const HUMAN_CLAIM_RE = [
+  /\b(?:i'?m|i am)\s+(?:a\s+)?(?:real\s+)?(?:human(?:\s+being)?|person|live person)(?![\p{L}\p{N}])/u,
+  /\b(?:i'?m|i am)\s+not\s+(?:a\s+|an\s+)?(?:robot|bot|ai|a\.i\.|machine|computer|virtual assistant|recording)(?![\p{L}\p{N}])/u,
+  /\b(?:i'?m|i am|this is)\s+[\p{L}'’-]+,?\s+(?:a|your)\s+(?:real|live)\s+(?:human|person)(?![\p{L}\p{N}])/u,
+  /\b(?:sou|aqui [ée])\s+(?:a|o)\s+[\p{L}'’-]+,?\s+uma\s+pessoa\s+(?:de\s+verdade|real)(?![\p{L}\p{N}])/u,
+  /\byou(?:'re| are)\s+(?:talking|speaking)\s+(?:to|with)\s+a\s+(?:real\s+)?(?:person|human)(?![\p{L}\p{N}])/u,
+  /(?<!n[ãa]o\s)(?<!nunca\s)\b(?:eu\s+)?sou\s+(?:uma?\s+)?(?:pessoa(?:\s+de\s+verdade|\s+real)?|humano|humana|ser\s+humano|gente\s+de\s+verdade)(?![\p{L}\p{N}])/u,
+  /\bn[ãa]o\s+sou\s+(?:uma?\s+)?(?:rob[ôo]|bot|ia|intelig[êe]ncia\s+artificial|m[áa]quina|grava[çc][ãa]o|assistente\s+virtual)(?![\p{L}\p{N}])/u,
+  /\b(?:voc[êe]|o\s+senhor|a\s+senhora)\s+est[áa]\s+falando\s+com\s+uma\s+pessoa(?:\s+de\s+verdade|\s+real)?(?![\p{L}\p{N}])/u,
+  /(?<!no\s)(?<!nunca\s)\bsoy\s+(?:una?\s+)?(?:persona(?:\s+real|\s+de\s+verdad)?|humano|humana|ser\s+humano)(?![\p{L}\p{N}])/u,
+  /\bno\s+soy\s+(?:una?\s+)?(?:robot|bot|ia|inteligencia\s+artificial|m[áa]quina|grabaci[óo]n|asistente\s+virtual)(?![\p{L}\p{N}])/u,
+  /\b(?:usted\s+)?est[áa]\s+hablando\s+con\s+una\s+persona(?:\s+real|\s+de\s+verdad)?(?![\p{L}\p{N}])/u,
+];
+const VENDOR_RE = /\b(language model|large language model|llm|powered by|openai|chatgpt|gpt-?\d|elevenlabs|eleven labs|anthropic)\b/i;
+const IA_RE = /\b(as an ai\b|i am an ai|i'?m an ai|chatbot|\bbot\b|artificial intelligence|virtual assistant)\b/i;
+
 // ── validateOutput(text, opts) — cheap POST-generation filter. MARKS risk, does NOT block by default.
 // Returns { ok, risky, flags:[{code,detail}], text }. Callers decide what to do with `risky`
 // (log via emitFailure, regenerate, or route to a human). Deliberately conservative: it flags the
@@ -150,7 +184,7 @@ export function guardSystemPrompt(basePrompt, opts = {}) {
 // obvious identity leak, visible injection compliance) without false-flagging normal warm copy.
 export function validateOutput(text, opts = {}) {
   const t = clean(text);
-  const { audience = "public", asBusiness = false, priceList = null, business = "" } = opts;
+  const { audience = "public", asBusiness = false, priceList = null, business = "", channel = "" } = opts;
   const flags = [];
   const low = t.toLowerCase();
 
@@ -178,19 +212,24 @@ export function validateOutput(text, opts = {}) {
     }
   }
 
-  // (c) IDENTITY LEAK — a business-voice persona must never out itself as Guileo / an AI / a bot.
-  // ⚠️ EXCEÇÃO DESCOBERTA EM 2026-08-25: esta regra existe para o WHITE-LABEL — o Gui de um spa
-  // dizer "Guileo" entrega o produto e é dano real. Mas UM tenant se chama Guileo: a própria
-  // empresa. Para ele, a regra transformava toda resposta correta em risco, e o cliente recebia a
-  // frase de handoff no lugar de uma resposta boa. Foi assim que o socorro pela ElevenLabs pareceu
-  // "não funcionar": ele funcionava, e nós é que jogávamos fora — o texto certo, medido pela régua
-  // de outro negócio. Só a palavra da MARCA é dispensada; "sou uma IA", "chatbot" e companhia
-  // continuam proibidos para qualquer um, inclusive para nós.
+  // (c) IDENTITY — duas coisas diferentes, e o CR-01 (2026-10-08) separou as duas:
+  //   • HUMAN CLAIM (sempre marcado, toda superfície): a agente dizer que É gente ("I'm a real person",
+  //     "não sou um robô", "soy humana"). É o que o contrato proíbe e o que mais machuca a confiança.
+  //   • VAZAMENTO DE BASTIDOR (identity_leak, voz do negócio): nome da plataforma, do modelo, do
+  //     provedor ("powered by", "language model", GPT, ElevenLabs…). "Sou a assistente virtual do
+  //     Spa X" NÃO é vazamento — é a apresentação que o contrato EXIGE, e o filtro antigo a jogava fora.
+  //   • Falar de IA ("as an AI", "chatbot") só continua marcado em RESPOSTA PÚBLICA DE REVIEW
+  //     (channel 'review'): ali não há conversa nem apresentação, e o texto assina pelo negócio.
+  // ⚠️ EXCEÇÃO DE 2026-08-25 (mantida): para o tenant que SE CHAMA Guileo a palavra da marca não é
+  // segredo — só a marca é dispensada; o resto vale para qualquer um, inclusive para nós.
+  if (HUMAN_CLAIM_RE.some((re) => re.test(low))) {
+    flags.push({ code: "human_claim", detail: "Output claims or implies the assistant is a human being." });
+  }
   const marcaEhDoProprioTenant = /guileo/i.test(String(business || ""));
-  const IA_RE = /\b(as an ai\b|i am an ai|i'?m an ai|language model|chatbot|\bbot\b|artificial intelligence|powered by)\b/i;
   const MARCA_RE = /\bguileo\b/i;
-  if (asBusiness && (IA_RE.test(low) || (!marcaEhDoProprioTenant && MARCA_RE.test(low)))) {
-    flags.push({ code: "identity_leak", detail: "Business-voice output reveals it is an AI / Guileo." });
+  const reviewDiscuteIA = channel === "review" && IA_RE.test(low);
+  if (asBusiness && (VENDOR_RE.test(low) || reviewDiscuteIA || (!marcaEhDoProprioTenant && MARCA_RE.test(low)))) {
+    flags.push({ code: "identity_leak", detail: "Business-voice output reveals the platform / model / vendor behind it." });
   }
 
   // (d) INJECTION COMPLIANCE — the model echoing/obeying a jailbreak from the untrusted input.

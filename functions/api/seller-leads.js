@@ -99,9 +99,9 @@ export async function onRequestPost(context) {
         body: JSON.stringify(corpo),
       });
       const txt = await r.text().catch(() => "");
-      if (!r.ok) return json({ ok: false, motivo: `envio respondeu ${r.status}: ${txt.slice(0, 140)}` }, 502);
+      if (!r.ok) return json({ ok: false, motivo: `envio respondeu ${r.status}: ${txt.slice(0, 140)}` }, 503);
       let d = {}; try { d = JSON.parse(txt) || {}; } catch { /* */ }
-      if (!d.id) return json({ ok: false, motivo: "aceito sem id — nao considero enviado" }, 502);
+      if (!d.id) return json({ ok: false, motivo: "aceito sem id — nao considero enviado" }, 503);
       return json({ ok: true, enviado: true, id: d.id, para, assunto: d.assunto || "" });
     }
 
@@ -112,11 +112,11 @@ export async function onRequestPost(context) {
       // nada", e quem olha a tela para de olhar. Falhou → diz que falhou, com o motivo.
       try {
         const r = await svcRpc(env, "seller_lead_crm_all", { p_secret: ING });
-        if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 502);
+        if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 503);
         const rows = await r.json().catch(() => null);
-        if (!Array.isArray(rows)) return json({ ok: false, motivo: "resposta do banco nao e lista" }, 502);
+        if (!Array.isArray(rows)) return json({ ok: false, motivo: "resposta do banco nao e lista" }, 503);
         return json({ ok: true, rows });
-      } catch (e) { return json({ ok: false, motivo: String(e).slice(0, 140) }, 502); }
+      } catch (e) { return json({ ok: false, motivo: String(e).slice(0, 140) }, 503); }
     }
 
     // ADMIN — platform-wide stats for the motors built this session (email suppression/campaigns +
@@ -125,11 +125,11 @@ export async function onRequestPost(context) {
       if (!await adminOk(b.token)) return json({ error: "unauthorized" }, 401);
       try {
         const r = await svcRpc(env, "platform_motor_stats", { p_secret: ING });
-        if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 502);
+        if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 503);
         const stats = await r.json().catch(() => null);
-        if (!stats || typeof stats !== "object") return json({ ok: false, motivo: "resposta do banco vazia/nao-JSON" }, 502);
+        if (!stats || typeof stats !== "object") return json({ ok: false, motivo: "resposta do banco vazia/nao-JSON" }, 503);
         return json({ ok: true, stats });
-      } catch (e) { return json({ ok: false, motivo: String(e).slice(0, 140) }, 502); }
+      } catch (e) { return json({ ok: false, motivo: String(e).slice(0, 140) }, 503); }
     }
 
     // SELLER actions — the authenticated email is the ONLY scope.
@@ -153,11 +153,11 @@ export async function onRequestPost(context) {
     if (action === "list") {
       try {
         const r = await svcRpc(env, "seller_lead_crm_list", { p_secret: ING, p_seller_email: seller.email });
-        if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 502);
+        if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 503);
         const crm = await r.json().catch(() => null);
-        if (!crm || typeof crm !== "object") return json({ ok: false, motivo: "resposta do banco vazia/nao-JSON" }, 502);
+        if (!crm || typeof crm !== "object") return json({ ok: false, motivo: "resposta do banco vazia/nao-JSON" }, 503);
         return json({ ok: true, crm });
-      } catch (e) { return json({ ok: false, motivo: String(e).slice(0, 140) }, 502); }
+      } catch (e) { return json({ ok: false, motivo: String(e).slice(0, 140) }, 503); }
     }
 
     // ── 📥 CAIXA DE ENTRADA DO VENDEDOR — os leads que CHEGARAM pra ele ────────────────────────
@@ -176,17 +176,17 @@ export async function onRequestPost(context) {
       if (!ref) return json({ ok: false, motivo: "vendedor sem ref cadastrado" }, 400);
       try {
         const r = await svcRpc(env, "seller_inbound_leads", { p_secret: ING, p_ref: ref, p_dias: dias, p_limit: limite });
-        if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 502);
+        if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 503);
         const d = await r.json().catch(() => null);
         // A RPC devolve {ok:false, motivo} quando ela mesma falha — repassar é o contrato honesto.
-        if (!d || typeof d !== "object") return json({ ok: false, motivo: "resposta do banco vazia/nao-JSON" }, 502);
-        if (d.ok !== true) return json({ ok: false, motivo: (d.motivo || "leitura nao confirmada").toString().slice(0, 200) }, 502);
+        if (!d || typeof d !== "object") return json({ ok: false, motivo: "resposta do banco vazia/nao-JSON" }, 503);
+        if (d.ok !== true) return json({ ok: false, motivo: (d.motivo || "leitura nao confirmada").toString().slice(0, 200) }, 503);
         return json({
           ok: true, ref: d.ref || ref, dias,
           rows: Array.isArray(d.rows) ? d.rows : [],
           contagens: d.contagens && typeof d.contagens === "object" ? d.contagens : null,
         });
-      } catch (e) { return json({ ok: false, motivo: String(e).slice(0, 140) }, 502); }
+      } catch (e) { return json({ ok: false, motivo: String(e).slice(0, 140) }, 503); }
     }
 
     if (action === "save") {
@@ -199,10 +199,10 @@ export async function onRequestPost(context) {
         const r = await svcRpc(env, "seller_lead_crm_upsert", {
           p_secret: ING, p_seller_email: seller.email, p_lead_id: leadId, p_status: status, p_notes: notes, p_log: log,
         });
-        if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 502);
+        if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status}` }, 503);
         const gravou = !!(await r.json().catch(() => null));
-        return json(gravou ? { ok: true } : { ok: false, motivo: "o banco nao confirmou a gravacao" }, gravou ? 200 : 502);
-      } catch (e) { return json({ ok: false, motivo: String(e).slice(0, 140) }, 502); }
+        return json(gravou ? { ok: true } : { ok: false, motivo: "o banco nao confirmou a gravacao" }, gravou ? 200 : 503);
+      } catch (e) { return json({ ok: false, motivo: String(e).slice(0, 140) }, 503); }
     }
 
     return json({ error: "unknown action" }, 400);

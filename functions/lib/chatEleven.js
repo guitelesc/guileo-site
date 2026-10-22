@@ -55,7 +55,7 @@ async function abrir(url) {
   return resp.webSocket;
 }
 
-function umaRodada(ws, { texto, vars, override, tetoMs }) {
+function umaRodada(ws, { texto, vars, override, tetoMs, contexto = "" }) {
   return new Promise((resolve) => {
     const pedacos = [];
     let convId = null;
@@ -111,7 +111,7 @@ function umaRodada(ws, { texto, vars, override, tetoMs }) {
           ? `The customer is writing in ${alvo} — reply in ${alvo}. If their message is clearly in another language, follow the message instead.`
           : "Reply in exactly the same language the customer wrote in.";
         ws.send(JSON.stringify({ type: "contextual_update",
-          text: `SYSTEM: this conversation is happening over TEXT (WhatsApp/Instagram/web chat), not a phone call. Never say 'calling' or 'on the line'. Write numbers, prices and times as digits ($149, 2pm), never spelled out. Keep it short — 2 or 3 sentences, no greeting, they already said hello. ${regraIdioma}` }));
+          text: `SYSTEM: this conversation is happening over TEXT (WhatsApp/Instagram/web chat), not a phone call. Never say 'calling' or 'on the line'. Write numbers, prices and times as digits ($149, 2pm), never spelled out. Keep it short — 2 or 3 sentences, no phone-style greeting ("thank you for calling"), they already said hello. ${regraIdioma}${contexto ? ` ${contexto}` : ""}` }));
         ws.send(JSON.stringify({ type: "user_message", text: texto, source_medium: "text" }));
       } catch (e) { fim({ ok: false, motivo: `não consegui perguntar: ${(e && e.message) || "?"}` }); }
     };
@@ -160,7 +160,10 @@ function umaRodada(ws, { texto, vars, override, tetoMs }) {
  * @returns {Promise<{ok:boolean, texto?:string, conversation_id?:string|null, motivo?:string, tentativas:string[]}>}
  * `ok:false` é sempre acompanhado de `motivo` legível — nunca de uma string vazia passando por sucesso.
  */
-export async function falarComAgente(env, { agentId, texto, vars = {}, tetoMs = 20000 } = {}) {
+// `contexto` (2026-09-30): o que o agente precisa saber antes de ler a mensagem — a conversa até
+// aqui e quem é a pessoa (identidadeChat.contextoDaConversa). Cada chamada abre uma conversa NOVA;
+// sem isto o agente não lembra da mensagem anterior.
+export async function falarComAgente(env, { agentId, texto, vars = {}, tetoMs = 20000, contexto = "" } = {}) {
   const tentativas = [];
   if (!env?.ELEVENLABS_API_KEY) return { ok: false, motivo: "ELEVENLABS_API_KEY ausente", tentativas };
   if (!agentId) return { ok: false, motivo: "sem agent_id", tentativas };
@@ -175,11 +178,61 @@ export async function falarComAgente(env, { agentId, texto, vars = {}, tetoMs = 
     let ws;
     try { ws = await abrir(a.url); }
     catch (e) { tentativas.push(`${override ? "com" : "sem"} override: ${(e && e.message) || "abrir falhou"}`); continue; }
-    const r = await umaRodada(ws, { texto: msg, vars, override, tetoMs });
+    const r = await umaRodada(ws, { texto: msg, vars, override, tetoMs, contexto: (contexto || "").toString().slice(0, 2600) });
     if (r.ok) return { ...r, override_usado: override, tentativas };
     tentativas.push(`${override ? "com" : "sem"} override: ${r.motivo}`);
     // Só vale repetir se a RECUSA veio do override; um estouro de prazo repetido dobra a espera.
     if (!r.recusou) break;
   }
   return { ok: false, motivo: tentativas[tentativas.length - 1] || "não consegui falar com o agente", tentativas };
+}
+
+// ── TAREFA DE TEXTO PELO AGENTE "ESCRITOR" (2026-10-05) ─────────────────────────────────────────────
+// Luis proibiu a API da Anthropic (functions/api/_middleware.js). O que era "mande este prompt e me
+// devolva o texto" — responder avaliação, escrever anúncio, treinar vendedor, classificar — passa por um
+// agente próprio da ElevenLabs, "Gui · Escritor (tarefas internas)", que aceita a INSTRUÇÃO DE CADA TAREFA
+// como override do prompt. Não é o agente de telefone de ninguém: nada aqui toca no que atende cliente.
+// Sem saudação (first_message vazio), então a pergunta vai assim que a conversa abre.
+export const AGENTE_ESCRITOR = "agent_7701m4557251ft5rdkgd55mnq42e";
+
+export async function tarefaDeTexto(env, { system = "", texto = "", tetoMs = 25000 } = {}) {
+  if (!env?.ELEVENLABS_API_KEY) return { ok: false, motivo: "ELEVENLABS_API_KEY ausente" };
+  const pedido = (texto || "").toString().trim().slice(0, 12000);
+  if (!pedido) return { ok: false, motivo: "pedido vazio" };
+  const a = await urlAssinada(env, AGENTE_ESCRITOR);
+  if (a.erro) return { ok: false, motivo: a.erro };
+  let ws;
+  try { ws = await abrir(a.url); } catch (e) { return { ok: false, motivo: (e && e.message) || "abrir falhou" }; }
+  return new Promise((resolve) => {
+    const pedacos = []; let acabou = false; let quieto = null; let enviado = false;
+    const fim = (r) => { if (acabou) return; acabou = true; clearTimeout(relogio); clearTimeout(quieto); try { ws.close(1000, "fim"); } catch { /* */ } resolve(r); };
+    const entregar = () => fim(pedacos.length ? { ok: true, texto: pedacos.join(" ").trim() } : { ok: false, motivo: "o escritor não respondeu" });
+    const enviar = () => {
+      if (enviado || acabou) return; enviado = true;
+      try { ws.send(JSON.stringify({ type: "user_message", text: pedido, source_medium: "text" })); }
+      catch (e) { fim({ ok: false, motivo: `não consegui pedir: ${(e && e.message) || "?"}` }); }
+    };
+    const relogio = setTimeout(() => fim(pedacos.length ? { ok: true, texto: pedacos.join(" ").trim(), parcial: true } : { ok: false, motivo: `sem resposta em ${Math.round(tetoMs / 1000)}s` }), tetoMs);
+    ws.addEventListener("error", () => fim({ ok: false, motivo: "socket caiu" }));
+    ws.addEventListener("close", () => (pedacos.length ? entregar() : fim({ ok: false, motivo: "fechou sem responder" })));
+    ws.addEventListener("message", (ev) => {
+      let m; try { m = JSON.parse(typeof ev.data === "string" ? ev.data : ""); } catch { return; }
+      if (!m || !m.type) return;
+      if (m.type === "ping") { try { ws.send(JSON.stringify({ type: "pong", event_id: m.ping_event?.event_id })); } catch { /* */ } return; }
+      if (m.type === "conversation_initiation_metadata") { setTimeout(enviar, 150); return; }
+      if (m.type === "agent_response") {
+        const t = (m.agent_response_event?.agent_response || "").toString().trim();
+        if (!enviado) return;                                  // nada antes do pedido conta
+        if (t) { pedacos.push(t); clearTimeout(quieto); quieto = setTimeout(entregar, 1800); }
+        return;
+      }
+      if (m.type === "agent_response_complete" && pedacos.length) entregar();
+    });
+    try {
+      ws.send(JSON.stringify({ type: "conversation_initiation_client_data", conversation_config_override: {
+        agent: { first_message: "", ...(system ? { prompt: { prompt: String(system).slice(0, 20000) } } : {}) },
+        conversation: { text_only: true },
+      } }));
+    } catch (e) { fim({ ok: false, motivo: `não consegui abrir: ${(e && e.message) || "?"}` }); }
+  });
 }

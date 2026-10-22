@@ -1,6 +1,6 @@
 /* Split out of Portal.jsx (performance): ScheduleScreen tab view — code moved verbatim. */
 import { useState, useEffect } from "react";
-import { fetchAppointments, toast } from "../lib/portalApi.js";
+import { toast } from "../lib/portalApi.js";
 import { waLink } from "../data/contact.js";
 import { loadCreated, genWaitlist, pushCreated, logImpact, vnum, Card, GuiMark, tr, DEPOSIT, staffOf, Drawer, roomOf, _dur, UI_LANG } from "../pages/Portal.jsx";
 
@@ -23,20 +23,38 @@ const timeToMin = (t) => { const [h, m] = (t || "0:0").split(":").map((x) => par
 function ScheduleScreen({ V, real = null, email = "", dataKey = "" }) {
   const o = V.ops || {};
   const [tick, setTick] = useState(0);
-  const sch = [...loadCreated(V.label, "schedule"), ...(o.schedule || [])];
+  // 🚨 AGENDA INVENTADA SOB O SELO DE DADO REAL (2026-09-28). Com 0 agendamentos futuros o card
+  // "Booked by Gui" sumia e sobrava SÓ a amostra: os três cartões de `V.ops.stats`, a lista "Today"
+  // com clientes que não existem e a grade de horários — tudo sem aviso, numa conta de spa pagante.
+  // Em conta conectada a amostra não entra nem na variável: `sch` nasce vazio.
+  const sch = real ? [] : [...loadCreated(V.label, "schedule"), ...(o.schedule || [])];
   const [sel, setSel] = useState(null);
   // REAL appointments the Gui booked (biz_appointments) — shown live in the owner's agenda.
+  // `appts`: null = lendo · false = NÃO CONSEGUI LER · [] = não há agendamento futuro.
+  // A leitura é feita aqui (e não por fetchAppointments) porque aquele devolve `[]` também na
+  // falha — e "não consegui ler sua agenda" não pode aparecer como "sua agenda está vazia".
   const [appts, setAppts] = useState(null);
+  const [apptsSeq, setApptsSeq] = useState(0);
   useEffect(() => {
     let alive = true;
-    if (real && email && dataKey) fetchAppointments(email, dataKey).then((a) => { if (alive) setAppts(Array.isArray(a) ? a : []); });
+    if (!(real && email && dataKey)) return () => { alive = false; };
+    setAppts(null);
+    (async () => {
+      let out = false;
+      try {
+        const r = await fetch("/api/appointments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, key: dataKey }) });
+        const d = r.ok ? await r.json().catch(() => null) : null;
+        if (d && !d.error && !d.erro && d.ok !== false && Array.isArray(d.appointments)) out = d.appointments;
+      } catch { out = false; }
+      if (alive) setAppts(out);
+    })();
     return () => { alive = false; };
-  }, [real, email, dataKey]);
+  }, [real, email, dataKey, apptsSeq]);
   const fmtAppt = (iso) => { try { const d = new Date(iso); return `${new Intl.DateTimeFormat(loc(), { weekday: "short", day: "2-digit", month: "2-digit" }).format(d)} · ${new Intl.DateTimeFormat(loc(), { hour: "2-digit", minute: "2-digit" }).format(d)}`; } catch { return ""; } };
   // ── 🏖️ SPECIAL DATES (vacation/holiday/reduced hours) — Gui stops booking these days. ──
   // Real mode: /api/agent-schedule action special_list/special_set (per-tenant gate: email+dataKey
   // via get_client_data server-side). Demo mode: sample rows, actions disabled.
-  const [spDates, setSpDates] = useState(null);       // null=loading; [] = none
+  const [spDates, setSpDates] = useState(null);       // null=loading; [] = none; false = NÃO CONSEGUI LER
   const [spReady, setSpReady] = useState(true);       // false until db/special_dates.sql is pasted
   const [spBusy, setSpBusy] = useState(false);
   const [spForm, setSpForm] = useState({ date: "", closed: true, open: "09:00", close: "13:00", note: "" });
@@ -46,12 +64,15 @@ function ScheduleScreen({ V, real = null, email = "", dataKey = "" }) {
       return r.ok ? await r.json() : null;
     } catch { return null; }
   };
+  // `spCall` devolve null quando a chamada FALHA. Isso virava `[]` e a tela dizia "No special dates
+  // yet" — para quem tinha o Natal fechado cadastrado. Falha é `false`, e a tela diz que não leu.
+  const spLido = (d) => (!d || d.error || d.erro ? false : d.ready === false ? [] : Array.isArray(d.dates) ? d.dates : false);
   const spLoad = async () => {
     const d = await spCall({ action: "special_list" });
     setSpReady(d ? d.ready !== false : true);
-    setSpDates(Array.isArray(d?.dates) ? d.dates : []);
+    setSpDates(spLido(d));
   };
-  useEffect(() => { let alive = true; if (real && email && dataKey) spCall({ action: "special_list" }).then((d) => { if (!alive) return; setSpReady(d ? d.ready !== false : true); setSpDates(Array.isArray(d?.dates) ? d.dates : []); }); return () => { alive = false; }; }, [real, email, dataKey]); // eslint-disable-line
+  useEffect(() => { let alive = true; if (real && email && dataKey) spCall({ action: "special_list" }).then((d) => { if (!alive) return; setSpReady(d ? d.ready !== false : true); setSpDates(spLido(d)); }); return () => { alive = false; }; }, [real, email, dataKey]); // eslint-disable-line
   const spAdd = async () => {
     if (!real) { toast(tr("Demo — connect your account to edit")); return; }
     if (!spForm.date) { toast(tr("Pick a date first")); return; }
@@ -59,7 +80,7 @@ function ScheduleScreen({ V, real = null, email = "", dataKey = "" }) {
     setSpBusy(true);
     const d = await spCall({ action: "special_set", date: spForm.date, closed: spForm.closed, open_min: timeToMin(spForm.open), close_min: timeToMin(spForm.close), note: spForm.note });
     setSpBusy(false);
-    if (d?.ready === false) { setSpReady(false); toast(d.note || tr("Couldn't save — try again.")); return; }
+    if (d?.ready === false) { setSpReady(false); toast(tr("Almost there — one activation step is pending on our side. Your dates will be saved as soon as it's live.")); return; }
     if (d?.ok) { toast(tr("Saved ✓")); setSpForm((f) => ({ ...f, date: "", note: "" })); spLoad(); } else toast(tr("Couldn't save — try again."));
   };
   const spRemove = async (date) => {
@@ -82,7 +103,7 @@ function ScheduleScreen({ V, real = null, email = "", dataKey = "" }) {
     setSpBusy(false);
     // `false` é diferente de `[]`. Sem essa distinção, uma consulta que FALHOU apareceria na tela
     // como "não há feriados" — dado errado com cara de certo.
-    if (!d || d.holidays == null) { setSpHol(false); toast(d?.reason || tr("Couldn't load holidays — try again.")); return; }
+    if (!d || d.holidays == null) { setSpHol(false); toast(tr("Couldn't load holidays — try again.")); return; }
     setSpHol(d.holidays);
   };
   const spAplicar = async (f) => {
@@ -100,15 +121,34 @@ function ScheduleScreen({ V, real = null, email = "", dataKey = "" }) {
     // dollar value into Guileo Impact. The real fill happens through the booking motor.
     if (real) { toast(tr("Available when connected — real waitlist fills post to your agenda automatically.")); return; }
     const w = genWaitlist(V)[0];
-    if (!w) { toast("Waitlist is empty"); return; }
+    if (!w) { toast(tr("Waitlist is empty")); return; }
     pushCreated(V.label, "schedule", { time: "Filled", name: w.name, meta: `Filled from waitlist · ${w.want}`, status: "Pending", ch: w.ch, color: "#D6C29A" });
     logImpact(V.label, `Filled a no-show slot from waitlist (${w.name})`, vnum(V.label, "fillval", 40, 160));
-    setTick((t) => t + 1); toast(`Open slot filled from waitlist with ${w.name} ✓ — logged to Guileo Impact`);
+    setTick((t) => t + 1); toast(`${tr("Open slot filled from waitlist with")} ${w.name} ✓ — ${tr("logged to Guileo Impact")}`);
   };
   return (
     <div className="space-y-4 stagger">
       {/* LIVE — real appointments Gui booked (biz_appointments). Shows the moment Gui books. */}
-      {real && appts && appts.length > 0 && (
+      {real && appts === null && (
+        <Card className="animate-pulse" aria-hidden><div className="h-3 w-32 rounded bg-white/10" /><div className="mt-3 h-3 w-2/3 rounded bg-white/[0.07]" /><div className="mt-2 h-3 w-1/2 rounded bg-white/[0.07]" /></Card>
+      )}
+      {real && appts === false && (
+        <Card className="border-[#e0855f]/40 bg-[#e0855f]/[0.06]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><div className="text-sm font-extrabold text-g-word">{tr("I couldn't read your agenda just now.")}</div><div className="text-xs text-g-muted mt-0.5">{tr("This is a reading failure — it does not mean your agenda is empty.")}</div></div>
+            <button onClick={() => setApptsSeq((n) => n + 1)} className="btn-bright text-sm">{tr("↻ Try again")}</button>
+          </div>
+        </Card>
+      )}
+      {real && Array.isArray(appts) && appts.length === 0 && (
+        <Card>
+          <div className="flex items-center gap-2.5">
+            <GuiMark size={28} />
+            <div><div className="text-sm font-extrabold text-g-word">{tr("No upcoming appointments")}</div><div className="text-xs text-g-muted mt-0.5">{tr("Nothing is booked from today on. The moment Gui books someone, the appointment shows up here.")}</div></div>
+          </div>
+        </Card>
+      )}
+      {real && Array.isArray(appts) && appts.length > 0 && (
         <Card className="p-0 overflow-hidden border-[#FF8A33]/25">
           <div className="px-5 py-3 border-b border-white/10 flex items-center gap-2.5">
             <GuiMark size={28} />
@@ -141,7 +181,13 @@ function ScheduleScreen({ V, real = null, email = "", dataKey = "" }) {
           <div className="px-5 py-3 text-xs text-g-muted border-b border-white/[0.06]">{tr("Almost there — one activation step is pending on our side. Your dates will be saved as soon as it's live.")}</div>
         )}
         <div className="divide-y divide-white/[0.05]">
-          {(spRows || []).length === 0 && spRows !== null && (
+          {spRows === false && (
+            <div className="px-5 py-4 text-xs text-[#e0855f] flex flex-wrap items-center gap-3">
+              <span className="flex-1 min-w-[12rem]">{tr("I couldn't read your special dates just now — this does not mean there are none.")}</span>
+              <button onClick={spLoad} className="btn-ghost text-xs shrink-0">{tr("↻ Try again")}</button>
+            </div>
+          )}
+          {Array.isArray(spRows) && spRows.length === 0 && (
             <div className="px-5 py-4 text-xs text-g-muted">{tr("No special dates yet — add a holiday or vacation below.")}</div>
           )}
           {(spRows || []).map((d) => (
@@ -201,7 +247,9 @@ function ScheduleScreen({ V, real = null, email = "", dataKey = "" }) {
           )}
         </div>
       </Card>
-      {o.stats && (
+      {/* Daqui para baixo é AMOSTRA (stats, lista "Today", grade, gaveta com Confirm/Reschedule):
+          só existe em demonstração. Em conta conectada a agenda é o card acima, e ponto. */}
+      {!real && o.stats && (
         <div className="grid sm:grid-cols-3 gap-4">
           {o.stats.map((s) => (<Card key={s.label}><div className="text-[11px] uppercase tracking-wide text-g-muted">{s.label}</div><div className={`text-2xl font-extrabold mt-1 ${s.tone === "good" ? "text-g-green" : "text-g-word"}`}>{s.value}</div></Card>))}
         </div>
@@ -234,8 +282,8 @@ function ScheduleScreen({ V, real = null, email = "", dataKey = "" }) {
           ))}
         </div>
       )}
-      <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{o.scheduleTitle || "Today"}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap a row for full details</span></div>
+      {!real && <Card className="p-0 overflow-hidden">
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr(o.scheduleTitle || "Today")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 {tr("tap a row for full details")}</span></div>
         <div className="divide-y divide-white/[0.06]">
           {sch.map((r, i) => {
             const who = staffOf(V.label, i);
@@ -248,11 +296,14 @@ function ScheduleScreen({ V, real = null, email = "", dataKey = "" }) {
             );
           })}
         </div>
-      </Card>
-      {o.grid && (
+      </Card>}
+      {!real && o.grid && (
         <Card><div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{o.gridTitle}</div><div className="grid grid-cols-6 sm:grid-cols-8 gap-2">{o.grid.map((g, i) => (<div key={i} className={`grid place-items-center h-10 rounded-lg text-xs font-bold border ${g.on ? "border-g-green/50 bg-g-green/15 text-g-light" : "border-white/10 bg-white/[0.03] text-g-muted"}`}>{g.label}</div>))}</div></Card>
       )}
-      {sel && (
+      {/* 🚨 A gaveta só abre a partir da lista de amostra, então só existe em demonstração. Os
+          botões dela (Confirm / Completed / Reschedule) respondiam "confirmed ✓" e "Reschedule link
+          sent" sem gravar nem enviar nada — agora dizem que é demonstração. */}
+      {!real && sel && (
         <Drawer
           title={sel.r.name}
           subtitle={sel.r.meta}
@@ -269,10 +320,10 @@ function ScheduleScreen({ V, real = null, email = "", dataKey = "" }) {
           ]}
           note={`Captured by your AI ${sel.r.ch && sel.r.ch !== "—" ? `via ${sel.r.ch}` : ""}. Confirmation + reminder sent automatically. ${/pending|new|follow/i.test(sel.r.status) ? "Awaiting confirmation — the AI will follow up." : "Confirmed and on the books."}`}
           actions={<>
-            <a href={waLink(`Hi ${sel.r.name}, about your ${sel.r.meta}…`)} target="_blank" rel="noopener" className="btn-bright text-sm">💬 Message</a>
-            <button onClick={() => { toast(`${sel.r.name} confirmed ✓`); setSel(null); }} className="btn-ghost text-sm">✓ Confirm</button>
-            <button onClick={() => { if (real) { toast(`${sel.r.name} marked completed ✓`); setSel(null); return; } const amt = vnum(V.label, "svcval", 60, 220); logImpact(V.label, `${sel.r.name} · ${sel.r.meta} completed`, amt); toast(`${sel.r.name} marked completed ✓ — $${amt} logged to Guileo Impact`); setSel(null); }} className="btn-ghost text-sm">✓ Completed</button>
-            <button onClick={() => { toast("Reschedule link sent"); setSel(null); }} className="btn-ghost text-sm">📅 Reschedule</button>
+            <a href={waLink(`Hi ${sel.r.name}, about your ${sel.r.meta}…`)} target="_blank" rel="noopener" className="btn-bright text-sm">💬 {tr("Message")}</a>
+            <button onClick={() => { toast(tr("Demo — nothing was saved or sent. This is a sample appointment.")); setSel(null); }} className="btn-ghost text-sm">✓ {tr("Confirm")}</button>
+            <button onClick={() => { const amt = vnum(V.label, "svcval", 60, 220); logImpact(V.label, `${sel.r.name} · ${sel.r.meta} completed`, amt); toast(`${tr("Demo")} — ${sel.r.name} ${tr("marked completed ✓")} — $${amt} ${tr("logged to Guileo Impact")}`); setSel(null); }} className="btn-ghost text-sm">✓ {tr("Completed")}</button>
+            <button onClick={() => { toast(tr("Demo — nothing was saved or sent. This is a sample appointment.")); setSel(null); }} className="btn-ghost text-sm">📅 {tr("Reschedule")}</button>
           </>}
           onClose={() => setSel(null)}
         />

@@ -231,14 +231,24 @@ function CRM360({ V, onNav, real = null, email = "", dataKey = "" }) {
   // Real fetch still in flight → cement shimmer instead of a flash of zero-stats.
   if (!demo && loading) return <SectionSkeleton />;
 
-  // Connected, but the spine isn't live yet → guide to activate (no fake data).
+  // Connected, but the spine isn't live yet → honest waiting state (no fake data).
+  // ⚠️ A frase antiga mandava a CLIENTE "colar db/crm_spine.sql no Supabase" — instrução de
+  // engenharia na tela de quem paga; ela não tem Supabase, nem deveria saber que ele existe.
+  // Ativar é trabalho nosso. E "não consegui ler" (`data.falha`: HTTP de erro/rede) NÃO é "ainda
+  // não ativado": sem separar os dois, um wifi caído viraria "estamos ativando".
   if (!demo && !loading && !data.ready) {
     return (
       <div className="space-y-4 stagger">
         <Card className="p-8 text-center border-g-gold/25 bg-g-gold/[0.05]">
           <div className="text-4xl mb-3">🗂️</div>
-          <div className="text-lg font-extrabold text-g-word">{tr("Activate the CRM")}</div>
-          <div className="text-sm text-g-muted mt-1.5 max-w-md mx-auto leading-relaxed">{tr("Your contact spine isn't live yet. Paste db/crm_spine.sql in Supabase to switch it on.")}</div>
+          {data.falha ? (
+            <div className="text-sm text-g-muted max-w-md mx-auto leading-relaxed">{tr("I couldn't load this just now.")}</div>
+          ) : (
+            <>
+              <div className="text-lg font-extrabold text-g-word">{tr("CRM 360")}</div>
+              <div className="text-sm text-g-muted mt-1.5 max-w-md mx-auto leading-relaxed">{tr("We're activating this for you — we'll let you know.")}</div>
+            </>
+          )}
         </Card>
       </div>
     );

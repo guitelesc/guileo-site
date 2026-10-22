@@ -4,6 +4,7 @@ import { useSeo } from "../lib/seo.js";
 import logo from "../assets/guileo-mark.png";
 import { loadDataKey } from "../lib/portalApi.js";
 import { normalizePhone, phonePlaceholder } from "../lib/intl.js";
+import StripeProprio from "../components/StripeProprio.jsx";
 
 // /receber — a logged-in client connects THEIR OWN Stripe account so the Gui's charges land in their
 // bank (not Guileo's). Self-contained (no Portal dependency): enter email + connection code →
@@ -100,7 +101,7 @@ export default function ConectarPagamento() {
       const r = await fetch("/api/stripe-connect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "link", email, token: code }) });
       const d = await r.json().catch(() => ({}));
       if (d?.ok && d.url) { window.location.href = d.url; return; }
-      setState("err");
+      setState(d?.error === "use_own_stripe" ? "own" : "err");
     } catch { setState("err"); }
   };
 
@@ -127,11 +128,14 @@ export default function ConectarPagamento() {
               <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.email} aria-label={t.email} className={field} />
               <input type="text" value={code} onChange={(e) => setCode(e.target.value)} placeholder={t.code} aria-label={t.code} className={field} />
               {state === "err" && <div className="text-[12.5px] text-g-gold">{t.err}</div>}
+              {state === "own" && <div className="text-[12.5px] text-g-gold">{gl === "pt" ? "Para negócio nos EUA, use a sua própria conta Stripe (logo abaixo)." : gl === "es" ? "Para negocios en EE. UU., usa tu propia cuenta Stripe (abajo)." : "For a business in the US, use your own Stripe account (just below)."}</div>}
               <button onClick={connect} disabled={state === "go"} className="btn-bright w-full text-[14px]">{state === "go" ? t.connecting : t.connect}</button>
             </div>
             <p className="mt-4 text-[11.5px] leading-relaxed text-g-muted">{t.why}</p>
           </>
         )}
+        {/* Negócio fora do Brasil: a plataforma Stripe é BR e não repassa para conta nos EUA — usa a conta própria (2026-10-05) */}
+        <StripeProprio email={email.trim().toLowerCase()} code={code.trim()} lang={gl} field={field} />
         {/* SMS alerts — independent of Stripe; uses the same email + code entered above */}
         <div className="mt-5 rounded-2xl border border-g-green/20 bg-g-green/[0.04] p-4">
           <div className="text-[13px] font-extrabold text-g-word">{t.notifyTitle}</div>

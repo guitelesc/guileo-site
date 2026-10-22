@@ -1,17 +1,29 @@
 /* Split out of Portal.jsx (performance): AIAnalytics tab view — code moved verbatim. */
 import { useState, useEffect } from "react";
-import { fetchCallLogs } from "../lib/portalApi.js";
+import { fetchCallLogsDetalhado } from "../lib/portalApi.js";
+import FalhaDeLeitura from "./FalhaDeLeitura.jsx";
 import { aiIntents, aiMissed, BOOK_WORD, tr, UI_LANG, MiniStats, vnum, Card, GuiMark, Empty } from "../pages/Portal.jsx";
 
 function AIAnalytics({ V, onNav, sections = [], real = null, email = "", dataKey = "" }) {
   // Pull the client's real calls so sentiment / intents / transcripts reflect THEIR calls,
   // not the sector sample. Empty (or pre-connect) → falls back to the deterministic demo.
   const [calls, setCalls] = useState(null);
+  // 🚨 (2026-09-28) Falha de leitura virava `[]` → "No calls to analyze yet". Para quem atende
+  // dezenas de ligações por dia, essa frase é uma acusação de que o produto não está funcionando.
+  const [falha, setFalha] = useState(null);
+  const [tentativa, setTentativa] = useState(0);
   useEffect(() => {
     let alive = true;
-    if (real && email && dataKey) fetchCallLogs(email, dataKey).then((c) => { if (alive) setCalls(Array.isArray(c) ? c : []); });
+    if (real && email && dataKey) {
+      setCalls(null); setFalha(null);
+      fetchCallLogsDetalhado(email, dataKey).then((r) => {
+        if (!alive) return;
+        if (r.motivo) { setFalha(r.motivo); setCalls([]); return; }
+        setCalls((r.data || []).filter(Boolean));
+      });
+    } else if (real) { setFalha("sem_credencial"); setCalls([]); }   // sem chave: nunca "Analyzing…" eterno
     return () => { alive = false; };
-  }, [real, email, dataKey]);
+  }, [real, email, dataKey, tentativa]);
   const hasReal = calls && calls.length > 0;
 
   // HONESTY (real mode): with no real calls we NEVER show the sector sample (vnum
@@ -24,7 +36,9 @@ function AIAnalytics({ V, onNav, sections = [], real = null, email = "", dataKey
           <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-g-green"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("LIVE — from your real calls")}</div>
           <div className="mt-1 text-xl font-black text-g-word">{tr("Your call analytics appear here")}</div>
         </div>
-        <Card><Empty icon="📊" text={calls === null ? tr("Analyzing your calls…") : tr("No calls to analyze yet — sentiment, intents and transcripts appear here as your AI answers.")} /></Card>
+        {falha
+          ? <FalhaDeLeitura motivo={falha} onRetry={() => setTentativa((n) => n + 1)} titulo={tr("I couldn't load your calls just now.")} />
+          : <Card><Empty icon="📊" text={calls === null ? tr("Analyzing your calls…") : tr("No calls to analyze yet — sentiment, intents and transcripts appear here as your AI answers.")} /></Card>}
       </div>
     );
   }
@@ -52,7 +66,8 @@ function AIAnalytics({ V, onNav, sections = [], real = null, email = "", dataKey
   // Real transcripts (most recent 2) when present, else the sector demo.
   const realT = hasReal ? calls.slice(0, 2).map((x) => ({
     who: x.intent || tr("AI call"), ch: "Phone", sent: { positive: "Positive", neutral: "Neutral", negative: "Negative" }[(x.sentiment || "neutral").toLowerCase()] || "Neutral",
-    lines: (Array.isArray(x.transcript) ? x.transcript : []).slice(0, 8).map((t) => [t.r === "gui" ? "ai" : "them", t.t]),
+    // fala nula dentro do transcript derrubava a tela inteira (`t.r` de null) — só entra objeto com texto
+    lines: (Array.isArray(x.transcript) ? x.transcript : []).filter((t) => t && typeof t === "object" && t.t != null).slice(0, 8).map((t) => [t.r === "gui" ? "ai" : "them", t.t]),
   })).filter((t) => t.lines.length) : null;
   // real mode with no stored transcripts → honest empty (never sector demo under a LIVE badge)
   const T = hasReal ? (realT && realT.length ? realT : []) : V.transcripts || [

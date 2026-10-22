@@ -17,6 +17,24 @@ export const CONNECTED = hasSupabase;
 const wait = (ms = 320) => new Promise((r) => setTimeout(r, ms));
 const SESSION_KEY = "guileo_portal_session";
 
+// ── LINK DE RECUPERAÇÃO DE SENHA — lido NA CARGA do módulo, de propósito ──────────────────────
+// O link do e-mail "esqueci a senha" volta em /portal#access_token=…&type=recovery. O cliente
+// Supabase consome esse hash sozinho (detectSessionInUrl) e APAGA o hash em seguida; o evento
+// PASSWORD_RECOVERY sai uma vez só, e pode sair ANTES de o Portal montar e se inscrever. Quem
+// dependesse só do evento perderia a corrida: a pessoa cairia logada no painel sem nunca ver o
+// campo de senha nova — e continuaria sem saber a senha na próxima vez.
+// Por isso a marca é guardada aqui (import roda antes de qualquer efeito do React) e o evento,
+// quando chega a tempo, só confirma. Link vencido volta como #error_code=otp_expired: guardado
+// também, para a tela de login dizer o que houve em vez de parecer que nada aconteceu.
+const _hashInicial = (() => { try { return typeof window !== "undefined" ? (window.location.hash || "") : ""; } catch { return ""; } })();
+let _recuperacao = /(^|[#&])type=recovery(&|$)/.test(_hashInicial);
+// CONTA REAL = existe sessão de verdade (Supabase), tenha ou não a chave de conexão. É síncrono de
+// propósito: componentes que não recebem `me` (MorningBriefing, montado pelo Overview) precisam
+// saber, NA HORA de desenhar, se estão diante de um visitante da vitrine ou de quem paga — para
+// nunca desenhar número de amostra com cara de número do cliente.
+let _contaReal = false;
+const _erroDoLink = (() => { try { const m = _hashInicial.match(/(?:^|[#&])error_code=([^&]+)/); return m ? decodeURIComponent(m[1]) : ""; } catch { return ""; } })();
+
 // ── Background sync to Supabase (NO TABLE / NO SQL needed) ──
 // localStorage stays the synchronous source of truth (instant UI); the account's
 // config state is mirrored into the user's own Supabase record (user_metadata.kv),
@@ -26,18 +44,32 @@ let _uid = null;                       // current auth user id (set on hydrate)
 let _cloud = {};                       // full key→value blob mirrored to the cloud
 let _flushTimer = null;
 const _syncable = (key) => !key.includes(":created:");   // skip bulky demo records
+const _pendentes = new Set();          // chaves na fila que AINDA não subiram para a nuvem
 function _queueUpsert(key, value) {
   if (!supabase || !_uid || !_syncable(key)) return;
   _cloud[key] = value;
+  _pendentes.add(key);
   if (_flushTimer) return;
   _flushTimer = setTimeout(_flush, 900);
 }
 let _warnedSync = false;
+let _tentativas = 0;
 async function _flush() {
   _flushTimer = null;
   if (!supabase || !_uid) return;
-  try { await supabase.auth.updateUser({ data: { kv: _cloud } }); _warnedSync = false; }
-  catch { if (!_warnedSync) { _warnedSync = true; toast("Saved locally — couldn't sync to the cloud just now. I'll retry."); } }
+  const subindo = [..._pendentes];
+  try {
+    // 🚨 `updateUser` NÃO LEVANTA em erro de API — ele DEVOLVE `{ error }` (2026-09-28). O `catch`
+    // antigo nunca disparava, então a falha de sincronia era muda, e o aviso prometia um "vou
+    // tentar de novo" que não existia em lugar nenhum. Agora o erro é lido, e a nova tentativa existe.
+    const { error } = await supabase.auth.updateUser({ data: { kv: _cloud } });
+    if (error) throw error;
+    subindo.forEach((k) => _pendentes.delete(k));
+    _warnedSync = false; _tentativas = 0;
+  } catch {
+    if (!_warnedSync) { _warnedSync = true; toast("Saved locally — couldn't sync to the cloud just now. I'll retry."); }
+    if (_tentativas < 3 && !_flushTimer) { _tentativas++; _flushTimer = setTimeout(_flush, 15000 * _tentativas); }
+  }
 }
 // Best-effort durability: if the tab closes within the 900ms debounce window, fire the
 // pending cloud sync immediately so a just-made change isn't lost (localStorage is already
@@ -52,6 +84,15 @@ if (typeof window !== "undefined") {
 const DATA_SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const DATA_SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
 const DATA_KEY_LS = "guileo_data_key";
+
+// ── ACESSO NOMINAL DE PARCEIRO (CR-03, 2026-10-13) ───────────────────────────────────────────────
+// A Scale Pods entra com o usuário dela (Supabase Auth) e, depois do código por e-mail, o navegador
+// guarda QUAL cliente ela está operando. session() então devolve o e-mail do CLIENTE (é o que toda
+// RPC usa) com o nome do parceiro no cabeçalho — e hydrate() não grava nada na conta do parceiro.
+const PARCEIRO_LS = "guileo_parceiro";
+export function parceiroAtivo() { try { return JSON.parse(localStorage.getItem(PARCEIRO_LS) || "null"); } catch { return null; } }
+export function parceiroEntrar(o) { try { localStorage.setItem(PARCEIRO_LS, JSON.stringify(o)); } catch { /* private mode */ } }
+export function parceiroSair() { try { localStorage.removeItem(PARCEIRO_LS); localStorage.removeItem(DATA_KEY_LS); } catch { /* */ } }
 
 /** Fetch the logged-in client's REAL data (credits, plan, events) from the backend.
  *  Returns { credits, plan, events:[{id,created_at,type,channel,summary,amount}] }
@@ -251,7 +292,9 @@ export async function fetchAppointments(email, key) {
 }
 
 /** Unified CRM contact spine (the 360° book). POST {token,email} -> {ready,count,contacts}.
- *  Gracefully returns ready:false until db/crm_spine.sql is pasted in Supabase. */
+ *  Gracefully returns ready:false until db/crm_spine.sql is pasted in Supabase.
+ *  `falha:true` = NÃO CONSEGUI LER (HTTP de erro / rede) — diferente de "ainda não ativado".
+ *  Sem essa marca, um 500 ou um wifi caído apareciam na tela como "estamos ativando". */
 export async function fetchCRM(key, email) {
   if (!key) return { ready: false, count: 0, contacts: [], note: "" };
   return _cached("fetchCRM", email, key, async () => {
@@ -260,7 +303,7 @@ export async function fetchCRM(key, email) {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: key, email: email || "" }),
       });
-      if (!r.ok) return { ready: false, count: 0, contacts: [], note: "" };
+      if (!r.ok) return { ready: false, count: 0, contacts: [], note: "", falha: true };
       const d = await r.json();
       return {
         ready: !!d?.ready,
@@ -268,7 +311,7 @@ export async function fetchCRM(key, email) {
         contacts: Array.isArray(d?.contacts) ? d.contacts : [],
         note: d?.note || "",
       };
-    } catch { return { ready: false, count: 0, contacts: [], note: "" }; }
+    } catch { return { ready: false, count: 0, contacts: [], note: "", falha: true }; }
   });
 }
 
@@ -476,6 +519,127 @@ export async function fetchCrmTimeline(key, email, contactId) {
   }, contactId);
 }
 
+/** Abre um chamado no suporte (/api/support, action:"create") e devolve o COMPROVANTE.
+ *  Mesmo contrato que o chat da Gui usa em Support.jsx: `ok:true` sozinho NÃO é sucesso — o
+ *  endpoint responde `{ok:true, ready:false}` em HTTP 200 quando o SQL não está colado, e 200
+ *  sem id é "não gravei". Só `{id}` é prova.
+ *  Devolve {id} ou {tipo, motivo}: `tipo` é para a tela escolher a frase (que passa pelo tr() lá,
+ *  este arquivo não enxerga o dicionário); `motivo` é o texto cru, para diagnóstico. */
+export async function abrirChamado(email, key, payload = {}) {
+  if (!email || !key) return { tipo: "sem_credencial", motivo: "" };
+  try {
+    const r = await fetch("/api/support", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: key, email, action: "create", ...payload }),
+    });
+    const d = await r.json().catch(() => null);
+    if (!d) return { tipo: "resposta_estranha", motivo: `HTTP ${r.status}` };
+    if (d.error) return { tipo: r.status === 401 ? "sem_credencial" : "recusado", motivo: String(d.error).slice(0, 120) };
+    if (d.ready === false) return { tipo: "nao_ativado", motivo: "" };   // a nota do servidor é de engenharia — não vai pra tela
+    if (d.ok !== true || !d.id) return { tipo: "nao_gravou", motivo: String(d.motivo || "").slice(0, 120) };
+    return { id: d.id };
+  } catch (e) { return { tipo: "rede", motivo: String(e?.message || e).slice(0, 80) }; }
+}
+
+/* ── LEITURAS QUE CONFESSAM (2026-09-28, varredura antes da primeira cliente pagante usar) ─────────
+   POR QUE EXISTEM: os leitores acima devolvem `[]` / `{ready:false}` em QUALQUER falha. Para a tela,
+   "não consegui ler" e "você não tem nada" chegavam iguais — e a dona de um spa lia um wifi caído
+   como "No invoices yet", "0 emergencies", "No calls to analyze yet". Pior: o `_cached` guardava
+   esse vazio falso por 45s, então nem o segundo clique consertava.
+   O CONTRATO ANTIGO NÃO MUDA (outras telas dependem do formato). As variantes abaixo devolvem
+   `{data, motivo}` com motivo ∈ rede | servidor | chave_invalida | sem_credencial | resposta_estranha,
+   e uma falha NUNCA entra no cache (o loader levanta, o `_cached` não grava).
+   O teto de rede (tetoDeRede.js, 45s) rejeita com AbortError/TimeoutError → cai no catch → "rede". */
+
+/** POST JSON em um endpoint NOSSO e devolve {data, motivo, http, erro}. Nunca levanta.
+ *  `data` vem preenchido também na falha quando o servidor mandou corpo JSON — é assim que um 503
+ *  com `{error:"…"}` chega legível em vez de virar "resposta ilegível (HTTP 502)".
+ *  `erro` é texto CRU do servidor: serve para diagnóstico e para a tela ESCOLHER a frase; não é
+ *  para ser impresso ao cliente (já vazou "set MINDBODY_API_KEY in Cloudflare env" assim). */
+export async function chamarApi(url, body = {}, { method = "POST", headers = {} } = {}) {
+  let r;
+  try {
+    r = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json", ...headers },
+      ...(method === "GET" ? {} : { body: JSON.stringify(body) }),
+    });
+  } catch (e) { return { data: null, motivo: "rede", http: 0, erro: String(e?.name || e).slice(0, 80) }; }
+  let d = null;
+  try { d = await r.json(); } catch { d = null; }
+  const corpo = d && typeof d === "object" ? d : null;
+  const erro = corpo ? String(corpo.error || corpo.erro || corpo.motivo || "").slice(0, 160) : "";
+  if (!r.ok) return { data: corpo, motivo: (r.status === 401 || r.status === 403) ? "chave_invalida" : "servidor", http: r.status, erro };
+  if (!corpo) return { data: null, motivo: "resposta_estranha", http: r.status, erro: "" };
+  // HTTP 200 com `nao_deu_pra_ler` é o servidor dizendo "isto NÃO é um vazio" (padrão do call-logs.js).
+  if (corpo.nao_deu_pra_ler === true) return { data: corpo, motivo: "servidor", http: r.status, erro };
+  // Mesmo recado em outro formato: `ok:false` + `detalhe_tecnico` no topo é a convenção de
+  // "falhou aqui dentro" dos endpoints que respondem 200 de propósito (growth-intel, orcamentos).
+  // Recusa de NEGÓCIO (ok:false sem detalhe_tecnico) não entra aqui — a tela decide a frase.
+  if (corpo.ok === false && corpo.detalhe_tecnico) return { data: corpo, motivo: "servidor", http: r.status, erro };
+  return { data: corpo, motivo: null, http: r.status, erro: "" };
+}
+
+// Mesma máquina para todos os leitores detalhados: cache só do que DEU CERTO.
+async function _lerDetalhado(fn, email, key, url, body, extrair, extra) {
+  if (!key) return { data: null, motivo: "sem_credencial" };
+  try {
+    const data = await _cached(fn, email, key, async () => {
+      const r = await chamarApi(url, body);
+      if (r.motivo) { const e = new Error(r.motivo); e.motivo = r.motivo; throw e; }
+      const v = extrair(r.data);
+      if (v == null) { const e = new Error("resposta_estranha"); e.motivo = "resposta_estranha"; throw e; }
+      return v;
+    }, extra);
+    return { data, motivo: null };
+  } catch (e) { return { data: null, motivo: e?.motivo || "rede" }; }
+}
+Object.assign(_DOMAIN, {
+  fetchCallLogsDetalhado: "inbox",
+  fetchAppointmentsDetalhado: "noshow", fetchNoshowRadarDetalhado: "noshow",
+  fetchLeadsTodayDetalhado: "crm", fetchCrmDealsDetalhado: "crm", fetchCrmInvoicesDetalhado: "crm",
+  fetchCrmCampaignsDetalhado: "crm", fetchContractsDetalhado: "crm",
+});
+const _lista = (campo) => (d) => (Array.isArray(d?.[campo]) ? d[campo] : null);
+
+/** Ligações → {data: [...]|null, motivo}. Lê o `nao_deu_pra_ler` que o servidor já mandava e a
+ *  versão antiga ignorava (HTTP 200 + calls:[] = "No calls yet" com a base de ligações fora). */
+export const fetchCallLogsDetalhado = (email, key) =>
+  (!email ? Promise.resolve({ data: null, motivo: "sem_credencial" })
+    : _lerDetalhado("fetchCallLogsDetalhado", email, key, "/api/call-logs", { email, key }, _lista("calls")));
+
+/** Agendamentos reais → {data: [...]|null, motivo}. */
+export const fetchAppointmentsDetalhado = (email, key) =>
+  (!email ? Promise.resolve({ data: null, motivo: "sem_credencial" })
+    : _lerDetalhado("fetchAppointmentsDetalhado", email, key, "/api/appointments", { email, key }, _lista("appointments")));
+
+/** Leads de hoje → {data: {ready,count,leads,note}|null, motivo}. `ready:false` continua sendo
+ *  "ainda não ligado" (estado legítimo); falha de leitura agora chega como `motivo`. */
+export const fetchLeadsTodayDetalhado = (key, email) =>
+  _lerDetalhado("fetchLeadsTodayDetalhado", email, key, "/api/crm", { action: "leads_today", token: key, email: email || "" },
+    (d) => ({ ready: !!d?.ready, count: Number(d?.count) || 0, leads: Array.isArray(d?.leads) ? d.leads : [], note: d?.note || "" }));
+
+/** Radar de faltas → {data: {ready,highRisk,appointments}|null, motivo}. */
+export const fetchNoshowRadarDetalhado = (key, email, days = 7) =>
+  _lerDetalhado("fetchNoshowRadarDetalhado", email, key, "/api/noshow-radar", { token: key, email: email || "", days },
+    (d) => ({ ready: !!d?.ready, highRisk: Number(d?.highRisk) || 0, appointments: Array.isArray(d?.appointments) ? d.appointments : [] }), days);
+
+/** Funil de vendas → {data: [...]|null, motivo}. */
+export const fetchCrmDealsDetalhado = (key, email) =>
+  _lerDetalhado("fetchCrmDealsDetalhado", email, key, "/api/crm", { action: "deals", token: key, email: email || "" }, _lista("deals"));
+
+/** Faturas (contas a receber) → {data: [...]|null, motivo}. */
+export const fetchCrmInvoicesDetalhado = (key, email) =>
+  _lerDetalhado("fetchCrmInvoicesDetalhado", email, key, "/api/crm", { action: "invoices", token: key, email: email || "" }, _lista("invoices"));
+
+/** Campanhas → {data: [...]|null, motivo}. */
+export const fetchCrmCampaignsDetalhado = (key, email) =>
+  _lerDetalhado("fetchCrmCampaignsDetalhado", email, key, "/api/crm", { action: "campaigns", token: key, email: email || "" }, _lista("campaigns"));
+
+/** Contratos e orçamentos → {data: [...]|null, motivo}. O antigo engolia o 401 como "nenhum documento". */
+export const fetchContractsDetalhado = (key, email) =>
+  _lerDetalhado("fetchContractsDetalhado", email, key, "/api/contract", { action: "list", token: key, email: email || "" }, _lista("docs"));
+
 /** The client's "connection code" (access key Luis hands out at onboarding). */
 export function loadDataKey() {
   try {
@@ -505,7 +669,13 @@ export const portalApi = {
     if (supabase) {
       const { data } = await supabase.auth.getSession();
       const s = data?.session;
-      return s ? { email: s.user.email, name: s.user.user_metadata?.name || s.user.email, role: "Owner", demo: false, at: Date.now(), uid: s.user.id } : null;
+      _contaReal = !!s;
+      if (!s) return null;
+      const par = parceiroAtivo();
+      if (par && par.tenant && par.email_parceiro === String(s.user.email || "").toLowerCase()) {
+        return { email: par.tenant, name: `${par.nome} · ${par.empresa || "Partner"}`, role: "Partner", demo: false, at: Date.now(), uid: s.user.id, parceiro: true };
+      }
+      return { email: s.user.email, name: s.user.user_metadata?.name || s.user.email, role: "Owner", demo: false, at: Date.now(), uid: s.user.id };
     }
     try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch { return null; }
   },
@@ -515,7 +685,7 @@ export const portalApi = {
     if (supabase) {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) return { error: error.message };
-      if (data?.session) { await this.hydrate(); return { ok: true, uid: data.user.id }; }
+      if (data?.session) { _contaReal = true; await this.hydrate(); return { ok: true, uid: data.user.id }; }
       return { error: "Sign-in failed" };
     }
     await wait();
@@ -529,13 +699,62 @@ export const portalApi = {
     if (!supabase) return this.login(email, password);
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) return { error: error.message };
-    if (data?.session) { await this.hydrate(); return { ok: true, uid: data.user.id }; } // confirmation disabled → instant
+    if (data?.session) { _contaReal = true; await this.hydrate(); return { ok: true, uid: data.user.id }; } // confirmation disabled → instant
     return { confirm: true, email }; // confirmation email sent
   },
+
+  /** "Esqueci a senha" — pede ao Supabase o e-mail com o link de recuperação.
+   *  ⚠️ `ok` aqui significa "o pedido foi aceito", NÃO "o e-mail existe": o Supabase responde igual
+   *  para conta que existe e conta que não existe (de propósito, para ninguém usar esta tela como
+   *  detector de quem é cliente). A frase da tela tem que respeitar isso: "se existe conta, enviamos".
+   *  O link volta para /portal, onde `recuperando()` abre o campo de senha nova. */
+  async resetPassword(email) {
+    const e = (email || "").toString().trim().toLowerCase();
+    if (!e.includes("@")) return { error: "invalid email" };
+    // 1º pela NOSSA via (/api/senha → Resend). O envio padrão do Supabase tem cota baixa por hora
+    // e devolvia "Error sending recovery email" no 2º pedido do dia. 503 = nossa via indisponível
+    // → cai para o Supabase, que é o comportamento de antes.
+    try {
+      let lang = "en"; try { lang = String(localStorage.getItem("guileo_state_portal_lang") || localStorage.getItem("guileo_lang") || document.documentElement.lang || "en").replace(/[^a-z]/gi, "").slice(0, 2).toLowerCase(); } catch { /* */ }
+      const r = await fetch("/api/senha", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: e, lang }) });
+      if (r.ok) return { ok: true };
+      if (r.status === 400) return { error: "invalid email" };
+    } catch { /* rede → tenta o Supabase */ }
+    if (!supabase) return { error: "not connected" };
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(e, { redirectTo: `${window.location.origin}/portal` });
+      if (error) return { error: error.message || "reset failed" };
+      return { ok: true };
+    } catch (err) { return { error: String(err?.message || err) }; }
+  },
+
+  /** Grava a senha nova de quem chegou pelo link de recuperação (a sessão de recuperação já está
+   *  aberta). Só devolve ok com o usuário na resposta — sem ele, a troca não é prova de nada. */
+  async updatePassword(password) {
+    if (!supabase) return { error: "not connected" };
+    try {
+      const { data, error } = await supabase.auth.updateUser({ password });
+      if (error) return { error: error.message || "update failed" };
+      if (!data?.user) return { error: "update failed" };
+      _recuperacao = false;
+      return { ok: true };
+    } catch (err) { return { error: String(err?.message || err) }; }
+  },
+
+  /** true quando há sessão real (logada, não-demo) — com ou sem chave de conexão. Síncrono. */
+  contaReal() { return _contaReal; },
+
+  /** true enquanto a pessoa chegou por um link de recuperação e ainda não escolheu a senha nova. */
+  recuperando() { return _recuperacao; },
+  /** A pessoa desistiu de trocar agora (já está logada pelo link) — não pergunta de novo nesta carga. */
+  dispensarRecuperacao() { _recuperacao = false; },
+  /** Código de erro que veio no link do e-mail (ex.: "otp_expired"), ou "". */
+  erroDoLink() { return _erroDoLink; },
 
   async logout() {
     if (supabase) { try { await supabase.auth.signOut(); } catch { /* */ } }
     _uid = null;
+    _contaReal = false;
     _cloud = {};                       // drop the cloud mirror so the next user doesn't inherit it
     if (_flushTimer) { clearTimeout(_flushTimer); _flushTimer = null; }
     try { localStorage.removeItem(SESSION_KEY); } catch { /* private mode */ }
@@ -561,9 +780,30 @@ export const portalApi = {
     const { data: u } = await supabase.auth.getUser();
     if (!u?.user) return 0;
     _uid = u.user.id;
+    // parceiro operando um cliente: nada da nuvem do parceiro entra no navegador, nada sobe
+    { const par = parceiroAtivo(); if (par && par.email_parceiro === String(u.user.email || "").toLowerCase()) return 0; }
     const kv = u.user.user_metadata?.kv || {};
-    _cloud = { ...kv };
-    Object.entries(kv).forEach(([k, v]) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* */ } });
+    // 🚨 HIDRATAR É JUNTAR, NÃO SUBSTITUIR (2026-09-28). O supabase-js dispara SIGNED_IN toda vez que
+    // a aba volta ao foco, e cada um roda isto. A versão antiga fazia `_cloud = {...kv}` e regravava
+    // o navegador inteiro com a nuvem: uma configuração editada e ainda na fila de envio era
+    // DESFEITA ao trocar de aba. Agora o que está pendente neste aparelho vence a nuvem.
+    const pendentes = {};
+    _pendentes.forEach((k) => { if (k in _cloud) pendentes[k] = _cloud[k]; });
+    // A CHAVE DE CONEXÃO DESTE APARELHO TAMBÉM VENCE: ela acabou de chegar pelo link do e-mail.
+    let chaveLocal = "";
+    try { chaveLocal = loadDataKey(); } catch { /* */ }
+    _cloud = { ...kv, ...pendentes };
+    Object.entries(kv).forEach(([k, v]) => {
+      if (k in pendentes) return;
+      if (k === DATA_KEY_LS && chaveLocal) return;
+      try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* */ }
+    });
+    // 🚨 A CHAVE NUNCA SUBIA PARA A CONTA. O link `?code=` é aplicado ANTES do login, quando ainda
+    // não existe `_uid` — e `_queueUpsert` sem `_uid` não faz nada. Ninguém refazia o pedido depois.
+    // Conferido em produção: 0 de 3 contas tinham a chave na nuvem. No segundo aparelho o cliente
+    // logava e caía no assistente de demonstração, com aviso de "dados de exemplo".
+    // Aqui, já logado, o próprio navegador do cliente espelha a chave dele na conta dele.
+    if (chaveLocal && kv[DATA_KEY_LS] !== chaveLocal) _queueUpsert(DATA_KEY_LS, chaveLocal);
     // Ensure a real `clients` row exists/updates on every sign-in, using whatever
     // profile facts we already know from user_metadata. Fully graceful (table may not exist yet).
     try {
@@ -594,13 +834,27 @@ export const portalApi = {
     } catch { return { ok: false }; }
   },
 
-  /** Subscribe to auth changes; hydrates on sign-in, then calls cb(session|null). */
+  /** Subscribe to auth changes; hydrates on sign-in, then calls cb(session|null, event). */
   onAuthChange(cb) {
     if (!supabase) return () => {};
-    const { data } = supabase.auth.onAuthStateChange(async (_evt, sess) => {
-      if (sess?.user) { await this.hydrate(); }
+    // 🚨 NADA DE `await supabase.*` AQUI DENTRO (2026-09-28). Espera circular, não trava: a
+    // inicialização do auth-js (`_initialize` → `_recoverAndRefresh`) AGUARDA este callback
+    // terminar; ele fazia `await this.hydrate()`, e `auth.getUser()` aguarda a inicialização
+    // terminar. Um esperava o outro para sempre, e o boot da Central (que espera `getSession()`)
+    // ficava atrás dos dois: "Loading your Central…" eterno. Acontece sobretudo quando o token
+    // guardado está vencido e sendo renovado — por isso teste logado "normal" nem sempre reproduz.
+    // Só travava COM sessão ativa (sem login o callback recebe null e nem chama o hydrate) — ou
+    // seja, todo visitante via a tela funcionar e só o cliente pagante logado ficava preso. Foi a
+    // dona do Natura Spa clicando no e-mail de acesso que achou.
+    // A saída documentada pelo próprio Supabase: o callback fica SÍNCRONO e o trabalho que fala
+    // com a API sai da trava num setTimeout(0).
+    const { data } = supabase.auth.onAuthStateChange((evt, sess) => {
+      if (evt === "PASSWORD_RECOVERY") _recuperacao = true;   // o evento confirma a marca lida do hash
+      _contaReal = !!sess?.user;
+      if (sess?.user) { setTimeout(() => { this.hydrate().catch(() => { /* hidratar é bônus */ }); }, 0); }
       else { _uid = null; }
-      cb?.(sess ? { email: sess.user.email, uid: sess.user.id } : null);
+      // 2º argumento = o evento. Quem já chamava com um parâmetro só continua igual.
+      cb?.(sess ? { email: sess.user.email, uid: sess.user.id } : null, evt);
     });
     return () => data?.subscription?.unsubscribe();
   },

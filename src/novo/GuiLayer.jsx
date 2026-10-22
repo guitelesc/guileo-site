@@ -4,6 +4,7 @@ import { waLink } from "../data/contact.js";
 const VoiceWeb = lazy(() => import("../components/VoiceWeb.jsx"));
 const LiveCallBar = lazy(() => import("../components/LiveCallBar.jsx"));
 const GuiChat = lazy(() => import("../components/GuiChat.jsx"));
+const TenantChat = lazy(() => import("../components/TenantChat.jsx"));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // A CAMADA DE IA DO MOTOR — montada pelo Novo.jsx em TODO site do /novo.
@@ -48,6 +49,17 @@ export default function GuiLayer({
      para este slug, a IA do negócio disca pro visitante em segundos. Sem slug a aba Book
      não aparece: melhor não ter o botão do que ter um que não entrega. */
   slug = "",
+  /* SITE DE CLIENTE PAGANTE (2026-09-30, Natura). Num site de prospect o painel também VENDE a
+     Guileo: a aba Chat é o concierge da Guileo, "Get a call" é a nossa agente ligando e "What is
+     this" é o nosso pitch. No site de quem já paga isso é a nossa marca falando por cima da dele —
+     e o cliente do spa conversando com a vendedora da Guileo achando que é a Lilian. Com `cliente`
+     ficam só as abas em que quem atende é a agente DELE: Book, Talk now e Chat (TenantChat, a
+     qualquer hora — o chat de cliente não depende do horário do concierge da Guileo). */
+  cliente = false,
+  /* `vozSlug` = o slug do site PUBLICADO do cliente (client_sites), que é por onde /api/voice-web
+     acha a agente dele. Existe porque a mesma marca pode ter mais de uma página aqui (ex.:
+     "natura-spa" e "natura-spa-porta") e só uma é o site registrado. */
+  vozSlug = "",
 }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("voice");   // voice | call | chat | what
@@ -114,7 +126,9 @@ export default function GuiLayer({
 
   const toggle = (i) => setSel((p) => { const n = new Set(p); n.has(i) ? n.delete(i) : n.add(i); return n; });
   const wa = waLink(`Hi Guileo! On the ${business} site I want: ${FEATURES.filter((_, i) => sel.has(i)).map((f) => f[0]).join(", ")}`);
-  const TABS = [...(slug ? [["book", "Book"]] : []), ["voice", "Talk now"], ["call", "Get a call"], ...(hours ? [["chat", "Chat"]] : []), ["what", "What is this"]];
+  const TABS = cliente
+    ? [...(slug ? [["book", "Book"]] : []), ["voice", "Talk now"], ...(vozSlug || slug ? [["chat", "Chat"]] : [])]
+    : [...(slug ? [["book", "Book"]] : []), ["voice", "Talk now"], ["call", "Get a call"], ...(hours ? [["chat", "Chat"]] : []), ["what", "What is this"]];
 
   /* O PEDIDO PELO PAINEL — mesma porta do formulário da página. A resposta é lida do CORPO,
      nunca do status, e as duas verdades ficam separadas: recebido ✓ e ligação (disparada ou
@@ -203,9 +217,10 @@ export default function GuiLayer({
                   </form>
                 )
               )}
-              {tab === "voice" && <VoiceWeb brand={accent} business={business} lang="en" phone={phone} tema="escuro" />}
+              {tab === "voice" && <VoiceWeb slug={vozSlug || slug} brand={accent} business={business} lang="en" phone={phone} tema="escuro" />}
               {tab === "call" && <LiveCallBar source={`novo:${business}`} compacto />}
-              {tab === "chat" && hours && <GuiChat />}
+              {tab === "chat" && !cliente && hours && <GuiChat />}
+              {tab === "chat" && cliente && <TenantChat slug={vozSlug || slug} business={business} accent={accent} phone={phone} lang="en" />}
               {tab === "what" && (
                 <div className="px-1">
                   <p className="text-[11.5px] leading-snug text-white/60">

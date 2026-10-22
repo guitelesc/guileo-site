@@ -1,0 +1,81 @@
+
+=== VERSÃO 13/10 15h — depois do aviso 'affiliates or other companies' (USE ESTA) ===
+
+MESSAGE FLOW (cole inteiro):
+End users opt in at https://guileoai.com/sms, a public page run by TRANSPOINT (dba Guileo AI) and dedicated to this messaging program. No login is required. The page shows the program name (Guileo), the types of messages, the message frequency and cost disclosure, the STOP and HELP instructions, and links to the Privacy Policy (https://guileoai.com/privacy) and Terms (https://guileoai.com/terms).
+
+At the bottom of that page is the sign-up form. The user types their name and mobile number and must tick ONE consent checkbox, which is unchecked by default and required: the form cannot be submitted without it. The text next to the checkbox reads exactly:
+
+"I agree to be contacted by Gui (Guileo) at the number provided, by call and text. Msg & data rates may apply. Msg frequency varies. Reply STOP to opt out, HELP for help. Privacy Policy."
+
+Consent is given only to TRANSPOINT (dba Guileo AI), the registered business, and covers only the messages described on that page. It is optional and not a condition of purchase. The consent text and a timestamp are stored with the contact record. Mobile opt-in data is never shared with or sold to third parties or affiliates. We do not use purchased or rented lists.
+
+SAMPLE MESSAGES (sem nome de outra empresa):
+1) Guileo: Hi Maria, reminder: your appointment is tomorrow at 2:00 PM. Reply 1 to confirm or 2 to reschedule. Reply STOP to opt out.
+2) Guileo: Hi, this is Gui. Sorry we missed your call. How can we help? Reply here or call us back anytime. Reply STOP to opt out.
+3) Guileo: Hi Maria, you can see or change your appointment anytime here: https://guileoai.com/minha-reserva Reply STOP to opt out.
+4) Guileo: Hi Carlos, this is Gui. You asked for a quote on our website. When is a good time for a quick call? Reply STOP to opt out.
+
+
+CAMPANHA A2P — TEXTOS PARA COLAR (atualizado 13/10/2026: marca TRANSPOINT, DBA Guileo AI; /sms já diz isso)
+Onde: Twilio Console → Trust Hub → Registrations → A2P 10DLC Campaigns →
+      campanha "Rejected" → Edit & resubmit → Start
+(a aba já está aberta nesse ponto no seu Chrome)
+
+POR QUE REPROVOU TRÊS VEZES (erro 30909, "CTA não verificável"):
+  1. A campanha CITAVA um texto de consentimento que não existe no site
+     ("I agree to receive text messages from Guileo about my appointments and requests…").
+     O revisor abre a página, não acha a frase, reprova.
+  2. "Opt in message" e "Opt in keywords" estavam em branco.
+  3. A página /sms tinha duas caixas de consentimento. Agora tem uma só.
+Os textos abaixo citam a frase EXATA que está no site hoje.
+
+────────────────────────────────────────────────────────────────────────
+CAMPAIGN DESCRIPTION
+────────────────────────────────────────────────────────────────────────
+Guileo AI is a brand operated by TRANSPOINT, Astoria, New York (guileoai.com). TRANSPOINT, under the Guileo AI name, sends transactional and customer-care text messages only to people who explicitly opted in. Consumers opt in on our public web form at https://guileoai.com/sms. The consent checkbox is unchecked by default and the form cannot be submitted without it. Messages include appointment reminders and confirmations, missed-call text-backs, replies to requests the consumer made, and review requests after a visit. Every message identifies the sender and includes opt-out instructions. We never purchase, rent or upload third-party lists.
+
+────────────────────────────────────────────────────────────────────────
+HOW DO END-USERS CONSENT (MESSAGE FLOW)
+────────────────────────────────────────────────────────────────────────
+End users opt in at https://guileoai.com/sms, a public page dedicated to this messaging program. No login is required. The page shows the program name (Guileo), the types of messages, the message frequency and cost disclosure, the STOP and HELP instructions, and links to the Privacy Policy (https://guileoai.com/privacy) and Terms (https://guileoai.com/terms).
+
+At the bottom of that page is the sign-up form. The user types their name and mobile number and must tick ONE consent checkbox, which is unchecked by default and required: the form cannot be submitted without it. The text next to the checkbox reads exactly:
+
+"I agree to be contacted by Gui (Guileo) at the number provided, by call and text. Msg & data rates may apply. Msg frequency varies. Reply STOP to opt out, HELP for help. Privacy Policy."
+
+Consent is optional and is not a condition of purchase. The consent text and a timestamp are stored with the contact record. Mobile opt-in data is never shared with or sold to third parties. We do not use purchased or rented lists.
+
+────────────────────────────────────────────────────────────────────────
+OPT-IN MESSAGE
+────────────────────────────────────────────────────────────────────────
+Guileo: you are subscribed to appointment and customer-care messages. Msg & data rates may apply. Msg frequency varies. Reply HELP for help, STOP to cancel.
+
+────────────────────────────────────────────────────────────────────────
+OPT-IN KEYWORDS
+────────────────────────────────────────────────────────────────────────
+START, YES, UNSTOP
+
+────────────────────────────────────────────────────────────────────────
+PRIVACY POLICY URL          https://guileoai.com/privacy
+TERMS AND CONDITIONS URL    https://guileoai.com/terms
+────────────────────────────────────────────────────────────────────────
+
+SAMPLE MESSAGES (sem variável solta; nomes de exemplo)
+1) Guileo: Hi Maria, this is Gui from Natura Spa. Reminder: your appointment is tomorrow at 2:00 PM. Reply 1 to confirm or 2 to reschedule. Reply STOP to opt out.
+2) Guileo: Hi, this is Gui from Natura Spa. Sorry we missed your call. How can we help? Reply here or call us back anytime. Reply STOP to opt out.
+3) Guileo: Hi Carlos, this is Gui from Natura Spa. You asked for a quote on our website. When is a good time for a quick call? Reply STOP to opt out.
+4) Guileo: Hi Maria, Gui here from Natura Spa. You can see or change your appointment anytime here: https://guileoai.com/minha-reserva Reply STOP to opt out.
+
+CAIXAS DO FORMULÁRIO
+  Messages include embedded links?          YES
+  Messages include phone numbers?           NO
+  Age-gated content?                        NO
+  Direct lending / loan arrangement?        NO
+
+ANTES DE ENVIAR
+  · Saldo da Twilio em 13/10: $14,73. O reenvio pode cobrar taxa de análise; o valor aparece
+    na última tela. Se o saldo não cobrir, recarregue antes.
+  · A análise costuma levar de alguns dias a 2 semanas.
+  · Depois de aprovada: me avise, eu confirmo que os dois números estão no Messaging
+    Service "Guileo" e testo um envio real.

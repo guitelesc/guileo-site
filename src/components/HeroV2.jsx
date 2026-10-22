@@ -90,19 +90,64 @@ const POOL = [
 ];
 
 // Every kind of work Gui does — inbound & outbound, confirmations, sales, support, tracking…
+// CADA CENÁRIO É UMA HISTÓRIA LEGÍVEL (Luis, 2026-09-09: «olhando o iPhone não dá pra entender
+// o que a Gui realmente faz»). Antes: um negócio, uma frase solta. Agora: QUEM ligou e o que
+// pediu → o que a Gui FEZ (ferramenta nomeada) → o RESULTADO em dinheiro/agenda. É um recibo,
+// não um painel: a pessoa lê "pediu X, a Gui fez Y, saiu Z" em três segundos.
+// (Luis, 2026-09-09) — e em QUATRO idiomas: a lei da casa é nada de EN em tela PT. Cada campo
+// lido pelo visitante é {en,pt,es,hi}; `loc()` escolhe. Nome do negócio fica (é nome próprio).
+const T = (en, pt, es, hi) => ({ en, pt, es, hi });
 const SCENARIOS = [
-  { biz: "Tony's Pizza", dir: "in", type: "Order", line: "“Two larges, extra cheese — pickup at 7:15. Want drinks with that?”" },
-  { biz: "Bright Smiles Dental", dir: "out", type: "Confirmation", line: "“Hi! Confirming your cleaning tomorrow at 9 AM — reply 1 to keep, 2 to move.”" },
-  { biz: "Glow Spa", dir: "in", type: "Booking", line: "“Friday at 4 works — I sent your deposit link. You're all set ✨”" },
-  { biz: "Vértice Imóveis", dir: "in", type: "Lead qualify", line: "“3-bed downtown under R$2k? I'll text you 4 matches tonight.”" },
-  { biz: "Apex Plumbing", dir: "out", type: "Sales", line: "“Your water heater's due for service — I've got Thursday 10 AM. Book it?”" },
-  { biz: "Luna Café", dir: "in", type: "Support", line: "“I see the charge — refunding $20 now. You'll get a text confirmation.”" },
-  { biz: "FitZone Gym", dir: "out", type: "Win-back", line: "“We miss you! 1 month free if you're back this week — want me to set it up?”" },
-  { biz: "QuickShip Store", dir: "in", type: "Tracking", line: "“Your order's 6 minutes away — driver is Marco. I'll text live updates 🚗”" },
-  { biz: "Sterling Law", dir: "in", type: "Intake", line: "“Got your case details — a paralegal will call you within the hour.”" },
-  { biz: "Drive Auto", dir: "in", type: "Quote", line: "“Brake job is $280 out the door — I can fit you in tomorrow at 8. Sound good?”" },
-  { biz: "Bella Hair", dir: "out", type: "Reminder", line: "“Reminder: your color appointment is in 1 hour. See you soon!”" },
-  { biz: "Pulse Clinic", dir: "out", type: "Follow-up", line: "“Checking in after your visit — feeling better? I can rebook if you need.”" },
+  { biz: "Tony's Pizza", dir: "in", type: T("Order","Pedido","Pedido","ऑर्डर"),
+    who: T("Marco · new customer","Marco · cliente novo","Marco · cliente nuevo","Marco · नया ग्राहक"), ask: T("Two larges for pickup","Duas grandes pra retirar","Dos grandes para recoger","पिकअप के लिए दो बड़े"),
+    line: T("“Two larges, extra cheese — pickup at 7:15. Want drinks with that?”","“Duas grandes, queijo extra — retirada às 19:15. Quer bebida junto?”","“Dos grandes, extra queso — recoger a las 7:15. ¿Quieres bebidas?”","“दो बड़े, एक्स्ट्रा चीज़ — 7:15 पर पिकअप। साथ में ड्रिंक चाहिए?”"),
+    did: [T("Took the order","Anotou o pedido","Tomó el pedido","ऑर्डर लिया"), T("Upsold 2 drinks","Vendeu 2 bebidas a mais","Sumó 2 bebidas","2 ड्रिंक अपसेल"), T("Charged card on file","Cobrou no cartão salvo","Cobró a la tarjeta guardada","सेव्ड कार्ड से चार्ज")],
+    got: T("$41.80 · paid · ready 7:15","$41,80 · pago · pronto 19:15","$41.80 · pagado · listo 7:15","$41.80 · भुगतान · 7:15 तैयार") },
+  { biz: "Bright Smiles Dental", dir: "out", type: T("Confirmation","Confirmação","Confirmación","पुष्टि"),
+    who: T("Ana · patient","Ana · paciente","Ana · paciente","Ana · मरीज़"), ask: T("Cleaning tomorrow 9 AM","Limpeza amanhã às 9h","Limpieza mañana 9 AM","कल सुबह 9 बजे क्लीनिंग"),
+    line: T("“Hi! Confirming your cleaning tomorrow at 9 AM — reply 1 to keep, 2 to move.”","“Oi! Confirmando sua limpeza amanhã às 9h — responda 1 pra manter, 2 pra remarcar.”","“¡Hola! Confirmo tu limpieza mañana a las 9 AM — responde 1 para mantener, 2 para mover.”","“नमस्ते! कल सुबह 9 बजे की क्लीनिंग कन्फ़र्म — 1 रखने के लिए, 2 बदलने के लिए।”"),
+    did: [T("Called 24h before","Ligou 24h antes","Llamó 24h antes","24 घंटे पहले कॉल"), T("Confirmed the slot","Confirmou o horário","Confirmó el turno","स्लॉट कन्फ़र्म"), T("Updated the calendar","Atualizou a agenda","Actualizó la agenda","कैलेंडर अपडेट")],
+    got: T("No-show avoided · $180 kept","Falta evitada · $180 garantidos","Ausencia evitada · $180 asegurados","नो-शो टला · $180 बचे") },
+  { biz: "Glow Spa", dir: "in", type: T("Booking","Agendamento","Reserva","बुकिंग"),
+    who: T("Priya · returning","Priya · cliente de volta","Priya · vuelve","Priya · दोबारा आई"), ask: T("Facial on Friday","Limpeza de pele na sexta","Facial el viernes","शुक्रवार फ़ेशियल"),
+    line: T("“Friday at 4 works — I sent your deposit link. You're all set ✨”","“Sexta às 16h fecha — mandei o link do sinal. Tudo certo ✨”","“Viernes a las 4 va — te envié el link del depósito. Todo listo ✨”","“शुक्रवार 4 बजे ठीक है — डिपॉज़िट लिंक भेज दिया। सब सेट ✨”"),
+    did: [T("Found the opening","Achou a vaga","Encontró el hueco","खाली स्लॉट ढूँढा"), T("Booked Fri 4 PM","Marcou sex 16h","Reservó vie 4 PM","शुक्र 4 PM बुक"), T("Sent deposit link","Enviou link do sinal","Envió link de depósito","डिपॉज़िट लिंक भेजा")],
+    got: T("$50 deposit · booked","$50 de sinal · marcado","$50 de depósito · reservado","$50 डिपॉज़िट · बुक") },
+  { biz: "Vértice Imóveis", dir: "in", type: T("Lead qualify","Qualificação","Calificación","लीड क्वालिफ़ाई"),
+    who: T("Rafael · lead from ad","Rafael · lead do anúncio","Rafael · lead del anuncio","Rafael · विज्ञापन से लीड"), ask: T("3-bed downtown under R$2k","3 quartos no centro até R$2 mil","3 hab. en el centro < R$2k","सेंटर में 3-बेड, R$2k से कम"),
+    line: T("“3-bed downtown under R$2k? I'll text you 4 matches tonight.”","“3 quartos no centro até R$2 mil? Te mando 4 opções hoje à noite.”","“¿3 hab. en el centro por menos de R$2k? Te envío 4 opciones esta noche.”","“सेंटर में 3-बेड, R$2k से कम? आज रात 4 विकल्प भेजती हूँ।”"),
+    did: [T("Qualified budget & area","Qualificou orçamento e região","Calificó presupuesto y zona","बजट-इलाका क्वालिफ़ाई"), T("Saved to CRM","Salvou no CRM","Guardó en el CRM","CRM में सेव"), T("Scheduled a visit","Marcou visita","Agendó una visita","विज़िट तय")],
+    got: T("Visit Sat 10 AM · lead owned","Visita sáb 10h · lead seu","Visita sáb 10 AM · lead tuyo","शनि 10 AM विज़िट · लीड आपकी") },
+  { biz: "Apex Plumbing", dir: "out", type: T("Sales","Venda","Venta","सेल्स"),
+    who: T("Mrs. Chen · client since 2024","Sra. Chen · cliente desde 2024","Sra. Chen · cliente desde 2024","श्रीमती Chen · 2024 से ग्राहक"), ask: T("Water heater service due","Revisão do aquecedor vencendo","Servicio del calentador vencido","वॉटर हीटर सर्विस ड्यू"),
+    line: T("“Your water heater's due for service — I've got Thursday 10 AM. Book it?”","“Seu aquecedor está na hora da revisão — tenho quinta às 10h. Marco?”","“Tu calentador necesita servicio — tengo jueves 10 AM. ¿Lo agendo?”","“आपके वॉटर हीटर की सर्विस ड्यू है — गुरुवार 10 AM खाली है। बुक करूँ?”"),
+    did: [T("Spotted the due date","Viu a data vencendo","Detectó el vencimiento","ड्यू डेट पकड़ी"), T("Called first","Ligou antes","Llamó primero","पहले कॉल किया"), T("Booked Thu 10 AM","Marcou qui 10h","Reservó jue 10 AM","गुरु 10 AM बुक")],
+    got: T("$320 job · from your own list","$320 de serviço · da sua própria lista","$320 de trabajo · de tu propia lista","$320 का काम · आपकी अपनी लिस्ट से") },
+  { biz: "Luna Café", dir: "in", type: T("Support","Suporte","Soporte","सपोर्ट"),
+    who: T("Sofia · regular","Sofia · cliente habitual","Sofía · habitual","Sofia · रेगुलर"), ask: T("Double charge on receipt","Cobrança em dobro","Cobro duplicado","दो बार चार्ज"),
+    line: T("“I see the charge — refunding $20 now. You'll get a text confirmation.”","“Estou vendo a cobrança — estornando $20 agora. Você recebe a confirmação por SMS.”","“Veo el cobro — devuelvo $20 ahora. Recibirás confirmación por SMS.”","“चार्ज दिख रहा है — $20 अभी रिफ़ंड। SMS से पुष्टि मिलेगी।”"),
+    did: [T("Checked the receipt","Conferiu o recibo","Revisó el recibo","रसीद जाँची"), T("Refunded $20","Estornou $20","Devolvió $20","$20 रिफ़ंड"), T("Texted confirmation","Confirmou por SMS","Confirmó por SMS","SMS से पुष्टि")],
+    got: T("Regular kept · 5★ review asked","Cliente mantida · pediu avaliação 5★","Cliente retenida · pidió reseña 5★","ग्राहक बची · 5★ रिव्यू माँगा") },
+  { biz: "FitZone Gym", dir: "out", type: T("Win-back","Reativação","Reactivación","वापसी"),
+    who: T("Diego · lapsed 60 days","Diego · sumido há 60 dias","Diego · 60 días sin venir","Diego · 60 दिन से गायब"), ask: T("Stopped coming","Parou de vir","Dejó de venir","आना बंद"),
+    line: T("“We miss you! 1 month free if you're back this week — want me to set it up?”","“Sentimos sua falta! 1 mês grátis se voltar esta semana — quer que eu ative?”","“¡Te extrañamos! 1 mes gratis si vuelves esta semana — ¿lo activo?”","“आपकी कमी है! इस हफ़्ते लौटें तो 1 महीना फ़्री — सेट कर दूँ?”"),
+    did: [T("Detected the churn","Detectou o sumiço","Detectó el abandono","चर्न पकड़ा"), T("Offered win-back","Ofereceu volta","Ofreció regreso","वापसी ऑफ़र"), T("Reactivated plan","Reativou o plano","Reactivó el plan","प्लान फिर चालू")],
+    got: T("$79/mo back · member returned","$79/mês de volta · aluno voltou","$79/mes de vuelta · socio regresó","$79/माह वापस · सदस्य लौटा") },
+  { biz: "Drive Auto", dir: "in", type: T("Quote","Orçamento","Presupuesto","कोटेशन"),
+    who: T("Luis · from Google","Luis · veio do Google","Luis · desde Google","Luis · Google से"), ask: T("Brake job price","Preço do freio","Precio de frenos","ब्रेक का दाम"),
+    line: T("“Brake job is $280 out the door — I can fit you in tomorrow at 8. Sound good?”","“Freio sai por $280 fechado — consigo amanhã às 8h. Pode ser?”","“Los frenos salen $280 todo incluido — te puedo atender mañana a las 8. ¿Va?”","“ब्रेक का काम $280 फ़ाइनल — कल 8 बजे फ़िट कर सकती हूँ। ठीक?”"),
+    did: [T("Quoted from your price list","Orçou pela sua tabela","Cotizó con tu lista","आपकी प्राइस लिस्ट से कोट"), T("Booked tomorrow 8 AM","Marcou amanhã 8h","Reservó mañana 8 AM","कल 8 AM बुक"), T("Sent the quote by SMS","Mandou o orçamento por SMS","Envió el presupuesto por SMS","SMS से कोट भेजा")],
+    got: T("$280 · quoted & booked","$280 · orçado e marcado","$280 · cotizado y reservado","$280 · कोट और बुक") },
+  { biz: "Sterling Law", dir: "in", type: T("Intake","Triagem","Admisión","इनटेक"),
+    who: T("Karen · new case","Karen · caso novo","Karen · caso nuevo","Karen · नया केस"), ask: T("Contract dispute","Disputa de contrato","Disputa contractual","कॉन्ट्रैक्ट विवाद"),
+    line: T("“Got your case details — a paralegal will call you within the hour.”","“Anotei os detalhes do caso — um assistente jurídico te liga em até 1 hora.”","“Tengo los detalles del caso — un paralegal te llama dentro de una hora.”","“केस की जानकारी मिल गई — एक पैरालीगल एक घंटे में कॉल करेगा।”"),
+    did: [T("Ran the intake","Fez a triagem","Hizo la admisión","इनटेक किया"), T("Flagged as priority","Marcou como prioridade","Marcó como prioridad","प्राथमिकता चिह्नित"), T("Routed to a paralegal","Encaminhou ao assistente","Derivó a un paralegal","पैरालीगल को भेजा")],
+    got: T("Case opened · handoff in 1h","Caso aberto · repasse em 1h","Caso abierto · traspaso en 1h","केस खुला · 1 घंटे में हैंडऑफ़") },
+  { biz: "Bella Hair", dir: "out", type: T("Reminder","Lembrete","Recordatorio","रिमाइंडर"),
+    who: T("Júlia · color appt","Júlia · horário de coloração","Julia · cita de color","Júlia · कलर अपॉइंटमेंट"), ask: T("Appointment in 1 hour","Horário em 1 hora","Cita en 1 hora","1 घंटे में अपॉइंटमेंट"),
+    line: T("“Reminder: your color appointment is in 1 hour. See you soon!”","“Lembrete: sua coloração é daqui a 1 hora. Até já!”","“Recordatorio: tu cita de color es en 1 hora. ¡Nos vemos!”","“रिमाइंडर: आपका कलर अपॉइंटमेंट 1 घंटे में है। मिलते हैं!”"),
+    did: [T("Sent the reminder","Mandou o lembrete","Envió el recordatorio","रिमाइंडर भेजा"), T("Confirmed arrival","Confirmou presença","Confirmó asistencia","आना कन्फ़र्म"), T("Prepped the chair","Deixou a cadeira pronta","Preparó la silla","कुर्सी तैयार")],
+    got: T("$140 slot · on time","$140 no horário · em dia","$140 de turno · a tiempo","$140 स्लॉट · समय पर") },
 ];
 
 // floating stat cards — short, high-visibility copy → localized per visitor language ({en,pt,es,hi})
@@ -149,7 +194,33 @@ function FeedRow({ a, lang }) {
   );
 }
 
-function Phone() {
+// `export` (2026-09-09): a nova landing (/nova) reaproveita o MESMO objeto vivo — um segundo
+// mockup seria uma segunda verdade sobre a Gui para manter em dia.
+// OS KEYFRAMES DO HERO, EXPORTADOS (2026-09-09). O `Phone` sozinho é um boneco: gfloat/gplant/
+// gscroll/greveal/gshine/gembers moravam só neste <style>, e a landing nova importou o Phone sem
+// eles — telefone parado, título sem brilho. Quem monta o Phone fora daqui monta isto junto.
+export function HeroKeyframes() {
+  return (
+    <style>{`
+        @keyframes gwave{0%,100%{transform:scaleY(0.42)}50%{transform:scaleY(1)}}
+        @keyframes gscroll{from{transform:translateY(0)}to{transform:translateY(-50%)}}
+        @keyframes gsoft{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+        /* faster, translate-free crossfade for the floating proof cards so the pill never reads empty mid-swap */
+        @keyframes gswap{from{opacity:.15}to{opacity:1}}
+        @keyframes gfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+        @keyframes gplant{0%,100%{transform:translateY(0) rotate(-.8deg)}50%{transform:translateY(-7px) rotate(.8deg)}}
+        @keyframes gpulse{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.45);opacity:0}}
+        @keyframes greveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes gshine{to{background-position:220% center}}
+        @keyframes gembers{0%,100%{opacity:.55}50%{opacity:.95}}
+        @media (prefers-reduced-motion: reduce){
+          *{animation-duration:0.001ms !important;animation-iteration-count:1 !important}
+        }
+    `}</style>
+  );
+}
+
+export function Phone() {
   const { lang } = useLang();
   const loc = (v) => v[lang] ?? v.en; // {en,pt,es,hi} → visitor language
   const [secs, setSecs] = useState(134);
@@ -158,7 +229,7 @@ function Phone() {
 
   useEffect(() => {
     const a = setInterval(() => setSecs((s) => s + 1), 1000);
-    const b = setInterval(() => setBiz((s) => s + 1), 4200); // gentle header rotation
+    const b = setInterval(() => setBiz((s) => s + 1), 6500); // história inteira precisa de tempo pra ser lida
     const c = setInterval(() => setStat((s) => s + 1), 3200); // floating cards rotation
     return () => { clearInterval(a); clearInterval(b); clearInterval(c); };
   }, []);
@@ -185,13 +256,32 @@ function Phone() {
           aplicativo — vende resultado que se acumula. A marca diz isso sozinha: folhas em
           cima, raízes de CIRCUITO embaixo. E é a única imagem deste mercado que ninguém
           copia sem virar cópia declarada. */}
-      <div className="relative rounded-[2.4rem] border border-white/[0.07] bg-[#0b0b0b]/80 shadow-[0_60px_150px_-30px_rgba(0,0,0,0.9)] backdrop-blur-xl">
-        <div className="relative overflow-hidden rounded-[2.4rem]">
+      {/* APARELHO DE VERDADE (Luis, 2026-09-10: "dá pra melhorar o realismo na tela também?"):
+          moldura de titânio com a luz caindo de cima (clara em cima, escura embaixo), aro interno
+          preto (a espessura do vidro), botões laterais, a ilha da câmera, e a TELA emitindo luz —
+          um halo verde-cimento vazando pelas bordas pro fundo. O reflexo diagonal do ambiente
+          atravessa a tela por cima de tudo (z-20), como vidro real. */}
+      <div className="relative rounded-[2.6rem] p-[3px] shadow-[0_60px_150px_-30px_rgba(0,0,0,0.95),0_0_80px_-20px_rgba(62,148,104,0.35)]"
+           style={{ background: "linear-gradient(180deg,#6a6560 0%,#3a3733 18%,#232120 55%,#15140f 100%)" }}>
+        {/* botões laterais */}
+        <span aria-hidden="true" className="absolute -left-[3px] top-[110px] h-[26px] w-[3px] rounded-l-sm" style={{ background: "linear-gradient(180deg,#5a5652,#2a2826)" }} />
+        <span aria-hidden="true" className="absolute -left-[3px] top-[160px] h-[48px] w-[3px] rounded-l-sm" style={{ background: "linear-gradient(180deg,#5a5652,#2a2826)" }} />
+        <span aria-hidden="true" className="absolute -left-[3px] top-[218px] h-[48px] w-[3px] rounded-l-sm" style={{ background: "linear-gradient(180deg,#5a5652,#2a2826)" }} />
+        <span aria-hidden="true" className="absolute -right-[3px] top-[180px] h-[70px] w-[3px] rounded-r-sm" style={{ background: "linear-gradient(180deg,#5a5652,#2a2826)" }} />
+        <div className="relative rounded-[2.45rem] bg-black p-[6px]">
+          <div className="relative overflow-hidden rounded-[2.1rem] bg-[#0b0b0b]/90 backdrop-blur-xl" style={{ boxShadow: "inset 0 0 40px rgba(62,148,104,0.10)" }}>
+            {/* ilha da câmera */}
+            <span aria-hidden="true" className="absolute left-1/2 top-3 z-30 h-[22px] w-[84px] -translate-x-1/2 rounded-full bg-black ring-1 ring-white/[0.06]"><span className="absolute right-2 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-[#1a1f24] ring-1 ring-white/10" /></span>
+            {/* reflexo do ambiente atravessando a tela — vidro real */}
+            <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-20" style={{ background: "linear-gradient(112deg, transparent 30%, rgba(255,255,255,0.075) 42%, rgba(255,255,255,0.02) 48%, transparent 58%)" }} />
+            {/* OLED não é uniforme: brilho leve caindo de cima */}
+            <span aria-hidden="true" className="pointer-events-none absolute inset-0 z-10" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.05), transparent 30%, rgba(0,0,0,0.18) 100%)" }} />
+        <div className="relative">
 
           {/* a logo real, grande, respirando — o objeto central da dobra */}
           <div className="flex justify-center pt-7 pb-1">
             <img src={mark} alt="Guileo" width="1200" height="1200"
-                 className="h-[132px] w-[132px] object-contain drop-shadow-[0_18px_38px_rgba(0,0,0,0.5)]"
+                 className="h-[88px] w-[88px] object-contain drop-shadow-[0_18px_38px_rgba(0,0,0,0.5)]"
                  style={{ animation: "gplant 8s ease-in-out infinite" }} />
           </div>
 
@@ -205,7 +295,7 @@ function Phone() {
                 On a call · {mm}:{ss}
               </div>
               <span key={"t" + biz} className="rounded-full bg-white/[0.06] px-2 py-[2px] text-[9px] font-bold uppercase tracking-wider text-white/70 ring-1 ring-white/10" style={{ animation: "gsoft .8s ease-in-out both" }}>
-                {dirIcon} {dirLabel} · {B.type}
+                {dirIcon} {dirLabel} · {loc(B.type)}
               </span>
             </div>
             <div className="mt-2.5 flex items-center gap-3">
@@ -230,22 +320,42 @@ function Phone() {
             </div>
           </div>
 
-          <div className="mx-6 mt-4 rounded-2xl bg-white/[0.04] p-3.5 ring-1 ring-white/10">
-            <Waveform />
-            <p key={B.line} className="mt-2.5 min-h-[34px] text-[12.5px] leading-snug text-white/80" style={{ animation: "gsoft .8s ease-in-out both" }}>{B.line}</p>
+          <div className="relative mx-6 mt-4 rounded-2xl bg-white/[0.04] p-3.5 ring-1 ring-white/10 backdrop-blur-md">
+            {/* QUEM LIGOU E O QUE PEDIU — a primeira linha que o olho lê */}
+            <div key={"w" + biz} className="flex items-center justify-between gap-2" style={{ animation: "gswap .5s ease-in-out both" }}>
+              <span className="truncate text-[10.5px] font-bold text-white/85">{loc(B.who)}</span>
+              <span className="shrink-0 rounded-full bg-white/[0.06] px-2 py-[2px] text-[9px] font-semibold text-white/60 ring-1 ring-white/10">{loc(B.ask)}</span>
+            </div>
+            <div className="mt-2"><Waveform /></div>
+            <p key={B.line} className="mt-2 text-[12.5px] leading-snug text-white/80" style={{ animation: "gsoft .8s ease-in-out both" }}>{loc(B.line)}</p>
+            {/* O QUE A GUI FEZ → O QUE SAIU. Ferramenta nomeada e recibo: é isto que "inteligente" quer dizer. */}
+            <div key={"d" + biz} className="mt-3 border-t border-white/[0.07] pt-2.5" style={{ animation: "gswap .5s ease-in-out both" }}>
+              <div className="text-[9px] font-bold uppercase tracking-wider text-white/50">{loc({ en: "Gui did", pt: "A Gui fez", es: "Gui hizo", hi: "Gui ने किया" })}</div>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {B.did.map((d, k) => (
+                  <span key={k} className="rounded-full border border-g-green/30 bg-g-green/10 px-2 py-[3px] text-[10px] font-semibold text-g-light" style={{ animation: `gswap .5s ease-in-out ${k * 0.08}s both` }}>✓ {loc(d)}</span>
+                ))}
+              </div>
+              <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-black/30 px-2.5 py-2 ring-1 ring-white/[0.06]">
+                <span className="text-[11px]">🧾</span>
+                <span className="text-[11.5px] font-black tracking-tight text-g-gold">{loc(B.got)}</span>
+              </div>
+            </div>
           </div>
 
           {/* SMOOTH continuous feed — glides up forever, soft fade at edges */}
-          <div className="px-6 pb-5 pt-4">
+          <div className="px-6 pb-4 pt-3">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-white/70">Gui is handling it · live</span>
               <span className="text-[9px] text-g-green">● real-time</span>
             </div>
-            <div className="relative h-[232px] overflow-hidden" style={{ maskImage: "linear-gradient(to bottom,transparent,#000 14%,#000 86%,transparent)", WebkitMaskImage: "linear-gradient(to bottom,transparent,#000 14%,#000 86%,transparent)" }}>
+            <div className="relative h-[132px] overflow-hidden" style={{ maskImage: "linear-gradient(to bottom,transparent,#000 14%,#000 86%,transparent)", WebkitMaskImage: "linear-gradient(to bottom,transparent,#000 14%,#000 86%,transparent)" }}>
               <div className="space-y-2" style={{ animation: "gscroll 30s linear infinite" }}>
                 {[...POOL, ...POOL].map((a, i) => <FeedRow key={i} a={a} lang={lang} />)}
               </div>
             </div>
+          </div>
+        </div>
           </div>
         </div>
       </div>
@@ -279,22 +389,7 @@ export default function HeroV2() {
   const C = HERO_COPY[lang] || HERO_COPY.en;
   return (
     <section className="relative overflow-hidden px-5 pt-10 pb-20 sm:pt-16">
-      <style>{`
-        @keyframes gwave{0%,100%{transform:scaleY(0.42)}50%{transform:scaleY(1)}}
-        @keyframes gscroll{from{transform:translateY(0)}to{transform:translateY(-50%)}}
-        @keyframes gsoft{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-        /* faster, translate-free crossfade for the floating proof cards so the pill never reads empty mid-swap */
-        @keyframes gswap{from{opacity:.15}to{opacity:1}}
-        @keyframes gfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
-        @keyframes gplant{0%,100%{transform:translateY(0) rotate(-.8deg)}50%{transform:translateY(-7px) rotate(.8deg)}}
-        @keyframes gpulse{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.45);opacity:0}}
-        @keyframes greveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes gshine{to{background-position:220% center}}
-        @keyframes gembers{0%,100%{opacity:.55}50%{opacity:.95}}
-        @media (prefers-reduced-motion: reduce){
-          *{animation-duration:0.001ms !important;animation-iteration-count:1 !important}
-        }
-      `}</style>
+      <HeroKeyframes />
 
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(1200px_500px_at_70%_-10%,rgba(62,148,104,0.10),transparent),radial-gradient(800px_400px_at_10%_20%,rgba(214,194,154,0.06),transparent)]" />
       {/* Gui signature ember — the AI's warm orange presence breathing behind the scene (Faena drama) */}

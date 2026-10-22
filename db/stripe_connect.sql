@@ -49,3 +49,16 @@ begin
   );
 end
 $$;
+
+-- 2026-09-30 — os fusos das unidades do negócio, para o /api/stripe-connect decidir o PAÍS da conta
+-- (lib/contaDoCliente.js · paisDoNegocio). Sem isto a conta Express nascia no país da plataforma.
+create or replace function public.biz_tenant_fusos(p_secret text, p_email text)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+begin
+  if not public._gui_sched_ok(p_secret) then return jsonb_build_object('ok', false, 'reason', 'unauthorized'); end if;
+  return jsonb_build_object('ok', true, 'fusos', coalesce((
+    select jsonb_agg(distinct nullif(trim(l.tz), '')) filter (where nullif(trim(l.tz), '') is not null)
+      from biz_locations l where l.client_email = lower(trim(p_email)) and l.active), '[]'::jsonb));
+end $$;
+revoke all on function public.biz_tenant_fusos(text,text) from public, anon, authenticated;
+grant execute on function public.biz_tenant_fusos(text,text) to service_role;

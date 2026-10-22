@@ -74,9 +74,9 @@ export async function onRequestPost({ request, env }) {
     // recusa cliente que não está na caixa dele (`chat_vendedor_enviar` verifica antes de gravar).
     if (acao === "chat_ler") {
       const r = await svcRpc(env, "chat_ler", { p_secret: ING, p_client_email: "", p_seller_email: seller.email });
-      if (!r.ok) return json({ ok: false, motivo: `não consegui ler as conversas (HTTP ${r.status})` }, 502);
+      if (!r.ok) return json({ ok: false, motivo: `não consegui ler as conversas (HTTP ${r.status})` }, 503);
       const d = await r.json().catch(() => null);
-      if (!d?.ok) return json({ ok: false, motivo: d?.motivo || "resposta inesperada" }, 502);
+      if (!d?.ok) return json({ ok: false, motivo: d?.motivo || "resposta inesperada" }, 503);
       return json({ ok: true, mensagens: d.mensagens || [] });
     }
 
@@ -87,10 +87,10 @@ export async function onRequestPost({ request, env }) {
       const r = await svcRpc(env, "chat_vendedor_enviar", {
         p_secret: ING, p_seller_email: seller.email, p_client_email: cliente, p_texto: texto.slice(0, 2000),
       });
-      if (!r.ok) return json({ ok: false, motivo: `não consegui enviar (HTTP ${r.status})` }, 502);
+      if (!r.ok) return json({ ok: false, motivo: `não consegui enviar (HTTP ${r.status})` }, 503);
       const d = await r.json().catch(() => null);
       // 🚨 comprovante: só declaro enviado com o id da linha gravada.
-      if (!d?.ok || !d.id) return json({ ok: false, motivo: d?.motivo || "não gravou a mensagem" }, 502);
+      if (!d?.ok || !d.id) return json({ ok: false, motivo: d?.motivo || "não gravou a mensagem" }, 503);
       return json({ ok: true, id: d.id });
     }
 

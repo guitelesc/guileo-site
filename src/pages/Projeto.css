@@ -1,0 +1,147 @@
+/* ════════════════════════════════════════════════════════════════════════════════════════════════
+   ACOMPANHAMENTO DE PROJETO com a cara do deck da Natura (2026-10-08). Vive DENTRO de `.sign-natura`
+   (tokens --sn-* do Sign.natura.css, importado junto) e só acrescenta as peças do quadro.
+   Mesmas travas: ouro só sobre painel BRANCO; nada de "backdrop-blur" em nome de classe.
+   ════════════════════════════════════════════════════════════════════════════════════════════════ */
+.prj { min-height: 100vh; }
+.prj-wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; }
+
+/* faixa = capa do deck */
+.prj-band-in { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 14px; }
+.prj-brand { display: flex; align-items: center; gap: 10px; }
+.prj-natura { height: 22px; width: auto; display: block; }
+.prj-hero { padding-block: 28px 30px; }
+.prj-hero h1 { margin: 6px 0 0; font-size: clamp(26px, 4.4vw, 40px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.04; color: var(--sn-dark-fg); text-wrap: balance; }
+.prj-hero .prj-sub { margin-top: 8px; color: var(--sn-dark-muted); font-size: 14px; max-width: 62ch; }
+.prj-eye-d { font-family: var(--sn-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--sn-dark-gold); }
+
+/* números do topo */
+.prj-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; border-top: 1px solid #34312B; margin-top: 22px; padding-top: 18px; }
+.prj-stat .k { font-family: var(--sn-mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sn-dark-muted); }
+.prj-stat .v { margin-top: 4px; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--sn-dark-fg); font-variant-numeric: tabular-nums; }
+.prj-stat .v small { font-size: 13px; font-weight: 600; color: var(--sn-dark-muted); margin-left: 4px; }
+.prj-stat .v.gold { color: var(--sn-dark-gold); }
+.prj-stat .v.red { color: #E08A72; }
+.prj-bar { height: 6px; border-radius: 999px; background: #34312B; margin-top: 8px; overflow: hidden; position: relative; }
+.prj-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 999px; }
+@media (max-width: 640px) { .prj-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* linha do tempo das 3 semanas */
+.prj-tl { margin-top: 22px; }
+.prj-tl-row { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: 4px; }
+.prj-day { background: var(--sn-panel); border: 1px solid var(--sn-line); border-radius: 8px; padding: 6px 2px 7px; text-align: center; min-width: 0; width: 100%; overflow: hidden; }
+.prj-day .d { font-family: var(--sn-mono); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sn-muted); }
+.prj-day .n { font-size: 15px; font-weight: 800; color: var(--sn-ink); font-variant-numeric: tabular-nums; }
+.prj-day .dot { width: 8px; height: 8px; border-radius: 50%; margin: 4px auto 0; background: var(--sn-line); }
+.prj-day .dot.ok { background: var(--sn-green); }
+.prj-day .dot.part { background: #C9A04F; }
+.prj-day .dot.late { background: var(--sn-red); }
+.prj-day.today { border: 2px solid var(--sn-ink); }
+.prj-day.gl { background: var(--sn-dark); border-color: var(--sn-dark); }
+.prj-day.gl .d { color: var(--sn-dark-gold); } .prj-day.gl .n { color: var(--sn-dark-fg); }
+.prj-weeks { display: grid; grid-template-columns: 5fr 5fr 5fr; gap: 4px; margin-bottom: 4px; }
+.prj-weeks span { font-family: var(--sn-mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sn-gold); border-bottom: 1px solid var(--sn-line); padding-bottom: 3px; }
+.prj-tl-scroll { overflow-x: auto; }
+@media (max-width: 560px) { .prj-day .d { display: none; } .prj-day .n { font-size: 13px; } .prj-day { padding: 5px 0 6px; } .prj-tl-row { gap: 3px !important; } .prj-weeks span { font-size: 8.5px; letter-spacing: .08em; } }
+
+/* filtros */
+.prj-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between; }
+.prj-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--sn-ink-2); cursor: pointer; }
+
+/* fases e itens */
+.prj-phase { margin-top: 22px; }
+.prj-phase-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.prj-phase-h h2 { margin: 0; font-size: 17px; font-weight: 800; letter-spacing: -0.015em; color: var(--sn-ink); }
+.prj-phase-h .c { font-family: var(--sn-mono); font-size: 11px; color: var(--sn-muted); white-space: nowrap; }
+.prj-list { list-style: none; margin: 0; padding: 0; }
+.prj-item { border-top: 1px solid var(--sn-line); padding: 12px 14px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; }
+.prj-item:first-child { border-top: 0; }
+.prj-item.acc { background: #F7FBF8; }
+.prj-item.late { box-shadow: inset 3px 0 0 var(--sn-red); }
+.prj-item.blk { box-shadow: inset 3px 0 0 #4D6F93; }
+.prj-checks { display: flex; gap: 6px; padding-top: 1px; }
+.prj-cb { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; }
+.prj-cb input { width: 20px; height: 20px; accent-color: var(--sn-green); cursor: pointer; margin: 0; }
+.prj-cb input:disabled { cursor: default; }
+.prj-cb span { font-family: var(--sn-mono); font-size: 8.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sn-muted); }
+.prj-title { font-size: 14.5px; font-weight: 650; line-height: 1.4; color: var(--sn-ink); }
+.prj-item.acc .prj-title { color: var(--sn-ink-2); }
+.prj-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 5px; font-size: 12px; color: var(--sn-muted); }
+.prj-who { font-family: var(--sn-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.06em; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--sn-line-strong); color: var(--sn-ink-2); background: #fff; }
+.prj-who.OR { background: var(--sn-ink); color: var(--sn-paper); border-color: var(--sn-ink); }
+.prj-who.NA { color: #7A5410; background: #F6ECD6; border-color: #E2CC9C; }
+.prj-due { font-variant-numeric: tabular-nums; }
+.prj-due.late { color: var(--sn-red); font-weight: 700; }
+.prj-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+.prj-pill i { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.prj-pill.acc { color: #1F6B49; background: #E5F1E9; border-color: #B7D8C4; } .prj-pill.acc i { background: #2F8A60; }
+.prj-pill.done { color: #7A5410; background: #F6ECD6; border-color: #E2CC9C; } .prj-pill.done i { background: #A9781C; }
+.prj-pill.blk { color: #3B5A7C; background: #E8EEF5; border-color: #C3D1E1; } .prj-pill.blk i { background: #4D6F93; }
+.prj-pill.late { color: var(--sn-red); background: #FBF1EE; border-color: #E3BFB4; } .prj-pill.late i { background: var(--sn-red); }
+.prj-pill.open { color: var(--sn-ink-2); background: #fff; border-color: var(--sn-line-strong); } .prj-pill.open i { border: 1.5px solid var(--sn-muted); background: transparent; }
+.prj-link { color: var(--sn-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; word-break: break-all; }
+.prj-note { margin-top: 6px; font-size: 13px; color: var(--sn-ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.prj-more { font-size: 12px; font-weight: 700; color: var(--sn-ink); text-decoration: underline; text-underline-offset: 2px; background: none; border: 0; padding: 0; cursor: pointer; }
+.prj-edit { grid-column: 1 / -1; margin-top: 8px; padding: 12px; display: grid; gap: 10px; }
+.prj-edit .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.prj-in { width: 100%; min-height: 40px; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--sn-line-strong); background: #fff; color: var(--sn-ink); font-size: 14px; outline: none; font-family: inherit; }
+.prj-in:focus { border-color: var(--sn-ink); }
+textarea.prj-in { min-height: 70px; resize: vertical; }
+.prj-lbl { display: grid; gap: 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sn-muted); }
+.prj-btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.prj-btn { min-height: 38px; padding: 0 16px; border-radius: 8px; border: 1.5px solid var(--sn-ink); background: var(--sn-ink); color: var(--sn-paper); font-size: 13px; font-weight: 700; cursor: pointer; }
+.prj-btn.ghost { background: transparent; color: var(--sn-ink); }
+.prj-btn.danger { background: transparent; color: var(--sn-red); border-color: var(--sn-red); }
+.prj-btn:disabled { opacity: .55; cursor: default; }
+
+/* atividade */
+.prj-log { list-style: none; margin: 0; padding: 0; }
+.prj-log li { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; padding: 8px 14px; border-top: 1px solid var(--sn-line); font-size: 13px; }
+.prj-log li:first-child { border-top: 0; }
+.prj-log .t { font-family: var(--sn-mono); font-size: 11px; color: var(--sn-muted); padding-top: 2px; }
+.prj-log .w { font-weight: 700; color: var(--sn-ink); }
+.prj-log .x { color: var(--sn-ink-2); overflow-wrap: anywhere; }
+@media (max-width: 520px) { .prj-log li { grid-template-columns: 1fr; gap: 2px; } .prj-item { padding: 12px 10px; } }
+
+.prj-foot { padding-block: 26px 40px; font-size: 12px; color: var(--sn-muted); text-align: center; }
+.prj-toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--sn-ink); color: var(--sn-paper); font-size: 13px; font-weight: 600; padding: 10px 16px; border-radius: 10px; z-index: 50; max-width: calc(100vw - 32px); }
+
+/* ── MOVIMENTO, INTERAÇÃO, FOCO ──────────────────────────────────────────────────────────────────
+   Entrada em sequência (--i = posição), barras que enchem, número que conta, checkbox que "pula",
+   hoje pulsando. Tudo some com prefers-reduced-motion. Foco de teclado sempre visível (tinta no
+   papel, ouro na faixa escura). */
+@keyframes prj-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes prj-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes prj-pop { 0% { transform: scale(1); } 40% { transform: scale(1.28); } 100% { transform: scale(1); } }
+@keyframes prj-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(22,21,18,.35); } 50% { box-shadow: 0 0 0 5px rgba(22,21,18,0); } }
+@keyframes prj-flash { from { background: #FFF6DF; } to { background: transparent; } }
+@keyframes prj-toast { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+.prj-rise { animation: prj-rise .5s cubic-bezier(.2,.7,.2,1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+.prj-bar i { transform-origin: left center; animation: prj-fill .9s cubic-bezier(.2,.7,.2,1) both .15s; transition: width .5s ease; }
+.prj-cb input.pop { animation: prj-pop .32s ease; }
+.prj-day.today { animation: prj-pulse 2.2s ease-in-out infinite; }
+.prj-item.flash { animation: prj-flash 1.4s ease-out; }
+.prj-toast { animation: prj-toast .25s ease-out both; }
+
+.prj-item { transition: background-color .2s ease; }
+.prj-item:hover { background: #FCFAF5; }
+.prj-item.acc:hover { background: #F1F8F3; }
+.prj-day { transition: transform .15s ease, box-shadow .15s ease; }
+.prj-day:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(22,21,18,.08); }
+button.prj-day { font: inherit; cursor: pointer; }
+button.prj-day[aria-pressed="true"] { border: 2px solid var(--sn-gold); background: #FFFBF1; }
+.prj-btn, .prj-more, .prj-link { transition: background-color .15s ease, color .15s ease, opacity .15s ease, transform .1s ease; }
+.prj-btn:hover:not(:disabled) { background: #2E2B25; }
+.prj-btn.ghost:hover:not(:disabled), .prj-btn.danger:hover:not(:disabled) { background: var(--sn-panel-2); }
+.prj-btn:active:not(:disabled) { transform: translateY(1px); }
+.prj-edit { animation: prj-rise .25s ease-out both; }
+
+.prj :focus-visible { outline: 2px solid var(--sn-ink); outline-offset: 2px; border-radius: 6px; }
+.sn-band :focus-visible, .prj-hero :focus-visible { outline-color: var(--sn-dark-gold); }
+.prj-cb input:focus-visible { outline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .prj-rise, .prj-bar i, .prj-cb input.pop, .prj-day.today, .prj-item.flash, .prj-toast, .prj-edit { animation: none !important; }
+  .prj-day:hover { transform: none; }
+}

@@ -49,7 +49,7 @@ export async function onRequestPost(context) {
         statement_descriptor: "GUILEO",
       }),
     });
-    if (!res.ok) return json({ error: `mercadopago ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}` }, 502);
+    if (!res.ok) return json({ error: `mercadopago ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}` }, 503);
     const d = await res.json().catch(() => ({}));
     return json({ ok: true, url: d.init_point || d.sandbox_init_point || "", id: d.id || "" });
   } catch (e) { return json({ error: String(e).slice(0, 140) }, 400); }

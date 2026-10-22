@@ -27,7 +27,24 @@ const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
 const rpc = (fn, body) => fetch(`${SB}/rest/v1/rpc/${fn}`, { method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
-const HONEST_NOTE = "Booksy não tem API pública — capture via widget/telefone enquanto isso. As credenciais ficam guardadas e a integração acende no dia em que a Booksy abrir API/parceria.";
+// ── A NOTA NO IDIOMA DA TELA (incidente 2026-09-28) ───────────────────────────────────────────
+// Era uma constante em português, lida pelo dono de um salão numa interface em inglês. Agora sai
+// em en/pt/es/hi — `lang` do corpo (ou de `args.lang` nas funções puras), padrão en.
+const idiomaTela = (v) => { const l = String(v || "").toLowerCase().slice(0, 2); return ["en", "pt", "es", "hi"].includes(l) ? l : "en"; };
+const NOTA = {
+  en: "Booksy has no public API yet — in the meantime, bookings are captured by Gui (widget/phone). Any details you save here are kept, and the integration switches on the day Booksy opens an API or partnership.",
+  pt: "A Booksy ainda não tem API pública — enquanto isso, os agendamentos entram pela Gui (widget/telefone). Os dados que você salvar aqui ficam guardados, e a integração acende no dia em que a Booksy abrir API ou parceria.",
+  es: "Booksy aún no tiene API pública — mientras tanto, las reservas entran por Gui (widget/teléfono). Los datos que guarde aquí se conservan, y la integración se activa el día que Booksy abra una API o alianza.",
+  hi: "Booksy का अभी कोई सार्वजनिक API नहीं है — तब तक बुकिंग Gui (विजेट/फ़ोन) से ली जाती हैं। आप यहाँ जो जानकारी सहेजेंगे वह सुरक्षित रहेगी, और जिस दिन Booksy API या साझेदारी खोलेगा, इंटीग्रेशन चालू हो जाएगा।",
+};
+const SALVO = { en: "Details saved ✓ — ", pt: "Dados salvos ✓ — ", es: "Datos guardados ✓ — ", hi: "जानकारी सहेजी गई ✓ — " };
+const NAO_SALVO = {
+  en: "I couldn't save your Booksy details right now. Please try again.",
+  pt: "Não consegui salvar seus dados da Booksy agora. Tente de novo.",
+  es: "No pude guardar sus datos de Booksy ahora. Inténtelo de nuevo.",
+  hi: "मैं अभी आपकी Booksy जानकारी सहेज नहीं सका। कृपया फिर कोशिश करें।",
+};
+export const notaBooksy = (lang) => NOTA[idiomaTela(lang)];
 
 // Per-tenant Booksy identifiers live in client_integrations (provider='booksy'), written by
 // "connect" (store_integration, already live in prod) and read by booksy_creds_lookup
@@ -46,17 +63,17 @@ async function tenantCreds(env, email) {
 // signal the adapter uses to fall back to the internal Guileo engine. The interface matches
 // mindbody/vagaro exactly so the adapter needs zero special-casing; the day Booksy opens an API,
 // only the bodies below change (not the adapter, not the signatures).
-export async function bkStatus(env, email) {
+export async function bkStatus(env, email, lang = "en") {
   const creds = await tenantCreds(env, email);
-  return { ok: true, ready: false, stored: !!creds, business_id: (creds && creds.business_id) || null, note: HONEST_NOTE };
+  return { ok: true, ready: false, stored: !!creds, business_id: (creds && creds.business_id) || null, note: notaBooksy(lang) };
 }
 export async function bkAvailability(env, email, _args = {}) {
   const creds = await tenantCreds(env, email);
-  return { ok: true, ready: false, stored: !!creds, availabilities: [], note: HONEST_NOTE };
+  return { ok: true, ready: false, stored: !!creds, availabilities: [], note: notaBooksy(_args && _args.lang) };
 }
 export async function bkBook(env, email, _args = {}) {
   const creds = await tenantCreds(env, email);
-  return { ok: true, ready: false, stored: !!creds, booked: false, note: HONEST_NOTE };
+  return { ok: true, ready: false, stored: !!creds, booked: false, note: notaBooksy(_args && _args.lang) };
 }
 
 export async function onRequestPost(context) {
@@ -73,6 +90,7 @@ export async function onRequestPost(context) {
     if (!gd.ok) return json({ error: "unauthorized" }, 401);
     const gdj = await gd.json().catch(() => null);
     if (!(gdj && typeof gdj === "object" && Array.isArray(gdj.events))) return json({ error: "unauthorized" }, 401);
+    const lang = idiomaTela(b.lang || (gdj.identity && gdj.identity.lang));
 
     // ── CONNECT: store the salon's Booksy identifiers for the day the API opens ──
     if (action === "connect") {
@@ -80,13 +98,19 @@ export async function onRequestPost(context) {
       const booksy_url = (b.booksy_url || "").toString().trim();
       const api_key = (b.api_key || "").toString().trim();
       if (!business_id && !booksy_url && !api_key) return json({ error: "missing business_id / booksy_url" }, 400);
+      // 🚨 "Dados salvos ✓" SAÍA SEM OLHAR A RESPOSTA (2026-09-28): o `catch {}` engolia a falha e
+      // o `fetch` nem lança em erro HTTP — a tela confirmava `stored:true` sobre nada gravado.
+      // Agora só diz "salvo" com o banco respondendo 2xx; senão, 503 com a frase e o motivo.
+      let gravou = false, motivo = "";
       try {
-        await rpc("store_integration", { p_secret: env.INGEST_SECRET || "", p_email: email, p_provider: "booksy", p_tokens: { business_id, booksy_url, api_key } });
-      } catch { /* store failed */ }
-      return json({ ok: true, connected: false, stored: true, ready: false, note: `Dados salvos ✓ — ${HONEST_NOTE}` });
+        const sr = await rpc("store_integration", { p_secret: env.INGEST_SECRET || "", p_email: email, p_provider: "booksy", p_tokens: { business_id, booksy_url, api_key } });
+        gravou = sr.ok; if (!sr.ok) motivo = `store_integration HTTP ${sr.status}`;
+      } catch (e) { motivo = String(e).slice(0, 120); }
+      if (!gravou) return json({ ok: false, connected: false, stored: false, ready: false, note: NAO_SALVO[lang], error: NAO_SALVO[lang], erro: NAO_SALVO[lang], detalhe_tecnico: motivo }, 503);
+      return json({ ok: true, connected: false, stored: true, ready: false, note: `${SALVO[lang]}${notaBooksy(lang)}` });
     }
 
-    if (action === "status") return json(await bkStatus(env, email));
+    if (action === "status") return json(await bkStatus(env, email, lang));
     if (action === "availability") return json(await bkAvailability(env, email, b));
     if (action === "book") return json(await bkBook(env, email, b));
 

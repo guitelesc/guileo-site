@@ -309,7 +309,43 @@ async function motoresMortosProbe(env) {
   return { motoresMortos: mortos };
 }
 
-function computeSlo(funnel, rpc, failures, agents, motoresMortos = null) {
+// ── AS BANDEIRAS MORTAS DO automations.js (2026-09-09) ─────────────────────────────────────
+// `/api/automations` devolve `holdsReady / riskReady / slowdayReady` há meses — e NINGUÉM lia.
+// Um motor que se declara `ready:false` 96×/dia para uma resposta que só o Worker recebe (e
+// ignora) é a confissão que ninguém ouve. Este semáforo é quem deveria ouvir.
+// NÃO chamo /api/automations (dispara envio real — ver o aviso acima em `motoresMortosProbe`).
+// Sonda barata, sem efeito colateral: chamo cada RPC de prontidão com segredo VAZIO. O banco
+// EXECUTA e recusa por segredo (401/400 = existe e responde) ou devolve 404 (não existe / assinatura
+// errada = exatamente o que faria o automations marcar `*Ready:false`). É o mesmo método da sonda
+// dos motores mortos, só que perguntando pelas RPCs que o automations REALMENTE usa hoje.
+//   biz_holds_expire(p_secret, p_email default null) → holdsReady   (SCHED)
+//   risk_clients(p_secret)                            → riskReady    (INGEST)
+//   slowday_auto_list(p_secret)                       → slowdayReady (INGEST)
+const AUTOMATIONS_RPCS = { biz_holds_expire: "holdsReady", risk_clients: "riskReady", slowday_auto_list: "slowdayReady" };
+async function automationsReadyProbe(env) {
+  const out = { source: "automations (sonda de prontidão)", flags: {}, mortas: [] };
+  for (const [nome, flag] of Object.entries(AUTOMATIONS_RPCS)) {
+    try {
+      const k = sbKey(env);
+      const r = await timedFetch(`${SB_URL}/rest/v1/rpc/${nome}`, {
+        method: "POST",
+        headers: { apikey: k, Authorization: `Bearer ${k}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_secret: "" }),
+      });
+      // 404 = a função (ou a assinatura) não existe → o automations devolveria `flag:false`.
+      // Qualquer outro código = existe; recusar o segredo vazio é o comportamento certo.
+      const viva = r.status !== 404;
+      out.flags[flag] = viva;
+      if (!viva) out.mortas.push(`${flag} (${nome} ausente)`);
+    } catch (e) {
+      // Sonda muda não acusa motor morto — mas também não afirma vivo: fica fora das duas listas.
+      out.flags[flag] = null; out.nota = String(e).slice(0, 80);
+    }
+  }
+  return out;
+}
+
+function computeSlo(funnel, rpc, failures, agents, motoresMortos = null, automations = null) {
   // seed every area with no signal
   const acc = {}; for (const a of AREAS) acc[a] = { color: null, signals: [] };
   const bump = (area, color, label) => {
@@ -356,6 +392,11 @@ function computeSlo(funnel, rpc, failures, agents, motoresMortos = null) {
   if (Array.isArray(motoresMortos) && motoresMortos.length) {
     bump("agenda", "yellow", `motores mortos: ${motoresMortos.join(", ")} — rodam e não fazem nada`);
   }
+  // Bandeira do automations em false → AMARELO em `agenda` (holds e risco são agenda; slow-day é
+  // ocupação da agenda), com o nome da bandeira e da RPC no rótulo para não virar paisagem.
+  if (automations && Array.isArray(automations.mortas) && automations.mortas.length) {
+    bump("agenda", "yellow", `automations: ${automations.mortas.join(", ")} — o motor roda e devolve ready:false`);
+  }
 
   const areas = {};
   let worst = 0, anyKnown = false;
@@ -390,7 +431,7 @@ export async function onRequest(context) {
     const origin = new URL(request.url).origin;
 
     // Every section is isolated + best-effort — one down source can never break the consolidation.
-    const [funnel, rpc, failures, agents, mortos] = await Promise.all([
+    const [funnel, rpc, failures, agents, mortos, automations] = await Promise.all([
       funnelUptime(env, origin).catch((e) => ({ source: "canary", ok: false, reachable: false, detail: String(e).slice(0, 120), probes: {} })),
       rpcHealth(env).catch((e) => ({ source: "health-monitor.RPC_PROBES", reusable: false, note: String(e).slice(0, 120), results: [] })),
       recentFailures(env).catch((e) => ({ source: "admin_all_events", ready: false, note: String(e).slice(0, 120), total: 0, byChannel: {}, byArea: {} })),
@@ -402,9 +443,11 @@ export async function onRequest(context) {
       // As RPCs em si são de LEITURA (devolvem quem está vencendo); quem envia é o automations.
       // Então perguntar direto a elas é seguro e responde a mesma coisa.
       motoresMortosProbe(env),
+      // A 6ª fonte: as bandeiras holdsReady/riskReady/slowdayReady do automations, lidas por sonda.
+      automationsReadyProbe(env).catch((e) => ({ source: "automations (sonda de prontidão)", flags: {}, mortas: [], nota: String(e).slice(0, 80) })),
     ]);
 
-    const slo = computeSlo(funnel, rpc, failures, agents, mortos?.motoresMortos || null);
+    const slo = computeSlo(funnel, rpc, failures, agents, mortos?.motoresMortos || null, automations);
 
     return json({
       ok: true,
@@ -415,6 +458,7 @@ export async function onRequest(context) {
         rpc,                      // (B) reused health-monitor RPC_PROBES
         failures,                 // (C) reused admin_all_events, 7d, by channel + area
         agents,                   // (D) qualidade dos agentes (agent_evals_summary, real)
+        automations,              // (E) bandeiras de prontidão do /api/automations, por sonda
       },
       reuse: {                    // proof-of-non-duplication: what each section leans on
         funnel: "GET /api/canary (read-only, self-deduped)",

@@ -5,6 +5,7 @@ import { useLang } from "../i18n.jsx";
 import { useSeo } from "../lib/seo.js";
 import { getCampaign, CAMPAIGN_BULLETS } from "../data/campaigns.js";
 import mark from "../assets/guileo-mark.png";
+import { planByKey } from "../data/guileoPlans.js";
 
 // Lean UI chrome shared by every campaign page, in the 4 UI languages (EN·PT·ES·HI).
 // Campaign-specific copy (headline, sub, bullets) lives in src/data/campaigns.js.
@@ -172,7 +173,7 @@ export default function CampaignLP() {
       <section className="px-5 py-12">
         <div className="mx-auto max-w-2xl rounded-xl3 border border-g-gold/20 bg-g-gold/[0.05] p-8 text-center backdrop-blur-xl">
           <div className="text-[12px] font-bold uppercase tracking-[0.2em] text-g-gold">{u.priceKicker}</div>
-          <div className="mt-2 text-5xl font-black text-g-word">$149<span className="text-lg font-bold text-g-muted">{u.priceUnit}</span></div>
+          <div className="mt-2 text-5xl font-black text-g-word">${planByKey("starter").amount}<span className="text-lg font-bold text-g-muted">{u.priceUnit}</span></div>
           <p className="mt-3 text-[13px] text-g-muted">{u.priceNote}</p>
           <a href="/planos" className="btn-ghost mt-5 inline-flex text-sm">{u.priceCta} →</a>
         </div>

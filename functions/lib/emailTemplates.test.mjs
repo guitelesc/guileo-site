@@ -92,7 +92,7 @@ if (!comentarios) ok("nenhum builder envia comentário HTML");
 console.log("\n3) link de descadastro sai quando fornecido:");
 const marketing = ["couponEmail", "brandPromoEmail", "newsEmail", "promoEmail", "birthdayEmail",
   "anniversaryEmail", "recallEmail", "loyaltyMilestoneEmail", "rebookEmail", "welcomeFirstVisitEmail",
-  "winbackCustomerEmail", "waitlistOfferEmail"];
+  "winbackCustomerEmail", "waitlistOfferEmail", "returnCycleEmail"];
 for (const nome of marketing) {
   const build = T[nome];
   if (typeof build !== "function") { erro(`${nome} não existe`); continue; }

@@ -87,7 +87,15 @@ self.addEventListener("activate", (e) => {
 
 async function daRede(req, guardar) {
   const res = await fetch(req);
-  if (guardar && res && res.status === 200 && res.type === "basic") {
+  // SÓ GUARDA O QUE É O QUE DIZ SER (2026-09-28). Este cache é "primeiro o guardado" e o nome dele é
+  // fixo: uma resposta 200 estragada (HTML no lugar de JS, corpo cortado pela CDN — já aconteceu,
+  // está registrado em public/_headers) ficaria servida NESTE aparelho até o nome do arquivo mudar.
+  const tipo = (res && res.headers.get("content-type")) || "";
+  const caminho = new URL(req.url).pathname;
+  const coerente = /\.js$/.test(caminho) ? /javascript/.test(tipo)
+    : /\.css$/.test(caminho) ? /text\/css/.test(tipo)
+    : !/text\/html/.test(tipo) || req.mode === "navigate";
+  if (guardar && res && res.status === 200 && res.type === "basic" && coerente) {
     const copia = res.clone();
     caches.open(CACHE).then((c) => c.put(req, copia)).catch(() => { });
   }

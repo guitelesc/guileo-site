@@ -164,3 +164,25 @@ Resto dos campos: sem mudança (tabela acima). Reusar a marca TRANSPOINT, já ap
   dois canais **e o motivo** (`campanha_sms`, `motivo_campanha`, `falta_whatsapp`).
 - Detalhe completo: `GET /api/canais-prova?token=…` (token do cron OU senha do /admin).
 - "Não medido" nunca sai verde — sai **cinza**, que é uma resposta diferente de "está bom".
+
+---
+
+## 🚨 2026-09-28 — a 3ª campanha (24/08, CM73eca1…) também REPROVOU. Causa lida na tela.
+
+Erro 30909 de novo. Lendo a campanha no console: a descrição e o message flow **citavam um texto
+de consentimento que não existe no site** ("I agree to receive text messages from Guileo about my
+appointments and requests…"), enquanto o site mostra o de `ConsentText.jsx` ("I agree to be
+contacted by Gui (Guileo) at the number provided, by call and text…"). Revisor abre a página, não
+acha a frase citada → CTA não verificável. Além disso `Opt in message` e `Opt in keywords`
+estavam em branco, e a página /sms tinha DUAS caixas de consentimento (a "amostra" + a real).
+
+Feito: amostra removida de `src/pages/SmsOptIn.jsx` (uma caixa só, desmarcada e obrigatória —
+provado no ar em contexto limpo en-US). Textos corrigidos, citando a frase EXATA do site, em
+`~/Desktop/Guileo-Lancamento/SMS-campanha-A2P-colar.txt`.
+
+**REGRA:** o texto citado na campanha é COPIADO de `ConsentText.jsx`, nunca reescrito de memória.
+Se o ConsentText mudar, a campanha muda junto.
+
+O console novo (1console.twilio.com) TEM "Edit & resubmit" com os campos de consentimento — não
+precisa mais registrar campanha nova. O formulário é um componente embutido que não aceita
+automação: quem preenche e envia é o Luis.

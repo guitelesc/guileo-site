@@ -76,13 +76,13 @@ async function soltarClaim(env, email, apptId) {
 // autonomous confirm engine picks up; the email path logs a 'confirm' so the owner sees it went out.
 async function logConfirm(env, email, summary, payload) {
   try {
-    await fetch(`${SB}/rest/v1/rpc/ingest_client_event`, {
-      method: "POST", headers: { apikey: ANON, Authorization: `Bearer ${ANON}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        p_secret: env.INGEST_SECRET || "", p_email: email,
-        p_type: payload.kind === "confirm-sent" ? "confirm" : "message", p_channel: payload.via === "email" ? "email" : "Portal",
-        p_summary: summary.slice(0, 300), p_amount: 0, p_payload: payload,
-      }),
+    // service_role, não a chave anônima (2026-09-28): `ingest_client_event` foi REVOGADA do anon
+    // (conferido no pg_proc: anon não executa). Com a anônima este log devolvia 401 e o `catch`
+    // calava — toda confirmação extra e todo "não consegui enviar" sumiam do feed do dono.
+    await svcRpc(env, "ingest_client_event", {
+      p_secret: env.INGEST_SECRET || "", p_email: email,
+      p_type: payload.kind === "confirm-sent" ? "confirm" : "message", p_channel: payload.via === "email" ? "email" : "Portal",
+      p_summary: summary.slice(0, 300), p_amount: 0, p_payload: payload,
     });
   } catch { /* feed logging is best-effort — never fail the confirm on it */ }
 }

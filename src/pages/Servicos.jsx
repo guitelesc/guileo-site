@@ -9,6 +9,7 @@ import LeadForm from "../components/LeadForm.jsx";
 import { useLang } from "../i18n.jsx";
 import { CATALOG, CATALOG_TOTAL } from "../data/serviceCatalog.js";
 import { SEO_VERTICALS } from "../data/seoVerticals.js";
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 
 // Per-group accent — from the official neon-realista signal palette
 // (Gui = orange, info = blue, attention = amber, done = green) + champagne brand tones.
@@ -108,9 +109,9 @@ export default function Servicos() {
       : lang === "es" ? "Servicios Guileo — todo lo que la IA Gui hace: atiende, agenda, vende, cobra y crece tu negocio"
       : "Guileo Services — everything Gui the AI does: answers, books, sells, collects & grows your business",
     description:
-      lang === "pt" ? "O catálogo completo: atendimento 24/7, agendamento com lembretes, fechamento com cobrança no próprio Stripe, win-back, cockpit com relatório de valor real — e o guarda-chuva Guileo de sites, apps e marketing. A partir de US$ 149/mês."
-      : lang === "es" ? "El catálogo completo: atención 24/7, agenda con recordatorios, cierre con cobro a tu propio Stripe, win-back, cockpit con reporte de valor real — y el paraguas Guileo de sitios, apps y marketing. Desde $149/mes."
-      : "The complete catalog: 24/7 answering, booking with reminders, close & collect into your own Stripe, win-back, a cockpit with real-value reporting — plus the Guileo umbrella of websites, apps and marketing. From $149/mo.",
+      lang === "pt" ? `O catálogo completo: atendimento 24/7, agendamento com lembretes, fechamento com cobrança no próprio Stripe, win-back, ${NOME_DO_PAINEL} com relatório de valor real — e o guarda-chuva Guileo de sites, apps e marketing. A partir de US$ 149/mês.`
+      : lang === "es" ? `El catálogo completo: atención 24/7, agenda con recordatorios, cierre con cobro a tu propio Stripe, win-back, ${NOME_DO_PAINEL} con reporte de valor real — y el paraguas Guileo de sitios, apps y marketing. Desde $149/mes.`
+      : `The complete catalog: 24/7 answering, booking with reminders, close & collect into your own Stripe, win-back, a ${NOME_DO_PAINEL} with real-value reporting — plus the Guileo umbrella of websites, apps and marketing. From $149/mo.`,
     path: "/servicos",
   });
 

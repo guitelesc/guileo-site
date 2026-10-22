@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 
 // The Client #1 activation runbook — the 7 steps from "hi" to first money, shown inside BOTH the
 // /admin (ops) and the /vendedor hub (Ativação tab). Token-based (g-*) so it adapts to the light
@@ -15,10 +16,10 @@ const STEPS = [
     where: { pt: "No /admin → 'Mapear número' — escolhe um número livre do estoque e vincula ao cliente.", en: "In /admin → 'Map number' — pick a free number from stock and bind it to the client.", es: "En /admin → 'Mapear número' — elige un número libre y vincúlalo al cliente." },
     proof: { pt: "Número entra em client_integrations; uma ligação de teste é atendida pela voz da Gui.", en: "Number lands in client_integrations; a test call is answered by Gui's voice.", es: "El número entra en client_integrations; una llamada de prueba la atiende Gui." } },
   { id: "cockpit", ic: "🔑", who: "cli",
-    name: { pt: "Cliente entra no cockpit", en: "Client logs into the cockpit", es: "El cliente entra al cockpit" },
+    name: { pt: `Cliente entra na ${NOME_DO_PAINEL}`, en: `Client logs into the ${NOME_DO_PAINEL}`, es: `El cliente entra a la ${NOME_DO_PAINEL}` },
     lights: { pt: "O dono vê tudo que a Gui faz, em tempo real", en: "The owner sees everything Gui does, in real time", es: "El dueño ve todo lo que hace Gui, en tiempo real" },
     where: { pt: "Ele entra em guileoai.com/portal com o e-mail + código de conexão (já vem pronto pra mandar no WhatsApp).", en: "They log into guileoai.com/portal with their email + connection code (ready to send on WhatsApp).", es: "Entra en guileoai.com/portal con su email + código de conexión (listo para enviar por WhatsApp)." },
-    proof: { pt: "Login abre o cockpit em modo dados-reais (não demo).", en: "Login opens the cockpit in real-data mode (not demo).", es: "El login abre el cockpit en modo datos-reales (no demo)." } },
+    proof: { pt: `Login abre a ${NOME_DO_PAINEL} em modo dados-reais (não demo).`, en: `Login opens the ${NOME_DO_PAINEL} in real-data mode (not demo).`, es: `El login abre la ${NOME_DO_PAINEL} en modo datos-reales (no demo).` } },
   { id: "linha", ic: "↪️", who: "cli",
     name: { pt: "Redirecionar a linha do negócio", en: "Forward the business line", es: "Desviar la línea del negocio" },
     lights: { pt: "As ligações que iam pro telefone dele agora caem na Gui 24/7", en: "Calls that went to their phone now land on Gui 24/7", es: "Las llamadas que iban a su teléfono ahora caen en Gui 24/7" },
@@ -27,18 +28,18 @@ const STEPS = [
   { id: "cardapio", ic: "📋", who: "cli",
     name: { pt: "Carregar cardápio / serviços + preços", en: "Load menu / services + prices", es: "Cargar menú / servicios + precios" },
     lights: { pt: "A Gui passa a citar os preços e serviços EXATOS do negócio", en: "Gui starts quoting the business's EXACT prices and services", es: "Gui cita los precios y servicios EXACTOS del negocio" },
-    where: { pt: "No cockpit, aba Treinar a IA / Serviços — o dono confirma cardápio e preços.", en: "In the cockpit, Train your AI / Services — the owner confirms menu and prices.", es: "En el cockpit, Entrena tu IA / Servicios — el dueño confirma menú y precios." },
+    where: { pt: `Na ${NOME_DO_PAINEL}, aba Treinar a IA / Serviços — o dono confirma cardápio e preços.`, en: `In the ${NOME_DO_PAINEL}, Train your AI / Services — the owner confirms menu and prices.`, es: `En la ${NOME_DO_PAINEL}, Entrena tu IA / Servicios — el dueño confirma menú y precios.` },
     proof: { pt: "Numa ligação de teste, a Gui cita o preço certo — sem inventar.", en: "On a test call, Gui quotes the right price — no making it up.", es: "En una llamada de prueba, Gui cita el precio correcto." } },
   { id: "stripe", ic: "💳", who: "cli",
     name: { pt: "Conectar o Stripe → a Gui COBRA na conta dele", en: "Connect Stripe → Gui CHARGES into their account", es: "Conectar Stripe → Gui COBRA en su cuenta" },
     lights: { pt: "O passo que fecha o ciclo: o dinheiro cai na conta bancária DO CLIENTE", en: "The step that closes the loop: money lands in the CLIENT's bank account", es: "El paso que cierra el ciclo: el dinero cae en la cuenta DEL CLIENTE" },
-    where: { pt: "O cockpit mostra o banner 'Conecte seu Stripe' → leva pra /receber → onboarding Stripe (2 min).", en: "The cockpit shows the 'Connect your Stripe' banner → to /receber → Stripe onboarding (2 min).", es: "El cockpit muestra el banner 'Conecta tu Stripe' → a /receber → onboarding Stripe (2 min)." },
+    where: { pt: `A ${NOME_DO_PAINEL} mostra o banner 'Conecte seu Stripe' → leva pra /receber → onboarding Stripe (2 min).`, en: `The ${NOME_DO_PAINEL} shows the 'Connect your Stripe' banner → to /receber → Stripe onboarding (2 min).`, es: `La ${NOME_DO_PAINEL} muestra el banner 'Conecta tu Stripe' → a /receber → onboarding Stripe (2 min).` },
     proof: { pt: "client_integrations (stripe) vai de 0→1 com uma conta acct_…; a Gui gera link de cobrança real.", en: "client_integrations (stripe) goes 0→1 with an acct_…; Gui generates a real charge link.", es: "client_integrations (stripe) va de 0→1 con acct_…; Gui genera un link de cobro real." } },
   { id: "golive", ic: "🎬", who: "op",
     name: { pt: "Go live — a primeira ligação de verdade", en: "Go live — the first real call", es: "Salir en vivo — la primera llamada real" },
     lights: { pt: "Ativação completa: uma jornada real ponta-a-ponta prova tudo", en: "Full activation: one real end-to-end journey proves it all", es: "Activación completa: un recorrido real prueba todo" },
     where: { pt: "Ligue pro número do negócio como um cliente final. Peça algo que a Gui deva fechar (agendar/cobrar).", en: "Call the business number as an end customer. Ask for something Gui should close (book/charge).", es: "Llama al número del negocio como cliente final. Pide algo que Gui deba cerrar (agendar/cobrar)." },
-    proof: { pt: "Atende → qualifica → agenda/cobra → aparece no cockpit → dinheiro entra. Cliente #1 no ar.", en: "Answers → qualifies → books/charges → shows in cockpit → money in. Client #1 live.", es: "Atiende → califica → agenda/cobra → aparece en el cockpit → entra dinero. Cliente #1 en vivo." } },
+    proof: { pt: `Atende → qualifica → agenda/cobra → aparece na ${NOME_DO_PAINEL} → dinheiro entra. Cliente #1 no ar.`, en: `Answers → qualifies → books/charges → shows in ${NOME_DO_PAINEL} → money in. Client #1 live.`, es: `Atiende → califica → agenda/cobra → aparece en la ${NOME_DO_PAINEL} → entra dinero. Cliente #1 en vivo.` } },
 ];
 
 const CHECK = (

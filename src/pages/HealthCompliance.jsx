@@ -3,6 +3,7 @@ import { useSeo } from "../lib/seo.js";
 import Footer from "../components/Footer";
 import VoiceAgent from "../components/VoiceAgent";
 import { useLang } from "../i18n.jsx";
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 
 // HealthCompliance — HONEST HIPAA posture page for health-adjacent businesses
 // (med spas, dental, clinics). Guileo handles SCHEDULING + contact info only:
@@ -53,7 +54,7 @@ const HC_COPY = {
       ["Data captured by the agent", "Name, phone, requested service, preferred date/time. That's it. Gui is prompted to never ask for or record diagnoses, symptoms or clinical details."],
       ["Encryption", "TLS in transit (Cloudflare edge), encryption at rest (Supabase/Postgres managed encryption)."],
       ["Tenant isolation", "Every business is scoped by its own account — every query and mutation is bound to the tenant. No cross-tenant access paths."],
-      ["Deletion", "Contact data deleted on request — email smart@guileoai.com or ask through your cockpit."],
+      ["Deletion", `Contact data deleted on request — email smart@guileoai.com or ask through your ${NOME_DO_PAINEL}.`],
       ["Call/SMS consent", "TCPA-aligned: recorded opt-in, automatic STOP handling, A2P 10DLC registration handled by Guileo."],
     ],
     legalNote: LEGAL_NOTE_EN,
@@ -82,7 +83,7 @@ const HC_COPY = {
       ["Dados capturados pelo agente", "Nome, telefone, serviço desejado, data/horário preferido. Só isso. O Gui é instruído a nunca perguntar nem registrar diagnósticos, sintomas ou detalhes clínicos."],
       ["Criptografia", "TLS em trânsito (edge da Cloudflare), criptografia em repouso (criptografia gerenciada do Supabase/Postgres)."],
       ["Isolamento de tenant", "Cada negócio é escopado pela própria conta — toda consulta e mutação é vinculada ao tenant. Sem caminhos de acesso entre tenants."],
-      ["Exclusão", "Dados de contato excluídos sob solicitação — escreva para smart@guileoai.com ou peça pelo seu cockpit."],
+      ["Exclusão", `Dados de contato excluídos sob solicitação — escreva para smart@guileoai.com ou peça pela sua ${NOME_DO_PAINEL}.`],
       ["Consentimento de ligação/SMS", "Alinhado ao TCPA: opt-in registrado, STOP automático, registro A2P 10DLC feito pela Guileo."],
     ],
     legalNote: (
@@ -124,7 +125,7 @@ const HC_COPY = {
       ["Datos capturados por el agente", "Nombre, teléfono, servicio deseado, fecha/hora preferida. Nada más. Gui está instruido para nunca preguntar ni registrar diagnósticos, síntomas o detalles clínicos."],
       ["Cifrado", "TLS en tránsito (edge de Cloudflare), cifrado en reposo (cifrado gestionado de Supabase/Postgres)."],
       ["Aislamiento de tenant", "Cada negocio está delimitado por su propia cuenta — toda consulta y mutación está ligada al tenant. Sin rutas de acceso entre tenants."],
-      ["Eliminación", "Datos de contacto eliminados a solicitud — escribe a smart@guileoai.com o pídelo desde tu cockpit."],
+      ["Eliminación", `Datos de contacto eliminados a solicitud — escribe a smart@guileoai.com o pídelo desde tu ${NOME_DO_PAINEL}.`],
       ["Consentimiento de llamadas/SMS", "Alineado con TCPA: opt-in registrado, STOP automático, registro A2P 10DLC gestionado por Guileo."],
     ],
     legalNote: LEGAL_NOTE_EN,
@@ -153,7 +154,7 @@ const HC_COPY = {
       ["एजेंट द्वारा दर्ज डेटा", "नाम, फ़ोन, वांछित सेवा, पसंदीदा तारीख़/समय। बस इतना। Gui को निर्देश है कि कभी निदान, लक्षण या क्लिनिकल विवरण न पूछे और न दर्ज करे।"],
       ["एन्क्रिप्शन", "ट्रांज़िट में TLS (Cloudflare edge), स्टोरेज में एन्क्रिप्शन (Supabase/Postgres मैनेज्ड एन्क्रिप्शन)।"],
       ["Tenant अलगाव", "हर व्यवसाय अपने खाते तक सीमित है — हर क्वेरी और म्यूटेशन tenant से बंधा है। tenants के बीच कोई पहुँच नहीं।"],
-      ["डिलीशन", "अनुरोध पर संपर्क डेटा हटाया जाता है — smart@guileoai.com पर लिखें या अपने cockpit से माँगें।"],
+      ["डिलीशन", `अनुरोध पर संपर्क डेटा हटाया जाता है — smart@guileoai.com पर लिखें या अपने ${NOME_DO_PAINEL} से माँगें।`],
       ["कॉल/SMS सहमति", "TCPA के अनुरूप: दर्ज ऑप्ट-इन, ऑटोमैटिक STOP, A2P 10DLC पंजीकरण Guileo द्वारा।"],
     ],
     legalNote: LEGAL_NOTE_EN,

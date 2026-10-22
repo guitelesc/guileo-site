@@ -19,32 +19,18 @@ import { verifySession } from "../lib/sellerSession.js";
 // dez antes de mexer, e é exatamente por estarem iguais que a hora de unificar é agora — depois que
 // uma diverge, alguém já foi atendido pelo modelo errado e ninguém sabe qual superfície foi.
 // É o padrão que esta sessão inteira perseguiu: cópia sem vínculo com a fonte.
-import { MODEL_CHAIN } from "../lib/guiBrain.js";
+import { askClaude as cerebroDeTexto } from "../lib/guiBrain.js";
 async function askClaude(env, { system, messages, max_tokens = 300 }) {
   let msgs = Array.isArray(messages) ? messages.slice() : [];
   while (msgs.length && msgs[0].role !== "user") msgs.shift();
   if (!msgs.length) return { err: "empty_messages", status: 400 };
-  let lastStatus = 0, lastDetail = "";
-  for (const model of MODEL_CHAIN) {
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-        body: JSON.stringify({ model, max_tokens, system, messages: msgs }),
-      });
-      if (r.ok) {
-        const d = await r.json().catch(() => ({}));
-        const text = (d?.content?.[0]?.text || "").trim();
-        if (text) return { text, model };
-        lastStatus = 200; lastDetail = "empty_ai";
-      } else {
-        lastStatus = r.status; lastDetail = (await r.text().catch(() => "")).slice(0, 200);
-        // auth/billing errors won't be fixed by another model — stop early and surface them
-        if (r.status === 401 || r.status === 402) break;
-      }
-    } catch (e) { lastStatus = 0; lastDetail = String(e).slice(0, 120); }
-  }
-  return { err: "ai_unavailable", status: lastStatus, detail: lastDetail };
+  // 2026-10-05: sem chamada direta à Anthropic — askClaude usa o Escritor da ElevenLabs quando ela está desligada.
+  // O formato de volta ({ text, model } | { err, status, detail }) continua o mesmo; o motivo vem do `diag`.
+  const diag = [];
+  const text = await cerebroDeTexto(env, { system, messages: msgs, maxTokens: max_tokens, diag });
+  const ult = diag[diag.length - 1] || {};
+  if (text) return { text, model: ult.model || ult.cerebro || "" };
+  return { err: "ai_unavailable", status: ult.status || 0, detail: String(ult.detalhe || ult.erro || ult.bloqueado || "").slice(0, 200) };
 }
 
 const SYS = `You coach Guileo's sellers. You write a short, ready-to-use pitch a seller can say to a specific local-business owner.
@@ -97,7 +83,7 @@ export async function onRequestPost(context) {
         plataforma: b.plataforma || "google", objetivo: b.objetivo, lang: contexto.lang, contexto,
       });
       if (!r) return json({ ok: false, error: "IA não configurada" }, 501);
-      if (r.erro) return json({ ok: false, error: r.erro }, 502);
+      if (r.erro) return json({ ok: false, error: r.erro }, 503);
       return json({ ok: true, ...r });
     }
 
@@ -107,7 +93,7 @@ export async function onRequestPost(context) {
       const oNiche = (b.niche || "").toString().slice(0, 60).trim();
       const oLang = (b.lang || "pt").toString();
       if (!objection) return json({ error: "empty" }, 400);
-      if (!env.ANTHROPIC_API_KEY) return json({ ok: true, text: "(IA indisponível: configure ANTHROPIC_API_KEY.)" });
+      if (!env.ANTHROPIC_API_KEY && !env.ELEVENLABS_API_KEY) return json({ ok: true, text: "(IA indisponível: configure ANTHROPIC_API_KEY.)" });
       const oLangName = oLang === "en" ? "US English" : oLang === "es" ? "LatAm Spanish" : oLang === "hi" ? "Hindi" : "Brazilian Portuguese";
       const OSYS = `You coach Guileo's sellers on handling a client objection. Guileo installs an AI team for local businesses (24/7 voice receptionist, WhatsApp/SMS/IG replies, ~60s speed-to-lead callback, booking + reminders, reactivation, close & collect; a human supervises; live ~7 days; 30-day money-back). NEVER aggressive, never defensive. Reframe to the OWNER'S gain and how it puts them ahead of competitors. No fake metrics or client names. Reply ONLY with these two short labeled lines in the requested language:\nRESPOSTA: <one calm, confident 1-2 sentence reply the seller can say out loud>\nVIRAR O JOGO: <one sentence that turns it into a next step — e.g. offering the live demo where Gui calls them>`;
       const a = await askClaude(env, { system: `${OSYS}\n\nWrite in ${oLangName} (keep the labels as given).`, max_tokens: 300, messages: [{ role: "user", content: `${oNiche ? `Business type: ${oNiche}. ` : ""}The client just said: "${objection}"` }] });
@@ -120,7 +106,7 @@ export async function onRequestPost(context) {
       const history = Array.isArray(b.history) ? b.history.slice(-16) : [];
       const sellerLines = history.filter((h) => h && h.role === "seller" && h.text).map((h) => String(h.text).slice(0, 400));
       if (!sellerLines.length) return json({ error: "empty" }, 400);
-      if (!env.ANTHROPIC_API_KEY) return json({ ok: true, text: "(Feedback indisponível: configure ANTHROPIC_API_KEY.)" });
+      if (!env.ANTHROPIC_API_KEY && !env.ELEVENLABS_API_KEY) return json({ ok: true, text: "(Feedback indisponível: configure ANTHROPIC_API_KEY.)" });
       const fLangName = fLang === "en" ? "US English" : fLang === "es" ? "LatAm Spanish" : fLang === "hi" ? "Hindi" : "Brazilian Portuguese";
       const FSYS = `You are a warm, encouraging sales coach for Guileo sellers. You just watched a role-play where the seller pitched a local-business owner. Give SHORT, constructive, specific feedback — lead with what they did well, then what to sharpen. Anchor to Guileo's method: open with the owner's PAIN (missed calls, no-shows, slow follow-up), sell the GAIN not features, never be aggressive, and steer to the live demo (Gui calls the owner in ~60s). Reply ONLY with exactly two labeled lines in ${fLangName}:\nMANDOU BEM: <one specific thing they did well>\nPRA AFIAR: <one specific, actionable improvement>`;
       const transcript = history.filter((h) => h && h.role && h.text).map((h) => `${h.role === "seller" ? "SELLER" : "OWNER"}: ${String(h.text).slice(0, 300)}`).join("\n");
@@ -135,7 +121,7 @@ export async function onRequestPost(context) {
       const msg = (b.message || "").toString().slice(0, 600).trim();
       const history = Array.isArray(b.history) ? b.history.slice(-10) : [];
       if (!msg) return json({ error: "empty" }, 400);
-      if (!env.ANTHROPIC_API_KEY) return json({ ok: true, reply: "(Treino indisponível: configure ANTHROPIC_API_KEY.)" });
+      if (!env.ANTHROPIC_API_KEY && !env.ELEVENLABS_API_KEY) return json({ ok: true, reply: "(Treino indisponível: configure ANTHROPIC_API_KEY.)" });
       const rLangName = rLang === "en" ? "US English" : rLang === "es" ? "LatAm Spanish" : rLang === "hi" ? "Hindi" : "Brazilian Portuguese";
       const RSYS = `ROLE-PLAY. You are a busy, slightly skeptical owner of a ${rNiche || "local business"}. The user is a salesperson from Guileo (an AI receptionist/marketing service) practicing their pitch. Stay IN CHARACTER as the owner — react like a real, somewhat distracted owner: a bit guarded, raise realistic objections ("no time", "how much?", "I already have a receptionist", "does AI annoy customers?"), but you ARE winnable if they speak to your real problems (missed calls, no-shows, slow follow-up) and offer the live demo. Keep replies SHORT (1-3 sentences), natural and human. Never break character, never coach them, never mention you are an AI or a role-play. Reply ONLY as the owner, in ${rLangName}.`;
       const messages = [
@@ -161,7 +147,7 @@ export async function onRequestPost(context) {
       notes ? `What the seller knows about them: ${notes}` : "",
     ].filter(Boolean).join("\n");
 
-    if (!env.ANTHROPIC_API_KEY) {
+    if (!env.ANTHROPIC_API_KEY && !env.ELEVENLABS_API_KEY) {
       return json({ ok: true, text: "ABERTURA: —\n(Personalização por IA indisponível: configure ANTHROPIC_API_KEY.)" });
     }
     const a = await askClaude(env, {

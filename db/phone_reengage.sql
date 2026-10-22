@@ -35,7 +35,7 @@ begin
       and coalesce(e.payload->>'kind','') in ('churn-reengage','booking-recovery')
       and e.created_at > now() - interval '3 days'
       and coalesce(e.payload->>'via','')       <> 'email'   -- already reactivated by email
-      and coalesce(e.payload->>'suggested','') <> 'watch'   -- 'watch' = monitor only, never dial
+      and coalesce(e.payload->>'suggested','') not in ('watch','sms')   -- 'watch' = só monitorar; 'sms' = a tela prometeu TEXTO, não ligação (2026-10-01)
       and position('@' in coalesce(e.payload->>'contact','')) = 0
       and length(regexp_replace(coalesce(e.payload->>'contact',''), '[^0-9]', '', 'g')) >= 8
     order by e.created_at asc

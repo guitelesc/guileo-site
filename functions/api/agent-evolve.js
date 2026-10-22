@@ -26,7 +26,7 @@ import { svcJson, sbKey, SB_URL } from "../lib/sb.js";
 import { CEREBRO_VERSAO, buildPlatformSettings } from "../lib/provision.js";
 // a MESMA norma que /api/agente-config?padrao=1 usa — uma regra, dois leitores.
 import { conferePadrao } from "../lib/padraoAgente.js";
-import { emitFailure } from "../lib/failure.js";
+import { avisarDono } from "../lib/avisarDono.js";
 
 async function evoluir(request, env) {
   const url = new URL(request.url);
@@ -121,7 +121,7 @@ async function evoluir(request, env) {
       const alvo = ((todos && todos.lista) || []).find((a2) => (a2.cliente || "").toLowerCase() === so3);
       if (!alvo) return json({ ok: false, erro: `não achei ${so3}` }, 404);
       const g = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${alvo.agente}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
-      if (!g.ok) return json({ ok: false, erro: `HTTP ${g.status}` }, 502);
+      if (!g.ok) return json({ ok: false, erro: `HTTP ${g.status}` }, 503);
       const antes = (await g.json())?.conversation_config?.tts || {};
       const novo = {
         model_id: url.searchParams.get("modelo") || "eleven_turbo_v2_5",
@@ -149,7 +149,7 @@ async function evoluir(request, env) {
     if (url.searchParams.get("prompt") === "1") {
       const alvo = url.searchParams.get("agente") || "";
       const g = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${alvo}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
-      if (!g.ok) return json({ ok: false, erro: `HTTP ${g.status}` }, 502);
+      if (!g.ok) return json({ ok: false, erro: `HTTP ${g.status}` }, 503);
       const txt = (await g.json())?.conversation_config?.agent?.prompt?.prompt || "";
       const acha = (frase) => { const i = txt.indexOf(frase); return i < 0 ? null : { pos: i, pct: Math.round(i * 100 / txt.length) }; };
       return json({ ok: true, tamanho: txt.length,
@@ -187,7 +187,7 @@ async function evoluir(request, env) {
     if (url.searchParams.get("conversas") === "1") {
       const alvo = url.searchParams.get("agente") || "";
       const g = await fetch(`https://api.elevenlabs.io/v1/convai/conversations?agent_id=${alvo}&page_size=8`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
-      if (!g.ok) return json({ ok: false, erro: `HTTP ${g.status}`, corpo: (await g.text().catch(()=> "")).slice(0,200) }, 502);
+      if (!g.ok) return json({ ok: false, erro: `HTTP ${g.status}`, corpo: (await g.text().catch(()=> "")).slice(0,200) }, 503);
       const d = await g.json();
       return json({ ok: true, conversas: (d.conversations || []).map((c) => ({
         id: c.conversation_id, inicio: c.start_time_unix_secs, segundos: c.call_duration_secs,
@@ -302,7 +302,7 @@ async function evoluir(request, env) {
       const cid = url.searchParams.get("porque");
       const g = await fetch(`https://api.elevenlabs.io/v1/convai/conversations/${cid}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
       const txt = await g.text().catch(() => "");
-      if (!g.ok) return json({ ok: false, erro: `HTTP ${g.status}`, corpo: txt.slice(0, 400) }, 502);
+      if (!g.ok) return json({ ok: false, erro: `HTTP ${g.status}`, corpo: txt.slice(0, 400) }, 503);
       let d = {}; try { d = JSON.parse(txt); } catch {}
       return json({ ok: true, conversa: cid, status: d.status,
         metadata: d.metadata ?? null, erro: d.error ?? d.failure_reason ?? null,
@@ -312,7 +312,7 @@ async function evoluir(request, env) {
     if (url.searchParams.get("cru") === "1") {
       const alvo = url.searchParams.get("agente") || "";
       const g = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${alvo}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
-      if (!g.ok) return json({ ok: false, erro: `HTTP ${g.status}` }, 502);
+      if (!g.ok) return json({ ok: false, erro: `HTTP ${g.status}` }, 503);
       const d = await g.json();
       // `cru=1` agora traz o AGENTE INTEIRO em resumo — não só o pedaço que eu mexi. Olhar só onde
       // você mexeu é como procurar a chave debaixo do poste: em 2026-08-16 a ligação continuou
@@ -498,7 +498,7 @@ async function evoluir(request, env) {
     // era a frase da v9. Ele provava, com toda a confiança, uma lição de quinze dias atrás. Já tinha
     // acontecido em 16/08 na direção contrária (0/4 falso). Regra: subiu a VERSAO, troca a âncora
     // no mesmo commit, e escolhe um trecho contíguo de UMA linha da lição nova.
-    const ancora = "INCLUI O COMPROVANTE NA MÃO DA PESSOA";  // v24: a frase do tom saiu junto com a lição revertida
+    const ancora = "TROCAR DE IDIOMA EXIGE PROVA";  // v27 (a de antes, "INCLUI O COMPROVANTE…", era da v9)  // v24: a frase do tom saiu junto com a lição revertida
     if (!env.ELEVENLABS_API_KEY) return json({ ok: false, conferir: true, nota: "sem ELEVENLABS_API_KEY — não deu para provar" }, 503);
     // ⚠️ NÃO INVENTE NOME DE RPC. Minha 1ª versão chamava `agent_ids_all`, que NÃO EXISTE — o mesmo
     // erro que cometi hoje de manhã com `agent_evals_latest` e que deixou o painel mentindo por 3
@@ -603,7 +603,7 @@ async function evoluir(request, env) {
 
   const r = await svcJson(env, "agentes_atrasados", { p_secret: env.INGEST_SECRET, p_versao: CEREBRO_VERSAO, p_limite: teto });
   if (!r || r.erro_http || !r.ok) {
-    return json({ ok: false, error: `não consegui ler quem está atrasado (${r?.erro_http || r?.detalhe || "?"})` }, 502);
+    return json({ ok: false, error: `não consegui ler quem está atrasado (${r?.erro_http || r?.detalhe || "?"})` }, 503);
   }
   const lista = Array.isArray(r.lista) ? r.lista : [];
 
@@ -645,17 +645,25 @@ async function evoluir(request, env) {
             const pd = conferePadrao(await gp.json().catch(() => ({})));
             forasDaNorma.push({ cliente, placar: `${pd.passou}/${pd.total}`, conforme: pd.conforme, falhas: pd.falhas });
             if (!pd.conforme) {
-              // 🚨 UMA VEZ POR DIA, POR AGENTE. A varredura roda de hora em hora: sem a trava,
-              // um agente fora do padrão geraria 24 alarmes por dia e a caixa viraria ruído —
-              // e alarme ignorado é alarme que não existe no dia em que importa.
-              const pode = await svcJson(env, "alarme_uma_vez", {
-                p_secret: env.INGEST_SECRET || "", p_chave: `fora_da_norma:${cliente}`, p_minutos: 1440,
-              }).catch(() => false);
-              if (pode === true) {
-                await emitFailure(env, "agente_fora_da_norma", cliente,
-                  `${pd.passou}/${pd.total} · falhou: ${pd.falhas.map((f) => f.item).join(" | ").slice(0, 200)}`,
-                  { falhas: pd.falhas }).catch(() => {});
-              }
+              // 🚨 COM TRAVA, POR AGENTE. A varredura roda de hora em hora: sem trava, um agente
+              // fora do padrão geraria 24 alarmes por dia e a caixa viraria ruído — e alarme
+              // ignorado é alarme que não existe no dia em que importa.
+              // (2026-09-22) PORTA ÚNICA: avisarDono. Este alarme ainda estava preso
+              // à `alarme_uma_vez`, que só o service_role executa (anon revogado). Sem ele a
+              // resposta vinha `{ok:false}`, o `.catch(() => false)` nem era acionado, e
+              // `pode === true` nunca fechava: o alarme ficava mudo PARA SEMPRE, sem erro nenhum —
+              // o anti-spam virando o silêncio. E mesmo quando saía, era só o feed (o tipo não é
+              // dos "urgentes" do failure.js), que ninguém abre de madrugada.
+              // avisarDono só cala com `false` explícito da trava; trava ilegível deixa sair. A
+              // janela passa de 24h para o balde de 6h dele — e o recibo vai na resposta, porque
+              // "avisei" sem recibo é a mesma promessa sem lastro.
+              const aviso = await avisarDono(env, {
+                kind: "agente_fora_da_norma",
+                summary: `o agente de ${cliente} está FORA DA NORMA (${pd.passou}/${pd.total}) — falhou: ${pd.falhas.map((f) => f.item).join(" | ").slice(0, 200)}`,
+                cliente, link: "https://guileoai.com/admin", payload: { falhas: pd.falhas, placar: `${pd.passou}/${pd.total}` },
+                chave: `fora_da_norma:${cliente}`,
+              });
+              forasDaNorma[forasDaNorma.length - 1].aviso = aviso;
             }
           }
         } catch { /* a conferência nunca pode derrubar a varredura que já atualizou */ }

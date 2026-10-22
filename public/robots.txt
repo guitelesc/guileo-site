@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /admin
+Disallow: /balcao
 Disallow: /api/
 # Internal / partner-only tooling — keep out of search results
 Disallow: /proposta

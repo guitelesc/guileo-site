@@ -175,7 +175,7 @@ export async function onRequestPost({ request, env }) {
       if (!alvo) {
         const { kbUpsert, kbApagar } = await import("../lib/agentKB.js");
         const up = await kbUpsert(env, { nome, texto });
-        if (!up.ok) return json({ acao: "vertical", vertical: vert, ...up }, 502);
+        if (!up.ok) return json({ acao: "vertical", vertical: vert, ...up }, 503);
         // Sem agente para conferir, o antigo sai logo — não há anexo para proteger.
         if (up.antigo) await kbApagar(env, up.antigo);
         return json({ acao: "vertical", vertical: vert, ok: true, id: up.id, nome, chars: up.chars, substituiu: up.antigo || null, anexado_em: null });
@@ -205,7 +205,7 @@ export async function onRequestPost({ request, env }) {
 
       const { kbUpsert, kbApagar, kbAnexar } = await import("../lib/agentKB.js");
       const up = await kbUpsert(env, { nome, texto });
-      if (!up.ok) return json({ acao: "vertical-cliente", vertical: vert, ...up }, 502);
+      if (!up.ok) return json({ acao: "vertical-cliente", vertical: vert, ...up }, 503);
 
       const alvo = (b.agente || "").toString();
       if (!alvo) {
@@ -224,7 +224,7 @@ export async function onRequestPost({ request, env }) {
       if (!alvo || !nomes.length) return json({ error: "informe agente e nome(s) do documento" }, 400);
       const { kbDesanexar } = await import("../lib/agentKB.js");
       const r = await kbDesanexar(env, { agentId: alvo, nomes });
-      return json({ acao: "desanexar", agente: alvo, ...r }, r.ok ? 200 : 502);
+      return json({ acao: "desanexar", agente: alvo, ...r }, r.ok ? 200 : 503);
     }
 
     // ── VER OS MOLDES (só leitura) ────────────────────────────────────────────────────────────
@@ -233,7 +233,7 @@ export async function onRequestPost({ request, env }) {
     // como abrir o cofre para conferir a hora: funciona, custa caro e um dia derruba algo.
     if (b.acao === "moldes") {
       const r = await fetch("https://api.elevenlabs.io/v1/convai/agents?page_size=100", { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
-      if (!r.ok) return json({ ok: false, motivo: `não consegui listar (HTTP ${r.status})` }, 502);
+      if (!r.ok) return json({ ok: false, motivo: `não consegui listar (HTTP ${r.status})` }, 503);
       const d = await r.json().catch(() => null);
       const todos = Array.isArray(d?.agents) ? d.agents : [];
       const moldes = todos.filter((a) => (a?.name || "").startsWith("MOLDE · "));
@@ -256,7 +256,7 @@ export async function onRequestPost({ request, env }) {
       const nome = `MOLDE · Gui ${R.nome}`;
 
       const doc = await acharDoc(env, `playbook-${vert}`);
-      if (doc.erro) return json({ ok: false, motivo: doc.erro }, 502);
+      if (doc.erro) return json({ ok: false, motivo: doc.erro }, 503);
       // Sem playbook, o molde não tem razão de existir — seria um agente genérico com nome de ramo,
       // que é a pior coisa: parece pronto e não sabe nada do negócio.
       if (!doc.doc) return json({ ok: false, motivo: `o playbook-${vert} ainda não está no KB — publique ele primeiro` }, 409);
@@ -267,7 +267,7 @@ export async function onRequestPost({ request, env }) {
       });
 
       const achou = await acharAgentePorNome(env, nome);
-      if (achou.erro) return json({ ok: false, motivo: achou.erro }, 502);
+      if (achou.erro) return json({ ok: false, motivo: achou.erro }, 503);
 
       let agentId = achou.agente?.agent_id || achou.agente?.id || "";
       let criado = false;
@@ -276,17 +276,17 @@ export async function onRequestPost({ request, env }) {
           method: "PATCH", headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
           body: JSON.stringify({ conversation_config: cfg }),
         });
-        if (!pr.ok) return json({ ok: false, motivo: `PATCH do molde recusado (HTTP ${pr.status})`, detalhe: (await pr.text().catch(() => "")).slice(0, 300) }, 502);
+        if (!pr.ok) return json({ ok: false, motivo: `PATCH do molde recusado (HTTP ${pr.status})`, detalhe: (await pr.text().catch(() => "")).slice(0, 300) }, 503);
       } else {
         const cr = await fetch("https://api.elevenlabs.io/v1/convai/agents/create", {
           method: "POST", headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
           body: JSON.stringify({ name: nome, conversation_config: cfg }),
         });
-        if (!cr.ok) return json({ ok: false, motivo: `criação recusada (HTTP ${cr.status})`, detalhe: (await cr.text().catch(() => "")).slice(0, 300) }, 502);
+        if (!cr.ok) return json({ ok: false, motivo: `criação recusada (HTTP ${cr.status})`, detalhe: (await cr.text().catch(() => "")).slice(0, 300) }, 503);
         const cd = await cr.json().catch(() => ({}));
         agentId = cd.agent_id || cd.id || "";
         criado = true;
-        if (!agentId) return json({ ok: false, motivo: "molde criado sem id" }, 502);
+        if (!agentId) return json({ ok: false, motivo: "molde criado sem id" }, 503);
       }
 
       const { kbAnexar } = await import("../lib/agentKB.js");

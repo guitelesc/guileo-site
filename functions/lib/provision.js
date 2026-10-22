@@ -7,12 +7,15 @@
 // IDEMPOTENT: if the client already has an agent we UPDATE it in place (never duplicate / double-bill),
 // re-applying the current voice + prompt so an existing agent picks up the latest voice on any sync.
 // Never throws — returns { ok, agent_id, step } so callers can surface the exact outcome.
+import { CAMPOS_DA_LIGACAO } from "./analiseDaLigacao.js";
+import { palavrasDoOuvido } from "./ouvido.js";
 import { emitFailure } from "./failure.js";
 import { frasefalada, blocoDePronuncia } from "./pronuncia.js";
 import { guardSystemPrompt } from "./guiConstitution.js";
 // O MOTOR DE AGENTE: as lições de ligações reais + a versão que a varredura compara para saber
 // quem ficou para trás. Lição nova → sobe VERSAO lá → /api/agent-evolve atualiza a frota inteira.
 import { licoesPara, VERSAO as CEREBRO_VERSAO } from "./licoes.js";
+import { ferramentaDeTransferencia, instrucaoDeTransferencia } from "./vendasDaAgente.js";
 export { CEREBRO_VERSAO };
 import { upsellSection } from "../../src/data/upsellPlaybook.js";
 
@@ -106,7 +109,7 @@ const TTS_MULTILINGUE = "eleven_flash_v2_5";
 // reconhece, e para quem liga pela primeira vez `caller_ola` é "" e a frase fica intacta.
 // Só os 3 idiomas do mercado atual ganharam o slot; os outros herdam a saudação sem nome, que
 // continua correta — meia dúzia de idiomas com vírgula órfã seria pior que sem nome nenhum.
-const GREETINGS = {
+export const GREETINGS = {
   // 🚨 {{caller_ola}} REVERTIDO DE NOVO (2026-08-18, 2ª queda). Eu diagnostiquei a queda de 16/08
   // como sendo só o daily_limit:-1 — ERRADO pela metade: com o webhook de iniciação INSTALADO, a
   // ElevenLabs IGNORA os dynamic_variable_placeholders e exige que o WEBHOOK entregue toda variável
@@ -119,24 +122,31 @@ const GREETINGS = {
   // 2026-08-18, pesquisa Ritz/Forbes/Four Seasons: "how may I help you" é a frase de TODO call
   // center. Spa de luxo fala em CUIDADO — "how can I take care of you today?" é literalmente a
   // linguagem que os padrões 5 estrelas recomendam. Mesmo upgrade nas 3 línguas.
-  en: "Thank you for calling {biz}, this is {name}. How can I take care of you today?",
-  pt: "{biz}, aqui é a {name} — que bom que você ligou! Como posso cuidar de você hoje?",
-  es: "Gracias por llamar a {biz}, le habla {name}. ¿Cómo puedo cuidarle hoy?",
-  fr: "{biz}, bonjour, {name} à l'appareil. Que puis-je faire pour vous ?",
-  it: "{biz}, buongiorno, sono {name}. Come posso aiutarla?",
-  de: "{biz}, guten Tag, hier ist {name}. Was kann ich für Sie tun?",
-  pl: "{biz}, dzień dobry, z tej strony {name}. W czym mogę pomóc?",
-  ru: "{biz}, здравствуйте, это {name}. Чем могу помочь?",
-  uk: "{biz}, доброго дня, це {name}. Чим можу допомогти?",
-  hi: "{biz} में आपका स्वागत है, मैं {name} बोल रही हूँ। मैं आपकी क्या सेवा कर सकती हूँ?",
-  zh: "您好，这里是{biz}，我是{name}。请问有什么可以帮您？",
-  yue: "你好，呢度係{biz}，我係{name}。請問有咩可以幫到你？",
-  ja: "{biz}でございます。{name}と申します。ご用件をお伺いいたします。",
-  ko: "{biz}입니다. {name}입니다. 무엇을 도와드릴까요?",
-  ht: "{biz}, bonjou, se {name} k ap pale. Kijan m ka ede w?",
-  vi: "{biz} xin nghe, {name} đây ạ. Em có thể giúp gì cho anh/chị ạ?",
-  ar: "{biz}، أهلاً بك، معك {name}. كيف يمكنني خدمتك؟",
-  tl: "{biz} po, si {name} po ito. Ano po ang maitutulong ko sa inyo?",
+  // ⚖️ CR-01 (2026-10-08, contrato Natura + regra da plataforma): TODA ligação começa dizendo QUEM
+  // atende — a assistente VIRTUAL do negócio — e que a ligação PODE SER GRAVADA, antes de pedir
+  // qualquer coisa. Ela nunca se passa por gente. Curto de propósito (quem liga começa a falar aos
+  // 3–5 s): marca → quem fala + "assistente virtual" → gravação → a oferta de cuidado de sempre.
+  // A palavra-almofada continua na frente e o "take care of you / cuidar de você / cuidarle" fica
+  // (a norma do agente confere — padraoAgente.js). Teste: provisionDisclosure.test.mjs exige o par
+  // assistente-virtual + gravação em TODO idioma desta tabela, e nenhum "sou humana".
+  en: "Thank you for calling {biz}! I'm {name}, {biz}'s virtual assistant — this call may be recorded. How can I take care of you today?",
+  pt: "{biz}, que bom que você ligou! Aqui é a {name}, assistente virtual de {biz} — esta ligação pode ser gravada. Como posso cuidar de você hoje?",
+  es: "Gracias por llamar a {biz}. Le habla {name}, asistente virtual de {biz}; esta llamada puede ser grabada. ¿Cómo puedo cuidarle hoy?",
+  fr: "{biz}, bonjour ! Ici {name}, l'assistante virtuelle de {biz} — cet appel peut être enregistré. Que puis-je faire pour vous ?",
+  it: "{biz}, buongiorno, sono {name}, l'assistente virtuale di {biz}; la chiamata può essere registrata. Come posso aiutarla?",
+  de: "{biz}, guten Tag, hier ist {name}, die virtuelle Assistentin von {biz} — dieses Gespräch kann aufgezeichnet werden. Was kann ich für Sie tun?",
+  pl: "{biz}, dzień dobry, z tej strony {name}, wirtualna asystentka {biz}. Rozmowa może być nagrywana. W czym mogę pomóc?",
+  ru: "{biz}, здравствуйте, это {name}, виртуальный ассистент {biz}. Звонок может записываться. Чем могу помочь?",
+  uk: "{biz}, доброго дня, це {name}, віртуальна асистентка {biz}. Дзвінок може записуватися. Чим можу допомогти?",
+  hi: "{biz} में आपका स्वागत है, मैं {name}, {biz} की वर्चुअल असिस्टेंट बोल रही हूँ — यह कॉल रिकॉर्ड की जा सकती है। मैं आपकी क्या सेवा कर सकती हूँ?",
+  zh: "您好，这里是{biz}，我是{biz}的虚拟助理{name}。本次通话可能会被录音。请问有什么可以帮您？",
+  yue: "你好，呢度係{biz}，我係{biz}嘅虛擬助理{name}。今次通話可能會被錄音。請問有咩可以幫到你？",
+  ja: "{biz}でございます。{biz}のバーチャルアシスタント、{name}と申します。この通話は録音される場合がございます。ご用件をお伺いいたします。",
+  ko: "{biz}입니다. 저는 {biz}의 가상 비서 {name}입니다. 이 통화는 녹음될 수 있습니다. 무엇을 도와드릴까요?",
+  ht: "{biz}, bonjou, se {name}, asistan vityèl {biz} k ap pale. Apèl sa a ka anrejistre. Kijan m ka ede w?",
+  vi: "{biz} xin nghe, em là {name}, trợ lý ảo của {biz} ạ. Cuộc gọi này có thể được ghi âm. Em có thể giúp gì cho anh/chị ạ?",
+  ar: "{biz}، أهلاً بك، معك {name}، المساعدة الافتراضية لـ{biz}. قد يتم تسجيل هذه المكالمة. كيف يمكنني خدمتك؟",
+  tl: "{biz} po, si {name} po ito, ang virtual assistant ng {biz}. Maaaring i-record ang tawag na ito. Ano po ang maitutulong ko sa inyo?",
 };
 
 // Os `language_presets` são a LISTA DE DESTINOS da ferramenta language_detection: ela só troca o
@@ -220,12 +230,13 @@ export function buildGuiPrompt({ business, industry, lang, brain, agentName, pri
 Before the call connects, the business system hands you: {{caller_name}} (their name), {{caller_phone}} (the number they are calling from), {{caller_last}} (when they were last here) and {{caller_note}} (what they had last time). When {{caller_name}} is NOT empty, this is a returning customer:
 • Use their name in your FIRST sentence after the greeting, warmly, like a receptionist who recognizes a regular: "Hi {{caller_name}}, so nice to hear from you again!" / "Oi {{caller_name}}, que bom te ouvir de novo!"
 • Reference their history naturally when it helps the sale — "last time you had {{caller_note}} — would you like the same, or shall we try something new?"
-• NEVER ask for their phone number: you already have {{caller_phone}}. Asking for what the system already knows is the fastest way to sound like a machine — and it wasted a real customer's time on 2026-08-07.
+• NEVER ask for their phone number when {{caller_phone}} is filled: you already have it. Asking for what the system already knows is the fastest way to sound like a machine — and it wasted a real customer's time on 2026-08-07.
 • Still confirm the SPELLING of a name only if you must write it somewhere and it sounds ambiguous.
 When {{caller_name}} IS empty this is someone new: greet normally, and capture the name early and gently ("and who am I speaking with?"), then use it for the rest of the call.
+📞 WEBSITE CONVERSATIONS — ASK FOR THE PHONE NUMBER, NOT ONLY THE EMAIL. When {{caller_phone}} is EMPTY the person is talking to you from the website and you do NOT have their number. Before you close a booking, a quote, an order or a callback request, ask for BOTH, phone first: "What's the best phone number to reach you?" — then "And your email, so I can send the confirmation?". Read the digits back once to confirm. Send the phone in the \`contact\` field and the email in the \`email\` field of the tool call. If they prefer to give only one of the two, accept it and go on without insisting. Never say you will text them: text messages are not sent today.
 ⚠️ These variables may arrive empty — a sentence must still read perfectly when they are. Never speak a placeholder out loud.
 
-🚨 SWITCHING LANGUAGE IS A TOOL CALL, NOT A CHOICE OF WORDS. The moment the caller speaks — or asks for — another language, you MUST call the \`language_detection\` tool FIRST, before you reply. Typing Portuguese or Spanish words WITHOUT that tool call changes nothing the caller can hear: your VOICE and your speech ENGINE stay in the previous language, so the caller hears their language spoken with a foreign accent by a voice that cannot pronounce it. Answering "Claro, posso falar em português" without the tool call is the failure, not the fix. Call the tool, then answer.`,
+🚨 SWITCHING LANGUAGE IS A TOOL CALL, NOT A CHOICE OF WORDS. When the caller speaks a FULL SENTENCE in another language — or asks for another language — you MUST call the \`language_detection\` tool FIRST, before you reply. A single word, a name, or something you did not understand is NOT a language change: stay in the language the call is in and ask them to repeat. If the caller goes back to the previous language, call the tool again and go back with them. Typing Portuguese or Spanish words WITHOUT that tool call changes nothing the caller can hear: your VOICE and your speech ENGINE stay in the previous language, so the caller hears their language spoken with a foreign accent by a voice that cannot pronounce it. Answering "Claro, posso falar em português" without the tool call is the failure, not the fix. Call the tool, then answer.`,
     knowledge ? `BUSINESS KNOWLEDGE (never invent beyond this):\n${knowledge}` : "",
     priceList ? `PRICES (quote EXACTLY from this — never guess a price; if something isn't listed, say you'll confirm and capture it as a quote request):\n${priceList}` : "",
     // AS LIÇÕES entram AQUI de propósito: depois do cardápio (para "não invente" ter o que comparar)
@@ -391,12 +402,23 @@ export function buildDefaultSchedulePayload({ industry = "", lang = "en", tz = "
 // The scheduling/booking webhook tool the agent calls DURING a call to actually check availability and
 // RECORD a booking (which also emails the caller a confirmation). Without this the agent only TALKS about
 // booking but never acts. Scoped to this client's business via client_email. Needs AGENT_ACTION_SECRET.
+// CR-02 — REMARCAR / CANCELAR PELA AGENTE (2026-10-08). O texto que ensina a usar find/reschedule/cancel.
+// Ordem que é lei: ACHAR (pelo telefone/e-mail de quem liga) → LER DE VOLTA → CONFIRMAR → só então agir.
+// A política de cancelamento é do NEGÓCIO: a agente cita o que estiver no conhecimento dele e repete a
+// mensagem que o servidor devolver — nunca promete isentar taxa. MindBody: o servidor já cancela/remarca
+// LÁ primeiro quando o agendamento é espelho; se ele recusar, a resposta vem ok=false e ela diz a verdade.
+export const GERENCIAR_AGENDAMENTO = "• CHANGING OR CANCELLING AN EXISTING APPOINTMENT (`schedule` op=find|reschedule|cancel): (1) FIND first — call op='find' with contact=<the caller's phone ({{caller_phone}} when it is filled) or their email>; that is how you confirm it is really their appointment. If nothing comes back, ask which phone or email the booking is under and try once more — never touch an appointment you did not find for this caller. (2) READ IT BACK — say the service, day and time of the appointment you found (if there are several, ask which one) and confirm that is the one. (3) CONFIRM BEFORE ACTING — for a cancellation, ask a clear yes/no question (\"Just to confirm, you'd like me to cancel your massage on Thursday at 2?\") and call op='cancel' with appointment_id ONLY after an explicit yes; for a reschedule, offer real times (op='availability' for that service), and once they pick one call op='reschedule' with appointment_id + when=<the new time>. (4) POLICY — if the business has a cancellation or rescheduling policy in what you know, mention it before confirming; never waive or promise to waive a fee; if the tool result carries a policy, fee or refusal message, relay it as is. (5) Say it is cancelled or moved ONLY when the result has ok=true; if it comes back ok=false, tell the truth and offer the alternatives it gives, or to have the team call them back. Prefer moving over cancelling: when someone wants to cancel, offer once to reschedule instead, warmly, without pressure.";
+
+// As operações que a agente pode chamar na ferramenta `schedule` — a MESMA lista que o servidor
+// (api/agent-schedule.js) atende. Exportada para o teste conferir o esquema contra ela.
+export const SCHEDULE_OPS = ["lookup", "price", "availability", "book", "add_service", "find", "reschedule", "cancel"];
+
 function schedulingTool(env, email) {
   if (!env.AGENT_ACTION_SECRET) return null;
   return {
     type: "webhook",
     name: "schedule",
-    description: "Check the business's services WITH PRICES & real availability and BOOK an appointment/reservation. Call op='lookup' to list services (each with its price), op='price' for the exact price of a service (or the whole price list) — ALWAYS consult a real price before quoting one, never guess — op='availability' for open slots, op='book' to record the booking (this also sends the customer their confirmation). NEVER tell a caller something is booked without calling op='book' first.",
+    description: "Check the business's services WITH PRICES & real availability, BOOK an appointment/reservation, and FIND / RESCHEDULE / CANCEL an existing one. op='lookup' lists services (each with its price), op='price' gives the exact price of a service (or the whole price list) — ALWAYS consult a real price before quoting one, never guess — op='availability' for open slots, op='book' to record the booking (this also sends the customer their confirmation), op='add_service' when a caller who ALREADY has an appointment wants another service with it (e.g. a facial added to their massage). op='find' lists the caller's upcoming appointments by their phone/email (call it FIRST, before any change). op='reschedule' moves one appointment to a new time (send appointment_id from op='find' + when). op='cancel' cancels one appointment (send appointment_id from op='find') — ONLY after the caller explicitly confirmed the cancellation. NEVER tell a caller something is booked, moved or cancelled unless the tool result says ok=true.",
     response_timeout_secs: 35,
     api_schema: {
       url: "https://guileoai.com/api/agent-schedule",
@@ -409,18 +431,29 @@ function schedulingTool(env, email) {
       // ela NÃO for substituída, o servidor recebe a string literal e a RPC RECUSA o elo — por isso
       // mandar isto é seguro mesmo se o provedor mudar de ideia sobre o nome da variável: o pior
       // caso é ficar sem elo, nunca um elo inventado. Fail-closed no lado que importa.
-      request_headers: { "x-guileo-secret": env.AGENT_ACTION_SECRET, "x-guileo-client": email, "x-guileo-conv": "{{system__conversation_id}}" },
+      request_headers: { "x-guileo-secret": env.AGENT_ACTION_SECRET, "x-guileo-client": email, "x-guileo-conv": "{{system__conversation_id}}", "x-guileo-caller": "{{system__caller_id}}" },
       request_body_schema: {
         type: "object",
         properties: {
-          op: { type: "string", description: "One of: lookup | price | availability | book" },
+          // CR-02 (2026-10-08): find/reschedule/cancel já existiam no servidor (agent-schedule.js) e a
+          // agente não podia chamá-los — o `op` só listava os cinco abaixo. Agora o enum é a lista inteira.
+          op: { type: "string", enum: SCHEDULE_OPS, description: "One of: lookup | price | availability | book | add_service | find | reschedule | cancel" },
           service: { type: "string", description: "The service / table / reservation type requested" },
           name: { type: "string", description: "The caller's full name" },
           contact: { type: "string", description: "The caller's email or phone — REQUIRED so the confirmation can be sent" },
-          when: { type: "string", description: "Requested date & time in plain language, e.g. 'amanhã às 20h'" },
+          // 2026-09-28: na ligação o número de quem liga ocupa `contact` (servidor usa o BINA); o e-mail do
+          // comprovante precisa de campo próprio, senão um apaga o outro.
+          email: { type: "string", description: "The caller's email for the written confirmation (op='book'). On phone calls ASK for it right after booking and send it here — the phone is already known" },
+          when: { type: "string", description: "Requested date & time in plain language, e.g. 'amanhã às 20h'. For op='reschedule' this is the NEW date & time" },
           // Multi-location: the server already resolves location names on lookup/availability/book;
           // declaring it here is what lets the LLM actually SEND it when the business has branches.
           location: { type: "string", description: "Which location/branch the caller wants (by name), when the business has more than one — op='lookup' lists them" },
+          // op='add_service' (2026-10-07, contrato Natura): o serviço NOVO vai em `service`; o agendamento
+          // que já existe é achado pelo contato (o servidor também usa o BINA). Os campos abaixo só desfazem dúvida.
+          existing_service: { type: "string", description: "op='add_service' only: the service of the appointment they ALREADY have (e.g. 'massage'), when they have more than one upcoming appointment" },
+          appointment_id: { type: "string", description: "op='reschedule' / op='cancel' / op='add_service': the `id` of the caller's existing appointment, copied from the op='find' result. Never invent it" },
+          ref: { type: "string", description: "op='reschedule' / op='cancel': the booking reference the caller reads out (e.g. 'GUI-4F2A'), when they have one — the server matches it against THEIR appointments only" },
+          position: { type: "string", description: "op='add_service' only: 'before' or 'after' the existing appointment, only if the caller said so" },
         },
         required: ["op"],
       },
@@ -443,7 +476,7 @@ function actionTool(env, email) {
       url: "https://guileoai.com/api/agent-action",
       method: "POST",
       // SECURITY (multi-tenant): tenant pinned server-side via static per-agent header; LLM never supplies it.
-      request_headers: { "x-guileo-secret": env.AGENT_ACTION_SECRET, "x-guileo-client": email },
+      request_headers: { "x-guileo-secret": env.AGENT_ACTION_SECRET, "x-guileo-client": email, "x-guileo-caller": "{{system__caller_id}}" },
       request_body_schema: {
         type: "object",
         properties: {
@@ -487,7 +520,10 @@ export function clientToolset(env, email) {
 // Build the FULL conversation_config (voice + brain + LLM + scheduling tool) — one source of truth so the
 // admin onboard and the self-serve webhook provision identical agents. llm defaults to a strong model
 // (comprehension is the product); voice stays Flash v2.5 for cost.
-export function buildConversationConfig(env, { business, industry, lang, brain, agentName, email, prices, services, voiceId, nativeVoices }) {
+// `transfer` / `proprios` (2026-09-30): os números para onde a agente pode PASSAR a ligação (perfil
+// do negócio) e os números da própria agente (para nunca transferir para si mesma). Sem `transfer`
+// válido nada muda: nem ferramenta, nem texto no prompt.
+export function buildConversationConfig(env, { business, industry, lang, brain, agentName, email, prices, services, voiceId, nativeVoices, transfer = null, proprios = [] }) {
   const L = ["pt", "es", "en"].includes(lang) ? lang : "en";
   // PRICES: prefer an explicit pre-formatted block; else format the services the caller passed
   // (biz_lookup shape). Either way the Gui gets REAL numbers to quote & close on.
@@ -505,9 +541,10 @@ export function buildConversationConfig(env, { business, industry, lang, brain, 
     description: "Detect the language the caller is speaking and switch the conversation to it.",
     params: { system_tool_type: "language_detection" },
   };
-  const tools = [schedulingTool(env, e), actionTool(env, e), deteccaoDeIdioma].filter(Boolean);
+  const optsTransf = { proprios, extraDdi: env.CALL_DDI_EXTRA || "" };
+  const tools = [schedulingTool(env, e), actionTool(env, e), deteccaoDeIdioma, ferramentaDeTransferencia(transfer, optsTransf)].filter(Boolean);
   const toolHint = tools.length
-    ? "\n\nTOOLS — you can ACT, not just talk:\n• `schedule`: check PRICES and availability, and BOOK appointments/reservations (op=lookup|price|availability|book). Consult op='price' (or op='lookup', which lists prices) before quoting any price — never guess. Never say something is booked unless op='book' succeeded.\n• `do_action`: take an order, capture a lead, log a quote, make a payment link, schedule a callback, or ESCALATE to a human (action='escalate') the moment the caller asks for a person, sounds upset, or asks something you can't answer. Never promise any of these without calling it.\n🚨 EMERGENCY (no AC / flood / leak / burst pipe / no power / gas smell / roof damage, or the caller says it's urgent — any language): FIRST capture the best callback number, THEN call do_action with action='escalate' AND urgent=true — this rings the owner's phone immediately with the caller's details, so never skip the number.\nALWAYS capture the caller's name + a contact (email or phone) before acting, so the confirmation is sent."
+    ? "\n\nTOOLS — you can ACT, not just talk:\n• `schedule`: check PRICES and availability, and BOOK appointments/reservations (op=lookup|price|availability|book|add_service|find|reschedule|cancel). Consult op='price' (or op='lookup', which lists prices) before quoting any price — never guess. Never say something is booked unless op='book' succeeded. If a caller who already has an appointment asks to ADD a service to it (\"can I add a facial to my massage?\"), call op='add_service' with service=<the new service> and their contact — it books it right before/after the existing visit and links them. If it answers with alternatives, offer them; when the caller picks one, call op='add_service' again with `when`. Say it's added ONLY when the result has ok=true.\n" + GERENCIAR_AGENDAMENTO + "\n• `do_action`: take an order, capture a lead, log a quote, make a payment link, schedule a callback, or ESCALATE to a human (action='escalate') the moment the caller asks for a person, sounds upset, or asks something you can't answer. Never promise any of these without calling it.\n🚨 EMERGENCY (no AC / flood / leak / burst pipe / no power / gas smell / roof damage, or the caller says it's urgent — any language): FIRST capture the best callback number, THEN call do_action with action='escalate' AND urgent=true — this rings the owner's phone immediately with the caller's details, so never skip the number.\nALWAYS capture the caller's name + a contact (email or phone) before acting, so the confirmation is sent."
     : "";
   // ElevenLabs rejects flash_v2_5 for English-PRIMARY agents ("English Agents must use turbo or flash v2");
   // turbo_v2_5 is multilingual AND accepted for English → use it for en, flash_v2_5 (multilingual) for pt/es.
@@ -530,14 +567,19 @@ export function buildConversationConfig(env, { business, industry, lang, brain, 
   const VOZ_PADRAO = "hpp4J3VqNfWAUOO0d1Us";
   const voice = (voiceId || env.ELEVEN_VOICE_ID || VOZ_PADRAO).toString().trim();
   const ttsCfg = { model_id: ttsModel, ...WARMTH, ...(voice ? { voice_id: voice } : {}) };
+  // O OUVIDO (2026-09-28): "Botox" chegou como "bath" e a agente negou o serviço. O reconhecimento de
+  // fala recebe as palavras que ESTE negócio vende (lib/ouvido.js). Só `keywords`: provedor e qualidade
+  // do agente não são tocados.
+  const ouvido = palavrasDoOuvido({ textos: [brain], precos: priceBlock, nomes: [business, agentName] });
   return {
+    ...(ouvido.length ? { asr: { keywords: ouvido } } : {}),
     tts: ttsCfg,
     // OS IDIOMAS QUE ELA PODE FALAR. Irmão de `agent`/`tts`, não filho — a ferramenta
     // language_detection lê daqui a lista de destinos possíveis. Sem isto ela detecta e não troca.
     language_presets: buildLanguagePresets(L, { business, agentName, nativeVoices }),
     agent: {
       prompt: {
-        prompt: prompt + toolHint,
+        prompt: prompt + toolHint + instrucaoDeTransferencia(transfer, optsTransf),
         llm: env.ELEVEN_LLM || "gpt-4o",
         ...(tools.length ? { tools } : {}),
         // MULTILINGUAL: built-in language-detection system tool → the agent answers in its primary
@@ -599,6 +641,10 @@ export function buildPlatformSettings(env) {
   const limites = {
     max_duration_seconds: 300,
   };
+  // A LEITURA DE CADA LIGAÇÃO (2026-10-05): humor/intenção/nota/resumo preenchidos pela própria ElevenLabs
+  // (lib/analiseDaLigacao.js) — sem Anthropic. Vai no nascimento E no PATCH, para nenhum agente nascer ou
+  // ser atualizado sem eles (o webhook avisa "agente sem os campos" quando faltam).
+  limites.data_collection = CAMPOS_DA_LIGACAO;
   if (!env.AGENT_ACTION_SECRET) return limites;
   return {
     ...limites,
@@ -657,7 +703,11 @@ export async function provisionClientAgent(env, { email, business, industry, lan
 
     const res = await fetch("https://api.elevenlabs.io/v1/convai/agents/create", {
       method: "POST", headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: `Gui · ${(business || e).toString()}`.slice(0, 60), conversation_config: convCfg, ...(platform ? { platform_settings: platform } : {}) }),
+      // Agente NOVO nasce com o webhook de identidade LIGADO (sem a chave, a ElevenLabs guarda a URL e
+      // nunca chama — a Lilian não disse "Luis" em 28/09). No PATCH acima NÃO mandamos `overrides`:
+      // reescreveria as liberações de first_message/language que o agente já tem.
+      body: JSON.stringify({ name: `Gui · ${(business || e).toString()}`.slice(0, 60), conversation_config: convCfg,
+        ...(platform ? { platform_settings: { ...platform, overrides: { enable_conversation_initiation_client_data_from_webhook: true } } } : {}) }),
     });
     if (!res.ok) {
       const createStep = `err ${res.status}: ${(await res.text().catch(() => "")).slice(0, 180)}`;
@@ -766,7 +816,11 @@ export async function buyAndBindNumber(env, { email, agentId, areaCode, label },
     const auth = "Basic " + btoa(`${sid}:${tok}`);
     const area = (areaCode || "").toString().replace(/[^0-9]/g, "");
     const sr = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/AvailablePhoneNumbers/US/Local.json?SmsEnabled=true&VoiceEnabled=true${area ? `&AreaCode=${area}` : ""}&PageSize=1`, { headers: { Authorization: auth } });
-    const avail = sr.ok ? await sr.json() : {};
+    // 401/403 = conta Twilio suspensa ou credencial errada — NÃO é "sem número disponível". Em
+    // 09/2026 a conta foi suspensa por saldo e o alerta dizia "no number available"; o dono foi
+    // procurar número em vez de saldo. O motivo tem que apontar pra causa.
+    if (!sr.ok) return { ok: false, reason: `twilio ${sr.status}${sr.status === 401 || sr.status === 403 ? " — conta suspensa ou credencial inválida (Console → Billing)" : ""}` };
+    const avail = await sr.json().catch(() => ({}));
     const pick = avail?.available_phone_numbers?.[0]?.phone_number;
     if (!pick) return { ok: false, reason: "no number available" };
     const pr = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/IncomingPhoneNumbers.json`, {

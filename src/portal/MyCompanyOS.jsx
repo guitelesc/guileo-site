@@ -7,6 +7,8 @@
    Demo mode = deterministic sample per sector; real mode = live fetch + skeleton. */
 import { useState, useEffect } from "react";
 import { tr, Card, Empty, SectionSkeleton, UI_LANG, vnum } from "../pages/Portal.jsx";
+import { chamarApi } from "../lib/portalApi.js";
+import FalhaDeLeitura from "./FalhaDeLeitura.jsx";
 
 const LOCALE = () => (UI_LANG === "pt" ? "pt-BR" : UI_LANG === "es" ? "es-ES" : UI_LANG === "hi" ? "hi-IN" : "en-US");
 const money = (cents) => {
@@ -15,16 +17,20 @@ const money = (cents) => {
   catch { return `$${Math.round(v)}`; }
 };
 
-// ── POST helper (kept local — no shared file edits) ──
-async function post(body) {
-  try {
-    const r = await fetch("/api/my-company-os", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-    });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch { return null; }
-}
+// 🌐 (2026-09-28) Rótulos por CHAVE de departamento, no idioma da tela. Esta tela tinha 17 chaves
+// de tr() escritas em português ("Finanças", "aguardando dados"…): só a tela em português lia
+// certo. E os rótulos que vinham do servidor chegavam em português para todo mundo.
+// O servidor agora aceita `lang` e devolve o idioma em que respondeu; se ele NÃO confirmar o
+// idioma da tela, os rótulos daqui valem — a cliente nunca lê o idioma errado por causa de deploy.
+const rotuloDe = (key) => ({
+  finance: tr("Finance"), crm: tr("Customers"), sales: tr("Sales"), marketing: tr("Marketing"),
+  operations: tr("Operations"), growth: tr("Growth"), support: tr("Support"), intelligence: tr("Intelligence"),
+}[key] || "");
+const kpiDe = (key) => ({
+  finance: tr("revenue collected (30d)"), crm: tr("contacts"), sales: tr("deals closed (30d)"),
+  marketing: tr("active campaigns"), operations: tr("bookings (30d)"), growth: tr("returning customers"),
+  support: tr("open tickets"), intelligence: tr("Gui actions (30d)"),
+}[key] || "");
 
 // ── deterministic demo departments (same per-sector flavor as the other tabs) ──
 function genDemo(V) {
@@ -37,15 +43,16 @@ function genDemo(V) {
   const growth = vnum(V.label, "mco-gr", 5, 30);
   const tickets = vnum(V.label, "mco-tk", 0, 7);
   const actions = vnum(V.label, "mco-ai", 6, 40);
+  const d = (key, icon, accent, kpi_value, ready = true, kpi_label = kpiDe(key)) => ({ key, label: rotuloDe(key), icon, accent, kpi_value, kpi_label, ready });
   return [
-    { key: "finance",      label: tr("Finanças"),      icon: "💳", accent: "#3E9468", kpi_value: money(rev),        kpi_label: tr("receita coletada (30d)"), ready: true },
-    { key: "crm",          label: tr("Clientes"),      icon: "👥", accent: "#FF8A33", kpi_value: `${contacts}`,      kpi_label: `${tr("contatos")} · ${money(ltv)} LTV`, ready: true },
-    { key: "sales",        label: tr("Vendas"),        icon: "🎯", accent: "#FF4FA3", kpi_value: `${deals}`,         kpi_label: tr("fechamentos (30d)"),     ready: true },
-    { key: "marketing",    label: tr("Marketing"),     icon: "📣", accent: "#4C9AFF", kpi_value: `${camp}`,          kpi_label: tr("campanhas ativas"),      ready: true },
-    { key: "operations",   label: tr("Operações"),     icon: "⚙️", accent: "#9A8F82", kpi_value: `${ops}`,           kpi_label: tr("agendamentos (30d)"),    ready: true },
-    { key: "growth",       label: tr("Crescimento"),   icon: "📈", accent: "#3E9468", kpi_value: `+${growth}%`,      kpi_label: tr("clientes recorrentes"),  ready: true },
-    { key: "support",      label: tr("Suporte"),       icon: "🛟", accent: "#FFC23D", kpi_value: `${tickets}`,       kpi_label: tr("chamados abertos"),      ready: tickets > 0 },
-    { key: "intelligence", label: tr("Inteligência"),  icon: "🧠", accent: "#FF8A33", kpi_value: `${actions}`,       kpi_label: tr("ações da Gui (30d)"),    ready: true },
+    d("finance", "💳", "#3E9468", money(rev)),
+    d("crm", "👥", "#FF8A33", `${contacts}`, true, `${tr("contacts")} · ${money(ltv)} LTV`),
+    d("sales", "🎯", "#FF4FA3", `${deals}`),
+    d("marketing", "📣", "#4C9AFF", `${camp}`),
+    d("operations", "⚙️", "#9A8F82", `${ops}`),
+    d("growth", "📈", "#3E9468", `+${growth}%`),
+    d("support", "🛟", "#FFC23D", `${tickets}`, tickets > 0),
+    d("intelligence", "🧠", "#FF8A33", `${actions}`),
   ];
 }
 
@@ -60,10 +67,10 @@ function DeptCard({ d, i, demo }) {
         <span className="grid place-items-center h-9 w-9 rounded-xl text-lg shrink-0" style={{ background: `${d.accent}1a` }}>{d.icon}</span>
         {ready ? (
           <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-g-green">
-            <span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{tr("ao vivo")}
+            <span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{tr("live")}
           </span>
         ) : (
-          <span className="text-[9px] font-black uppercase tracking-wider text-g-muted border border-white/10 rounded-full px-1.5 py-px">{tr("aguardando")}</span>
+          <span className="text-[9px] font-black uppercase tracking-wider text-g-muted border border-white/10 rounded-full px-1.5 py-px">{tr("waiting")}</span>
         )}
       </div>
       <div className="text-[10px] font-black uppercase tracking-wider text-g-muted">{d.label}</div>
@@ -73,7 +80,7 @@ function DeptCard({ d, i, demo }) {
           <div className="text-[11px] text-g-muted">{d.kpi_label}</div>
         </>
       ) : (
-        <div className="text-[12px] text-g-muted mt-1">{tr("aguardando dados")}</div>
+        <div className="text-[12px] text-g-muted mt-1">{tr("waiting for data")}</div>
       )}
     </div>
   );
@@ -81,18 +88,36 @@ function DeptCard({ d, i, demo }) {
 
 function MyCompanyOS({ V, real = null, email = "", dataKey = "" }) {
   const [data, setData] = useState(null); // null = loading (real mode)
+  const [falha, setFalha] = useState(null);
+  const [tentativa, setTentativa] = useState(0);
   const demo = !real;
 
   useEffect(() => {
     let alive = true;
-    if (!real || !email || !dataKey) return;
+    if (!real) return;
+    // 🚨 (2026-09-28) Dois defeitos. (1) Conta real sem e-mail/chave: o efeito saía sem fazer
+    // nada e `data` ficava null = esqueleto para sempre. (2) Falha de leitura virava
+    // `departments: []` e a tela dizia "a inteligência está aquecendo" — o estado de quem acabou
+    // de chegar, mostrado a quem tem meses de dado e uma rede que piscou.
+    if (!email || !dataKey) { setFalha("sem_credencial"); setData({ departments: [] }); return; }
+    setData(null); setFalha(null);
     (async () => {
-      const res = await post({ email, token: dataKey });
+      const r = await chamarApi("/api/my-company-os", { email, token: dataKey, lang: UI_LANG });
       if (!alive) return;
-      setData({ departments: Array.isArray(res?.departments) ? res.departments : [] });
+      if (r.motivo) { setFalha(r.motivo); setData({ departments: [] }); return; }
+      if (r.data.ok === false) { setFalha("servidor"); setData({ departments: [] }); return; }
+      if (!Array.isArray(r.data.departments)) { setFalha("resposta_estranha"); setData({ departments: [] }); return; }
+      // O servidor confirmou o idioma? Então os rótulos dele valem (inclusive o de departamento
+      // novo, que esta tela ainda não conhece). Senão, valem os daqui.
+      const noIdioma = r.data.lang === UI_LANG;
+      setData({ departments: r.data.departments.filter(Boolean).map((d) => ({
+        ...d,
+        label: (noIdioma && d.label) || rotuloDe(d.key) || d.label || "",
+        kpi_label: (noIdioma && d.kpi_label) || kpiDe(d.key) || "",
+      })) });
     })();
     return () => { alive = false; };
-  }, [real, email, dataKey]);
+  }, [real, email, dataKey, tentativa]);
 
   // real mode, fetch in flight → skeleton (never a false empty state)
   if (real && data === null) return <SectionSkeleton rows={6} />;
@@ -104,13 +129,13 @@ function MyCompanyOS({ V, real = null, email = "", dataKey = "" }) {
       {/* Header */}
       <div className="rounded-2xl border border-[#FF8A33]/25 bg-gradient-to-br from-[#FF8A33]/[0.07] to-white/[0.02] p-5">
         <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider" style={{ color: "#FF8A33" }}>
-          🏢 {tr("Minha Empresa")}
+          🏢 {tr("My Company")}
           {real
             ? <span className="inline-flex items-center gap-1 text-g-green normal-case font-black text-[9px]"><span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />{tr("LIVE — real data")}</span>
             : <span className="text-g-muted normal-case font-bold text-[9px] border border-white/10 rounded-full px-1.5 py-px">{tr("estimate")}</span>}
         </div>
-        <div className="mt-1 text-xl font-black text-g-word">{tr("Os 8 departamentos do seu negócio, num lugar só, ao vivo.")}</div>
-        <p className="mt-1 text-xs text-g-muted max-w-xl">{tr("A Gui opera cada departamento pra você — aqui você vê o pulso de todos de uma vez.")}</p>
+        <div className="mt-1 text-xl font-black text-g-word">{tr("Your business's 8 departments, in one place, live.")}</div>
+        <p className="mt-1 text-xs text-g-muted max-w-xl">{tr("Gui runs each department for you — here you see the pulse of all of them at once.")}</p>
       </div>
 
       {demo && (
@@ -119,8 +144,10 @@ function MyCompanyOS({ V, real = null, email = "", dataKey = "" }) {
         </div>
       )}
 
-      {real && depts.length === 0 ? (
-        <Card><Empty icon="🏢" text={tr("A inteligência está aquecendo — liga assim que seus clientes e agendamentos entram.")} /></Card>
+      {real && falha ? (
+        <FalhaDeLeitura motivo={falha} onRetry={() => setTentativa((n) => n + 1)} titulo={tr("I couldn't load your departments just now.")} />
+      ) : real && depts.length === 0 ? (
+        <Card><Empty icon="🏢" text={tr("Your intelligence is warming up — it switches on as soon as your customers and bookings come in.")} /></Card>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {depts.map((d, i) => <DeptCard key={d.key || i} d={d} i={i} demo={demo} />)}

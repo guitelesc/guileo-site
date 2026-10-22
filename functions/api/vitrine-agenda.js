@@ -19,12 +19,14 @@
 //   { slug, op:"menu" }                                  → serviços reais do tenant
 //   { slug, op:"horarios", servico, dia? }               → vagas REAIS do motor
 //   { slug, op:"marcar", servico, quando, nome, telefone } → marca de verdade
+//        (+ `deposito:{url,cents,janela_h?}` quando o serviço tem sinal e o negócio cobra online)
 //
 // ⚠️ "marcar" devolve o COMPROVANTE (id da reserva) ou uma falha honesta. "ok" sem id é promessa
 // sem lastro — foi assim que a agente já disse "marcado" sobre o vazio.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 import { json, sameOrigin, rateLimited } from "../lib/guard.js";
-import { svcRpc } from "../lib/sb.js";
+import { svcRpc, svcJson } from "../lib/sb.js";
+import { sinalNaTela } from "../lib/sinal.js";
 
 const s = (v, n = 200) => (v == null ? "" : v.toString().slice(0, n).trim());
 
@@ -58,7 +60,10 @@ export async function onRequestPost({ request, env }) {
     // chamada: a vitrine nunca listou um serviço nem marcou um horário em produção.
     // Achado provando o deploy: o menu do three-degrees devolvia "motor respondeu 401" também
     // no deployment sem nenhuma alteração minha, o que descartou regressão e apontou para cá.
-    headers: { "Content-Type": "application/json", "x-guileo-secret": env.AGENT_ACTION_SECRET || "" },
+    // O NEGÓCIO vai no cabeçalho x-guileo-client (2026-10-05): o agent-schedule usa `b.email` como reserva
+    // para descobrir o negócio. Com o e-mail da CLIENTE no corpo, sem este cabeçalho, a reserva iria para
+    // o "negócio" com o e-mail dela. O cabeçalho vence o corpo (ver feedback "Cabeçalho vence corpo").
+    headers: { "Content-Type": "application/json", "x-guileo-secret": env.AGENT_ACTION_SECRET || "", "x-guileo-client": dono },
     body: JSON.stringify({ email: dono, ...corpo }),
   });
 
@@ -69,10 +74,10 @@ export async function onRequestPost({ request, env }) {
       // `r.json().catch(()=>null)` só pega corpo ILEGÍVEL. Um 500 com corpo JSON passa
       // reto por `if (!d)` — e no "menu" isso virava `ok:true, servicos: []`: a vitrine
       // dizia "não temos serviços" quando o motor tinha caído. Erro tem que parecer erro.
-      if (!r.ok) return json({ ok: false, error: `motor respondeu ${r.status}` }, 502);
+      if (!r.ok) return json({ ok: false, error: `motor respondeu ${r.status}` }, 503);
       const d = await r.json().catch(() => null);
-      if (!d) return json({ ok: false, error: "motor nao respondeu" }, 502);
-      return json({ ok: true, servicos: d.services || d.servicos || [], profissionais: d.professionals || [] });
+      if (!d) return json({ ok: false, error: "motor nao respondeu" }, 503);
+      return json({ ok: true, servicos: d.services || d.servicos || [], precos: Array.isArray(d.priced) ? d.priced : [], profissionais: d.professionals || [] });
     }
     if (op === "horarios") {
       const servico = s(b.servico, 120);
@@ -85,17 +90,35 @@ export async function onRequestPost({ request, env }) {
       // finge existir é armadilha para o próximo: quem colocar um seletor de data na vitrine vai
       // confiar nele e mostrar sexta para quem pediu sábado. Melhor não existir do que mentir.
       // Para filtrar por dia de verdade, o filtro tem que nascer no motor (e no biz_availability).
-      const r = await motor({ op: "availability", service: servico });
-      if (!r.ok) return json({ ok: false, error: `motor respondeu ${r.status}` }, 502);
+      // DIA DE VERDADE (2026-10-05): o motor agora aceita `days`/`limit` e devolve o fuso; o filtro
+      // por dia é feito AQUI, no fuso do negócio — não no navegador de quem marca.
+      const dia = /^\d{4}-\d{2}-\d{2}$/.test(s(b.dia, 10)) ? s(b.dia, 10) : "";
+      const r = await motor({ op: "availability", service: servico, days: 30, limit: 300 });
+      if (!r.ok) return json({ ok: false, error: `motor respondeu ${r.status}` }, 503);
       const d = await r.json().catch(() => null);
-      if (!d) return json({ ok: false, error: "motor nao respondeu" }, 502);
+      if (!d) return json({ ok: false, error: "motor nao respondeu" }, 503);
       // Lista ausente NÃO é "sem vaga" — a tela precisa saber a diferença.
-      if (!Array.isArray(d.slots)) return json({ ok: false, error: d.message || "nao consegui ler a agenda" }, 502);
-      return json({ ok: true, slots: d.slots.slice(0, 12) });
+      if (!Array.isArray(d.slots)) return json({ ok: false, error: d.message || "nao consegui ler a agenda" }, 503);
+      const tz = d.tz || "America/New_York";
+      const diaDe = (iso) => { try { return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso)); } catch { return ""; } };
+      const dias = [...new Set(d.slots.map((x) => diaDe(x.start)).filter(Boolean))];   // dias com vaga (para o calendário)
+      const slots = dia ? d.slots.filter((x) => diaDe(x.start) === dia) : d.slots.slice(0, 12);
+      return json({ ok: true, slots, dias, tz });
     }
     if (op === "marcar") {
       const nome = s(b.nome, 120), tel = s(b.telefone, 40), servico = s(b.servico, 120), quando = s(b.quando, 60);
+      // e-mail opcional (2026-10-05): com ele a confirmação também sai por e-mail, que hoje é o único
+      // canal liberado (SMS espera A2P). Só aceita formato de e-mail; o resto vira vazio.
+      const emailCliente = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s(b.email, 160)) ? s(b.email, 160).toLowerCase() : "";
       if (!nome || !tel || !servico || !quando) return json({ ok: false, error: "faltam dados" }, 400);
+      // GUILEO DESK (2026-10-05): a recepção pode tirar de uma cliente o direito de marcar sozinha
+      // (ficha da cliente → "pode marcar online"). Quem decide é o banco; na dúvida, deixa marcar.
+      try {
+        const pode = await svcRpc(env, "desk_can_book_online", { p_tenant: dono, p_contact: tel });
+        if (pode && pode.ok && (await pode.json().catch(() => true)) === false) {
+          return json({ ok: false, error: "call_to_book", nota: "Para este agendamento, fale com a recepção." });
+        }
+      } catch { /* sem resposta → segue o fluxo normal */ }
       // ⚠️ OS NOMES DOS CAMPOS SÃO O CONTRATO (corrigido 2026-08-27). Este bloco mandava
       // `customer_name`/`customer_phone` — nomes que NÃO existem em agent-schedule.js, que lê
       // `b.name` e `b.contact`. O motor gravava a reserva com nome e contato VAZIOS: o horário
@@ -104,18 +127,52 @@ export async function onRequestPost({ request, env }) {
       // Comprovante certo sobre o campo errado é o pior tipo de falha: ela se parece com sucesso.
       // O contrato agora é travado por vitrine-agenda.test.mjs, que compara o que sai daqui
       // com o que o motor realmente lê.
-      const r = await motor({ op: "book", service: servico, when: quando, name: nome, contact: tel });
-      if (!r.ok) return json({ ok: false, error: `motor respondeu ${r.status}` }, 502);
+      // `channel:"web"`: sem ele o motor assume voz e o agendamento da vitrine entrava no feed
+      // da Central como se fosse ligação (2026-09-28).
+      // `email` aqui é o da CLIENTE (ou vazio). O negócio está no cabeçalho x-guileo-client, que vence.
+      const r = await motor({ op: "book", service: servico, when: quando, name: nome, contact: tel, channel: "web", email: emailCliente });
+      if (!r.ok) return json({ ok: false, error: `motor respondeu ${r.status}` }, 503);
       const d = await r.json().catch(() => null);
       const id = d && (d.appointment_id || d.id || d.booking_id);
       // 🚨 COMPROVANTE OU NADA.
       if (!d || d.ok !== true || !id) {
         return json({ ok: false, error: (d && (d.message || d.error)) || "a agenda recusou", slots: (d && d.slots) || null }, 409);
       }
-      return json({ ok: true, id, quando: d.when || quando, servico });
+      // CONSENTIMENTO REGISTRADO (CR-11, 2026-10-13): a caixa "podem me mandar ofertas" da página de agendamento.
+      // Só grava quando a pessoa MARCOU; desmarcada = nada gravado e nada presumido (db/consentimento.sql).
+      // Registro que falha NUNCA derruba a reserva — ela já está comprovada acima.
+      const cons = b.consentimento && typeof b.consentimento === "object" ? b.consentimento : null;
+      if (cons && env.INGEST_SECRET) {
+        const prova = `Caixa marcada na página de agendamento (${new Date().toISOString()}) · reserva ${id}`;
+        for (const canal of ["sms", "call"]) {
+          if (cons[canal] !== true) continue;
+          try { await svcJson(env, "consent_record", { p_secret: env.INGEST_SECRET, p_email: dono, p_contact: tel, p_channel: canal, p_granted: true, p_source: "site_agendamento", p_evidence: prova }); }
+          catch { /* não registrou → não presume; a campanha só lê o registro */ }
+        }
+      }
+      // SINAL NA TELA (2026-10-05). A ligação pedia o sinal; o site não — a cliente marcava um serviço com
+      // sinal e ninguém pedia nada. Agora, com a reserva JÁ comprovada acima, o servidor abre o link do sinal
+      // no Stripe DO NEGÓCIO (lib/sinal.js sinalNaTela → criarLinkDoSinal, as mesmas regras da agente) e a
+      // página mostra o botão. Sem sinal, cliente de confiança, sinal pago ou sem Stripe ligado → nada muda,
+      // nenhuma etapa falsa. `hold` (horário segurado, a confirmar) não pede sinal — igual à agente.
+      // ⚠️ A RESERVA NUNCA CAI POR CAUSA DO SINAL: teto curto e qualquer falha vira "sem etapa de sinal".
+      let deposito = null;
+      if (d.status !== "hold") {
+        let relogio = null;
+        try {
+          const prazo = Math.min(Math.max(Number(env.SINAL_TELA_MS) || 5000, 1), 8000);
+          const sn = await Promise.race([
+            sinalNaTela(env, { tenant: dono, appointmentId: String(id), volta: slug, lang: s(b.lang, 5) }),
+            new Promise((r) => { relogio = setTimeout(() => r(null), prazo); }),
+          ]);
+          if (sn && sn.ok === true && sn.url && sn.cents > 0) deposito = { url: sn.url, cents: sn.cents, ...(sn.janela_h > 0 ? { janela_h: sn.janela_h } : {}) };
+        } catch { /* sinal é complemento: a reserva já está de pé */ }
+        finally { if (relogio) clearTimeout(relogio); }
+      }
+      return json({ ok: true, id, quando: d.when || quando, servico, ...(deposito ? { deposito } : {}) });
     }
     return json({ ok: false, error: "op invalida" }, 400);
   } catch (e) {
-    return json({ ok: false, error: String(e).slice(0, 120) }, 502);
+    return json({ ok: false, error: String(e).slice(0, 120) }, 503);
   }
 }

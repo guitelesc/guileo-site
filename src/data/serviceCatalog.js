@@ -1,3 +1,4 @@
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 // THE definitive Guileo services catalog — single source of truth for /servicos.
 // Every service the platform offers × what it does × the gain × the projected result,
 // quadrilingual (EN / PT / ES / HI). This feeds the seller's weapon AND the SEO page.
@@ -623,7 +624,7 @@ export const CATALOG = [
     services: [
       {
         icon: "🎛️",
-        name: { en: "Full cockpit", pt: "Cockpit completo", es: "Cockpit completo", hi: "पूरा कॉकपिट" },
+        name: { en: `Complete ${NOME_DO_PAINEL}`, pt: `${NOME_DO_PAINEL} completa`, es: `${NOME_DO_PAINEL} completa`, hi: `पूरा ${NOME_DO_PAINEL}` },
         does: {
           en: "One dashboard with every call, booking, sale and conversation — transcripts and sentiment included.",
           pt: "Um painel com cada ligação, agendamento, venda e conversa — com transcrição e sentimento incluídos.",
@@ -740,10 +741,10 @@ export const CATALOG = [
         icon: "🌱",
         name: { en: "Monthly goal + growing plant", pt: "Meta do mês + planta que cresce", es: "Meta del mes + planta que crece", hi: "मासिक लक्ष्य + बढ़ता पौधा" },
         does: {
-          en: "Set a monthly goal and watch it grow as a living plant in your cockpit — it blooms when you hit it.",
-          pt: "Defina a meta do mês e veja-a crescer como uma planta viva no seu cockpit — ela floresce quando você bate a meta.",
-          es: "Define la meta del mes y mírala crecer como una planta viva en tu cockpit — florece cuando la alcanzas.",
-          hi: "महीने का लक्ष्य तय करें और उसे कॉकपिट में जीते-जागते पौधे की तरह बढ़ते देखें — लक्ष्य पूरा होते ही वह खिल उठता है।",
+          en: `Set a monthly goal and watch it grow as a living plant in your ${NOME_DO_PAINEL} — it blooms when you hit it.`,
+          pt: `Defina a meta do mês e veja-a crescer como uma planta viva na sua ${NOME_DO_PAINEL} — ela floresce quando você bate a meta.`,
+          es: `Define la meta del mes y mírala crecer como una planta viva en tu ${NOME_DO_PAINEL} — florece cuando la alcanzas.`,
+          hi: `महीने का लक्ष्य तय करें और उसे ${NOME_DO_PAINEL} में जीते-जागते पौधे की तरह बढ़ते देखें — लक्ष्य पूरा होते ही वह खिल उठता है।`,
         },
         gain: {
           en: "Progress you can feel, not just read.",

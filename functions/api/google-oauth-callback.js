@@ -3,7 +3,8 @@
 // O Google devolve o dono (ou a cliente sentada com o vendedor) aqui com ?code&state.
 // Resolvemos o tenant pelo `state` no servidor (gbp_oauth_claim — uso único, TTL 10 min),
 // trocamos o code por refresh_token, e GRAVAMOS por tenant:
-//   • provider 'google_business' → { account_id, location_id, refresh_token, scope, … }
+//   • provider 'google_business' → { refresh_token, scope, app, accounts:[…], locations:[…],
+//                                   discovery:{…}, account_id/location_id (legado) }
 //   • provider 'gcal'            → { refresh_token, scope, app } — SÓ se o escopo de agenda
 //                                   foi realmente concedido (é o que agent-schedule.js lê)
 //
@@ -18,7 +19,16 @@
 // troca de token pra fazer — voltamos com google=error&reason=api_not_ready. Nunca inventamos
 // credencial.
 // ─────────────────────────────────────────────────────────────────────────────
+//
+// VÁRIAS FICHAS (2026-09-30). Antes: accounts[0] + locations com pageSize=1 → UMA ficha por
+// tenant, e nenhuma se as fichas ficam num grupo de locais (accounts[0] é sempre a conta
+// pessoal). Agora: TODAS as contas e TODAS as fichas, paginadas (lib/googleGbp.js), casadas com
+// as unidades do tenant (biz_locations) por endereço/nome — sem chutar: o que não casou fica
+// para o dono confirmar no painel (action map_locations). A decisão que o dono já tinha tomado
+// sobrevive a uma reconexão. Um novo consentimento também LIMPA o "precisa reautorizar".
+// ─────────────────────────────────────────────────────────────────────────────
 import { googleApp, SCOPE_CALENDAR, SCOPE_BUSINESS } from "./google-oauth-start.js";
+import { loadCreds, storeCreds, buildDiscoveredBlob, callWithToken, stateOf, _clearTokenCache } from "../lib/googleGbp.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -72,8 +82,8 @@ export async function onRequestGet(context) {
       tokenHttp = tr.status;
       if (tr.ok) {
         const td = await tr.json().catch(() => ({}));
-        refresh_token = s(td.refresh_token, 400);
-        access_token = s(td.access_token, 800);
+        refresh_token = s(td.refresh_token, 600);
+        access_token = s(td.access_token, 4096);
         granted = s(td.scope, 800);
       }
     } catch { /* cai no reason abaixo */ }
@@ -93,45 +103,32 @@ export async function onRequestGet(context) {
       } catch { /* opcional */ }
     }
 
-    // Best-effort: conta + local do Business Profile (só faz sentido com business.manage).
-    let account_id = "", location_id = "";
+    // O QUE JÁ ESTAVA GRAVADO — para preservar o que o dono confirmou (ficha ↔ unidade). Se a
+    // leitura falhar seguimos sem o anterior: reconectar não pode ficar refém disso.
+    let anterior = null;
+    try { const c = await loadCreds(env, email); if (c.ok) anterior = c.blob; } catch { anterior = null; }
+
+    const base = {
+      refresh_token, scope: granted, app: app.kind, google_email, calendar_id,
+      connected_at: new Date().toISOString(),
+      needs_reconsent: false, reconsent_at: null,       // consentimento novo zera o aviso
+      account_id: "", location_id: "", accounts: [], locations: [], discovery: null,
+    };
+    // DESCOBERTA — todas as contas, todas as fichas. Falhar aqui NÃO desfaz a conexão (o
+    // refresh_token já está capturado): o motivo fica gravado em `discovery` e a tela mostra o
+    // estado certo ("aguardando o Google liberar a API", "confirme suas fichas"…).
+    let tokens = base;
     if (access_token && gotBusiness) {
-      try {
-        const ar = await fetch("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", { headers: { Authorization: `Bearer ${access_token}` } });
-        const ad = ar.ok ? await ar.json().catch(() => ({})) : {};
-        const acc = Array.isArray(ad.accounts) && ad.accounts[0] && ad.accounts[0].name; // "accounts/123"
-        if (acc) {
-          account_id = String(acc).replace(/^accounts\//, "");
-          const lr = await fetch(`https://mybusinessbusinessinformation.googleapis.com/v1/${acc}/locations?readMask=name&pageSize=1`, { headers: { Authorization: `Bearer ${access_token}` } });
-          const ld = lr.ok ? await lr.json().catch(() => ({})) : {};
-          const loc = Array.isArray(ld.locations) && ld.locations[0] && ld.locations[0].name; // "locations/456"
-          if (loc) location_id = String(loc).replace(/^locations\//, "");
-        }
-      } catch { /* descoberta é opcional — o refresh_token já está capturado */ }
+      try { tokens = (await buildDiscoveredBlob(env, email, base, callWithToken(access_token), anterior)).blob; }
+      catch { tokens = { ...base, discovery: { ok: false, at: new Date().toISOString(), code: "network", detail: "" } }; }
     }
 
-    // GRAVAR E CONFERIR. `fetch` NÃO lança em erro HTTP: com só o try/catch, um 404/500 do
-    // PostgREST (RPC ausente, gate errado, banco fora) passava batido e a tela dizia
-    // "google=connected" com ZERO credencial guardada. Conectado = gravado, provado pela leitura.
-    const tokens = {
-      account_id, location_id, refresh_token,
-      scope: granted, app: app.kind,
-      google_email, calendar_id,
-      connected_at: new Date().toISOString(),
-    };
-    let guardou = false;
-    try {
-      const sr = await rpc("store_integration", { p_secret: env.INGEST_SECRET || "", p_email: email, p_provider: "google_business", p_tokens: tokens });
-      guardou = sr.ok;
-    } catch { guardou = false; }
-    if (guardou) {
-      try {
-        const vr = await rpc("gb_creds_lookup", { p_secret: env.INGEST_SECRET || "", p_email: email });
-        const v = vr.ok ? await vr.json().catch(() => null) : null;
-        if (!(v && typeof v === "object" && String(v.refresh_token || "").length > 0)) guardou = false;
-      } catch { guardou = false; }
-    }
-    if (!guardou) return back(surface, "error", { reason: "store_failed" });
+    // GRAVAR E CONFERIR. `fetch` NÃO lança em erro HTTP: storeCreds grava e LÊ DE VOLTA (marca
+    // `rev`). Conectado = gravado, provado pela leitura.
+    _clearTokenCache();
+    const st = await storeCreds(env, email, tokens);
+    if (!st.ok) return back(surface, "error", { reason: "store_failed" });
+    const estado = stateOf(env, st.blob);   // ready | needs_mapping | no_locations | api_pending | discovery_failed | …
 
     // AGENDA — só grava o provider 'gcal' (o que agent-schedule.js lê pra jogar o agendamento no
     // Google Calendar) quando o escopo de agenda foi CONCEDIDO. Gravar sem o escopo seria criar
@@ -158,7 +155,7 @@ export async function onRequestGet(context) {
     const full = calendarOk && (app.kind !== "business" || gotBusiness);
     return back(surface, full ? "connected" : "partial", {
       granted: grantedList,
-      reason: !calendarOk ? "no_calendar_scope" : (!gotBusiness && app.kind === "business" ? "no_business_scope" : (location_id ? "" : "needs_location")),
+      reason: !calendarOk ? "no_calendar_scope" : (!gotBusiness && app.kind === "business" ? "no_business_scope" : (app.kind === "business" && estado !== "ready" ? estado : "")),
     });
   } catch (e) { return back(surface, "error", { reason: s(e, 60).replace(/[^a-z0-9_]/gi, "") }); }
 }

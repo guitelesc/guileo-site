@@ -55,7 +55,7 @@ export async function onRequestPost({ request, env }) {
     // antes de escrever. Só leitura, mesmo portão de admin.
     if (acao === "listar") {
       const lr = await fetch("https://api.elevenlabs.io/v1/convai/phone-numbers", { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
-      if (!lr.ok) return json({ error: `ElevenLabs recusou (HTTP ${lr.status})` }, 502);
+      if (!lr.ok) return json({ error: `ElevenLabs recusou (HTTP ${lr.status})` }, 503);
       const lista = (await lr.json().catch(() => []) || []).map((n) => ({
         numero: n?.phone_number || "", id: n?.phone_number_id || "", provedor: n?.provider || "",
         agente: n?.assigned_agent?.agent_id || null, agente_nome: n?.assigned_agent?.agent_name || null,
@@ -73,7 +73,7 @@ export async function onRequestPost({ request, env }) {
     // ESTADO ATUAL DAS DUAS FONTES, sempre relido na hora. Agir sobre o retrato que o diagnóstico
     // tirou minutos atrás é como marcar horário conferindo a agenda de ontem.
     const pr = await fetch("https://api.elevenlabs.io/v1/convai/phone-numbers", { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
-    if (!pr.ok) return json({ error: `ElevenLabs recusou (HTTP ${pr.status})` }, 502);
+    if (!pr.ok) return json({ error: `ElevenLabs recusou (HTTP ${pr.status})` }, 503);
     const naEleven = (await pr.json().catch(() => []) || []).find((n) => soDigitos(n?.phone_number) === alvo) || null;
 
     if (acao === "desamarrar") {
@@ -84,7 +84,7 @@ export async function onRequestPost({ request, env }) {
       // Não toca na compra: o número continua seu, e reimportar é um POST.
       const d = await fetch(`https://api.elevenlabs.io/v1/convai/phone-numbers/${naEleven.phone_number_id}`,
         { method: "DELETE", headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
-      if (!d.ok) return json({ ok: false, erro: `ElevenLabs recusou (HTTP ${d.status})`, corpo: (await d.text().catch(() => "")).slice(0, 200) }, 502);
+      if (!d.ok) return json({ ok: false, erro: `ElevenLabs recusou (HTTP ${d.status})`, corpo: (await d.text().catch(() => "")).slice(0, 200) }, 503);
       return json({ ok: true, acao: "desamarrar", numero: naEleven.phone_number, era_do_agente: agente, agente_nome: nomeAgente,
         nota: "continua comprado na Twilio; reimportar reata o vínculo" });
     }
@@ -106,13 +106,13 @@ export async function onRequestPost({ request, env }) {
       // garante que só se apaga algo que ESTA conta realmente possui.
       const lr = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/IncomingPhoneNumbers.json?PageSize=100`,
         { headers: { Authorization: `Basic ${auth}` } });
-      if (!lr.ok) return json({ error: `Twilio recusou a leitura (HTTP ${lr.status})` }, 502);
+      if (!lr.ok) return json({ error: `Twilio recusou a leitura (HTTP ${lr.status})` }, 503);
       const linha = ((await lr.json()).incoming_phone_numbers || []).find((n) => soDigitos(n.phone_number) === alvo);
       if (!linha) return json({ ok: false, erro: "esse número não está nesta conta Twilio" }, 404);
 
       const del = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/IncomingPhoneNumbers/${linha.sid}.json`,
         { method: "DELETE", headers: { Authorization: `Basic ${auth}` } });
-      if (!del.ok) return json({ ok: false, erro: `Twilio recusou (HTTP ${del.status})`, corpo: (await del.text().catch(() => "")).slice(0, 200) }, 502);
+      if (!del.ok) return json({ ok: false, erro: `Twilio recusou (HTTP ${del.status})`, corpo: (await del.text().catch(() => "")).slice(0, 200) }, 503);
       return json({ ok: true, acao: "liberar", numero: linha.phone_number, sid: linha.sid, comprado_em: linha.date_created,
         nota: "devolvido ao estoque da Twilio — não há como recuperar este número" });
     }
@@ -128,15 +128,15 @@ export async function onRequestPost({ request, env }) {
       const ag = naEleven.assigned_agent?.agent_id;
       if (!ag) return json({ ok: false, motivo: "sem agente — não há de quem derivar o carimbo" });
       const gr = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${ag}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
-      if (!gr.ok) return json({ ok: false, erro: `não li o agente (HTTP ${gr.status})` }, 502);
+      if (!gr.ok) return json({ ok: false, erro: `não li o agente (HTTP ${gr.status})` }, 503);
       const novo = ((await gr.json().catch(() => ({})))?.name || "").slice(0, 60);
-      if (!novo) return json({ ok: false, erro: "agente sem nome — não invento carimbo" }, 502);
+      if (!novo) return json({ ok: false, erro: "agente sem nome — não invento carimbo" }, 503);
       if (novo === naEleven.label) return json({ ok: true, ja_estava: true, carimbo: novo });
       const up = await fetch(`https://api.elevenlabs.io/v1/convai/phone-numbers/${naEleven.phone_number_id}`, {
         method: "PATCH", headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
         body: JSON.stringify({ label: novo }),
       });
-      if (!up.ok) return json({ ok: false, erro: `ElevenLabs recusou (HTTP ${up.status})`, corpo: (await up.text().catch(() => "")).slice(0, 200) }, 502);
+      if (!up.ok) return json({ ok: false, erro: `ElevenLabs recusou (HTTP ${up.status})`, corpo: (await up.text().catch(() => "")).slice(0, 200) }, 503);
       return json({ ok: true, acao: "recarimbar", numero: naEleven.phone_number, de: naEleven.label, para: novo });
     }
 

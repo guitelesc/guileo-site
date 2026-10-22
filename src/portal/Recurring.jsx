@@ -14,7 +14,7 @@ import { useState, useEffect } from "react";
 import NoSeuPlano from "./NoSeuPlano.jsx";
 import { FaIdCard, FaTicket, FaGift, FaPen, FaTrash, FaLink, FaPlus, FaRegCopy } from "react-icons/fa6";
 import { toast } from "../lib/portalApi.js";
-import { tr, Card, Empty, SectionSkeleton } from "../pages/Portal.jsx";
+import { tr, Card, Empty, SectionSkeleton, RetryState } from "../pages/Portal.jsx";
 
 // ── API seams ─────────────────────────────────────────────────────────────────
 async function pkgApi(body) {
@@ -30,6 +30,25 @@ async function giftApi(body) {
     if (!r.ok) return null;
     return await r.json();
   } catch { return null; }
+}
+// O link de venda precisa do MOTIVO da recusa (payments_not_connected, permissão que falta na chave…),
+// que volta no corpo mesmo com HTTP de erro. null só quando nem o corpo chegou (rede).
+async function sellApi(path, body) {
+  try {
+    const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    return await r.json().catch(() => null);
+  } catch { return null; }
+}
+// Recusa do link → a frase certa. EUA (hint use_own_stripe) → Stripe próprio em guileoai.com/receber.
+function motivoDoLink(d) {
+  if (d?.reason === "payments_not_connected") {
+    return d.hint === "use_own_stripe"
+      ? tr("To sell online, connect your own Stripe account at guileoai.com/receber — the money goes straight to you.")
+      : tr("Connect your Stripe account (Settings → Payments) to sell online — the money goes straight to you.");
+  }
+  if (d?.reason === "permission_missing") return `${tr("Your Stripe key is missing this permission:")} ${d.permissao || d.rak || "?"}`;
+  if (d?.reason === "stripe_rejected_key") return tr("Stripe rejected your key — paste it again at guileoai.com/receber.");
+  return tr("Couldn't create the payment link right now. Make sure your Stripe account is connected, then try again.");
 }
 
 // ── MOEDA DO TENANT (primeiro passo — 2026-08-25) ───────────────────────────
@@ -73,8 +92,8 @@ const upsertLocal = (arr, row) => { const i = (arr || []).findIndex((x) => x.id 
 
 // Deterministic sample data for demo / not-connected mode.
 const demoPackages = () => [
-  { id: "dp1", name: tr("10-session pack"), service: tr("Massage"), sessions: 10, price_cents: 45000, active: true, purchases: 6 },
-  { id: "dp2", name: tr("5-class pack"), service: tr("Pilates"), sessions: 5, price_cents: 20000, active: true, purchases: 3 },
+  { id: "dp1", name: tr("10-session pack"), service: tr("Massage"), sessions: 10, price_cents: 45000, active: true, purchases: 6, valid_days: 180, activation: "first_visit" },
+  { id: "dp2", name: tr("5-class pack"), service: tr("Pilates"), sessions: 5, price_cents: 20000, active: true, purchases: 3, valid_days: null, activation: "purchase" },
 ];
 const demoMemberships = () => [
   { id: "dm1", name: tr("VIP Club"), price_cents: 9900, interval: "month", perks: tr("2 sessions/mo · 15% off extras · priority booking"), active: true, subscribers: 24 },
@@ -86,14 +105,18 @@ const demoCards = () => [
 ];
 
 // ── Sell-link chip — shown under a row after "gerar link de venda". ───────────
-function SellLink({ url, onClose }) {
+function SellLink({ link, onClose }) {
+  const url = typeof link === "string" ? link : link?.url || "";
   return (
-    <div className="mt-2.5 flex items-center gap-2 rounded-xl2 border border-g-green/25 bg-g-green/[0.06] px-3.5 py-2">
+    <div className="mt-2.5">
+    <div className="flex items-center gap-2 rounded-xl2 border border-g-green/25 bg-g-green/[0.06] px-3.5 py-2">
       <FaLink size={11} className="text-g-green shrink-0" />
       <span className="text-[11px] text-g-word font-mono truncate flex-1 min-w-0">{url}</span>
       <button onClick={() => copy(url)} className="rounded-full border border-white/15 bg-white/[0.04] px-2.5 py-1 text-[11px] font-bold text-g-word hover:border-g-green/40 transition inline-flex items-center gap-1.5 min-h-[44px] inline-flex items-center"><FaRegCopy size={10} /> {tr("Copy")}</button>
       <a href={url} target="_blank" rel="noopener" className="rounded-full bg-g-green/85 px-2.5 py-1 text-[11px] font-black text-white hover:bg-g-green transition min-h-[44px] inline-flex items-center">{tr("Open")}</a>
       <button onClick={onClose} className="text-g-muted hover:text-g-word text-sm px-1">×</button>
+    </div>
+    {link?.propria && <p className="mt-1 px-1 text-[11px] text-g-muted">{tr("Paid into your own Stripe. It's registered here when the buyer finishes paying (checked again every hour). The link expires in 23 hours.")}</p>}
     </div>
   );
 }
@@ -113,9 +136,19 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
   const MOEDA = moedaDoTenant(real);
   const $$ = (cents) => money(cents, MOEDA);
 
-  const [packs, setPacks] = useState(live ? null : demoPackages());
-  const [members, setMembers] = useState(live ? null : demoMemberships());
-  const [cards, setCards] = useState(live ? null : demoCards());
+  // 🚨 LINHA DE AMOSTRA SOB O SELO "LIVE" (2026-09-28). Era `useState(live ? null : demo)`: quando
+  // a aba montava ANTES de `real` chegar (recarregar em ?tab=recurring), `live` ainda era falso, o
+  // estado nascia com os pacotes de amostra ("10-session pack · Massage · $450") e eles ficavam na
+  // tela, já com o selo verde, até a leitura voltar. Se a leitura falhasse, ficavam para sempre.
+  // A pergunta certa no nascimento não é "já tenho os dados?", é "esta conta está CONECTADA?"
+  // (e-mail + chave): conta conectada nunca recebe amostra — nasce `null` (esqueleto) e só sai
+  // dele com dado do servidor. Sem chave é a vitrine, declaradamente amostra.
+  const conta = !!(email && dataKey);
+  const [packs, setPacks] = useState(conta ? null : demoPackages());
+  const [members, setMembers] = useState(conta ? null : demoMemberships());
+  const [cards, setCards] = useState(conta ? null : demoCards());
+  const [falha, setFalha] = useState(false);              // alguma das três leituras não respondeu
+  const [seq, setSeq] = useState(0);
   const [links, setLinks] = useState({});                 // rowId -> checkout url
   const [pForm, setPForm] = useState(null);               // package form
   const [mForm, setMForm] = useState(null);               // membership form
@@ -125,12 +158,24 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
   useEffect(() => {
     let alive = true;
     if (live) {
-      pkgApi({ action: "list", token: dataKey, email }).then((d) => { if (alive) setPacks(Array.isArray(d?.packages) ? d.packages : []); });
-      pkgApi({ action: "membership_list", token: dataKey, email }).then((d) => { if (alive) setMembers(Array.isArray(d?.memberships) ? d.memberships : []); });
-      giftApi({ action: "list", token: dataKey, email }).then((d) => { if (alive) setCards(Array.isArray(d?.cards) ? d.cards : []); });
+      // zera ANTES de ler: o que estava na tela (de outra chave, ou de amostra) não sobrevive à troca
+      setPacks(null); setMembers(null); setCards(null); setFalha(false);
+      // `d === null` = a chamada FALHOU (HTTP de erro / rede). Isso virava `[]` e a tela dizia
+      // "No packages yet" para quem tinha pacotes vendidos. Falha marca `falha`; vazio é vazio.
+      Promise.all([
+        pkgApi({ action: "list", token: dataKey, email }),
+        pkgApi({ action: "membership_list", token: dataKey, email }),
+        giftApi({ action: "list", token: dataKey, email }),
+      ]).then(([p, m, g]) => {
+        if (!alive) return;
+        setFalha(p === null || m === null || g === null);
+        setPacks(Array.isArray(p?.packages) ? p.packages : []);
+        setMembers(Array.isArray(m?.memberships) ? m.memberships : []);
+        setCards(Array.isArray(g?.cards) ? g.cards : []);
+      });
     }
     return () => { alive = false; };
-  }, [live, dataKey, email]);
+  }, [live, dataKey, email, seq]);
 
   const clearLink = (id) => setLinks((l) => { const n = { ...l }; delete n[id]; return n; });
 
@@ -138,22 +183,29 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
   const sellPackage = async (row, kind) => {
     if (!live) { toast(tr("Available when connected — sample data")); return; }
     toast(tr("Minting your sell link…"));
-    const d = await pkgApi({ action: "buy", token: dataKey, email, kind, id: row.id });
-    if (d?.url) setLinks((l) => ({ ...l, [row.id]: d.url }));
-    else toast(d?.note || tr("Couldn't create the link — check your Stripe key and try again."));
+    const d = await sellApi("/api/packages", { action: "buy", token: dataKey, email, kind, id: row.id });
+    if (d?.url) setLinks((l) => ({ ...l, [row.id]: { url: d.url, propria: d.via === "stripe_own" } }));
+    else toast(motivoDoLink(d));
   };
   const sellGift = async (row) => {
     if (!live) { toast(tr("Available when connected — sample data")); return; }
     toast(tr("Minting your sell link…"));
-    const d = await giftApi({ action: "buy", token: dataKey, email, amount_cents: row.amount_cents, recipient_contact: row.recipient_contact || "" });
-    if (d?.url) setLinks((l) => ({ ...l, [row.id]: d.url }));
-    else toast(d?.note || tr("Couldn't create the link — check your Stripe key and try again."));
+    const d = await sellApi("/api/giftcards", { action: "buy", token: dataKey, email, amount_cents: row.amount_cents, recipient_contact: row.recipient_contact || "" });
+    if (d?.url) setLinks((l) => ({ ...l, [row.id]: { url: d.url, propria: d.via === "stripe_own" } }));
+    else toast(motivoDoLink(d));
   };
+  // Fora do modo real nada é gravado em servidor nenhum — o toast diz isso em vez de "saved ✓".
+  const feito = (frase) => toast(live ? tr(frase) : tr("Demo — changed in this sample list only. Nothing was saved."));
 
   // ── Package save / delete ──
   const savePack = async () => {
     if (!pForm || !(pForm.name || "").trim()) { toast(tr("Give the package a name first.")); return; }
-    const rec = { id: pForm.id, name: pForm.name.trim(), service: pForm.service || "", sessions: Number(pForm.sessions) || 1, price_cents: toCents(pForm.price), active: pForm.active !== false };
+    // validade (desk_v13): em branco = não vence; senão 1..3650 dias
+    const vTxt = String(pForm.valid ?? "").trim();
+    const valid_days = vTxt === "" ? null : Number(vTxt);
+    if (valid_days !== null && !(Number.isInteger(valid_days) && valid_days >= 1 && valid_days <= 3650)) { toast(tr("Validity must be between 1 and 3650 days.")); return; }
+    const rec = { id: pForm.id, name: pForm.name.trim(), service: pForm.service || "", sessions: Number(pForm.sessions) || 1, price_cents: toCents(pForm.price), active: pForm.active !== false,
+      valid_days, activation: pForm.activation === "first_visit" ? "first_visit" : "purchase" };
     setBusy(true);
     if (live) {
       const d = await pkgApi({ action: "upsert", token: dataKey, email, package: rec });
@@ -161,12 +213,12 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
       if (!d?.ok) { toast(tr("I couldn't save that — check your connection and try again.")); return; }
       setPacks((xs) => upsertLocal(xs || [], { ...rec, id: rec.id || d.id || `p-${Date.now()}`, purchases: rec.purchases || 0 }));
     } else { setPacks((xs) => upsertLocal(xs || [], { ...rec, id: rec.id || `p-${Date.now()}`, purchases: 0 })); setBusy(false); }
-    toast(tr("Package saved ✓")); setPForm(null);
+    feito("Package saved ✓"); setPForm(null);
   };
   const delPack = async (row) => {
     const prev = packs; setPacks((xs) => (xs || []).filter((x) => x.id !== row.id));
     if (live) { const d = await pkgApi({ action: "delete", token: dataKey, email, id: row.id }); if (!d?.ok) { setPacks(prev); toast(tr("I couldn't delete that — try again.")); return; } }
-    toast(tr("Package deleted"));
+    feito("Package deleted");
   };
 
   // ── Membership save / delete ──
@@ -180,12 +232,12 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
       if (!d?.ok) { toast(tr("I couldn't save that — check your connection and try again.")); return; }
       setMembers((xs) => upsertLocal(xs || [], { ...rec, id: rec.id || d.id || `m-${Date.now()}`, subscribers: rec.subscribers || 0 }));
     } else { setMembers((xs) => upsertLocal(xs || [], { ...rec, id: rec.id || `m-${Date.now()}`, subscribers: 0 })); setBusy(false); }
-    toast(tr("Membership saved ✓")); setMForm(null);
+    feito("Membership saved ✓"); setMForm(null);
   };
   const delMember = async (row) => {
     const prev = members; setMembers((xs) => (xs || []).filter((x) => x.id !== row.id));
     if (live) { const d = await pkgApi({ action: "membership_delete", token: dataKey, email, id: row.id }); if (!d?.ok) { setMembers(prev); toast(tr("I couldn't delete that — try again.")); return; } }
-    toast(tr("Membership deleted"));
+    feito("Membership deleted");
   };
 
   // ── Gift card issue ──
@@ -203,10 +255,14 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
       const code = card.code || `GC${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
       setCards((xs) => [{ id: `g-${Date.now()}`, code, amount_cents: cents, balance_cents: cents, recipient_contact: card.recipient_contact, active: true }, ...(xs || [])]); setBusy(false);
     }
-    toast(tr("Gift card issued ✓")); setCForm(null);
+    feito("Gift card issued ✓"); setCForm(null);
   };
 
+  // Conta conectada cujos dados ainda não chegaram: esqueleto — nem amostra, nem editor que grava
+  // só no navegador e responde "saved ✓".
+  if (conta && !live) return <SectionSkeleton rows={6} />;
   if (live && (packs === null || members === null || cards === null)) return <SectionSkeleton rows={6} />;
+  if (live && falha && !packs.length && !members.length && !cards.length) return <RetryState onRetry={() => setSeq((n) => n + 1)} />;
 
   const mrr = (members || []).filter((m) => m.active !== false).reduce((s, m) => s + (m.interval === "year" ? (m.price_cents || 0) / 12 : (m.price_cents || 0)) * (Number(m.subscribers) || 0), 0);
 
@@ -222,7 +278,7 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
             ? <span className="inline-flex items-center gap-1 text-g-green normal-case font-black text-[9px]"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("LIVE — real data")}</span>
             : <span className="text-g-muted normal-case font-bold text-[9px] border border-white/10 rounded-full px-1.5 py-px">{tr("sample")}</span>}
         </div>
-        <div className="mt-1 text-xl font-black text-g-word">{tr("Packages, memberships & gift cards")} · <span className="text-g-green">{$$(mrr)}<span className="text-sm text-g-muted font-bold">/mo</span></span></div>
+        <div className="mt-1 text-xl font-black text-g-word">{tr("Packages, memberships & gift cards")} · <span className="text-g-green">{$$(mrr)}<span className="text-sm text-g-muted font-bold">/{tr("mo")}</span></span></div>
         <p className="mt-1 text-xs text-g-muted max-w-xl">{tr("Recurring revenue is the biggest lever. Sell it from here — Gui renews, reminds and rescues it automatically.")}</p>
       </div>
 
@@ -231,12 +287,18 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
           {tr("Sample data — connect your account to sell real packages, memberships and gift cards.")}
         </div>
       )}
+      {live && falha && (
+        <div className="rounded-xl border border-[#e0855f]/40 bg-[#e0855f]/[0.08] px-3.5 py-2.5 flex flex-wrap items-center gap-3 text-[12px] text-[#e0855f]">
+          <span className="flex-1 min-w-[12rem]">{tr("Part of this screen couldn't be read just now — an empty list below may be a reading failure, not an empty list.")}</span>
+          <button onClick={() => setSeq((n) => n + 1)} className="btn-ghost text-xs shrink-0">{tr("↻ Try again")}</button>
+        </div>
+      )}
 
       {/* ── PACKAGES ─────────────────────────────────────────────── */}
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wide text-g-gold inline-flex items-center gap-2"><FaTicket size={11} /> {tr("Session packages")}</span>
-          <button onClick={() => setPForm({ id: null, name: "", service: "", sessions: 10, price: "", active: true })} className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-[11px] font-bold text-g-word hover:border-g-gold/40 transition inline-flex items-center gap-1.5 min-h-[44px] inline-flex items-center"><FaPlus size={9} /> {tr("New package")}</button>
+          <button onClick={() => setPForm({ id: null, name: "", service: "", sessions: 10, price: "", active: true, valid: "", activation: "purchase" })} className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-[11px] font-bold text-g-word hover:border-g-gold/40 transition inline-flex items-center gap-1.5 min-h-[44px] inline-flex items-center"><FaPlus size={9} /> {tr("New package")}</button>
         </div>
         {pForm && (
           <div className="px-5 py-4 border-b border-white/10 bg-white/[0.015] grid gap-3 sm:grid-cols-2">
@@ -244,6 +306,17 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
             <Field label={tr("Service")} value={pForm.service} onChange={(e) => setPForm({ ...pForm, service: e.target.value })} placeholder={tr("Massage")} />
             <Field label={tr("Sessions")} type="number" min="1" value={pForm.sessions} onChange={(e) => setPForm({ ...pForm, sessions: e.target.value })} />
             <Field label={`${tr("Price")} (${MOEDA})`} inputMode="decimal" value={pForm.price} onChange={(e) => setPForm({ ...pForm, price: e.target.value })} placeholder="450" />
+            <div>
+              <Field label={tr("Valid for (days)")} inputMode="numeric" value={pForm.valid ?? ""} onChange={(e) => setPForm({ ...pForm, valid: e.target.value.replace(/\D/g, "") })} placeholder="180" />
+              <span className="mt-1 block text-[11px] text-g-muted">{tr("Blank = never expires")}</span>
+            </div>
+            <label className="block">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-g-muted mb-1">{tr("Activates")}</span>
+              <select value={pForm.activation || "purchase"} onChange={(e) => setPForm({ ...pForm, activation: e.target.value })} className="w-full rounded-lg border border-white/12 bg-white/[0.04] px-3 py-2 text-sm text-g-word outline-none focus:border-g-gold/50 transition [color-scheme:dark]">
+                <option value="purchase">{tr("On purchase")}</option>
+                <option value="first_visit">{tr("On first visit")}</option>
+              </select>
+            </label>
             <div className="sm:col-span-2 flex items-center gap-2">
               <button onClick={savePack} disabled={busy} className="btn-bright text-sm disabled:opacity-50">{tr("Save package")}</button>
               <button onClick={() => setPForm(null)} className="btn-ghost text-sm">{tr("Cancel")}</button>
@@ -258,14 +331,15 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold text-g-word truncate">{r.name}{r.service ? <span className="text-g-muted font-normal"> · {r.service}</span> : null}</div>
                   <div className="text-[11px] text-g-muted">{r.sessions} {tr("sessions")} · {$$(r.price_cents)}{r.purchases ? ` · ${r.purchases} ${tr("active")}` : ""}</div>
+                  <div className="text-[11px] text-g-muted">{r.valid_days ? `${tr("valid for")} ${r.valid_days} ${tr("days")}` : tr("no expiry")}{r.activation === "first_visit" ? ` · ${tr("activates on first visit")}` : ""}</div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button onClick={() => sellPackage(r, "package")} className="rounded-full border border-g-green/35 bg-g-green/10 px-3 py-1.5 text-[11px] font-bold text-g-word hover:bg-g-green/20 transition whitespace-nowrap inline-flex items-center gap-1.5"><FaLink size={10} /> {tr("Sell link")}</button>
-                  <button onClick={() => setPForm({ id: r.id, name: r.name, service: r.service || "", sessions: r.sessions, price: (r.price_cents / 100).toString(), active: r.active !== false })} className="text-g-muted hover:text-g-word p-1.5" title={tr("Edit")}><FaPen size={11} /></button>
+                  <button onClick={() => setPForm({ id: r.id, name: r.name, service: r.service || "", sessions: r.sessions, price: (r.price_cents / 100).toString(), active: r.active !== false, valid: r.valid_days ? String(r.valid_days) : "", activation: r.activation || "purchase" })} className="text-g-muted hover:text-g-word p-1.5" title={tr("Edit")}><FaPen size={11} /></button>
                   <button onClick={() => delPack(r)} className="text-g-muted hover:text-red-400 p-1.5" title={tr("Delete")}><FaTrash size={11} /></button>
                 </div>
               </div>
-              {links[r.id] && <SellLink url={links[r.id]} onClose={() => clearLink(r.id)} />}
+              {links[r.id] && <SellLink link={links[r.id]} onClose={() => clearLink(r.id)} />}
             </div>
           ))}
           {(packs || []).length === 0 && <Empty icon="🎟️" text={tr("No packages yet — sell a bundle of sessions for predictable revenue.")} />}
@@ -311,7 +385,7 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
                   <button onClick={() => delMember(r)} className="text-g-muted hover:text-red-400 p-1.5" title={tr("Delete")}><FaTrash size={11} /></button>
                 </div>
               </div>
-              {links[r.id] && <SellLink url={links[r.id]} onClose={() => clearLink(r.id)} />}
+              {links[r.id] && <SellLink link={links[r.id]} onClose={() => clearLink(r.id)} />}
             </div>
           ))}
           {(members || []).length === 0 && <Empty icon="🌟" text={tr("No memberships yet — a monthly club is the most valuable revenue you can build.")} />}
@@ -346,7 +420,7 @@ function Recurring({ V, real = null, email = "", dataKey = "" }) {
                 </div>
                 <button onClick={() => sellGift(r)} className="rounded-full border border-g-green/35 bg-g-green/10 px-3 py-1.5 text-[11px] font-bold text-g-word hover:bg-g-green/20 transition whitespace-nowrap inline-flex items-center gap-1.5 shrink-0"><FaLink size={10} /> {tr("Pay link")}</button>
               </div>
-              {links[r.id] && <SellLink url={links[r.id]} onClose={() => clearLink(r.id)} />}
+              {links[r.id] && <SellLink link={links[r.id]} onClose={() => clearLink(r.id)} />}
             </div>
           ))}
           {(cards || []).length === 0 && <Empty icon="🎁" text={tr("No gift cards yet — a favorite way for happy customers to bring you new ones.")} />}

@@ -11,7 +11,7 @@ const B = {
   anim: "https://guileoai.com/email/guileo-header.gif",  // animated header banner (silver sweep)
   site: "https://guileoai.com",
   portal: "https://guileoai.com/portal",
-  // EXACT dashboard ("Growth Cockpit") design tokens — burnt-cement charcoal so the email is the
+  // EXACT dashboard ("Central") design tokens — burnt-cement charcoal so the email is the
   // same world as the platform (tailwind g-cream/creamd/line/word/gold/copper/green).
   bg: "#0e0d0b",         // outer stage — a touch darker than the card
   card: "#161512",       // g-cream — burnt-cement charcoal (the dashboard surface)
@@ -276,7 +276,10 @@ function shell({ preheader = "", eyebrow = "", body = "", lang = "en", brand = n
      ouviu falar da gente. Um e-mail que abre dizendo "eu medi o seu site com cuidado" e fecha
      inventando um relacionamento que não existe destrói a própria credibilidade no rodapé.
      `recv` deixa cada template dizer a verdade do SEU caso. */
-  recv = "" }) {
+  recv = "",
+  /* `palette`: "dark" (padrão — o cimento quente de sempre, byte a byte) | "light" (o papel do deck
+     da Natura, para documentos com body.theme === "natura-deck"). Ver shellLight(). */
+  palette = "dark" }) {
   const bz = brand && brand.business ? esc(String(brand.business).slice(0, 80)) : "";
   // Só aceitamos http(s) na logo: uma URL `javascript:`/`data:` vinda do perfil do cliente não pode
   // virar conteúdo do e-mail. Sem logo válida, cai no monograma com a inicial do negócio.
@@ -340,6 +343,7 @@ function shell({ preheader = "", eyebrow = "", body = "", lang = "en", brand = n
   const _recvFinal = recv ? esc(String(recv).slice(0, 240)) : _recv;
   const _addr = esc(String(address || "").slice(0, 200));
   const htmlLang = lang === "pt" ? "pt-BR" : lang === "es" ? "es" : "en";
+  if (palette === "light") return shellLight({ preheader, eyebrow, body, htmlLang, bz, f, recvFinal: _recvFinal, u: _u, uTxt: _uTxt, addr: _addr, linhaCanais });
   // UNIFORM dark surfaces (one tone everywhere) → if Gmail dark-mode inverts, it inverts CONSISTENTLY,
   // so the text always stays readable (the old mix of darker header/footer + lighter card was what made
   // Gmail crush the body text while turning the bands cream).
@@ -393,12 +397,86 @@ ${eyebrow ? `<tr><td class="g-pad-head" style="padding:20px 40px 0 40px;backgrou
 </body></html>`;
 }
 
+// ── PALETA CLARA — O PAPEL DO DECK DA NATURA (2026-10-04) ─────────────────────────────────────
+// Para documentos com body.theme === "natura-deck": o e-mail veste a mesma roupa do contrato e do
+// deck aprovado (src/components/ContractDoc.jsx PAL["natura-deck"], src/pages/Sign.natura.css).
+// Papel #FAF7F0, painéis brancos com aro #E4DDCC, tinta #161512, rótulos #6F695D em caixa-alta mono,
+// faixa de capa #161512 com a linha dourada de 4px #D9B26A. Contraste (WCAG, conferido no render):
+//   ink #161512 / papel 17.07:1 · muted #6F695D / papel 5.09:1, / branco 5.45:1 (AA)
+//   gold #8E6D2C SÓ em branco 4.80:1 (AA) — no papel cai para 4.49:1 (REPROVA AA): nunca no papel
+//   green #1F6B49 / papel 6.03:1 · botão #FAF7F0 sobre #161512 17.07:1 · faixa #B9B09A/#161512 8.47:1
+// Sem GIF animado (o cabeçalho escuro da casa não combina com papel): logo estático pequeno + "Guileo".
+// 🚨 Opt-in por parâmetro. Sem `palette: "light"`, NENHUM byte dos outros e-mails muda.
+const BL = {
+  paper: "#FAF7F0", white: "#FFFFFF", line: "#E4DDCC",
+  ink: "#161512", ink2: "#161512", muted: "#6F695D", gold: "#8E6D2C", green: "#1F6B49",
+  band: "#161512", bandLine: "#D9B26A", bandText: "#FAF7F0", bandSub: "#B9B09A",
+  sans: "'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif",
+  mono: "'IBM Plex Mono',Menlo,Consolas,monospace",
+};
+const HEAD_STYLE_LIGHT = `
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap');
+    body,table,td,a{ -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+    img{ -ms-interpolation-mode:bicubic; }
+    a{ text-decoration:none; }
+    @media (max-width:600px){
+      .g-shell{ padding:16px 8px !important; }
+      .g-pad{ padding-left:20px !important; padding-right:20px !important; }
+      .g-pad-head{ padding-left:20px !important; padding-right:20px !important; }
+      .g-btn-wrap{ width:100% !important; }
+      .g-btn{ display:block !important; width:100% !important; box-sizing:border-box !important; text-align:center !important; padding:16px 18px !important; font-size:15px !important; }
+    }
+  </style>`;
+
+function shellLight({ preheader, eyebrow, body, htmlLang, bz, f, recvFinal, u, uTxt, addr, linhaCanais }) {
+  return `<!doctype html><html lang="${htmlLang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">${HEAD_STYLE_LIGHT}</head>
+<body style="margin:0;padding:0;background:${BL.paper};-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:${BL.paper};font-size:1px;line-height:1px;">${preheader}&#847;&#847;&#847;&#847;&#847;&#847;&#847;&#847;&#847;&#847;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="g-shell" bgcolor="${BL.paper}" style="background:${BL.paper};padding:40px 16px;">
+<tr><td align="center">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="g-card" bgcolor="${BL.paper}" style="max-width:600px;width:100%;background:${BL.paper};border:1px solid ${BL.line};border-radius:4px;overflow:hidden;">
+<tr><td class="g-pad-head" bgcolor="${BL.band}" style="padding:22px 40px;background:${BL.band};" align="left">
+  <a href="${B.site}" style="text-decoration:none;display:inline-block;">
+    <img src="${B.logo}" width="26" height="26" alt="" style="display:inline-block;vertical-align:middle;border:0;border-radius:6px;" />
+    <span style="display:inline-block;vertical-align:middle;margin-left:9px;font-family:${BL.sans};font-size:19px;font-weight:800;letter-spacing:-.3px;color:${BL.bandText};">${bz || "Guileo"}</span>
+  </a>
+  <div style="font-family:${BL.mono};font-size:10px;font-weight:500;letter-spacing:2.5px;text-transform:uppercase;color:${BL.bandSub};margin-top:8px;">${bz ? "Guileo · " : ""}${f.desc}</div>
+</td></tr>
+<tr><td bgcolor="${BL.bandLine}" style="height:4px;background:${BL.bandLine};font-size:0;line-height:0;">&nbsp;</td></tr>
+${eyebrow ? `<tr><td class="g-pad-head" style="padding:30px 40px 0 40px;background:${BL.paper};" align="left">
+  <div style="font-family:${BL.mono};font-size:11px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:${BL.muted};">${eyebrow}</div>
+</td></tr>` : ""}
+<tr><td class="g-pad" style="padding:${eyebrow ? "14px" : "32px"} 40px 36px 40px;background:${BL.paper};font-family:${BL.sans};color:${BL.ink};">${body}</td></tr>
+<tr><td class="g-pad" style="padding:22px 40px 28px 40px;border-top:1px solid ${BL.line};background:${BL.paper};" align="left">
+  <div style="font-family:${BL.sans};font-size:12px;color:${BL.muted};line-height:1.85;">
+    <span style="color:${BL.green};font-size:9px;vertical-align:middle;">●</span>&nbsp; <span style="color:${BL.ink};font-weight:600;">Guileo</span> — ${f.desc}
+    <div style="font-family:${BL.mono};font-size:10px;font-weight:500;letter-spacing:2.5px;text-transform:uppercase;color:${BL.muted};margin:5px 0 7px;">Growth Intelligence Solutions</div>
+    <a href="${B.site}" style="color:${BL.ink};text-decoration:underline;">guileoai.com</a>
+    <span style="color:${BL.muted};">&nbsp;·&nbsp;</span>${f.tag}
+    ${linhaCanais}
+  </div>
+</td></tr>
+</table>
+<div style="font-family:${BL.sans};font-size:11.5px;color:${BL.muted};margin-top:18px;line-height:1.7;">${recvFinal}${u ? ` &nbsp;·&nbsp; <a href="${u}" style="color:${BL.muted};text-decoration:underline;">${uTxt}</a>` : ""}${addr ? `<br/>${addr}` : ""}</div>
+</td></tr>
+</table>
+</body></html>`;
+}
+
 // PRIMARY CTA — GUI ORANGE pill (#FF8A33), the brand's signal color: warm gradient with depth,
 // white text, glassy top sheen + soft orange glow. The single "act now" button across all emails.
 // `big` (24/08): maior SEM sair do padrão. O laranja é a cor do botão da casa em todos os
 // e-mails; trocá-lo pela cor do cliente fez o botão parar de parecer nosso. O que faltava era
 // TAMANHO e uma frase que tirasse o medo do clique, não uma cor nova.
-function cta(label, href, big = false) {
+// `opts.palette === "light"` → botão do deck: tinta #161512 cheia, texto papel #FAF7F0, canto seco.
+function cta(label, href, big = false, opts = null) {
+  if (opts && opts.palette === "light") {
+    return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="g-btn-wrap" style="margin:6px auto 0 auto;"><tr>
+  <td align="center" bgcolor="${BL.ink}" style="border-radius:4px;background:${BL.ink};">
+    <a href="${href}" class="g-btn" style="display:inline-block;padding:${big ? "18px 44px" : "15px 34px"};font-family:${BL.sans};font-size:${big ? "17px" : "14.5px"};font-weight:700;letter-spacing:.2px;color:${BL.paper};text-decoration:none;border-radius:4px;">${label}</a>
+  </td></tr></table>`;
+  }
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="g-btn-wrap" style="margin:6px auto 0 auto;"><tr>
   <td align="center" style="border-radius:999px;background:linear-gradient(180deg,#ff9d4d 0%,#ff8a33 52%,#f2731a 100%);box-shadow:0 16px 40px -12px rgba(255,138,51,0.55),inset 0 1px 0 rgba(255,255,255,0.38),inset 0 -1px 0 rgba(120,50,0,0.22),0 0 0 1px rgba(255,138,51,0.45);">
     <a href="${href}" class="g-btn" style="display:inline-block;padding:${big ? "19px 46px" : "15px 34px"};font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:${big ? "17px" : "14.5px"};font-weight:800;letter-spacing:.2px;color:#ffffff;text-decoration:none;border-radius:999px;text-shadow:0 1px 1px rgba(120,50,0,0.4);">${label}</a>
@@ -426,7 +504,12 @@ const LUZ = "radial-gradient(120% 70% at 82% -12%,rgba(255,255,255,0.055),transp
 const CORPO = "linear-gradient(168deg,rgba(255,255,255,0.05),rgba(255,255,255,0.012) 34%,transparent 62%)";
 const RELEVO = `inset 0 1px 0 rgba(255,255,255,0.10),inset 0 -1px 0 rgba(0,0,0,0.34),0 2px 4px -2px rgba(0,0,0,0.55),0 30px 66px -36px rgba(0,0,0,0.9)`;
 
-function panel(inner, pad = "18px 20px") {
+// `opts.palette === "light"` → painel do deck: branco chapado, aro #E4DDCC, sem sombra/verniz.
+function panel(inner, pad = "18px 20px", opts = null) {
+  if (opts && opts.palette === "light") {
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BL.white}" style="background:${BL.white};border:1px solid ${BL.line};border-radius:4px;">
+    <tr><td style="padding:${pad};">${inner}</td></tr></table>`;
+  }
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${B.panel};background-image:${VERNIZ},${LUZ},${CORPO},linear-gradient(180deg,#1f1d18 0%,${B.panel} 60%);border:1px solid ${B.line};border-radius:16px;box-shadow:${RELEVO};">
     <tr><td style="padding:${pad};">${inner}</td></tr></table>`;
 }
@@ -991,9 +1074,19 @@ export function welcomeSelfServeEmail({ name = "there", business = "your busines
     h1: `${name}, seu Gui está no ar 🎉`,
     intro: `Pagamento confirmado e <b style="color:${B.ink};">${credits} créditos</b> já estão em sua conta. Agora basta conectar o painel aos seus dados reais com o código abaixo — está tudo certo.`,
     codeLabel: "Seu código de conexão",
-    steps: ["Abra o painel (Growth Cockpit) e entre com ESTE e-mail — o mesmo do pagamento. Primeira vez? Crie sua senha na tela de login.", "Vá em Ajustes → Código de conexão e cole o código acima.", "Pronto — o painel mostra seus dados reais e o Gui começa a atender."],
+    steps: ["Abra o painel (Central) e entre com ESTE e-mail — o mesmo do pagamento. Primeira vez? Crie sua senha na tela de login.", "Vá em Ajustes → Código de conexão e cole o código acima.", "Pronto — o painel mostra seus dados reais e o Gui começa a atender."],
     cta: "Abrir meu painel →",
     foot: "Guarde este e-mail — o código desbloqueia seus dados reais. Qualquer coisa, é só chamar.",
+  } : lang === "es" ? {
+    subject: `🎉 Bienvenido a Guileo — tu Gui está activo`,
+    pre: `Tu código de conexión está aquí. Entra y mira a Gui en acción.`,
+    eyebrow: `Plan ${plan} · activo`,
+    h1: `${name}, tu Gui ya está en línea 🎉`,
+    intro: `Pago confirmado y <b style="color:${B.ink};">${credits} créditos</b> ya están en tu cuenta. Ahora solo conecta el panel a tus datos reales con el código de abajo — todo está listo.`,
+    codeLabel: "Tu código de conexión",
+    steps: ["Abre el panel (Central) y entra con ESTE correo — el mismo del pago. ¿Primera vez? Crea tu contraseña en la pantalla de inicio.", "Ve a Ajustes → Código de conexión y pega el código de arriba.", "Listo — el panel muestra tus datos reales y Gui empieza a atender."],
+    cta: "Abrir mi panel →",
+    foot: "Guarda este correo — el código desbloquea tus datos reales. Cualquier cosa, solo responde.",
   } : {
     subject: `🎉 Welcome to Guileo — your Gui is live`,
     pre: `Your connection code is inside. Log in and watch Gui at work.`,
@@ -1001,7 +1094,7 @@ export function welcomeSelfServeEmail({ name = "there", business = "your busines
     h1: `${name}, your Gui is live 🎉`,
     intro: `Payment confirmed, and <b style="color:${B.ink};">${credits} credits</b> are already on your account. Now simply link your dashboard to your real data with the code below — it's all taken care of.`,
     codeLabel: "Your connection code",
-    steps: ["Open your dashboard (Growth Cockpit) and sign in with THIS email — the one you paid with. First time? Create your password on the login screen.", "Go to Settings → Connection code and paste the code above.", "Done — the dashboard shows your real data and Gui begins answering."],
+    steps: ["Open your dashboard (Central) and sign in with THIS email — the one you paid with. First time? Create your password on the login screen.", "Go to Settings → Connection code and paste the code above.", "Done — the dashboard shows your real data and Gui begins answering."],
     cta: "Open my dashboard →",
     foot: "Keep this email — the code unlocks your real data. Whenever you need anything, just reply.",
   };
@@ -1019,7 +1112,12 @@ export function welcomeSelfServeEmail({ name = "there", business = "your busines
   <div style="font-size:12px;color:${B.muted};font-weight:700;margin-top:8px;">${fwdLabel.pick}</div>
   <div style="font-size:13px;color:${B.ink2};line-height:1.6;margin-top:4px;">📞 ${esc(forwarding.full)}</div>
   <div style="font-size:13px;color:${B.ink2};line-height:1.6;margin-top:4px;">🛟 ${esc(forwarding.missed)}</div>
-  <div style="font-size:11.5px;color:${B.muted};line-height:1.5;margin-top:8px;">${esc(forwarding.note)}</div>`)}` : "";
+  <div style="font-size:11.5px;color:${B.muted};line-height:1.5;margin-top:8px;">${esc(forwarding.note)}</div>`)}`
+  // SEM NÚMERO AINDA (2026-09-22): antes o bloco simplesmente sumia e o assunto dizia "está no ar" —
+  // o cliente pagava e não sabia que o telefone ainda não existia. Honesto é dizer que chega.
+  : panel(`<div style="font-size:13px;color:${B.ink2};line-height:1.6;">${lang === "pt" ? "📞 <b>Seu número de telefone chega em até 24h</b> — estamos ativando a linha e avisamos por e-mail com as instruções de encaminhamento. Enquanto isso, o Gui já responde no chat do seu site e no painel."
+    : lang === "es" ? "📞 <b>Tu número de teléfono llega en hasta 24h</b> — estamos activando la línea y te avisamos por correo con las instrucciones de reenvío. Mientras tanto, Gui ya responde en el chat de tu sitio y en el panel."
+    : "📞 <b>Your phone number arrives within 24h</b> — we're activating the line and will email you the forwarding instructions. Meanwhile, Gui already answers on your website chat and in your dashboard."}</div>`);
   const body = `
   <h1 style="font-size:24px;font-weight:800;color:${B.ink};margin:0 0 6px;">${t.h1}</h1>
   <div style="font-size:16px;color:${B.ink2};line-height:1.7;margin-top:8px;">${t.intro}</div>
@@ -1080,6 +1178,7 @@ export function ownerAlertEmail({ kind = "order", customer = "", business = "", 
     lead: { icon: "🎯", pt: "contato", en: "lead", es: "contacto" },
     quote: { icon: "📝", pt: "orçamento", en: "quote", es: "presupuesto" },
     sale: { icon: "💳", pt: "venda", en: "sale", es: "venta" },
+    loja: { icon: "🛍️", pt: "pedido da loja", en: "store order", es: "pedido de la tienda" },
     invoice: { icon: "💳", pt: "cobrança", en: "payment", es: "cobro" },
     deposit: { icon: "💳", pt: "depósito", en: "deposit", es: "depósito" },
     callback: { icon: "📞", pt: "retorno", en: "callback", es: "devolución" },
@@ -1099,6 +1198,12 @@ export function ownerAlertEmail({ kind = "order", customer = "", business = "", 
   // Kinds that are NOT a sale Gui closed get their own honest intro — a payment failure must
   // never read as "Gui just closed this". Falls back to the generic intro for all other kinds.
   const INTRO = {
+    // Pedido da loja online: quem fechou foi a CLIENTE, na sacola do site — não a Gui.
+    loja: {
+      pt: `Uma cliente acabou de pagar um pedido na sua loja online${biz ? ` (${biz})` : ""}. Separe para retirada ou envio.`,
+      en: `A customer just paid for an order in your online store${biz ? ` (${biz})` : ""}. Get it ready for pickup or shipping.`,
+      es: `Una clienta acaba de pagar un pedido en tu tienda online${biz ? ` (${biz})` : ""}. Prepáralo para retiro o envío.`,
+    },
     billing: {
       pt: `Um evento de cobrança${biz ? ` em ${biz}` : ""} precisa da sua atenção — chegou agora.`,
       en: `A billing event${biz ? ` at ${biz}` : ""} needs your attention — it came in now.`,
@@ -1234,14 +1339,14 @@ export function linksEmail({ name = "Luis", lang = "pt" } = {}) {
     <div style="height:12px;line-height:12px;font-size:0;">&nbsp;</div>
     ${group(pt ? "🔒 Operar (você)" : "🔒 Operate (you)", [
       row(`${B.site}/admin`, "🛠️", "Admin", pt ? "comando central · leads" : "command center · leads"),
-      row(`${B.portal}`, "📊", "Growth Cockpit", pt ? "o produto do cliente" : "the client product"),
+      row(`${B.portal}`, "📊", "Central", pt ? "o produto do cliente" : "the client product"),
       row(`${B.site}/admin/contratos`, "📜", pt ? "Contratos" : "Contracts", pt ? "10 modelos + cláusulas" : "10 models + clauses"),
       row(`${B.site}/live`, "🟢", pt ? "Ao vivo" : "Live", pt ? "atividade da Gui" : "Gui activity"),
     ].join(""))}
     <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
     ${cta(pt ? "Abrir o site →" : "Open the site →", B.site)}
     <div style="height:10px;line-height:10px;font-size:0;">&nbsp;</div>
-    ${cta2(pt ? "📊 Growth Cockpit" : "📊 Growth Cockpit", B.portal)}`;
+    ${cta2(pt ? "📊 Central" : "📊 Central", B.portal)}`;
   return {
     subject: pt ? `🌱 Guileo — seus acessos (site, pitch, proposta, admin)` : `🌱 Guileo — your links`,
     html: shell({ preheader: pt ? "Todos os seus acessos Guileo, reunidos num só lugar." : "All your Guileo links, gathered in one place.", body, lang }),
@@ -1574,49 +1679,106 @@ export function clientIntroEmail({ name = "tudo bem?", business = "seu negócio"
 // `address`/`locPhone` (2026-08-05): confirmacao sem ENDERECO obriga o cliente a procurar,
 // ou pior, a ligar de volta perguntando onde e — o oposto do que a Gui existe pra fazer.
 // Vai tambem o telefone DAQUELA unidade (nao o numero geral) e um link de mapa.
-export function appointmentEmail({ kind = "book", name = "there", business = "", service = "", whenLabel = "", pro = "", location = "", address = "", locPhone = "", ref = "", lang = "en", brand = null } = {}) {
+// MENSAGEM DE CUIDADO (2026-09-28, Luis: "uma mensagem motivacional de beleza e autocuidado"). Só
+// entra quando o negócio É de beleza/bem-estar — num encanador a mesma frase soaria a erro de envio.
+// Escolha estável pela referência: o mesmo agendamento sempre mostra a mesma frase (cliente e dono
+// veem igual), e clientes diferentes recebem frases diferentes.
+const CUIDADO_RE = /spa|salon|sal[aã]o|massag|facial|nail|unha|hair|cabel|beauty|beleza|wax|depila|lash|c[ií]lio|brow|sobrancel|skin|pele|wellness|bem-estar|est[eé]tica|glow|barber|barbear/i;
+const CUIDADO = {
+  en: ["Taking time for yourself isn't a luxury — it's how you come back to your best.",
+       "This hour is yours. Leave the day at the door and let us take care of the rest.",
+       "Self-care is a promise you keep to yourself. We'll help you keep it.",
+       "You give so much every day. This time, it's your turn to receive.",
+       "Rest, glow, repeat. We can't wait to see you."],
+  pt: ["Tirar um tempo para você não é luxo — é como você volta à sua melhor versão.",
+       "Essa hora é sua. Deixe o dia na porta e deixe o resto com a gente.",
+       "Autocuidado é uma promessa com você. A gente ajuda a cumprir.",
+       "Você se doa tanto todos os dias. Desta vez, é a sua vez de receber.",
+       "Descansar, brilhar, repetir. Mal podemos esperar para te ver."],
+  es: ["Tomarse un tiempo para usted no es un lujo — es cómo vuelve a su mejor versión.",
+       "Esta hora es suya. Deje el día en la puerta y nosotros nos encargamos del resto.",
+       "El autocuidado es una promesa con usted. Le ayudamos a cumplirla.",
+       "Da tanto cada día. Esta vez, le toca recibir.",
+       "Descansar, brillar, repetir. Tenemos muchas ganas de verle."],
+};
+export function mensagemDeCuidado({ business = "", service = "", ref = "", lang = "en" } = {}) {
+  if (!CUIDADO_RE.test(`${business} ${service}`)) return "";
+  const lista = CUIDADO[lang] || CUIDADO.en;
+  let h = 0; for (const ch of String(ref || service || business)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return lista[h % lista.length];
+}
+
+export function appointmentEmail({ kind = "book", name = "there", business = "", service = "", whenLabel = "", pro = "", location = "", address = "", locPhone = "", ref = "", lang = "en", brand = null, agentName = "", birthdayUrl = "", manageUrl = "", prefsUrl = "" } = {}) {
+  // Quem atende a Natura é a Lilian: o e-mail dela não pode assinar "Gui" (2026-09-28).
+  const ag = esc(String(agentName || (brand && brand.agent_name) || "Gui").slice(0, 40));
+  const cuidado = kind === "cancel" ? "" : mensagemDeCuidado({ business: `${business} ${(brand && brand.business) || ""}`, service, ref, lang });
   const rawName = String(name == null ? "" : name).slice(0, 120);
   const rawAddr = String(address || "").slice(0, 200);
   name = esc(rawName); business = esc(business); service = esc(service); pro = esc(pro); location = esc(location); ref = esc(ref); whenLabel = esc(whenLabel);
   address = esc(rawAddr); locPhone = esc(String(locPhone || "").slice(0, 32));
   const L = ({
     pt: {
-      subj: { book: `Confirmado${business ? " · " + business : ""}: ${whenLabel}`, reschedule: `Remarcado: ${whenLabel}`, cancel: `Cancelado${business ? " · " + business : ""}` },
-      pre: { book: "Está tudo certo — seu agendamento está confirmado.", reschedule: "Pronto — seu agendamento foi remarcado.", cancel: "Seu agendamento foi cancelado." },
-      eyebrow: business || "Guileo", h: { book: `Está confirmado, ${name} ✅`, reschedule: `Remarcado, ${name} 🔁`, cancel: `Cancelado, ${name}` },
-      lead: { book: "Cuidei de tudo — seu horário está reservado:", reschedule: "Pronto — aqui está seu novo horário:", cancel: "Cancelamos este agendamento. Quando quiser, é só chamar a Gui de novo." },
-      rows: ["Serviço", "Quando", "Profissional", "Unidade", "Referência"], foot: "Precisa ajustar algo? Responda este email ou ligue — a Gui cuida na hora.",
+      subj: { book: `Confirmado${business ? " · " + business : ""}: ${whenLabel}`, hold: `Recebemos seu pedido${business ? " · " + business : ""}: ${whenLabel}`, reschedule: `Remarcado: ${whenLabel}`, cancel: `Cancelado${business ? " · " + business : ""}` },
+      pre: { book: "Está tudo certo — seu agendamento está confirmado.", hold: "Seu horário está guardado — a equipe confirma em breve.", reschedule: "Pronto — seu agendamento foi remarcado.", cancel: "Seu agendamento foi cancelado." },
+      eyebrow: business || "Guileo", h: { book: `Está confirmado, ${name} ✅`, hold: `Pedido recebido, ${name} ⏳`, reschedule: `Remarcado, ${name} 🔁`, cancel: `Cancelado, ${name}` },
+      lead: { book: "Cuidei de tudo — seu horário está reservado:", hold: "Seu horário está guardado. A equipe confirma com você em breve:", reschedule: "Pronto — aqui está seu novo horário:", cancel: `Cancelamos este agendamento. Quando quiser, é só chamar a ${ag} de novo.` },
+      rows: ["Serviço", "Quando", "Profissional", "Unidade", "Referência"], foot: `Precisa ajustar algo? Responda este email ou ligue — a ${ag} cuida na hora.`,
       place: ["Endereço", "Telefone", "Ver no mapa"],
     },
     es: {
-      subj: { book: `Confirmado${business ? " · " + business : ""}: ${whenLabel}`, reschedule: `Reprogramado: ${whenLabel}`, cancel: `Cancelado${business ? " · " + business : ""}` },
-      pre: { book: "Todo listo — su cita está confirmada.", reschedule: "Listo — su cita fue reprogramada.", cancel: "Su cita fue cancelada." },
-      eyebrow: business || "Guileo", h: { book: `Está confirmado, ${name} ✅`, reschedule: `Reprogramado, ${name} 🔁`, cancel: `Cancelado, ${name}` },
-      lead: { book: "Quedó todo listo — su horario está reservado:", reschedule: "Listo — aquí está su nuevo horario:", cancel: "Cancelamos esta cita. Cuando guste, basta llamar a Gui de nuevo." },
-      rows: ["Servicio", "Cuándo", "Profesional", "Sede", "Referencia"], foot: "¿Necesita ajustar algo? Responda este correo o llame — Gui lo atiende al instante.",
+      subj: { book: `Confirmado${business ? " · " + business : ""}: ${whenLabel}`, hold: `Recibimos su pedido${business ? " · " + business : ""}: ${whenLabel}`, reschedule: `Reprogramado: ${whenLabel}`, cancel: `Cancelado${business ? " · " + business : ""}` },
+      pre: { book: "Todo listo — su cita está confirmada.", hold: "Su horario está reservado — el equipo confirma en breve.", reschedule: "Listo — su cita fue reprogramada.", cancel: "Su cita fue cancelada." },
+      eyebrow: business || "Guileo", h: { book: `Está confirmado, ${name} ✅`, hold: `Pedido recibido, ${name} ⏳`, reschedule: `Reprogramado, ${name} 🔁`, cancel: `Cancelado, ${name}` },
+      lead: { book: "Quedó todo listo — su horario está reservado:", hold: "Su horario está reservado. El equipo le confirma en breve:", reschedule: "Listo — aquí está su nuevo horario:", cancel: `Cancelamos esta cita. Cuando guste, basta llamar a ${ag} de nuevo.` },
+      rows: ["Servicio", "Cuándo", "Profesional", "Sede", "Referencia"], foot: `¿Necesita ajustar algo? Responda este correo o llame — ${ag} lo atiende al instante.`,
       place: ["Dirección", "Teléfono", "Ver en el mapa"],
     },
     en: {
-      subj: { book: `Confirmed${business ? " · " + business : ""}: ${whenLabel}`, reschedule: `Rescheduled: ${whenLabel}`, cancel: `Cancelled${business ? " · " + business : ""}` },
-      pre: { book: "It's all taken care of — your appointment is confirmed.", reschedule: "Done — your appointment was rescheduled.", cancel: "Your appointment was cancelled." },
-      eyebrow: business || "Guileo", h: { book: `You're all set, ${name} ✅`, reschedule: `Rescheduled, ${name} 🔁`, cancel: `Cancelled, ${name}` },
-      lead: { book: "It's all taken care of — your spot is reserved:", reschedule: "Done — here is your new time:", cancel: "We've cancelled this appointment. Whenever you're ready, just ask Gui again." },
-      rows: ["Service", "When", "With", "Location", "Reference"], foot: "Need to adjust anything? Reply to this email or call — Gui handles it right away.",
+      subj: { book: `Confirmed${business ? " · " + business : ""}: ${whenLabel}`, hold: `Request received${business ? " · " + business : ""}: ${whenLabel}`, reschedule: `Rescheduled: ${whenLabel}`, cancel: `Cancelled${business ? " · " + business : ""}` },
+      pre: { book: "It's all taken care of — your appointment is confirmed.", hold: "Your spot is held — the team will confirm shortly.", reschedule: "Done — your appointment was rescheduled.", cancel: "Your appointment was cancelled." },
+      eyebrow: business || "Guileo", h: { book: `You're all set, ${name} ✅`, hold: `Request received, ${name} ⏳`, reschedule: `Rescheduled, ${name} 🔁`, cancel: `Cancelled, ${name}` },
+      lead: { book: "It's all taken care of — your spot is reserved:", hold: "Your spot is held. The team will confirm with you shortly:", reschedule: "Done — here is your new time:", cancel: `We've cancelled this appointment. Whenever you're ready, just ask ${ag} again.` },
+      rows: ["Service", "When", "With", "Location", "Reference"], foot: `Need to adjust anything? Reply to this email or call — ${ag} handles it right away.`,
       place: ["Address", "Phone", "Open in maps"],
     },
-  })[lang] || null || {};
-  const t = (L && L.subj) ? L : ({ subj: { book: "Confirmed" }, pre: { book: "" }, eyebrow: "Guileo", h: { book: name }, lead: { book: "" }, rows: ["Service", "When", "With", "Location", "Reference"], foot: "" });
-  const k = ["book", "reschedule", "cancel"].includes(kind) ? kind : "book";
+  })[["pt", "es"].includes(lang) ? lang : "en"];
+  const t = L;
+  const k = ["book", "hold", "reschedule", "cancel"].includes(kind) ? kind : "book";
   const row = (lbl, val) => val ? `<tr><td style="padding:4px 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:${B.muted};width:34%;">${lbl}</td><td style="padding:4px 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;color:${B.ink};">${val}</td></tr>` : "";
   const details = k === "cancel" ? "" : panel(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
       ${row(t.rows[0], service)}${row(t.rows[1], whenLabel)}${row(t.rows[2], pro)}${row(t.rows[3], location)}${row((t.place||[])[0], address)}${row((t.place||[])[1], locPhone ? `<a href="tel:${locPhone.replace(/[^0-9+]/g, "")}" style="color:${B.ink};text-decoration:none;">${locPhone}</a>` : "")}${row(t.rows[4], ref ? `<span style="color:${B.gold};">${ref}</span>` : "")}
     </table>${address ? `<div style="margin-top:10px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;"><a href="https://maps.google.com/?q=${encodeURIComponent(rawAddr)}" style="color:${B.gold};text-decoration:none;font-weight:700;">${(t.place||[])[2]} →</a></div>` : ""}`);
+  // "Quando é o seu aniversário?" (2026-09-30): o motor de aniversário nunca tinha mandado um
+  // parabéns porque ninguém perguntava a data. Uma linha discreta, só em quem MARCOU (não em
+  // cancelamento), e só com link assinado https — sem link, a linha não existe.
+  const NIVER = { pt: ["Quando é o seu aniversário?", "Conte pra gente o dia — adoramos comemorar."], es: ["¿Cuándo es su cumpleaños?", "Cuéntenos el día — nos encanta celebrar."], en: ["When is your birthday?", "Tell us the day — we love to celebrate our guests."] }[["pt", "es"].includes(lang) ? lang : "en"];
+  // "Precisa mudar?" (2026-10-05): link assinado para a própria cliente remarcar ou cancelar
+  // (/minha-reserva). Só em quem marcou, e só com link https — sem link, a linha não existe.
+  const GERIR = { pt: ["Remarcar ou cancelar", "Precisa mudar?"], es: ["Reprogramar o cancelar", "¿Necesita cambiarla?"], en: ["Reschedule or cancel", "Need to change it?"] }[["pt", "es"].includes(lang) ? lang : "en"];
+  const gerir = (k === "book" || k === "hold") && /^https:\/\//.test(String(manageUrl || ""))
+    ? `<div style="height:14px;font-size:0;">&nbsp;</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:${B.muted};text-align:center;line-height:1.6;">${GERIR[1]} <a href="${esc(manageUrl)}" style="color:${B.gold};text-decoration:none;font-weight:700;white-space:nowrap;">${GERIR[0]} →</a></div>` : "";
+  // "Como você prefere?" (2026-10-05): conversa ou silêncio, pressão, alergias — antes de chegar.
+  // Só em quem marcou um serviço de cuidado (quem decide é quem monta o link) e só com https.
+  const PREF = { pt: ["Conte como você prefere", "Gosta de conversar ou de silêncio? Alguma alergia?"], es: ["Díganos cómo lo prefiere", "¿Conversar o silencio? ¿Alguna alergia?"], en: ["Tell us how you like it", "Chat or quiet time? Any allergies?"] }[["pt", "es"].includes(lang) ? lang : "en"];
+  const pref = (k === "book" || k === "hold") && /^https:\/\//.test(String(prefsUrl || ""))
+    ? `<div style="height:16px;font-size:0;">&nbsp;</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:${B.muted};text-align:center;line-height:1.6;">✨ ${PREF[1]} <a href="${esc(prefsUrl)}" style="color:${B.gold};text-decoration:none;font-weight:700;white-space:nowrap;">${PREF[0]} →</a></div>` : "";
+  const niver = (k === "book" || k === "hold") && /^https:\/\//.test(String(birthdayUrl || ""))
+    ? `<div style="height:16px;font-size:0;">&nbsp;</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:${B.muted};text-align:center;line-height:1.6;">🎂 ${NIVER[1]} <a href="${esc(birthdayUrl)}" style="color:${B.gold};text-decoration:none;font-weight:700;white-space:nowrap;">${NIVER[0]} →</a></div>` : "";
   const body = `
     <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:900;color:${B.ink};text-align:center;">${t.h[k]}</div>
     <div style="height:8px;font-size:0;">&nbsp;</div>
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;color:${B.ink};text-align:center;line-height:1.6;">${t.lead[k]}</div>
     <div style="height:14px;font-size:0;">&nbsp;</div>
     ${details}
+    ${cuidado ? `<div style="height:18px;font-size:0;">&nbsp;</div>
+    <div style="font-family:Georgia,'Times New Roman',serif;font-size:17px;font-style:italic;line-height:1.6;color:${B.ink};text-align:center;padding:0 18px;">“${esc(cuidado)}”</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:6px;">— ${ag}${business ? `, ${business}` : ""}</div>` : ""}
+    ${pref}
+    ${niver}
+    ${gerir}
     <div style="height:16px;font-size:0;">&nbsp;</div>
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;">${t.foot}</div>`;
   return { subject: t.subj[k], html: shell({ preheader: t.pre[k], eyebrow: t.eyebrow, body, lang, brand }) };
@@ -1625,7 +1787,7 @@ export function appointmentEmail({ kind = "book", name = "there", business = "",
 // APPOINTMENT REMINDER — a gentle concierge nudge before an upcoming appointment (EMAIL channel).
 // Sent to the CUSTOMER when their contact is an email; this makes reminders actually fire today,
 // without waiting for SMS/A2P. Same branded shell + concierge voice as the confirmation.
-export function appointmentReminderEmail({ name = "there", business = "", service = "", whenLabel = "", ref = "", lang = "en", bizEmail = "", brand = null, unsub = "", address = "" } = {}) {
+export function appointmentReminderEmail({ name = "there", business = "", service = "", whenLabel = "", ref = "", lang = "en", bizEmail = "", brand = null, unsub = "", address = "", prefsUrl = "" } = {}) {
   name = esc(name); business = esc(business); service = esc(service); whenLabel = esc(whenLabel); ref = esc(ref);
   const L = ({
     pt: { subj: `Um lembrete gentil${business ? " · " + business : ""}: ${whenLabel}`, pre: "Seu horário está chegando — estamos à sua espera.", eyebrow: business || "Guileo", h: `Até já, ${name} 🌱`, lead: "Passando só para lembrar, com carinho, do seu horário:", rows: ["Serviço", "Quando", "Referência"], foot: "Precisa remarcar? É só responder este email — cuido disso na hora." },
@@ -1640,6 +1802,7 @@ export function appointmentReminderEmail({ name = "there", business = "", servic
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;color:${B.ink};text-align:center;line-height:1.6;">${L.lead}</div>
     <div style="height:14px;font-size:0;">&nbsp;</div>
     ${panel(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${row(L.rows[0], service)}${row(L.rows[1], whenLabel)}${row(L.rows[2], ref ? `<span style="color:${B.gold};">${ref}</span>` : "")}</table>`)}
+    ${/^https:\/\//.test(String(prefsUrl || "")) ? `<div style="height:14px;font-size:0;">&nbsp;</div><div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:${B.muted};text-align:center;line-height:1.6;">✨ ${{ pt: "Ainda dá tempo de contar como você prefere:", es: "Aún puede decirnos cómo lo prefiere:", en: "There's still time to tell us how you like it:" }[lang === "pt" ? "pt" : lang === "es" ? "es" : "en"]} <a href="${esc(prefsUrl)}" style="color:${B.gold};text-decoration:none;font-weight:700;white-space:nowrap;">${{ pt: "Minhas preferências", es: "Mis preferencias", en: "My preferences" }[lang === "pt" ? "pt" : lang === "es" ? "es" : "en"]} →</a></div>` : ""}
     <div style="height:18px;font-size:0;">&nbsp;</div>
     <div align="center">${cta(reLabel, bizMailto(bizEmail, L.subj, MB.remind[lang] || MB.remind.en))}</div>
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${L.foot}</div>`;
@@ -1648,7 +1811,13 @@ export function appointmentReminderEmail({ name = "there", business = "", servic
 
 // BIRTHDAY — a warm concierge note on the customer's birthday, with a gentle invitation back.
 // The retention magic: the business never forgets, automatically. Sent to the CUSTOMER (email).
-export function birthdayEmail({ name = "there", business = "", lang = "en", brand = null, unsub = "", address = "" } = {}) {
+// `message`/`offer` (2026-09-30) = o que o DONO escreveu na tela de Datas. Antes a tela salvava e o
+// e-mail ignorava. E o texto padrão dizia "há um mimo esperando por você" — uma promessa que nenhum
+// negócio tinha feito. Agora: com `offer`, o painel mostra a oferta DELE; sem `offer`, não há painel
+// de presente. `message` substitui a frase de abertura ({name} vira o primeiro nome).
+export function birthdayEmail({ name = "there", business = "", lang = "en", brand = null, unsub = "", address = "", message = "", offer = "" } = {}) {
+  const proprio = String(message || "").trim().slice(0, 600).replace(/\{name\}/gi, String(name || "").trim().split(/\s+/)[0] || "");
+  const oferta = String(offer || "").trim().slice(0, 200);
   name = esc(name); business = esc(business);
   const L = ({
     pt: { subj: `Feliz aniversário, ${name}! 🎉`, pre: "Um carinho da nossa parte no seu dia.", eyebrow: business || "Guileo", h: `Feliz aniversário, ${name}! 🎂`, lead: `Hoje é o seu dia — e a gente${business ? ` da ${business}` : ""} faz questão de comemorar com você. Que seja um ano lindo, cheio de coisas boas. 🌱`, gift: "Tem um mimo te esperando: passa pra comemorar com a gente esse mês. É só responder este email que eu cuido de tudo.", foot: "Com carinho — o Gui, sempre por aqui." },
@@ -1658,9 +1827,9 @@ export function birthdayEmail({ name = "there", business = "", lang = "en", bran
   const body = `
     <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:24px;font-weight:900;color:${B.ink};text-align:center;">${L.h}</div>
     <div style="height:10px;font-size:0;">&nbsp;</div>
-    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;color:${B.ink};text-align:center;line-height:1.7;">${L.lead}</div>
-    <div style="height:14px;font-size:0;">&nbsp;</div>
-    ${panel(`<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;color:${B.ink2};line-height:1.6;text-align:center;">🎁 ${L.gift}</div>`)}
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;color:${B.ink};text-align:center;line-height:1.7;">${proprio ? esc(proprio) : L.lead}</div>
+    ${oferta ? `<div style="height:14px;font-size:0;">&nbsp;</div>
+    ${panel(`<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;color:${B.ink2};line-height:1.6;text-align:center;">🎁 ${esc(oferta)}</div>`)}` : ""}
     <div style="height:16px;font-size:0;">&nbsp;</div>
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;">${L.foot}</div>`;
   return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand, unsub, address }) };
@@ -1712,8 +1881,15 @@ export function recallEmail({ name = "there", business = "", lang = "en", bizEma
 // ⚠️ O TEXTO NÃO PEDE NOTA ALTA e não sugere que a avaliação deva ser positiva. Condicionar o
 // convite (ou o tom dele) à satisfação é "review gating" — política de conteúdo proibido do Google,
 // com risco de derrubar o perfil do negócio que paga pela Guileo.
-export function reviewRequestEmail({ name = "there", business = "", service = "", link = "", lang = "en", brand = null, unsub = "", address = "" } = {}) {
+// 2026-09-30 · `feedbackUrl` = o canal privado ("algo não foi bem? fale direto com a gente"). Vai para
+// TODOS, abaixo do MESMO botão de avaliação — é um segundo caminho, não um desvio. Mandar o link do
+// Google só para quem está satisfeito seria o review gating do aviso acima.
+export function reviewRequestEmail({ name = "there", business = "", service = "", link = "", lang = "en", brand = null, unsub = "", address = "", feedbackUrl = "" } = {}) {
   name = esc(name); business = esc(business); service = esc(service);
+  const FB = { pt: ["Algo não foi como você esperava?", "Fale direto com a gente"], es: ["¿Algo no fue como esperabas?", "Cuéntanos directamente"], en: ["Something wasn't as you expected?", "Tell us directly"] }[lang === "pt" ? "pt" : lang === "es" ? "es" : "en"];
+  const fb = /^https:\/\//.test(String(feedbackUrl)) ? `
+    <div style="height:18px;font-size:0;">&nbsp;</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13.5px;color:${B.ink2};text-align:center;line-height:1.6;">${FB[0]} <a href="${esc(feedbackUrl)}" style="color:${B.gold};font-weight:700;text-decoration:underline;">${FB[1]} →</a></div>` : "";
   const L = ({
     pt: { subj: `Como foi sua visita${business ? " na " + business : ""}? 💚`, pre: "Trinta segundos que ajudam muito.", eyebrow: business || "Guileo", h: `${name}, como foi? 💚`, lead: `Foi um prazer te receber${business ? ` na ${business}` : ""}${service ? ` para ${service}` : ""}. Se puder contar como foi numa avaliação, ajuda demais — é o que faz outras pessoas da região nos encontrarem.`, cta: "Deixar minha avaliação →", foot: "Leva menos de um minuto. E se algo não saiu como esperado, responde este e-mail que eu quero saber." },
     es: { subj: `¿Cómo estuvo tu visita${business ? " en " + business : ""}? 💚`, pre: "Treinta segundos que ayudan muchísimo.", eyebrow: business || "Guileo", h: `${name}, ¿cómo estuvo? 💚`, lead: `Fue un placer recibirte${business ? ` en ${business}` : ""}${service ? ` para ${service}` : ""}. Si puedes contarlo en una reseña, ayuda muchísimo — es lo que hace que otras personas de la zona nos encuentren.`, cta: "Dejar mi reseña →", foot: "Toma menos de un minuto. Y si algo no salió como esperabas, responde este correo: quiero saberlo." },
@@ -1724,9 +1900,56 @@ export function reviewRequestEmail({ name = "there", business = "", service = ""
     <div style="height:10px;font-size:0;">&nbsp;</div>
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;color:${B.ink};text-align:center;line-height:1.7;">${L.lead}</div>
     <div style="height:18px;font-size:0;">&nbsp;</div>
-    <div align="center">${cta(L.cta, link)}</div>
+    <div align="center">${cta(L.cta, link)}</div>${fb}
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${L.foot}</div>`;
   return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand, unsub, address }) };
+}
+
+// FEEDBACK PRIVADO DE UMA VISITA → para a DONA do negócio (2026-09-30). O cliente usou o canal "fale
+// direto com a gente" do e-mail de avaliação. É o aviso que dá tempo de resolver: responder este
+// e-mail escreve para o cliente (reply_to), quando ele tem e-mail no cadastro.
+export function visitFeedbackEmail({ business = "", customer = "", contact = "", service = "", whenLabel = "", location = "", comment = "", lang = "en" } = {}) {
+  const Lg = lang === "pt" ? "pt" : lang === "es" ? "es" : "en";
+  const T = {
+    en: { subj: `A customer sent private feedback${business ? " · " + business : ""}`, pre: "They wrote to you directly. A quick reply today usually settles it.", h: "A customer wrote to you", lead: "This came through the private link in the review email. It is not public.", who: "Customer", ct: "Contact", svc: "Service", wh: "Visit", loc: "Location", msg: "What they wrote", cta: "Open your dashboard", foot: "Reply to this email to write to the customer, or call them today." },
+    pt: { subj: `Um cliente mandou um recado privado${business ? " · " + business : ""}`, pre: "Ele escreveu direto para você. Uma resposta rápida hoje costuma resolver.", h: "Um cliente escreveu para você", lead: "Chegou pelo link privado do e-mail de avaliação. Não é público.", who: "Cliente", ct: "Contato", svc: "Serviço", wh: "Visita", loc: "Unidade", msg: "O que ele escreveu", cta: "Abrir o painel", foot: "Responda este e-mail para escrever ao cliente, ou ligue hoje." },
+    es: { subj: `Un cliente envió un mensaje privado${business ? " · " + business : ""}`, pre: "Le escribió directamente. Una respuesta rápida hoy suele resolverlo.", h: "Un cliente le escribió", lead: "Llegó por el enlace privado del correo de reseña. No es público.", who: "Cliente", ct: "Contacto", svc: "Servicio", wh: "Visita", loc: "Sede", msg: "Lo que escribió", cta: "Abrir su panel", foot: "Responda este correo para escribirle al cliente, o llámele hoy." },
+  }[Lg];
+  const row = (k, v) => v ? `<tr><td style="padding:4px 14px 4px 0;color:${B.muted};white-space:nowrap;vertical-align:top;font-size:13px;">${k}</td><td style="padding:4px 0;color:${B.ink};font-weight:700;font-size:14px;">${esc(v)}</td></tr>` : "";
+  const rows = row(T.who, customer) + row(T.ct, contact) + row(T.svc, service) + row(T.loc, location) + row(T.wh, whenLabel);
+  const body = `
+  <h1 style="font-size:23px;font-weight:800;color:${B.ink};margin:0 0 6px;">${T.h}</h1>
+  <div style="font-size:15.5px;color:${B.ink2};line-height:1.7;margin-top:8px;">${T.lead}</div>
+  <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
+  ${panel(`<div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};font-family:'Segoe UI',Arial,sans-serif;margin-bottom:8px;">${T.msg}</div><div style="font-size:15.5px;line-height:1.6;color:${B.ink};white-space:pre-wrap;">${esc(String(comment).slice(0, 1000))}</div>`)}
+  ${rows ? `<div style="height:12px;font-size:0;">&nbsp;</div>${panel(`<table style="border-collapse:collapse;">${rows}</table>`)}` : ""}
+  <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div><div align="center">${cta(T.cta, "https://guileoai.com/portal")}</div>
+  <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:18px;">${T.foot}</div>`;
+  return { subject: T.subj, html: shell({ preheader: T.pre, eyebrow: esc(business) || "Guileo", body, lang: Lg }) };
+}
+
+// PREFERÊNCIAS ANTES DA VISITA → AVISO PARA O SALÃO (2026-10-05). A cliente contou como prefere
+// (/api/preferencias); a equipe recebe antes de ela chegar. ALERGIA vem primeiro e em destaque.
+// `linhas` = [[rótulo, valor]] já no idioma do negócio (lib/preferencias.js · resumoPrefs).
+export function visitPrefsEmail({ business = "", customer = "", contact = "", service = "", whenLabel = "", location = "", linhas = [], alergia = "", atualizou = false, lang = "en" } = {}) {
+  const Lg = lang === "pt" ? "pt" : lang === "es" ? "es" : "en";
+  const T = {
+    en: { subj: `${atualizou ? "Updated: " : ""}How ${customer || "your guest"} likes it${whenLabel ? " · " + whenLabel : ""}`, pre: "Told to you before the visit — have it ready when they arrive.", h: atualizou ? "A guest updated her preferences" : "A guest told you how she likes it", lead: "This came from the link in the appointment email, before the visit.", al: "Allergy or sensitivity", who: "Guest", ct: "Contact", svc: "Service", wh: "When", loc: "Location", pref: "Preferences", cta: "Open your dashboard", foot: "The allergy was also added to her client card, so the front desk sees it on the schedule." },
+    pt: { subj: `${atualizou ? "Atualizado: " : ""}Como ${customer || "a cliente"} prefere${whenLabel ? " · " + whenLabel : ""}`, pre: "Contado antes da visita — deixe pronto para quando ela chegar.", h: atualizou ? "Uma cliente atualizou as preferências" : "Uma cliente contou como prefere", lead: "Chegou pelo link do e-mail do agendamento, antes da visita.", al: "Alergia ou sensibilidade", who: "Cliente", ct: "Contato", svc: "Serviço", wh: "Quando", loc: "Unidade", pref: "Preferências", cta: "Abrir o painel", foot: "A alergia também entrou na ficha dela, então a recepção vê na agenda." },
+    es: { subj: `${atualizou ? "Actualizado: " : ""}Cómo lo prefiere ${customer || "su clienta"}${whenLabel ? " · " + whenLabel : ""}`, pre: "Se lo contó antes de la visita — téngalo listo cuando llegue.", h: atualizou ? "Una clienta actualizó sus preferencias" : "Una clienta le contó cómo lo prefiere", lead: "Llegó por el enlace del correo de la cita, antes de la visita.", al: "Alergia o sensibilidad", who: "Clienta", ct: "Contacto", svc: "Servicio", wh: "Cuándo", loc: "Sede", pref: "Preferencias", cta: "Abrir su panel", foot: "La alergia también se agregó a su ficha, así la recepción la ve en la agenda." },
+  }[Lg];
+  const row = (k, v) => v ? `<tr><td style="padding:4px 14px 4px 0;color:${B.muted};white-space:nowrap;vertical-align:top;font-size:13px;">${esc(k)}</td><td style="padding:4px 0;color:${B.ink};font-weight:700;font-size:14px;">${esc(v)}</td></tr>` : "";
+  const pref = (Array.isArray(linhas) ? linhas : []).filter(([k]) => k !== T.al).map(([k, v]) => row(k, v)).join("");
+  const quem = row(T.who, customer) + row(T.ct, contact) + row(T.svc, service) + row(T.loc, location) + row(T.wh, whenLabel);
+  const body = `
+  <h1 style="font-size:23px;font-weight:800;color:${B.ink};margin:0 0 6px;">${T.h}</h1>
+  <div style="font-size:15.5px;color:${B.ink2};line-height:1.7;margin-top:8px;">${T.lead}</div>
+  ${alergia ? `<div style="height:14px;font-size:0;">&nbsp;</div>${panel(`<div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#B4232A;font-family:'Segoe UI',Arial,sans-serif;margin-bottom:6px;">⚠️ ${T.al}</div><div style="font-size:16px;line-height:1.5;color:${B.ink};font-weight:700;">${esc(String(alergia).slice(0, 300))}</div>`)}` : ""}
+  ${pref ? `<div style="height:12px;font-size:0;">&nbsp;</div>${panel(`<div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};font-family:'Segoe UI',Arial,sans-serif;margin-bottom:8px;">${T.pref}</div><table style="border-collapse:collapse;">${pref}</table>`)}` : ""}
+  ${quem ? `<div style="height:12px;font-size:0;">&nbsp;</div>${panel(`<table style="border-collapse:collapse;">${quem}</table>`)}` : ""}
+  <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div><div align="center">${cta(T.cta, "https://guileoai.com/portal")}</div>
+  ${alergia ? `<div style="font-size:12px;color:${B.muted};text-align:center;margin-top:18px;">${T.foot}</div>` : ""}`;
+  return { subject: T.subj, html: shell({ preheader: T.pre, eyebrow: esc(business) || "Guileo", body, lang: Lg }) };
 }
 
 // LOYALTY MILESTONE — celebrate a visit milestone with a reward. Turns frequency into love + repeat
@@ -1784,6 +2007,129 @@ export function rebookEmail({ name = "there", business = "", service = "", lang 
     <div align="center">${cta(L.cta, bizMailto(bizEmail, L.subj, MB.rebook[lang] || MB.rebook.en))}</div>
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${L.foot}</div>`;
   return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand, unsub, address }) };
+}
+
+// A VOLTA NO TEMPO CERTO (2026-09-30) — "já faz ~4 semanas do seu facial; vamos marcar o próximo?"
+// Existe porque o lembrete de volta usava o `rebookEmail` acima, que diz "você pediu pra remarcar":
+// texto de REMARCAÇÃO mandado a quem tinha vindo, sido atendida e ido embora feliz. Aqui o tempo
+// vem do ciclo do serviço (config.rebook_days) e a frase fala do que aconteceu de verdade.
+// `phone` = a linha que atende (a agente): quem prefere ligar tem o número no próprio e-mail.
+export function returnCycleEmail({ name = "there", business = "", service = "", days = 28, lang = "en", bizEmail = "", brand = null, unsub = "", address = "", phone = "" } = {}) {
+  name = esc(name); business = esc(business); service = esc(service);
+  const d = Math.max(1, parseInt(days, 10) || 28);
+  const sem = Math.round(d / 7), mes = Math.round(d / 30);
+  const tempo = {
+    pt: d < 14 ? `${d} dias` : d < 60 ? `${sem} semanas` : `${mes} meses`,
+    es: d < 14 ? `${d} días` : d < 60 ? `${sem} semanas` : `${mes} meses`,
+    en: d < 14 ? `${d} days` : d < 60 ? `${sem} weeks` : `${mes} months`,
+  };
+  const tel = String(phone || "").replace(/[^0-9+() .-]/g, "").trim().slice(0, 24);
+  const telHref = tel.replace(/[^0-9+]/g, "");
+  const L = ({
+    pt: { subj: `${name}, já está na hora${service ? ` do seu ${service}` : " de voltar"}? 🌿`, pre: "Guardamos um horário bom pra você.", eyebrow: business || "Guileo", h: `Hora de se cuidar de novo, ${name} 🌿`, lead: `Já faz cerca de ${tempo.pt} ${service ? `do seu ${service}` : "da sua última visita"}${business ? ` na ${business}` : ""}. É mais ou menos nesse tempo que vale repetir para manter o resultado.`, cta: "Quero marcar meu horário", ou: "Ou ligue", foot: "Se já marcou, pode ignorar este lembrete." },
+    es: { subj: `${name}, ¿ya es momento${service ? ` de su ${service}` : " de volver"}? 🌿`, pre: "Le guardamos un buen horario.", eyebrow: business || "Guileo", h: `Hora de cuidarse otra vez, ${name} 🌿`, lead: `Han pasado unas ${tempo.es} ${service ? `desde su ${service}` : "desde su última visita"}${business ? ` en ${business}` : ""}. Es más o menos el tiempo en que conviene repetir para mantener el resultado.`, cta: "Quiero reservar mi horario", ou: "O llame", foot: "Si ya reservó, ignore este recordatorio." },
+    en: { subj: `${name}, time for your next${service ? ` ${service}` : " visit"}? 🌿`, pre: "We saved a good time for you.", eyebrow: business || "Guileo", h: `Time to treat yourself again, ${name} 🌿`, lead: `It has been about ${tempo.en} since your ${service || "last visit"}${business ? ` at ${business}` : ""}. That is around when it is worth coming back to keep the results.`, cta: "Book my next visit", ou: "Or call", foot: "Already booked? Please ignore this reminder." },
+  })[lang === "pt" ? "pt" : lang === "es" ? "es" : "en"];
+  const body = `
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:900;color:${B.ink};text-align:center;">${L.h}</div>
+    <div style="height:10px;font-size:0;">&nbsp;</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;color:${B.ink};text-align:center;line-height:1.7;">${L.lead}</div>
+    <div style="height:18px;font-size:0;">&nbsp;</div>
+    <div align="center">${cta(L.cta, bizMailto(bizEmail, L.subj, MB.recall[lang] || MB.recall.en))}</div>
+    ${telHref.replace(/\D/g, "").length >= 10 ? `<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;color:${B.ink2};text-align:center;margin-top:14px;">${L.ou}: <a href="tel:${telHref}" style="color:${B.gold};text-decoration:none;font-weight:700;">${esc(tel)}</a></div>` : ""}
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${L.foot}</div>`;
+  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand, unsub, address }) };
+}
+
+// ACOMPANHAMENTO DE CONSULTA (2026-10-13) — "Lilian follows up Med Spa consultations that did not book".
+// Vai N dias depois de uma consulta sem nada marcado depois dela (db/consulta_retorno.sql). Não vende: abre a porta
+// — seguir com o tratamento, tirar uma dúvida, ou nada. CTA = ligar para a linha da assistente (quem atende é ela);
+// segundo caminho = responder o e-mail (vai para o negócio). SEM link de agendamento de propósito: o site do Natura
+// ainda marca no MindBody, e um link da nossa agenda marcaria por cima do balcão.
+export function consultFollowupEmail({ name = "there", business = "", service = "", lang = "en", bizEmail = "", brand = null, unsub = "", address = "", phone = "" } = {}) {
+  name = esc(name); business = esc(business); service = esc(service);
+  const tel = String(phone || "").replace(/[^0-9+() .-]/g, "").trim().slice(0, 24);
+  const telHref = tel.replace(/[^0-9+]/g, "");
+  const temTel = telHref.replace(/\D/g, "").length >= 10;
+  const L = ({
+    pt: { subj: `${name}, ficou alguma dúvida da sua consulta? 🌿`, pre: "Sem pressa — estou aqui se quiser seguir.", eyebrow: business || "Guileo",
+          h: `Foi bom te receber, ${name}`, lead: `Obrigada por vir${service ? ` para a sua ${service}` : ""}${business ? ` na ${business}` : ""}. Se quiser seguir com o tratamento, ou só tirar uma dúvida, eu encontro um horário bom para você — sem compromisso.`,
+          cta: temTel ? "Ligar e marcar" : "Responder", ou: "Ou responda este e-mail", foot: `Enviado pela assistente${business ? ` da ${business}` : ""}.` },
+    es: { subj: `${name}, ¿quedó alguna duda de su consulta? 🌿`, pre: "Sin prisa — aquí estoy si quiere seguir.", eyebrow: business || "Guileo",
+          h: `Fue un gusto recibirle, ${name}`, lead: `Gracias por venir${service ? ` a su ${service}` : ""}${business ? ` en ${business}` : ""}. Si quiere seguir con el tratamiento, o solo resolver una duda, le encuentro un buen horario — sin compromiso.`,
+          cta: temTel ? "Llamar y agendar" : "Responder", ou: "O responda este correo", foot: `Enviado por la asistente${business ? ` de ${business}` : ""}.` },
+    en: { subj: `${name}, any questions after your consultation? 🌿`, pre: "No rush — I'm here if you'd like to go ahead.", eyebrow: business || "Guileo",
+          h: `It was lovely to see you, ${name}`, lead: `Thank you for coming in${service ? ` for your ${service}` : ""}${business ? ` at ${business}` : ""}. If you'd like to go ahead with the treatment, or just have a question, I'll find you a good time — no pressure.`,
+          cta: temTel ? "Call to book" : "Reply", ou: "Or reply to this email", foot: `Sent by ${business ? `${business}'s` : "the"} assistant.` },
+  })[lang === "pt" ? "pt" : lang === "es" ? "es" : "en"];
+  const responder = bizMailto(bizEmail, L.subj, MB.recall[lang] || MB.recall.en);
+  const href = temTel ? `tel:${telHref}` : responder;
+  const body = `
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:900;color:${B.ink};text-align:center;">${L.h}</div>
+    <div style="height:10px;font-size:0;">&nbsp;</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;color:${B.ink};text-align:center;line-height:1.7;">${L.lead}</div>
+    <div style="height:18px;font-size:0;">&nbsp;</div>
+    <div align="center">${cta(L.cta, href)}</div>
+    ${temTel && bizEmail ? `<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;color:${B.ink2};text-align:center;margin-top:14px;">${L.ou}: <a href="${responder}" style="color:${B.gold};text-decoration:none;font-weight:700;">${esc(bizEmail)}</a></div>` : ""}
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${L.foot}</div>`;
+  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand, unsub, address }) };
+}
+
+// LINK DE PAGAMENTO DO GIFT CARD (2026-09-30) — transacional: a pessoa PEDIU o vale na ligação e a
+// agente disse "mandei o link". Diz o valor, para quem é (quando informado) e o que acontece depois
+// de pagar. Não promete prazo de entrega nem código: o cartão é emitido quando o pagamento cai.
+export function giftCardLinkEmail({ name = "", business = "", amount = "", recipient = "", link = "", lang = "en", brand = null } = {}) {
+  const nome = esc(String(name || "").trim().split(/\s+/)[0] || "");
+  business = esc(business); amount = esc(amount); recipient = esc(String(recipient || "").slice(0, 80));
+  const href = /^https:\/\//.test(String(link || "")) ? String(link) : "";
+  const L = ({
+    pt: { subj: `Seu vale-presente${business ? ` · ${business}` : ""}: link de pagamento`, pre: "Falta só concluir o pagamento.", eyebrow: business || "Guileo", h: `${nome ? `${nome}, s` : "S"}eu vale-presente está quase pronto 🎁`, lead: `Aqui está o link seguro para pagar o vale-presente de ${amount}${recipient ? ` para ${recipient}` : ""}.`, cta: `Pagar ${amount}`, foot: "O vale é emitido assim que o pagamento é confirmado. Se não foi você quem pediu, ignore este e-mail — nada é cobrado." },
+    es: { subj: `Su tarjeta de regalo${business ? ` · ${business}` : ""}: enlace de pago`, pre: "Solo falta completar el pago.", eyebrow: business || "Guileo", h: `${nome ? `${nome}, s` : "S"}u tarjeta de regalo está casi lista 🎁`, lead: `Aquí está el enlace seguro para pagar la tarjeta de regalo de ${amount}${recipient ? ` para ${recipient}` : ""}.`, cta: `Pagar ${amount}`, foot: "La tarjeta se emite en cuanto se confirma el pago. Si usted no la pidió, ignore este correo — no se cobra nada." },
+    en: { subj: `Your gift card${business ? ` · ${business}` : ""}: payment link`, pre: "One step left: complete the payment.", eyebrow: business || "Guileo", h: `${nome ? `${nome}, y` : "Y"}our gift card is almost ready 🎁`, lead: `Here is the secure link to pay for the ${amount} gift card${recipient ? ` for ${recipient}` : ""}.`, cta: `Pay ${amount}`, foot: "The gift card is issued as soon as the payment is confirmed. If you did not ask for this, ignore this email — nothing is charged." },
+  })[lang === "pt" ? "pt" : lang === "es" ? "es" : "en"];
+  const body = `
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:900;color:${B.ink};text-align:center;">${L.h}</div>
+    <div style="height:10px;font-size:0;">&nbsp;</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;color:${B.ink};text-align:center;line-height:1.7;">${L.lead}</div>
+    <div style="height:18px;font-size:0;">&nbsp;</div>
+    ${href ? `<div align="center">${cta(L.cta, esc(href), true)}</div>` : ""}
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;line-height:1.6;">${L.foot}</div>`;
+  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang, brand }) };
+}
+
+// RASCUNHOS DE RESPOSTA A AVALIAÇÕES (2026-09-30) — para o DONO. A agente escreveu rascunhos de
+// resposta para avaliações novas do Google; NADA foi publicado. O e-mail diz quantos, mostra até
+// três (estrelas, quem, trecho da avaliação) e leva ao painel, onde ele edita, aprova ou rejeita.
+// `drafts` = [{ stars, reviewer, review_text, draft_text, location_label }]. Tudo que vem do
+// Google é texto de terceiros: entra escapado.
+export function reviewDraftsEmail({ business = "", count = 0, drafts = [], lang = "en" } = {}) {
+  const n = Math.max(0, parseInt(count, 10) || 0);
+  const l = lang === "pt" ? "pt" : lang === "es" ? "es" : "en";
+  const biz = esc(business);
+  const L = ({
+    pt: { subj: `${n} ${n === 1 ? "resposta pronta" : "respostas prontas"} para você aprovar${business ? ` · ${business}` : ""}`, pre: "Nada foi publicado. Você decide.", eyebrow: "Avaliações do Google", h: n === 1 ? "Uma avaliação nova tem resposta pronta" : `${n} avaliações novas têm resposta pronta`, lead: "Escrevi um rascunho de resposta para cada uma. Nada foi publicado: você lê, ajusta se quiser, e aprova.", rasc: "Rascunho", cta: "Ler e aprovar", foot: "As respostas só aparecem no Google depois da sua aprovação.", semTexto: "(avaliação sem texto)" },
+    es: { subj: `${n} ${n === 1 ? "respuesta lista" : "respuestas listas"} para aprobar${business ? ` · ${business}` : ""}`, pre: "Nada se publicó. Usted decide.", eyebrow: "Reseñas de Google", h: n === 1 ? "Una reseña nueva tiene respuesta lista" : `${n} reseñas nuevas tienen respuesta lista`, lead: "Escribí un borrador de respuesta para cada una. Nada se publicó: usted lee, ajusta si quiere, y aprueba.", rasc: "Borrador", cta: "Leer y aprobar", foot: "Las respuestas solo aparecen en Google después de su aprobación.", semTexto: "(reseña sin texto)" },
+    en: { subj: `${n} review ${n === 1 ? "reply" : "replies"} ready for your approval${business ? ` · ${business}` : ""}`, pre: "Nothing was published. You decide.", eyebrow: "Google reviews", h: n === 1 ? "One new review has a reply ready" : `${n} new reviews have a reply ready`, lead: "I drafted a reply for each one. Nothing was published: you read it, adjust it if you like, and approve.", rasc: "Draft reply", cta: "Read and approve", foot: "Replies only appear on Google after you approve them.", semTexto: "(review with no text)" },
+  })[l];
+  const corta = (t, k) => { const x = String(t == null ? "" : t).replace(/\s+/g, " ").trim(); return x.length > k ? `${x.slice(0, k - 1)}…` : x; };
+  const itens = (Array.isArray(drafts) ? drafts : []).slice(0, 3).map((d) => {
+    const st = Number(d && d.stars);
+    const estrelas = st >= 1 && st <= 5 ? "★".repeat(st) + "☆".repeat(5 - st) : "";
+    return panel(`<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:${B.gold};letter-spacing:1px;">${estrelas}</div>
+      <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;color:${B.ink};margin-top:2px;">${esc(corta(d && d.reviewer, 60))}${d && d.location_label ? ` <span style="font-weight:400;color:${B.muted};">· ${esc(corta(d.location_label, 40))}</span>` : ""}</div>
+      <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:${B.ink2};line-height:1.55;margin-top:6px;">“${esc(corta(d && d.review_text, 220)) || L.semTexto}”</div>
+      <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${B.muted};margin-top:10px;">${L.rasc}</div>
+      <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:${B.ink};line-height:1.55;margin-top:3px;">${esc(corta(d && d.draft_text, 260))}</div>`) + `<div style="height:10px;font-size:0;">&nbsp;</div>`;
+  }).join("");
+  const body = `
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:900;color:${B.ink};text-align:center;">${L.h}</div>
+    <div style="height:10px;font-size:0;">&nbsp;</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:15px;color:${B.ink};text-align:center;line-height:1.7;">${L.lead}</div>
+    <div style="height:16px;font-size:0;">&nbsp;</div>
+    ${itens}
+    <div align="center">${cta(L.cta, B.portal)}</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${L.foot}</div>`;
+  return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: biz ? `${L.eyebrow} · ${biz}` : L.eyebrow, body, lang: l }) };
 }
 
 // MARKETING DATE / FLASH PROMO — a per-business commemorative-date or slow-day nudge to the CUSTOMER
@@ -1879,6 +2225,55 @@ export function callAlertEmail({ name = "there", business = "", lang = "en", int
     <div align="center">${cta(L.cta, portalUrl)}</div>
     <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${L.foot}</div>`;
   return { subject: L.subj, html: shell({ preheader: L.pre, eyebrow: L.eyebrow, body, lang }) };
+}
+
+// REGISTRO — o e-mail que o dono recebe a cada ligação / agendamento / retorno (2026-09-28).
+// Antes o n8n montava um texto cru em português; a Natura é de Nova York e o Luis pediu "o texto
+// tem que ser inglês" e "temático como o da Guileo". Agora a plataforma renderiza AQUI (lei: e-mail
+// só por este arquivo) e manda pronto no payload (`email_assunto`/`email_html`); o n8n só entrega.
+// `linha` é a linha do lib/registro.js. Transcrição inteira nas ligações: é o que o dono quer ler.
+export function registroEmail(linha = {}, lang = "en", brand = null) {
+  const Lg = lang === "pt" ? "pt" : lang === "es" ? "es" : "en";
+  const tipo = (linha.tipo || "").toString();
+  const grupo = tipo === "ligacao" ? "call" : ["agendamento", "book", "booking"].includes(tipo) ? "booking" : "action";
+  const quem = (linha.nome || linha.telefone || "").toString().slice(0, 80);
+  const dur = linha.duracao_s !== "" && linha.duracao_s != null ? `${Math.floor(Number(linha.duracao_s) / 60)}m ${String(Number(linha.duracao_s) % 60).padStart(2, "0")}s` : "";
+  const T = {
+    en: { call: ["📞", "New call", `${linha.agente || "Your agent"} just finished a call${quem ? ` with ${quem}` : ""}.`],
+          booking: ["📅", "New booking", `${linha.agente || "Your agent"} booked this on the phone. It's in your calendar.`],
+          action: ["🔥", "Call back", `A customer asked for a follow-up${quem ? ` — ${quem}` : ""}. A quick call back closes it.`],
+          who: "Customer", phone: "Phone", email: "Email", svc: "Service", when: "When", dur: "Duration", mood: "Mood", sum: "Summary", ref: "Ref",
+          tx: "Full transcript", agent: "Agent", caller: "Caller", cta: "Open in your portal — listen to the audio", foot: "Every call is logged automatically — in your portal, your sheet and this inbox." },
+    pt: { call: ["📞", "Nova ligação", `${linha.agente || "Sua agente"} acabou de atender${quem ? ` ${quem}` : ""}.`],
+          booking: ["📅", "Novo agendamento", `${linha.agente || "Sua agente"} marcou isto por telefone. Já está na agenda.`],
+          action: ["🔥", "Ligar de volta", `Um cliente pediu retorno${quem ? ` — ${quem}` : ""}. Uma ligação rápida fecha.`],
+          who: "Cliente", phone: "Telefone", email: "E-mail", svc: "Serviço", when: "Quando", dur: "Duração", mood: "Clima", sum: "Resumo", ref: "Ref",
+          tx: "Transcrição completa", agent: "Agente", caller: "Cliente", cta: "Abrir no portal — ouvir o áudio", foot: "Toda ligação é registrada sozinha — no portal, na planilha e aqui." },
+    es: { call: ["📞", "Nueva llamada", `${linha.agente || "Su agente"} terminó una llamada${quem ? ` con ${quem}` : ""}.`],
+          booking: ["📅", "Nueva reserva", `${linha.agente || "Su agente"} reservó esto por teléfono. Ya está en la agenda.`],
+          action: ["🔥", "Devolver llamada", `Un cliente pidió seguimiento${quem ? ` — ${quem}` : ""}. Una llamada rápida lo cierra.`],
+          who: "Cliente", phone: "Teléfono", email: "Correo", svc: "Servicio", when: "Cuándo", dur: "Duración", mood: "Tono", sum: "Resumen", ref: "Ref",
+          tx: "Transcripción completa", agent: "Agente", caller: "Cliente", cta: "Abrir en su portal — escuchar el audio", foot: "Cada llamada se registra sola — en su portal, su hoja y aquí." },
+  }[Lg];
+  const [icon, titulo, intro] = T[grupo];
+  const row = (k, v) => v ? `<tr><td style="padding:4px 14px 4px 0;color:${B.muted};white-space:nowrap;vertical-align:top;font-size:13px;">${k}</td><td style="padding:4px 0;color:${B.ink};font-weight:700;font-size:14px;">${esc(v)}</td></tr>` : "";
+  const rows = row(T.who, linha.nome) + row(T.phone, linha.telefone) + row(T.email, linha.email) + row(T.svc, linha.servico)
+    + row(T.when, linha.quando) + row(T.dur, dur) + row(T.mood, linha.sentimento) + row(T.sum, linha.resumo) + row(T.ref, grupo === "booking" ? linha.ref : "");
+  const falas = (linha.transcricao || "").toString().split("\n").filter(Boolean).slice(0, 80);
+  const tx = falas.length ? panel(`<div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};font-family:'Segoe UI',Arial,sans-serif;margin-bottom:8px;">${T.tx}</div>
+    ${falas.map((f) => { const m = f.match(/^(Agent|Agente|Caller|Cliente|Customer):\s*(.*)$/); const ag = m && /^Agent/.test(m[1]);
+      return `<div style="font-size:13px;line-height:1.55;color:${B.ink2};margin:4px 0;">${m ? `<b style="color:${ag ? B.green : B.ink};">${ag ? T.agent : T.caller}:</b> ${esc(m[2].slice(0, 600))}` : esc(f.slice(0, 600))}</div>`; }).join("")}`) : "";
+  const body = `
+  <h1 style="font-size:23px;font-weight:800;color:${B.ink};margin:0 0 6px;">${icon} ${titulo}</h1>
+  <div style="font-size:16px;color:${B.ink2};line-height:1.7;margin-top:8px;">${esc(intro)}</div>
+  ${rows ? `<div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>${panel(`<table style="border-collapse:collapse;">${rows}</table>`)}` : ""}
+  ${tx ? `<div style="height:12px;font-size:0;">&nbsp;</div>${tx}` : ""}
+  <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div><div align="center">${cta(T.cta, "https://guileoai.com/portal")}</div>
+  <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:18px;">${T.foot}</div>`;
+  const cauda = grupo === "call" ? [quem, dur].filter(Boolean).join(" · ") : grupo === "booking" ? [quem, linha.servico, linha.quando].filter(Boolean).join(" · ") : quem;
+  // `brand` = logo + cor do NEGÓCIO (clientBrand.brandFor): o dono da Natura abre e vê a Natura no topo.
+  const tx2 = brand && brand.accent ? body.replaceAll(`color:${B.gold};font-family:'Segoe UI'`, `color:${brand.accent};font-family:'Segoe UI'`) : body;
+  return { subject: `${icon} ${titulo}${cauda ? ` — ${cauda}` : ""}`.slice(0, 180), html: shell({ preheader: esc(intro), eyebrow: esc(linha.agente || (brand && brand.business) || "Guileo"), body: tx2, lang: Lg, brand }) };
 }
 
 // SELLER QUOTE — a logged-in seller emails the quote they just built TO THEMSELVES (forward model:
@@ -2797,7 +3192,10 @@ export function packagePurchaseEmail({ brand = {}, name = "", package: pkg = {},
 // in the "how we got this" note (same honesty rule as roiReportEmail / valueBlock). Callers pass the
 // aggregated figures (see /api/growth-intel action "money_proof").
 // moneyRecoveredEmail({ business, logo, brandColor, month, callsAfterHours, bookings, collectedCents, noShowsPrevented, lang })
-export function moneyRecoveredEmail({ business = "", logo = "", brandColor = "", month = "", callsAfterHours = 0, bookings = 0, collectedCents = 0, noShowsPrevented = 0, lang } = {}) {
+// `remindersSent` (2026-09-30): "faltas evitadas" é um contrafactual — ninguém sabe quantas faltas
+// um lembrete evitou, e o motor mandava sempre 0. Quando não há esse número, o 4º quadro mostra o
+// que É contável: quantos lembretes de horário saíram. Não entra na conta do valor estimado.
+export function moneyRecoveredEmail({ business = "", logo = "", brandColor = "", month = "", callsAfterHours = 0, bookings = 0, collectedCents = 0, noShowsPrevented = 0, remindersSent = 0, lang } = {}) {
   const lg = lang === "pt" ? "pt" : lang === "es" ? "es" : "en";
   const accent = _isHex(brandColor) ? String(brandColor).trim() : "#FF8A33";
   const brand = { business, logo_url: logo, accent, lang: lg };
@@ -2808,6 +3206,7 @@ export function moneyRecoveredEmail({ business = "", logo = "", brandColor = "",
   const calls = nInt(callsAfterHours);
   const books = nInt(bookings);
   const noshow = nInt(noShowsPrevented);
+  const lembretes = nInt(remindersSent);
   const collected = Math.max(0, Number(collectedCents) || 0) / 100; // exact real money (dollars)
   // Conservative per-unit benchmark vs a human receptionist — DISCLOSED in the "how" note below.
   const V_CALL = 40, V_BOOK = 75, V_NOSHOW = 50;
@@ -2842,6 +3241,11 @@ export function moneyRecoveredEmail({ business = "", logo = "", brandColor = "",
     how: `How we got this: <b>${collectedStr}</b> is money Gui <b>actually collected</b> on your calls — exact. The rest is a conservative estimate, benchmarked against a human receptionist: each after-hours call answered ≈ $${V_CALL}, each booking ≈ $${V_BOOK}, each no-show prevented ≈ $${V_NOSHOW} — work that would otherwise walk out the door. Real counts from your month, benchmarked value.`,
     cta: "See my dashboard →", foot: "These are your own numbers from this month.",
   };
+  const LEMBRETES = lg === "pt" ? "Lembretes enviados" : lg === "es" ? "Recordatorios enviados" : "Reminders sent";
+  // Sem "faltas evitadas" medidas, a frase de como calculamos não pode citar esse valor.
+  if (noshow === 0) T.how = T.how.replace(`, cada falta evitada ≈ $${V_NOSHOW}`, "").replace(`, cada ausencia evitada ≈ $${V_NOSHOW}`, "").replace(`, each no-show prevented ≈ $${V_NOSHOW}`, "");
+  // O relatório é do mês que FECHOU (rótulo no título) — "deste mês" estaria errado no dia 1.
+  if (monthLbl) T.foot = lg === "pt" ? `Estes são os seus próprios números de ${monthLbl}.` : lg === "es" ? `Estos son sus propios números de ${monthLbl}.` : `These are your own numbers from ${monthLbl}.`;
   const statCell = (num, label, color) => `<td align="center" width="25%" valign="top" style="padding:12px 4px;">
     <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:24px;line-height:1;font-weight:900;color:${color};letter-spacing:-.5px;">${num}</div>
     <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:9.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${B.muted};margin-top:5px;line-height:1.35;">${esc(label)}</div></td>`;
@@ -2852,7 +3256,7 @@ export function moneyRecoveredEmail({ business = "", logo = "", brandColor = "",
     ${statCell(String(calls), T.st.calls, B.ink)}
     ${statCell(String(books), T.st.books, B.ink)}
     ${statCell(collectedStr, T.st.collected, B.green)}
-    ${statCell(String(noshow), T.st.noshow, B.ink)}
+    ${noshow > 0 ? statCell(String(noshow), T.st.noshow, B.ink) : statCell(String(lembretes), LEMBRETES, B.ink)}
   </tr></table>`, "8px 12px");
   const bodyHtml = `${_bp(T.lead)}${hero}
     <div style="height:14px;font-size:0;line-height:0;">&nbsp;</div>${stats}
@@ -4352,4 +4756,593 @@ export function autoTopupLinkEmail({ name = "there", business = "", lang = "en",
   <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
   <div align="center">${cta(T.cta, link)}</div>`;
   return { subject: T.subject, html: shell({ preheader: T.subject, eyebrow: T.eyebrow, body, lang: lg }) };
+}
+
+// 45) CHAMADO RECEBIDO — a resposta automática ao CLIENTE no instante em que ele abre um chamado
+// que espera gente (2026-09-27). É o irmão de ida do `supportRepliedEmail` (41), que é a volta.
+// POR QUE EXISTE: a tela dizia "escalado para um humano" e o cliente ficava só com a palavra da
+// tela — fechou a aba, perdeu o número do chamado e a certeza de que alguém recebeu. O e-mail é o
+// comprovante que fica com ELE: o número, o que ele escreveu e onde a resposta vai aparecer.
+// HONESTIDADE: nenhum prazo é prometido (não existe SLA medido para prometer) e nada aqui diz que
+// "já estamos resolvendo" — diz o que é verdade: recebemos, uma pessoa vai ler, e a resposta chega
+// por e-mail (template 41) e fica na aba Relacionamento.
+// pt/en/es. Idioma fora da lista (ex.: hi) cai em inglês — quem chama decide o idioma pelo perfil.
+export function supportReceivedEmail({ name = "", business = "", lang = "pt", ticketId = "", summary = "" } = {}) {
+  const lg = ["pt", "es", "en"].includes(lang) ? lang : "en";
+  const n = esc(String(name || "").slice(0, 80));
+  const bz = esc(String(business || "").slice(0, 80));
+  // O número curto é o MESMO que a tela mostra (#8 primeiros caracteres do id): o cliente precisa
+  // conseguir bater o e-mail com o que viu no painel, e nós com o que está no banco.
+  const idBruto = String(ticketId || "").replace(/[^0-9a-z-]/gi, "");
+  const num = esc(idBruto.slice(0, 8));
+  const resumo = esc(String(summary || "").replace(/\s+/g, " ").trim().slice(0, 400));
+  const T = {
+    pt: { subject: `Recebemos o seu chamado${num ? ` #${num}` : ""}`, eyebrow: "Suporte · recebido",
+      h1: `${n ? n + ", r" : "R"}ecebemos o seu chamado`,
+      intro: `O seu pedido${bz ? ` sobre <b style="color:${B.ink};">${bz}</b>` : ""} está registrado e foi encaminhado para uma pessoa do nosso time. Quando ela responder, você recebe um e-mail — e a conversa inteira fica no seu painel, na aba <b style="color:${B.ink};">Relacionamento</b>.`,
+      lblNum: "Número do chamado", lblResumo: "O que você escreveu", semResumo: "(sem texto)",
+      nota: "Guarde este número: é por ele que localizamos o seu chamado. Para acrescentar algo, responda pelo painel — assim tudo fica na mesma conversa.",
+      cta: "Acompanhar no painel →" },
+    es: { subject: `Recibimos su ticket${num ? ` #${num}` : ""}`, eyebrow: "Soporte · recibido",
+      h1: `${n ? n + ", r" : "R"}ecibimos su ticket`,
+      intro: `Su solicitud${bz ? ` sobre <b style="color:${B.ink};">${bz}</b>` : ""} quedó registrada y fue enviada a una persona de nuestro equipo. Cuando ella responda, usted recibirá un correo — y la conversación completa queda en su panel, en la pestaña <b style="color:${B.ink};">Relacionamento</b>.`,
+      lblNum: "Número del ticket", lblResumo: "Lo que usted escribió", semResumo: "(sin texto)",
+      nota: "Guarde este número: con él ubicamos su ticket. Para agregar algo, responda desde el panel — así todo queda en la misma conversación.",
+      cta: "Seguir en el panel →" },
+    en: { subject: `We received your ticket${num ? ` #${num}` : ""}`, eyebrow: "Support · received",
+      h1: `${n ? n + ", w" : "W"}e received your ticket`,
+      intro: `Your request${bz ? ` about <b style="color:${B.ink};">${bz}</b>` : ""} is recorded and has been handed to a person on our team. When they reply you'll get an email — and the full conversation lives in your dashboard, under the <b style="color:${B.ink};">Relacionamento</b> tab.`,
+      lblNum: "Ticket number", lblResumo: "What you wrote", semResumo: "(no text)",
+      nota: "Keep this number: it's how we find your ticket. To add anything, reply from the dashboard — that keeps everything in one conversation.",
+      cta: "Follow it in my dashboard →" },
+  }[lg];
+  const rotulo = (txt, top = "0") => `<div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin:${top} 0 8px;">${txt}</div>`;
+  const body = `
+  <h1 style="font-size:24px;font-weight:800;color:${B.ink};margin:0 0 6px;">${T.h1}</h1>
+  <div style="font-size:16px;color:${B.ink2};line-height:1.7;margin-top:8px;">${T.intro}</div>
+  <div style="height:16px;line-height:16px;font-size:0;">&nbsp;</div>
+  ${panel(`
+    ${num ? `${rotulo(T.lblNum)}
+    <div style="font-family:'SF Mono',Menlo,Consolas,monospace;font-size:18px;font-weight:800;letter-spacing:1px;color:${B.ink};">#${num}</div>` : ""}
+    ${rotulo(T.lblResumo, num ? "14px" : "0")}
+    <div style="font-size:14px;color:${B.ink2};line-height:1.65;word-break:break-word;">${resumo ? `“${resumo}”` : T.semResumo}</div>`)}
+  <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
+  <div style="font-size:13px;color:${B.muted};line-height:1.6;">${T.nota}</div>
+  <div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(T.cta, B.site + "/portal?tab=relacionamento")}</div>`;
+  return { subject: T.subject, html: shell({ preheader: `${T.subject}${resumo ? ` — ${resumo.slice(0, 90)}` : ""}`, eyebrow: T.eyebrow, body, lang: lg }) };
+}
+
+// ── TROCA DE SENHA DA CENTRAL (2026-10-01) ─────────────────────────────────────────────────────
+// Antes este e-mail saía pelo SMTP padrão do Supabase, que tem cota de poucos envios por hora: o
+// segundo pedido do dia voltava "Error sending recovery email" e o dono ficava trancado fora.
+// Agora sai pela Resend, com a marca. O link vale uma vez e vence — o texto diz isso, para que
+// "não funcionou" na segunda tentativa tenha explicação na própria mensagem.
+export function passwordResetEmail({ link = "", lang = "en" } = {}) {
+  const t = lang === "pt" ? {
+    subject: "Sua senha nova da Central",
+    pre: "Um clique para escolher a senha nova.",
+    eyebrow: "Acesso à Central",
+    h1: "Escolha sua senha nova",
+    intro: "Alguém (provavelmente você) pediu para trocar a senha da Central. Clique no botão e escolha a senha nova.",
+    cta: "Escolher senha nova →",
+    foot: "O link vale uma vez só e vence em 1 hora. Se não foi você, ignore este e-mail — sua senha continua a mesma.",
+  } : lang === "es" ? {
+    subject: "Tu contraseña nueva de la Central",
+    pre: "Un clic para elegir tu contraseña nueva.",
+    eyebrow: "Acceso a la Central",
+    h1: "Elige tu contraseña nueva",
+    intro: "Alguien (probablemente tú) pidió cambiar la contraseña de la Central. Haz clic en el botón y elige la nueva.",
+    cta: "Elegir contraseña nueva →",
+    foot: "El enlace sirve una sola vez y vence en 1 hora. Si no fuiste tú, ignora este correo — tu contraseña sigue igual.",
+  } : {
+    subject: "Your new Central password",
+    pre: "One click to choose your new password.",
+    eyebrow: "Central access",
+    h1: "Choose your new password",
+    intro: "Someone (probably you) asked to reset the Central password. Click the button and choose a new one.",
+    cta: "Choose new password →",
+    foot: "The link works once and expires in 1 hour. If this wasn't you, ignore this email — your password stays the same.",
+  };
+  const body = `
+  <div style="font-size:26px;line-height:1.2;color:${B.ink2};font-weight:700;">${t.h1}</div>
+  <div class="g-intro" style="font-size:16px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
+  <div style="height:24px;line-height:24px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(t.cta, link)}</div>
+  <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+}
+
+// ── A VIA ASSINADA — CÓPIA PARA AS DUAS PARTES (2026-10-04, assinatura própria v2) ─────────────
+// Sai no instante em que o cliente assina pelo /sign: uma para quem assinou (no idioma do
+// documento), outra para o dono (pt). Leva o que faz da via uma PROVA, e não um "parabéns":
+// título, as duas assinaturas (nome, hora UTC, IP), a impressão digital SHA-256 e o link
+// PERMANENTE da via somente-leitura (/sign?t=…), que tem "Imprimir / Salvar PDF".
+// 🚨 HONESTIDADE: o e-mail não anexa PDF (não geramos PDF no servidor) — ele diz que o PDF se salva
+// pelo link. Prometer "segue em anexo" sem anexo é o primeiro e-mail que o cliente novo não confia.
+// `audience`: "signer" (quem assinou) | "owner" (o dono da Guileo). Idiomas pt/en/es/hi.
+export function signedCopyEmail({ title = "", counterparty = "", link = "", hash = "", provider = null, signer = {}, lang = "en", audience = "signer", theme = "" } = {}) {
+  // theme "natura-deck" → a via sai no papel do deck (paleta clara); qualquer outro → a casa escura
+  const light = theme === "natura-deck";
+  const K = light ? BL : B;
+  const pal = light ? { palette: "light" } : null;
+  const L = ["pt", "en", "es", "hi"].includes(lang) ? lang : "en";
+  const tt = esc(String(title || "").slice(0, 200));
+  const cp = esc(String(counterparty || "").slice(0, 160));
+  const h = /^[0-9a-f]{64}$/.test(String(hash || "")) ? String(hash) : "";
+  // o link só desenha se for o NOSSO /sign — nunca um href livre
+  const url = /^https:\/\/guileoai\.com\/sign\?t=[A-Za-z0-9%]+$/.test(String(link || "")) ? String(link) : "";
+  const utc = (d) => { try { return new Date(d).toISOString().replace("T", " ").slice(0, 19) + " UTC"; } catch { return ""; } };
+  const C = {
+    pt: { eyebrow: "Via assinada", pre: "Sua via do documento assinado, com a impressão digital SHA-256.",
+      h1s: "Assinado. Esta é a sua via.", h1o: "Contrato assinado pelas duas partes",
+      introS: `O documento <b style="color:${K.ink};">${tt}</b> foi assinado pelas duas partes. Guarde este e-mail: ele é a sua via.`,
+      introO: `<b style="color:${K.ink};">${cp || "O cliente"}</b> assinou <b style="color:${K.ink};">${tt}</b>. A via abaixo é a mesma que ele recebeu.`,
+      prov: "Prestador", cli: "Cliente", nome: "Nome", hora: "Data/hora (UTC)", ip: "IP",
+      hashL: "Impressão digital do documento (SHA-256)",
+      hashN: "Qualquer alteração no texto, inclusive na tradução, muda este código. A página do link recalcula e confere no seu navegador.",
+      cta: "Abrir a via assinada", pdf: "No link, use \"Imprimir / Salvar PDF\" para guardar o PDF.", subj: "✍️ Via assinada" },
+    en: { eyebrow: "Signed copy", pre: "Your copy of the signed document, with its SHA-256 fingerprint.",
+      h1s: "Signed. This is your copy.", h1o: "Agreement signed by both parties",
+      introS: `<b style="color:${K.ink};">${tt}</b> has been signed by both parties. Keep this email — it is your copy.`,
+      introO: `<b style="color:${K.ink};">${cp || "The client"}</b> signed <b style="color:${K.ink};">${tt}</b>. The record below is the same one they received.`,
+      prov: "Provider", cli: "Client", nome: "Name", hora: "Date/time (UTC)", ip: "IP",
+      hashL: "Document fingerprint (SHA-256)",
+      hashN: "Any change to the text, including the translation, changes this code. The linked page recomputes and checks it in your browser.",
+      cta: "Open the signed copy", pdf: "On that page, use \"Print / Save as PDF\" to keep a PDF.", subj: "✍️ Signed copy" },
+    es: { eyebrow: "Copia firmada", pre: "Tu copia del documento firmado, con su huella SHA-256.",
+      h1s: "Firmado. Esta es tu copia.", h1o: "Contrato firmado por ambas partes",
+      introS: `<b style="color:${K.ink};">${tt}</b> fue firmado por ambas partes. Guarda este correo: es tu copia.`,
+      introO: `<b style="color:${K.ink};">${cp || "El cliente"}</b> firmó <b style="color:${K.ink};">${tt}</b>. El registro de abajo es el mismo que recibió.`,
+      prov: "Proveedor", cli: "Cliente", nome: "Nombre", hora: "Fecha/hora (UTC)", ip: "IP",
+      hashL: "Huella del documento (SHA-256)",
+      hashN: "Cualquier cambio en el texto, incluida la traducción, cambia este código. La página del enlace lo recalcula y lo verifica en tu navegador.",
+      cta: "Abrir la copia firmada", pdf: "En esa página, usa \"Imprimir / Guardar PDF\" para guardar el PDF.", subj: "✍️ Copia firmada" },
+    hi: { eyebrow: "हस्ताक्षरित प्रति", pre: "हस्ताक्षरित दस्तावेज़ की आपकी प्रति, SHA-256 फ़िंगरप्रिंट के साथ।",
+      h1s: "हस्ताक्षरित। यह आपकी प्रति है।", h1o: "दोनों पक्षों द्वारा हस्ताक्षरित अनुबंध",
+      introS: `<b style="color:${K.ink};">${tt}</b> पर दोनों पक्षों ने हस्ताक्षर कर दिए हैं। यह ईमेल संभाल कर रखें — यही आपकी प्रति है।`,
+      introO: `<b style="color:${K.ink};">${cp || "ग्राहक"}</b> ने <b style="color:${K.ink};">${tt}</b> पर हस्ताक्षर किए। नीचे का रिकॉर्ड वही है जो उन्हें मिला।`,
+      prov: "प्रदाता", cli: "ग्राहक", nome: "नाम", hora: "दिनांक/समय (UTC)", ip: "IP",
+      hashL: "दस्तावेज़ फ़िंगरप्रिंट (SHA-256)",
+      hashN: "पाठ में कोई भी बदलाव, अनुवाद सहित, इस कोड को बदल देता है। लिंक वाला पेज इसे आपके ब्राउज़र में दोबारा जाँचता है।",
+      cta: "हस्ताक्षरित प्रति खोलें", pdf: "उस पेज पर \"प्रिंट / PDF सहेजें\" से PDF रखें।", subj: "✍️ हस्ताक्षरित प्रति" },
+  }[L];
+  const owner = audience === "owner";
+  const lab = (x) => light
+    ? `<div style="font-family:${BL.mono};font-size:10.5px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:${BL.gold};margin-bottom:8px;">${x}</div>`
+    : `<div style="font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.gold};margin-bottom:8px;">${x}</div>`;
+  const row = (k, v) => v ? `<tr><td style="padding:3px 14px 3px 0;color:${K.muted};white-space:nowrap;vertical-align:top;${light ? `font-family:${BL.mono};font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;line-height:2;` : ""}">${k}</td><td style="padding:3px 0;color:${K.ink2};font-weight:700;word-break:break-word;">${v}</td></tr>` : "";
+  const bloco = (rotulo, nomeLinha, at, ip) => panel(`${lab(rotulo)}<table style="font-size:14px;border-collapse:collapse;">${row(C.nome, nomeLinha)}${row(C.hora, esc(utc(at)))}${row(C.ip, esc(String(ip || "").slice(0, 60)))}</table>`, undefined, pal);
+  const pNome = provider ? esc([provider.entity, [provider.name, provider.title].filter(Boolean).join(", ")].filter(Boolean).join(" — ").slice(0, 240)) : "";
+  const body = `${light ? `
+  <div style="font-family:${BL.mono};font-size:11px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:${BL.green};margin:0 0 12px;">&#10003;&nbsp; ${C.eyebrow}</div>` : ""}
+  <h1 style="font-size:23px;font-weight:800;color:${K.ink};margin:0 0 6px;">${owner ? C.h1o : C.h1s}</h1>
+  <div style="font-size:16px;color:${K.ink2};line-height:1.7;margin-top:8px;">${owner ? C.introO : C.introS}</div>
+  <div style="height:16px;line-height:16px;font-size:0;">&nbsp;</div>
+  ${provider ? bloco(C.prov, pNome, provider.at, provider.ip) + `<div style="height:10px;line-height:10px;font-size:0;">&nbsp;</div>` : ""}
+  ${bloco(C.cli, esc(String(signer.name || "").slice(0, 120)) + (cp ? ` <span style="color:${K.muted};font-weight:400;">(${cp})</span>` : ""), signer.at, signer.ip)}
+  ${h ? `<div style="height:10px;line-height:10px;font-size:0;">&nbsp;</div>${panel(`${lab(C.hashL)}<div style="font-family:'IBM Plex Mono',Menlo,Consolas,monospace;font-size:12.5px;line-height:1.6;color:${K.ink};word-break:break-all;">${h}</div><div style="font-size:12px;color:${K.muted};margin-top:10px;line-height:1.6;">${C.hashN}</div>`, undefined, pal)}` : ""}
+  ${url ? `<div style="height:22px;line-height:22px;font-size:0;">&nbsp;</div><div align="center">${cta(C.cta, url, false, pal)}</div>
+  <div style="font-size:12px;color:${K.muted};text-align:center;margin-top:12px;">${C.pdf}</div>
+  <div style="font-size:11px;text-align:center;margin-top:8px;word-break:break-all;"><a href="${esc(url)}" style="color:${light ? `${BL.ink};text-decoration:underline` : B.gold};">${esc(url)}</a></div>` : ""}`;
+  // rodapé honesto: quem recebe é parte de um contrato, não "alguém que começou com a Guileo"
+  const recv = { pt: "Você recebe este e-mail porque é parte deste documento.", en: "You're receiving this because you are a party to this document.", es: "Recibe este correo porque es parte de este documento.", hi: "आपको यह ईमेल इसलिए मिला क्योंकि आप इस दस्तावेज़ के पक्षकार हैं।" }[L];
+  return { subject: `${C.subj} — ${String(title || "").slice(0, 120)}`, html: shell(light ? { preheader: C.pre, eyebrow: "", body, lang: L, recv, palette: "light" } : { preheader: C.pre, eyebrow: C.eyebrow, body, lang: L, recv }) };
+}
+
+// ── RECIBO DO BALCÃO — GUILEO DESK (2026-10-05) ────────────────────────────────────────────────
+// Sai depois que a venda GRAVOU (desk_checkout devolveu sale_id). Mostra exatamente as linhas e os
+// pagamentos que o banco registrou — nada recalculado aqui. Vale-presente vendido leva o CÓDIGO,
+// porque é o que a cliente precisa para usar. O negócio aparece como remetente da experiência.
+export function deskReceiptEmail({ business = "", location = null, number = "", at = "", lines = [], payments = [], subtotal = 0, discount = 0, tax = 0, tip = 0, total = 0, coupon = null, customer = "", lang = "en", currency = "USD", tz = "America/New_York" } = {}) {
+  const LOC = { pt: "pt-BR", es: "es-ES", en: "en-US" }[lang] || "en-US";
+  const m = (c) => new Intl.NumberFormat(LOC, { style: "currency", currency }).format((Number(c) || 0) / 100);
+  const quando = (() => { try { return new Date(at).toLocaleString(LOC, { timeZone: tz, dateStyle: "medium", timeStyle: "short" }); } catch { return ""; } })();
+  const T = lang === "pt" ? { subject: `Seu recibo · ${business}`, pre: `Obrigado pela visita${customer ? `, ${customer}` : ""}.`, eyebrow: "Recibo", h1: "Obrigado pela visita", sub: "Subtotal", cup: "Cupom", disc: "Desconto", tax: "Imposto", tip: "Gorjeta", total: "Total", paid: "Pagamento", code: "Código do vale-presente", foot: "Guarde este e-mail. Qualquer dúvida, é só responder.", M: { cash: "Dinheiro", card: "Cartão", gift_card: "Vale-presente", package: "Pacote", other: "Outro" }, n: "Recibo nº" }
+    : lang === "es" ? { subject: `Tu recibo · ${business}`, pre: `Gracias por tu visita${customer ? `, ${customer}` : ""}.`, eyebrow: "Recibo", h1: "Gracias por tu visita", sub: "Subtotal", cup: "Cupón", disc: "Descuento", tax: "Impuesto", tip: "Propina", total: "Total", paid: "Pago", code: "Código de la tarjeta regalo", foot: "Guarda este correo. Cualquier duda, solo responde.", M: { cash: "Efectivo", card: "Tarjeta", gift_card: "Tarjeta regalo", package: "Paquete", other: "Otro" }, n: "Recibo n.º" }
+    : { subject: `Your receipt · ${business}`, pre: `Thank you for visiting${customer ? `, ${customer}` : ""}.`, eyebrow: "Receipt", h1: "Thank you for your visit", sub: "Subtotal", cup: "Coupon", disc: "Discount", tax: "Tax", tip: "Tip", total: "Total", paid: "Payment", code: "Gift card code", foot: "Keep this email. Any questions, just reply.", M: { cash: "Cash", card: "Card", gift_card: "Gift card", package: "Package", other: "Other" }, n: "Receipt #" };
+  const row = (a, b, strong = false) => `<tr><td style="padding:6px 0;color:${strong ? B.ink : B.ink2};font-size:14px;${strong ? "font-weight:700;" : ""}">${a}</td><td align="right" style="padding:6px 0;color:${strong ? B.ink : B.ink2};font-size:14px;${strong ? "font-weight:700;" : ""}">${b}</td></tr>`;
+  const itens = (lines || []).filter((l) => l.kind !== "tip").map((l) => row(`${esc(l.name)}${l.qty > 1 ? ` × ${l.qty}` : ""}`, m(l.total_cents))).join("");
+  const codigos = (lines || []).filter((l) => l.kind === "giftcard" && l.meta?.code).map((l) => `<div style="margin-top:14px;padding:12px 14px;border:1px dashed ${B.gold};border-radius:10px;font-size:13px;color:${B.ink2};">${T.code}: <strong style="font-family:ui-monospace,Menlo,monospace;color:${B.ink};letter-spacing:1px;">${esc(l.meta.code)}</strong></div>`).join("");
+  const pag = (payments || []).map((p) => row(`${T.paid} · ${T.M[p.method] || esc(p.method)}`, m(p.amount_cents))).join("");
+  const lugar = location ? `<div style="font-size:12px;color:${B.muted};margin-top:4px;">${esc([location.name, location.address, location.city].filter(Boolean).join(" · "))}</div>` : "";
+  const body = `
+  <div style="font-size:24px;line-height:1.2;color:${B.ink2};font-weight:700;">${T.h1}</div>
+  <div style="font-size:13px;color:${B.muted};margin-top:6px;">${esc(business)} · ${T.n} ${esc(number)} · ${esc(quando)}</div>${lugar}
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px;border-top:1px solid ${B.line};">${itens}</table>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px;border-top:1px solid ${B.line};">
+    ${row(T.sub, m(subtotal))}${coupon?.cents ? row(`${T.cup} ${esc(coupon.code)}`, `−${m(coupon.cents)}`) : ""}${discount - (coupon?.cents || 0) > 0 ? row(T.disc, `−${m(discount - (coupon?.cents || 0))}`) : ""}${tax ? row(T.tax, m(tax)) : ""}${tip ? row(T.tip, m(tip)) : ""}${row(T.total, m(total), true)}
+  </table>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px;border-top:1px solid ${B.line};">${pag}</table>
+  ${codigos}
+  <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:20px;">${T.foot}</div>`;
+  return { subject: T.subject, html: shell({ preheader: T.pre, eyebrow: T.eyebrow, body, lang }) };
+}
+
+// ── LINK DO SINAL — GUILEO DESK (2026-10-05) ───────────────────────────────────────────────────
+// Sai quando a agente (ou a recepção) marca um serviço que pede sinal. O valor vem do cadastro do
+// serviço; o link é uma sessão do Stripe na conta DO NEGÓCIO. Não promete o que não existe: diz
+// que o horário fica garantido com o sinal, e que o valor entra no preço do serviço.
+export function depositLinkEmail({ business = "", name = "", service = "", whenLabel = "", amount = "", link = "", lang = "en" } = {}) {
+  business = esc(business); name = esc(name); service = esc(service); whenLabel = esc(whenLabel); amount = esc(amount);
+  const t = lang === "pt" ? {
+    subject: `${business}: garanta seu horário (sinal de ${amount})`, pre: `Um clique para garantir ${service || "seu horário"}.`, eyebrow: "Sinal do agendamento",
+    h1: `Falta só o sinal${name ? `, ${name}` : ""}`, intro: `Seu horário${service ? ` de <strong style="color:${B.ink};">${service}</strong>` : ""}${whenLabel ? ` em <strong style="color:${B.ink};">${whenLabel}</strong>` : ""} está reservado. Para garantir, pague o sinal de <strong style="color:${B.ink};">${amount}</strong> — ele é descontado do valor do serviço.`,
+    cta: `Pagar o sinal de ${amount} →`, foot: "Pagamento seguro pelo Stripe. Qualquer dúvida, é só responder este e-mail.",
+  } : lang === "es" ? {
+    subject: `${business}: asegura tu cita (depósito de ${amount})`, pre: `Un clic para asegurar ${service || "tu cita"}.`, eyebrow: "Depósito de la cita",
+    h1: `Solo falta el depósito${name ? `, ${name}` : ""}`, intro: `Tu cita${service ? ` de <strong style="color:${B.ink};">${service}</strong>` : ""}${whenLabel ? ` el <strong style="color:${B.ink};">${whenLabel}</strong>` : ""} está reservada. Para asegurarla, paga el depósito de <strong style="color:${B.ink};">${amount}</strong> — se descuenta del precio del servicio.`,
+    cta: `Pagar depósito de ${amount} →`, foot: "Pago seguro con Stripe. Cualquier duda, responde este correo.",
+  } : {
+    subject: `${business}: secure your appointment (${amount} deposit)`, pre: `One click to secure ${service || "your appointment"}.`, eyebrow: "Appointment deposit",
+    h1: `Just the deposit left${name ? `, ${name}` : ""}`, intro: `Your${service ? ` <strong style="color:${B.ink};">${service}</strong>` : ""} appointment${whenLabel ? ` on <strong style="color:${B.ink};">${whenLabel}</strong>` : ""} is reserved. To secure it, pay the <strong style="color:${B.ink};">${amount}</strong> deposit — it comes off the price of the service.`,
+    cta: `Pay the ${amount} deposit →`, foot: "Secure payment by Stripe. Any questions, just reply to this email.",
+  };
+  const body = `
+  <div style="font-size:26px;line-height:1.2;color:${B.ink2};font-weight:700;">${t.h1}</div>
+  <div class="g-intro" style="font-size:16px;color:${B.ink2};line-height:1.72;margin-top:13px;">${t.intro}</div>
+  <div style="height:24px;line-height:24px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(t.cta, link)}</div>
+  <div style="font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${t.foot}</div>`;
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang }) };
+}
+
+// FALTA DA PROFISSIONAL (Guileo Desk, 2026-10-05) — slide 24 da apresentação do Natura: "quando alguém
+// falta, a Lilian avisa as clientes do dia e remarca". Dois casos: outra profissional cobre no MESMO horário
+// (covered) ou a cliente escolhe outro horário pelo link de remarcar/cancelar (reschedule).
+export function proAbsenceEmail({ name = "", business = "", service = "", whenLabel = "", pro = "", cover = "", manageUrl = "", mode = "reschedule", lang = "en", brand = null, address = "" } = {}) {
+  name = esc(name); business = esc(business); service = esc(service); whenLabel = esc(whenLabel); pro = esc(pro); cover = esc(cover);
+  const T = ({
+    pt: {
+      subj: mode === "covered" ? `Sua visita${whenLabel ? " de " + whenLabel : ""} continua, com ${cover}` : `Precisamos remarcar sua visita${whenLabel ? " de " + whenLabel : ""}`,
+      h: mode === "covered" ? `${name ? name + ", " : ""}sua visita continua de pé` : `${name ? name + ", " : ""}precisamos remarcar`,
+      lead: mode === "covered"
+        ? `${pro || "Sua profissional"} não vai poder atender hoje. Para você não perder o horário, ${cover} vai fazer ${service ? `seu ${service}` : "seu atendimento"}${whenLabel ? ` no mesmo horário, ${whenLabel}` : " no mesmo horário"}. Se preferir outra data, é só escolher abaixo.`
+        : `${pro || "Sua profissional"} não vai poder atender${whenLabel ? ` ${whenLabel}` : ""}. Pedimos desculpas. Escolha outro horário${service ? ` para ${service}` : ""} no link abaixo — leva um minuto.`,
+      cta: mode === "covered" ? "Ver ou mudar minha visita →" : "Escolher outro horário →",
+      foot: "Se tiver qualquer dúvida, é só responder este e-mail.",
+    },
+    es: {
+      subj: mode === "covered" ? `Tu cita${whenLabel ? " de " + whenLabel : ""} sigue, con ${cover}` : `Necesitamos cambiar tu cita${whenLabel ? " de " + whenLabel : ""}`,
+      h: mode === "covered" ? `${name ? name + ", " : ""}tu cita sigue en pie` : `${name ? name + ", " : ""}necesitamos cambiar tu cita`,
+      lead: mode === "covered"
+        ? `${pro || "Tu profesional"} no podrá atender hoy. Para que no pierdas tu horario, ${cover} hará ${service ? `tu ${service}` : "tu servicio"}${whenLabel ? ` a la misma hora, ${whenLabel}` : " a la misma hora"}. Si prefieres otra fecha, elígela abajo.`
+        : `${pro || "Tu profesional"} no podrá atender${whenLabel ? ` ${whenLabel}` : ""}. Lo sentimos. Elige otro horario${service ? ` para ${service}` : ""} en el enlace — toma un minuto.`,
+      cta: mode === "covered" ? "Ver o cambiar mi cita →" : "Elegir otro horario →",
+      foot: "Si tienes alguna duda, responde este correo.",
+    },
+    en: {
+      subj: mode === "covered" ? `Your visit${whenLabel ? " on " + whenLabel : ""} is still on, with ${cover}` : `We need to move your visit${whenLabel ? " on " + whenLabel : ""}`,
+      h: mode === "covered" ? `${name ? name + ", " : ""}your visit is still on` : `${name ? name + ", " : ""}we need to move your visit`,
+      lead: mode === "covered"
+        ? `${pro || "Your provider"} can't make it today. So you keep your time, ${cover} will do ${service ? `your ${service}` : "your appointment"}${whenLabel ? ` at the same time, ${whenLabel}` : " at the same time"}. Prefer another day? Pick one below.`
+        : `${pro || "Your provider"} can't make it${whenLabel ? ` ${whenLabel}` : ""}. We're sorry. Pick a new time${service ? ` for ${service}` : ""} with the link below — it takes a minute.`,
+      cta: mode === "covered" ? "See or change my visit →" : "Pick a new time →",
+      foot: "Any questions? Just reply to this email.",
+    },
+  })[lang === "pt" ? "pt" : lang === "es" ? "es" : "en"];
+  const body = `
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:900;color:${B.ink};text-align:center;">${T.h}</div>
+    <div style="height:10px;font-size:0;">&nbsp;</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;color:${B.ink};text-align:center;line-height:1.7;">${T.lead}</div>
+    ${manageUrl ? `<div style="height:18px;font-size:0;">&nbsp;</div><div align="center">${cta(T.cta, manageUrl)}</div>` : ""}
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${T.foot}</div>`;
+  return { subject: T.subj, html: shell({ preheader: T.lead.slice(0, 120), eyebrow: business || "Guileo", body, lang, brand, address }) };
+}
+
+// GUILEO DESK ATIVADO (2026-10-05) — sai no 1º pagamento de um plano do Desk (stripe-webhook ramo "desk_plan").
+// Leva o código de conexão (o único caminho de entrada de quem comprou pela página /desk) e o próximo passo.
+export function deskWelcomeEmail({ name = "", plan = "", code = "", credits = 0, lang = "en" } = {}) {
+  name = esc(name); plan = esc(plan); code = esc(code);
+  const T = ({
+    pt: { subj: `Seu Guileo Desk ${plan} está ativo`, h: `${name ? name + ", " : ""}seu Guileo Desk está ativo`, lead: `O plano ${plan} já está liberado. Entre na Central, cole o seu código de conexão em Configurações e abra o Balcão. De lá, toque em "Instalar o app" para ter o Desk no iPad e no celular.`, codeL: "Seu código de conexão", cr: credits ? `${credits.toLocaleString("pt-BR")} créditos por mês para a recepcionista de voz já estão na sua conta.` : "", cta: "Abrir o Guileo Desk →", foot: "Qualquer dúvida, é só responder este e-mail." },
+    es: { subj: `Tu Guileo Desk ${plan} está activo`, h: `${name ? name + ", " : ""}tu Guileo Desk está activo`, lead: `El plan ${plan} ya está liberado. Entra al panel, pega tu código de conexión en Configuración y abre la Recepción. Desde ahí toca "Instalar la app" para tener el Desk en iPad y celular.`, codeL: "Tu código de conexión", cr: credits ? `${credits.toLocaleString("es")} créditos al mes para la recepcionista de voz ya están en tu cuenta.` : "", cta: "Abrir Guileo Desk →", foot: "Cualquier duda, responde este correo." },
+    en: { subj: `Your Guileo Desk ${plan} is active`, h: `${name ? name + ", " : ""}your Guileo Desk is active`, lead: `Your ${plan} plan is live. Sign in to the dashboard, paste your connection code in Settings and open the Desk. From there, tap "Install the Desk app" to put it on your iPad and phone.`, codeL: "Your connection code", cr: credits ? `${credits.toLocaleString("en-US")} credits a month for the voice receptionist are already in your account.` : "", cta: "Open Guileo Desk →", foot: "Questions? Just reply to this email." },
+  })[lang === "pt" ? "pt" : lang === "es" ? "es" : "en"];
+  const body = `
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:900;color:${B.ink};text-align:center;">${T.h}</div>
+    <div style="height:10px;font-size:0;">&nbsp;</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;color:${B.ink};text-align:center;line-height:1.7;">${T.lead}</div>
+    ${code ? `<div style="height:16px;font-size:0;">&nbsp;</div><div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;">${T.codeL}</div><div style="font-family:ui-monospace,Menlo,monospace;font-size:20px;font-weight:700;color:${B.ink};text-align:center;letter-spacing:1px;margin-top:4px;">${code}</div>` : ""}
+    ${T.cr ? `<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;color:${B.ink};text-align:center;margin-top:14px;">${T.cr}</div>` : ""}
+    <div style="height:18px;font-size:0;">&nbsp;</div><div align="center">${cta(T.cta, "https://guileoai.com/portal?tab=desk")}</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${T.foot}</div>`;
+  return { subject: T.subj, html: shell({ preheader: T.lead.slice(0, 120), eyebrow: "Guileo Desk", body, lang }) };
+}
+
+// MINHA CONTA (Guileo Desk, 2026-10-05) — o link mágico da área da cliente final (/minha-conta): próximos
+// horários, visitas, pacotes e vales. Sai SÓ para um e-mail que já é cliente do negócio (/api/minha-conta
+// "pedir"), com a marca do negócio. O link é assinado (lib/visita.js contaUrl) e vence em `dias`.
+export function minhaContaLinkEmail({ name = "", business = "", link = "", dias = 7, lang = "en", brand = null, address = "" } = {}) {
+  name = esc(name); business = esc(business);
+  const d = Math.max(1, Math.round(Number(dias) || 7));
+  const T = ({
+    pt: { subj: `${business ? business + ": " : ""}seu acesso à sua conta`, h: `${name ? "Oi, " + name : "Oi"}! Aqui está o seu acesso`,
+      lead: `Toque no botão para ver seus próximos horários, remarcar ou cancelar, suas visitas e o saldo dos seus pacotes e vales${business ? ` na ${business}` : ""}. Não precisa de senha.`,
+      cta: "Abrir minha conta →", prazo: `O link vale por ${d} dia${d > 1 ? "s" : ""} e é só seu — não encaminhe este e-mail.`, foot: "Não foi você que pediu? Pode ignorar este e-mail; nada muda na sua conta." },
+    es: { subj: `${business ? business + ": " : ""}tu acceso a tu cuenta`, h: `${name ? "Hola, " + name : "Hola"}. Aquí está tu acceso`,
+      lead: `Toca el botón para ver tus próximas citas, reprogramar o cancelar, tus visitas y el saldo de tus paquetes y tarjetas de regalo${business ? ` en ${business}` : ""}. No necesitas contraseña.`,
+      cta: "Abrir mi cuenta →", prazo: `El enlace vale por ${d} día${d > 1 ? "s" : ""} y es solo tuyo — no reenvíes este correo.`, foot: "¿No lo pediste tú? Puedes ignorar este correo; nada cambia en tu cuenta." },
+    en: { subj: `${business ? business + ": " : ""}your account link`, h: `${name ? "Hi " + name : "Hi"}, here's your access`,
+      lead: `Tap the button to see your upcoming appointments, reschedule or cancel, your past visits and your package and gift card balances${business ? ` at ${business}` : ""}. No password needed.`,
+      cta: "Open my account →", prazo: `The link works for ${d} day${d > 1 ? "s" : ""} and it's just for you — please don't forward this email.`, foot: "Didn't ask for this? You can ignore this email; nothing changes on your account." },
+  })[lang === "pt" ? "pt" : lang === "es" ? "es" : "en"];
+  const body = `
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:900;color:${B.ink};text-align:center;">${T.h}</div>
+    <div style="height:10px;font-size:0;">&nbsp;</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;color:${B.ink};text-align:center;line-height:1.7;">${T.lead}</div>
+    ${link ? `<div style="height:18px;font-size:0;">&nbsp;</div><div align="center">${cta(T.cta, link)}</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:${B.muted};text-align:center;margin-top:14px;line-height:1.6;">${T.prazo}</div>` : ""}
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${B.muted};text-align:center;margin-top:16px;">${T.foot}</div>`;
+  return { subject: T.subj, html: shell({ preheader: T.lead.slice(0, 120), eyebrow: business || "Guileo", body, lang, brand, address }) };
+}
+
+// ☀️ RESUMO DA MANHÃ — GUILEO DESK (2026-10-05). Promessa do slide da apresentação do Natura: "um resumo
+// para você, toda manhã". Vai para a DONA (opt-in em Equipe e serviços → Avisos para você), ~7h no fuso
+// do negócio. `dados` é exatamente o que desk_resumo_dados_svc devolveu (db/desk_v6_resumo.sql).
+// 🚨 HONESTO: seção sem dado SOME — nunca um "0" inventado. null/lista vazia = não mostra. Agenda vazia
+// vira UMA linha ("agenda vazia hoje"), não um resumo de mentira. O zero só aparece quando é medida
+// (houve agenda ontem e ninguém faltou → a linha de faltas simplesmente não entra; ver `linhasOntem`).
+export function deskMorningSummaryEmail({ dados = null, business = "", lang = "en", teste = false, links = null } = {}) {
+  const L = ["pt", "es", "hi"].includes(lang) ? lang : "en";
+  const LOC = { pt: "pt-BR", es: "es-ES", hi: "hi-IN", en: "en-US" }[L];
+  const d = dados && typeof dados === "object" ? dados : {};
+  const tz0 = typeof d.tz === "string" && d.tz ? d.tz : "America/New_York";
+  const negocio = esc(String(d.business || business || "").slice(0, 80));
+  const moeda = /Sao_Paulo|Cuiaba|Fortaleza|Recife|Bahia|Manaus|Belem|Campo_Grande|Porto_Velho|Boa_Vista|Rio_Branco|Araguaina|Maceio|Noronha/.test(tz0) ? "BRL" : "USD";
+  const m = (c) => { try { return new Intl.NumberFormat(LOC, { style: "currency", currency: moeda }).format((Number(c) || 0) / 100); } catch { return String((Number(c) || 0) / 100); } };
+  const hora = (iso, tz) => { try { return new Date(iso).toLocaleTimeString(LOC, { hour: "numeric", minute: "2-digit", timeZone: tz || tz0 }); } catch { return ""; } };
+  const diaHora = (iso, tz) => { try { return new Date(iso).toLocaleString(LOC, { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: tz || tz0 }); } catch { return ""; } };
+  const n = (x) => Math.max(0, Math.round(Number(x) || 0));
+  const T = ({
+    pt: { eyebrow: "Resumo da manhã", hi: "Bom dia", today: "Hoje", empty: "Agenda vazia hoje.", appts: (k) => `${k} horário${k === 1 ? "" : "s"}`, first: (h) => `primeiro às ${h}`,
+      conf: (c, u) => `${c} confirmado${c === 1 ? "" : "s"}${u ? `, ${u} sem confirmar` : ""}`, none: "nada marcado", noLoc: "Sem unidade",
+      alerts: "Atenção hoje", deposits: "Sinais pendentes · próximos 7 dias", depTotal: (k, v) => `${k} sem sinal pago · ${v} no total`,
+      yday: "Ontem", visits: (k) => `${k} atendimento${k === 1 ? "" : "s"}`, noshow: (k) => `${k} falta${k === 1 ? "" : "s"}`, cancel: (k) => `${k} cancelado${k === 1 ? "" : "s"}`,
+      newc: (k) => `${k} cliente${k === 1 ? "" : "s"} nova${k === 1 ? "" : "s"}`, cash: (v, k) => `${v} entrou no caixa em ${k} venda${k === 1 ? "" : "s"}`, tips: (v) => `${v} de gorjeta`,
+      wait: "Fila de espera", waitN: (k) => `${k} pessoa${k === 1 ? "" : "s"} esperando uma vaga — se alguém cancelar, a vaga é oferecida.`,
+      more: (k) => `+ ${k} na agenda`, cta: "Abrir a agenda de hoje →", open: "Abrir o Guileo Desk", test: "Isto é um envio de teste — os números são os de agora.",
+      subj: (k) => `☀️ Hoje: ${k} horário${k === 1 ? "" : "s"}`, subjEmpty: "☀️ Agenda vazia hoje",
+      recv: "Você recebe este resumo porque ligou \"Resumo toda manhã\" no Guileo Desk. Para parar: Balcão → Equipe e serviços → Avisos para você." },
+    es: { eyebrow: "Resumen de la mañana", hi: "Buenos días", today: "Hoy", empty: "Agenda vacía hoy.", appts: (k) => `${k} cita${k === 1 ? "" : "s"}`, first: (h) => `la primera a las ${h}`,
+      conf: (c, u) => `${c} confirmada${c === 1 ? "" : "s"}${u ? `, ${u} sin confirmar` : ""}`, none: "nada reservado", noLoc: "Sin sede",
+      alerts: "Atención hoy", deposits: "Depósitos pendientes · próximos 7 días", depTotal: (k, v) => `${k} sin depósito pagado · ${v} en total`,
+      yday: "Ayer", visits: (k) => `${k} atención${k === 1 ? "" : "es"}`, noshow: (k) => `${k} ausencia${k === 1 ? "" : "s"}`, cancel: (k) => `${k} cancelada${k === 1 ? "" : "s"}`,
+      newc: (k) => `${k} clienta${k === 1 ? "" : "s"} nueva${k === 1 ? "" : "s"}`, cash: (v, k) => `${v} entró en caja en ${k} venta${k === 1 ? "" : "s"}`, tips: (v) => `${v} de propina`,
+      wait: "Lista de espera", waitN: (k) => `${k} persona${k === 1 ? "" : "s"} esperando un lugar — si alguien cancela, se le ofrece.`,
+      more: (k) => `+ ${k} en la agenda`, cta: "Abrir la agenda de hoy →", open: "Abrir Guileo Desk", test: "Este es un envío de prueba — los números son los de ahora.",
+      subj: (k) => `☀️ Hoy: ${k} cita${k === 1 ? "" : "s"}`, subjEmpty: "☀️ Agenda vacía hoy",
+      recv: "Recibes este resumen porque activaste \"Resumen cada mañana\" en Guileo Desk. Para pararlo: Recepción → Equipo y servicios → Avisos para ti." },
+    hi: { eyebrow: "सुबह का सारांश", hi: "सुप्रभात", today: "आज", empty: "आज एजेंडा खाली है।", appts: (k) => `${k} बुकिंग`, first: (h) => `पहली ${h} बजे`,
+      conf: (c, u) => `${c} पक्की${u ? `, ${u} पक्की नहीं` : ""}`, none: "कुछ बुक नहीं", noLoc: "बिना लोकेशन",
+      alerts: "आज ध्यान दें", deposits: "बाकी डिपॉज़िट · अगले 7 दिन", depTotal: (k, v) => `${k} बिना डिपॉज़िट · कुल ${v}`,
+      yday: "कल", visits: (k) => `${k} विज़िट`, noshow: (k) => `${k} नहीं आए`, cancel: (k) => `${k} रद्द`,
+      newc: (k) => `${k} नए ग्राहक`, cash: (v, k) => `${k} बिक्री में ${v} आए`, tips: (v) => `${v} टिप`,
+      wait: "वेटिंग लिस्ट", waitN: (k) => `${k} लोग जगह का इंतज़ार कर रहे हैं — कोई रद्द करे तो जगह उन्हें दी जाती है।`,
+      more: (k) => `+ ${k} और एजेंडा में`, cta: "आज का एजेंडा खोलें →", open: "Guileo Desk खोलें", test: "यह एक टेस्ट ईमेल है — आंकड़े अभी के हैं।",
+      subj: (k) => `☀️ आज: ${k} बुकिंग`, subjEmpty: "☀️ आज एजेंडा खाली है",
+      recv: "आपको यह सारांश इसलिए मिला क्योंकि आपने Guileo Desk में \"हर सुबह सारांश\" चालू किया। बंद करने के लिए: डेस्क → टीम और सेवाएँ → आपके लिए सूचनाएँ।" },
+    en: { eyebrow: "Morning summary", hi: "Good morning", today: "Today", empty: "Nothing booked today.", appts: (k) => `${k} appointment${k === 1 ? "" : "s"}`, first: (h) => `first at ${h}`,
+      conf: (c, u) => `${c} confirmed${u ? `, ${u} not confirmed` : ""}`, none: "nothing booked", noLoc: "No location",
+      alerts: "Heads-up today", deposits: "Deposits pending · next 7 days", depTotal: (k, v) => `${k} without a paid deposit · ${v} total`,
+      yday: "Yesterday", visits: (k) => `${k} visit${k === 1 ? "" : "s"}`, noshow: (k) => `${k} no-show${k === 1 ? "" : "s"}`, cancel: (k) => `${k} cancelled`,
+      newc: (k) => `${k} new client${k === 1 ? "" : "s"}`, cash: (v, k) => `${v} collected in ${k} sale${k === 1 ? "" : "s"}`, tips: (v) => `${v} in tips`,
+      wait: "Waitlist", waitN: (k) => `${k} ${k === 1 ? "person" : "people"} waiting for a spot — if someone cancels, it gets offered.`,
+      more: (k) => `+ ${k} more on the agenda`, cta: "Open today's agenda →", open: "Open Guileo Desk", test: "This is a test send — the numbers are as of right now.",
+      subj: (k) => `☀️ Today: ${k} appointment${k === 1 ? "" : "s"}`, subjEmpty: "☀️ Nothing booked today",
+      recv: "You get this summary because you turned on \"Summary every morning\" in Guileo Desk. To stop it: Front desk → Team & services → Notices for you." },
+  })[L];
+
+  // ── HOJE ──
+  const unidades = (Array.isArray(d.unidades) ? d.unidades : []).map((u) => ({ ...u, count: n(u.count), confirmed: n(u.confirmed) }));
+  const sem = d.sem_unidade && n(d.sem_unidade.count) ? { name: T.noLoc, tz: tz0, count: n(d.sem_unidade.count), confirmed: n(d.sem_unidade.confirmed), first: d.sem_unidade.first } : null;
+  if (sem) unidades.push(sem);
+  const total = unidades.reduce((s, u) => s + u.count, 0);
+  const varias = unidades.length > 1;
+  const linhaUnidade = (u) => {
+    if (!u.count) return `${varias ? `<strong style="color:${B.ink};">${esc(u.name)}</strong> — ` : ""}${T.none}`;
+    const partes = [`<strong style="color:${B.ink};">${T.appts(u.count)}</strong>`];
+    if (u.first) partes.push(T.first(esc(hora(u.first, u.tz))));
+    partes.push(T.conf(u.confirmed, Math.max(0, u.count - u.confirmed)));
+    return `${varias ? `<strong style="color:${B.ink};">${esc(u.name)}</strong> — ` : ""}${partes.join(" · ")}`;
+  };
+  const item = (txt) => `<div style="font-size:14.5px;color:${B.ink2};line-height:1.65;padding:3px 0;">${txt}</div>`;
+  const secao = (titulo, conteudo) => `
+  <div style="margin-top:22px;padding-top:16px;border-top:1px solid ${B.line};">
+    <div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:${B.gold};font-weight:800;">${titulo}</div>
+    <div style="margin-top:8px;">${conteudo}</div>
+  </div>`;
+  const secoes = [];
+  secoes.push(secao(T.today, total ? unidades.map((u) => item(linhaUnidade(u))).join("") : item(T.empty)));
+
+  // ── ATENÇÃO (alergia/alerta na ficha) ──
+  const alertas = Array.isArray(d.alertas) ? d.alertas.filter((a) => a && a.alert) : [];
+  if (alertas.length) {
+    const lista = alertas.slice(0, 8).map((a) => item(`<strong style="color:${B.ink};">${esc(hora(a.start, a.tz))}</strong> · ${esc(a.name || "")} — ⚠️ ${esc(String(a.alert).slice(0, 160))}`)).join("");
+    secoes.push(secao(T.alerts, lista + (alertas.length > 8 ? item(T.more(alertas.length - 8)) : "")));
+  }
+
+  // ── SINAIS PENDENTES ──
+  const sinais = d.sinais && n(d.sinais.count) ? d.sinais : null;
+  if (sinais) {
+    const itens = (Array.isArray(sinais.itens) ? sinais.itens : []).slice(0, 5)
+      .map((s) => item(`${esc(diaHora(s.start, s.tz))} · ${esc(s.name || "")}${s.service ? ` · ${esc(s.service)}` : ""} · ${esc(m(s.cents))}`)).join("");
+    secoes.push(secao(T.deposits, item(`<strong style="color:${B.ink};">${esc(T.depTotal(n(sinais.count), m(sinais.cents)))}</strong>`) + itens + (n(sinais.count) > 5 ? item(T.more(n(sinais.count) - 5)) : "")));
+  }
+
+  // ── ONTEM — só o que aconteceu de verdade ──
+  const linhasOntem = [];
+  const o = d.ontem && typeof d.ontem === "object" ? d.ontem : null;
+  if (o) {
+    const p = [];
+    if (n(o.visits)) p.push(T.visits(n(o.visits)));
+    if (n(o.no_show)) p.push(T.noshow(n(o.no_show)));
+    if (n(o.cancelled)) p.push(T.cancel(n(o.cancelled)));
+    if (n(o.new_clients)) p.push(T.newc(n(o.new_clients)));
+    if (p.length) linhasOntem.push(item(p.join(" · ")));
+  }
+  const cx = d.caixa_ontem && n(d.caixa_ontem.sales) ? d.caixa_ontem : null;
+  if (cx) linhasOntem.push(item(`<strong style="color:${B.ink};">${esc(T.cash(m(cx.collected_cents), n(cx.sales)))}</strong>${n(cx.tip_cents) ? ` · ${esc(T.tips(m(cx.tip_cents)))}` : ""}`));
+  if (linhasOntem.length) secoes.push(secao(T.yday, linhasOntem.join("")));
+
+  // ── FILA DE ESPERA ──
+  if (n(d.fila)) secoes.push(secao(T.wait, item(T.waitN(n(d.fila)))));
+
+  const lk = links && typeof links === "object" ? links : {};
+  const agendaUrl = /^https:\/\//.test(String(lk.agenda || "")) ? lk.agenda : "https://guileoai.com/portal?tab=desk&aba=agenda";
+  const deskUrl = /^https:\/\//.test(String(lk.desk || "")) ? lk.desk : "https://guileoai.com/portal?tab=desk";
+  const body = `
+  <div style="font-size:26px;line-height:1.2;color:${B.ink2};font-weight:700;">${T.hi}${negocio ? `, ${negocio}` : ""}</div>
+  ${teste ? `<div style="margin-top:10px;padding:8px 12px;border:1px dashed ${B.gold};border-radius:10px;font-size:12.5px;color:${B.ink2};">${T.test}</div>` : ""}
+  ${secoes.join("")}
+  <div style="height:24px;line-height:24px;font-size:0;">&nbsp;</div>
+  <div align="center">${cta(T.cta, agendaUrl)}</div>
+  <div style="text-align:center;margin-top:12px;"><a href="${deskUrl}" style="font-size:13px;color:${B.gold};text-decoration:underline;">${T.open}</a></div>`;
+  const subject = `${total ? T.subj(total) : T.subjEmpty}${negocio ? ` · ${String(d.business || business || "").slice(0, 60)}` : ""}`;
+  const pre = total ? unidades.filter((u) => u.count).map((u) => `${varias ? `${u.name}: ` : ""}${T.appts(u.count)}`).join(" · ") : T.empty;
+  return { subject, html: shell({ preheader: esc(pre), eyebrow: T.eyebrow, body, lang: L, recv: T.recv }) };
+}
+
+// RELATÓRIO MENSAL DO GUILEO DESK (2026-10-05) — slide 21 da apresentação do Natura ("De onde vem o lucro,
+// todo mês"). Opcional (Equipe → Avisos para você). Dados de desk_mensal_dados_mes_svc; seção sem dado sai.
+export function deskMonthlyReportEmail({ dados = {}, lang = "en", teste = false } = {}) {
+  const L = lang === "pt" ? "pt" : lang === "es" ? "es" : lang === "hi" ? "hi" : "en";
+  const loc = { pt: "pt-BR", es: "es-ES", hi: "hi-IN", en: "en-US" }[L];
+  const [y, m] = String(dados.mes || "").split("-").map(Number);
+  let nomeMes = String(dados.mes || "");
+  try { nomeMes = new Date(Date.UTC(y, (m || 1) - 1, 15)).toLocaleDateString(loc, { month: "long", year: "numeric", timeZone: "UTC" }); } catch { /* fica o YYYY-MM */ }
+  const brl = /America\/Sao_Paulo|America\/Fortaleza|America\/Recife|America\/Bahia|America\/Manaus|America\/Belem/.test(String(dados.tz || ""));
+  const din = (c) => { try { return new Intl.NumberFormat(loc, { style: "currency", currency: brl ? "BRL" : "USD", maximumFractionDigits: 0 }).format((Number(c) || 0) / 100); } catch { return `$${Math.round((Number(c) || 0) / 100)}`; } };
+  const negocio = esc(dados.negocio || "");
+  const negSubj = String(dados.negocio || "").replace(/[<>\r\n]/g, "").slice(0, 80);   // assunto é texto puro: sem escapar
+  const T = ({
+    pt: { subj: `Seu mês${negSubj ? " na " + negSubj : ""}: ${nomeMes}`, h: `Como foi ${nomeMes}`, vis: "Visitas", nov: "Clientes novas", vol: "Voltaram", rec: "Entrou no caixa", lig: "Ligações atendidas", fal: "Faltas", canal: "De onde vieram os agendamentos", un: "Por unidade", top: "Serviços que mais trouxeram", cta: "Abrir os relatórios →", teste: "Este é um TESTE do relatório mensal.", vazio: "Nenhuma visita registrada neste mês.", src: { desk: "Balcão", gui: "IA (telefone/chat)", web: "Agendamento online", mindbody: "Importado", other: "Outros" } },
+    es: { subj: `Tu mes${negSubj ? " en " + negSubj : ""}: ${nomeMes}`, h: `Cómo fue ${nomeMes}`, vis: "Visitas", nov: "Clientas nuevas", vol: "Volvieron", rec: "Entró en caja", lig: "Llamadas atendidas", fal: "Ausencias", canal: "De dónde vinieron las reservas", un: "Por sede", top: "Servicios que más aportaron", cta: "Abrir los informes →", teste: "Esta es una PRUEBA del informe mensual.", vazio: "Ninguna visita registrada este mes.", src: { desk: "Recepción", gui: "IA (teléfono/chat)", web: "Reserva en línea", mindbody: "Importado", other: "Otros" } },
+    hi: { subj: `आपका महीना: ${nomeMes}`, h: `${nomeMes} कैसा रहा`, vis: "विज़िट", nov: "नए ग्राहक", vol: "लौटे", rec: "कैश में आया", lig: "कॉल जवाब", fal: "नहीं आए", canal: "बुकिंग कहाँ से आईं", un: "लोकेशन के हिसाब से", top: "शीर्ष सेवाएँ", cta: "रिपोर्ट खोलें →", teste: "यह मासिक रिपोर्ट का टेस्ट है।", vazio: "इस महीने कोई विज़िट नहीं।", src: { desk: "फ्रंट डेस्क", gui: "AI", web: "ऑनलाइन", mindbody: "आयात", other: "अन्य" } },
+    en: { subj: `Your month${negSubj ? " at " + negSubj : ""}: ${nomeMes}`, h: `How ${nomeMes} went`, vis: "Visits", nov: "New clients", vol: "Came back", rec: "Collected at the desk", lig: "Calls answered", fal: "No-shows", canal: "Where bookings came from", un: "By location", top: "Services that brought the most", cta: "Open the reports →", teste: "This is a TEST of the monthly report.", vazio: "No visits recorded this month.", src: { desk: "Front desk", gui: "AI (phone/chat)", web: "Online booking", mindbody: "Imported", other: "Other" } },
+  })[L];
+  const tile = (rot, val) => `<td style="padding:6px;width:33%;vertical-align:top;"><div style="background:#f4f2ee;border-radius:12px;padding:12px;text-align:center;"><div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:22px;font-weight:900;color:${B.ink};">${esc(String(val))}</div><div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${B.muted};margin-top:2px;">${rot}</div></div></td>`;
+  const titulo = (t) => `<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;font-weight:800;color:${B.ink};margin:20px 0 6px;">${t}</div>`;
+  const linha = (a, b2) => `<tr><td style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;color:${B.ink};padding:4px 0;">${a}</td><td style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;color:${B.ink};padding:4px 0;text-align:right;font-weight:700;">${b2}</td></tr>`;
+  const n = (k) => Number(dados[k]) || 0;
+  const tiles = [[T.vis, n("visitas")], [T.nov, n("novas")], [T.vol, n("voltaram")], ...(n("receita_cents") ? [[T.rec, din(n("receita_cents"))]] : []), ...(n("ligacoes") ? [[T.lig, n("ligacoes")]] : []), ...(n("faltas") ? [[T.fal, n("faltas")]] : [])];
+  const linhasTiles = []; for (let i = 0; i < tiles.length; i += 3) linhasTiles.push(`<tr>${tiles.slice(i, i + 3).map(([r, v]) => tile(r, v)).join("")}</tr>`);
+  const canais = Object.entries(dados.por_canal || {}).filter(([, v]) => Number(v) > 0).sort((a, b2) => b2[1] - a[1]);
+  const totalC = canais.reduce((s, [, v]) => s + Number(v), 0);
+  const unidades = (dados.por_unidade || []).filter((u) => Number(u.visitas) > 0 || Number(u.receita_cents) > 0);
+  const top = (dados.top_servicos || []).filter((x) => x && x.nome);
+  const body = `
+    ${teste ? `<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;color:#8a5a00;background:#fff4d6;border-radius:8px;padding:8px;text-align:center;margin-bottom:12px;">${T.teste}</div>` : ""}
+    <div style="font-family:'Inter','SF Pro Display','Segoe UI',Helvetica,Arial,sans-serif;font-size:22px;font-weight:900;color:${B.ink};text-align:center;text-transform:capitalize;">${esc(T.h)}</div>
+    ${n("visitas") === 0 && !n("receita_cents") ? `<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:15px;color:${B.muted};text-align:center;margin-top:12px;">${T.vazio}</div>` : `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;">${linhasTiles.join("")}</table>`}
+    ${canais.length ? `${titulo(T.canal)}<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${canais.map(([k, v]) => linha(esc(T.src[k] || k), `${v} · ${Math.round((100 * v) / totalC)}%`)).join("")}</table>` : ""}
+    ${unidades.length > 1 ? `${titulo(T.un)}<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${unidades.map((u) => linha(esc(u.nome), `${Number(u.visitas) || 0} ${T.vis.toLowerCase()}${Number(u.receita_cents) ? ` · ${din(u.receita_cents)}` : ""}`)).join("")}</table>` : ""}
+    ${top.length ? `${titulo(T.top)}<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${top.map((x) => linha(esc(x.nome), `${Number(x.visitas) || 0}`)).join("")}</table>` : ""}
+    <div style="height:18px;font-size:0;">&nbsp;</div><div align="center">${cta(T.cta, "https://guileoai.com/portal?tab=desk&aba=relatorios")}</div>`;
+  return { subject: T.subj, html: shell({ preheader: esc(`${T.vis}: ${n("visitas")} · ${T.nov}: ${n("novas")}`), eyebrow: negocio || "Guileo Desk", body, lang: L }) };
+}
+
+// ── VALE-PRESENTE COMPRADO ONLINE (2026-10-05) ───────────────────────────────────────────────────
+// Sai quando o vale vendido pelo link do negócio (Stripe PRÓPRIO, lib/vendaOnlineNegocio.js) acabou de
+// nascer no banco: o código é o que giftcard_create devolveu, o valor é o que foi PAGO. Marca do negócio
+// (brandFor), nada da Guileo na frente. `para`: "recipient" (quem ganhou) | "buyer" (quem comprou — a
+// cópia; se quem ganhou não deixou e-mail, é ela quem repassa). `recipientContact` só vem preenchido
+// quando o e-mail de quem ganhou JÁ saiu — a cópia só diz "também enviamos" quando é verdade.
+// Como usar = o que o sistema faz de verdade: o código é abatido no balcão (gift_card_redeem) e o que
+// sobrar fica no saldo do vale. Não promete uso no agendamento online nem validade (não existem).
+export function valePresenteEmail({ brand = {}, business = "", code = "", cents = null, amount = "", recipientName = "", buyerName = "", message = "", para = "recipient", recipientContact = "", lang } = {}) {
+  const b = { ...(brand || {}), business: (brand && brand.business) || business || "" };
+  const lg = (lang || b.lang) === "pt" ? "pt" : (lang || b.lang) === "es" ? "es" : "en";
+  const accent = b.accent || "#FF8A33";
+  const negPlano = String(b.business || "").replace(/[<>\r\n]/g, "").trim().slice(0, 80);   // assunto é texto puro
+  const neg = esc(negPlano);
+  const valor = cents != null && Number.isFinite(Number(cents)) && Number(cents) > 0 ? _money(Number(cents) / 100) : _money(amount);
+  const v = esc(valor);
+  const quem = esc(String(recipientName || "").slice(0, 80));
+  const de = esc(String(buyerName || "").slice(0, 80));
+  const enviado = esc(String(recipientContact || "").slice(0, 160));
+  const comprador = para === "buyer";
+  const T = {
+    pt: {
+      subj: comprador ? `Seu vale-presente${negPlano ? ` · ${negPlano}` : ""}: o código` : `${negPlano || "Um presente"}: um vale-presente para você 🎁`,
+      pre: comprador ? `O código do vale de ${valor} está aqui.` : `Você ganhou um vale de ${valor}.`,
+      eyebrow: "Vale-presente",
+      title: comprador ? "Seu vale-presente está pronto 🎁" : quem ? `${String(recipientName).slice(0, 80)}, você ganhou um presente 🎁` : "Um vale-presente para você 🎁",
+      lead: comprador
+        ? `Obrigado! Aqui está o vale-presente de <b>${v}</b>${quem ? ` para ${quem}` : ""}${neg ? ` na ${neg}` : ""}. ${enviado ? `Também enviamos o código para ${enviado}.` : "Encaminhe este e-mail ou passe o código para quem vai ganhar."}`
+        : `${de ? `${de} enviou` : "Você recebeu"} um vale-presente de <b>${v}</b>${neg ? ` para usar na ${neg}` : ""}.`,
+      recado: de ? `Recado de ${de}` : "Recado",
+      como: "Como usar",
+      passos: `Informe este código no balcão${neg ? ` da ${neg}` : ""} na hora de pagar — o valor é abatido da sua conta. O que não usar fica no saldo do vale para a próxima vez. Guarde este e-mail.`,
+      foot: `Alguma dúvida? É só responder este e-mail — a resposta vai direto para ${negPlano || "o estabelecimento"}.`,
+    },
+    es: {
+      subj: comprador ? `Su tarjeta de regalo${negPlano ? ` · ${negPlano}` : ""}: el código` : `${negPlano || "Un regalo"}: una tarjeta de regalo para usted 🎁`,
+      pre: comprador ? `Aquí está el código de la tarjeta de ${valor}.` : `Recibió una tarjeta de regalo de ${valor}.`,
+      eyebrow: "Tarjeta de regalo",
+      title: comprador ? "Su tarjeta de regalo está lista 🎁" : quem ? `${String(recipientName).slice(0, 80)}, recibió un regalo 🎁` : "Una tarjeta de regalo para usted 🎁",
+      lead: comprador
+        ? `¡Gracias! Aquí está la tarjeta de regalo de <b>${v}</b>${quem ? ` para ${quem}` : ""}${neg ? ` en ${neg}` : ""}. ${enviado ? `También enviamos el código a ${enviado}.` : "Reenvíe este correo o comparta el código con quien la va a recibir."}`
+        : `${de ? `${de} le envió` : "Recibió"} una tarjeta de regalo de <b>${v}</b>${neg ? ` para usar en ${neg}` : ""}.`,
+      recado: de ? `Mensaje de ${de}` : "Mensaje",
+      como: "Cómo usarla",
+      passos: `Dé este código en la recepción${neg ? ` de ${neg}` : ""} al pagar — el valor se descuenta de su cuenta. Lo que no use queda en el saldo de la tarjeta para la próxima vez. Guarde este correo.`,
+      foot: `¿Alguna duda? Solo responda este correo — la respuesta va directo a ${negPlano || "el negocio"}.`,
+    },
+    en: {
+      subj: comprador ? `Your gift card${negPlano ? ` · ${negPlano}` : ""}: the code` : `${negPlano || "A gift"}: a gift card for you 🎁`,
+      pre: comprador ? `Here is the code for the ${valor} gift card.` : `You received a ${valor} gift card.`,
+      eyebrow: "Gift card",
+      title: comprador ? "Your gift card is ready 🎁" : quem ? `${String(recipientName).slice(0, 80)}, you got a gift 🎁` : "A gift card for you 🎁",
+      lead: comprador
+        ? `Thank you! Here is the <b>${v}</b> gift card${quem ? ` for ${quem}` : ""}${neg ? ` at ${neg}` : ""}. ${enviado ? `We also sent the code to ${enviado}.` : "Forward this email or share the code with the person you're gifting."}`
+        : `${de ? `${de} sent you` : "You received"} a <b>${v}</b> gift card${neg ? ` to use at ${neg}` : ""}.`,
+      recado: de ? `A note from ${de}` : "A note",
+      como: "How to use it",
+      passos: `Give this code at the front desk${neg ? ` at ${neg}` : ""} when you pay — the amount comes off your bill. Whatever you don't use stays on the card for next time. Keep this email.`,
+      foot: `Questions? Just reply to this email — it goes straight to ${negPlano || "the business"}.`,
+    },
+  }[lg];
+  const recado = String(message || "").trim().slice(0, 400);
+  const bodyHtml = `${_bp(T.lead)}
+    ${recado ? panel(`<div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${B.muted};margin-bottom:6px;">${esc(T.recado)}</div><div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.7;color:${B.ink2};font-style:italic;">“${esc(recado)}”</div>`) : ""}
+    ${recado ? `<div style="height:14px;font-size:0;">&nbsp;</div>` : ""}
+    ${giftBlock(valor, code, accent, lg)}
+    <div style="height:16px;font-size:0;">&nbsp;</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;font-weight:800;color:${B.ink};margin:0 0 6px;">${esc(T.como)}</div>
+    ${_bp(T.passos, 14.5, B.ink2)}`;
+  return {
+    subject: T.subj,
+    html: clientEmailShell({ brand: b, title: T.title, preheader: T.pre, eyebrow: T.eyebrow, bodyHtml, footerNote: T.foot, lang: lg }),
+  };
+}
+
+// ── ACESSO NOMINAL DE PARCEIRO (CR-03, 2026-10-13) — o código de uma vez por e-mail ──────────────
+// Vai para o PARCEIRO (Scale Pods), não para cliente final: sem marca de cliente, sem chave, sem nome
+// de cliente final além do rótulo da conta que ele está abrindo. O código some em 10 minutos.
+export function partnerCodeEmail({ name = "there", code = "", tenantName = "", minutes = 10, lang = "en" } = {}) {
+  name = esc(name); code = esc(String(code)); tenantName = esc(tenantName);
+  const t = lang === "pt" ? {
+    subject: `Seu código de acesso à Guileo: ${code}`,
+    pre: `Código de uma vez para abrir ${tenantName} na Central. Vale ${minutes} minutos.`,
+    eyebrow: "Acesso de parceiro",
+    h1: `${name}, seu código de uma vez`,
+    intro: `Para abrir <b style="color:${B.ink};">${tenantName}</b> na Guileo Central, digite o código abaixo. Ele vale ${minutes} minutos e funciona uma vez só.`,
+    note: "Se você não pediu este código, ignore o e-mail — sem o código nada acontece. Toda entrada de parceiro fica registrada.",
+  } : {
+    subject: `Your Guileo access code: ${code}`,
+    pre: `One-time code to open ${tenantName} in Guileo Central. Valid for ${minutes} minutes.`,
+    eyebrow: "Partner access",
+    h1: `${name}, your one-time code`,
+    intro: `To open <b style="color:${B.ink};">${tenantName}</b> in Guileo Central, enter the code below. It expires in ${minutes} minutes and works once.`,
+    note: "If you didn't request it, ignore this e-mail — nothing happens without the code. Every partner sign-in is logged.",
+  };
+  const body = `
+  <h1 style="font-size:24px;font-weight:800;color:${B.ink};margin:0 0 6px;">${t.h1}</h1>
+  <div style="font-size:16px;color:${B.ink2};line-height:1.7;margin-top:8px;">${t.intro}</div>
+  <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
+  ${panel(`<div style="font-family:Menlo,Consolas,monospace;font-size:34px;font-weight:700;letter-spacing:.22em;text-align:center;color:${B.ink};">${code}</div>`)}
+  <div style="height:14px;line-height:14px;font-size:0;">&nbsp;</div>
+  <div style="font-size:13px;color:${B.muted};">${t.note}</div>`;
+  return { subject: t.subject, html: shell({ preheader: t.pre, eyebrow: t.eyebrow, body, lang, recv: lang === "pt" ? "Você recebeu este e-mail porque tem acesso de parceiro na Guileo." : "You're receiving this because you have partner access at Guileo." }) };
 }

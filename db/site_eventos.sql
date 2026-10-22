@@ -1,0 +1,7 @@
+-- site_eventos — a MEDIDA da landing (2026-09-10). Aplicado no projeto VIVO ynihodbknhjirkdogxby.
+-- ⚠️ O conector MCP "supabase-origem" é OUTRO projeto (sem lista_de_ligacao/avaliações): a 1ª
+-- aplicação foi lá por engano e foi desfeita. Use sempre o conector com project_id explícito.
+-- Ver a migração `site_eventos_landing` (tabela + site_evento_log + site_eventos_resumo, gated
+-- pelo literal INGEST, revoke de anon/authenticated, grant explícito a service_role — sem o grant
+-- o PostgREST responde PGRST202 "no matches", que parece cache mas é privilégio).
+-- Leitura: GET /api/evento?secret=…&dias=7  ·  Escrita: POST /api/evento (same-origin) via src/lib/evento.js

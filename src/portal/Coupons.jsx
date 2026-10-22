@@ -19,7 +19,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { FaTag, FaGift, FaBolt, FaPen, FaTrash, FaPaperPlane, FaRegClock, FaWandMagicSparkles } from "react-icons/fa6";
 import { portalApi, toast } from "../lib/portalApi.js";
-import { tr, Card, Empty, SectionSkeleton, Toggle, defProfile, UI_LANG } from "../pages/Portal.jsx";
+import { tr, Card, Empty, SectionSkeleton, Toggle, defProfile, UI_LANG, nomeDoDono } from "../pages/Portal.jsx";
 
 // ── API seam ────────────────────────────────────────────────────────────────
 // Cada resposta carrega o PRÓPRIO veredito (`_ok`). Antes esta função devolvia `null` em
@@ -52,14 +52,31 @@ const kindMeta = (k) => KINDS[k] || KINDS.pct;
 
 // ── Quick-generate presets — one click drafts a real coupon, one more saves it.
 const rndCode = (base) => `${base}${10 + Math.floor(Math.random() * 89)}`;
+/* 🚨 O CÓDIGO DO CUPOM É O QUE O CLIENTE DO CLIENTE DIGITA (2026-09-28). Os códigos estavam
+   cravados em português — "LEVE2", "ANIVER", "BEMVINDO", "MENOS25", "INDIQUE" — e um clique em
+   "Quick generate" + "Save" fazia deles os cupons REAIS de um spa que atende em inglês: a cliente
+   dele recebia um e-mail em inglês mandando usar o código "BEMVINDO42".
+   Cada preset tem o código por idioma. Quem decide o idioma: o do NEGÓCIO (identity.lang, que é o
+   idioma dos clientes dele) e, na falta, o da tela. Hindi usa os códigos em inglês — código de
+   cupom é digitado em teclado latino. */
+const CODIGOS = {
+  bogo:     { en: "BOGO",    pt: "BOGO",     es: "BOGO" },
+  buy1get1: { en: "BUY2",    pt: "LEVE2",    es: "LLEVA2" },
+  bday:     { en: "BDAY",    pt: "ANIVER",   es: "CUMPLE" },
+  pct20:    { en: "OFF20",   pt: "OFF20",    es: "OFF20" },
+  first10:  { en: "WELCOME", pt: "BEMVINDO", es: "BIENVENIDO" },
+  amt25:    { en: "SAVE25",  pt: "MENOS25",  es: "MENOS25" },
+  referral: { en: "REFER",   pt: "INDIQUE",  es: "RECOMIENDA" },
+};
+const codigoDe = (key, lang) => { const l = String(lang || UI_LANG || "en").toLowerCase().slice(0, 2); return (CODIGOS[key] && (CODIGOS[key][l] || CODIGOS[key].en)) || "OFF"; };
 const QUICKGEN = [
-  { key: "bogo",     emoji: "🎁", title: () => "BOGO",                    kind: "bogo",       value: "",   label: () => tr("Buy 1, Get 1 free"),        code: "BOGO" },
-  { key: "buy1get1", emoji: "🛍️", title: () => tr("Buy 1 Take 2"),        kind: "bogo",       value: "",   label: () => tr("Buy 1, take 2"),            code: "LEVE2" },
-  { key: "bday",     emoji: "🎂", title: () => tr("Birthday 1+1"),        kind: "birthday",   value: "",   label: () => tr("Birthday treat: 1+1"),      code: "ANIVER" },
-  { key: "pct20",    emoji: "🏷️", title: () => "20% OFF",                 kind: "pct",        value: "20", label: () => tr("20% off your order"),       code: "OFF20" },
-  { key: "first10",  emoji: "✨", title: () => tr("10% OFF 1st visit"),   kind: "firstvisit", value: "10", label: () => tr("10% off your first visit"), code: "BEMVINDO" },
-  { key: "amt25",    emoji: "💵", title: () => "$25 OFF",                 kind: "amount",     value: "25", label: () => tr("$25 off"),                  code: "MENOS25" },
-  { key: "referral", emoji: "🤝", title: () => tr("Refer a friend"),      kind: "referral",   value: "",   label: () => tr("Refer a friend, both win"), code: "INDIQUE" },
+  { key: "bogo",     emoji: "🎁", title: () => "BOGO",                    kind: "bogo",       value: "",   label: () => tr("Buy 1, Get 1 free") },
+  { key: "buy1get1", emoji: "🛍️", title: () => tr("Buy 1 Take 2"),        kind: "bogo",       value: "",   label: () => tr("Buy 1, take 2") },
+  { key: "bday",     emoji: "🎂", title: () => tr("Birthday 1+1"),        kind: "birthday",   value: "",   label: () => tr("Birthday treat: 1+1") },
+  { key: "pct20",    emoji: "🏷️", title: () => "20% OFF",                 kind: "pct",        value: "20", label: () => tr("20% off your order") },
+  { key: "first10",  emoji: "✨", title: () => tr("10% OFF 1st visit"),   kind: "firstvisit", value: "10", label: () => tr("10% off your first visit") },
+  { key: "amt25",    emoji: "💵", title: () => "$25 OFF",                 kind: "amount",     value: "25", label: () => tr("$25 off") },
+  { key: "referral", emoji: "🤝", title: () => tr("Refer a friend"),      kind: "referral",   value: "",   label: () => tr("Refer a friend, both win") },
 ];
 
 const plus30 = () => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().slice(0, 10); };
@@ -68,9 +85,9 @@ const emptyForm = () => ({ id: null, code: "", label: "", kind: "pct", value: ""
 // Deterministic sample coupons for demo / not-connected mode.
 function demoCoupons() {
   return [
-    { id: "d1", code: "OFF20",    label: tr("20% off your order"),       kind: "pct",        value: "20", redemptions: 34, max: 100, expires: plus30(), active: true },
-    { id: "d2", code: "BEMVINDO", label: tr("10% off your first visit"), kind: "firstvisit", value: "10", redemptions: 12, max: "",  expires: plus30(), active: true },
-    { id: "d3", code: "ANIVER",   label: tr("Birthday treat: 1+1"),      kind: "birthday",   value: "",   redemptions: 8,  max: "",  expires: plus30(), active: false },
+    { id: "d1", code: codigoDe("pct20"),   label: tr("20% off your order"),       kind: "pct",        value: "20", redemptions: 34, max: 100, expires: plus30(), active: true },
+    { id: "d2", code: codigoDe("first10"), label: tr("10% off your first visit"), kind: "firstvisit", value: "10", redemptions: 12, max: "",  expires: plus30(), active: true },
+    { id: "d3", code: codigoDe("bday"),    label: tr("Birthday treat: 1+1"),      kind: "birthday",   value: "",   redemptions: 8,  max: "",  expires: plus30(), active: false },
   ];
 }
 
@@ -85,14 +102,21 @@ const isExpired = (c) => { const d = new Date(c.expires); return !Number.isNaN(d
 function Coupons({ V, real = null, email = "", dataKey = "" }) {
   // The client's OWN brand — name/logo/accent live in their saved profile (client_profile_extras).
   const prof = useMemo(() => portalApi.loadProfile(V.label, defProfile(V)), [V]);
-  const brandName = (prof.name || V.business?.name || tr("Your business")).toString();
+  // Conta conectada: o nome é o do cadastro (identity) — o perfil salvo no navegador pode ter
+  // nascido no assistente de demonstração, com o nome do negócio de AMOSTRA pré-preenchido.
+  const brandName = (real ? (nomeDoDono(real?.identity?.business) || nomeDoDono(prof.name) || tr("Your business")) : (prof.name || V.business?.name || tr("Your business"))).toString();
   const logoUrl = prof.logo_url || prof.logoUrl || "";
   const accent = prof.accent || prof.brandColor || "#C9A24B";   // neutral brand-gold placeholder if unset
   const brandKnown = !!(prof.accent || prof.brandColor || logoUrl);
 
   const live = !!(real && email && dataKey);
+  // 🚨 Mesmo defeito da Receita Recorrente (2026-09-28): `useState(live ? null : demo)` deixava os
+  // cupons de AMOSTRA na tela de uma conta conectada quando a aba montava antes de `real` chegar.
+  // Conta CONECTADA (e-mail + chave) nasce `null` (esqueleto) e nunca recebe amostra; sem chave
+  // é a vitrine, declaradamente amostra.
+  const conta = !!(email && dataKey);
 
-  const [coupons, setCoupons] = useState(live ? null : demoCoupons());   // null = fetch in flight
+  const [coupons, setCoupons] = useState(conta ? null : demoCoupons());   // null = fetch in flight
   const [form, setForm] = useState(null);            // null = form closed; object = drafting/editing
   const [saving, setSaving] = useState(false);
   const [loadErr, setLoadErr] = useState("");        // falha de leitura ≠ lista vazia
@@ -102,11 +126,12 @@ function Coupons({ V, real = null, email = "", dataKey = "" }) {
     // Live → pull the client's real coupons; demo/not-connected stays on the
     // sample seed from useState's initializer (no synchronous setState needed).
     if (live) {
+      setCoupons(null); setLoadErr("");   // o que estava na tela não sobrevive à troca de conta/chave
       couponsApi({ action: "list", token: dataKey, email }).then((d) => {
         if (!alive) return;
         if (!d._ok) { setLoadErr(t({ en: "Couldn't load your coupons — this is a connection problem, not an empty list.", pt: "Não consegui carregar seus cupons — isso é falha de conexão, não lista vazia.", es: "No pude cargar tus cupones — problema de conexión, no una lista vacía.", hi: "कूपन लोड नहीं हो सके — कनेक्शन की समस्या, खाली सूची नहीं।" })); setCoupons([]); return; }
         // `ready:false` = SQL de cupons ainda não aplicado. Também não é "você não tem cupons".
-        if (d.ready === false) setLoadErr(d.note || t({ en: "Coupons aren't switched on for your account yet.", pt: "Os cupons ainda não foram ativados na sua conta.", es: "Los cupones aún no están activados en tu cuenta.", hi: "आपके खाते पर कूपन अभी सक्रिय नहीं हैं।" }));
+        if (d.ready === false) setLoadErr(t({ en: "Coupons aren't switched on for your account yet.", pt: "Os cupons ainda não foram ativados na sua conta.", es: "Los cupones aún no están activados en tu cuenta.", hi: "आपके खाते पर कूपन अभी सक्रिय नहीं हैं।" }));
         setCoupons(Array.isArray(d.coupons) ? d.coupons : []);
       });
     }
@@ -115,7 +140,7 @@ function Coupons({ V, real = null, email = "", dataKey = "" }) {
 
   // ── Quick-generate: draft a coupon into the form instantly (one click) ──
   const quickGen = async (p) => {
-    const draft = { ...emptyForm(), code: rndCode(p.code), label: p.title(), kind: p.kind, value: p.value };
+    const draft = { ...emptyForm(), code: rndCode(codigoDe(p.key, real?.identity?.lang)), label: p.title(), kind: p.kind, value: p.value };
     // Fuller/nicer copy comes back from label() when present.
     draft.label = p.label ? p.label() : p.title();
     setForm(draft);
@@ -140,7 +165,8 @@ function Coupons({ V, real = null, email = "", dataKey = "" }) {
       // (`c-1754…`). Esse id não é UUID: o `delete` do endpoint recusa com 400 "invalid id" e
       // toda edição posterior daquele cupom criava uma linha nova no banco em vez de atualizar.
       // O cupom parecia salvo, e o botão de apagar nunca apagava.
-      if (!d._ok || !d.id) { toast(d.note || tr("I couldn't save that — check your connection and try again.")); return; }
+      // `d.note` é recado de engenharia do servidor — a tela usa a própria frase
+      if (!d._ok || !d.id) { toast(tr("I couldn't save that — check your connection and try again.")); return; }
       const saved = { ...rec, id: d.id, redemptions: rec.redemptions || 0 };
       setCoupons((cs) => upsertLocal(cs || [], saved));
       setLoadErr("");
@@ -162,9 +188,9 @@ function Coupons({ V, real = null, email = "", dataKey = "" }) {
     setCoupons((cs) => (cs || []).map((x) => (x.id === c.id ? next : x)));   // optimistic
     if (live) {
       const d = await couponsApi({ action: "upsert", token: dataKey, email, coupon: next });
-      if (!d._ok || !d.id) { setCoupons((cs) => (cs || []).map((x) => (x.id === c.id ? c : x))); toast(d.note || tr("I couldn't save that — check your connection and try again.")); return; }
+      if (!d._ok || !d.id) { setCoupons((cs) => (cs || []).map((x) => (x.id === c.id ? c : x))); toast(tr("I couldn't save that — check your connection and try again.")); return; }
     }
-    toast(next.active ? tr("Coupon activated ✓") : tr("Coupon paused"));
+    toast(!live ? tr("Demo — changed in this sample list only. Nothing was saved.") : next.active ? tr("Coupon activated ✓") : tr("Coupon paused"));
   };
 
   const remove = async (c) => {
@@ -176,10 +202,13 @@ function Coupons({ V, real = null, email = "", dataKey = "" }) {
       // mentira: na próxima recarga o cupom volta. Restaura e diz.
       if (!d._ok || d.deleted === false) { setCoupons(prev); toast(tr("I couldn't delete that — try again.")); return; }
     }
-    toast(tr("Coupon deleted"));
+    toast(live ? tr("Coupon deleted") : tr("Demo — changed in this sample list only. Nothing was saved."));
   };
 
   const activeCoupons = (coupons || []).filter((c) => c.active && !isExpired(c));
+
+  // Conta conectada cujos dados ainda não chegaram: esqueleto — nem amostra, nem editor local.
+  if (conta && !live) return <SectionSkeleton rows={4} />;
 
   return (
     <div className="space-y-4 stagger">
@@ -392,8 +421,11 @@ function CampaignComposer({ live, dataKey, email, brandName, logoUrl, accent, br
     });
     setBusy(false); setConfirm(false);
     if (!d._ok) {
-      toast(d.note || d.error || tr("I couldn't send that — check your connection and try again."));
-      setResult({ err: d.note || d.error || tr("I couldn't send that — check your connection and try again.") });
+      // conta pausada por pagamento é um caso com frase própria; o resto usa a frase da tela —
+      // `d.note`/`d.error` são texto de engenharia e não vão para o dono.
+      const frase = d.paused ? tr("Sending is paused on your account — check Billing.") : tr("I couldn't send that — check your connection and try again.");
+      toast(frase);
+      setResult({ err: frase });
       return;
     }
     if (schedule) {
@@ -405,10 +437,10 @@ function CampaignComposer({ live, dataKey, email, brandName, logoUrl, accent, br
     }
     const sent = Number(d.sent) || 0;
     const aud = Number(d.audience) || 0;
-    setResult({ sent, audience: aud, note: d.note || "", ready: d.ready !== false });
+    setResult({ sent, audience: aud, note: "", ready: d.ready !== false });
     if (sent > 0) { toast(`${tr("Campaign sent ✓ — in your brand")} · ${sent}`); setHeadline(""); setBody(""); }
     else if (aud === 0) toast(t({ en: "Nobody matched that audience — nothing was sent.", pt: "Ninguém corresponde a esse público — nada foi enviado.", es: "Nadie coincide con ese público — no se envió nada.", hi: "उस ऑडियंस में कोई नहीं मिला — कुछ नहीं भेजा गया।" }));
-    else toast(d.note || t({ en: "Nothing went out — sending isn't fully switched on yet.", pt: "Nada saiu — o envio ainda não está totalmente ligado.", es: "Nada salió — el envío aún no está activado del todo.", hi: "कुछ नहीं गया — भेजना अभी पूरी तरह चालू नहीं है।" }));
+    else toast(t({ en: "Nothing went out — sending isn't fully switched on yet.", pt: "Nada saiu — o envio ainda não está totalmente ligado.", es: "Nada salió — el envío aún no está activado del todo.", hi: "कुछ नहीं गया — भेजना अभी पूरी तरह चालू नहीं है।" }));
   };
 
   return (

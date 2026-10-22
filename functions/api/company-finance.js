@@ -67,11 +67,11 @@ export async function onRequestPost(context) {
         sr = await fetch(`https://api.stripe.com/v1/invoices?status=paid&limit=100&created[gte]=${desde}&expand[]=data.customer`, {
           headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` },
         });
-      } catch (e) { return json({ ok: false, motivo: `não consegui falar com o Stripe: ${String(e).slice(0, 120)}` }, 502); }
+      } catch (e) { return json({ ok: false, motivo: `não consegui falar com o Stripe: ${String(e).slice(0, 120)}` }, 503); }
       const sd = await sr.json().catch(() => ({}));
       // PORTÃO DE STATUS ANTES DO FALLBACK: um 401/429 viraria `data: []` → "0 invoices pagas",
       // que é o oposto de "não consegui perguntar".
-      if (!sr.ok) return json({ ok: false, motivo: `o Stripe recusou: ${(sd.error && sd.error.message) || `HTTP ${sr.status}`}` }, 502);
+      if (!sr.ok) return json({ ok: false, motivo: `o Stripe recusou: ${(sd.error && sd.error.message) || `HTTP ${sr.status}`}` }, 503);
 
       const invoices = Array.isArray(sd.data) ? sd.data : [];
       let novos = 0, repetidos = 0, falhas = 0;

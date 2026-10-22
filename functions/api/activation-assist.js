@@ -12,31 +12,18 @@ import { json, sameOrigin, rateLimited } from "../lib/guard.js";
 // dez antes de mexer, e é exatamente por estarem iguais que a hora de unificar é agora — depois que
 // uma diverge, alguém já foi atendido pelo modelo errado e ninguém sabe qual superfície foi.
 // É o padrão que esta sessão inteira perseguiu: cópia sem vínculo com a fonte.
-import { MODEL_CHAIN } from "../lib/guiBrain.js";
+import { askClaude as cerebroDeTexto } from "../lib/guiBrain.js";
 async function askClaude(env, { system, messages, max_tokens = 500 }) {
   let msgs = Array.isArray(messages) ? messages.slice() : [];
   while (msgs.length && msgs[0].role !== "user") msgs.shift(); // Anthropic requires first msg = user
   if (!msgs.length) return { err: "empty_messages", status: 400 };
-  let lastStatus = 0, lastDetail = "";
-  for (const model of MODEL_CHAIN) {
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-        body: JSON.stringify({ model, max_tokens, system, messages: msgs }),
-      });
-      if (r.ok) {
-        const d = await r.json().catch(() => ({}));
-        const text = (d?.content?.[0]?.text || "").trim();
-        if (text) return { text, model };
-        lastStatus = 200; lastDetail = "empty_ai";
-      } else {
-        lastStatus = r.status; lastDetail = (await r.text().catch(() => "")).slice(0, 200);
-        if (r.status === 401 || r.status === 402) break; // auth/billing won't be fixed by another model
-      }
-    } catch (e) { lastStatus = 0; lastDetail = String(e).slice(0, 120); }
-  }
-  return { err: "ai_unavailable", status: lastStatus, detail: lastDetail };
+  // 2026-10-05: sem chamada direta à Anthropic — askClaude usa o Escritor da ElevenLabs quando ela está desligada.
+  // O formato de volta ({ text, model } | { err, status, detail }) continua o mesmo; o motivo vem do `diag`.
+  const diag = [];
+  const text = await cerebroDeTexto(env, { system, messages: msgs, maxTokens: max_tokens, diag });
+  const ult = diag[diag.length - 1] || {};
+  if (text) return { text, model: ult.model || ult.cerebro || "" };
+  return { err: "ai_unavailable", status: ult.status || 0, detail: String(ult.detalhe || ult.erro || ult.bloqueado || "").slice(0, 200) };
 }
 
 // The activation truth. These are the ONLY facts the copilot may state as how-it-works — kept in
@@ -64,7 +51,7 @@ export async function onRequestPost(context) {
   try {
     if (!sameOrigin(request)) return json({ error: "forbidden" }, 403);
     if (await rateLimited(request, env, "activation-assist", 20)) return json({ error: "too many requests" }, 429);
-    if (!env.ANTHROPIC_API_KEY) return json({ error: "ai_unconfigured" }, 503);
+    if (!env.ANTHROPIC_API_KEY && !env.ELEVENLABS_API_KEY) return json({ error: "ai_unconfigured" }, 503);
 
     const b = await request.json().catch(() => ({}));
     const lang = ({ pt: "Portuguese", en: "English", es: "Spanish", hi: "Hindi" })[(b.lang || "pt").toString().slice(0, 2)] || "Portuguese";
@@ -78,7 +65,7 @@ export async function onRequestPost(context) {
 
     const ctx = b.context ? `\n\nCONTEXT the rep gave (business/sector/status): ${String(b.context).slice(0, 400)}` : "";
     const out = await askClaude(env, { system: `${SYS}\n\n${factsBlock({ audience: "seller" })}\n\nRespond in ${lang}.${ctx}`, messages, max_tokens: 520 });
-    if (out.err) return json({ error: out.err, status: out.status, detail: out.detail }, out.status && out.status >= 400 ? 502 : 502);
+    if (out.err) return json({ error: out.err, status: out.status, detail: out.detail }, out.status && out.status >= 400 ? 503 : 503);
     return json({ ok: true, reply: out.text, model: out.model });
   } catch (e) {
     return json({ error: "server_error", detail: String(e).slice(0, 160) }, 500);

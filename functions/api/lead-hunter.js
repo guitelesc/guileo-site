@@ -100,7 +100,7 @@ export async function onRequestPost(context) {
     const ins = await svcRpc(env, "seller_prospects_bulk", {
       p_secret: env.INGEST_SECRET || "", p_seller_email: seller, p_rows: uniq,
     });
-    if (!ins || !ins.ok) return json({ ok: false, error: `gravação falhou (${ins && ins.status})` }, 502);
+    if (!ins || !ins.ok) return json({ ok: false, error: `gravação falhou (${ins && ins.status})` }, 503);
     const out = await ins.json().catch(() => ({}));
     return json({ ok: true, area, seller_email: seller, encontrados: uniq.length,
       com_telefone: uniq.filter((u) => u.phone).length, ...out });

@@ -1,3 +1,4 @@
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 // Gui Support — Trilingual scenario library (PT-BR / EN / ES-LatAm)
 // The brain that lets Gui Support resolve client issues instantly by keyword match.
 // Categories: setup | billing | agent | technical | feature | account | data | finance | marketing
@@ -814,7 +815,7 @@ export const SUPPORT_KB = [
     },
     a: {
       pt: "É a sua cabine de comando — onde você vê tudo de relance. Lá ficam o status do Gui (ativo/pausado), as conversas de hoje, os agendamentos, o saldo de créditos e os alertas importantes. É o melhor lugar pra começar o dia. Quer que eu abra o Command Center pra você?",
-      en: "It's your cockpit — where you see everything at a glance. It shows Gui's status (active/paused), today's conversations, bookings, credit balance and the alerts that matter. It's the best place to start your day. Want me to open the Command Center?",
+      en: `It's your ${NOME_DO_PAINEL} — where you see everything at a glance. It shows Gui's status (active/paused), today's conversations, bookings, credit balance and the alerts that matter. It's the best place to start your day. Want me to open the Command Center?`,
       es: "Es tu cabina de mando — donde ves todo de un vistazo. Muestra el estado de Gui (activo/pausado), las conversaciones de hoy, las citas, el saldo de créditos y las alertas importantes. Es el mejor lugar para empezar el día. ¿Te abro el Command Center?",
     },
     action: { kind: "none", label: { pt: "Abrir Command Center", en: "Open Command Center", es: "Abrir Command Center" } },

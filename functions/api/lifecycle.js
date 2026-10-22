@@ -19,6 +19,10 @@
 // Graceful: until Luis pastes db/lifecycle.sql the run reports { ready:false } and sends nothing.
 import { json, safeEq } from "../lib/guard.js";
 import { sendNurtureStep } from "./nurture.js";
+import { avisarDono } from "../lib/avisarDono.js";
+
+// O motivo que o dono consegue CONSERTAR, escrito uma vez só (backup.js usa a mesma frase).
+const MOTIVO_ADMIN_TOKEN = "ADMIN_TOKEN ausente ou diferente da senha do /admin (Cloudflare → Variables)";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -70,7 +74,24 @@ export async function onRequest(context) {
       const all = await r.json();
       rows = (Array.isArray(all) ? all : []).filter((x) => x.action === "lead" && new Date(x.created_at).getTime() >= since);
     } else {
-      return json({ ok: false, ready: true, error: "lead store unreachable (admin_actions)", ...out });
+      // ── 12 DIAS DE NUTRIÇÃO PARADA COM O CRON VERDE (auditoria de lançamento, 2026-09-22) ──────
+      // Esta linha respondia `ok:false` com HTTP 200. O cron-tick lia só o status, então listou o
+      // lifecycle como saudável por 12 dias enquanto NENHUM lead recebia o passo seguinte — o
+      // motivo era o ADMIN_TOKEN do Cloudflare diferente da senha do /admin (o banco recusa com
+      // 403, errcode 28000). E "lead store unreachable" não dizia a ninguém o que consertar.
+      // Agora: 502 (falha é falha também no status), o motivo que o dono consegue resolver, e o
+      // aviso sai pelo avisarDono — que tem trava de 6h, então os 96 tiques do dia viram no
+      // máximo 4 avisos. (emitFailure direto gravaria uma linha no feed POR TIQUE: o tipo não é
+      // dos "urgentes", então ele não passaria pela trava.)
+      const recusou = r.status === 401 || r.status === 403 || !env.ADMIN_TOKEN;
+      const motivo = recusou ? MOTIVO_ADMIN_TOKEN : `admin_actions http ${r.status} — o banco não devolveu os leads`;
+      const aviso = await avisarDono(env, {
+        kind: "lifecycle_parado",
+        summary: `a nutrição automática de leads está PARADA — ${motivo}`,
+        detail: `admin_actions respondeu HTTP ${r.status}. Enquanto isto não for consertado, nenhum lead recebe prova/proposta/reengajamento.`,
+        cliente: "Guileo (lifecycle)", link: "https://guileoai.com/admin", payload: { http: r.status, admin_token_presente: !!env.ADMIN_TOKEN },
+      });
+      return json({ ok: false, ready: true, error: "lead store unreachable (admin_actions)", motivo, http: r.status, aviso, ...out }, 503);
     }
 
     // One record per email: the FIRST lead time anchors the schedule; keep the best name/business.

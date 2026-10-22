@@ -88,6 +88,21 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: true, n: painel.clientes_reais ?? null, fonte: "carteira (client_credits, sem contas internas)" });
     }
 
+    // ── 🔎 FUNIL DO SITE (2026-09-18) — site_eventos (pageview → cta → abriu a Gui → conversou →
+    // deixou contato). A leitura já existia em GET /api/evento, mas só com o segredo INGEST, que
+    // não pode morar no navegador. Aqui ela passa pelo portão do admin, igual ao resto do painel.
+    if (acao === "funil_site") {
+      const dias = Math.max(1, Math.min(90, parseInt(b.dias, 10) || 7));
+      const r = await svcJson(env, "site_eventos_resumo", { p_secret: ING, p_dias: dias });
+      if (r == null || r.ok === false) return json({ ok: false, motivo: "não leu site_eventos_resumo", detalhe: r && (r.detalhe || r.erro_http) }, 503);
+      // (2026-09-22) "Deixou contato" = formulário/Raio-X (site_eventos) + lead que a GUI capturou na
+      // conversa do widget (gui_actions, source gui-call). Robô 🤖 fica fora. Falha aqui NÃO zera o
+      // funil: vem `leads: null` e a tela diz que não leu — zero falso é diagnóstico falso.
+      const l = await svcJson(env, "site_leads_resumo", { p_secret: ING, p_dias: dias }).catch(() => null);
+      const leads = l && l.ok ? { formulario: Number(l.formulario || 0), gui_conversa: Number(l.gui_conversa || 0), suspeitos: Number(l.suspeitos || 0) } : null;
+      return json({ ok: true, ...r, dias, leads });
+    }
+
     // ── ➕ CRÉDITOS — o botão que faltava embaixo da acusação "cliente no vermelho". ──────────
     if (acao === "grant_credits") {
       const email = (b.email || "").toString().trim().toLowerCase();

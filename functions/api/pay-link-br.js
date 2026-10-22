@@ -99,11 +99,11 @@ export async function onRequestPost(context) {
         statement_descriptor: "GUILEO",
       }),
     });
-    if (!res.ok) return json({ error: `mercadopago ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}` }, 502);
+    if (!res.ok) return json({ error: `mercadopago ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}` }, 503);
     const d = await res.json().catch(() => ({}));
     const url = d.init_point || d.sandbox_init_point || "";
     // COMPROVANTE: "ok" sem o link não é sucesso, é promessa. Sem init_point, é 502.
-    if (!url) return json({ error: "mercadopago devolveu preferência sem init_point" }, 502);
+    if (!url) return json({ error: "mercadopago devolveu preferência sem init_point" }, 503);
 
     return json({ ok: true, url, id: d.id || "", plano: plano.name, valor: amount, moeda: "BRL", tenant, ref });
   } catch (e) { return json({ error: String(e).slice(0, 140) }, 400); }

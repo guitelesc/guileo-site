@@ -38,9 +38,11 @@ import { lerCompartilhado, juntarCompartilhado, resumoAnexos } from "../lib/comp
 // lições e sem a constituição. O comentário abaixo dizia que o adapter "ainda não estava no build";
 // ele está desde agosto (manychat-reply.js e whatsapp-cloud.js já usam). Ninguém voltou aqui.
 import { handleInboundMessage } from "../lib/messageAdapter.js";
-import { escolherCampanha, montarDm, escolherIdioma, textoDoIdioma, linkComIdioma, escolherTexto,
-         REGRA_PADRAO, TETO_HORA_META } from "../lib/comentarios.js";
-import { svcRpc } from "../lib/sb.js";
+import { escolherCampanha, montarDm, escolherIdioma, textoDoIdioma, escolherTexto,
+         REGRA_PADRAO, TETO_HORA_META, linkDoDirect, origemDaConversa } from "../lib/comentarios.js";
+import { svcRpc, svcJson } from "../lib/sb.js";
+import { askClaude } from "../lib/guiBrain.js";
+import { debitar, refMensagem } from "../lib/creditos.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -143,7 +145,7 @@ async function getProfile(env, email) {
 //    fenced by the system prompt (anti prompt-injection). Returns "" when we truly can't reply
 //    (no API key) → caller degrades honestly (ingest only, no fake send).
 async function localGuiReply(env, email, channel, userText, memory, fromName) {
-  if (!env.ANTHROPIC_API_KEY) return "";
+  if (!env.ANTHROPIC_API_KEY && !env.ELEVENLABS_API_KEY) return "";
   const profile = await getProfile(env, email);
   const biz = profile?.business_name ? String(profile.business_name).slice(0, 160) : "";
   // Per-tenant assistant NAME (the brand's own persona, e.g. MedMundo = "Dr. Davi") — falls back to Gui.
@@ -158,17 +160,9 @@ async function localGuiReply(env, email, channel, userText, memory, fromName) {
   if (facts) sys += ` These are the ONLY facts you may state about this business — never go beyond them: ${facts}`;
   if (profile?.stripe_link) sys += ` When the customer wants to pay or asks for the payment link, share exactly this link: ${profile.stripe_link}`;
   const messages = [{ role: "user", content: String(userText).slice(0, 1200) }];
-  for (const model of ["claude-fable-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"]) {
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-        body: JSON.stringify({ model, max_tokens: 300, system: sys, messages }),
-      });
-      if (r.ok) { const d = await r.json(); const a = (d?.content?.[0]?.text || "").trim(); if (a) return a.slice(0, 900); }
-      else if (r.status === 401 || r.status === 402) break;
-    } catch { /* try next model */ }
-  }
+  // 2026-10-05: sem chamada direta à Anthropic — askClaude usa o Escritor da ElevenLabs quando ela está desligada.
+  const a = await askClaude(env, { system: sys, maxTokens: 300, messages });
+  if (a) return a.slice(0, 900);
   return "";
 }
 
@@ -204,9 +198,31 @@ async function sendMetaReply(pageToken, recipientId, text) {
   } catch { return false; }
 }
 
+// ── O FUNIL DO GUILEO DIRECT (db/direct_metricas.sql) ─────────────────────────────────────────
+// Cada porta que a pessoa atravessa vira UMA linha com nome fixo — o feed do dono continua
+// recebendo a frase bonita (ingestInbound), e a métrica deixa de depender de parsear essa frase.
+// Nunca lança e nunca atrasa o envio: quem chama empurra a promessa numa lista e só espera no fim.
+// Falhar aqui não é notícia para o cliente final — é diagnóstico nosso, e um DM vale mais que ele.
+async function marcar(env, email, etapa, c = {}) {
+  try {
+    if (!env.INGEST_SECRET || !email) return false;
+    const r = await svcRpc(env, "direct_evento", {
+      p_secret: env.INGEST_SECRET, p_email: email, p_etapa: etapa,
+      p_ig_id: c.ig || null, p_campaign_id: c.campanha || null, p_pessoa: c.pessoa || null,
+      p_comment_id: c.comentario || null, p_media_id: c.media || null,
+      p_motivo: c.motivo ? String(c.motivo).slice(0, 240) : null, p_palavra: c.palavra || null,
+      p_lang: c.lang || null, p_lang_via: c.via || null,
+      p_ms: Number.isFinite(c.ms) ? Math.round(c.ms) : null,
+    });
+    return !!(r && r.ok);
+  } catch { return false; }
+}
+
 // ── process ONE messaging event (a single inbound DM). Fully guarded — one bad event never
 //    aborts the batch or the 200. ──────────────────────────────────────────────────────────────
 async function processMessagingEvent(env, origin, object, pageId, ev) {
+  const t0 = Date.now();
+  const marcas = [];   // o funil do Direct: sai em paralelo, é esperado no `finally`
   try {
     const msg = ev && ev.message;
     // only real inbound text messages: skip echoes (our own sends), deliveries, reads, reactions.
@@ -265,6 +281,13 @@ async function processMessagingEvent(env, origin, object, pageId, ev) {
 
     // exactly-once per mid (Meta re-delivers). Duplicate → stop before we reply twice.
     if (!(await markSeen(env, tenant.client_email, msg.mid))) return;
+    // Só Instagram entra no funil do Direct: Messenger é o mesmo cérebro, mas outro produto, e
+    // misturar os dois faria o painel do Direct contar conversa que não veio do Instagram.
+    const ehDirect = object === "instagram";
+    if (ehDirect) marcas.push(marcar(env, tenant.client_email, "dm_recebida", {
+      ig: businessPageId, pessoa: senderId,
+      motivo: compartilhado ? `compartilhou ${compartilhado.tipo}` : (anexoSemTexto || null),
+    }));
 
     const channel = object === "instagram" ? "Instagram" : "Messenger";
     const fromName = (ev.sender && ev.sender.name) ? String(ev.sender.name) : "";
@@ -278,6 +301,8 @@ async function processMessagingEvent(env, origin, object, pageId, ev) {
       const entregou = await sendMetaReply(tenant.page_access_token, senderId, fala);
       await ingestInbound(env, tenant.client_email, channel, "",
         entregou ? `🤖 Gui pediu texto (${anexoSemTexto})` : `⚠️ NÃO entregue: pedido de texto após ${anexoSemTexto}`, senderId);
+      if (ehDirect) marcas.push(marcar(env, tenant.client_email, entregou ? "dm_respondida" : "dm_nao_entregue", {
+        ig: businessPageId, pessoa: senderId, motivo: entregou ? "pediu_texto" : `pedido de texto após ${anexoSemTexto}`, ms: Date.now() - t0 }));
       return;
     }
 
@@ -290,20 +315,40 @@ async function processMessagingEvent(env, origin, object, pageId, ev) {
     // `lang` vem do perfil do negócio; o cérebro espelha a língua de quem escreveu mesmo assim.
     // `meta.anexos` leva o formato real do anexo para o evento (a janela do compartilhamento).
     let reply = "";
+    // `cerebro` = quem escreveu foi o cérebro unificado, e não a frase de handoff (`escalate`), o
+    // "recebi sua mensagem" sem chave (`ready:false`) nem uma repetição (`duplicate`, que o
+    // adapter manda não cobrar). Só isso é cobrável — ver o medidor lá embaixo.
+    let cerebro = false;
+    let quemRespondeu = "";   // "elevenlabs" | "anthropic" | "frase_segura" | "atalho" — vai pro funil
     try {
       const perfil = await getProfile(env, tenant.client_email);
+      // ── DE ONDE ESTA CONVERSA VEIO ─────────────────────────────────────────────────────────
+      // Quem recebeu o DM de um comentário e responde aqui está no meio de uma conversa que a Gui
+      // começou. A frase sai do NOSSO banco (palavra + campanha do dono), não do texto da cliente.
+      // Sem contexto (pessoa que escreveu direto) → "" e nada muda.
+      let origemConversa = "";
+      if (ehDirect && env.INGEST_SECRET) {
+        const ctx = await svcJson(env, "direct_contexto_pessoa", {
+          p_secret: env.INGEST_SECRET, p_email: tenant.client_email, p_ig_id: businessPageId, p_pessoa: senderId,
+        }).catch(() => null);
+        origemConversa = origemDaConversa(ctx && ctx.palavra ? ctx : null);
+      }
       const r = await handleInboundMessage(env, {
         channel: channel.toLowerCase(), tenantEmail: tenant.client_email, from: senderId,
         text, name: fromName, lang: (perfil && perfil.lang) || "en", origin,
         meta: anexos.length ? { anexos: resumoAnexos(anexos) } : {},
+        origemConversa,
       });
+      quemRespondeu = (r && r.cerebro) || "";
       // ⚠️ `duplicate` do adapter NÃO impede o envio. Ele deduplica por CONTEÚDO (mesma pessoa,
       // mesmo texto, 10 min) — quem manda "oi" duas vezes cairia nele e ficaria sem resposta. A
       // re-entrega da Meta já foi barrada lá em cima pelo `markSeen(mid)`, que é o dedup certo.
       reply = (r && r.reply) ? String(r.reply).slice(0, 900) : "";
+      cerebro = !!(reply && r.ready === true && !r.escalate && !r.duplicate);
     } catch {
       // Adapter quebrado não pode calar o direct: cai no atalho antigo, que ao menos responde.
       await ingestInbound(env, tenant.client_email, channel, fromName, text, senderId);
+      quemRespondeu = "atalho";
       reply = await guiBrainReply(env, {
         channel: channel.toLowerCase(), email: tenant.client_email, senderId, fromName, text, origin,
       });
@@ -313,13 +358,25 @@ async function processMessagingEvent(env, origin, object, pageId, ev) {
     // message in the cockpit feed that the customer never received (expired page token,
     // 24h window closed, permission revoked). Mirror the truth, not the intention.
     const delivered = await sendMetaReply(tenant.page_access_token, senderId, reply);
+    if (ehDirect) marcas.push(marcar(env, tenant.client_email, delivered ? "dm_respondida" : "dm_nao_entregue", {
+      ig: businessPageId, pessoa: senderId, ms: Date.now() - t0,
+      motivo: delivered ? (quemRespondeu || "?") : "a Meta recusou o envio (token da Página ou janela de 24h fechada)" }));
     // O adapter já registrou a resposta gerada; aqui só grita o que ele não sabe: que ela NÃO saiu.
     if (!delivered) {
       await ingestInbound(env, tenant.client_email, channel, "⚠️ Gui",
         `⚠️ Resposta da Gui NÃO foi entregue (${channel}) — token da Página inválido ou janela de 24h fechada. Texto: ${reply.slice(0, 100)}`,
         senderId);
+    } else if (cerebro) {
+      // MEDIDOR DE CRÉDITO (2026-09-27): a Meta aceitou o envio E o cérebro unificado escreveu.
+      // O atalho de emergência do `catch` acima (sem KB, sem preços) NÃO é cobrado: é o modo
+      // degradado de uma falha nossa. A referência é o `mid` recebido — sem mid não há como
+      // provar idempotência, então `refMensagem` devolve "" e o medidor se recusa a debitar.
+      // Já estamos dentro do waitUntil; `debitar` nunca lança.
+      const rede = channel.toLowerCase(); // "instagram" | "messenger"
+      await debitar(env, { email: tenant.client_email, kind: rede, ref: refMensagem(rede, msg.mid) });
     }
   } catch { /* one event failing must not break the batch */ }
+  finally { if (marcas.length) await Promise.allSettled(marcas); }
 }
 
 
@@ -429,6 +486,8 @@ async function reservarEnvio(env, email, igId, pessoa, commentId, campanhaId) {
 // Duplicar a decisão aqui seria criar duas verdades sobre quando mandar DM — o mesmo erro que o
 // sellerAuth documenta sobre autenticação.
 export async function processCommentChange(env, origin, entryId, value) {
+  const t0 = Date.now();
+  const marcas = [];   // o funil do Direct — em paralelo, esperado no `finally` (não atrasa o DM)
   try {
     const commentId = String((value && (value.id || value.comment_id)) || "");
     const mediaId = String((value && ((value.media && value.media.id) || value.media_id)) || "");
@@ -460,8 +519,25 @@ export async function processCommentChange(env, origin, entryId, value) {
 
     const campanhas = await campanhasDaConta(env, tenant.client_email, contaIg);
     if (!campanhas.length) return; // conta sem campanha: silêncio é o certo, não é falha
+    // O denominador do funil: TODO comentário numa conta com campanha. Sem ele, "casou 10" não diz
+    // se foi 10 de 12 ou 10 de 900 — e é essa razão que mostra se a palavra-chave está certa.
+    // Só contagem: o texto do comentário NÃO é gravado aqui (o feed do dono só recebe o que casou).
+    const base = { ig: contaIg, pessoa, comentario: commentId, media: mediaId || null };
+    marcas.push(marcar(env, tenant.client_email, "comentario", base));
     const alvo = escolherCampanha(campanhas, { texto, mediaId, originalMediaId });
     if (!alvo) return; // comentário normal, sem palavra-chave — a maioria. Nunca vira ruído no feed.
+
+    // O IDIOMA é decidido AQUI, antes da reserva (era depois): é puro e custa microssegundos, e
+    // assim o "casou" já nasce com a língua — inclusive o comentário que o freio vai segurar.
+    const i18n = (alvo.campanha.dm_i18n && typeof alvo.campanha.dm_i18n === "object") ? alvo.campanha.dm_i18n : {};
+    const padraoLang = alvo.campanha.lang_padrao || "en";
+    const idioma = escolherIdioma({
+      texto, palavra: alvo.palavra,
+      permitidos: Object.keys(i18n),   // só idioma que ESTE dono tem texto pronto e revisado
+      padrao: padraoLang,
+    });
+    const doFunil = { ...base, campanha: alvo.campanha.id, palavra: alvo.palavra, lang: idioma.code, via: idioma.via };
+    marcas.push(marcar(env, tenant.client_email, "casou", doFunil));
 
     const reserva = await reservarEnvio(env, tenant.client_email, contaIg, pessoa, commentId, alvo.campanha.id);
     if (!reserva.ok) {
@@ -470,6 +546,7 @@ export async function processCommentChange(env, origin, entryId, value) {
       if (reserva.motivo && reserva.motivo !== "duplicado") {
         await ingestInbound(env, tenant.client_email, "Instagram", "",
           `⏸️ comentário "${texto.slice(0, 60)}" casou com "${alvo.palavra}" mas o DM foi segurado (${reserva.motivo})`, pessoa);
+        marcas.push(marcar(env, tenant.client_email, "segurado", { ...doFunil, motivo: reserva.motivo }));
       }
       return;
     }
@@ -487,19 +564,14 @@ export async function processCommentChange(env, origin, entryId, value) {
     // latência ao DM (que vale por ser instantâneo) e erraria justo no texto curto, que é a
     // maioria aqui. `texto` vai CRU de propósito — normalizar() arranca acento e ideograma, ou
     // seja, apaga exatamente o sinal que estamos lendo.
-    const i18n = (alvo.campanha.dm_i18n && typeof alvo.campanha.dm_i18n === "object") ? alvo.campanha.dm_i18n : {};
-    const padraoLang = alvo.campanha.lang_padrao || "en";
-    const idioma = escolherIdioma({
-      texto, palavra: alvo.palavra,
-      permitidos: Object.keys(i18n),   // só idioma que ESTE dono tem texto pronto e revisado
-      padrao: padraoLang,
-    });
+    // (o idioma já foi decidido acima, antes da reserva — ver "O IDIOMA é decidido AQUI")
     // Campanha sem dm_i18n cai em dm_text e responde exatamente como antes — idioma novo não
     // pode calar quem já está no ar.
     const modelo = textoDoIdioma(alvo.campanha, idioma.code, padraoLang);
     // O link leva o idioma adiante: a landing abre traduzida (i18n.jsx lê ?lang=), o lead nasce
     // com `lang` e a Gui LIGA naquele idioma. O corredor já existia inteiro; faltava o carimbo.
-    const dm = montarDm(modelo, { usuario, link: linkComIdioma(alvo.campanha.link_url, idioma.code) });
+    // + o CARIMBO DO DIRECT (utm_medium=direct, utm_campaign=<id>): sem ele o lead chegava órfão.
+    const dm = montarDm(modelo, { usuario, link: linkDoDirect(alvo.campanha.link_url, idioma.code, alvo.campanha.id) });
     const envio1 = await enviarPrivateReply(tenant.page_access_token, contaIg, commentId, dm, tenant.page_id);
     // `idioma.via` no log NÃO é enfeite: quando um DM sair na língua errada, a diferença entre
     // "a escrita disse coreano" e "caiu no padrão porque faltava tradução" é a diferença entre
@@ -507,6 +579,8 @@ export async function processCommentChange(env, origin, entryId, value) {
     await ingestInbound(env, tenant.client_email, "Instagram", envio1.ok ? "Gui" : "⚠️ Gui",
       envio1.ok ? `🤖 DM enviado (via ${envio1.via || "?"}) 🌐${idioma.code}·${idioma.via}: ${dm.slice(0, 140)}`
               : `⚠️ DM NÃO entregue (${envio1.motivo}) 🌐${idioma.code} — texto: ${dm.slice(0, 100)}`, pessoa);
+    marcas.push(marcar(env, tenant.client_email, envio1.ok ? "dm_enviado" : "dm_falhou", {
+      ...doFunil, motivo: envio1.ok ? `via ${envio1.via || "?"}` : envio1.motivo, ms: Date.now() - t0 }));
 
     // A resposta pública é um extra: se falhar, o DM (que é o produto) já saiu. Nunca deixa de
     // registrar o motivo real, mas também nunca derruba o caminho principal.
@@ -515,12 +589,15 @@ export async function processCommentChange(env, origin, entryId, value) {
     const publica = escolherTexto(alvo.campanha.public_reply_i18n, idioma.code, padraoLang, alvo.campanha.public_reply);
     if (publica) {
       const envio2 = await enviarRespostaPublica(tenant.page_access_token, commentId, publica);
+      marcas.push(marcar(env, tenant.client_email, envio2.ok ? "publica_ok" : "publica_falhou", {
+        ...doFunil, motivo: envio2.ok ? null : envio2.motivo }));
       if (!envio2.ok) {
         await ingestInbound(env, tenant.client_email, "Instagram", "⚠️ Gui",
           `⚠️ resposta pública não publicada (${envio2.motivo})`, pessoa);
       }
     }
   } catch { /* um comentário falhando não pode quebrar o lote */ }
+  finally { if (marcas.length) await Promise.allSettled(marcas); }
 }
 
 // Walk the Meta webhook payload → each messaging event.
@@ -532,6 +609,33 @@ async function processPayload(env, origin, payload) {
     // Messenger + IG both deliver DMs under entry.messaging[]; IG can also use entry.standby (skip).
     const events = Array.isArray(entry && entry.messaging) ? entry.messaging : [];
     for (const ev of events) await processMessagingEvent(env, origin, object, pageId, ev);
+    // ── STANDBY: IGNORAR CONTINUA CERTO, CALADO NÃO (2026-09-10) ────────────────────────────────
+    // `standby` é a Meta dizendo "a mensagem chegou, mas OUTRO app controla esta conversa" (ManyChat,
+    // Blotato, ou a Caixa de Entrada depois que alguém respondeu à mão). Responder por cima seria
+    // falar junto com o dono do fio — então não respondemos. Mas o skip era mudo: um reel mandado
+    // pra @chigotravels sumiu sem uma linha, e "a Meta não entregou" e "a Meta entregou pra outro
+    // app" ficaram indistinguíveis. Agora fica gravado quem mandou e para qual conta.
+    const standby = Array.isArray(entry && entry.standby) ? entry.standby : [];
+    for (const ev of standby) {
+      const m = ev && ev.message;
+      if (!m || m.is_echo === true) continue;               // leitura/entrega/eco: não é conversa
+      try {
+        const para = String((ev.recipient && ev.recipient.id) || pageId || "?");
+        // Grava no CLIENTE dono da conta (é no painel dele que isso tem que aparecer); só cai no ID
+        // cru quando a conta não é de ninguém — aí o ID é a única pista.
+        const dono = await tenantForPage(env, para).catch(() => null);
+        await emitFailure(env, "meta_standby", (dono && dono.client_email) || para,
+          `DM chegou em STANDBY para ${para}: outro app controla esta conversa — a Gui não respondeu. Veja em Business Suite → Configurações → Mensagens avançadas quem é o app principal.`,
+          { object: String(object || ""), de: String((ev.sender && ev.sender.id) || ""), para, tinha_texto: !!m.text,
+            anexos: Array.isArray(m.attachments) ? m.attachments.map((a) => (a && a.type) || "?") : [] });
+        // No funil também: "a Gui não respondeu porque outro app é dono da conversa" é uma porta,
+        // e sem ela o painel mostraria DM recebida sem resposta como se fosse defeito nosso.
+        if (object === "instagram" && dono && dono.client_email) {
+          await marcar(env, dono.client_email, "standby", { ig: para, pessoa: String((ev.sender && ev.sender.id) || ""),
+            motivo: "outro app controla esta conversa" });
+        }
+      } catch { /* diagnóstico nunca derruba o lote */ }
+    }
     // COMENTÁRIOS chegam noutro ramo do MESMO payload: entry.changes[] com field:"comments".
     // Só Instagram — comentário de Página do Facebook é outro produto e não está no escopo.
     if (object === "instagram") {

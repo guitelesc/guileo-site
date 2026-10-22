@@ -1,7 +1,8 @@
 /* Split out of Portal.jsx (performance): GuileoImpact tab view. */
 import { useState, useEffect } from "react";
 import { FaDownload } from "react-icons/fa6";
-import { portalApi, toast, loadDataKey } from "../lib/portalApi.js";
+import { portalApi, toast, loadDataKey, chamarApi } from "../lib/portalApi.js";
+import FalhaDeLeitura from "./FalhaDeLeitura.jsx";
 import { Count } from "../lib/ui.jsx";
 import { genImpact, loadCreated, relTime, Card, tr, Bars } from "../pages/Portal.jsx";
 
@@ -25,23 +26,51 @@ function inThisMonth(iso) {
   return t >= Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
 }
 
-function GuileoImpact({ V, real = null, email = "", dataKey = "" }) {
+function GuileoImpact({ V, real = null, email = "", dataKey = "", onNav }) {
   const d = genImpact(V);
   // REAL MODE ignores the local 'created:impact' ledger (demo clicks inflated ROI) — only real data.
   const created = real ? [] : loadCreated(V.label, "impact");
 
   // Authoritative month revenue from the SAME spine as the weekly email (/api/revenue → revenue_month).
   const [rev, setRev] = useState(null);
+  // 🚨 (2026-09-28) Quando o razão de receita não respondia, a tela trocava CALADA o número do
+  // cabeçalho pela soma dos eventos — outro número, de outra fonte, com o mesmo selo "LIVE". Quem
+  // compara com o e-mail semanal vê dois totais e conclui que um dos dois está errado (e está
+  // certo em desconfiar). O número de reserva continua, mas agora a tela DIZ que é reserva.
+  const [revFalha, setRevFalha] = useState(null);
+  const [revDesligado, setRevDesligado] = useState(false);   // o servidor disse: razão de receita ainda não ligado
+  const [tentativa, setTentativa] = useState(0);
   const dk = dataKey || loadDataKey();
   useEffect(() => {
     let alive = true;
-    if (!real || !email || !dk) { setRev(null); return; }
-    fetch("/api/revenue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: dk, email }) })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => { if (alive) setRev(j && j.ok ? j : null); })
-      .catch(() => { if (alive) setRev(null); });
+    if (!real || !email || !dk) { setRev(null); setRevFalha(null); return; }
+    setRevFalha(null);
+    chamarApi("/api/revenue", { token: dk, email }).then((r) => {
+      if (!alive) return;
+      if (r.motivo) { setRev(null); setRevFalha(r.motivo); return; }
+      if (r.data.ok) { setRev(r.data); setRevDesligado(r.data.ready === false); } else { setRev(null); setRevFalha("servidor"); }
+    });
     return () => { alive = false; };
-  }, [real, email, dk]);
+  }, [real, email, dk, tentativa]);
+  // 🚨 CONTA REAL SEM DADO LIDO NÃO VÊ RECEITA DE AMOSTRA (2026-09-27). Sem `real`, esta aba
+  // desenhava `genImpact(V)`: um total em dólar, um extrato de "cada $ que a IA gerou" e um
+  // retorno — tudo gerado — debaixo do título "Crescimento que a Guileo trouxe · este mês". É a
+  // tela que justifica a mensalidade; número inventado aqui é a origem exata do pedido de
+  // reembolso ("parecia que existia"). Fica DEPOIS dos hooks (regra dos hooks) e antes de qualquer
+  // conta. Em demo nada muda.
+  if (!real && portalApi.contaReal()) {
+    const temChave = !!dk;
+    return (
+      <div className="space-y-4 stagger">
+        <Card className="p-8 text-center border-g-gold/25 bg-g-gold/[0.05]">
+          <div className="text-4xl mb-3">📊</div>
+          <div className="text-lg font-extrabold text-g-word">{temChave ? tr("I couldn't refresh your data just now.") : tr("Connect your code to see your real numbers")}</div>
+          <div className="text-sm text-g-muted mt-1.5 max-w-md mx-auto leading-relaxed">{tr("We don't show sample numbers on a real account. The growth Gui drove for you appears here as soon as your data is read.")}</div>
+          <button type="button" onClick={() => (onNav ? onNav("settings") : window.location.assign("/portal?tab=settings"))} className="btn-bright text-sm mt-4">{tr("Open Settings →")}</button>
+        </Card>
+      </div>
+    );
+  }
   const revMonthUsd = rev && rev.ready && Number.isFinite(rev.month_cents) ? rev.month_cents / 100 : null;
   const revSeries = Array.isArray(rev?.series) && rev.series.some((n) => n > 0) ? rev.series : null;
 
@@ -67,6 +96,12 @@ function GuileoImpact({ V, real = null, email = "", dataKey = "" }) {
   const chartData = real ? revSeries : V.revenue;
   return (
     <div className="space-y-4 stagger">
+      {real && !revFalha && revDesligado && (
+        <div className="rounded-xl2 border border-g-gold/30 bg-g-gold/[0.06] px-3.5 py-2.5 text-[12px] text-g-muted">
+          {tr("Your revenue ledger isn't switched on yet — the total below comes from this month's events only.")}
+        </div>
+      )}
+      {real && revFalha && <FalhaDeLeitura compacto motivo={revFalha} onRetry={() => setTentativa((n) => n + 1)} titulo={tr("I couldn't read your revenue ledger. The total below comes from this month's events only and may be incomplete.")} />}
       <Card className="relative overflow-hidden bg-gradient-to-br from-g-green/[0.12] to-g-gold/[0.06] border-g-green/30">
         <div className="absolute -top-16 -right-12 h-44 w-44 rounded-full bg-g-green/15 blur-3xl pointer-events-none animate-aurora" />
         <div className="relative">

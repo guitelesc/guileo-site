@@ -20,13 +20,24 @@ const STR = {
   en: {
     title: "Customer Experience", sub: "How your customers feel — measured across every call, message and review.",
     live: "LIVE — real data", sample: "Sample data — connect your account to see your real experience score.", est: "estimate",
-    cx: "Experience Score", nps: "NPS", csat: "CSAT", collecting: "Coletando…", collectingBody: "Feedback shows here as your customers respond.",
+    // 6 chaves deste bloco EN estavam em português ("Coletando…", "Amam", "Pra melhorar",
+    // "Detratores…", "Gui reconquista", "Gui está reconquistando") — um dono em inglês via PT no meio da tela.
+    cx: "Experience Score", nps: "NPS", csat: "CSAT", collecting: "Collecting…", collectingBody: "Feedback shows here as your customers respond.",
     vsPrior: "vs prior 30d", sentiment: "Sentiment mix", pos: "Positive", neu: "Neutral", neg: "Negative",
-    love: "Amam", fix: "Pra melhorar", loveEmpty: "The themes customers praise most will appear here.", fixEmpty: "The themes to fix will appear here.",
-    detractors: "Detratores que precisam de você", detractorsSub: "Unhappy customers — reach them before they churn.",
+    love: "They love", fix: "To improve", loveEmpty: "The themes customers praise most will appear here.", fixEmpty: "The themes to fix will appear here.",
+    detractors: "Detractors who need you", detractorsSub: "Unhappy customers — reach them before they churn.",
     detractorsEmpty: "No unhappy customers right now — your experience is healthy.",
-    reconquer: "Gui reconquista", handled: "Gui está reconquistando ✓", mentions: "mentions",
-    window: "Last 30 days", smallNote: "Small sample — read these as early signals, not verdicts.", of: "of",
+    // 🚨 O BOTÃO DIZ O QUE FAZ (2026-09-28). Era "Gui wins them back" / "Gui is winning them back ✓":
+    // a ação só MARCA o sinal como tratado (cx_close_loop) — nenhuma mensagem sai, ninguém é
+    // procurado. A dona clicava, lia "winning them back" e deixava de ligar para a cliente.
+    reconquer: "Mark as handled", handled: "Marked as handled ✓ — no message was sent. Reach out to them yourself.", mentions: "mentions",
+    // a janela do servidor é de 90 dias (cx_summary/cx_drivers); o rodapé dizia 30.
+    window: "Last 90 days", smallNote: "Small sample — read these as early signals, not verdicts.", of: "of",
+    saveFail: "Couldn't save — try again.", customer: "Customer",
+    failTitle: "I couldn't read your customer experience just now.", failBody: "This is a reading failure — it does not mean everything is fine.", retry: "↻ Try again",
+    notReady: "Not measured yet — this list fills in as feedback comes in.",
+    dLove1: "Fast service", dLove2: "Attentive team", dLove3: "Quality", dFix1: "Waiting time", dFix2: "Price",
+    dC1: "I waited longer than we agreed.", dC2: "It turned out well, but the price surprised me.",
     surveyTitle: "Auto-survey after each visit", surveyDesc: "Gui asks your customers a 1-tap NPS/CSAT by email after they visit. On by default — turn off anytime.",
     on: "On", off: "Off", surveyOnMsg: "Auto-survey on ✓", surveyOffMsg: "Auto-survey off",
   },
@@ -38,8 +49,13 @@ const STR = {
     love: "Amam", fix: "Pra melhorar", loveEmpty: "Os temas mais elogiados vão aparecer aqui.", fixEmpty: "Os temas a melhorar vão aparecer aqui.",
     detractors: "Detratores que precisam de você", detractorsSub: "Clientes insatisfeitos — fale com eles antes que sumam.",
     detractorsEmpty: "Nenhum cliente insatisfeito agora — sua experiência está saudável.",
-    reconquer: "Gui reconquista", handled: "Gui está reconquistando ✓", mentions: "menções",
-    window: "Últimos 30 dias", smallNote: "Amostra pequena — leia como sinais iniciais, não veredito.", of: "de",
+    reconquer: "Marcar como tratado", handled: "Marcado como tratado ✓ — nenhuma mensagem foi enviada. Fale você com o cliente.", mentions: "menções",
+    window: "Últimos 90 dias", smallNote: "Amostra pequena — leia como sinais iniciais, não veredito.", of: "de",
+    saveFail: "Não consegui salvar — tente de novo.", customer: "Cliente",
+    failTitle: "Não consegui ler a experiência dos seus clientes agora.", failBody: "Isto é uma falha de leitura — não quer dizer que está tudo bem.", retry: "↻ Tentar de novo",
+    notReady: "Ainda não medido — a lista se preenche conforme o feedback chega.",
+    dLove1: "Atendimento rápido", dLove2: "Equipe atenciosa", dLove3: "Qualidade", dFix1: "Tempo de espera", dFix2: "Preço",
+    dC1: "Esperei mais do que o combinado.", dC2: "Ficou bom, mas o preço me surpreendeu.",
     surveyTitle: "Pesquisa automática após cada visita", surveyDesc: "A Gui pergunta ao seu cliente um NPS/CSAT de 1 toque por email após a visita. Ligada por padrão — desligue quando quiser.",
     on: "Ligada", off: "Desligada", surveyOnMsg: "Pesquisa automática ligada ✓", surveyOffMsg: "Pesquisa automática desligada",
   },
@@ -51,10 +67,34 @@ const STR = {
     love: "Aman", fix: "Para mejorar", loveEmpty: "Los temas más elogiados aparecerán aquí.", fixEmpty: "Los temas a mejorar aparecerán aquí.",
     detractors: "Detractores que te necesitan", detractorsSub: "Clientes insatisfechos — contáctalos antes de que se vayan.",
     detractorsEmpty: "Ningún cliente insatisfecho ahora — tu experiencia está sana.",
-    reconquer: "Gui reconquista", handled: "Gui está reconquistando ✓", mentions: "menciones",
-    window: "Últimos 30 días", smallNote: "Muestra pequeña — léelo como señales tempranas, no veredicto.", of: "de",
+    reconquer: "Marcar como atendido", handled: "Marcado como atendido ✓ — no se envió ningún mensaje. Contacta tú al cliente.", mentions: "menciones",
+    window: "Últimos 90 días", smallNote: "Muestra pequeña — léelo como señales tempranas, no veredicto.", of: "de",
+    saveFail: "No pude guardar — inténtalo de nuevo.", customer: "Cliente",
+    failTitle: "No pude leer la experiencia de tus clientes ahora.", failBody: "Esto es un fallo de lectura — no significa que todo esté bien.", retry: "↻ Intentar de nuevo",
+    notReady: "Aún no medido — la lista se llena a medida que llega el feedback.",
+    dLove1: "Atención rápida", dLove2: "Equipo atento", dLove3: "Calidad", dFix1: "Tiempo de espera", dFix2: "Precio",
+    dC1: "Esperé más de lo acordado.", dC2: "Quedó bien, pero el precio me sorprendió.",
     surveyTitle: "Encuesta automática tras cada visita", surveyDesc: "Gui pregunta a tu cliente un NPS/CSAT de 1 toque por email tras la visita. Activada por defecto — desactívala cuando quieras.",
     on: "Activada", off: "Desactivada", surveyOnMsg: "Encuesta automática activada ✓", surveyOffMsg: "Encuesta automática desactivada",
+  },
+  // hi faltava: o 4º idioma da UI caía em inglês nesta tela. Números/NPS/CSAT ficam como estão.
+  hi: {
+    title: "ग्राहक अनुभव", sub: "आपके ग्राहक कैसा महसूस करते हैं — हर कॉल, संदेश और समीक्षा में मापा गया।",
+    live: "लाइव — असली डेटा", sample: "नमूना डेटा — अपना असली अनुभव स्कोर देखने के लिए खाता कनेक्ट करें।", est: "अनुमान",
+    cx: "अनुभव स्कोर", nps: "NPS", csat: "CSAT", collecting: "एकत्र हो रहा है…", collectingBody: "जैसे-जैसे ग्राहक जवाब देते हैं, फ़ीडबैक यहाँ दिखता है।",
+    vsPrior: "पिछले 30 दिनों की तुलना में", sentiment: "भावना का मिश्रण", pos: "सकारात्मक", neu: "तटस्थ", neg: "नकारात्मक",
+    love: "पसंद करते हैं", fix: "सुधार के लिए", loveEmpty: "ग्राहक जिन बातों की सबसे ज़्यादा तारीफ़ करते हैं, वे यहाँ दिखेंगी।", fixEmpty: "सुधारने वाली बातें यहाँ दिखेंगी।",
+    detractors: "ऐसे असंतुष्ट ग्राहक जिन्हें आपकी ज़रूरत है", detractorsSub: "नाखुश ग्राहक — उनके जाने से पहले उनसे संपर्क करें।",
+    detractorsEmpty: "अभी कोई नाखुश ग्राहक नहीं — आपका अनुभव स्वस्थ है।",
+    reconquer: "निपटाया हुआ चिह्नित करें", handled: "निपटाया हुआ चिह्नित ✓ — कोई संदेश नहीं भेजा गया। ग्राहक से आप स्वयं संपर्क करें।", mentions: "उल्लेख",
+    window: "पिछले 90 दिन", smallNote: "छोटा नमूना — इन्हें शुरुआती संकेत मानें, फ़ैसला नहीं।", of: "में से",
+    saveFail: "सहेज नहीं सका — फिर कोशिश करें।", customer: "ग्राहक",
+    failTitle: "अभी आपके ग्राहकों का अनुभव नहीं पढ़ सका।", failBody: "यह पढ़ने की विफलता है — इसका मतलब यह नहीं कि सब ठीक है।", retry: "↻ फिर कोशिश करें",
+    notReady: "अभी मापा नहीं गया — फ़ीडबैक आने पर यह सूची भरती है।",
+    dLove1: "तेज़ सेवा", dLove2: "ध्यान रखने वाली टीम", dLove3: "गुणवत्ता", dFix1: "प्रतीक्षा समय", dFix2: "कीमत",
+    dC1: "तय समय से ज़्यादा इंतज़ार करना पड़ा।", dC2: "काम अच्छा हुआ, पर कीमत ने चौंका दिया।",
+    surveyTitle: "हर विज़िट के बाद स्वचालित सर्वे", surveyDesc: "विज़िट के बाद Gui आपके ग्राहक से ईमेल पर 1-टैप NPS/CSAT पूछती है। डिफ़ॉल्ट रूप से चालू — कभी भी बंद करें।",
+    on: "चालू", off: "बंद", surveyOnMsg: "स्वचालित सर्वे चालू ✓", surveyOffMsg: "स्वचालित सर्वे बंद",
   },
 };
 const T = (k) => (STR[UI_LANG] || STR.en)[k] || STR.en[k] || k;
@@ -79,21 +119,21 @@ function genExperienceDemo(V) {
     trend: { delta, dir: delta >= 0 ? "up" : "down" },
     summary: { sentiment: { positive: pos, neutral: neu, negative: neg } },
     drivers: [
-      { theme: "Atendimento rápido", count: vnum(L, "d1", 8, 22), kind: "love" },
-      { theme: "Equipe atenciosa", count: vnum(L, "d2", 6, 18), kind: "love" },
-      { theme: "Qualidade", count: vnum(L, "d3", 5, 14), kind: "love" },
-      { theme: "Tempo de espera", count: vnum(L, "d4", 4, 12), kind: "fix" },
-      { theme: "Preço", count: vnum(L, "d5", 3, 9), kind: "fix" },
+      { theme: T("dLove1"), count: vnum(L, "d1", 8, 22), kind: "love" },
+      { theme: T("dLove2"), count: vnum(L, "d2", 6, 18), kind: "love" },
+      { theme: T("dLove3"), count: vnum(L, "d3", 5, 14), kind: "love" },
+      { theme: T("dFix1"), count: vnum(L, "d4", 4, 12), kind: "fix" },
+      { theme: T("dFix2"), count: vnum(L, "d5", 3, 9), kind: "fix" },
     ],
     detractors: [
-      { signal_id: "demo-1", name: "Ana R.", source: "Google", score: 2, comment: "Esperei mais do que o combinado.", at: new Date(Date.now() - 6 * 36e5).toISOString() },
-      { signal_id: "demo-2", name: "Bruno T.", source: "WhatsApp", score: 3, comment: "Ficou bom mas o preço me surpreendeu.", at: new Date(Date.now() - 28 * 36e5).toISOString() },
+      { signal_id: "demo-1", name: "Ana R.", source: "Google", score: 2, comment: T("dC1"), at: new Date(Date.now() - 6 * 36e5).toISOString() },
+      { signal_id: "demo-2", name: "Bruno T.", source: "WhatsApp", score: 3, comment: T("dC2"), at: new Date(Date.now() - 28 * 36e5).toISOString() },
     ],
   };
 }
 
 // One stat block in the hero. Shows the number + honest n; when n==0 / not ready → warm collecting state.
-function HeroStat({ label, value, n, format = "score", color }) {
+function HeroStat({ label, value, n, format = "score", color, animar = false }) {
   const has = Number.isFinite(value) && (n == null || n > 0);
   const c = color || scoreColor(format === "nps" ? (Number(value) + 100) / 2 : Number(value));
   return (
@@ -102,7 +142,8 @@ function HeroStat({ label, value, n, format = "score", color }) {
       {has ? (
         <>
           <div className="mt-1 text-4xl font-black num leading-none" style={{ color, textShadow: `0 0 18px ${c}44` }}>
-            <Count key={`${label}-${value}`} to={Number(value)} suffix={format === "csat" ? "%" : ""} />
+            {/* conta real: o número nasce no valor (contador animado congela em 0 numa aba de fundo) */}
+            {animar ? <Count key={`${label}-${value}`} to={Number(value)} suffix={format === "csat" ? "%" : ""} /> : <>{Math.round(Number(value))}{format === "csat" ? "%" : ""}</>}
           </div>
           {Number.isFinite(n) && <div className="mt-1 text-[10px] text-g-muted num">n={n}</div>}
         </>
@@ -121,21 +162,38 @@ function Experience({ V, real = null, email = "", dataKey = "" }) {
   const [data, setData] = useState(null);      // null = fetch in flight (real mode)
   const [handled, setHandled] = useState({});  // signal_id → true (optimistic close-loop)
   const [surveyOn, setSurveyOn] = useState(null); // active-survey toggle (null until data loads)
+  const [seq, setSeq] = useState(0);              // "tentar de novo" refaz a leitura
   useEffect(() => { if (data && typeof data.survey_enabled === "boolean") setSurveyOn(data.survey_enabled); }, [data]);
 
+  // 🚨 FALHA DE LEITURA VIRAVA "SUA EXPERIÊNCIA ESTÁ SAUDÁVEL" (2026-09-28). Um 500 ou a rede
+  // caída viravam `{ready:false}`, e a tela desenhava a lista de detratores VAZIA com a frase
+  // "No unhappy customers right now — your experience is healthy". A dona com uma cliente
+  // insatisfeita esperando retorno lia um "tudo certo" que ninguém apurou. Falha agora é `falha`,
+  // com aviso e nova tentativa; e "saudável" só aparece quando a camada está medindo (`ready`).
   useEffect(() => {
     let alive = true;
     if (!real || !email || !dk) { setData(null); return; }
+    setData(null);
     fetch("/api/experience", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, dataKey: dk }) })
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => { if (alive) setData(j || { ready: false }); })
-      .catch(() => { if (alive) setData({ ready: false }); });
+      .then((j) => { if (alive) setData(j && typeof j === "object" && !j.error && !j.erro ? j : { falha: true }); })
+      .catch(() => { if (alive) setData({ falha: true }); });
     return () => { alive = false; };
-  }, [real, email, dk]);
+  }, [real, email, dk, seq]);
 
   const demo = !real;
   // Real mode, fetch still in flight → skeleton (never a false "all clear" / fake score).
   if (real && data === null) return <SectionSkeleton rows={5} />;
+  if (real && data && data.falha) {
+    return (
+      <Card className="text-center py-10">
+        <div className="text-2xl">📡</div>
+        <div className="mt-2 text-sm font-bold text-g-word">{T("failTitle")}</div>
+        <div className="text-xs text-g-muted mt-0.5">{T("failBody")}</div>
+        <button onClick={() => setSeq((n) => n + 1)} className="btn-bright text-sm mt-4">{T("retry")}</button>
+      </Card>
+    );
+  }
 
   const d = demo ? genExperienceDemo(V) : (data || { ready: false });
   const ready = !!d.ready;
@@ -164,15 +222,18 @@ function Experience({ V, real = null, email = "", dataKey = "" }) {
   const reconquer = async (r) => {
     if (demo) return;
     setHandled((h) => ({ ...h, [r.signal_id]: true }));       // optimistic remove
-    toast(T("handled"));
+    const desfaz = () => setHandled((h) => { const n = { ...h }; delete n[r.signal_id]; return n; });
     try {
       const res = await fetch("/api/experience", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "close_loop", signal_id: r.signal_id, email, dataKey: dk }),
+        // `note` é o que fica gravado no sinal: "reconquista" (o padrão do servidor) afirmava uma
+        // ação que não houve. O registro diz o que foi feito — marcado à mão, pelo painel.
+        body: JSON.stringify({ action: "close_loop", signal_id: r.signal_id, email, dataKey: dk, note: "marked handled in the Central" }),
       });
       const j = res.ok ? await res.json() : null;
-      if (!j || !j.ok) { setHandled((h) => { const n = { ...h }; delete n[r.signal_id]; return n; }); toast("Não consegui salvar — tente de novo."); }
-    } catch { setHandled((h) => { const n = { ...h }; delete n[r.signal_id]; return n; }); toast("Não consegui salvar — tente de novo."); }
+      // o toast só sai DEPOIS do ok do servidor — antes ele saía junto com o clique
+      if (!j || !j.ok) { desfaz(); toast(T("saveFail")); } else toast(T("handled"));
+    } catch { desfaz(); toast(T("saveFail")); }
   };
 
   const surveyEnabled = demo ? true : (surveyOn == null ? (d.survey_enabled !== false) : surveyOn);
@@ -185,9 +246,9 @@ function Experience({ V, real = null, email = "", dataKey = "" }) {
         body: JSON.stringify({ action: "set_survey", enabled: next, email, dataKey: dk }),
       });
       const j = res.ok ? await res.json() : null;
-      if (!j || !j.ok) { setSurveyOn(!next); toast("Não consegui salvar — tente de novo."); }
+      if (!j || !j.ok) { setSurveyOn(!next); toast(T("saveFail")); }
       else { toast(next ? T("surveyOnMsg") : T("surveyOffMsg")); }
-    } catch { setSurveyOn(!next); toast("Não consegui salvar — tente de novo."); }
+    } catch { setSurveyOn(!next); toast(T("saveFail")); }
   };
 
   return (
@@ -203,9 +264,9 @@ function Experience({ V, real = null, email = "", dataKey = "" }) {
         <p className="mt-1 text-xs text-g-muted max-w-xl">{T("sub")}</p>
 
         <div className="mt-3 rounded-xl2 border border-white/10 bg-white/[0.03] divide-y sm:divide-y-0 sm:divide-x divide-white/[0.06] flex flex-col sm:flex-row">
-          <HeroStat label={T("cx")} value={cx} n={cxN} format="score" color={scoreColor(cx)} />
-          <HeroStat label={T("nps")} value={nps} n={npsN} format="nps" color={scoreColor((nps + 100) / 2)} />
-          <HeroStat label={T("csat")} value={csat} n={csatN} format="csat" color={scoreColor(csat)} />
+          <HeroStat animar={demo} label={T("cx")} value={cx} n={cxN} format="score" color={scoreColor(cx)} />
+          <HeroStat animar={demo} label={T("nps")} value={nps} n={npsN} format="nps" color={scoreColor((nps + 100) / 2)} />
+          <HeroStat animar={demo} label={T("csat")} value={csat} n={csatN} format="csat" color={scoreColor(csat)} />
         </div>
 
         {/* TREND — delta vs prior 30d */}
@@ -270,7 +331,7 @@ function Experience({ V, real = null, email = "", dataKey = "" }) {
           {love.length ? (
             <div className="space-y-2">{love.map((x, i) => (
               <div key={i} className="flex items-center justify-between gap-3">
-                <span className="text-sm font-bold text-g-word truncate">{x.theme}</span>
+                <span className="text-sm font-bold text-g-word truncate">{String(x.theme || "").replace(/_/g, " ")}</span>
                 <span className="shrink-0 text-[11px] font-black num text-g-green">{x.count} <span className="text-g-muted font-normal">{T("mentions")}</span></span>
               </div>
             ))}</div>
@@ -281,7 +342,7 @@ function Experience({ V, real = null, email = "", dataKey = "" }) {
           {fix.length ? (
             <div className="space-y-2">{fix.map((x, i) => (
               <div key={i} className="flex items-center justify-between gap-3">
-                <span className="text-sm font-bold text-g-word truncate">{x.theme}</span>
+                <span className="text-sm font-bold text-g-word truncate">{String(x.theme || "").replace(/_/g, " ")}</span>
                 <span className="shrink-0 text-[11px] font-black num" style={{ color: "#e0855f" }}>{x.count} <span className="text-g-muted font-normal">{T("mentions")}</span></span>
               </div>
             ))}</div>
@@ -303,7 +364,7 @@ function Experience({ V, real = null, email = "", dataKey = "" }) {
                   <span className="grid place-items-center h-9 w-9 rounded-full shrink-0 text-sm font-black num" style={{ background: "#e0855f1e", color: "#e0855f", boxShadow: "inset 0 0 0 1px #e0855f44" }}>{Number.isFinite(Number(r.score)) ? Number(r.score) : "!"}</span>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-bold text-g-word truncate">
-                      {r.name || "Cliente"}
+                      {r.name || T("customer")}
                       {r.source ? <span className="text-g-muted font-normal"> · {r.source}</span> : null}
                       {r.at ? <span className="text-g-muted font-normal"> · {relTime(r.at)}</span> : null}
                     </div>
@@ -320,7 +381,7 @@ function Experience({ V, real = null, email = "", dataKey = "" }) {
             ))}
           </div>
         ) : (
-          <Empty icon="💚" text={T("detractorsEmpty")} />
+          <Empty icon={ready ? "💚" : "🌿"} text={ready ? T("detractorsEmpty") : T("notReady")} />
         )}
       </Card>
 

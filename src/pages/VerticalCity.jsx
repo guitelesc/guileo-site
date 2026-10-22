@@ -3,6 +3,7 @@ import { useParams, Navigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import QuoteModal from "../components/QuoteModal";
 import Footer from "../components/Footer";
+import { planByKey } from "../data/guileoPlans.js";
 import VoiceAgent from "../components/VoiceAgent";
 import ExitIntent from "../components/ExitIntent.jsx";
 import LiveCall from "../components/LiveCall.jsx";
@@ -68,7 +69,7 @@ export default function VerticalCity() {
         areaServed: { "@type": "City", name: c.areaServed },
         provider: { "@type": "Organization", name: "Guileo", url: "https://guileoai.com" },
         description: L(seoDesc),
-        offers: { "@type": "Offer", priceCurrency: "USD", price: "149", description: "Self-service from $149/mo; tailored done-for-you quoted per business." },
+        offers: { "@type": "Offer", priceCurrency: "USD", price: String(planByKey("starter").amount), description: `Self-service from $${planByKey("starter").amount}/mo; tailored done-for-you quoted per business.` },
       },
       {
         "@context": "https://schema.org", "@type": "BreadcrumbList",

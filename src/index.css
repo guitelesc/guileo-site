@@ -4,6 +4,29 @@
 
 /* Inter is loaded via a non-render-blocking <link> in index.html (not @import). */
 
+/* ── TOKENS (tailwind lê estas variáveis). :root = CIMENTO QUEIMADO, os mesmos hex de sempre —
+   o dashboard não muda. `.frio` = a paleta ELÉTRICA da v1 (v1.guileoai.pages.dev), só dentro
+   do escopo que a pedir (a landing). Nunca mude o :root; crie outro escopo. */
+:root {
+  --g-green: 62 148 104;  --g-light: 111 184 146; --g-dark: 44 110 75;   --g-word: 237 231 220;
+  --g-gold: 214 194 154;  --g-copper: 194 168 120; --g-cream: 22 21 18;  --g-creamd: 28 26 22;
+  --g-deep: 16 15 12;     --g-line: 43 39 32;      --g-ink: 197 190 176;  --g-muted: 148 140 123;
+}
+.frio {
+  /* TEXTURA 4K (2026-09-09, Luis: "não é a cor, é a TEXTURA"). Cor = o cimento quente de sempre
+     (mesmos valores do :root). O que muda é o MATERIAL: grão de concreto que se VÊ, mancha de
+     cimento, vinheta de cinema, e vidro com verniz e aro mais fortes. Escopado por classe. */
+  --g-green: 62 148 104;  --g-light: 111 184 146; --g-dark: 44 110 75;   --g-word: 237 231 220;
+  --g-gold: 214 194 154;  --g-copper: 194 168 120; --g-cream: 22 21 18;  --g-creamd: 28 26 22;
+  --g-deep: 16 15 12;     --g-line: 43 39 32;      --g-ink: 197 190 176;  --g-muted: 148 140 123;
+}
+/* .frio-bg — escopo de teste (não usado na "/"; /nova só o monta com a prop `frio`). */
+.frio-bg {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background-color: #161512;
+}
+.frio :focus-visible { outline-color: #3E9468; }
+
 html { scroll-behavior: smooth; }
 /* mobile horizontal-overflow safety net — kills sideways scroll from decorative
    absolutely-positioned blobs. `clip` (not `hidden`) so it never breaks position:sticky. */
@@ -14,7 +37,10 @@ html, body { overflow-x: clip; }
 body {
   /* THE STANDARD (one cement for everything — landing + dashboard). The clean 3D-plant recipe: base #161512
      with SUBTLE warm washes only (champagne 0.08, green 0.055, taupe 0.06). No heavy champagne/copper/vignette
-     — those browned it. Same color across the whole app so nothing ever mismatches again. */
+     — those browned it. Same color across the whole app so nothing ever mismatches again.
+     ⚠️ 2026-09-10: este bloco foi APAGADO por um corte de texto errado (a página ficou BRANCA por ~1 min)
+     e reconstruído igual ao de antes. Lição: fatiar CSS por `index()` de um trecho que se repete em dois
+     blocos pega o primeiro — e o `body` estava depois. */
   background:#161512; color:#C5BEB0; -webkit-font-smoothing:antialiased;
   background-image:
     radial-gradient(1100px 620px at 80% -10%, rgba(214,194,154,0.08), transparent 60%),
@@ -25,6 +51,10 @@ body {
 /* cimento queimado — concrete grain + mottled wash */
 body::before {
   content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  /* TEXTURA NVIDIA, SITE INTEIRO (Luis, 2026-09-09: "o site inteiro tem que seguir aquela textura").
+     Grão de .5 → .9: em .5 o grão sumia na tela e a parede lia como chapada. */
+  /* ⚠️ 2026-09-10: RESTAURADO ao valor de sempre (.5). Tentei .9 e .65 — o Luis: "você se perdeu no que
+     já fizemos, tava perfeito". O material aprovado é ESTE, o dos prints de agosto. Não mexer. */
   opacity:.5; mix-blend-mode:soft-light;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)'/%3E%3C/svg%3E");
 }
@@ -73,11 +103,12 @@ body::after {
   background:
     /* 1. o corpo: branco levíssimo caindo de cima — a luz vem de cima, sempre */
     linear-gradient(168deg, rgba(255,255,255,0.075), rgba(255,255,255,0.018) 34%, transparent 62%),
-    /* 2. o verniz: faixa de reflexo DIAGONAL. Vidro real carrega um reflexo do ambiente; sem
-          ele a placa lê como papel fosco. Branco — nunca colorido (cor na superfície = plástico) */
+    /* 2. o verniz: faixa de reflexo DIAGONAL. Branco — nunca colorido (cor na superfície = plástico) */
     linear-gradient(104deg, transparent 18%, rgba(255,255,255,0.05) 33%, transparent 47%),
     /* 3. a luz de topo-direita, a mesma do estúdio do body */
     radial-gradient(120% 70% at 82% -12%, rgba(255,255,255,0.055), transparent 55%);
+  /* ⚠️ 2026-09-10: estes três valores são os APROVADOS (iguais ao CSS de 20/08 na branch verifica).
+     A "segunda camada" e o grão na placa que tentei ontem saíram — "tava perfeito" é isto. */
   mix-blend-mode: screen;
 }
 :where([class*="backdrop-blur"]):not(.btn):not(.btn-gold):not(.btn-bright) {
@@ -87,6 +118,11 @@ body::after {
     0 2px 4px -2px rgba(0,0,0,0.70),        /* sombra de CONTATO — curta: o objeto POUSA */
     0 30px 66px -36px rgba(0,0,0,0.92);     /* sombra de AMBIENTE — longa: dá o espaço */
 }
+/* ── A LUZ QUE CORRIA PELA BORDA — DESLIGADA (Luis, 2026-09-10: "tira a luz da borda, acho mais
+   cinemático, mais realismo, como se fosse possível tocar"). Ficou uma noite no ar (9/09). O que
+   fica no lugar dela é o realismo TÁTIL: sombra de contato, aro de luz fixo, vidro com espessura.
+   Receita, caso volte: ::after com conic-gradient verde→champanhe mascarado em 1px de borda,
+   @property --gang animando 0→360deg. */
 
 @layer components {
   .wrap { @apply max-w-6xl mx-auto px-5 sm:px-8; }

@@ -11,6 +11,9 @@ import { json, safeEq } from "./../lib/guard.js";
 import { svcRpc } from "./../lib/sb.js";
 import { webchatSentiment } from "./../lib/cxEngine.js";
 import { guiReply } from "./../lib/guiBrain.js";
+import { lerConversa, gravarTroca } from "./../lib/conversa.js";
+import { svcJson } from "./../lib/sb.js";
+import { debitarDepois, refMensagem, ligado } from "./../lib/creditos.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -82,6 +85,55 @@ async function getProfile(env, email) {
 // provision.js points HERE (platform_settings.workspace_overrides.conversation_initiation_client_data_webhook).
 // ElevenLabs POSTs JSON { caller_id, agent_id, called_number, call_sid } with our x-guileo-secret header;
 // we answer { type, dynamic_variables } within ~1s so pickup is never delayed.
+// ── A SAUDAÇÃO JÁ COM O NOME (2026-09-28) ────────────────────────────────────────────────────────
+// Pedido do Luis: a Lilian tem que ATENDER já reconhecendo — "How can I take care of you today, Luis?".
+// O caminho antigo ({{caller_ola}} dentro da primeira fala) derrubou ligações duas vezes (16 e 18/08):
+// variável na primeira fala é OBRIGATÓRIA pra ElevenLabs, e qualquer tropeço do webhook mata a chamada.
+// Aqui a primeira fala do agente NÃO muda. Quando — e só quando — sabemos o nome, este webhook devolve
+// a frase pronta como `conversation_config_override.agent.first_message`. Sem nome, sem override: a
+// ligação sai com a saudação de sempre. Duas travas contra o outro defeito conhecido ("Override for
+// field 'first_message' is not allowed by config", 729 ligações em 03–05/09):
+//   1. a frase-base e a PERMISSÃO são lidas do próprio agente na ElevenLabs, na hora;
+//   2. sem permissão lida === true, o override não é enviado. Nada é presumido.
+const _agentes = new Map(); // agent_id → { em, fala, pode } · cache de 10 min por isolate
+async function agenteDaLinha(env, agentId) {
+  if (!env.ELEVENLABS_API_KEY || !/^agent_[a-z0-9]+$/i.test(agentId || "")) return null;
+  const c = _agentes.get(agentId);
+  if (c && Date.now() - c.em < 600000) return c;
+  try {
+    const r = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agentId}`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY }, signal: AbortSignal.timeout(1200) });
+    if (!r.ok) return null;
+    const d = await r.json().catch(() => null);
+    const v = { em: Date.now(), fala: (d?.conversation_config?.agent?.first_message || "").toString(),
+      lang: (d?.conversation_config?.agent?.language || "en").toString(),
+      pode: d?.platform_settings?.overrides?.conversation_config_override?.agent?.first_message === true };
+    _agentes.set(agentId, v);
+    return v;
+  } catch { return null; }
+}
+// O NOME VEM PRIMEIRO (2026-09-28, 21:47Z). A 1ª versão punha o nome no FIM ("…today, Luis?") e em
+// TRÊS ligações seguidas o Luis começou a falar aos 3–5s — a frase leva 6s, o nome nunca foi ouvido.
+// Reconhecer alguém é dizer o nome dele na primeira palavra, não na última.
+// "Thank you for calling…" + "Luis" → "Hi Luis! Thank you for calling…". Devolve "" quando não dá pra
+// fazer direito (nome estranho, frase com variável, frase vazia) — e "" significa NÃO mexer.
+const OLA = { en: "Hi", pt: "Oi", es: "Hola", fr: "Bonjour", it: "Ciao", de: "Hallo" };
+export function saudacaoComNome(fala, nomeCompleto, lang = "en") {
+  const f = (fala || "").toString().trim();
+  const nome = (nomeCompleto || "").toString().trim().split(/\s+/)[0] || "";
+  if (!f || f.includes("{{") || f.length > 380) return "";
+  if (!/^[\p{L}][\p{L}'’-]{1,29}$/u.test(nome)) return "";
+  if (f.toLowerCase().includes(nome.toLowerCase())) return "";
+  const oi = OLA[(lang || "en").toString().toLowerCase().slice(0, 2)] || OLA.en;
+  return `${oi} ${nome}! ${f}`;
+}
+
+// Mesmo número dos dois lados, comparado pelos 10 últimos dígitos (o "+1" vai e vem entre provedores).
+export function ehLaco(caller, called) {
+  const d = (x) => String(x || "").replace(/\D/g, "").slice(-10);
+  const a = d(caller), b = d(called);
+  return a.length === 10 && a === b;
+}
+
 async function handleElevenInitiation(env, body) {
   // caller_phone É O BINA. Sem ele a agente pedia o telefone de quem estava ligando DAQUELE
   // telefone — o Luis teve que ditar o número duas vezes na primeira ligação real (2026-08-07).
@@ -95,11 +147,21 @@ async function handleElevenInitiation(env, body) {
   // webhook entrega a SAUDAÇÃO PRONTA: ", Luis" para quem já é conhecido, "" para quem não é.
   // Quem decide a frase é quem tem o dado; o prompt só encaixa.
   const empty = { caller_name: "", caller_last: "", caller_note: "", caller_phone: "", caller_ola: "" };
-  const reply = (vars) => new Response(JSON.stringify({ type: "conversation_initiation_client_data", dynamic_variables: vars }), {
+  const reply = (vars, fala = "") => new Response(JSON.stringify({ type: "conversation_initiation_client_data", dynamic_variables: vars,
+    ...(fala ? { conversation_config_override: { agent: { first_message: fala } } } : {}) }), {
     status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
   try {
     const caller = (body.caller_id || "").toString().replace(/[^0-9+]/g, "");
     const called = (body.called_number || "").toString().replace(/[^0-9+]/g, "");
+    // 🔁 A AGENTE LIGANDO PARA SI MESMA (2026-09-30). Quando ela transfere para a recepção e a linha
+    // da recepção ENCAMINHA de volta para este número, chega aqui uma ligação cujo "quem liga" é o
+    // próprio número dela. Atender seria duas cópias da agente conversando entre si, gastando
+    // minuto, com a cliente de verdade pendurada na conferência. Recusar o início derruba só essa
+    // perna: a transferência falha e a agente original volta para a cliente e anota o recado (é o
+    // plano B que o prompt já manda). Nenhuma pessoa real liga DE um número PARA ele mesmo.
+    if (ehLaco(caller, called)) {
+      return new Response(JSON.stringify({ error: "loop", detail: "caller is the agent's own number" }), { status: 409, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
+    }
     if (!caller || !called || !env.INGEST_SECRET) return reply(empty);
     const lookup = (async () => {
       // tenant = whoever owns the dialed number (same mapping SMS routing uses)
@@ -153,10 +215,18 @@ async function handleElevenInitiation(env, body) {
         caller_phone: caller,
       };
     })();
-    // TIME-BOUND: never make ElevenLabs wait on the DB — 800ms or the caller is just "new".
+    // TIME-BOUND: never make ElevenLabs wait on the DB — 2s or the caller is just "new".
+    // 2026-09-28: era 800ms. A prova (?prova=1) mediu worker FRIO em >800ms e quente em 200–400ms;
+    // ligação é rara, então quase toda ligação real pegava worker frio e o Luis virava "novo" — com
+    // o nome dele no CRM. 2s de teto ainda é bem menos que um toque de telefone.
     // Mesmo no timeout o BINA vai: ele veio no próprio evento da ligação, não do banco. Perder o
     // número porque o banco demorou seria perder o dado mais certo que temos.
-    return reply(await Promise.race([lookup, new Promise((res) => setTimeout(() => res({ ...empty, caller_phone: caller }), 800))]));
+    const [vars, ag] = await Promise.all([
+      Promise.race([lookup, new Promise((res) => setTimeout(() => res({ ...empty, caller_phone: caller }), 2000))]),
+      agenteDaLinha(env, (body.agent_id || "").toString()).catch(() => null),
+    ]);
+    const fala = vars.caller_name && ag && ag.pode ? saudacaoComNome(ag.fala, vars.caller_name, ag.lang) : "";
+    return reply(vars, fala);
   } catch { return reply(empty); }
 }
 
@@ -164,6 +234,19 @@ const twiml = (msg) => new Response(
   `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${msg.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</Message></Response>`,
   { status: 200, headers: { "Content-Type": "text/xml", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } }
 );
+
+// GET ?prova=1&de=+1…&para=+1… · x-guileo-secret: INGEST — roda O MESMO handler que a ElevenLabs
+// chama no início da ligação e devolve as variáveis + o tempo. Regra de 18/08: webhook de
+// identidade só se confia provado em produção, não suposto (lições "canário verde, cérebro morto").
+export async function onRequestGet({ request, env }) {
+  const url = new URL(request.url);
+  if (url.searchParams.get("prova") !== "1") return json({ error: "not found" }, 404);
+  if (!env.INGEST_SECRET || !safeEq(request.headers.get("x-guileo-secret") || "", env.INGEST_SECRET)) return json({ error: "unauthorized" }, 401);
+  const t0 = Date.now();
+  const r = await handleElevenInitiation(env, { caller_id: url.searchParams.get("de") || "", called_number: url.searchParams.get("para") || "", agent_id: url.searchParams.get("agente") || "" });
+  const d = await r.json().catch(() => null);
+  return json({ ok: r.status === 200, ms: Date.now() - t0, tem_agent_secret: !!env.AGENT_ACTION_SECRET, saudacao: d?.conversation_config_override?.agent?.first_message || null, resposta: d });
+}
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -173,7 +256,12 @@ export async function onRequestPost(context) {
     // same AGENT_ACTION_SECRET the agent's other webhooks use; wrong/missing secret → 401.
     if ((request.headers.get("Content-Type") || "").includes("application/json")) {
       if (!env.AGENT_ACTION_SECRET || !safeEq(request.headers.get("x-guileo-secret") || "", env.AGENT_ACTION_SECRET)) {
-        return json({ error: "unauthorized" }, 401);
+        // 2026-09-28: NUNCA 401 aqui. Com o webhook de iniciação ligado, resposta não-200 = a
+        // ElevenLabs não inicia a ligação (queda de 18/08, "Missing required dynamic variables").
+        // Segredo errado recebe variáveis VAZIAS — não vaza nada, e o telefone do cliente não cai.
+        return new Response(JSON.stringify({ type: "conversation_initiation_client_data",
+          dynamic_variables: { caller_name: "", caller_last: "", caller_note: "", caller_phone: "", caller_ola: "" } }),
+          { status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "x-guileo-auth": "fail" } });
       }
       const jb = await request.json().catch(() => ({}));
       return handleElevenInitiation(env, jb || {});
@@ -205,9 +293,16 @@ export async function onRequestPost(context) {
       } catch { /* still confirm */ }
       return twiml("You've been unsubscribed and won't receive more messages. Reply START to opt back in. · Você saiu e não receberá mais mensagens.");
     }
-    if (/^(start|unstop)$/i.test(body)) {
-      // opt back in handled by carriers; we just acknowledge warmly
-      return twiml("You're back in 🌱 How can Gui help you today?");
+    if (/^(start|unstop|yes start|voltar|iniciar)$/i.test(body)) {
+      // 🚨 O START NÃO TIRAVA NINGUÉM DA LISTA (2026-09-30): a resposta dizia "você voltou" e o
+      // número continuava bloqueado para sempre — a pessoa pedia para voltar a receber o lembrete
+      // e nunca mais recebia. Agora sai da lista (só o bloqueio que ela mesma criou com STOP).
+      try { await svcJson(env, "remove_dnc", { p_secret: env.INGEST_SECRET || "", p_phone: fromPhone }); } catch { /* confirma mesmo assim */ }
+      return twiml("You're back in — you'll receive messages again. Reply STOP anytime to opt out. · Você voltou a receber mensagens.");
+    }
+    // HELP é palavra obrigatória das operadoras (A2P): quem é, para que serve, como sair.
+    if (/^(help|info|ajuda|ayuda)$/i.test(body)) {
+      return twiml("Appointment confirmations and reminders from the business you booked with, powered by Guileo. Msg&data rates may apply. Reply STOP to opt out. For help, reply here or call the business you booked with.");
     }
 
     // multi-tenant routing: the Twilio number that RECEIVED the message identifies the client
@@ -229,6 +324,23 @@ export async function onRequestPost(context) {
 
     // "1"/"2" booking replies — confirm/reschedule BEFORE waking the AI brain.
     // booking_reply ingests its own event server-side, so we don't double-log here.
+    // ── "C" / CONFIRM / YES AO LEMBRETE (2026-09-30) ────────────────────────────────────────────
+    // O lembrete por texto pede "Reply C to confirm". A RPC antiga abaixo (booking_reply) olha
+    // `client_bookings`, que a agenda de verdade não usa — a confirmação nunca achava o horário, e
+    // um "YES" em inglês nem era reconhecido. Esta procura o PRÓXIMO horário da pessoa NESTE
+    // negócio e grava a confirmação. Não achou → segue para a agente, que responde como gente.
+    if (/^(c|confirm|confirmed|yes|y|ok|confirmar|confirmo|sim|si|sí|1)$/i.test(body) && env.SCHED_SECRET) {
+      const cf = await svcJson(env, "biz_confirm_by_phone", { p_secret: env.SCHED_SECRET, p_email: email, p_phone: fromPhone, p_via: channel }).catch(() => null);
+      if (cf && cf.ok === true && cf.found === true) {
+        const L = (profile?.lang || "en").toString().toLowerCase().slice(0, 2);
+        let quando = "";
+        try { quando = new Intl.DateTimeFormat(L === "pt" ? "pt-BR" : L === "es" ? "es-US" : "en-US", { timeZone: cf.tz || "America/New_York", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(cf.when)); } catch { /* sem data formatada */ }
+        await ingest(env, email, channel, `✅ ${fromPhone} confirmed ${cf.service || "the appointment"}${quando ? ` — ${quando}` : ""}${cf.ref ? ` (${cf.ref})` : ""}`, { from, appointment_id: cf.id });
+        return twiml(L === "pt" ? `Confirmado ✅ ${cf.service ? `${cf.service}, ` : ""}${quando}. Até lá!`
+          : L === "es" ? `Confirmado ✅ ${cf.service ? `${cf.service}, ` : ""}${quando}. ¡Hasta entonces!`
+            : `Confirmed ✅ ${cf.service ? `${cf.service}, ` : ""}${quando}. See you then!`);
+      }
+    }
     const choice = { "1": "1", "confirmar": "1", "sim": "1", "2": "2", "remarcar": "2" }[body.toLowerCase()];
     if (choice) {
       try {
@@ -289,18 +401,37 @@ export async function onRequestPost(context) {
     // closes — with the constitution guard + validateOutput floor (inside guiReply) making a risky
     // refund/discount promise or off-list price impossible to send as the business. guiReply never
     // throws and always returns a warm `reply` (honest ack when the tenant/key is missing).
+    // O FIO DA CONVERSA: as últimas trocas desta pessoa com este negócio (24h) — sem isto cada
+    // SMS chegava ao cérebro como se fosse o primeiro.
+    const anteriores = await lerConversa(env, email, channel, fromPhone);
     const gr = await guiReply(env, {
       email,
       channel,
       from: from.replace("whatsapp:", ""),
       text: body,
-      history: [],
+      history: anteriores,
       lang: (profile?.lang || "").toString().toLowerCase().slice(0, 2),
     });
+    if (gr && gr.ready && gr.reply) await gravarTroca(env, email, channel, fromPhone, { anteriores, pergunta: body, resposta: gr.reply });
     const reply = (gr && gr.reply) ? gr.reply
       : (isPT ? "Recebi sua mensagem! A equipe te responde em instantes. 🌱"
               : "Got your message! The team will reply shortly. 🌱");
     await ingest(env, email, channel, `🤖 Gui replied: ${reply.slice(0, 140)}`, { to: from });
+    // ── MEDIDOR DE CRÉDITO (2026-09-27) ───────────────────────────────────────────────────────
+    // Três condições, todas necessárias:
+    //  1) o CÉREBRO respondeu — `ready` e sem `escalate`. A frase de handoff e o "recebi sua
+    //     mensagem" são enlatados: não se cobra por eles;
+    //  2) o canal ENTREGA. Aqui a resposta sai por TwiML e a Twilio não nos devolve comprovante.
+    //     O que sabemos é a chave do canal: com a campanha A2P reprovada (erro 30034) a operadora
+    //     recusa o SMS, então cobrar seria cobrar por mensagem que não chegou. Mesmas chaves que
+    //     comprovante.js usa — quando o canal for aprovado, a cobrança acende junto;
+    //  3) existe MessageSid — é a referência que torna a reentrega da Twilio gratuita.
+    const respostaDaIA = !!(gr && gr.ready && !gr.escalate && gr.reply);
+    const canalEntrega = channel === "whatsapp" ? ligado(env.WHATSAPP_APROVADO) : ligado(env.SMS_A2P_APROVADO);
+    if (respostaDaIA && canalEntrega) {
+      const sid = params.get("MessageSid") || params.get("SmsMessageSid") || "";
+      await debitarDepois(context, env, { email, kind: channel, ref: refMensagem(channel, sid) });
+    }
     return twiml(reply);
   } catch {
     return twiml("Got it! A human from Guileo will reply shortly. 🌱");

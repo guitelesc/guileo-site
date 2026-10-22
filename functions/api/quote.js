@@ -63,7 +63,7 @@ export async function onRequestPost(context) {
       const token = s(b.token, 120);
       if (token.length < 24) return json({ ok: false, motivo: "link_invalido" }, 400);
       const r = await rpc("seller_quote_by_token", { p_token: token });
-      if (!r.ok) return json({ ok: false, motivo: "indisponivel", erro: `banco respondeu ${r.status} (cole db/seller_quotes.sql)` }, 502);
+      if (!r.ok) return json({ ok: false, motivo: "indisponivel", erro: `banco respondeu ${r.status} (cole db/seller_quotes.sql)` }, 503);
       const doc = await r.json().catch(() => null);
       if (!doc || typeof doc !== "object") return json({ ok: true, ready: true, doc: null, motivo: "nao_encontrado" });
       // "visto" é best-effort: falhar em carimbar NUNCA pode impedir o cliente de ler a proposta.
@@ -81,7 +81,7 @@ export async function onRequestPost(context) {
       // ⚠️ A RECUSA PRECISA TER MOTIVO E STATUS (lição da página de assinatura): banco fora do ar
       // devolvendo 200 mudo é indistinguível de "link inválido", e a tela reage igual aos dois —
       // no exato instante em que o cliente diz sim.
-      if (!r.ok) return json({ ok: false, aceito: false, motivo: "indisponivel" }, 502);
+      if (!r.ok) return json({ ok: false, aceito: false, motivo: "indisponivel" }, 503);
       const rec = await r.json().catch(() => null);
       if (!rec || rec.ok !== true) return json({ ok: true, aceito: false, motivo: rec?.motivo || "link_invalido_ou_ja_aceito" });
 
@@ -131,23 +131,23 @@ export async function onRequestPost(context) {
       });
       if (!r.ok) {
         const cru = await r.text().catch(() => "");
-        return json({ ok: false, erro: "seller_quote_upsert recusou (cole db/seller_quotes.sql)", cru: cru.slice(0, 300) }, 502);
+        return json({ ok: false, erro: "seller_quote_upsert recusou (cole db/seller_quotes.sql)", cru: cru.slice(0, 300) }, 503);
       }
       const d = await r.json().catch(() => null);
       // 🚨 COMPROVANTE: sem id E token não houve gravação. "ok" aqui em cima de um banco vazio é
       // exatamente a promessa sem lastro que este repo já pagou caro pra aprender.
       if (!d || d.ok !== true || typeof d.id !== "string" || typeof d.token !== "string" || d.token.length < 24) {
-        return json({ ok: false, erro: "o banco não devolveu id/token — não considero salvo", cru: JSON.stringify(d || null).slice(0, 200) }, 502);
+        return json({ ok: false, erro: "o banco não devolveu id/token — não considero salvo", cru: JSON.stringify(d || null).slice(0, 200) }, 503);
       }
       return json({ ok: true, id: d.id, token: d.token, url: `/orcamento/${d.token}` });
     }
 
     // default: list — os orçamentos DESTE vendedor
     const r = await rpc("seller_quote_list", { p_secret: secret, p_email: email, p_limit: Math.min(Math.max(parseInt(b.limit, 10) || 100, 1), 500) });
-    if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status} (cole db/seller_quotes.sql)` }, 502);
+    if (!r.ok) return json({ ok: false, motivo: `banco respondeu ${r.status} (cole db/seller_quotes.sql)` }, 503);
     const rows = await r.json().catch(() => null);
     // lista ausente é ERRO, não "nenhum orçamento" — `|| []` aqui apagaria o pipeline na tela.
-    if (!Array.isArray(rows)) return json({ ok: false, motivo: "resposta do banco não é lista" }, 502);
+    if (!Array.isArray(rows)) return json({ ok: false, motivo: "resposta do banco não é lista" }, 503);
     return json({ ok: true, ready: true, count: rows.length, rows });
   } catch (e) {
     return json({ error: String(e).slice(0, 160) }, 400);

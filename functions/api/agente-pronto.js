@@ -87,7 +87,7 @@ export async function onRequestPost({ request, env }) {
     const token = s(b.token, 200).trim();
     if (!token) return json({ ok: false, error: "no token" }, 400);
     const r = await rpc("demo_get", { p_secret: env.INGEST_SECRET || "", p_token: token });
-    if (!r.ok) return json({ ok: false, error: "indisponivel" }, 502);
+    if (!r.ok) return json({ ok: false, error: "indisponivel" }, 503);
     const d = await r.json().catch(() => null);
     const kit = Array.isArray(d) ? d[0] : d;
     // `|| {}` aqui viraria uma tela vazia fingindo agente; token morto é 404, não é calmaria.
@@ -108,10 +108,10 @@ export async function onRequestPost({ request, env }) {
       method: "POST", headers: { "Content-Type": "application/json", Origin: orig },
       body: JSON.stringify({ action: "brand", url }),
     }).catch(() => null);
-    if (!br || !br.ok) return json({ ok: false, error: "nao consegui ler o site" }, 502);
+    if (!br || !br.ok) return json({ ok: false, error: "nao consegui ler o site" }, 503);
     const kit = await br.json().catch(() => null);
     const marca = (kit && (kit.brand || kit)) || null;
-    if (!marca || typeof marca !== "object") return json({ ok: false, error: "site sem conteudo legivel" }, 502);
+    if (!marca || typeof marca !== "object") return json({ ok: false, error: "site sem conteudo legivel" }, 503);
 
     // 🚨 O AVISO DO EXTRATOR NÃO PODE SER IGNORADO (achado 24/08, antes de qualquer cliente ver).
     // Quando o site não abre pra nós (WordPress atrás de proteção, SPA, timeout), o Motor de Demo
@@ -152,9 +152,9 @@ export async function onRequestPost({ request, env }) {
     };
 
     const sv = await rpc("demo_save", { p_secret: env.INGEST_SECRET || "", p_brand: { ...marca, _agente: agente } });
-    if (!sv.ok) return json({ ok: false, error: "nao consegui salvar" }, 502);
+    if (!sv.ok) return json({ ok: false, error: "nao consegui salvar" }, 503);
     const token = s(await sv.json(), 200).replace(/^"|"$/g, "");
-    if (!token) return json({ ok: false, error: "nao consegui salvar" }, 502);
+    if (!token) return json({ ok: false, error: "nao consegui salvar" }, 503);
     return json({ ok: true, token, link: `${orig}/agente/${token}`, agente });
   }
 

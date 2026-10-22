@@ -141,103 +141,41 @@ const CH = [
     bg: "linear-gradient(180deg,#E4D5B4,#C2A878)", fg: "#2A2317" },
 ];
 
+/* ── SIMPLES DE NOVO (Luis, 2026-09-09: «otimizar e passar mensagem simples — já foi melhor com as
+   referências das redes sociais»). A versão anterior tinha legenda de 4 capacidades e uma grade
+   de 15 cartões com "contrato" por canal — honesta, mas pesada. Voltou a ser uma faixa: UMA frase
+   e os logos nas cores das redes, que é o que o olho reconhece em meio segundo. `CH`, `CAP` e
+   `COPY.leg/pe` ficam no arquivo pra quem quiser a versão completa de volta. */
+const SIMPLES = {
+  en: { eye: "One brain · every channel", h: "The same Gui answers everywhere your customers are.", s: "Voice, WhatsApp, Instagram, Messenger, SMS, email — one memory across all of them." },
+  pt: { eye: "Um cérebro · todo canal", h: "A mesma Gui atende em todo lugar onde seus clientes estão.", s: "Voz, WhatsApp, Instagram, Messenger, SMS, e-mail — uma memória em todos eles." },
+  es: { eye: "Un cerebro · cada canal", h: "La misma Gui atiende en todos los lugares donde están tus clientes.", s: "Voz, WhatsApp, Instagram, Messenger, SMS, email — una sola memoria en todos." },
+  hi: { eye: "एक दिमाग़ · हर चैनल", h: "वही Gui हर जगह जवाब देती है जहाँ आपके ग्राहक हैं।", s: "वॉइस, WhatsApp, Instagram, Messenger, SMS, ईमेल — सबमें एक ही याददाश्त।" },
+};
+/* AS PÍLULAS DA `verifica` (Luis, 2026-09-09, print de 20/08: "já foi melhor"): ícone da rede no
+   disco com a cor dela + nome, numa pílula de vidro. Só os canais que a Gui de fato ATENDE. */
+const ATENDE = new Set(["Voice", "WhatsApp", "Instagram", "Messenger", "SMS", "Email", "Google Reviews"]);
 export default function ChannelsStrip() {
   const { lang } = useLang();
-  const t = COPY[lang] || COPY.en;
+  const t = SIMPLES[lang] || SIMPLES.en;
   return (
     <section className="relative px-5 py-16">
-      <style>{`
-        @keyframes chreveal{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-        @media (prefers-reduced-motion:reduce){*{animation:none !important}}
-      `}</style>
-
       <Reveal className="mx-auto max-w-3xl text-center">
-        <div className="font-mono text-[11.5px] font-bold uppercase tracking-[0.28em] text-g-gold">◆ {t.eye}</div>
-        <h2 className="mt-3 font-black leading-[1.05] tracking-tight text-g-word" style={{ fontSize: "clamp(1.5rem,3.2vw,2.3rem)" }}>
-          {t.h1}
-          <span className="bg-gradient-to-r from-g-green via-g-gold to-g-copper bg-clip-text text-transparent">{t.h2}</span>
-        </h2>
-        <p className="mx-auto mt-3 max-w-xl text-[14.5px] leading-relaxed text-g-ink">{t.sub}</p>
+        <div className="font-mono text-[11.5px] font-bold uppercase tracking-[0.28em] text-g-gold">{t.eye}</div>
+        <h2 className="mt-3 font-black leading-[1.05] tracking-tight text-g-word" style={{ fontSize: "clamp(1.7rem,3.6vw,2.6rem)" }}>{t.h}</h2>
+        <p className="mx-auto mt-3 max-w-xl text-[15px] leading-relaxed text-g-ink">{t.s}</p>
       </Reveal>
-
-      {/* A LEGENDA vem ANTES da grade: sem ela os selos são enfeite. Com ela, cada canal vira uma
-          linha de contrato que o leitor sabe ler — e a assimetria entre canais passa a ser lida
-          como honestidade, não como buraco. */}
-      <Reveal className="mx-auto mt-7 flex max-w-3xl flex-wrap items-center justify-center gap-x-5 gap-y-2.5">
-        {Object.keys(CAP).map((k) => (
-          <span key={k} className="inline-flex items-center gap-2 text-[12.5px] font-semibold text-g-ink">
-            {(() => { const I = CAP[k].Ico; return (
-              <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-full text-[12px]"
-                style={{ color: CAP[k].c, background: "rgba(255,255,255,0.05)",
-                         boxShadow: `inset 0 0 0 1px ${CAP[k].c}4d, inset 0 1px 0 rgba(255,255,255,0.12)` }}><I /></span>
-            ); })()}
-            <span style={{ color: CAP[k].c }}>{t.leg[k]}</span>
+      <Reveal className="mx-auto mt-8 flex max-w-4xl flex-wrap items-center justify-center gap-3">
+        {CH.filter((c) => ATENDE.has(c.n)).map(({ Icon, c, n }) => (
+          <span key={n} className="relative inline-flex items-center gap-3 overflow-hidden rounded-full border border-white/12 bg-white/[0.04] py-2 pl-2 pr-5 text-[15px] font-semibold text-g-word backdrop-blur-md transition hover:-translate-y-[2px]">
+            <span className="relative grid h-9 w-9 place-items-center rounded-full text-[15px]" style={{ color: c, background: "rgba(255,255,255,0.05)", boxShadow: `inset 0 0 0 1px ${c}55, inset 0 1px 0 rgba(255,255,255,0.14)` }}>
+              {n === "Voice" && <span aria-hidden="true" className="absolute inset-0 rounded-full animate-ping" style={{ background: c, opacity: .25 }} />}
+              <Icon />
+            </span>
+            {n === "Google Reviews" ? "Google" : n}
           </span>
         ))}
       </Reveal>
-
-      <div className="mx-auto mt-8 grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {CH.map(({ Icon, c, n, caps, bg, fg }, i) => (
-          <div key={n}
-            className="group relative isolate flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-4 backdrop-blur-sm transition-[transform,border-color,background] duration-[260ms] hover:-translate-y-[2px] hover:border-white/20 hover:bg-white/[0.06]"
-            style={{
-              // ═══ SÓBRIO, NÃO FESTIVO ════════════════════════════════════════════════════════
-              // Saiu a sangria de luz colorida atrás do card: 15 manchas de cor diferentes lado a
-              // lado davam ar de vitrine de app store, não de painel de instrumento. A referência
-              // (nvidia) é o oposto — placa neutra, hairline precisa, e a cor entrando SÓ pelo
-              // objeto que a possui: o logo. O vidro aqui é o MESMO `border-white/10 +
-              // bg-white/[0.035]` que os cartões do resto da página usam, então a seção deixa de
-              // parecer bloco importado e passa a pertencer à página.
-              // ⛔ a sombra saiu daqui e virou LEI GLOBAL no index.css — esta receita de 4 camadas
-              // é justamente a que foi promovida. Manter cópia local só criaria divergência.
-              animation: `chreveal .7s cubic-bezier(.2,.7,.2,1) ${i * 0.05}s both`,
-            }}>
-            {/* verniz: reflexo diagonal BRANCO, discretíssimo. Vidro real sempre carrega reflexo do
-                ambiente — sem ele a placa lê como papel fosco. Branco, nunca colorido. */}
-            <span aria-hidden="true" className="pointer-events-none absolute -left-1/3 -top-1/2 h-[160%] w-[80%] -rotate-[24deg]"
-              style={{ background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.045),transparent)" }} />
-            <span aria-hidden="true" className="pointer-events-none absolute inset-x-10 top-0 h-px"
-              style={{ background: "linear-gradient(90deg,transparent,rgba(255,255,255,0.22),transparent)" }} />
-
-            {/* O LOGO REAL — fundo oficial da marca, a ÚNICA cor do card. Brilho de topo contido
-                (0.2, não 0.3): ícone de app 2026 é fosco-acetinado, não plástico envernizado. */}
-            <span className="relative z-10 grid h-[46px] w-[46px] place-items-center overflow-hidden rounded-[12px] text-[19px]"
-              style={{ background: bg, color: fg || undefined,
-                       boxShadow: "inset 0 1px 0 rgba(255,255,255,0.26), inset 0 0 0 1px rgba(0,0,0,0.25), 0 8px 16px -10px rgba(0,0,0,0.95), 0 2px 4px -2px rgba(0,0,0,0.55)" }}>
-              <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-1/2"
-                style={{ background: "linear-gradient(180deg,rgba(255,255,255,0.2),transparent)" }} />
-              <Icon />
-            </span>
-            <span className="relative z-10 text-[12.5px] font-bold tracking-tight text-g-word">{n}</span>
-            {/* filete: separa IDENTIDADE (logo + nome) de CONTRATO (o que fazemos ali). Dois blocos
-                de leitura colados viram um borrão só. */}
-            <span aria-hidden="true" className="relative z-10 h-px w-8 bg-white/10" />
-            <span className="relative z-10 flex items-center gap-1.5">
-              {Object.keys(CAP).map((k) => {
-                const tem = caps.includes(k);
-                const I = CAP[k].Ico;
-                return (
-                  <span key={k} title={t.leg[k]} aria-label={`${n} — ${t.leg[k]}${tem ? "" : " ✕"}`}
-                    className="grid h-[26px] w-[26px] place-items-center rounded-full text-[11.5px]"
-                    style={tem
-                      // SELO EM CINZA ÚNICO (Luis, 2026-08-25 — confirmado 2×). A cor pertence aos
-                      // LOGOS; os selos falam por contraste: claro = fazemos, escuro = não. A
-                      // legenda colorida em cima é que ensina a ler os quatro.
-                      ? { color: "rgba(237,231,220,0.92)", background: "rgba(255,255,255,0.085)",
-                          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.16), inset 0 1px 0 rgba(255,255,255,0.14)" }
-                      : { color: "rgba(237,231,220,0.15)", background: "rgba(0,0,0,0.22)",
-                          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.045)" }}>
-                    <I />
-                  </span>
-                );
-              })}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* o pé que transforma a assimetria em argumento, em vez de deixá-la parecer falha */}
-      <Reveal className="mx-auto mt-7 max-w-2xl text-center text-[12.5px] leading-relaxed text-g-muted">{t.pe}</Reveal>
     </section>
   );
 }

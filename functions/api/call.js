@@ -7,7 +7,7 @@
 // agent greets by name and acts on it — reference {{name}} {{business}} {{need}} in the prompt.
 import { sameOrigin, rateLimited, safeEq } from "../lib/guard.js";
 import { emitFailure } from "../lib/failure.js";
-import { paraE164 } from "../lib/contato.js";
+import { paraE164, destinoPermitido } from "../lib/contato.js";
 
 const ELEVEN_AGENT_ID = "agent_5901ktdkev68f5kb161fmeax1rdm";
 
@@ -51,22 +51,66 @@ export async function onRequestPost(context) {
       return json({ error: "phone needs country code", reason: diga[L] || diga.en }, 400);
     }
 
+    // ── TRAVA DE DESTINO (IRSF, 2026-09-10) — antes de QUALQUER custo ou consulta ────────────────
+    // 717 ligações para +972 em 48h zeraram a Twilio e suspenderam o telefone de todos os clientes.
+    // Por IP e por destino não seguram um robô que gira os dois; o país do destino ele não gira.
+    // Vale para os DOIS caminhos (público e interno): o speed-to-lead foi justamente a porta usada.
+    // Mercado novo = acrescentar o DDI em CALL_DDI_EXTRA no Cloudflare (ex.: "+44,+351"), não aqui.
+    if (!destinoPermitido(dial, env.CALL_DDI_EXTRA).ok) {
+      const L = (body.lang || "en").toString().slice(0, 2);
+      const diga = { pt: "a Gui liga para números dos EUA, Canadá e Brasil",
+                     es: "Gui llama a números de EE. UU., Canadá y Brasil",
+                     en: "Gui calls US, Canada and Brazil numbers" };
+      return json({ error: "destination not allowed", reason: diga[L] || diga.en }, 403);
+    }
+
+    // TETO GLOBAL do caminho PÚBLICO — o limite por IP é por IP; um enxame de IPs soma sem teto.
+    // O interno já tem o seu (150/dia em lead.js). Fail-CLOSED como os outros freios de custo.
+    if (!internal) {
+      try {
+        if (!env.RATE_LIMIT) return json({ error: "too many requests" }, 429);
+        const gk = `callpub:${new Date().toISOString().slice(0, 10)}`;
+        const gn = parseInt((await env.RATE_LIMIT.get(gk)) || "0", 10);
+        if (gn >= 60) {
+          if (gn === 60) await emitFailure(env, "call_public_cap", dial, "teto diário de 60 ligações do caminho público atingido — possível enxame", {});
+          await env.RATE_LIMIT.put(gk, String(gn + 1), { expirationTtl: 172800 });
+          return json({ error: "too many requests" }, 429);
+        }
+        await env.RATE_LIMIT.put(gk, String(gn + 1), { expirationTtl: 172800 });
+      } catch { return json({ error: "too many requests" }, 429); }
+    }
+
     // COMPLIANCE: this is the single hardened dial point — EVERY call path (front-end direct +
     // server-side speed-to-lead from /api/lead) funnels through here, so the do-not-contact (TCPA
     // STOP / DNC) check lives here, not just in lead.js. Never dial a number that opted out.
-    // Fail-OPEN if the suppression service blips (matches lead.js; STOP handling is the primary
-    // guarantee and per-IP caps still bound abuse) — a transient DB error must not kill the product.
+    //
+    // ── A ASSIMETRIA É DE PROPÓSITO (auditoria de lançamento, 2026-09-22) ────────────────────────
+    // Quando a lista de não-perturbe NÃO PODE SER LIDA (rede, banco fora, resposta ilegível):
+    //   · caminho INTERNO (cron, speed-to-lead, reengajamento) → FAIL-CLOSED: não disca.
+    //   · caminho PÚBLICO (a pessoa no site pedindo a ligação)  → fail-open, como sempre foi.
+    // POR QUÊ: no público, quem digitou o número está pedindo a ligação AGORA — é consentimento
+    // fresco, e o caminho tem freio por IP (2/min, 25/dia), teto global (60/dia) e cooldown por
+    // destino. Um soluço do banco não pode matar a demonstração, que é a venda.
+    // No interno NINGUÉM está pedindo nada naquele instante: é a máquina decidindo ligar, sem freio
+    // por IP (o token interno pula esses freios), às vezes dias depois do contato. Ali, "não
+    // consegui conferir o opt-out" e "pode ligar" não podem ser a mesma coisa — ligar para quem
+    // mandou STOP é passivo de TCPA por ligação, e uma máquina repete o erro em lote. A ligação
+    // que deixou de sair fica registrada como falha (dnc_check_unavailable) e dá para refazer; a
+    // ligação indevida não tem volta.
     const SB_URL = env.GUI_ACTIONS_SUPABASE_URL || "https://ynihodbknhjirkdogxby.supabase.co";
     const SB_ANON = env.GUI_ACTIONS_SUPABASE_ANON || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
     // FAIL-CLOSED on config: without INGEST_SECRET we can NEVER verify the do-not-contact list, so on
     // the DIALING path we must refuse to call rather than silently dial a possibly-opted-out number
-    // (a fail-OPEN here would be a TCPA liability, not a transient blip). A transient RPC error inside
-    // the try still falls open — STOP handling + caps remain the backstop for a momentary DB glitch.
+    // (a fail-OPEN here would be a TCPA liability, not a transient blip). A transient RPC error on
+    // the PUBLIC path still falls open; on the INTERNAL path it refuses (see the asymmetry above).
     if (!env.INGEST_SECRET) {
       await emitFailure(env, "dnc_check_unavailable", (paraE164(phone) || phone), "INGEST_SECRET missing on dial path — refusing to call (cannot verify DNC/opt-out)", {});
       return json({ error: "cannot verify do-not-call list" }, 503);
     }
     {
+      // `is_dnc` devolve boolean. Só `false` LIDO libera o caminho interno; qualquer outra coisa
+      // (HTTP não-2xx, corpo que não é boolean, fetch que lançou) é "não sei" — e guarda o motivo.
+      let dncLido = false, dncMotivo = "";
       try {
         const e164 = dial;
         const dr = await fetch(`${SB_URL}/rest/v1/rpc/is_dnc`, {
@@ -74,8 +118,22 @@ export async function onRequestPost(context) {
           headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
           body: JSON.stringify({ p_secret: env.INGEST_SECRET, p_phone: e164 }),
         });
-        if (dr.ok && (await dr.json()) === true) return json({ error: "opted out" }, 403);
-      } catch { /* DNC service down → fall through; per-IP caps still bound abuse */ }
+        if (dr.ok) {
+          const dv = await dr.json().catch(() => undefined);
+          if (dv === true) return json({ error: "opted out" }, 403);
+          if (dv === false) dncLido = true;
+          else dncMotivo = "is_dnc respondeu algo que não é sim/não";
+        } else dncMotivo = `is_dnc http ${dr.status}`;
+      } catch (e) { dncMotivo = `is_dnc fora do ar: ${String(e).slice(0, 80)}`; }
+      if (!dncLido && internal) {
+        // Uma falha por ligação recusada (este é o único ponto de saída deste ramo). O cooldown
+        // por destino ainda NÃO foi gravado aqui, então ele não bloqueia uma nova tentativa.
+        await emitFailure(env, "dnc_check_unavailable", dial,
+          `não consegui ler a lista de não-perturbe (${dncMotivo}) — discagem INTERNA recusada`,
+          { caminho: "interno", motivo: dncMotivo, client_email: (body.client_email || "").toString().slice(0, 120) });
+        return json({ error: "cannot verify do-not-call list", reason: dncMotivo }, 503);
+      }
+      // público + DNC ilegível → segue (fail-open de propósito; ver "A ASSIMETRIA" acima).
     }
 
     // PER-DESTINATION cooldown — bounds abuse that the per-IP caps miss (one victim dialed from
@@ -134,16 +192,17 @@ export async function onRequestPost(context) {
     const daGuileo = !internal && agentId === (env.ELEVENLABS_AGENT_ID || ELEVEN_AGENT_ID);
     const L = ["pt", "es"].includes(vars.lang.slice(0, 2)) ? vars.lang.slice(0, 2) : "en";
     const quem = vars.name ? vars.name.split(" ")[0] : "";
+    // CR-01 (2026-10-08): a abertura de saída também se apresenta como assistente VIRTUAL e avisa a gravação.
     const ABERTURA = {
       pt: quem
-        ? `Oi ${quem}, aqui é a Gui, da Guileo — você acabou de pedir a demonstração no nosso site. Não vou tomar seu tempo com apresentação: me conta o que o seu negócio faz, que eu te digo onde você está perdendo dinheiro hoje e o que eu faria a respeito.`
-        : `Oi, aqui é a Gui, da Guileo — você acabou de pedir a demonstração no nosso site. Rapidinho: qual é o seu nome e o que o seu negócio faz? Com isso eu já te digo onde você está perdendo dinheiro e o que eu faria a respeito.`,
+        ? `Oi ${quem}, aqui é a Gui, assistente virtual da Guileo — esta ligação pode ser gravada. Você acabou de pedir a demonstração no nosso site. Não vou tomar seu tempo com apresentação: me conta o que o seu negócio faz, que eu te digo onde você está perdendo dinheiro hoje e o que eu faria a respeito.`
+        : `Oi, aqui é a Gui, assistente virtual da Guileo — esta ligação pode ser gravada. Você acabou de pedir a demonstração no nosso site. Rapidinho: qual é o seu nome e o que o seu negócio faz? Com isso eu já te digo onde você está perdendo dinheiro e o que eu faria a respeito.`,
       es: quem
-        ? `Hola ${quem}, soy Gui, de Guileo — acabas de pedir la demostración en nuestro sitio. No te voy a robar tiempo con presentaciones: cuéntame qué hace tu negocio y te digo dónde estás perdiendo dinero hoy y qué haría yo al respecto.`
-        : `Hola, soy Gui, de Guileo — acabas de pedir la demostración en nuestro sitio. Rápido: ¿cómo te llamas y qué hace tu negocio? Con eso te digo dónde estás perdiendo dinero y qué haría yo al respecto.`,
+        ? `Hola ${quem}, soy Gui, asistente virtual de Guileo; esta llamada puede ser grabada. Acabas de pedir la demostración en nuestro sitio. No te voy a robar tiempo con presentaciones: cuéntame qué hace tu negocio y te digo dónde estás perdiendo dinero hoy y qué haría yo al respecto.`
+        : `Hola, soy Gui, asistente virtual de Guileo; esta llamada puede ser grabada. Acabas de pedir la demostración en nuestro sitio. Rápido: ¿cómo te llamas y qué hace tu negocio? Con eso te digo dónde estás perdiendo dinero y qué haría yo al respecto.`,
       en: quem
-        ? `Hey ${quem}, this is Gui from Guileo — you just asked for the demo on our site. I won't waste your time with an intro: tell me what your business does, and I'll tell you exactly where you're losing money right now and what I'd do about it.`
-        : `Hey, this is Gui from Guileo — you just asked for the demo on our site. Quick one: what's your name, and what does your business do? Then I'll tell you exactly where you're losing money and what I'd do about it.`,
+        ? `Hey ${quem}, this is Gui, Guileo's virtual assistant — this call may be recorded. You just asked for the demo on our site. I won't waste your time with an intro: tell me what your business does, and I'll tell you exactly where you're losing money right now and what I'd do about it.`
+        : `Hey, this is Gui, Guileo's virtual assistant — this call may be recorded. You just asked for the demo on our site. Quick one: what's your name, and what does your business do? Then I'll tell you exactly where you're losing money and what I'd do about it.`,
     };
     // O `need` é a variável que o prompt já lê. Numa ligação de saída ela deixa de ser "o que o
     // cliente quer" e passa a ser a MISSÃO da chamada — ler o negócio, propor e fechar.
@@ -177,7 +236,7 @@ export async function onRequestPost(context) {
       if (!res.ok) {
         const det = await res.text().catch(() => "");
         await emitFailure(env, "call_provider_error", dial, `ElevenLabs recusou a discagem (HTTP ${res.status})`, { detalhe: det.slice(0, 300), agent_id: agentId });
-        return json({ error: "call provider error", reason: `provedor recusou (HTTP ${res.status})` }, 502);
+        return json({ error: "call provider error", reason: `provedor recusou (HTTP ${res.status})` }, 503);
       }
       return json({ ok: true, provider: "elevenlabs" });
     }
@@ -196,7 +255,7 @@ export async function onRequestPost(context) {
       });
       if (!res.ok) {
         await emitFailure(env, "call_provider_error", dial, `Vapi recusou a discagem (HTTP ${res.status})`, {});
-        return json({ error: "call provider error", reason: `provedor recusou (HTTP ${res.status})` }, 502);
+        return json({ error: "call provider error", reason: `provedor recusou (HTTP ${res.status})` }, 503);
       }
       return json({ ok: true, provider: "vapi" });
     }

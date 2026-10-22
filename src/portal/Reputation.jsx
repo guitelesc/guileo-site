@@ -26,8 +26,15 @@
    a tela tem TRÊS estados, não dois: ligada (lê e mostra), conectada-mas-aguardando
    (diz isso), e NÃO DEU PARA VERIFICAR (falha de rede/permissão — que nunca pode ser
    apresentada como "você não tem avaliações").
-   O showcase antigo continua vivo para a demonstração — com selo, em cada número. */
-import { useState, useEffect } from "react";
+   O showcase antigo continua vivo para a demonstração — com selo, em cada número.
+
+   2026-09-30 — VÁRIAS FICHAS + FILA DE APROVAÇÃO. O servidor normaliza a avaliação do Google
+   (estrela é enum; nome vem de reviewer.displayName) e lê TODAS as fichas confirmadas do
+   negócio. Esta tela ganhou: filtro e média por unidade, e a fila de rascunhos com Aprovar /
+   Editar / Rejeitar. NADA é publicado sem o dono apertar o botão aqui — saiu toda frase que
+   dizia que a resposta era automática. Texto novo desta tela passa por tr() (chave em inglês;
+   pt/es em src/portal/_pending_dict_google.json até o orquestrador juntar nos dicionários). */
+import { useState, useEffect, useCallback } from "react";
 import NoSeuPlano from "./NoSeuPlano.jsx";
 import { portalApi, loadDataKey, toast } from "../lib/portalApi.js";
 import { genReviews, loadCreated, genCustomers, pushCreated, MiniStats, vnum, Card, tr, Drawer, Empty, SectionSkeleton, UI_LANG } from "../pages/Portal.jsx";
@@ -45,15 +52,47 @@ async function gbp(body) {
     });
     const d = await r.json().catch(() => ({}));
     // O veredito viaja com a resposta: um 401/500 JAMAIS pode parecer "zero avaliações".
-    return { ...(d && typeof d === "object" ? d : {}), _ok: r.ok && d?.ok !== false };
-  } catch { return { _ok: false }; }
+    return { ...(d && typeof d === "object" ? d : {}), _ok: r.ok && d?.ok !== false, _http: r.status };
+  } catch { return { _ok: false, _http: 0 }; }
 }
 
 // ── MODO REAL ────────────────────────────────────────────────────────────────
-// Só mostra o que o Google devolveu. Sem avaliação lida, os números são "—" (não 0):
-// "nota 0" e "não consegui ler" são estados opostos, e o primeiro é uma acusação.
+// (2026-09-30) A tela lia r.stars / r.name / r.text / r.replied e a API do Google devolve
+// starRating ("ONE".."FIVE"), reviewer.displayName, comment e reviewReply. Agora o SERVIDOR
+// normaliza (functions/lib/googleReviews.js) e esta tela só mostra: { id, location, stars (1–5 ou
+// null), reviewer, text, createdAt, replied, replyText }. Nota desconhecida é "—", nunca 0.
+// E nenhuma resposta é publicada sem o dono apertar "Approve and publish" aqui.
+const estrelas = (n) => (n == null ? "—" : "★".repeat(n));
+const dataCurta = (iso) => { try { return iso ? new Date(iso).toLocaleDateString(UI_LANG) : ""; } catch { return ""; } };
+
+// A frase de cada estado da conexão. "Não conectado", "o Google ainda não liberou" e "precisa
+// reautorizar" são três situações diferentes, com três providências diferentes.
+function fraseDoEstado(state) {
+  switch (state) {
+    case "not_connected": return tr("Your Google account isn't connected yet. Connect it on the Google tab and your reviews show up here.");
+    case "api_pending": return tr("Your Google account is connected. Google hasn't approved review access for this platform yet, so nothing is being read. We show nothing rather than guess.");
+    case "needs_reconsent": return tr("Google access was revoked or has expired. Reconnect your Google account on the Google tab to read and answer reviews again.");
+    case "needs_scope": return tr("Your Google account is connected without the reviews permission. Reconnect on the Google tab and leave the Business Profile box ticked.");
+    case "needs_discovery":
+    case "discovery_failed": return tr("Connected, but we couldn't fetch your Google listings yet. Open the Google tab and tap Check again.");
+    case "no_locations": return tr("This Google account has no Business Profile listing. Connect the Google account that manages your listings.");
+    case "needs_mapping": return tr("Confirm which Google listings are yours on the Google tab. Until you do, no reviews are read.");
+    default: return "";
+  }
+}
+const fraseDoBloqueio = (code) => (code === "review_link"
+  ? tr("A public reply can't include the review link. Remove it and try again.")
+  : code === "too_long" ? tr("This reply is longer than Google allows. Shorten it and try again.")
+  : code === "empty" ? tr("Write the reply first.")
+  : tr("This reply can't be saved as written."));
+
 function RealReputation({ email, dataKey, onNav }) {
-  const [S, setS] = useState(null); // null = carregando
+  const [S, setS] = useState(null);          // null = carregando
+  const [filtro, setFiltro] = useState("");  // "" = todas as fichas
+  const [textos, setTextos] = useState({});  // id da linha da fila → texto em edição
+  const [novo, setNovo] = useState(null);    // { review, text } — resposta escrita do zero
+  const [ocupado, setOcupado] = useState("");
+  const [volta, setVolta] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -61,90 +100,221 @@ function RealReputation({ email, dataKey, onNav }) {
       const st = await gbp({ action: "status", email, token: dataKey });
       if (!alive) return;
       if (!st._ok) { setS({ err: true }); return; }
-      const connected = !!st.connected, apiReady = !!st.ready;
-      let reviews = null, revErr = false;
-      if (connected && apiReady) {
-        const rv = await gbp({ action: "list_reviews", email, token: dataKey });
+      let rv = null, fila = null;
+      if (st.state === "ready") {
+        [rv, fila] = await Promise.all([
+          gbp({ action: "list_reviews", email, token: dataKey }),
+          gbp({ action: "queue_list", email, token: dataKey }),
+        ]);
         if (!alive) return;
-        if (rv._ok && Array.isArray(rv.reviews)) reviews = rv.reviews;
-        else revErr = true;
       }
-      setS({ connected, apiReady, reviews, revErr });
+      setS({ st, rv, fila });
     })();
     return () => { alive = false; };
-  }, [email, dataKey]);
+  }, [email, dataKey, volta]);
+  const recarregar = useCallback(() => setVolta((n) => n + 1), []);
 
   if (S === null) return <SectionSkeleton rows={5} />;
 
-  const list = Array.isArray(S.reviews) ? S.reviews : [];
-  const stars = list.map((r) => Number(r.stars || r.rating || 0)).filter((n) => n > 0);
-  const avg = stars.length ? (stars.reduce((a, b) => a + b, 0) / stars.length).toFixed(1) : null;
-  // Distribuição só existe se houver avaliação lida. Antes era 78/15/4/2/1 cravado no código.
-  const dist = [5, 4, 3, 2, 1].map((n) => [n, stars.length ? Math.round((stars.filter((s) => s === n).length / stars.length) * 100) : null]);
+  const state = S.err ? "unknown" : ((S.rv && S.rv._ok && S.rv.state) || S.st.state);
+  const pronto = state === "ready";
+  const leuAvaliacoes = !!(S.rv && S.rv._ok);
+  const todas = leuAvaliacoes && Array.isArray(S.rv.reviews) ? S.rv.reviews : [];
+  const porFicha = leuAvaliacoes && Array.isArray(S.rv.per_location) ? S.rv.per_location : [];
+  const fichasComFalha = porFicha.filter((p) => !p.ok);
+  const leuFila = !!(S.fila && S.fila._ok);
+  const filaToda = leuFila && Array.isArray(S.fila.rows) ? S.fila.rows : [];
+  const naFila = new Map(filaToda.map((q) => [q.review_id, q]));
 
-  const banner = S.err
-    ? ["#E2533F", t({
-        en: "Couldn't check your Google profile just now — this is a connection problem on our side, not a statement about your reviews.",
-        pt: "Não consegui verificar seu Perfil do Google agora — isso é falha de conexão do nosso lado, não uma afirmação sobre suas avaliações.",
-        es: "No pude verificar tu Perfil de Google ahora — es un problema de conexión de nuestro lado, no una afirmación sobre tus reseñas.",
-        hi: "अभी आपकी Google प्रोफ़ाइल जाँच नहीं सका — यह हमारी ओर की कनेक्शन समस्या है, आपकी समीक्षाओं के बारे में दावा नहीं।" })]
-    : !S.connected
-      ? ["#C8A24A", t({
-          en: "Your Google profile isn't linked yet — that's where your reviews live. Link it on the Google tab and they show up here.",
-          pt: "Seu Perfil do Google ainda não está conectado — é lá que ficam suas avaliações. Conecte na aba Google e elas aparecem aqui.",
-          es: "Tu Perfil de Google aún no está enlazado — ahí viven tus reseñas. Enlázalo en la pestaña Google y aparecerán aquí.",
-          hi: "आपकी Google प्रोफ़ाइल अभी जुड़ी नहीं — समीक्षाएँ वहीं रहती हैं। Google टैब में जोड़ें और वे यहाँ दिखेंगी।" })]
-      : !S.apiReady
-        ? ["#C8A24A", t({
-            en: "Profile linked · reading reviews switches on the moment Google approves the API. Until then we show nothing rather than guess.",
-            pt: "Perfil conectado · a leitura das avaliações liga assim que o Google aprovar a API. Até lá não mostramos nada em vez de chutar.",
-            es: "Perfil enlazado · la lectura de reseñas se activa cuando Google apruebe la API. Hasta entonces no mostramos nada en vez de adivinar.",
-            hi: "प्रोफ़ाइल जुड़ी · Google API स्वीकृति मिलते ही समीक्षाएँ पढ़ना चालू। तब तक अनुमान के बजाय कुछ नहीं दिखाते।" })]
-        : S.revErr
-          ? ["#E2533F", t({
-              en: "Couldn't load your reviews just now — connection problem, not an empty profile.",
-              pt: "Não consegui carregar suas avaliações agora — falha de conexão, não perfil vazio.",
-              es: "No pude cargar tus reseñas ahora — problema de conexión, no un perfil vacío.",
-              hi: "अभी समीक्षाएँ लोड नहीं हो सकीं — कनेक्शन की समस्या, खाली प्रोफ़ाइल नहीं।" })]
-          : null;
+  const list = filtro ? todas.filter((r) => r.location === filtro) : todas;
+  const pendentes = filaToda.filter((q) => ["draft", "approved", "failed"].includes(q.status) && (!filtro || q.location_id === filtro));
+  const comNota = list.filter((r) => r.stars != null);
+  const semResposta = list.filter((r) => !r.replied).length;
+  // Distribuição só do que foi LIDO (as mais recentes) — e dita assim na tela.
+  const dist = [5, 4, 3, 2, 1].map((n) => [n, comNota.length ? Math.round((comNota.filter((r) => r.stars === n).length / comNota.length) * 100) : null]);
+  // Nota média e total: os números do PRÓPRIO Google (todas as avaliações da ficha).
+  const fichaSel = filtro ? porFicha.find((p) => p.location_id === filtro) : null;
+  const media = filtro ? (fichaSel && fichaSel.ok && fichaSel.averageRating != null ? Number(fichaSel.averageRating) : null) : (leuAvaliacoes && S.rv.google ? S.rv.google.average : null);
+  const total = filtro ? (fichaSel && fichaSel.ok ? fichaSel.totalReviewCount : null) : (leuAvaliacoes && S.rv.google ? S.rv.google.total : null);
+
+  const falha = (r) => {
+    const bloqueio = Array.isArray(r.blocks) && r.blocks[0] ? r.blocks[0].code : "";
+    if (bloqueio) { toast(fraseDoBloqueio(bloqueio)); return; }
+    if (r.error === "needs_reconsent" || r.state === "needs_reconsent") { toast(tr("Google access was revoked or has expired. Reconnect your Google account on the Google tab to read and answer reviews again.")); return; }
+    toast(tr("That didn't go through. Nothing was published."));
+  };
+  const textoDe = (q) => (textos[q.id] != null ? textos[q.id] : q.draft_text || "");
+  const mudou = (q) => textoDe(q).trim() !== String(q.draft_text || "").trim();
+
+  const salvar = async (q) => {
+    setOcupado(q.id);
+    const r = await gbp({ action: "queue_edit", email, token: dataKey, id: q.id, text: textoDe(q) });
+    setOcupado("");
+    if (!r._ok) { falha(r); return false; }
+    toast(Array.isArray(r.warnings) && r.warnings.length ? tr("Saved. Heads-up: this reply mentions an offer, a link or a contact. Read it once more before approving.") : tr("Draft saved. Nothing was published."));
+    setTextos((t) => { const c = { ...t }; delete c[q.id]; return c; });
+    recarregar();
+    return true;
+  };
+  // A ação EXPLÍCITA do dono: salva a edição (se houver), aprova e publica. Cada passo é
+  // conferido; se o Google recusar, a linha fica "failed" com o motivo — nunca "publicado".
+  const aprovarEPublicar = async (q) => {
+    setOcupado(q.id);
+    if (mudou(q)) {
+      const e = await gbp({ action: "queue_edit", email, token: dataKey, id: q.id, text: textoDe(q) });
+      if (!e._ok) { setOcupado(""); falha(e); return; }
+    }
+    if (q.status !== "approved" || mudou(q)) {
+      const a = await gbp({ action: "queue_approve", email, token: dataKey, id: q.id });
+      if (!a._ok) { setOcupado(""); falha(a); recarregar(); return; }
+    }
+    const p = await gbp({ action: "queue_publish", email, token: dataKey, id: q.id });
+    setOcupado("");
+    if (p._ok && p.published) toast(p.google_state === "PENDING" ? tr("Sent to Google. Google is reviewing the reply before it shows publicly.") : tr("Published on Google."));
+    else if (p.error === "blocked") toast(fraseDoBloqueio(p.code));
+    else toast(tr("Google didn't accept the reply. Nothing was published. The reason is shown on the draft."));
+    setTextos((t) => { const c = { ...t }; delete c[q.id]; return c; });
+    recarregar();
+  };
+  const rejeitar = async (q) => {
+    setOcupado(q.id);
+    const r = await gbp({ action: "queue_reject", email, token: dataKey, id: q.id });
+    setOcupado("");
+    if (!r._ok) { falha(r); return; }
+    toast(tr("Draft rejected. Nothing was published."));
+    recarregar();
+  };
+  const escrever = async () => {
+    if (!novo || !novo.text.trim()) { toast(tr("Write the reply first.")); return; }
+    setOcupado("novo");
+    const r = await gbp({ action: "queue_write", email, token: dataKey, location_id: novo.review.location, review_id: novo.review.id, text: novo.text });
+    setOcupado("");
+    if (!r._ok) { falha(r); return; }
+    toast(tr("Saved as a draft. Approve it above to publish."));
+    setNovo(null); recarregar();
+  };
+
+  const aviso = S.err
+    ? ["#E2533F", tr("Couldn't check your Google profile just now. This is a connection problem on our side, not a statement about your reviews.")]
+    : !pronto ? [state === "needs_reconsent" ? "#E2533F" : "#C8A24A", fraseDoEstado(state)]
+    : !leuAvaliacoes ? ["#E2533F", tr("Couldn't load your reviews just now. This is a connection problem, not an empty profile.")]
+    : null;
+  const rotuloStatus = { draft: tr("Draft"), approved: tr("Approved, not published yet"), failed: tr("Not published") };
 
   return (
     <div className="space-y-4 stagger">
       <div className="rounded-2xl border border-[#FFC23D]/25 bg-gradient-to-br from-[#FFC23D]/[0.07] to-white/[0.02] p-5">
         <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider" style={{ color: "#FFC23D" }}>
-          ⭐ {t({ en: "Reputation", pt: "Reputação", es: "Reputación", hi: "प्रतिष्ठा" })}
+          ⭐ {tr("Reputation")}
           <span className="inline-flex items-center gap-1 text-g-green normal-case font-black text-[9px]">
             <span className="h-1.5 w-1.5 rounded-full bg-g-green animate-pulse" />
-            {t({ en: "LIVE — your account", pt: "AO VIVO — sua conta", es: "EN VIVO — tu cuenta", hi: "लाइव — आपका खाता" })}
+            {tr("LIVE · your account")}
           </span>
         </div>
-        <div className="mt-1 text-xl font-black text-g-word">
-          {t({ en: "What your customers say about you.", pt: "O que seus clientes dizem de você.", es: "Lo que tus clientes dicen de ti.", hi: "आपके ग्राहक आपके बारे में क्या कहते हैं।" })}
-        </div>
+        <div className="mt-1 text-xl font-black text-g-word">{tr("What your customers say about you.")}</div>
+        <div className="mt-1 text-[11.5px] text-g-muted">{tr("Nothing is published on Google until you approve it here.")}</div>
       </div>
 
-      {banner && (
+      {aviso && (
         <div className="rounded-xl2 px-4 py-3 text-[11.5px] leading-snug"
-          style={{ color: banner[0], background: banner[0] + "12", border: `1px solid ${banner[0]}40` }}>
-          {banner[1]}
-          <button onClick={() => onNav?.("googlehub")} className="ml-1 font-black underline">
-            {t({ en: "Open Google →", pt: "Abrir Google →", es: "Abrir Google →", hi: "Google खोलें →" })}
-          </button>
+          style={{ color: aviso[0], background: aviso[0] + "12", border: `1px solid ${aviso[0]}40` }}>
+          {aviso[1]}
+          <button onClick={() => onNav?.("googlehub")} className="ml-1 font-black underline">{tr("Open Google →")}</button>
+        </div>
+      )}
+      {fichasComFalha.map((p) => (
+        <div key={p.location_id} className="rounded-xl2 px-4 py-3 text-[11.5px] leading-snug" style={{ color: "#E2533F", background: "#E2533F12", border: "1px solid #E2533F40" }}>
+          {tr("Couldn't read this location just now. Its reviews are missing from this page, not zero:")} <b>{p.label || p.location_id}</b>
+          <button onClick={recarregar} className="ml-2 font-black underline">{tr("Try again")}</button>
+        </div>
+      ))}
+
+      {/* FILTRO POR UNIDADE */}
+      {pronto && porFicha.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          {[["", tr("All locations")], ...porFicha.map((p) => [p.location_id, p.label || p.location_id])].map(([id, nome]) => (
+            <button key={id || "todas"} onClick={() => setFiltro(id)}
+              className={`rounded-full px-3 py-1.5 text-[11.5px] font-bold border ${filtro === id ? "border-g-gold/60 bg-g-gold/15 text-g-gold" : "border-white/10 bg-white/[0.04] text-g-muted"}`}>
+              {nome}
+            </button>
+          ))}
         </div>
       )}
 
       {/* Números com lastro OU traço. Nunca zero por falta de leitura. */}
       <MiniStats items={[
-        [t({ en: "Avg rating", pt: "Nota média", es: "Nota media", hi: "औसत रेटिंग" }), avg ? `${avg} ★` : "—", avg && Number(avg) >= 4 ? "good" : undefined],
-        [t({ en: "Reviews read", pt: "Avaliações lidas", es: "Reseñas leídas", hi: "पढ़ी गई समीक्षाएँ" }), list.length ? `${list.length}` : "—"],
-        [t({ en: "Replied", pt: "Respondidas", es: "Respondidas", hi: "जवाब दी गईं" }), list.length ? `${list.filter((r) => r.replied || r.reply).length}` : "—"],
+        [tr("Avg rating on Google"), media != null ? `${Number(media).toFixed(1)} ★` : "—", media != null && Number(media) >= 4 ? "good" : undefined],
+        [tr("Reviews on Google"), total != null ? `${total}` : "—"],
+        [tr("Awaiting a reply"), leuAvaliacoes ? `${semResposta}` : "—"],
+        [tr("Drafts for you to approve"), leuFila ? `${pendentes.length}` : "—"],
       ]} />
+
+      {/* MÉDIA POR UNIDADE */}
+      {pronto && porFicha.length > 1 && (
+        <Card className="p-0 overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("By location")}</div>
+          <div className="divide-y divide-white/[0.06]">
+            {porFicha.map((p) => {
+              const lidas = todas.filter((r) => r.location === p.location_id);
+              return (
+                <div key={p.location_id} className="px-5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-[12px]">
+                  <span className="font-bold text-g-word">{p.label || p.location_id}</span>
+                  {p.ok
+                    ? <span className="text-g-muted">
+                        <b className="text-g-gold">{p.averageRating != null ? `${Number(p.averageRating).toFixed(1)} ★` : "—"}</b>
+                        {" · "}{p.totalReviewCount != null ? p.totalReviewCount : "—"} {tr("reviews")}
+                        {" · "}{lidas.filter((r) => !r.replied).length} {tr("awaiting a reply")}
+                      </span>
+                    : <span style={{ color: "#E2533F" }}>{tr("couldn't read")}</span>}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* A FILA — rascunhos esperando o dono */}
+      {pronto && (
+        <Card className="p-0 overflow-hidden">
+          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Replies waiting for your approval")}</div>
+          {!leuFila ? (
+            <Empty icon="⚠️" text={tr("Couldn't load the drafts just now. Nothing was published.")} />
+          ) : pendentes.length === 0 ? (
+            <Empty icon="✍️" text={tr("No drafts waiting. When a new review arrives, a draft reply shows up here for you to approve, edit or reject.")} />
+          ) : (
+            <div className="divide-y divide-white/[0.06]">
+              {pendentes.map((q) => (
+                <div key={q.id} className="px-5 py-3.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm font-bold text-g-word">{q.reviewer || tr("Google user")}{q.location_label ? <span className="text-g-muted font-normal"> · {q.location_label}</span> : null}</span>
+                    <span className="text-xs text-g-gold">{estrelas(q.stars)}</span>
+                  </div>
+                  {q.review_text && <div className="text-[12px] text-g-muted mt-0.5 leading-snug">"{q.review_text}"</div>}
+                  <div className="mt-2 text-[10px] font-black uppercase tracking-wide" style={{ color: q.status === "failed" ? "#E2533F" : "#C8A24A" }}>
+                    {rotuloStatus[q.status]} · {q.origin === "owner" ? tr("written by you") : q.edited ? tr("drafted by Gui, edited by you") : tr("drafted by Gui")}
+                  </div>
+                  {q.status === "failed" && q.google_error && (
+                    <div className="mt-1 text-[11px] leading-snug" style={{ color: "#E2533F" }}>{tr("Google's answer:")} {q.google_error}</div>
+                  )}
+                  <textarea value={textoDe(q)} onChange={(e) => setTextos((t) => ({ ...t, [q.id]: e.target.value }))} rows={3} maxLength={4000}
+                    className="mt-2 w-full rounded-lg bg-white/[0.04] border border-white/10 px-2.5 py-2 text-[13px] text-g-word" />
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button disabled={ocupado === q.id} onClick={() => aprovarEPublicar(q)} className="btn-bright text-sm disabled:opacity-50">
+                      {q.status === "failed" ? tr("Approve and try again") : tr("Approve and publish")}
+                    </button>
+                    {mudou(q) && <button disabled={ocupado === q.id} onClick={() => salvar(q)} className="btn-ghost text-sm disabled:opacity-50">{tr("Save edit")}</button>}
+                    <button disabled={ocupado === q.id} onClick={() => rejeitar(q)} className="btn-ghost text-sm disabled:opacity-50">{tr("Reject")}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-4">
         <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">
-            {t({ en: "Rating breakdown", pt: "Distribuição das notas", es: "Distribución de notas", hi: "रेटिंग वितरण" })}
-          </div>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("Rating breakdown")}</div>
           {dist.map(([n, v]) => (
             <div key={n} className="mb-2 last:mb-0 flex items-center gap-2">
               <span className="text-xs text-g-muted w-8">{n}★</span>
@@ -154,8 +324,9 @@ function RealReputation({ email, dataKey, onNav }) {
               <span className="text-[11px] text-g-muted w-8 text-right">{v == null ? "—" : `${v}%`}</span>
             </div>
           ))}
+          {comNota.length > 0 && <div className="mt-3 text-[10.5px] text-g-muted leading-snug">{tr("Breakdown of the most recent reviews read:")} {comNota.length}</div>}
           {/* O pedido de avaliação É real — mas roda sozinho no servidor, depois da visita
-              (SERVER_AUTOMATIONS). O botão antigo dizia estar disparando e não disparava nada. */}
+              (SERVER_AUTOMATIONS). Isto é sobre PEDIR avaliação, não sobre responder. */}
           <div className="mt-4 rounded-xl border border-white/[0.07] bg-black/15 px-3 py-2.5 text-[11px] text-g-muted leading-snug">
             {t({
               en: "Gui asks for a review automatically after each visit — once per visit, with your review link. There's nothing to fire by hand here.",
@@ -166,30 +337,52 @@ function RealReputation({ email, dataKey, onNav }) {
         </Card>
 
         <Card className="lg:col-span-2 p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">
-            {t({ en: "Your reviews", pt: "Suas avaliações", es: "Tus reseñas", hi: "आपकी समीक्षाएँ" })}
-          </div>
+          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Your reviews")}</div>
           {list.length === 0 ? (
-            <Empty icon={S.err || S.revErr ? "⚠️" : "⭐"} text={
-              S.err || S.revErr
-                ? t({ en: "Couldn't read your reviews — connection problem, not an empty profile.", pt: "Não consegui ler suas avaliações — falha de conexão, não perfil vazio.", es: "No pude leer tus reseñas — problema de conexión, no un perfil vacío.", hi: "समीक्षाएँ नहीं पढ़ सका — कनेक्शन की समस्या।" })
-                : t({ en: "No reviews synced yet — they appear here the moment your Google profile is reading.", pt: "Nenhuma avaliação sincronizada ainda — elas aparecem aqui assim que seu Perfil do Google estiver lendo.", es: "Aún no hay reseñas sincronizadas — aparecerán cuando tu Perfil de Google esté leyendo.", hi: "अभी कोई समीक्षा नहीं — Google प्रोफ़ाइल पढ़ना शुरू करते ही यहाँ दिखेंगी।" })} />
+            <Empty icon={S.err || (pronto && !leuAvaliacoes) || fichasComFalha.length ? "⚠️" : "⭐"} text={
+              S.err || (pronto && !leuAvaliacoes) || fichasComFalha.length
+                ? tr("Couldn't read your reviews. This is a connection problem, not an empty profile.")
+                : pronto ? tr("No reviews yet on the connected Google listings.")
+                : tr("Reviews show up here once your Google listings are connected and being read.")} />
           ) : (
             <div className="divide-y divide-white/[0.06]">
-              {list.map((r, i) => {
-                const st = Number(r.stars || r.rating || 0);
+              {list.map((r) => {
+                const q = naFila.get(r.id);
+                const temRascunho = q && ["draft", "approved", "failed"].includes(q.status);
                 return (
-                  <div key={r.id || i} className="px-5 py-3">
+                  <div key={`${r.location}:${r.id}`} className="px-5 py-3">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-bold text-g-word truncate">{r.name || r.reviewer || "—"}</span>
-                      <span className="text-xs text-g-gold shrink-0">{"★".repeat(st)}<span className="text-g-muted">{"★".repeat(Math.max(0, 5 - st))}</span></span>
+                      <span className="text-sm font-bold text-g-word truncate">
+                        {r.reviewer || tr("Google user")}
+                        <span className="text-g-muted font-normal text-[11px]">{porFicha.length > 1 && r.locationLabel ? ` · ${r.locationLabel}` : ""}{r.createdAt ? ` · ${dataCurta(r.createdAt)}` : ""}</span>
+                      </span>
+                      <span className="text-xs text-g-gold shrink-0">{r.stars == null ? "—" : <>{"★".repeat(r.stars)}<span className="text-g-muted">{"★".repeat(5 - r.stars)}</span></>}</span>
                     </div>
-                    {(r.text || r.comment) && <div className="text-[12px] text-g-muted mt-0.5 leading-snug">"{r.text || r.comment}"</div>}
-                    <div className="mt-1 text-[10px] font-bold" style={{ color: r.replied || r.reply ? "#3E9468" : "#9A8F82" }}>
-                      {r.replied || r.reply
-                        ? t({ en: "✓ Gui replied", pt: "✓ a Gui respondeu", es: "✓ Gui respondió", hi: "✓ Gui ने जवाब दिया" })
-                        : t({ en: "· awaiting reply", pt: "· aguardando resposta", es: "· esperando resposta", hi: "· जवाब बाकी" })}
-                    </div>
+                    {r.text && <div className="text-[12px] text-g-muted mt-0.5 leading-snug">"{r.text}"</div>}
+                    {r.replied ? (
+                      <div className="mt-1.5 rounded-lg border border-white/[0.07] bg-black/15 px-3 py-2">
+                        <div className="text-[10px] font-bold" style={{ color: "#3E9468" }}>
+                          ✓ {r.replyState === "PENDING" ? tr("Replied · Google is still reviewing the reply") : r.replyState === "REJECTED" ? tr("Replied · Google rejected the reply") : tr("Replied")}
+                        </div>
+                        <div className="text-[12px] text-g-light mt-0.5 leading-snug">{r.replyText}</div>
+                      </div>
+                    ) : temRascunho ? (
+                      <div className="mt-1 text-[10px] font-bold" style={{ color: "#C8A24A" }}>· {tr("draft waiting for your approval above")}</div>
+                    ) : novo && novo.review.id === r.id ? (
+                      <div className="mt-2">
+                        <textarea value={novo.text} onChange={(e) => setNovo({ ...novo, text: e.target.value })} rows={3} maxLength={4000} autoFocus
+                          className="w-full rounded-lg bg-white/[0.04] border border-white/10 px-2.5 py-2 text-[13px] text-g-word" />
+                        <div className="mt-2 flex gap-2">
+                          <button disabled={ocupado === "novo"} onClick={escrever} className="btn-bright text-sm disabled:opacity-50">{tr("Save as draft")}</button>
+                          <button onClick={() => setNovo(null)} className="btn-ghost text-sm">{tr("Cancel")}</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-1 flex items-center gap-3 text-[10px] font-bold" style={{ color: "#9A8F82" }}>
+                        · {tr("no reply yet")}
+                        <button onClick={() => setNovo({ review: r, text: "" })} className="underline text-g-gold">{tr("Write a reply")}</button>
+                      </div>
+                    )}
                   </div>
                 );
               })}

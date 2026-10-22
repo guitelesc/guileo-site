@@ -18,8 +18,13 @@ import PulseSection, { PULSE_COPY } from "../components/PulseSection.jsx";
 // ⚠️ ZERO TEXTO COPIADO: tudo vem de `PULSE_COPY`, o MESMO dicionário que a seção da landing usa
 // (exportado de PulseSection.jsx). Duplicar as 4 traduções aqui teria criado a segunda fonte que
 // passei a sessão inteira eliminando — e no dia em que um número mudasse, um dos dois mentiria.
-// A seção `<PulseSection />` inteira é reaproveitada no fim: preço, comparação e o formulário
-// "me liga" que o Luis chamou de "super hot lead" não têm segunda versão em lugar nenhum.
+// A seção `<PulseSection />` inteira é reaproveitada no fim: preço, painel e o link pra falar
+// com a gente não têm segunda versão em lugar nenhum.
+// ⚠️ 2026-09-27: o formulário "me liga" que o Luis chamou de "super hot lead" (o parágrafo acima
+// descrevia) foi removido de PulseSection.jsx no refactor do DEGRAU (2026-08-25) — os campos
+// ainda existem no dicionário PULSE_COPY mas nada os renderiza. O CTA vivo hoje é o link pra
+// /pulse; a frase de baixo do preço ("degrau") foi corrigida pra não prometer um checkout que
+// não existe (não há Payment Link de Pulse em selfServePlans.js nem em TOPUPS).
 
 const SEO = {
   en: { t: "Guileo Pulse — know how your customers really feel, for $49/mo",

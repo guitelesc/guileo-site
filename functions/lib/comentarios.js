@@ -324,3 +324,38 @@ export function linkComIdioma(link, code) {
   const sep = semHash.includes("?") ? "&" : "?";
   return `${semHash}${sep}lang=${encodeURIComponent(code)}${hash ? "#" + hash : ""}`;
 }
+
+// ── O CARIMBO DO DIRECT NO LINK (2026-10-04) ───────────────────────────────────────────────────
+// O caminho comentário → DM → site → lead EXISTIA, mas o lead chegava órfão: os links usavam
+// `?ref=ig-comentario`, e o site só captura utm_*/gclid/fbclid (src/lib/analytics.js). Com o
+// carimbo, o lead nasce em lead_attribution com medium="direct" e campaign=<id da campanha> — e o
+// painel responde "esta campanha trouxe N leads" com um COUNT, não com palpite.
+// Regras: nunca sobrescreve utm que o dono pôs à mão; preserva o #âncora; leva o idioma junto.
+// ⚠️ Primeiro toque vence (90 dias): quem já veio de um anúncio antes continua creditado ao anúncio.
+// Isso é a regra da casa (atribuicao.js), não um defeito — o Direct não rouba crédito de ninguém.
+export function linkDoDirect(link, code, campanhaId) {
+  const comIdioma = linkComIdioma(link, code);
+  if (!comIdioma) return comIdioma;
+  if (/[?&]utm_(source|medium|campaign)=/i.test(comIdioma)) return comIdioma;
+  const [semHash, hash] = comIdioma.split("#");
+  const sep = semHash.includes("?") ? "&" : "?";
+  const utm = `utm_source=instagram&utm_medium=direct${campanhaId ? `&utm_campaign=${encodeURIComponent(String(campanhaId))}` : ""}`;
+  return `${semHash}${sep}${utm}${hash ? "#" + hash : ""}`;
+}
+
+// ── DE ONDE ESTA CONVERSA VEIO (contexto do SERVIDOR para a Gui) ───────────────────────────────
+// Quem recebeu o DM de um comentário e responde no Direct está no meio de uma conversa que a Gui
+// começou. Sem isto ela recebe "e pra 2 pessoas?" sem saber 2 de quê, e cumprimenta como estranha
+// alguém que acabou de falar com ela. A frase vem do NOSSO banco (palavra e nome da campanha que o
+// dono configurou), nunca do texto da cliente — por isso pode entrar no prompt de sistema.
+// `ctx` = retorno de direct_contexto_pessoa ({quando, palavra, campanha}) ou null.
+export function origemDaConversa(ctx, agoraMs = Date.now()) {
+  if (!ctx || !ctx.palavra) return "";
+  const limpo = (v, n) => String(v || "").replace(/["“”\n\r]+/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
+  const palavra = limpo(ctx.palavra, 40);
+  const campanha = limpo(ctx.campanha, 80);
+  const ms = Math.max(0, agoraMs - (Date.parse(ctx.quando) || agoraMs));
+  const min = Math.round(ms / 60000);
+  const tempo = min < 60 ? `${Math.max(1, min)} min` : min < 2880 ? `${Math.round(min / 60)} h` : `${Math.round(min / 1440)} days`;
+  return `HOW THIS CONVERSATION STARTED (verified by the server, not said by the customer): this person commented "${palavra}" on one of this business's Instagram posts${campanha ? ` (campaign "${campanha}")` : ""} about ${tempo} ago and already received the automatic Direct reply to that comment. They are now answering in the Direct. Continue that same conversation naturally — do not greet them as a stranger and do not ask from scratch what they want; they came for what "${palavra}" is about.`;
+}

@@ -20,6 +20,7 @@ const HELPERS = [
   "svcRpc", "emitFailure", "sendOrFlag", "sendText", "faladoComoGente", "resolveSlot",
   "oQueAPessoaDisse", "brandFor", "appointmentEmail", "ownerAlertEmail", "sellerWelcomeEmail",
   "isOwnerEmail", "sameOrigin", "rateLimited", "buildConversationConfig", "resolveNativeVoices",
+  "avisarDono", "donoEmail",
 ];
 
 const arquivos = globSync("functions/**/*.js");

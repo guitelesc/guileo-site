@@ -75,7 +75,7 @@ async function clientFacts(env, email) {
 // dez antes de mexer, e é exatamente por estarem iguais que a hora de unificar é agora — depois que
 // uma diverge, alguém já foi atendido pelo modelo errado e ninguém sabe qual superfície foi.
 // É o padrão que esta sessão inteira perseguiu: cópia sem vínculo com a fonte.
-import { MODEL_CHAIN } from "../lib/guiBrain.js";
+import { askClaude } from "../lib/guiBrain.js";
 async function writeBrief(env, { email, business, industry, lang, intake, prices }) {
   const langName = { pt: "Portuguese", es: "Spanish", en: "English" }[lang] || "English";
   const facts = [
@@ -86,21 +86,12 @@ async function writeBrief(env, { email, business, industry, lang, intake, prices
   ].filter(Boolean).join("\n");
   const system = `You are Guileo's onboarding strategist. Write a crisp ONE-PAGE kickoff brief for the internal team about to launch this client's AI receptionist ("Gui"). Write in ${langName}. Use short labeled sections: SNAPSHOT (who they are, what they sell), GOALS (what winning looks like in 90 days), GUI'S FIRST JOB (the highest-value thing Gui should do on day one), RISKS/UNKNOWNS (what to confirm on the kickoff call). Be concrete and specific to the facts given — never invent numbers, prices, or claims not present in the facts. Plain text, no markdown headers with #, use UPPERCASE labels followed by a colon. Keep under 320 words.`;
   const msg = `Facts:\n${facts || "(minimal facts provided — write a tight brief and flag what to confirm on the call)"}`;
-  if (env.ANTHROPIC_API_KEY) {
-    for (const model of MODEL_CHAIN) {
-      try {
-        const r = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-          body: JSON.stringify({ model, max_tokens: 700, system, messages: [{ role: "user", content: msg }] }),
-        });
-        if (r.ok) {
-          const d = await r.json().catch(() => ({}));
-          const text = (d?.content?.[0]?.text || "").trim();
-          if (text) return { brief: text, model };
-        } else if (r.status === 401 || r.status === 402) break;
-      } catch { /* try next model */ }
-    }
+  if (env.ANTHROPIC_API_KEY || env.ELEVENLABS_API_KEY) {
+    // 2026-10-05: sem chamada direta à Anthropic — askClaude usa o Escritor da ElevenLabs quando ela está desligada.
+    const diag = [];
+    const text = await askClaude(env, { system, maxTokens: 700, messages: [{ role: "user", content: msg }], diag });
+    const ult = diag[diag.length - 1] || {};
+    if (text) return { brief: text, model: ult.model || ult.cerebro || "" };
   }
   // Deterministic fallback — still a usable one-pager.
   const fb = [

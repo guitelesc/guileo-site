@@ -43,7 +43,7 @@ const s = (v, n = 400) => (v == null ? "" : v.toString().slice(0, n));
 // dez antes de mexer, e é exatamente por estarem iguais que a hora de unificar é agora — depois que
 // uma diverge, alguém já foi atendido pelo modelo errado e ninguém sabe qual superfície foi.
 // É o padrão que esta sessão inteira perseguiu: cópia sem vínculo com a fonte.
-import { MODEL_CHAIN } from "../lib/guiBrain.js";
+import { askClaude } from "../lib/guiBrain.js";
 
 // ── Per-tenant Meta integration blob (provider='meta'): publish_mode + page/IG tokens. ──
 //    Shape: { publish_mode:'auto'|'approve', ig_user_id, page_id, page_access_token }
@@ -73,6 +73,79 @@ function netsOf(env, meta) {
   const tok = !!(meta && meta.page_access_token);
   const st = (has) => (has && tok ? (live ? "live" : "pending") : "off");
   return { instagram: st(!!(meta && meta.ig_user_id)), facebook: st(!!(meta && meta.page_id)), whatsapp: "unknown" };
+}
+
+// ── NOTAS QUE CHEGAM NA TELA DO CLIENTE (incidente 2026-09-28) ─────────────────────────────────
+// Toda `note` deste arquivo era português fixo — e várias eram ORDEM DE ENGENHARIA para o dono
+// do negócio: "falta META_APP_ID/META_APP_SECRET no Cloudflare", "Paste db/social_posts.sql".
+// A tradução acontece na FRONTEIRA da resposta do tenant (respostaNoIdioma), não em cada return:
+// assim a varredura e o que é gravado no banco (p_error) continuam exatamente como eram, e uma
+// nota nova que alguém escrever em português e esquecer de cadastrar aqui passa como veio em vez
+// de sumir. Nota com instrução técnica vira frase segura + `detalhe_tecnico` (para o admin).
+//
+// ⚠️ IDIOMA DA TELA = `ui_lang` (sempre) ou `lang` (só em status/connect/list/approve/…). Em
+// draft/generate/schedule o `lang` já é o idioma do POST que a Gui gera — reaproveitar o campo
+// trocaria o idioma da legenda publicada no perfil do cliente.
+const idiomaTela = (v) => { const l = String(v || "").toLowerCase().slice(0, 2); return ["en", "pt", "es", "hi"].includes(l) ? l : ""; };
+const NOTAS = [
+  { de: /^(App Meta ainda não aprovado|Meta app ainda não aprovado)/, tecnico: "META_APP_ID/META_APP_SECRET ausentes no ambiente (app Meta não aprovado)",
+    t: { en: "Publishing to Instagram/Facebook is waiting for Meta to approve our app. Nothing is published until then.", pt: "A publicação no Instagram/Facebook aguarda a Meta aprovar o nosso app. Nada é publicado até lá.", es: "La publicación en Instagram/Facebook espera que Meta apruebe nuestra app. No se publica nada hasta entonces.", hi: "Instagram/Facebook पर प्रकाशन Meta द्वारा हमारे ऐप की मंज़ूरी का इंतज़ार कर रहा है। तब तक कुछ भी प्रकाशित नहीं होगा।" } },
+  { de: /^(Esta conta ainda não foi vinculada ao Instagram\/Facebook\.|Este negócio ainda não conectou o Instagram\/Facebook\.)$/,
+    t: { en: "This account is not linked to Instagram/Facebook yet.", pt: "Esta conta ainda não foi vinculada ao Instagram/Facebook.", es: "Esta cuenta aún no está vinculada a Instagram/Facebook.", hi: "यह खाता अभी Instagram/Facebook से जुड़ा नहीं है।" } },
+  { de: /^(Sem page_access_token|Sem ig_user_id conectado|Sem page_id conectado)/, tecnico: (m) => m[0],
+    t: { en: "The Instagram/Facebook link is incomplete — please reconnect the account.", pt: "A vinculação com o Instagram/Facebook está incompleta — reconecte a conta.", es: "La vinculación con Instagram/Facebook está incompleta — vuelva a conectar la cuenta.", hi: "Instagram/Facebook का जुड़ाव अधूरा है — कृपया खाता दोबारा जोड़ें।" } },
+  { de: /^(Paste db\/social_posts\.sql|Motor social ainda não instalado no banco)/, tecnico: "db/social_posts.sql — RPC social_* não respondeu",
+    t: { en: "Social publishing is not available right now. Please try again in a moment.", pt: "A publicação nas redes não está disponível agora. Tente de novo em instantes.", es: "La publicación en redes no está disponible ahora. Inténtelo de nuevo en un momento.", hi: "सोशल पब्लिशिंग अभी उपलब्ध नहीं है। कृपया थोड़ी देर में फिर कोशिश करें।" } },
+  { de: /^Paste db\/social_sweep\.sql/, tecnico: "db/social_sweep.sql — social_post_schedule_once não respondeu",
+    t: { en: "Scheduling is not available right now. Please try again in a moment.", pt: "O agendamento de posts não está disponível agora. Tente de novo em instantes.", es: "La programación de publicaciones no está disponible ahora. Inténtelo de nuevo en un momento.", hi: "पोस्ट शेड्यूल करना अभी उपलब्ध नहीं है। कृपया थोड़ी देर में फिर कोशिश करें।" } },
+  { de: /^Content generation unavailable/, tecnico: "geração indisponível (ANTHROPIC_API_KEY / cadeia de modelos)",
+    t: { en: "I couldn't write the post right now. Please try again shortly.", pt: "Não consegui escrever o post agora. Tente de novo em instantes.", es: "No pude escribir la publicación ahora. Inténtelo de nuevo en breve.", hi: "मैं अभी पोस्ट नहीं लिख सका। कृपया थोड़ी देर में फिर कोशिश करें।" } },
+  { de: /^Nothing to schedule/,
+    t: { en: "Nothing to schedule — there is no text for this post yet.", pt: "Nada para agendar — este post ainda não tem texto.", es: "Nada que programar — esta publicación aún no tiene texto.", hi: "शेड्यूल करने के लिए कुछ नहीं — इस पोस्ट में अभी कोई टेक्स्ट नहीं है।" } },
+  { de: /^Modo AUTO:/, t: { en: "AUTO mode: Gui publishes directly.", pt: "Modo AUTO: a Gui publica direto.", es: "Modo AUTO: Gui publica directamente.", hi: "ऑटो मोड: Gui सीधे प्रकाशित करता है।" } },
+  { de: /^Modo APROVAR:/, t: { en: "APPROVE mode: Gui writes the draft and only publishes with your OK.", pt: "Modo APROVAR: a Gui cria o rascunho e só publica com o seu OK.", es: "Modo APROBAR: Gui crea el borrador y solo publica con su OK.", hi: "स्वीकृति मोड: Gui ड्राफ़्ट बनाता है और आपकी मंज़ूरी के बाद ही प्रकाशित करता है।" } },
+  { de: /^WhatsApp é ligado pelo motor WhatsApp Cloud/,
+    t: { en: "WhatsApp is connected by our team (number + Meta credentials) — this panel cannot confirm it on its own.", pt: "O WhatsApp é ligado pela nossa equipe (número + credenciais da Meta) — este painel não consegue confirmar sozinho.", es: "WhatsApp lo conecta nuestro equipo (número + credenciales de Meta) — este panel no puede confirmarlo por sí solo.", hi: "WhatsApp हमारी टीम द्वारा जोड़ा जाता है (नंबर + Meta क्रेडेंशियल) — यह पैनल इसे अकेले पुष्टि नहीं कर सकता।" } },
+  { de: /^App Meta no ar\. Falta vincular ESTA conta/,
+    t: { en: "Almost there: this account still needs to be linked to your Page/Instagram — our team completes the secure link with you.", pt: "Falta pouco: esta conta ainda precisa ser vinculada à sua Página/Instagram — a equipe conclui a vinculação segura com você.", es: "Falta poco: esta cuenta aún debe vincularse a su Página/Instagram — nuestro equipo completa la vinculación segura con usted.", hi: "बस थोड़ा बाकी: इस खाते को अभी आपके पेज/Instagram से जोड़ना है — हमारी टीम आपके साथ सुरक्षित जुड़ाव पूरा करती है।" } },
+  { de: /^Conta já vinculada ✓$/, t: { en: "Account already linked ✓", pt: "Conta já vinculada ✓", es: "Cuenta ya vinculada ✓", hi: "खाता पहले से जुड़ा है ✓" } },
+  { de: /^Rascunho criado — publica assim que você aprovar\.$/, t: { en: "Draft created — it publishes as soon as you approve.", pt: "Rascunho criado — publica assim que você aprovar.", es: "Borrador creado — se publica en cuanto usted apruebe.", hi: "ड्राफ़्ट बन गया — आपकी मंज़ूरी मिलते ही प्रकाशित होगा।" } },
+  { de: /^Recusado — a Gui não publica este post\.$/, t: { en: "Declined — Gui will not publish this post.", pt: "Recusado — a Gui não publica este post.", es: "Rechazado — Gui no publicará esta publicación.", hi: "अस्वीकृत — Gui यह पोस्ट प्रकाशित नहीं करेगा।" } },
+  { de: /^este post já está sendo publicado/, t: { en: "This post is already being published (or already was) — nothing was sent again.", pt: "Este post já está sendo publicado (ou já foi) — nada foi enviado de novo.", es: "Esta publicación ya se está publicando (o ya se publicó) — no se envió nada de nuevo.", hi: "यह पोस्ट पहले से प्रकाशित हो रही है (या हो चुकी है) — दोबारा कुछ नहीं भेजा गया।" } },
+  { de: /^post vazio$/, t: { en: "This post is empty.", pt: "Este post está vazio.", es: "Esta publicación está vacía.", hi: "यह पोस्ट खाली है।" } },
+  { de: /^Instagram exige uma imagem/, t: { en: "Instagram requires an image for this post.", pt: "O Instagram exige uma imagem neste post.", es: "Instagram requiere una imagen para esta publicación.", hi: "Instagram को इस पोस्ट के लिए एक छवि चाहिए।" } },
+  { de: /^Instagram recusou/, tecnico: (m, txt) => txt, t: { en: "Instagram refused this post.", pt: "O Instagram recusou este post.", es: "Instagram rechazó esta publicación.", hi: "Instagram ने यह पोस्ट अस्वीकार कर दी।" } },
+  { de: /^Facebook recusou/, tecnico: (m, txt) => txt, t: { en: "Facebook refused this post.", pt: "O Facebook recusou este post.", es: "Facebook rechazó esta publicación.", hi: "Facebook ने यह पोस्ट अस्वीकार कर दी।" } },
+  { de: /^Publicado no (Instagram|Facebook) ✓/, t: (m) => ({ en: `Published on ${m[1]} ✓`, pt: `Publicado no ${m[1]} ✓`, es: `Publicado en ${m[1]} ✓`, hi: `${m[1]} पर प्रकाशित ✓` }) },
+  { de: /^Este post já estava agendado para (.+?) — mantive/, t: (m) => ({ en: `This post was already scheduled for ${m[1]} — I kept the same one (nothing was duplicated).`, pt: `Este post já estava agendado para ${m[1]} — mantive o mesmo (nada foi duplicado).`, es: `Esta publicación ya estaba programada para ${m[1]} — mantuve la misma (nada se duplicó).`, hi: `यह पोस्ट पहले से ${m[1]} के लिए शेड्यूल थी — वही रखी गई (कुछ भी दोहराया नहीं गया)।` }) },
+  { de: /^Agendado para (.+?)\. (Vai pedir sua aprovação|Publica automaticamente)/, t: (m) => { const ap = m[2].startsWith("Vai"); return {
+      en: `Scheduled for ${m[1]}. ${ap ? "It will ask for your approval before publishing." : "It publishes automatically at that time."}`,
+      pt: `Agendado para ${m[1]}. ${ap ? "Vai pedir sua aprovação antes de publicar." : "Publica automaticamente no horário."}`,
+      es: `Programado para ${m[1]}. ${ap ? "Pedirá su aprobación antes de publicar." : "Se publica automáticamente a esa hora."}`,
+      hi: `${m[1]} के लिए शेड्यूल किया गया। ${ap ? "प्रकाशित करने से पहले आपकी मंज़ूरी माँगी जाएगी।" : "उस समय अपने-आप प्रकाशित होगी।"}` }; } },
+];
+const SUFIXOS = [
+  { de: " (o rascunho original continua na lista — recuse-o quando puder)", t: { en: " (the original draft is still in the list — decline it when you can)", pt: " (o rascunho original continua na lista — recuse-o quando puder)", es: " (el borrador original sigue en la lista — rechácelo cuando pueda)", hi: " (मूल ड्राफ़्ट अभी सूची में है — जब हो सके उसे अस्वीकार करें)" } },
+];
+export function notaNoIdioma(texto, lang) {
+  let txt = String(texto == null ? "" : texto);
+  if (!txt) return { note: texto };
+  const lg = idiomaTela(lang) || "en";
+  let sufixo = "";
+  for (const sx of SUFIXOS) if (txt.endsWith(sx.de)) { txt = txt.slice(0, -sx.de.length); sufixo = sx.t[lg]; }
+  for (const n of NOTAS) {
+    const m = txt.match(n.de);
+    if (!m) continue;
+    const t = typeof n.t === "function" ? n.t(m) : n.t;
+    const tecnico = typeof n.tecnico === "function" ? n.tecnico(m, txt) : n.tecnico;
+    return { note: (t[lg] || t.en) + sufixo, ...(tecnico ? { detalhe_tecnico: String(tecnico).slice(0, 200) } : {}) };
+  }
+  return { note: txt + sufixo };   // nota não cadastrada: passa como veio (nunca some)
+}
+export function respostaNoIdioma(obj, lang) {
+  if (!obj || typeof obj !== "object" || typeof obj.note !== "string") return obj;
+  const n = notaNoIdioma(obj.note, lang);
+  return { ...obj, ...n, lang_ui: idiomaTela(lang) || "en" };
 }
 
 // Why the motor is not publishing yet, in the owner's words. null = it IS ready.
@@ -129,7 +202,7 @@ export async function brandContext(env, email) {
 // ── PURE: GENERATE a post in the tenant's brand tone. Returns { content, media_url } or null.
 //    HARD safety rules live in the system prompt: no invented facts, no unauthorized promises. ──
 export async function generatePost(env, email, opts = {}) {
-  if (!env.ANTHROPIC_API_KEY) return null;
+  if (!env.ANTHROPIC_API_KEY && !env.ELEVENLABS_API_KEY) return null;
   const ctx = await brandContext(env, email);
   const channel = (String(opts.channel || "instagram").toLowerCase() === "facebook") ? "facebook" : "instagram";
   const lang = ["en", "pt", "es", "hi"].includes(opts.lang) ? opts.lang : (ctx.lang || "en");
@@ -152,16 +225,9 @@ export async function generatePost(env, email, opts = {}) {
     `\nReply with ONLY the caption text — no preamble, no quotes, no JSON.`,
   ].filter(Boolean).join("\n");
   const brief = s(opts.prompt || opts.topic || "Write an inviting post that fits the business right now.", 800);
-  for (const model of MODEL_CHAIN) {
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-        body: JSON.stringify({ model, max_tokens: 380, system, messages: [{ role: "user", content: brief }] }),
-      });
-      if (r.ok) { const d = await r.json().catch(() => ({})); const txt = (d?.content?.[0]?.text || "").trim(); if (txt) return { content: txt.slice(0, 2200), media_url: s(opts.media_url, 600) || null, channel, lang, tone: ctx.tone || "" }; }
-      else if (r.status === 401 || r.status === 402) break; // auth/billing won't improve with another model
-    } catch { /* try next model */ }
-  }
+  // 2026-10-05: sem chamada direta à Anthropic — askClaude usa o Escritor da ElevenLabs quando ela está desligada.
+  const txt = await askClaude(env, { system, maxTokens: 380, messages: [{ role: "user", content: brief }] });
+  if (txt) return { content: txt.slice(0, 2200), media_url: s(opts.media_url, 600) || null, channel, lang, tone: ctx.tone || "" };
   return null;
 }
 
@@ -396,6 +462,13 @@ export async function onRequestPost(context) {
     const gdj = await gd.json().catch(() => null);
     if (!(gdj && typeof gdj === "object" && Array.isArray(gdj.events))) return json({ error: "unauthorized" }, 401);
 
+    // Idioma das notas que chegam na tela: `lang` do corpo → idioma do cadastro → en (2026-09-28).
+    // `ui_lang` sempre vale. `lang` só vale como idioma da tela nas ações que NÃO geram post —
+    // em draft/generate/schedule ele é o idioma da legenda e não pode ser sequestrado.
+    const geraPost = ["draft", "generate", "schedule"].includes(action);
+    const lang = idiomaTela(b.ui_lang) || (geraPost ? "" : idiomaTela(b.lang)) || idiomaTela(gdj.identity && gdj.identity.lang) || "en";
+    const jsonT = (obj, status) => json(respostaNoIdioma(obj, lang), status);
+
     const meta = await tenantMeta(env, email);
     const mode = modeOf(meta);
     const connected = !!(meta && (meta.ig_user_id || meta.page_id));
@@ -404,9 +477,9 @@ export async function onRequestPost(context) {
     // ── SET_MODE — the owner chooses auto vs approve (A vs B). Never clobbers stored tokens. ──
     if (action === "set_mode") {
       const r = await rpc("social_set_mode", { p_secret: env.INGEST_SECRET || "", p_email: email, p_mode: s(b.mode, 12) });
-      if (!r.ok) return json({ ok: true, ready: false, note: "Paste db/social_posts.sql to activate social publishing." });
+      if (!r.ok) return jsonT({ ok: true, ready: false, note: "Paste db/social_posts.sql to activate social publishing." });
       const out = await r.json().catch(() => ({}));
-      return json({ ok: true, mode: out.publish_mode || mode, note: (out.publish_mode === "auto" ? "Modo AUTO: a Gui publica direto." : "Modo APROVAR: a Gui cria o rascunho e só publica com o seu OK.") });
+      return jsonT({ ok: true, mode: out.publish_mode || mode, note: (out.publish_mode === "auto" ? "Modo AUTO: a Gui publica direto." : "Modo APROVAR: a Gui cria o rascunho e só publica com o seu OK.") });
     }
 
     // ── STATUS — everything the cockpit's Redes Sociais tab needs in ONE call: per-network
@@ -420,7 +493,7 @@ export async function onRequestPost(context) {
       const storeOk = r.ok;
       const posts = storeOk ? ((await r.json().catch(() => [])) || []) : [];
       const drafts = Array.isArray(posts) ? posts.filter((p) => p && p.status === "pending_approval") : [];
-      return json({
+      return jsonT({
         ok: true, ready: live && connected, live, connected, mode, nets,
         store_ready: storeOk, drafts, count: Array.isArray(posts) ? posts.length : 0,
         note: storeOk ? blockedNote(live, connected) : "Motor social ainda não instalado no banco (db/social_posts.sql).",
@@ -442,7 +515,7 @@ export async function onRequestPost(context) {
           : state === "off"
             ? "App Meta no ar. Falta vincular ESTA conta (tokens da Página/Instagram) — a equipe conclui a vinculação segura com você."
             : "Conta já vinculada ✓";
-      return json({
+      return jsonT({
         ok: true, connected: state === "live" || state === "pending", ready: state === "live",
         state, nets, blocked_by: net === "whatsapp" ? "outside_this_panel" : (!live ? "meta_app" : state === "off" ? "tenant_tokens" : null),
         note,
@@ -452,37 +525,37 @@ export async function onRequestPost(context) {
     // ── LIST — tenant's posts (optional status filter). ──
     if (action === "list") {
       const r = await rpc("social_post_list", { p_secret: env.INGEST_SECRET || "", p_email: email, p_status: b.status ? s(b.status, 24) : null, p_limit: parseInt(b.limit, 10) || 100 });
-      if (!r.ok) return json({ ok: true, ready: false, mode, connected, note: "Paste db/social_posts.sql to activate social publishing.", posts: [] });
+      if (!r.ok) return jsonT({ ok: true, ready: false, mode, connected, note: "Paste db/social_posts.sql to activate social publishing.", posts: [] });
       const posts = (await r.json().catch(() => [])) || [];
-      return json({ ok: true, ready: live && connected, mode, connected, count: posts.length, posts });
+      return jsonT({ ok: true, ready: live && connected, mode, connected, count: posts.length, posts });
     }
 
     // ── GET — one post (tenant-bound). ──
     if (action === "get") {
-      if (!b.id) return json({ error: "missing id" }, 400);
+      if (!b.id) return jsonT({ error: "missing id" }, 400);
       const r = await rpc("social_post_get", { p_secret: env.INGEST_SECRET || "", p_email: email, p_id: b.id });
       const post = r.ok ? await r.json().catch(() => null) : null;
-      if (!post) return json({ error: "not found" }, 404);
-      return json({ ok: true, mode, post });
+      if (!post) return jsonT({ error: "not found" }, 404);
+      return jsonT({ ok: true, mode, post });
     }
 
     // ── DRAFT — Gui GENERATES a post. In "approve" mode it's parked pending_approval (human OK
     //    required before it goes public). In "auto" mode it's created ready and published now. ──
     if (action === "draft" || action === "generate") {
       const gen = await generatePost(env, email, { channel: b.channel, lang: b.lang, prompt: b.prompt || b.topic, media_url: b.media_url, topic: b.topic });
-      if (!gen) return json({ ok: true, ready: false, note: "Content generation unavailable (no ANTHROPIC_API_KEY) — try again shortly." });
+      if (!gen) return jsonT({ ok: true, ready: false, note: "Content generation unavailable (no ANTHROPIC_API_KEY) — try again shortly." });
       // Allow the owner to force a mode for THIS post (b.mode), else the tenant default.
       const thisMode = b.mode === "auto" ? "auto" : b.mode === "approve" ? "approve" : mode;
       const status = thisMode === "auto" ? "draft" : "pending_approval";
       const cr = await rpc("social_post_create", { p_secret: env.INGEST_SECRET || "", p_email: email, p_channel: gen.channel, p_content: gen.content, p_media_url: gen.media_url, p_status: status, p_scheduled_at: null, p_meta: { mode: thisMode, tone: gen.tone, source: "cockpit" } });
-      if (!cr.ok) return json({ ok: true, ready: false, note: "Paste db/social_posts.sql to activate social publishing.", draft: gen });
+      if (!cr.ok) return jsonT({ ok: true, ready: false, note: "Paste db/social_posts.sql to activate social publishing.", draft: gen });
       let row = await cr.json().catch(() => null);
-      if (!row) return json({ ok: true, ready: false, note: "Paste db/social_posts.sql to activate social publishing.", draft: gen });
+      if (!row) return jsonT({ ok: true, ready: false, note: "Paste db/social_posts.sql to activate social publishing.", draft: gen });
       // APPROVE mode → stop here: the owner must approve in the cockpit before anything is public.
-      if (thisMode !== "auto") return json({ ok: true, mode: "approve", status: "pending_approval", post: row, note: "Rascunho criado — publica assim que você aprovar." });
+      if (thisMode !== "auto") return jsonT({ ok: true, mode: "approve", status: "pending_approval", post: row, note: "Rascunho criado — publica assim que você aprovar." });
       // AUTO mode → publish now (inert & honest if the app isn't live / not connected).
       const pub = await publishRow(env, email, meta, row);
-      return json({ ok: true, mode: "auto", ready: pub.ready, published: !!pub.ok, post: pub.post, note: pub.note });
+      return jsonT({ ok: true, mode: "auto", ready: pub.ready, published: !!pub.ok, post: pub.post, note: pub.note });
     }
 
     // ── REJECT — the owner refuses a draft. There is no dedicated reject RPC, so this reuses the
@@ -491,14 +564,14 @@ export async function onRequestPost(context) {
     //    will not go out, and it stays readable/recoverable. A published post can never be
     //    "rejected" (409) — we don't rewrite history. Never answers ok:true without a real row. ──
     if (action === "reject" || action === "decline") {
-      if (!b.id) return json({ error: "missing id" }, 400);
+      if (!b.id) return jsonT({ error: "missing id" }, 400);
       const orig = await getPost(env, email, b.id);
-      if (!orig) return json({ error: "not found" }, 404);
-      if (orig.status === "published") return json({ error: "already published" }, 409);
+      if (!orig) return jsonT({ error: "not found" }, 404);
+      if (orig.status === "published") return jsonT({ error: "already published" }, 409);
       const fr = await rpc("social_post_fail", { p_secret: env.INGEST_SECRET || "", p_email: email, p_id: b.id, p_error: "Recusado pelo dono no cockpit — não publicar." });
       const row = fr.ok ? await fr.json().catch(() => null) : null;
-      if (!row) return json({ error: "could not record the refusal" }, 409);
-      return json({ ok: true, rejected: true, post: row, note: "Recusado — a Gui não publica este post." });
+      if (!row) return jsonT({ error: "could not record the refusal" }, 409);
+      return jsonT({ ok: true, rejected: true, post: row, note: "Recusado — a Gui não publica este post." });
     }
 
     // ── APPROVE — the human OK in "approve" mode. Transitions pending_approval → then publishes.
@@ -507,13 +580,13 @@ export async function onRequestPost(context) {
     //    (meta.edited_from = original) and the original is retired — never silently dropped, which
     //    would publish the text the owner just changed. ──
     if (action === "approve") {
-      if (!b.id) return json({ error: "missing id" }, 400);
+      if (!b.id) return jsonT({ error: "missing id" }, 400);
       let targetId = b.id;
       let editNote = "";
       const edited = s(b.text, 2200).trim();
       if (edited) {
         const orig = await getPost(env, email, b.id);
-        if (!orig) return json({ error: "not found" }, 404);
+        if (!orig) return jsonT({ error: "not found" }, 404);
         // LISTA BRANCA, não lista negra. A guarda anterior era `status === "published"` → recusa,
         // e ela NÃO fechava o retry: no primeiro aprovar-editado o original vira 'failed' (foi
         // aposentado em favor da versão editada) e quem publica é a linha NOVA. No segundo clique,
@@ -525,12 +598,12 @@ export async function onRequestPost(context) {
         // a versão editada a jogou fora. Lista negra sempre esquece um estado; lista branca não.
         // Achado por revisão adversarial 2026-08-11.
         if (orig.status !== "pending_approval") {
-          return json({ ok: false, error: orig.status === "published" ? "already published" : `este rascunho não está mais pendente (${orig.status}) — recarregue a lista`, status: orig.status }, 409);
+          return jsonT({ ok: false, error: orig.status === "published" ? "already published" : `este rascunho não está mais pendente (${orig.status}) — recarregue a lista`, status: orig.status }, 409);
         }
         if (edited !== s(orig.content, 2200).trim()) {
           const cr = await rpc("social_post_create", { p_secret: env.INGEST_SECRET || "", p_email: email, p_channel: orig.channel, p_content: edited, p_media_url: orig.media_url, p_status: "pending_approval", p_scheduled_at: null, p_meta: { mode, tone: (orig.meta && orig.meta.tone) || "", source: "cockpit_edit", edited_from: orig.id } });
           const nrow = cr.ok ? await cr.json().catch(() => null) : null;
-          if (!nrow || !nrow.id) return json({ error: "could not save your edit — nothing was approved" }, 409);
+          if (!nrow || !nrow.id) return jsonT({ error: "could not save your edit — nothing was approved" }, 409);
           targetId = nrow.id;
           // Retire the original so the owner isn't left with two drafts. Verified, not assumed.
           const rf = await rpc("social_post_fail", { p_secret: env.INGEST_SECRET || "", p_email: email, p_id: orig.id, p_error: "Substituído pela versão editada pelo dono." });
@@ -540,28 +613,28 @@ export async function onRequestPost(context) {
       }
       const ap = await rpc("social_post_approve", { p_secret: env.INGEST_SECRET || "", p_email: email, p_id: targetId });
       const row = ap.ok ? await ap.json().catch(() => null) : null;
-      if (!row) return json({ error: "not found or not pending approval" }, 409);
+      if (!row) return jsonT({ error: "not found or not pending approval" }, 409);
       const pub = await publishRow(env, email, meta, row);
-      return json({ ok: true, approved: true, ready: pub.ready, published: !!pub.ok, post: pub.post, note: (pub.note || "") + editNote });
+      return jsonT({ ok: true, approved: true, ready: pub.ready, published: !!pub.ok, post: pub.post, note: (pub.note || "") + editNote });
     }
 
     // ── SCHEDULE — park a generated post for a future time (a cron sweep claims + publishes it). ──
     if (action === "schedule") {
       const when = s(b.scheduled_at, 40);
-      if (!when) return json({ error: "missing scheduled_at" }, 400);
+      if (!when) return jsonT({ error: "missing scheduled_at" }, 400);
       let content = s(b.content, 2200); let media_url = s(b.media_url, 600) || null; let channel = b.channel;
       if (!content) { const gen = await generatePost(env, email, { channel: b.channel, lang: b.lang, prompt: b.prompt || b.topic, media_url: b.media_url }); if (gen) { content = gen.content; media_url = gen.media_url; channel = gen.channel; } }
-      if (!content) return json({ ok: true, ready: false, note: "Nothing to schedule (no content and generation unavailable)." });
+      if (!content) return jsonT({ ok: true, ready: false, note: "Nothing to schedule (no content and generation unavailable)." });
       // IDEMPOTENTE PELO CONTEÚDO. Dois cliques (ou o retry de um timeout) mandam o MESMO corpo:
       // social_post_schedule_once devolve a linha que já existe em vez de criar uma segunda. Com a
       // varredura ligada, duas linhas 'scheduled' iguais seriam dois posts iguais no perfil do
       // cliente — a mesma falha do aprovar-editado entrando pela porta do agendar. (2026-08-11)
       const cr = await rpc("social_post_schedule_once", { p_secret: env.INGEST_SECRET || "", p_email: email, p_channel: channel, p_content: content, p_media_url: media_url, p_scheduled_at: when, p_meta: { mode, source: "schedule" } });
-      if (!cr.ok) return json({ ok: true, ready: false, note: "Paste db/social_sweep.sql to activate scheduling." });
+      if (!cr.ok) return jsonT({ ok: true, ready: false, note: "Paste db/social_sweep.sql to activate scheduling." });
       const row = await cr.json().catch(() => null);
-      if (!row) return json({ ok: true, ready: false, note: "Paste db/social_sweep.sql to activate scheduling." });
+      if (!row) return jsonT({ ok: true, ready: false, note: "Paste db/social_sweep.sql to activate scheduling." });
       const jaExistia = row._duplicado === true;
-      return json({
+      return jsonT({
         ok: true, scheduled: true, duplicate: jaExistia, post: row,
         note: jaExistia
           ? `Este post já estava agendado para ${when} — mantive o mesmo (nada foi duplicado).`
@@ -569,7 +642,10 @@ export async function onRequestPost(context) {
       });
     }
 
-    return json({ error: "unknown action" }, 400);
+    return jsonT({ error: "unknown action" }, 400);
+  // `json`, não `jsonT`: o `jsonT` nasce DENTRO do `try` e não existe aqui — a mesma classe de
+  // defeito do `b.lang` no catch do agent-schedule (2026-09-28). O tratador de erro não pode
+  // depender de nada que o próprio erro pode ter impedido de nascer.
   } catch (e) { return json({ error: String(e).slice(0, 160) }, 400); }
 }
 

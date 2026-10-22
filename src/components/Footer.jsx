@@ -48,7 +48,7 @@ export default function Footer() {
             <div className="text-xs font-bold uppercase tracking-wide text-g-light mb-3">{tx("By industry","Por setor","Por industria","उद्योग अनुसार")}</div>
             <ul className="grid grid-cols-1 gap-y-2 text-sm text-white/70 sm:grid-cols-2 md:grid-cols-1">
               {SEO_VERTICALS.map((v) => (
-                <li key={v.slug}><a href={`/for/${v.slug}`} className="inline-flex items-center gap-1.5 hover:text-white hover:translate-x-1 transition-all"><span>{v.icon}</span> {vName(v)}</a></li>
+                <li key={v.slug}><a href={`/for/${v.slug}`} className="inline-flex items-center gap-1.5 hover:text-white hover:translate-x-1 transition-all"><span aria-hidden="true">{v.icon}</span> {vName(v)}</a></li>
               ))}
             </ul>
           </div>

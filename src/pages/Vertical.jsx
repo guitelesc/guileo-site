@@ -3,6 +3,7 @@ import { useParams, Navigate } from "react-router-dom";
 import QuoteModal from "../components/QuoteModal";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { planByKey } from "../data/guileoPlans.js";
 import VoiceAgent from "../components/VoiceAgent";
 import ExitIntent from "../components/ExitIntent.jsx";
 import LiveCall from "../components/LiveCall.jsx";
@@ -127,7 +128,7 @@ export default function Vertical() {
       serviceType: "AI voice agent, booking, lead capture and follow-up automation",
       areaServed: ["US", "BR"], provider: { "@type": "Organization", name: "Guileo", url: "https://guileoai.com" },
       description: L(v.seoDesc),
-      offers: { "@type": "Offer", priceCurrency: "USD", price: "149", description: "Self-service from $149/mo; tailored done-for-you quoted per business." },
+      offers: { "@type": "Offer", priceCurrency: "USD", price: String(planByKey("starter").amount), description: `Self-service from $${planByKey("starter").amount}/mo; tailored done-for-you quoted per business.` },
     };
     const faqItems = t?.faq?.items || [];
     const graph = faqItems.length

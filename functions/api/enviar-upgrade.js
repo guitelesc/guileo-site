@@ -34,7 +34,7 @@ export async function onRequestPost({ request, env }) {
     if (!/^[0-9a-f-]{10,}$/i.test(id)) return json({ ok: false, error: "id invalido" }, 400);
     const r = await fetch(`https://api.resend.com/emails/${id}`, { headers: { Authorization: `Bearer ${env.RESEND_API_KEY}` } });
     const txt = await r.text().catch(() => "");
-    if (!r.ok) return json({ ok: false, error: `resend ${r.status}: ${txt.slice(0, 140)}` }, 502);
+    if (!r.ok) return json({ ok: false, error: `resend ${r.status}: ${txt.slice(0, 140)}` }, 503);
     let d = {}; try { d = JSON.parse(txt) || {}; } catch { /* */ }
     return json({ ok: true, id, para: d.to, assunto: d.subject, estado: d.last_event || "?", quando: d.created_at || "" });
   }
@@ -60,10 +60,10 @@ export async function onRequestPost({ request, env }) {
     }),
   });
   const corpo = await r.text().catch(() => "");
-  if (!r.ok) return json({ ok: false, enviado: false, motivo: `resend ${r.status}: ${corpo.slice(0, 160)}` }, 502);
+  if (!r.ok) return json({ ok: false, enviado: false, motivo: `resend ${r.status}: ${corpo.slice(0, 160)}` }, 503);
   let id = ""; try { id = (JSON.parse(corpo) || {}).id || ""; } catch { /* */ }
   // "ok" sem id do que foi criado é promessa sem lastro.
-  if (!id) return json({ ok: false, enviado: false, motivo: "resend aceitou sem devolver id" }, 502);
+  if (!id) return json({ ok: false, enviado: false, motivo: "resend aceitou sem devolver id" }, 503);
   // Reporta O QUE FOI USADO: "enviado" sem dizer se a marca dele entrou deixaria a gente
   // mandando template sem perceber. Marca ausente tem que aparecer, não sumir.
   /* ── O ENVIO TEM QUE APARECER ONDE O VENDEDOR OLHA (24/08) ────────────────────────────────

@@ -1,3 +1,9 @@
+import { NOME_DO_PAINEL } from "../portal/nome.js";
+import { planByKey } from "./guileoPlans.js";
+// milhar formatado por família de idioma (pt/es usam ponto — "1.997" —, en usa vírgula — "1,997").
+// Ver a nota de agentKB.js: os dois separadores lêem o MESMO valor, então nunca hardcode um dos
+// dois — o número precisa vir formatado pro idioma certo, sempre.
+const fmtUSD = (n, dot) => (dot ? n.toLocaleString("pt-BR") : n.toLocaleString("en-US"));
 // contractTemplates.js
 // Guileo / ORIGEM LTDA — Trilingual (PT-BR + EN-US + ES-LatAm) contract & quote template library.
 // Production reference templates for digital services + AI receptionist SaaS.
@@ -103,12 +109,12 @@ export const GUILEO_CLIENT = [
       es: "Tu Gui contesta todas las llamadas 24/7, agenda clientes y envía recordatorios — lista en hasta 7 días, con garantía de 30 días.",
     },
     deliverables: {
-      pt: ["Agente de IA de voz próprio (nome e voz do seu negócio)", "Atendimento 24/7 com agendamento em tempo real", "Lembretes automáticos que reduzem faltas", "Número dedicado + encaminhamento da sua linha (*72)", "Painel ao vivo com todas as ligações e reservas", "500 créditos/mês inclusos"],
-      en: ["Your own AI voice agent (your business name & voice)", "24/7 answering with real-time booking", "Automatic reminders that cut no-shows", "Dedicated number + line forwarding (*72)", "Live dashboard with every call and booking", "500 credits/mo included"],
-      es: ["Agente de voz IA propio (nombre y voz de tu negocio)", "Atención 24/7 con agenda en tiempo real", "Recordatorios automáticos que reducen ausencias", "Número dedicado + desvío de tu línea (*72)", "Panel en vivo con cada llamada y reserva", "500 créditos/mes incluidos"],
+      pt: ["Agente de IA de voz próprio (nome e voz do seu negócio)", "Atendimento 24/7 com agendamento em tempo real", "Lembretes automáticos que reduzem faltas", "Número dedicado + encaminhamento da sua linha (*72)", "Painel ao vivo com todas as ligações e reservas", `${planByKey("starter").credits} créditos/mês inclusos`],
+      en: ["Your own AI voice agent (your business name & voice)", "24/7 answering with real-time booking", "Automatic reminders that cut no-shows", "Dedicated number + line forwarding (*72)", "Live dashboard with every call and booking", `${planByKey("starter").credits} credits/mo included`],
+      es: ["Agente de voz IA propio (nombre y voz de tu negocio)", "Atención 24/7 con agenda en tiempo real", "Recordatorios automáticos que reducen ausencias", "Número dedicado + desvío de tu línea (*72)", "Panel en vivo con cada llamada y reserva", `${planByKey("starter").credits} créditos/mes incluidos`],
     },
     timeline: { pt: "No ar em até 7 dias.", en: "Live in up to 7 days.", es: "En vivo en hasta 7 días." },
-    payment: { pt: "US$ 149/mês. Garantia de 30 dias — devolução integral.", en: "$149/mo. 30-day money-back guarantee.", es: "US$ 149/mes. Garantía de 30 días — devolución total." },
+    payment: { pt: `US$ ${planByKey("starter").amount}/mês. Garantia de 30 dias — devolução integral.`, en: `$${planByKey("starter").amount}/mo. 30-day money-back guarantee.`, es: `US$ ${planByKey("starter").amount}/mes. Garantía de 30 días — devolución total.` },
   },
   {
     code: "GUI-PRO", icon: "🚀",
@@ -119,12 +125,12 @@ export const GUILEO_CLIENT = [
       es: "Todo lo de Essential + tu Gui en todos los canales (chat del sitio, WhatsApp, redes) vendiendo, cobrando y reactivando sola.",
     },
     deliverables: {
-      pt: ["Tudo do Essential", "Chat com IA no seu site + WhatsApp + redes", "Fecha e COBRA na ligação (link de pagamento)", "Campanhas automáticas: aniversário, reativação, datas", "Radar de faltas + confirmações inteligentes", "3.000 créditos/mês + suporte prioritário"],
-      en: ["Everything in Essential", "AI chat on your site + WhatsApp + social", "Closes and COLLECTS on the call (pay link)", "Auto campaigns: birthdays, win-back, key dates", "No-show radar + smart confirmations", "3,000 credits/mo + priority support"],
-      es: ["Todo lo de Essential", "Chat IA en tu sitio + WhatsApp + redes", "Cierra y COBRA en la llamada (link de pago)", "Campañas automáticas: cumpleaños, reactivación, fechas", "Radar de ausencias + confirmaciones inteligentes", "3.000 créditos/mes + soporte prioritario"],
+      pt: ["Tudo do Essential", "Chat com IA no seu site + WhatsApp + redes", "Fecha e COBRA na ligação (link de pagamento)", "Campanhas automáticas: aniversário, reativação, datas", "Radar de faltas + confirmações inteligentes", `${fmtUSD(planByKey("growth").credits, true)} créditos/mês + suporte prioritário`],
+      en: ["Everything in Essential", "AI chat on your site + WhatsApp + social", "Closes and COLLECTS on the call (pay link)", "Auto campaigns: birthdays, win-back, key dates", "No-show radar + smart confirmations", `${fmtUSD(planByKey("growth").credits, false)} credits/mo + priority support`],
+      es: ["Todo lo de Essential", "Chat IA en tu sitio + WhatsApp + redes", "Cierra y COBRA en la llamada (link de pago)", "Campañas automáticas: cumpleaños, reactivación, fechas", "Radar de ausencias + confirmaciones inteligentes", `${fmtUSD(planByKey("growth").credits, true)} créditos/mes + soporte prioritario`],
     },
     timeline: { pt: "No ar em até 7 dias.", en: "Live in up to 7 days.", es: "En vivo en hasta 7 días." },
-    payment: { pt: "US$ 897/mês. Garantia de 30 dias — devolução integral.", en: "$897/mo. 30-day money-back guarantee.", es: "US$ 897/mes. Garantía de 30 días — devolución total." },
+    payment: { pt: `US$ ${planByKey("growth").amount}/mês. Garantia de 30 dias — devolução integral.`, en: `$${planByKey("growth").amount}/mo. 30-day money-back guarantee.`, es: `US$ ${planByKey("growth").amount}/mes. Garantía de 30 días — devolución total.` },
   },
   {
     code: "GUI-FULL", icon: "🏆",
@@ -135,12 +141,12 @@ export const GUILEO_CLIENT = [
       es: "Guileo maneja el frente de tu negocio: todos los canales, campañas, reportes de ganancia y un equipo dedicado.",
     },
     deliverables: {
-      pt: ["Tudo do Personalized", "Campanhas e cupons com a SUA marca", "Pacotes, assinaturas e gift cards prontos pra vender", "Relatório semanal de valor gerado (ROI)", "Implantação profunda multi-unidades", "9.000 créditos/mês + time dedicado"],
-      en: ["Everything in Personalized", "Campaigns and coupons in YOUR brand", "Packages, memberships and gift cards ready to sell", "Weekly generated-value report (ROI)", "Deep multi-location implementation", "9,000 credits/mo + dedicated team"],
-      es: ["Todo lo de Personalized", "Campañas y cupones con TU marca", "Paquetes, membresías y gift cards listos para vender", "Reporte semanal de valor generado (ROI)", "Implementación profunda multi-sucursal", "9.000 créditos/mes + equipo dedicado"],
+      pt: ["Tudo do Personalized", "Campanhas e cupons com a SUA marca", "Pacotes, assinaturas e gift cards prontos pra vender", "Relatório semanal de valor gerado (ROI)", "Implantação profunda multi-unidades", `${fmtUSD(planByKey("scale").credits, true)} créditos/mês + time dedicado`],
+      en: ["Everything in Personalized", "Campaigns and coupons in YOUR brand", "Packages, memberships and gift cards ready to sell", "Weekly generated-value report (ROI)", "Deep multi-location implementation", `${fmtUSD(planByKey("scale").credits, false)} credits/mo + dedicated team`],
+      es: ["Todo lo de Personalized", "Campañas y cupones con TU marca", "Paquetes, membresías y gift cards listos para vender", "Reporte semanal de valor generado (ROI)", "Implementación profunda multi-sucursal", `${fmtUSD(planByKey("scale").credits, true)} créditos/mes + equipo dedicado`],
     },
     timeline: { pt: "No ar em até 7 dias.", en: "Live in up to 7 days.", es: "En vivo en hasta 7 días." },
-    payment: { pt: "US$ 1.997/mês. Garantia de 30 dias — devolução integral.", en: "$1,997/mo. 30-day money-back guarantee.", es: "US$ 1.997/mes. Garantía de 30 días — devolución total." },
+    payment: { pt: `US$ ${fmtUSD(planByKey("scale").amount, true)}/mês. Garantia de 30 dias — devolução integral.`, en: `$${fmtUSD(planByKey("scale").amount, false)}/mo. 30-day money-back guarantee.`, es: `US$ ${fmtUSD(planByKey("scale").amount, true)}/mes. Garantía de 30 días — devolución total.` },
   },
   {
     // WEBSITE UPGRADE (2026-08-21) — a linha done-for-you: o site é a porta ($500 uma vez) e cada
@@ -153,9 +159,9 @@ export const GUILEO_CLIENT = [
       es: "Reconstruimos el sitio de tu negocio con TU identidad (video, marca, fotos, servicios) e instalamos la IA dentro. Cada automatización entra por separado, por mes, y tú eliges cuáles.",
     },
     deliverables: {
-      pt: ["Site reconstruído com o seu vídeo, logo, fotos e serviços reais", "Tudo que já existe no seu site atual, reorganizado pra converter", "Presença online: dados estruturados, horário 24/7, FAQ e redes no Google", "Formulários e telefone ligados à IA", "Hospedagem e manutenção da página incluídas", "Módulos escolhidos (voz, orçamento, reviews, cockpit…) cobrados à parte, por mês"],
-      en: ["Site rebuilt with your real video, logo, photos and services", "Everything from your current site, reorganized to convert", "Online presence: structured data, 24/7 hours, FAQ and profiles for Google", "Forms and phone wired into the AI", "Hosting and page maintenance included", "Chosen modules (voice, quotes, reviews, cockpit…) billed separately, per month"],
-      es: ["Sitio reconstruido con tu video, logo, fotos y servicios reales", "Todo lo de tu sitio actual, reorganizado para convertir", "Presencia online: datos estructurados, horario 24/7, FAQ y perfiles para Google", "Formularios y teléfono conectados a la IA", "Hospedaje y mantenimiento incluidos", "Módulos elegidos (voz, cotización, reseñas, cockpit…) cobrados aparte, por mes"],
+      pt: ["Site reconstruído com o seu vídeo, logo, fotos e serviços reais", "Tudo que já existe no seu site atual, reorganizado pra converter", "Presença online: dados estruturados, horário 24/7, FAQ e redes no Google", "Formulários e telefone ligados à IA", "Hospedagem e manutenção da página incluídas", `Módulos escolhidos (voz, orçamento, reviews, ${NOME_DO_PAINEL}…) cobrados à parte, por mês`],
+      en: ["Site rebuilt with your real video, logo, photos and services", "Everything from your current site, reorganized to convert", "Online presence: structured data, 24/7 hours, FAQ and profiles for Google", "Forms and phone wired into the AI", "Hosting and page maintenance included", `Chosen modules (voice, quotes, reviews, ${NOME_DO_PAINEL}…) billed separately, per month`],
+      es: ["Sitio reconstruido con tu video, logo, fotos y servicios reales", "Todo lo de tu sitio actual, reorganizado para convertir", "Presencia online: datos estructurados, horario 24/7, FAQ y perfiles para Google", "Formularios y teléfono conectados a la IA", "Hospedaje y mantenimiento incluidos", `Módulos elegidos (voz, cotización, reseñas, ${NOME_DO_PAINEL}…) cobrados aparte, por mes`],
     },
     timeline: { pt: "Site no ar em até 7 dias. Os módulos ligam conforme cada um for contratado.", en: "Site live in up to 7 days. Modules switch on as each one is contracted.", es: "Sitio en vivo en hasta 7 días. Los módulos se activan según se contraten." },
     payment: { pt: "US$ 500 uma única vez pelo site + a mensalidade dos módulos escolhidos. Garantia de 30 dias — devolução integral.", en: "$500 one-time for the site + the monthly fee of the chosen modules. 30-day money-back guarantee.", es: "US$ 500 única vez por el sitio + la mensualidad de los módulos elegidos. Garantía de 30 días — devolución total." },

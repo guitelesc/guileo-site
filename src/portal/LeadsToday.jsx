@@ -3,7 +3,8 @@
    Real mode: /api/crm action leads_today (crm_leads_today RPC, per-tenant gated by email+dataKey).
    Demo mode: a representative day built from the sector's sample leads (actions disabled). */
 import { useState, useEffect } from "react";
-import { fetchLeadsToday, requestGuiCallback, toast } from "../lib/portalApi.js";
+import { fetchLeadsTodayDetalhado, requestGuiCallback, toast, chamarApi } from "../lib/portalApi.js";
+import FalhaDeLeitura from "./FalhaDeLeitura.jsx";
 import { tr, Card, Empty, SectionSkeleton, genLeads, relTime, UI_LANG } from "../pages/Portal.jsx";
 
 // Source/channel meta — signal color by meaning (call = info blue, whatsapp = done green,
@@ -64,7 +65,8 @@ function genLeadsTodayDemo(V) {
 function LeadsToday({ V, onNav, real = null, email = "", dataKey = "" }) {
   const demo = !dataKey;
   const [data, setData] = useState(demo ? { ready: true } : null); // null = fetch in flight
-  const [err, setErr] = useState(false);
+  const [err, setErr] = useState(null);   // motivo da falha de leitura, ou null
+  const [tentativa, setTentativa] = useState(0);
   const [busy, setBusy] = useState({});   // lead id → true while the callback request is inflight
   const [done, setDone] = useState({});   // lead id → true once Gui is calling back (optimistic)
   const [statusMap, setStatusMap] = useState({}); // lead id → { s: status, n: notes } (persisted)
@@ -100,29 +102,38 @@ function LeadsToday({ V, onNav, real = null, email = "", dataKey = "" }) {
   const saveNote = (lead) => {
     if (demo || !lead?.id) return;
     const text = (statusMap[lead.id] || {}).n || "";
-    fetch("/api/crm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "lead_note_set", token: dataKey, email, lead_id: lead.id, notes: text }) }).catch(() => {});
+    // A anotação sumia calada quando a gravação falhava: a pessoa escrevia "ligar amanhã cedo",
+    // saía do campo, e no dia seguinte a nota não existia. Agora a falha é dita.
+    chamarApi("/api/crm", { action: "lead_note_set", token: dataKey, email, lead_id: lead.id, notes: text })
+      .then((r) => { if (r.motivo || r.data?.ok === false) toast(tr("I couldn't save that — try again.")); });
   };
 
   useEffect(() => {
     let alive = true;
     if (demo) { setData({ ready: true }); return () => { alive = false; }; }
-    setData(null); setErr(false);
-    fetchLeadsToday(dataKey, email).then((d) => {
+    setData(null); setErr(null);
+    // 🚨 (2026-09-28) O ramo de erro desta tela era INALCANÇÁVEL: o leitor antigo nunca devolve
+    // null nem rejeita — em qualquer falha ele devolve `{ready:false, leads:[]}`. Resultado: rede
+    // caída aparecia como "Your leads feed is warming up" e o cabeçalho dizia "0 new leads today".
+    // Lead perdido por achar que não veio nenhum é dinheiro que ninguém vai buscar.
+    fetchLeadsTodayDetalhado(dataKey, email).then((r) => {
       if (!alive) return;
-      if (!d) { setErr(true); setData({ ready: false }); return; }
-      setData(d);
-    }).catch(() => { if (alive) { setErr(true); setData({ ready: false }); } });
+      if (r.motivo) { setErr(r.motivo); setData({ ready: false }); return; }
+      setData({ ...r.data, leads: (r.data.leads || []).filter(Boolean) });
+    });
     return () => { alive = false; };
-  }, [demo, dataKey, email]);
+  }, [demo, dataKey, email, tentativa]);
 
   const callback = async (lead) => {
     if (demo) { toast(tr("Sample data — connect your account to let Gui call back for real.")); return; }
     setBusy((b) => ({ ...b, [lead.id]: true }));
-    setDone((d) => ({ ...d, [lead.id]: true }));                    // optimistic
-    toast(tr("Gui is calling them back now 📞"));
+    setDone((d) => ({ ...d, [lead.id]: true }));                    // optimistic (só o botão)
     const res = await requestGuiCallback(dataKey, email, lead);
     setBusy((b) => { const n = { ...b }; delete n[lead.id]; return n; });
-    if (!res.ok) { setDone((d) => { const n = { ...d }; delete n[lead.id]; return n; }); toast(tr("I couldn't start that call — check your connection and try again.")); }
+    if (!res.ok) { setDone((d) => { const n = { ...d }; delete n[lead.id]; return n; }); toast(tr("I couldn't start that call — check your connection and try again.")); return; }
+    // "está ligando agora" só depois do ok do servidor — antes saía no clique, e uma falha
+    // deixava a dona certa de que a ligação tinha sido feita
+    toast(tr("Gui is calling them back now 📞"));
   };
 
   const rows = demo ? genLeadsTodayDemo(V) : (data?.leads || []);
@@ -146,7 +157,8 @@ function LeadsToday({ V, onNav, real = null, email = "", dataKey = "" }) {
             ? <span className="inline-flex items-center gap-1 text-g-green normal-case font-black text-[9px]"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("LIVE — real data")}</span>
             : <span className="text-g-muted normal-case font-bold text-[9px] border border-white/10 rounded-full px-1.5 py-px">{tr("estimate")}</span>}
         </div>
-        <div className="mt-1 text-xl font-black text-g-word">{rows.length} {tr(rows.length === 1 ? "new lead today" : "new leads today")}</div>
+        {/* sem leitura não há contagem: "—", nunca "0 new leads today" */}
+        <div className="mt-1 text-xl font-black text-g-word">{!demo && (err || (data && !data.ready)) ? "—" : rows.length} {tr(rows.length === 1 && !err ? "new lead today" : "new leads today")}</div>
         <p className="mt-1 text-xs text-g-muted max-w-xl">{tr("Every lead Gui captured today, grouped by where it came from — tap to have Gui call them back in seconds.")}</p>
       </div>
 
@@ -158,7 +170,7 @@ function LeadsToday({ V, onNav, real = null, email = "", dataKey = "" }) {
 
       {/* Error state — the fetch failed outright (network / server). */}
       {!demo && err ? (
-        <Card><Empty icon="📡" text={tr("I couldn't load today's leads — check your connection and refresh.")} /></Card>
+        <FalhaDeLeitura motivo={err} onRetry={() => setTentativa((n) => n + 1)} titulo={tr("I couldn't load today's leads just now.")} />
       ) : /* Connected but the RPC isn't live yet → honest warming-up state. */
       !demo && data && !data.ready ? (
         <Card><Empty icon="📡" text={tr("Your leads feed is warming up — it turns on as soon as your account is fully live.")} /></Card>

@@ -13,19 +13,17 @@ import { genRecommendations, genForecast, aiMissed, Card, GuiMark, tr, Empty, ge
    pergunta que o dono faz de verdade — "pra que as pessoas me ligam?" — com dado dele.
    🚨 SEM LIGAÇÃO COM INTENÇÃO, O BLOCO NÃO DESENHA. Zero ligação não vira gráfico vazio nem
    percentual de nada: null ≠ 0, e barra sem lastro é a mesma ficção que o resto da aba declara. */
-function IntencoesReais({ email, dataKey }) {
-  const [calls, setCalls] = useState(null);   // null = carregando; [] = lido e vazio
-  useEffect(() => {
-    let vivo = true;
-    if (!email || !dataKey) { setCalls([]); return () => { vivo = false; }; }
-    fetchCallLogs(email, dataKey).then((c) => { if (vivo) setCalls(Array.isArray(c) ? c : []); }).catch(() => { if (vivo) setCalls([]); });
-    return () => { vivo = false; };
-  }, [email, dataKey]);
-  if (calls === null || calls.length === 0) return null;
-
+// As 3 intenções mais frequentes das ligações lidas, ou [] quando não há o que contar.
+const topIntencoes = (calls) => {
   const mapa = new Map();
-  calls.forEach((x) => { const k = (x.intent || "").toString().trim(); if (k) mapa.set(k, (mapa.get(k) || 0) + 1); });
-  const top = [...mapa.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+  (calls || []).forEach((x) => { const k = (x.intent || "").toString().trim(); if (k) mapa.set(k, (mapa.get(k) || 0) + 1); });
+  return [...mapa.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+};
+// `calls` vem do pai (que precisa saber se este bloco tem o que mostrar para decidir o estado
+// vazio da aba). null = carregando; [] = lido e vazio.
+function IntencoesReais({ calls }) {
+  if (calls === null || calls.length === 0) return null;
+  const top = topIntencoes(calls);
   if (!top.length) return null;   // ligações existem mas nenhuma tem intenção gravada → nada a dizer
 
   const comIntencao = top.reduce((s, [, n]) => s + n, 0);
@@ -62,24 +60,54 @@ function IntencoesReais({ email, dataKey }) {
 // Consolidated AI Insights tab — recommendations (apply in 1 click) + demand/no-show
 // forecast + industry benchmarks, all in one place.
 function AIInsights({ V, onNav, sections = [], real = null, email = "", dataKey = "" }) {
-  // HONESTY (real mode): demand/no-show/benchmarks are a sector SAMPLE (vnum-derived),
-  // not this tenant's live data — so in real we label them "Sample" and disable the
-  // actions that only toast (they don't place a real call/deposit yet).
-  const Sample = () => real ? <span className="text-[9px] font-black uppercase tracking-wide text-g-gold bg-g-gold/15 rounded px-1.5 py-0.5">{tr("Sample")}</span> : null;
+  // 🚨 EM CONTA CONECTADA ESTA ABA SÓ MOSTRA O QUE É DELA (2026-09-28). As recomendações
+  // (`genRecommendations`) e a linha de rodapé (`aiMissed`: "3 callers asked for…") saíam SEM
+  // selo nenhum, e os botões respondiam "Review blast queued ✓" / "Win-back sequence started ✓"
+  // sem back-end. Demanda, no-show e benchmark tinham um selo "Sample" — mas "You: 5% no-show" com
+  // selo continua sendo um número que ninguém mediu, impresso ao lado do nome do negócio.
+  // Agora: conta conectada vê o bloco das intenções reais, ou um estado vazio que diz a verdade.
+  // A amostra inteira fica só na demonstração.
+  const [calls, setCalls] = useState(null);   // null = carregando; [] = lido e vazio
+  useEffect(() => {
+    let vivo = true;
+    if (!real || !email || !dataKey) { setCalls([]); return () => { vivo = false; }; }
+    fetchCallLogs(email, dataKey).then((c) => { if (vivo) setCalls(Array.isArray(c) ? c : []); }).catch(() => { if (vivo) setCalls([]); });
+    return () => { vivo = false; };
+  }, [real, email, dataKey]);
   const has = new Set(sections.map(([k]) => k));
-  const recs = genRecommendations(V).filter((r) => has.has(r.view));
+  const recs = real ? [] : genRecommendations(V).filter((r) => has.has(r.view));
   const fc = genForecast(V);
   const fcMax = Math.max(...fc.load);
   const missed = aiMissed(V);
+  if (real) {
+    const temInsight = Array.isArray(calls) && topIntencoes(calls).length > 0;
+    return (
+      <div className="space-y-4 stagger">
+        <Card className="bg-gradient-to-br from-[#FF8A33]/[0.1] to-g-gold/[0.06] border-[#FF8A33]/30">
+          <div className="text-sm font-extrabold text-g-word flex items-center gap-2"><GuiMark size={24} /> {tr("AI Insights")}</div>
+          <div className="text-xs text-g-muted mt-0.5">{tr("What your AI learned from your own calls. Only measured data shows up here.")}</div>
+        </Card>
+        {calls === null && <Card className="animate-pulse" aria-hidden><div className="h-3 w-40 rounded bg-white/10" /><div className="mt-3 h-2 w-full rounded bg-white/[0.07]" /><div className="mt-2 h-2 w-2/3 rounded bg-white/[0.07]" /></Card>}
+        <IntencoesReais calls={calls} />
+        {calls !== null && !temInsight && (
+          <Card>
+            {/* fetchCallLogs devolve [] tanto para "nenhuma ligação" quanto para "não consegui ler" —
+                a frase cobre os dois casos sem afirmar nenhum. */}
+            <Empty icon="🔎" text={tr("No insight from your own data yet. As your AI takes calls, the reasons people call you show up here.")} />
+            <div className="pb-4 text-center"><button onClick={() => onNav?.("calllogs")} className="btn-ghost text-xs">{tr("Open Call Logs →")}</button></div>
+          </Card>
+        )}
+        <div className="text-[11px] text-g-muted px-1">{tr("Demand forecast, no-show risk and sector comparison aren't measured for your account yet, so they aren't shown.")}</div>
+      </div>
+    );
+  }
+  // daqui para baixo é só DEMONSTRAÇÃO — a conta conectada já saiu no `return` acima
   return (
     <div className="space-y-4 stagger">
       <Card className="bg-gradient-to-br from-[#FF8A33]/[0.1] to-g-gold/[0.06] border-[#FF8A33]/30">
         <div className="text-sm font-extrabold text-g-word flex items-center gap-2"><GuiMark size={24} /> {tr("AI Insights")}</div>
         <div className="text-xs text-g-muted mt-0.5">{tr("What your AI sees in your numbers — and the exact moves to grow faster. Apply any of them in one click.")}</div>
       </Card>
-
-      {/* o único bloco desta aba feito do dado DELE — vem antes de tudo que é amostra */}
-      {real && <IntencoesReais email={email} dataKey={dataKey} />}
 
       <Card className="border-g-gold/30 bg-g-gold/[0.05] p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("⚡ Recommended by your AI · apply in one click")}</div>
@@ -97,7 +125,7 @@ function AIInsights({ V, onNav, sections = [], real = null, email = "", dataKey 
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-1 flex items-center gap-2">{tr("🔮 Predicted demand · next 7 days")} <Sample /></div>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-1 flex items-center gap-2">{tr("🔮 Predicted demand · next 7 days")}</div>
           <div className="text-[11px] text-g-muted mb-3"><b className="text-g-green">{fc.peak}</b> peaks at <b className="text-g-word">{fc.peakLoad}%</b> — open more capacity. <b className="text-g-muted">{fc.low}</b> is quietest — a promo fills it.</div>
           <div className="flex items-end gap-1.5 h-24">
             {fc.load.map((v, i) => (
@@ -110,15 +138,13 @@ function AIInsights({ V, onNav, sections = [], real = null, email = "", dataKey 
           <div className="mt-2 flex items-center gap-3 text-[9px] text-g-muted"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-g-green" />{tr("Normal")}</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: "#D6C29A" }} />{tr("Busy")}</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-red-500" />{tr("Over capacity")}</span></div>
         </Card>
         <Card className="p-0 overflow-hidden">
-          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2">{tr("⚠ No-show risk · AI flagged")} <Sample /></div>
+          <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2">{tr("⚠ No-show risk · AI flagged")}</div>
           <div className="divide-y divide-white/[0.06]">
             {fc.risk.length ? fc.risk.map((name, i) => (
               <div key={i} className="flex items-center gap-3 px-5 py-3">
                 <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: "#FFC23D", boxShadow: "0 0 8px rgba(255,194,61,.55)" }} />
                 <div className="flex-1 min-w-0 text-sm font-bold text-g-word truncate">{name}</div>
-                {real
-                  ? <span className="text-[11px] font-bold rounded-full border border-white/10 px-2.5 py-1 text-g-muted cursor-default" title={tr("Available when connected")}>{tr("Available when connected")}</span>
-                  : <button onClick={() => toast(`Taken care of — I've sent ${name} a deposit request and a gentle reminder.`)} className="text-[11px] font-bold rounded-full border border-white/15 px-2.5 py-1 text-g-word hover:border-g-gold/40 transition min-h-[44px] inline-flex items-center">{tr("Secure")}</button>}
+                <button onClick={() => toast(`${tr("Demo — nothing was sent to")} ${name}.`)} className="text-[11px] font-bold rounded-full border border-white/15 px-2.5 py-1 text-g-word hover:border-g-gold/40 transition min-h-[44px] inline-flex items-center">{tr("Secure")}</button>
               </div>
             )) : <Empty icon="✅" text={tr("No high-risk bookings — your AI's reminders are keeping no-shows low.")} />}
           </div>
@@ -126,7 +152,7 @@ function AIInsights({ V, onNav, sections = [], real = null, email = "", dataKey 
       </div>
 
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2">📊 How you compare · vs {V.label.toLowerCase()} average <Sample /></div>
+        <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2">📊 How you compare · vs {V.label.toLowerCase()} average</div>
         <div className="divide-y divide-white/[0.06]">
           {genBenchmarks(V).map((b, i) => (
             <div key={i} className="flex items-center gap-3 px-5 py-3">
@@ -135,7 +161,7 @@ function AIInsights({ V, onNav, sections = [], real = null, email = "", dataKey 
             </div>
           ))}
         </div>
-        <div className="px-5 py-2.5 border-t border-white/[0.06] text-[11px] text-g-muted">{real ? tr("Sample sector benchmark — your live comparison appears as your data builds up.") : tr("You're outperforming your sector on every metric your AI touches.")}</div>
+        <div className="px-5 py-2.5 border-t border-white/[0.06] text-[11px] text-g-muted">{tr("You're outperforming your sector on every metric your AI touches.")}</div>
       </Card>
     </div>
   );

@@ -2,18 +2,19 @@
 // harvest, live in under 7 days. Builds trust before the close. Content from guileoai.com.
 // Guileo design system + smooth CSS motion.
 import { useLang } from "../i18n.jsx";
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 
 const STEPS = [
-  { plant: "🌱", size: 38, when: "Day 01", n: "1", phase: "Implementation", title: "Plant the seed", desc: "A human studies your business, finds your revenue leaks, and designs the system around how you actually work.", tag: "we study & design it", rgb: "214,194,154" },
-  { plant: "🌿", size: 60, when: "Days 2–7", n: "2", phase: "Implementation", title: "Nurture growth", desc: "We build & implement in under 7 days — your AI live 24/7, automating sales & marketing across every channel.", tag: "built & live for you", rgb: "62,148,104" },
-  { plant: "🌳", size: 88, when: "Week 2 →", n: "3", phase: "Harvest", title: "Harvest results", desc: "Profit climbs — +286% performance and 3× faster sales cycles on average — while we keep optimizing for you.", tag: "profit compounds", rgb: "194,168,120" },
+  { plant: "🌱", size: 30, when: "Day 01", n: "1", phase: "Implementation", title: "Plant the seed", desc: "A human studies your business, finds your revenue leaks, and designs the system around how you actually work.", tag: "we study & design it", rgb: "214,194,154" },
+  { plant: "🌿", size: 40, when: "Days 2–7", n: "2", phase: "Implementation", title: "Nurture growth", desc: "We build & implement in under 7 days — your AI live 24/7, automating sales & marketing across every channel.", tag: "built & live for you", rgb: "62,148,104" },
+  { plant: "🌳", size: 52, when: "Week 2 →", n: "3", phase: "Harvest", title: "Harvest results", desc: "Profit climbs — +286% performance and 3× faster sales cycles on average — while we keep optimizing for you.", tag: "profit compounds", rgb: "194,168,120" },
 ];
 
 const MV_COPY = {
-  en: { h1a:"Led by real humans — ", h1b:"not just bots.", subA:"We get to know your business — ", subB:"we'll even visit you", subM:" — then design and build the system that grows your profit. ", subC:"Live in under 7 days.", phases:["Plant","Nurture","Harvest"], when:["Day 01","Days 2–7","Week 2 →"], tags:["we study & design it","built & live for you","profit compounds"], disc:"Illustrative averages — results depend on your business.", veLabel:"You see", ve:["your leak, in dollars","your Gui answering, live","your numbers in the cockpit"], trilho:"From the first meeting to profit — in 7 days" },
-  pt: { h1a:"Conduzido por humanos — ", h1b:"não só bots.", subA:"A gente conhece seu negócio — ", subB:"até visita você", subM:" — e então desenha e constrói o sistema que faz seu lucro crescer. ", subC:"No ar em menos de 7 dias.", phases:["Plantar","Nutrir","Colher"], when:["Dia 01","Dias 2–7","Semana 2 →"], tags:["a gente estuda e desenha","construído e no ar pra você","o lucro compõe"], disc:"Médias ilustrativas — resultados variam conforme seu negócio.", veLabel:"Você vê", ve:["seu vazamento, em dinheiro","sua Gui atendendo, ao vivo","seus números no cockpit"], trilho:"Da primeira reunião ao lucro — em 7 dias" },
-  es: { h1a:"Liderado por humanos — ", h1b:"no solo bots.", subA:"Conocemos tu negocio — ", subB:"incluso te visitamos", subM:" — y luego diseñamos y construimos el sistema que hace crecer tu ganancia. ", subC:"En vivo en menos de 7 días.", phases:["Plantar","Nutrir","Cosechar"], when:["Día 01","Días 2–7","Semana 2 →"], tags:["lo estudiamos y diseñamos","construido y en vivo para ti","la ganancia se acumula"], disc:"Promedios ilustrativos — los resultados dependen de tu negocio.", veLabel:"Tú ves", ve:["tu fuga, en dinero","tu Gui atendiendo, en vivo","tus números en el cockpit"], trilho:"De la primera reunión a la ganancia — en 7 días" },
-  hi: { h1a:"असली इंसानों द्वारा संचालित — ", h1b:"सिर्फ़ बॉट नहीं।", subA:"हम आपका व्यवसाय जानते हैं — ", subB:"आपसे मिलने भी आते हैं", subM:" — फिर वह सिस्टम डिज़ाइन और बनाते हैं जो आपका मुनाफ़ा बढ़ाए। ", subC:"7 दिनों से कम में लाइव।", phases:["बोएँ","पोषें","काटें"], when:["दिन 01","दिन 2–7","हफ़्ता 2 →"], tags:["हम पढ़ते और डिज़ाइन करते हैं","आपके लिए बना और लाइव","मुनाफ़ा बढ़ता जाता है"], disc:"उदाहरणात्मक औसत — परिणाम आपके व्यवसाय पर निर्भर करते हैं।", veLabel:"आप देखते हैं", ve:["आपका रिसाव, पैसों में","आपकी Gui जवाब देती हुई, लाइव","कॉकपिट में आपके नंबर"], trilho:"पहली मीटिंग से मुनाफ़े तक — 7 दिनों में" },
+  en: { voceLabel:"You do", voce:["a 20-min call — that's it","approve what we built","watch the numbers"], h1a:"Led by real humans — ", h1b:"not just bots.", subA:"We get to know your business — ", subB:"we'll even visit you", subM:" — then design and build the system that grows your profit. ", subC:"Live in under 7 days.", phases:["Plant","Nurture","Harvest"], when:["Day 01","Days 2–7","Week 2 →"], tags:["we study & design it","built & live for you","profit compounds"], disc:"Illustrative averages — results depend on your business.", veLabel:"You see", ve:["your leak, in dollars","your Gui answering, live",`your numbers in the ${NOME_DO_PAINEL}`], trilho:"From the first meeting to profit — in 7 days" },
+  pt: { voceLabel:"Você faz", voce:["uma ligação de 20 min — só isso","aprova o que construímos","acompanha os números"], h1a:"Conduzido por humanos — ", h1b:"não só bots.", subA:"A gente conhece seu negócio — ", subB:"até visita você", subM:" — e então desenha e constrói o sistema que faz seu lucro crescer. ", subC:"No ar em menos de 7 dias.", phases:["Plantar","Nutrir","Colher"], when:["Dia 01","Dias 2–7","Semana 2 →"], tags:["a gente estuda e desenha","construído e no ar pra você","o lucro compõe"], disc:"Médias ilustrativas — resultados variam conforme seu negócio.", veLabel:"Você vê", ve:["seu vazamento, em dinheiro","sua Gui atendendo, ao vivo",`seus números na ${NOME_DO_PAINEL}`], trilho:"Da primeira reunião ao lucro — em 7 dias" },
+  es: { voceLabel:"Tú haces", voce:["una llamada de 20 min — nada más","apruebas lo que construimos","sigues los números"], h1a:"Liderado por humanos — ", h1b:"no solo bots.", subA:"Conocemos tu negocio — ", subB:"incluso te visitamos", subM:" — y luego diseñamos y construimos el sistema que hace crecer tu ganancia. ", subC:"En vivo en menos de 7 días.", phases:["Plantar","Nutrir","Cosechar"], when:["Día 01","Días 2–7","Semana 2 →"], tags:["lo estudiamos y diseñamos","construido y en vivo para ti","la ganancia se acumula"], disc:"Promedios ilustrativos — los resultados dependen de tu negocio.", veLabel:"Tú ves", ve:["tu fuga, en dinero","tu Gui atendiendo, en vivo",`tus números en la ${NOME_DO_PAINEL}`], trilho:"De la primera reunión a la ganancia — en 7 días" },
+  hi: { voceLabel:"आप करते हैं", voce:["20 मिनट की एक कॉल — बस","जो बना उसे मंज़ूरी","नंबर देखते रहें"], h1a:"असली इंसानों द्वारा संचालित — ", h1b:"सिर्फ़ बॉट नहीं।", subA:"हम आपका व्यवसाय जानते हैं — ", subB:"आपसे मिलने भी आते हैं", subM:" — फिर वह सिस्टम डिज़ाइन और बनाते हैं जो आपका मुनाफ़ा बढ़ाए। ", subC:"7 दिनों से कम में लाइव।", phases:["बोएँ","पोषें","काटें"], when:["दिन 01","दिन 2–7","हफ़्ता 2 →"], tags:["हम पढ़ते और डिज़ाइन करते हैं","आपके लिए बना और लाइव","मुनाफ़ा बढ़ता जाता है"], disc:"उदाहरणात्मक औसत — परिणाम आपके व्यवसाय पर निर्भर करते हैं।", veLabel:"आप देखते हैं", ve:["आपका रिसाव, पैसों में","आपकी Gui जवाब देती हुई, लाइव",`${NOME_DO_PAINEL} में आपके नंबर`], trilho:"पहली मीटिंग से मुनाफ़े तक — 7 दिनों में" },
 };
 
 export default function MethodV2() {
@@ -22,7 +23,7 @@ export default function MethodV2() {
   const dictSteps = (t.steps && t.steps.items) || [];
   const eyebrow = (t.steps && t.steps.h2) || "The Guileo Method";
   return (
-    <section className="relative overflow-hidden px-5 py-20">
+    <section id="method" className="relative overflow-hidden px-5 py-16">
       <style>{`
         @keyframes mvreveal{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
         @keyframes mvshine{to{background-position:220% center}}
@@ -45,35 +46,7 @@ export default function MethodV2() {
         </p>
       </div>
 
-      {/* the metaphor framing — plant → nurture → harvest (implementation → harvest) */}
-      <div className="mx-auto mt-7 flex max-w-md flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] font-black uppercase tracking-wider" style={{ animation: "mvreveal .8s ease .3s both" }}>
-        <span className="text-g-green">🌱 {M.phases[0]}</span><span className="text-g-muted">→</span>
-        <span className="text-g-green">💧 {M.phases[1]}</span><span className="text-g-muted">→</span>
-        <span className="text-g-gold">🌾 {M.phases[2]}</span>
-      </div>
-
-      {/* ═══ O TRILHO DOS 7 DIAS ═══════════════════════════════════════════════════════════
-          A promessa "no ar em menos de 7 dias" estava só ESCRITA. Escrita, ela é igual à de
-          qualquer agência; desenhada como uma régua com as três marcas no lugar certo, ela vira
-          compromisso — o olho mede a distância entre o Dia 1 e o Dia 7 e entende que é curta.
-          O ponto de luz que percorre o trilho é o que diz "isso está em movimento agora". */}
-      <div className="mx-auto mt-9 max-w-3xl px-2" style={{ animation: "mvreveal .8s ease .35s both" }}>
-        <div className="relative h-px w-full rounded-full" style={{ background: "linear-gradient(90deg,rgba(214,194,154,0.10),rgba(62,148,104,0.55),rgba(194,168,120,0.55))" }}>
-          <span aria-hidden="true" className="absolute -top-[3px] h-[7px] w-[7px] rounded-full"
-            style={{ background: "#6FB892", boxShadow: "0 0 12px rgba(111,184,146,0.95), 0 0 26px rgba(111,184,146,0.45)", animation: "mvtrilho 6s cubic-bezier(.45,0,.55,1) infinite" }} />
-          {[0, 50, 100].map((x, k) => (
-            <span key={k} aria-hidden="true" className="absolute -top-[3.5px] h-2 w-2 rounded-full"
-              style={{ left: `calc(${x}% - 4px)`, background: k === 2 ? "#C2A878" : "#3E9468", boxShadow: `0 0 10px ${k === 2 ? "rgba(194,168,120,0.8)" : "rgba(62,148,104,0.8)"}` }} />
-          ))}
-        </div>
-        <div className="mt-3 flex items-center justify-between font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-g-muted">
-          {(M.when || []).map((w, k) => (
-            <span key={k} className={k === 1 ? "text-center" : k === 2 ? "text-right" : ""} style={{ color: k === 2 ? "#C2A878" : undefined }}>{w}</span>
-          ))}
-        </div>
-        <p className="mt-3 text-center text-[12px] font-semibold text-g-ink">{M.trilho}</p>
-      </div>
-
+      {/* (linha de fases e trilho dos 7 dias SAÍRAM — Luis, 2026-09-09: «encurtar, ser prático, mostrar a ativação em 3 passos») */}
       {/* GARDEN SCENE — the system is planted, nurtured & harvested; the plant literally grows */}
       <div className="relative mx-auto mt-10 max-w-5xl">
         <div className="relative grid grid-cols-3 gap-2 sm:gap-6">
@@ -84,12 +57,12 @@ export default function MethodV2() {
             return (
               <div key={s.n} className="relative flex flex-col items-center text-center">
                 {/* the plant — grows bigger each stage; fruit floats up at harvest */}
-                <div className="relative flex h-[160px] w-full items-end justify-center">
+                <div className="relative flex h-[96px] w-full items-end justify-center">
                   {/* GLOW que cresce com a etapa — a luz que a planta emite aumenta junto com ela.
                       Halo fixo nas três faria as três parecerem do mesmo tamanho de importância;
                       crescendo, a própria luz conta a progressão sem precisar de legenda. */}
                   <span aria-hidden="true" className="pointer-events-none absolute bottom-0 rounded-full"
-                    style={{ width: 110 + i * 55, height: 70 + i * 34,
+                    style={{ width: 80 + i * 30, height: 44 + i * 16,
                              background: `radial-gradient(closest-side, rgba(${s.rgb},${0.2 + i * 0.07}), transparent 74%)`,
                              filter: "blur(2px)" }} />
                   {harvest && ["💰", "📈", "⭐"].map((f, k) => (
@@ -111,6 +84,13 @@ export default function MethodV2() {
                       JÁ VENDO TUDO FUNCIONAR, e organização». As três linhas de cima dizem o que
                       NÓS fazemos; faltava o que ELE recebe em cada etapa. Sem isso, os 7 dias são
                       uma caixa-preta com uma fatura no fim. */}
+                  {/* O QUE VOCÊ FAZ (Luis, 2026-09-10): a ativação é quase zero esforço pra ele e isso não estava dito. */}
+                  {M.voce?.[i] && (
+                    <div className="mt-3 border-t border-white/[0.07] pt-3">
+                      <div className="font-mono text-[9.5px] font-bold uppercase tracking-[0.18em] text-g-gold/80">{M.voceLabel}</div>
+                      <div className="mt-1 text-[12.5px] font-semibold text-g-word">{M.voce[i]}</div>
+                    </div>
+                  )}
                   {M.ve?.[i] && (
                     <div className="mt-3 border-t border-white/[0.07] pt-3">
                       <div className="font-mono text-[9.5px] font-bold uppercase tracking-[0.18em] text-g-muted">{M.veLabel}</div>
@@ -124,7 +104,7 @@ export default function MethodV2() {
         </div>
       </div>
 
-      <p className="mx-auto mt-8 max-w-2xl text-center text-[11.5px] italic text-g-muted">{M.disc}</p>
+      
     </section>
   );
 }

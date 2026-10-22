@@ -44,7 +44,7 @@ export async function onRequestPost({ request, env }) {
   // sobre uma gravação que não aconteceu é o defeito que este arquivo existe para não repetir.
   if (!r || !r.ok) {
     let corpo = ""; try { corpo = (await r.text()).slice(0, 160); } catch { /* */ }
-    return json({ ok: false, error: `nao gravou${corpo ? `: ${corpo}` : ""}` }, 502);
+    return json({ ok: false, error: `nao gravou${corpo ? `: ${corpo}` : ""}` }, 503);
   }
   /* ── O MOTOR DE ATIVAÇÃO DE LEADS (Luis, 25/08) ────────────────────────────────────────────
      «os formulários sempre ativos pra IA ligar de volta — essa é uma das partes mais

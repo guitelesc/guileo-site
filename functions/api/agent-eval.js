@@ -395,7 +395,7 @@ export async function onRequest(context) {
   // lotes de uma varredura chunked caiam TODOS sob a MESMA run em agent_evals (histórico limpo).
   const runId = (url.searchParams.get("run_id") || body.run_id || `eval_${Date.now()}`).toString().slice(0, 64);
   const out = {
-    ok: true, ready: !!env.ANTHROPIC_API_KEY, dry, tenant,
+    ok: true, ready: !!(env.ANTHROPIC_API_KEY || env.ELEVENLABS_API_KEY), dry, tenant,
     run_id: runId, total: 0, scored: 0, passed: 0, failed: 0, recorded: 0,
     zero_side_effect: true, // este harness NUNCA liga/cobra/posta/grava-fora-de-agent_evals
     agents: {}, results: [], note: "",

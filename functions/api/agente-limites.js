@@ -38,7 +38,7 @@ export async function onRequestPost(context) {
   // 1) LÊ ANTES. Sem o "antes" não dá para provar que mudou nada — e um PATCH que devolve 200
   //    sobre um campo que não existia é a forma mais silenciosa de não corrigir coisa nenhuma.
   const antesR = await fetch(`${EL}/convai/agents/${encodeURIComponent(agentId)}`, { headers: h });
-  if (!antesR.ok) return json({ ok: false, erro: `leitura falhou: HTTP ${antesR.status}` }, 502);
+  if (!antesR.ok) return json({ ok: false, erro: `leitura falhou: HTTP ${antesR.status}` }, 503);
   const antes = await antesR.json().catch(() => null);
   const clAntes = antes?.platform_settings?.call_limits || {};
 
@@ -49,7 +49,7 @@ export async function onRequestPost(context) {
   });
   if (!pr.ok) {
     const corpo = await pr.text().catch(() => "");
-    return json({ ok: false, erro: `PATCH falhou: HTTP ${pr.status}`, corpo: corpo.slice(0, 300) }, 502);
+    return json({ ok: false, erro: `PATCH falhou: HTTP ${pr.status}`, corpo: corpo.slice(0, 300) }, 503);
   }
 
   // 3) LÊ DEPOIS. "PATCH deu 200" não é prova; o valor de volta é.

@@ -144,3 +144,84 @@ Na primeira tentativa pus $10.000 achando que subia o piso de segurança dos tr�
 
 $5.000 restaura o valor projetado do caminho da agente e ainda derruba os outros dois de 100k.
 Só sobe com decisão do Luis, e sabendo que sobe para os TRÊS.
+
+---
+
+# NATURA · o que só o Luis e a Natura fazem (2026-09-30)
+O código está no ar e espera estas liberações. Ordem pensada para destravar o que dá mais resultado primeiro. Depois de cada passo, peça a prova indicada.
+
+## Do Luis (contas da Guileo)
+| # | O que | Onde | Por que destrava | Prova depois |
+|---|---|---|---|---|
+| 1 | **MindBody: RECUSADO em 09/10/2026** (empresa GUILEO AI, "not subject to appeal"; ver MINDBODY-RECUSA.md). Antes: pedir o "Go Live" da conta de desenvolvedor | developers.mindbodyonline.com → sua conta → Go Live | Hoje a API recusa gerar o link de ativação dos sites da Natura ("You do not have access to the siteId specified"). Sem o Go Live só o sandbox funciona. | `POST /api/mindbody {action:"activation", site_id:"767008"}` devolve `link` |
+| 2 | **SMS: campanha A2P 10DLC** aprovada | Twilio Console → Messaging → Regulatory Compliance | Confirmação e lembrete por SMS para quem não deu e-mail | pôr `SMS_A2P_APROVADO=1` no Cloudflare + redeploy; lembrete de teste sai com `sid` |
+| 3 | **Google Business Profile API**: pedir acesso e criar o cliente OAuth | Google Cloud Console → o projeto da Guileo | Ler e responder avaliações das 3 fichas | pôr `GOOGLE_BUSINESS_CLIENT_ID/SECRET` no Cloudflare; a tela Google mostra as fichas |
+| 4 | **Meta**: app aprovado para `pages_messaging` e `instagram_manage_messages`; modelos do WhatsApp | developers.facebook.com → o app da Guileo | Instagram/Facebook/WhatsApp da Natura | DM de teste respondida; modelos `appointment_confirmation`, `appointment_request`, `appointment_reminder` (texto na ROTA-TEXTO) |
+| 5 | **Stripe**: confirmar o PAÍS da conta da plataforma | Stripe Dashboard → Settings → Business | Se for brasileira, o Stripe pode recusar a conta americana da Natura | a Natura clica "Receber pagamentos" e o onboarding abre |
+| 6 | **Cloudflare**: adicionar `www.naturaspanyc.com` e `naturaspanyc.com` como domínio do projeto | Pages → guileoai → Custom domains | Publicar o site no domínio dela | abrir o domínio no navegador |
+
+## Da Natura (a dona clica; ninguém faz por ela)
+| # | O que | Como | Depende de |
+|---|---|---|---|
+| A | **Encaminhar a linha** (718) 956-5530 para +1 929 828 8170 | na operadora (`*72` + número, ou o painel do VoIP) | nada — pode ser hoje |
+| B | **Um número DIRETO da recepção** de cada unidade, que NÃO encaminhe para a agente | informar ao Luis | nada |
+| C | **Aprovar o acesso no MindBody** | abrir o link de ativação de cada site, logada como dona | passo 1 do Luis |
+| D | **Conectar o Google** | Central → Google → "Connect" | passo 3 do Luis |
+| E | **Conectar Instagram/Facebook/WhatsApp** | hoje só pelo `/admin`, com ela logada na Meta ao lado do Luis | passo 4 do Luis |
+| F | **Abrir a conta de pagamento** | Central → Integrations → "Receber pagamentos" | passo 5 do Luis |
+| G | **DNS do domínio**: `CNAME www → guileoai.pages.dev` | no registrador do domínio | passo 6 do Luis |
+| H | **Conferir na Central**: prazos de volta (já aplicados), ligar o aniversário e escrever a mensagem, cadastrar produtos, confirmar os preços | Central → Dates & Birthdays / Retail products / Catalog | nada |
+
+## Testes por telefone (o Luis liga; fazer ANTES do passo A)
+Enquanto a linha não for encaminhada não existe cliente de verdade na conta — os testes podem ser escondidos do painel da dona movendo a data de entrada em operação. Depois do passo A isso esconderia clientes reais: aí o teste passa a ser na linha de demonstração.
+1. Ligar do seu número para +1 929 828 8170 → ela atende dizendo o seu nome.
+2. Marcar um facial em Astoria, dar o e-mail → chega a confirmação com endereço e o link "quando é o seu aniversário?".
+3. Perguntar por Botox → ela oferece a consulta grátis do Med Spa, não diz "não temos".
+4. Falar uma frase inteira em português ou espanhol → ela troca de idioma; uma palavra solta não troca.
+5. Pedir para falar com uma pessoa → hoje ela anota o recado e avisa a dona (a transferência só existe depois do passo B).
+6. No site (`guileoai.com/novo/natura-spa` → Chat): escrever o seu telefone → ela cumprimenta pelo nome e lembra da conversa.
+Depois: avisar, para a conferência das transcrições e para esconder os testes.
+
+## O que não tem dono técnico
+- **Dados de saúde do Med Spa** (ficha, histórico de procedimento): decisão de advogado. Perguntas a levar: o Med Spa é "covered entity" (fatura plano de saúde por meio eletrônico)? as gravações e transcrições de ligação em que a cliente cita um procedimento podem ficar com os fornecedores atuais (ElevenLabs, Twilio, Supabase, Cloudflare, Anthropic, Resend) sem contrato específico? por quanto tempo guardar? Hoje o sistema guarda: nome, telefone, e-mail, serviço agendado, transcrição da ligação e o resumo — nada de ficha clínica.
+- **Primeiro lugar no Google**: não se garante. O que está feito: dados de negócio local por unidade, página por unidade, pedido de avaliação após cada visita. O que pesa e depende dela: responder avaliações, fotos e posts na ficha, e o site no domínio próprio.
+- **Plantão**: os alarmes automáticos avisam o Luis (semáforo do cron, saldo da voz, canário do chat). Ninguém conserta de madrugada.
+
+## NATURA · Stripe próprio para o SINAL (2026-10-05)
+**Por quê não o "Conectar Stripe":** a conta Stripe da plataforma é **BR** (Origem, live) e o Stripe só repassa entre países a partir de plataformas dos EUA/UK/EEA/CA/CH (docs.stripe.com/connect/cross-border-payouts). O Natura (EUA) não pode receber por ela — o `/api/stripe-connect` agora recusa com `use_own_stripe` antes de criar qualquer conta.
+**O que a dona do Natura faz (só ela — é a conta dela):**
+1. Ter uma conta Stripe dos EUA no nome do Natura (se não tiver, criar em stripe.com com os dados da empresa e a conta bancária).
+2. Stripe → Developers → API keys → **Create restricted key** → em **Checkout Sessions: Write** (opcional: **Account: Read**). Só para o sinal, basta isso; para cartão salvo, taxa de falta e assinatura, ver a tabela de permissões logo abaixo.
+3. Abrir **guileoai.com/receber**, preencher o e-mail `naturaspaadm@gmail.com` e o código de conexão, colar a chave `rk_live_…` em "Business in the US? Use your own Stripe account" → **Connect my account**. O servidor testa a chave no Stripe antes de guardar.
+**O que acende:** o link do sinal que a Lilian manda depois de marcar e o botão do Balcão (16 serviços com sinal cadastrado). O pagamento confirma na volta da cliente (`/api/sinal-pago`) e na conferência de hora em hora (`/api/sinal-reconcile`, no cron).
+**Também acende com a mesma chave (2026-10-05):** venda online de pacote, vale-presente (com e-mail do código para quem ganha e cópia para quem comprou) e assinatura, a loja do site (`loja-checkout.js` → `venda-paga.js`, conferência horária em `venda-online-reconcile`) e o sinal no agendamento pelo site (`/agendar` mostra o botão do sinal na confirmação). A loja do Natura continua desligada (`LOJA.aoVivo = false`) até a dona decidir.
+**O que NÃO acende:** estorno no Stripe próprio não avisa ninguém (não há webhook dessa conta) — produto da loja estornado volta ao estoque à mão.
+**Prova:** marcar pelo Balcão um serviço com sinal → "Mandar para a cliente" para um e-mail seu → pagar com cartão de teste se a chave for `rk_test_` (ou US$ 20 reais e estornar) → o cartão da agenda mostra ◆ "Sinal pago".
+
+### Cartão salvo, taxa de falta e assinatura da cliente (2026-10-05, no código, NÃO no ar)
+Mesma chave restrita do Natura, com **mais permissões**. No Stripe: Developers → API keys → na chave restrita do Guileo → **Edit** (ou criar uma nova e colar de novo em guileoai.com/receber) e marcar:
+
+| Permissão (nome exato no painel do Stripe) | Para quê |
+|---|---|
+| **Checkout Sessions: Write** | sinal, "Salvar cartão" (Checkout `mode=setup`) e "Vender assinatura" (`mode=subscription`); ler a sessão na volta |
+| **Charges: Read** (2026-10-05) | perceber ESTORNO feito no Stripe do negócio (loja volta o estoque; pacote/vale vira aviso no feed). Sem ela: um aviso pedindo para marcar, e nenhum estorno é presumido |
+| **Customers: Write** | criar o cliente no Stripe ao salvar o cartão; reaproveitar o cliente no sinal e na assinatura |
+| **PaymentIntents: Write** | cobrar a **taxa de falta** e a **taxa de cancelamento em cima da hora** fora da sessão (`off_session`); ler o pagamento do sinal para guardar o cartão |
+| **SetupIntents: Write** | ler o cartão que a cliente cadastrou em "Salvar cartão" |
+| **PaymentMethods: Read** | bandeira e 4 últimos dígitos do cartão salvo |
+| **Subscriptions: Read** | conferir a assinatura na volta e guardar o cartão dela; **conferência de hora em hora** do status (cancelada / pagamento atrasado) |
+| (opcional) **Account: Read** | nome da conta na tela de conexão |
+
+Se faltar alguma, o Balcão diz **qual** (motivo `permission_missing` + o nome da tabela acima, lido da resposta 403 do Stripe). Uma chave antiga só com Checkout Sessions continua mandando o sinal — só não guarda o cartão.
+
+**O que acende (Central → Operações → Balcão → Caixa, bloco "Pagamento online (seu Stripe)"):**
+- **Salvar cartão** → link do Stripe para a recepção COPIAR e mandar (não existe modelo de texto/e-mail para esse link; a tela não diz "enviado"). Quando a cliente termina, a volta (`/api/sinal-pago`) grava bandeira/final na ficha (`desk_saved_cards`). O **sinal** também passa a salvar o cartão (o Checkout mostra à cliente o aviso de uso futuro).
+- **Cobrar taxa de falta** → aparece no caixa aberto de um agendamento marcado como **falta**; valor = "taxa de falta" do serviço (Equipe → Serviços); cobra o cartão salvo, uma vez por agendamento (Idempotency-Key agendamento+cartão); grava em `attributes.noshow_fee` e no feed ("💳 Taxa de falta cobrada / NÃO cobrada"). Recusa do banco aparece com a frase do banco.
+- **Vender assinatura** → escolhe uma assinatura cadastrada em Receita recorrente → link do Stripe (mensal/anual) para copiar; a volta grava em `membership_subscribers` e no feed ("⭐ Nova assinatura").
+- **Cobrar taxa de cancelamento** (v6, `db/desk_v6_cancelamento.sql`) → no caixa aberto de um agendamento **cancelado**, a tela mostra "Cancelou 5 h antes do horário · pelo balcão · dentro da janela de 24 h do serviço". Só cobra se o cancelamento caiu DENTRO da janela de cancelamento do serviço (Equipe → Serviços → janela, `cancel_window_h`). **Valor = a MESMA taxa de falta do serviço** — o cadastro não tem um campo próprio para taxa de cancelamento (a tela diz isso). Mesmas regras da taxa de falta: cartão salvo, uma vez por agendamento (Idempotency-Key própria, `desk-latecancel-…`), grava em `attributes.late_cancel_fee` e no feed. Motivos honestos: `not_late_cancel` (fora da janela / serviço sem janela / reserva provisória que venceu), `cancel_time_unknown` (cancelado antes de 05/10/2026, quando o banco começou a guardar a hora), `noshow_fee_charged`, `no_saved_card`, `payments_not_connected`, `card_declined`, `permission_missing`.
+  - A hora vem de um gatilho em `biz_appointments` (`attributes.cancelled_at` + `cancelled_by`: cliente · balcao · ia · expirou · desconhecido). O link da reserva grava "cliente"; o balcão é deduzido da marca `desk_status_at`; **a IA ao telefone fica "desconhecido"** (o `agent-schedule.js` ainda não diz quem cancelou). Observação: a cliente nunca cancela "em cima da hora" pelo link — dentro da janela o link pede para ligar —, então a taxa de cancelamento na prática é de quem cancelou ligando (balcão ou IA).
+- Conferência de hora em hora (`/api/sinal-reconcile`) também pega quem salvou o cartão / assinou e fechou a aba antes de voltar, **e confere o status de cada assinatura vendida** (até 50 por rodada, a conferida há mais tempo primeiro): cancelada → `canceled`, cartão falhou → `past_due`, voltou → `active`; quando muda, o dono vê no feed ("⭐ Assinatura … ativa → cancelada"). Se não der para ler (chave sem **Subscriptions: Read**, assinatura que não existe nesta chave), o feed avisa uma vez por motivo novo — não a cada hora.
+
+**NÃO acende / não verificado:** o status da assinatura agora é conferido de hora em hora, mas com atraso de até 1 h (não há webhook da conta do negócio) e só para assinaturas com `stripe_sub_id`; a IA ao telefone não registra que foi ela quem cancelou ("desconhecido"); o caixa do Balcão não abre para agendamento cancelado/falta pelo painel do agendamento (só pelo pedido da assistente) — então os botões das duas taxas só aparecem por esse caminho até o `Desk.jsx` liberar; cartão europeu que pede autenticação na cobrança fora da sessão volta como recusado. Nada disso foi testado contra um Stripe real: só testes de unidade com respostas simuladas e provas SQL na conta e2e-test.
+
+**Prova (quando a dona ligar):** chave `rk_test_` → no Caixa de um agendamento, "Salvar cartão" → abrir o link → cartão de teste `4242 4242 4242 4242` → voltar ao caixa → "Conferir de novo" mostra VISA •••• 4242 → marcar o agendamento como falta → abrir o caixa dele → "Cobrar taxa de falta" → o pagamento aparece em Stripe → Payments (teste). Cartão `4000 0000 0000 9995` prova a recusa ("insufficient funds").

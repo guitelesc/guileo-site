@@ -92,7 +92,7 @@ export async function onRequestPost(context) {
         p_impressions: Number(b.impressoes ?? b.impressions) || 0,
       });
       // Sem identificador não houve gravação — a regra de ouro, aplicada também aqui.
-      if (!r?.ok || !r.id) return json({ ok: false, error: r?.reason || "o banco não confirmou o lançamento" }, 502);
+      if (!r?.ok || !r.id) return json({ ok: false, error: r?.reason || "o banco não confirmou o lançamento" }, 503);
       return json({ ok: true, id: r.id, dia, gasto: dinheiro(centavos) });
     }
 
@@ -231,7 +231,7 @@ export async function onRequestPost(context) {
         p_source: (b.canal || "outro").toString().slice(0, 40),
         p_campaign: (b.campanha || "").toString().slice(0, 120),
       });
-      if (!r?.ok || !r.id) return json({ ok: false, error: r?.reason || "não consegui apontar o número" }, 502);
+      if (!r?.ok || !r.id) return json({ ok: false, error: r?.reason || "não consegui apontar o número" }, 503);
       return json({ ok: true, id: r.id, numero, campanha: b.campanha || "(sem campanha)" });
     }
 
@@ -244,7 +244,7 @@ export async function onRequestPost(context) {
       // verdade não tinha permissão de olhar. O campo `error` continua igual — acréscimo, não troca.
       if (!isOwnerEmail(email, env)) return json({ ok: false, error: "unauthorized" }, 401);
       const r = await svcJson(env, "ads_alertas", { p_secret: env.INGEST_SECRET || "", p_days: Number(b.dias) || 14 });
-      if (!r || r.erro_http) return json({ ok: false, error: "não consegui varrer as campanhas" }, 502);
+      if (!r || r.erro_http) return json({ ok: false, error: "não consegui varrer as campanhas" }, 503);
       const al = r.alertas || [];
       // TRÊS BALDES, não dois. `medir` (db/ads_alertas.sql) é a campanha que trouxe agendamento
       // e nenhum deles tem valor: não dá para dizer se paga. Antes esse caso caía no ramo
@@ -294,7 +294,7 @@ export async function onRequestPost(context) {
         plataforma: b.plataforma || b.canal, objetivo: b.objetivo, publico: b.publico, lang: b.lang,
       });
       if (!r) return json({ ok: false, error: "IA não configurada (ANTHROPIC_API_KEY)" }, 501);
-      if (r.erro) return json({ ok: false, error: r.erro }, 502);
+      if (r.erro) return json({ ok: false, error: r.erro }, 503);
       return json({ ok: true, ...r });
     }
 
@@ -318,7 +318,7 @@ export async function onRequestPost(context) {
       // banco passava direto, `r.campanhas` virava [] e a tela do dono dizia "nenhum gasto de
       // anúncio lançado neste período". Erro de permissão apresentado como ausência de resultado:
       // a mesma família que já custou cinco diagnósticos falsos num dia só. Corrigido 2026-08-11.
-      if (!r || r.erro_http || r.ok === false) return json({ ok: false, error: `não consegui ler o retorno${r?.erro_http ? ` (http ${r.erro_http})` : ""}` }, 502);
+      if (!r || r.erro_http || r.ok === false) return json({ ok: false, error: `não consegui ler o retorno${r?.erro_http ? ` (http ${r.erro_http})` : ""}` }, 503);
       const campanhas = Array.isArray(r.campanhas) ? r.campanhas : [];
 
       const decisoes = campanhas.map((c) => {
@@ -441,7 +441,7 @@ export async function onRequestPost(context) {
     const r = await svcJson(env, "ads_roi", { p_secret: env.INGEST_SECRET || "", p_email: email, p_days: dias });
     // Mesma correção da guarda acima: svcJson sinaliza falha em `erro_http`/`ok:false`, nunca em
     // `.error`. Ver a explicação completa por volta da linha 313.
-    if (!r || r.erro_http || r.ok === false) return json({ ok: false, error: `não consegui ler o retorno${r?.erro_http ? ` (http ${r.erro_http})` : ""}` }, 502);
+    if (!r || r.erro_http || r.ok === false) return json({ ok: false, error: `não consegui ler o retorno${r?.erro_http ? ` (http ${r.erro_http})` : ""}` }, 503);
 
     const campanhas = (r.campanhas || []).map((c) => ({
       canal: c.canal, campanha: c.campanha,

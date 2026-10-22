@@ -6,6 +6,7 @@
 // If DIGEST_TOKEN is set in env, the request must include a matching token (so randoms can't trigger it).
 import { dailyLeadsEmail } from "../lib/emailTemplates.js";
 import { isOwnerEmail, safeEq } from "../lib/guard.js";
+import { emailsDoDonoMudos } from "../lib/avisarDono.js";
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -32,6 +33,10 @@ export async function onRequest(context) {
 
     // Read leads via the token-gated SECURITY-DEFINER RPC (the base table is RLS-locked against
     // anonymous SELECT). The admin token lives server-side here, never in the client bundle.
+    // "NÃO CONSEGUI LER" ≠ "NENHUM LEAD" (2026-09-09). Este bloco engolia qualquer falha da RPC
+    // (token errado, 401, banco fora) e seguia com `rows=[]` → a rota respondia 200 "no leads in
+    // the last 24h" e o dono lia um dia parado onde havia um digest quebrado. Agora a falha de
+    // leitura sai como 502 com o motivo — e o cron-tick, que vigia alvo não-2xx, avisa o dono.
     let rows = [];
     try {
       const r = await fetch(`${SB_URL}/rest/v1/rpc/admin_actions`, {
@@ -39,11 +44,11 @@ export async function onRequest(context) {
         headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
         body: JSON.stringify({ p_token: env.ADMIN_TOKEN || "" }),
       });
-      if (r.ok) {
-        const all = await r.json();
-        rows = (Array.isArray(all) ? all : []).filter((x) => x.action === "lead" && new Date(x.created_at) >= new Date(sinceISO)).slice(0, 40);
-      }
-    } catch { /* fall through to empty */ }
+      if (!r.ok) return json({ ok: false, error: `não consegui ler os leads (admin_actions http ${r.status})`, sent: false }, 503);
+      const all = await r.json();
+      if (!Array.isArray(all)) return json({ ok: false, error: "não consegui ler os leads (resposta não é lista)", sent: false }, 503);
+      rows = all.filter((x) => x.action === "lead" && new Date(x.created_at) >= new Date(sinceISO)).slice(0, 40);
+    } catch (e) { return json({ ok: false, error: `não consegui ler os leads: ${String(e).slice(0, 120)}`, sent: false }, 503); }
 
     // Map gui_actions rows → digest lead cards. Heat is inferred from the source (we don't store it).
     const channelFor = (src) => {
@@ -76,6 +81,7 @@ export async function onRequest(context) {
     const KEY = env.RESEND_API_KEY;
     const FROM = env.EMAIL_FROM || "Guileo <noreply@guileoai.com>";
     if (!KEY) return json({ ok: false, reason: "no key", leadCount: leads.length });
+    if (await emailsDoDonoMudos(env)) return json({ ok: true, mudo: true, reason: "emails_dono=off", leadCount: leads.length });
     const sr = await fetch("https://api.resend.com/emails", {
       method: "POST", headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from: FROM, to: [to], subject, html }),

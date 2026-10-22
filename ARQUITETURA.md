@@ -114,8 +114,60 @@ reivindicarem o mesmo Instagram.
 **Diagnóstico:** `ig_id` vazio com `meta=ok` significa **a conta de Instagram não está amarrada à
 Página** — não é permissão, não é token. Amarrar é no Business Suite e só o dono faz.
 
+## 💬 Guileo Direct — o funil medido (comentário → DM → conversa → lead)
+Nome próprio do produto (como o Guileo Pulse; não se traduz) — `productSystem.js` id `direct`.
+- **Uma linha por porta**, em `meta_direct_eventos` (`db/direct_metricas.sql`): `comentario → casou →
+  segurado | dm_enviado | dm_falhou → publica_ok/falhou` e, na conversa, `dm_recebida → dm_respondida |
+  dm_nao_entregue | standby`. O feed do dono (`client_events`) continua com a frase bonita; **métrica nunca
+  parseia frase** — frase muda de redação, coluna não.
+- **Quem grava:** `marcar()` em `meta-webhook.js`. Nunca atrasa o envio: as marcas saem em paralelo e só
+  são esperadas no `finally`. Falhar em medir não derruba DM.
+- **Lead do Direct:** o link do DM sai carimbado por `linkDoDirect()` (`utm_source=instagram&utm_medium=direct
+  &utm_campaign=<id>`). Cai em `lead_attribution` pelo cookie `gui_attr` → "leads por campanha" é um COUNT.
+  Primeiro toque vence (90 dias): o Direct não rouba crédito de anúncio.
+- **A Gui sabe de onde a conversa veio:** `direct_contexto_pessoa` (comentário ≤7 dias) → `origemDaConversa()`
+  → `guiReply({origemConversa})`, que vai ao agente de voz E ao prompt de sistema da reserva. Vem do nosso
+  banco, nunca do texto da cliente — por isso pode entrar no sistema.
+- **Leitura:** `direct_metricas(p_secret,p_email,p_dias)` (só service_role) → `/api/meta-comentarios`
+  (lista + `action:"metricas"`, 7/30/90 dias) → `src/portal/DirectMetricas.jsx`. Os conselhos ("o que
+  melhorar") são regras puras em `src/portal/directConselhos.js`, cada uma nascida de um caso real.
+- **"Não sei" não é zero:** antes da medição ao vivo, conversa e denominador aparecem como "—"; sem link,
+  lead é "—". Erro de leitura volta `metricas:null` + motivo, nunca um funil de zeros.
+
 ## ⏰ Cron externo (Pages não tem cron) — URLs token-gated
-`/api/proactive` (datas/aniversário/rebooking) · `/api/automations` (radar/slow-day) · `/api/lifecycle` · `/api/collections?sweep=1` · `/api/nps` · `/api/money-reconcile` · `/api/health-monitor`
+`/api/proactive` (datas/aniversário/rebooking) · `/api/automations` (radar/slow-day) · `/api/lifecycle` · `/api/collections?sweep=1` · `/api/nps` · `/api/money-reconcile` · `/api/health-monitor` · `/api/backup` (diário 13h/14h, `ops_run_claim('backup',20h)`)
+
+**Alarme de operação = `avisarDono(env,{kind,summary,…})` em `functions/lib/avisarDono.js`** — a porta ÚNICA (2026-09-09): feed do /admin + e-mail para a caixa que o dono LÊ (`luistelesc@gmail.com`; `OWNER_EMAIL` sobrescreve) + WhatsApp (número de `client_notify_phone_lookup` do tenant `smart@guileoai.com`), trava de 6h por `kind` via `health_claim`, e devolve o RECIBO de cada canal (`.ok` conferido). Cron-tick avisa todo alvo não-2xx. Nunca escreva outro "manda e-mail pro dono".
 
 ---
 *Atualize ESTE arquivo quando a arquitetura mudar. Ele é o contrato de 3 segundos.*
+
+## Cérebro de texto e o nome do painel (2026-09-09)
+- **O painel do cliente chama-se `Central`** (`src/portal/nome.js` → `NOME_DO_PAINEL`; um lugar só, 4 idiomas). "Growth Cockpit" morreu; `cockpit` sobrevive só como id interno de rota/aba.
+- **Todo canal de texto de cliente passa por `guiReply`** (`functions/lib/guiBrain.js`). Ordem: agente de voz da ElevenLabs (Chat Mode, `chatEleven.js`) → Anthropic de reserva. Cérebro paralelo é proibido — o widget tinha um e ficou 5 dias mudo.
+- **Texto pelo agente NÃO é ligação**: o webhook da ElevenLabs lê `dynamic_variables.canal === "texto"` (ou ausência de `metadata.phone_call`) e grava `message`, sem crédito de ligação, sem custo de voz, sem contato de CRM por "quem ligou". Cobrar chat é decisão de preço pendente do Luis.
+
+## A Central para cliente real — leis de 2026-09-28
+Nasceram do primeiro acesso real (Natura Spa) e da varredura de ~60 achados que veio depois.
+- **Prova da Central é LOGADO.** O modo demo não tem sessão nem `real`: o travamento de boot só acontecia com sessão ativa. Conta de teste: `e2e-test@guileoai.com`.
+- **Nada de `await supabase.*` dentro de `onAuthStateChange`** (espera circular com a inicialização do auth-js). Boot sempre termina: `try/finally` + teto por etapa.
+- **Uma tela que quebra não derruba a Central:** `src/portal/LimiteDeTela.jsx` em volta do conteúdo, com `key={view}`. Telas carregam com `lazyRetry`.
+- **Nenhuma chamada espera para sempre:** `src/lib/tetoDeRede.js` põe teto de 45s em `/api/**` e RPCs sem sinal próprio.
+- **Falha ≠ vazio.** Leitura nova usa as variantes `…Detalhado` do `portalApi.js` (`{data, motivo}`) e o bloco `src/portal/FalhaDeLeitura.jsx` (frase + "tentar de novo"). Falha nunca entra no cache de 45s.
+- **Cliente real nunca vê número de amostra nem "feito ✓" sem backend.** Sem motor: esconde o botão ou diz "ainda não disponível". Conta conectada cujo primeiro dado não chegou não monta tela nenhuma (portão da amostra).
+- **O treino do agente nunca leva semente:** só o que o dono escreveu vai para `/api/sync-agent` (`kbDoDono`/`brainDoDono`/`nomeDoDono`).
+- **Ramo vem da conta:** `identity.sector` (texto livre) → `src/portal/setor.js`. Sem correspondência não muda.
+- **Resposta nossa com corpo JSON usa 503, nunca 502** — a Cloudflare troca o corpo de todo 502 por texto puro e o motivo some.
+- **Servidor fala a língua da tela:** endpoints aceitam `lang`; instrução de engenharia vai em `detalhe_tecnico`, nunca na frase do cliente.
+- **Orçamentos do cliente:** `/api/orcamentos` (plural, portão por chave do tenant). `/api/orcamento` é o orçamento de tokens do admin.
+- **Agendamento feito vira evento `booking`** uma vez só (`ingest_booking_event`, custo 0).
+- **Chave nunca em URL.** Conta e chave vão no corpo.
+- **Espelho nunca é fonte:** `sync-agent` resolve nome e ramo do negócio pelo PERFIL primeiro; o nome do agente ao vivo é o último resgate. Um sync ruim não pode se perpetuar lendo o que ele mesmo escreveu.
+- **Varredura só vale com controle positivo:** `npx eslint src functions -f json` filtrando `no-undef`, `react-hooks/rules-of-hooks` e `fatal`, com um arquivo plantado que ela tem que acusar.
+
+## Entrada em operação por cliente — `live_desde` (2026-09-28)
+- **Lei:** teste nosso nunca aparece como dado real do cliente. O perfil (`client_integrations` provider=`profile`) guarda `live_desde`; as leituras do painel só mostram o que aconteceu dali em diante. **Esconde, não apaga.**
+- **Uma função, um ponto:** `tenant_live_desde(email)` devolve a data ou NULL. Sem data, toda leitura fica idêntica ao que era — a marcação é opt-in por cliente.
+- **Coberto:** `get_client_data`, `get_call_logs`, `crm_list_contacts`, `crm_leads_today`, `cx_summary`, `cx_drivers`, `cx_detractors`. **Não coberto:** 37 leituras (agenda, negócios, caixa de entrada, receita, Company OS, automações) — lista em `db/live_desde.sql`. RPC nova que lê histórico do tenant lê de `vivo_<tabela>(email)`, nunca da tabela crua.
+- **Limite:** a data esconde o ANTES. Depois do lançamento, teste é no `e2e-test@guileoai.com` ou na linha de demonstração — nunca na conta do cliente.
+- **Operar:** `ROTA-LANCAR` na IMPLEMENTACAO.md. **SQL:** `db/live_desde.sql`.

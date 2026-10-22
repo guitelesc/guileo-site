@@ -38,10 +38,10 @@ const D = {
     hi: "अपने Google में एक बार साइन इन करें — एजेंट आपकी असली उपलब्धता पढ़ेगी और बुकिंग सीधे आपके कैलेंडर में लिखेगी।",
   },
   sub_rev: {
-    en: "One sign-in covers both: the calendar and answering your Google reviews.",
-    pt: "Um login só resolve os dois: a agenda e as respostas às suas avaliações do Google.",
-    es: "Un solo inicio de sesión cubre ambos: la agenda y las respuestas a tus reseñas de Google.",
-    hi: "एक ही साइन-इन दोनों के लिए: कैलेंडर और आपकी Google समीक्षाओं के जवाब।",
+    en: "One sign-in covers both: the calendar, and reading your Google reviews so you can approve the replies.",
+    pt: "Um login só resolve os dois: a agenda, e a leitura das suas avaliações do Google para você aprovar as respostas.",
+    es: "Un solo inicio de sesión cubre ambos: la agenda, y la lectura de tus reseñas de Google para que apruebes las respuestas.",
+    hi: "एक ही साइन-इन दोनों के लिए: कैलेंडर, और आपकी Google समीक्षाएँ पढ़ना ताकि आप जवाब मंज़ूर कर सकें।",
   },
   connect: { en: "Connect my Google calendar", pt: "Conectar minha agenda do Google", es: "Conectar mi agenda de Google", hi: "मेरा Google कैलेंडर जोड़ें" },
   connect_seller: { en: "Generate the sign-in link for this client", pt: "Gerar o link de login pra este cliente", es: "Generar el enlace de acceso para este cliente", hi: "इस क्लाइंट के लिए साइन-इन लिंक बनाएँ" },
@@ -66,7 +66,7 @@ const D = {
   whats_on: { en: "What's switched on", pt: "O que está ligado", es: "Qué está activado", hi: "क्या चालू है" },
   cap_read: { en: "Read availability", pt: "Ler disponibilidade", es: "Leer disponibilidad", hi: "उपलब्धता पढ़ना" },
   cap_write: { en: "Write bookings", pt: "Gravar agendamento", es: "Guardar la reserva", hi: "बुकिंग लिखना" },
-  cap_rev: { en: "Answer Google reviews", pt: "Responder avaliações do Google", es: "Responder reseñas de Google", hi: "Google समीक्षाओं का जवाब" },
+  cap_rev: { en: "Read Google reviews and publish the replies you approve", pt: "Ler avaliações do Google e publicar as respostas que você aprovar", es: "Leer reseñas de Google y publicar las respuestas que apruebes", hi: "Google समीक्षाएँ पढ़ना और आपके मंज़ूर किए जवाब प्रकाशित करना" },
   danger_cal: {
     en: "The calendar permission was NOT granted. Google is signed in, but the agent cannot read availability or save a booking — the very first call would fail. Reconnect and leave the calendar box ticked on Google's screen.",
     pt: "A permissão de AGENDA não foi concedida. O Google está logado, mas a agente não consegue ler disponibilidade nem gravar agendamento — a primeira ligação já falharia. Reconecte e deixe a caixinha da agenda marcada na tela do Google.",
@@ -74,11 +74,20 @@ const D = {
     hi: "कैलेंडर की अनुमति नहीं दी गई। Google साइन-इन है, पर एजेंट न उपलब्धता पढ़ सकती है न बुकिंग सहेज सकती है — पहली ही कॉल विफल होगी। फिर से जोड़ें और Google की स्क्रीन पर कैलेंडर वाला बॉक्स चुना रहने दें।",
   },
   warn_rev: {
-    en: "The reviews permission wasn't granted — the calendar works, Gui just can't answer Google reviews yet.",
-    pt: "A permissão das avaliações não foi concedida — a agenda funciona, a Gui só não responde as avaliações do Google ainda.",
-    es: "El permiso de reseñas no fue concedido — la agenda funciona, Gui solo no puede responder reseñas de Google todavía.",
-    hi: "समीक्षाओं की अनुमति नहीं मिली — कैलेंडर काम करता है, बस Gui अभी Google समीक्षाओं का जवाब नहीं दे सकती।",
+    en: "The reviews permission wasn't granted — the calendar works, but your Google reviews can't be read or answered from here yet.",
+    pt: "A permissão das avaliações não foi concedida — a agenda funciona, mas suas avaliações do Google ainda não podem ser lidas nem respondidas por aqui.",
+    es: "El permiso de reseñas no fue concedido — la agenda funciona, pero tus reseñas de Google aún no se pueden leer ni responder desde aquí.",
+    hi: "समीक्षाओं की अनुमति नहीं मिली — कैलेंडर काम करता है, पर आपकी Google समीक्षाएँ अभी यहाँ से पढ़ी या जवाब नहीं दी जा सकतीं।",
   },
+  // (2026-09-30) O Google devolveu invalid_grant: o acesso foi revogado ou expirou. Antes isso
+  // aparecia como "conectado" aqui e "não conectado" na aba Google. Agora é dito com as letras.
+  reconsent: {
+    en: "Google access was revoked or has expired. Tap Reconnect and sign in to Google again — until then reviews can't be read or answered.",
+    pt: "O acesso ao Google foi revogado ou expirou. Toque em Reconectar e faça login no Google de novo — até lá as avaliações não podem ser lidas nem respondidas.",
+    es: "El acceso a Google fue revocado o expiró. Toca Reconectar e inicia sesión en Google otra vez — hasta entonces las reseñas no se pueden leer ni responder.",
+    hi: "Google की पहुँच रद्द या समाप्त हो गई है। फिर से जोड़ें पर टैप करें और Google में दोबारा साइन इन करें — तब तक समीक्षाएँ पढ़ी या जवाब नहीं दी जा सकतीं।",
+  },
+  st_reconsent: { en: "Reconnect needed", pt: "Precisa reconectar", es: "Hay que reconectar", hi: "फिर से जोड़ना ज़रूरी" },
   note_rev_pending: {
     en: "Reviews aren't part of this sign-in yet (the Business Profile API is still waiting on Google's per-project approval). The calendar half works today.",
     pt: "As avaliações ainda não entram neste login (a API do Perfil de Empresa aguarda a aprovação do Google por projeto). A metade da agenda já funciona hoje.",
@@ -95,6 +104,18 @@ const D = {
   back_partial: { en: "Google came back with only part of the permissions. Check the list below.", pt: "O Google voltou com só parte das permissões. Confira a lista abaixo.", es: "Google volvió con solo parte de los permisos. Revisa la lista abajo.", hi: "Google केवल कुछ अनुमतियों के साथ लौटा। नीचे की सूची देखें।" },
   back_err: { en: "Google returned an error:", pt: "O Google voltou com erro:", es: "Google devolvió un error:", hi: "Google ने त्रुटि लौटाई:" },
   disconnected: { en: "Disconnected ✓ — the credentials were deleted and the read-back proves it.", pt: "Desconectado ✓ — as credenciais foram apagadas e a releitura prova.", es: "Desconectado ✓ — las credenciales fueron borradas y la relectura lo prueba.", hi: "डिस्कनेक्ट ✓ — क्रेडेंशियल हटा दिए गए और पुनः-पढ़ाई यह साबित करती है।" },
+  // ── o que a CLIENTE lê quando algo falha (2026-09-28) ──
+  // No cockpit do cliente esta peça imprimia o motivo CRU: "resposta inválida (http 502)",
+  // o `error` do servidor, a `note` de configuração ("as chaves do Google no servidor…"), o
+  // `reason` que o Google devolve na URL. Tudo texto de engenharia, parte em português, na tela
+  // de quem paga. No modo CLIENTE a frase sai daqui, pelo tipo da falha. No modo VENDEDOR (time
+  // interno, que precisa do detalhe para diagnosticar) o motivo cru continua aparecendo.
+  err_rede: { en: "I couldn't reach the server. Check your connection and try again.", pt: "Não consegui falar com o servidor. Confira sua conexão e tente de novo.", es: "No pude conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.", hi: "मैं सर्वर तक नहीं पहुँच सका। अपना कनेक्शन जाँचें और फिर कोशिश करें।" },
+  err_servidor: { en: "Something failed on our side. Nothing was changed — try again in a moment.", pt: "Algo falhou do nosso lado. Nada foi alterado — tente de novo em instantes.", es: "Algo falló de nuestro lado. No se cambió nada — inténtalo de nuevo en un momento.", hi: "हमारी तरफ़ कुछ गड़बड़ हुई। कुछ भी बदला नहीं गया — थोड़ी देर में फिर कोशिश करें।" },
+  err_chave: { en: "Your connection code didn't match. Check it in Settings, then try again.", pt: "O seu código de conexão não conferiu. Confira em Configurações e tente de novo.", es: "Tu código de conexión no coincidió. Revísalo en Configuración e inténtalo de nuevo.", hi: "आपका कनेक्शन कोड मेल नहीं खाया। सेटिंग्स में जाँचें, फिर कोशिश करें।" },
+  err_estranha: { en: "The server sent an answer I couldn't read. Try again in a moment.", pt: "O servidor mandou uma resposta que não consegui ler. Tente de novo em instantes.", es: "El servidor envió una respuesta que no pude leer. Inténtalo de nuevo en un momento.", hi: "सर्वर ने ऐसा उत्तर भेजा जिसे मैं पढ़ नहीं सका। थोड़ी देर में फिर कोशिश करें।" },
+  back_err_cliente: { en: "Google didn't finish the connection. Tap Connect to try again.", pt: "O Google não concluiu a conexão. Toque em Conectar para tentar de novo.", es: "Google no completó la conexión. Toca Conectar para intentarlo de nuevo.", hi: "Google ने कनेक्शन पूरा नहीं किया। फिर कोशिश करने के लिए कनेक्ट पर टैप करें।" },
+  not_configured_cliente: { en: "Google sign-in isn't switched on for your account yet — that step is on our side. Message our team and we'll turn it on.", pt: "O login do Google ainda não está ligado para a sua conta — esse passo é do nosso lado. Fale com a nossa equipe e a gente liga.", es: "El acceso con Google aún no está activado para tu cuenta — ese paso es de nuestro lado. Escríbele a nuestro equipo y lo activamos.", hi: "Google साइन-इन अभी आपके खाते के लिए चालू नहीं है — यह कदम हमारी तरफ़ का है। हमारी टीम को संदेश भेजें, हम चालू कर देंगे।" },
   // ── seller side ──
   seller_title: { en: "Connect the client's Google", pt: "Conectar o Google do cliente", es: "Conectar el Google del cliente", hi: "क्लाइंट का Google जोड़ें" },
   seller_sub: {
@@ -116,16 +137,19 @@ const D = {
 };
 const tx = (lang, k) => { const o = D[k] || {}; return o[lang] || o.en || ""; };
 
-// POST único. Devolve SEMPRE um objeto; `_err` carrega o motivo cru (nunca vira "não conectado").
+// POST único. Devolve SEMPRE um objeto; `_err` carrega o motivo cru (nunca vira "não conectado")
+// e `_tipo` diz QUAL frase a tela do cliente deve usar (err_rede | err_servidor | err_chave |
+// err_estranha). O cru é para o vendedor/diagnóstico; o tipo é para quem paga.
+const tipoDoHttp = (status) => (status === 401 || status === 403 ? "err_chave" : "err_servidor");
 async function post(url, body) {
   try {
     const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const d = await r.json().catch(() => null);
-    if (!d || typeof d !== "object") return { _err: `resposta inválida (http ${r.status})` };
-    if (d.error) return { _err: String(d.error).slice(0, 200) };
-    if (!r.ok) return { _err: `http ${r.status}` };
+    if (!d || typeof d !== "object") return { _err: `resposta inválida (http ${r.status})`, _tipo: r.ok ? "err_estranha" : tipoDoHttp(r.status) };
+    if (d.error) return { _err: String(d.error).slice(0, 200), _tipo: tipoDoHttp(r.status) };
+    if (!r.ok) return { _err: `http ${r.status}`, _tipo: tipoDoHttp(r.status) };
     return d;
-  } catch (e) { return { _err: String((e && e.message) || e).slice(0, 200) }; }
+  } catch (e) { return { _err: String((e && e.message) || e).slice(0, 200), _tipo: "err_rede" }; }
 }
 
 function Chip({ kind, label }) {
@@ -152,9 +176,12 @@ function Cap({ on, label }) {
    `auth` são os campos de identificação que vão em TODO POST:
      cliente  → { email, token }
      vendedor → { seller_email, seller_code, client_email }                                  */
-function GooglePanel({ lang = "pt", auth, focus = "calendar", mode = "client", flash = "" }) {
+function GooglePanel({ lang = "pt", auth, focus = "calendar", mode = "client", flash = "", needsReconsent = false }) {
   const [st, setSt] = useState(null);       // { configured, connected, scopes:{…} } lido do servidor
-  const [err, setErr] = useState("");       // motivo CRU da falha de leitura
+  const [err, setErrCru] = useState("");    // motivo CRU da falha de leitura (diagnóstico / vendedor)
+  const [errTipo, setErrTipo] = useState("err_servidor");   // qual frase a tela do CLIENTE mostra
+  const setErr = (cru, tipo) => { setErrCru(cru || ""); if (cru) setErrTipo(tipo || "err_servidor"); };
+  const ehCliente = mode !== "seller";
   const [busy, setBusy] = useState("");
   const [link, setLink] = useState("");     // URL de consentimento (modo vendedor)
   const [copied, setCopied] = useState(false);
@@ -171,7 +198,7 @@ function GooglePanel({ lang = "pt", auth, focus = "calendar", mode = "client", f
     if (!alive.current) return;
     setBusy("");
     if (!ready) { setSt(null); setErr(""); return; }
-    if (d._err) { setSt(null); setErr(d._err); return; }
+    if (d._err) { setSt(null); setErr(d._err, d._tipo); return; }
     setErr(""); setSt(d);
   }, [ready, authKey]);
 
@@ -182,7 +209,7 @@ function GooglePanel({ lang = "pt", auth, focus = "calendar", mode = "client", f
     const d = await post("/api/google-oauth-start", { ...auth, action: "start" });
     if (!alive.current) return;
     setBusy("");
-    if (d._err) { setErr(d._err); return; }
+    if (d._err) { setErr(d._err, d._tipo); return; }
     if (!d.ready || !d.url) { setSt((s) => ({ ...(s || {}), configured: false, note: d.note || "" })); return; }
     setLink(d.url);
     try { window.open(d.url, "_blank", "noopener"); setMsg(tx(lang, "opened")); } catch { /* popup bloqueado → o link fica na tela */ }
@@ -193,7 +220,7 @@ function GooglePanel({ lang = "pt", auth, focus = "calendar", mode = "client", f
     const d = await post("/api/google-oauth-start", { ...auth, action: "disconnect" });
     if (!alive.current) return;
     setBusy("");
-    if (d._err) { setErr(d._err); return; }
+    if (d._err) { setErr(d._err, d._tipo); return; }
     setMsg(tx(lang, "disconnected"));
     await load();
   };
@@ -212,6 +239,7 @@ function GooglePanel({ lang = "pt", auth, focus = "calendar", mode = "client", f
     : !st ? { kind: "off", label: tx(lang, "checking") }
     : !configured ? { kind: "off", label: tx(lang, "st_none") }
     : !connected ? { kind: "off", label: tx(lang, "st_off") }
+    : needsReconsent ? { kind: "err", label: tx(lang, "st_reconsent") }
     : cal && (rev || !revPossible) ? { kind: "on", label: tx(lang, "st_on") }
     : { kind: "partial", label: tx(lang, "st_partial") };
   const btnBase = "inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full px-5 text-[13px] font-bold";
@@ -234,21 +262,26 @@ function GooglePanel({ lang = "pt", auth, focus = "calendar", mode = "client", f
       {flash === "connected" && <p className="mt-3 rounded-xl px-3 py-2 text-[12px]" style={{ background: `${OK}18`, color: OK }}>{tx(lang, "back_ok")}</p>}
       {flash === "partial" && <p className="mt-3 rounded-xl px-3 py-2 text-[12px]" style={{ background: `${WARN}18`, color: WARN }}>{tx(lang, "back_partial")}</p>}
       {flash && flash !== "connected" && flash !== "partial" && (
-        <p className="mt-3 rounded-xl px-3 py-2 text-[12px]" style={{ background: `${BAD}18`, color: BAD }}>{tx(lang, "back_err")} {flash}</p>
+        <p className="mt-3 rounded-xl px-3 py-2 text-[12px]" style={{ background: `${BAD}18`, color: BAD }}>{ehCliente ? tx(lang, "back_err_cliente") : `${tx(lang, "back_err")} ${flash}`}</p>
       )}
 
       {/* ERRO DE LEITURA — motivo cru. Nunca "não conectado". */}
       {err && (
         <p className="mt-3 break-words rounded-xl px-3 py-2 text-[12px] font-semibold" style={{ background: `${BAD}18`, color: BAD }}>
-          {tx(lang, "st_err")}: {err}
+          {tx(lang, "st_err")}: {ehCliente ? tx(lang, errTipo) : err}
         </p>
       )}
 
       {/* HONESTO-INERTE — sem chave no ambiente, nada de botão que não faz nada */}
       {!err && !configured && (
         <p className="mt-3 rounded-xl px-3 py-2 text-[12px] leading-relaxed" style={{ background: `${WARN}14`, color: WARN }}>
-          {(st && st.note) || tx(lang, "not_configured")}
+          {ehCliente ? tx(lang, "not_configured_cliente") : ((st && st.note) || tx(lang, "not_configured"))}
         </p>
+      )}
+
+      {/* ACESSO REVOGADO — quem sabe é o /api/google-business (viu o invalid_grant); a aba Google repassa */}
+      {!err && configured && connected && needsReconsent && (
+        <p className="mt-3 rounded-xl px-3 py-2 text-[12px] font-semibold leading-relaxed" style={{ background: `${BAD}18`, color: BAD }}>⚠️ {tx(lang, "reconsent")}</p>
       )}
 
       {/* ESTADO REAL */}
@@ -327,10 +360,10 @@ function useFlash() {
 }
 
 /* ── LADO DO CLIENTE (cockpit) ───────────────────────────────────────────────────────────── */
-export function GoogleConnectCard({ lang = "pt", email = "", dataKey = "", focus = "calendar" }) {
+export function GoogleConnectCard({ lang = "pt", email = "", dataKey = "", focus = "calendar", needsReconsent = false }) {
   const flash = useFlash();
   if (!email || !dataKey) return null;   // demo/preview: sem tenant real não há o que conectar
-  return <GooglePanel lang={lang} focus={focus} mode="client" flash={flash} auth={{ email, token: dataKey }} />;
+  return <GooglePanel lang={lang} focus={focus} mode="client" flash={flash} needsReconsent={needsReconsent} auth={{ email, token: dataKey }} />;
 }
 
 /* ── LADO DO VENDEDOR (hub) ──────────────────────────────────────────────────────────────── */

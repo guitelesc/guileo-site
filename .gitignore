@@ -37,3 +37,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# chave da conta e2e-test para scripts/desk_smoke.py (nunca no git)
+scripts/.desk_e2e_key
+
+# cache de ferramentas locais (nunca no git)
+graphify-out/
+__pycache__/
+*.pyc

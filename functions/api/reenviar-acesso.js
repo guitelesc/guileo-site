@@ -46,7 +46,7 @@ export async function onRequestPost({ request, env }) {
 
     // A conta do cliente, com a chave. Lida aqui e usada aqui.
     const cr = await svcRpc(env, "client_access_for_resend", { p_secret: env.INGEST_SECRET || "", p_email: alvo });
-    if (!cr.ok) return json({ ok: false, motivo: `não consegui ler a conta (HTTP ${cr.status})` }, 502);
+    if (!cr.ok) return json({ ok: false, motivo: `não consegui ler a conta (HTTP ${cr.status})` }, 503);
     const c = await cr.json().catch(() => null);
     if (!c || c.ok !== true) return json({ ok: false, motivo: c?.motivo || "cliente não encontrado" }, 404);
 
@@ -71,10 +71,10 @@ export async function onRequestPost({ request, env }) {
     if (!mr.ok) {
       const detalhe = (await mr.text().catch(() => "")).slice(0, 200);
       await emitFailure(env, "reenvio_acesso_falhou", alvo, `Resend recusou o reenvio para ${alvo}: HTTP ${mr.status}`, { detalhe }).catch(() => {});
-      return json({ ok: false, motivo: `o e-mail não saiu (HTTP ${mr.status})`, detalhe }, 502);
+      return json({ ok: false, motivo: `o e-mail não saiu (HTTP ${mr.status})`, detalhe }, 503);
     }
     const env_id = (await mr.json().catch(() => ({})))?.id || null;
-    if (!env_id) return json({ ok: false, motivo: "a Resend aceitou mas não devolveu id — não dá para afirmar que saiu" }, 502);
+    if (!env_id) return json({ ok: false, motivo: "a Resend aceitou mas não devolveu id — não dá para afirmar que saiu" }, 503);
 
     // Devolve para QUEM foi e o id do envio. Nunca a chave.
     return json({ ok: true, enviado_para: alvo, negocio: c.negocio || null, envio_id: env_id });

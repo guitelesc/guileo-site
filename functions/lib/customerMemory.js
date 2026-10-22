@@ -112,6 +112,24 @@ export async function getCustomer(env, tenantEmail, contact, opts = {}) {
     if (r.ok) mem = await r.json().catch(() => null);
   } catch { /* honest degradation → treated as unknown below */ }
 
+  // MESMA RÉGUA DO TELEFONE (2026-09-30). `customer_memory_get` (v1) casa o número só por
+  // igualdade; o CRM guarda o mesmo número em vários formatos ("12125550147", "+1212…", "212…").
+  // Medido: "+1 (212) 555-0147" contra um contato gravado como "12125550147" voltou desconhecido.
+  // `crm_caller_context` é o RPC que a LIGAÇÃO usa e já casa por variantes + cauda de 8 dígitos —
+  // então quem não foi achado pelo telefone é procurado por ele antes de virar "novo".
+  // db/customer_memory_v2.sql leva essa régua para dentro do próprio RPC; aplicado, este trecho
+  // simplesmente para de ser alcançado.
+  if (!(mem && mem.known) && phone) {
+    try {
+      const r = await rpc(env, "crm_caller_context", { p_secret: env.INGEST_SECRET || INGEST_FALLBACK, p_email: tenant, p_phone: phone });
+      const j = r.ok ? await r.json().catch(() => null) : null;
+      if (j && typeof j === "object" && j.name) {
+        mem = { known: true, id: null, name: j.name, lifecycle: "", visits_count: j.visits_count || 0, ltv_cents: 0,
+          no_shows: 0, channels: [], last_visit: j.last_visit || null, last_service: j.last_service || "", last_summary: j.summary || "" };
+      }
+    } catch { /* sem reconhecimento a pessoa é atendida como nova */ }
+  }
+
   if (mem && mem.known) {
     return {
       known: true,

@@ -14,6 +14,7 @@
 // intake_submissions_list). All INGEST-gated (env.INGEST_SECRET).
 // ─────────────────────────────────────────────────────────────────────────────
 import { json, sameOrigin, rateLimited } from "../lib/guard.js";
+import { avisarDono, TENANT_PLATAFORMA } from "../lib/avisarDono.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -27,6 +28,20 @@ export async function onRequestPost(context) {
     const b = await request.json().catch(() => ({}));
     const action = (b.action || "").toString();
     const ING = env.INGEST_SECRET || "";
+
+    // ── PUBLIC: a página /f/<id> lê nome e campos do formulário (2026-10-05) ──────────────────
+    // Faltava: o link que o dono compartilhava abria "página não encontrada". Só devolve o que o
+    // formulário mostra (nome, campos, nome do negócio) — nada da conta.
+    if (action === "get_form") {
+      if (await rateLimited(request, env, "intake-get", 60)) return json({ error: "too many requests" }, 429);
+      const formId = s(b.form_id);
+      if (!isUuid(formId)) return json({ error: "bad form_id" }, 400);
+      const r = await rpc("intake_form_public", { p_form_id: formId });
+      if (!r.ok) return json({ ok: false, error: "unavailable" }, 503);
+      const d = await r.json().catch(() => null);
+      if (!d || !d.ok) return json({ ok: false, error: "not_found" }, 404);
+      return json(d);
+    }
 
     // ── PUBLIC: a customer submits a filled form (no tenant auth; tenant derived from the form) ──
     if (action === "submit") {
@@ -42,7 +57,14 @@ export async function onRequestPost(context) {
       // keep the answers object small & sane (cap keys + value length)
       const answers = {};
       const src = b.answers && typeof b.answers === "object" ? b.answers : {};
-      Object.keys(src).slice(0, 40).forEach((k) => { answers[s(k, 60)] = s(src[k], 1000); });
+      Object.keys(src).slice(0, 60).forEach((k) => { if (k !== "signature" && k !== "signed_at") answers[s(k, 60)] = s(src[k], 1000); });
+      // ASSINATURA (2026-10-05): o corte de 1.000 caracteres destruía a imagem (uma assinatura PNG tem
+      // dezenas de milhares). Aceita só imagem PNG em base64, até ~90 KB, e grava a hora em que veio.
+      const sig = typeof src.signature === "string" ? src.signature : "";
+      if (sig && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(sig) && sig.length <= 90000) {
+        answers.signature = sig;
+        answers.signed_at = new Date().toISOString();
+      }
       const r = await rpc("intake_submit", { p_secret: ING, p_form_id: formId, p_contact: contact, p_answers: answers });
       if (!r.ok) {
         const t = await r.text().catch(() => "");
@@ -51,6 +73,16 @@ export async function onRequestPost(context) {
         return json({ ok: true, ready: false, note: "Paste db/capture_tools.sql in Supabase to activate intake forms." });
       }
       const sr = await r.json().catch(() => ({}));
+      // Formulário da PRÓPRIA Guileo (ex.: /natura-setup, o checklist que o cliente preenche para a
+      // implantação): avisa o Luis na hora. Cada envio é um aviso (semTrava) — não é alarme repetido.
+      if (sr && sr.tenant === TENANT_PLATAFORMA) {
+        context.waitUntil(avisarDono(env, {
+          kind: "formulario-cliente", semTrava: true, link: "/admin",
+          summary: `📋 Formulário recebido: ${contact.name || contact.email || "sem nome"}`,
+          detail: Object.entries(answers).slice(0, 60).map(([k, v]) => `${k}: ${v}`).join("\n").slice(0, 3000),
+          cliente: contact.email || contact.name || "",
+        }).catch(() => null));
+      }
       const leadPhone = (sr && sr.phone ? sr.phone : contact.phone || "").toString().trim();
 
       // ── SPEED-TO-LEAD — the moment a form is submitted with a phone, Gui calls the customer back
@@ -59,7 +91,10 @@ export async function onRequestPost(context) {
       //    posture as the marketplace speed-to-lead. Best-effort + waitUntil so the form still returns
       //    instantly. The KV brake shares ONE 50/day + 12h-per-phone budget with lead.js / marketplace.
       let calling = false;
-      if (leadPhone && env.ELEVENLABS_API_KEY && env.ELEVENLABS_PHONE_NUMBER_ID) {
+      // Formulário ASSINADO é ficha/termo de quem já é cliente (anamnese antes da massagem), não um
+      // pedido de contato: a IA não liga de volta para quem só assinou a ficha (2026-10-05).
+      const ehFichaAssinada = !!answers.signature;
+      if (leadPhone && !ehFichaAssinada && env.ELEVENLABS_API_KEY && env.ELEVENLABS_PHONE_NUMBER_ID) {
         try {
           let blocked = false;
           if (env.RATE_LIMIT) {
@@ -104,7 +139,9 @@ export async function onRequestPost(context) {
       const id = isUuid(b.id) ? s(b.id) : null;
       const name = s(b.name, 120) || "Formulário";
       const fields = Array.isArray(b.fields)
-        ? b.fields.slice(0, 30).map((f) => ({ key: s(f.key || f.label, 60), label: s(f.label || f.key, 120), type: s(f.type || "text", 20), required: !!f.required }))
+        // `options` (2026-10-05): sem ele, o campo de múltipla escolha virava caixa de texto na página pública.
+      ? b.fields.slice(0, 30).map((f) => ({ key: s(f.key || f.label, 60), label: s(f.label || f.key, 120), type: s(f.type || "text", 20), required: !!f.required,
+          ...(Array.isArray(f.options) ? { options: f.options.slice(0, 30).map((o) => s(o, 120).trim()).filter(Boolean) } : {}) }))
         : [];
       const active = b.active === undefined ? true : !!b.active;
       const r = await rpc("intake_form_upsert", { p_secret: ING, p_email: email, p_id: id, p_name: name, p_fields: fields, p_active: active });

@@ -31,6 +31,7 @@ import { useLang } from "../i18n.jsx";
 import { useSeo } from "../lib/seo.js";
 import { SEO_VERTICALS } from "../data/seoVerticals.js";
 import { trackLead, trackStartDemo } from "../lib/analytics.js";
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 
 const DIAL = [["🇺🇸", "+1"], ["🇧🇷", "+55"], ["🇵🇹", "+351"], ["🇪🇸", "+34"], ["🇬🇧", "+44"], ["🇲🇽", "+52"], ["🇦🇷", "+54"], ["🇮🇳", "+91"], ["🇦🇺", "+61"]];
 
@@ -79,7 +80,7 @@ const D_COPY = {
     doneT: "Gui is calling you now — pick up!", doneD: (b) => `And yes — it already knows it's answering for ${b}.`,
     webT: "Got your number ✓", webD: "Gui will ring you back in a moment.",
     panelCta: "See your business in the dashboard →",
-    panelSub: "Open the Growth Cockpit already set up for your business type.",
+    panelSub: `Open the ${NOME_DO_PAINEL} already set up for your business type.`,
     privacy: "No spam. One call to prove it works. Opt out anytime.",
     bridgeT: "So — did you like it? 🌱",
     bridgeD: (b) => `Gui can answer JUST like that for ${b}, starting today — plans from $149/mo, 30-day money-back.`,
@@ -95,7 +96,7 @@ const D_COPY = {
     doneT: "A Gui está te ligando agora — atende!", doneD: (b) => `E sim — ela já sabe que está atendendo pela ${b}.`,
     webT: "Recebemos seu número ✓", webD: "A Gui te liga de volta já já.",
     panelCta: "Veja seu negócio no painel →",
-    panelSub: "Abra o Growth Cockpit já configurado para o seu tipo de negócio.",
+    panelSub: `Abra a ${NOME_DO_PAINEL} já configurada para o seu tipo de negócio.`,
     privacy: "Sem spam. Uma ligação pra provar. Saia quando quiser.",
     bridgeT: "E aí, gostou? 🌱",
     bridgeD: (b) => `Ela pode atender ASSIM pela ${b} ainda hoje — planos a partir de $149/mês, 30 dias de garantia.`,
@@ -111,7 +112,7 @@ const D_COPY = {
     doneT: "Gui te está llamando ahora — ¡contesta!", doneD: (b) => `Y sí — ya sabe que está contestando por ${b}.`,
     webT: "Recibimos tu número ✓", webD: "Gui te llama de vuelta en un momento.",
     panelCta: "Ve tu negocio en el panel →",
-    panelSub: "Abre el Growth Cockpit ya configurado para tu tipo de negocio.",
+    panelSub: `Abre la ${NOME_DO_PAINEL} ya configurada para tu tipo de negocio.`,
     privacy: "Sin spam. Una llamada para probarlo. Sal cuando quieras.",
     bridgeT: "¿Y? ¿Te gustó? 🌱",
     bridgeD: (b) => `Gui puede contestar ASÍ por ${b} desde hoy — planes desde $149/mes, 30 días de garantía.`,
@@ -127,7 +128,7 @@ const D_COPY = {
     doneT: "Gui अभी आपको कॉल कर रही है — उठाएँ!", doneD: (b) => `और हाँ — उसे पहले से पता है कि वह ${b} के लिए जवाब दे रही है।`,
     webT: "आपका नंबर मिल गया ✓", webD: "Gui कुछ ही पलों में आपको कॉल करेगी।",
     panelCta: "डैशबोर्ड में अपना व्यवसाय देखें →",
-    panelSub: "आपके व्यवसाय के प्रकार के लिए पहले से सेट Growth Cockpit खोलें।",
+    panelSub: `आपके व्यवसाय के प्रकार के लिए पहले से सेट ${NOME_DO_PAINEL} खोलें।`,
     privacy: "कोई स्पैम नहीं। साबित करने के लिए एक कॉल। जब चाहें ऑप्ट-आउट करें।",
     bridgeT: "तो — कैसा लगा? 🌱",
     bridgeD: (b) => `Gui आज से ही ${b} के लिए ठीक ऐसे ही जवाब दे सकती है — प्लान $149/माह से, 30-दिन मनी-बैक।`,

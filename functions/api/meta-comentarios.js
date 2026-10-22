@@ -18,6 +18,7 @@
 // { ready:false, nota } em vez de 500. A tela mostra o motivo real, nunca uma lista vazia que
 // finge que está tudo certo (lista vazia é o disfarce favorito de erro neste projeto).
 import { json } from "../lib/guard.js";
+import { svcJson } from "../lib/sb.js";
 // A FONTE ÚNICA DE IDIOMA. Importar daqui (e não redigitar a lista) é o que impede este arquivo
 // de virar a QUARTA lista de idiomas do sistema — depois de LANGS_SPOKEN, do i18n da landing e
 // do dicionário do cockpit. Lista repetida diverge; a que diverge em silêncio é a pior.
@@ -85,6 +86,21 @@ export async function onRequestPost(context) {
 
     const action = (b.action || "").toString();
 
+    // ── AS MÉTRICAS DO GUILEO DIRECT (db/direct_metricas.sql) ──────────────────────────────────
+    // ⚠️ ERRO NÃO VIRA ZERO. Painel de funil cheio de zero porque a leitura falhou é o diagnóstico
+    // falso que este projeto já pagou cinco vezes num dia: o dono conclui "ninguém comenta" quando
+    // o certo era "não consegui ler". Falha volta como `metricas: null` + `metricas_erro`, e a tela
+    // diz isso com todas as letras.
+    const dias = [7, 30, 90].includes(Number(b.dias)) ? Number(b.dias) : 30;
+    async function lerMetricas() {
+      const m = await svcJson(env, "direct_metricas", { p_secret: segredo, p_email: email, p_dias: dias }).catch((e) => ({ ok: false, detalhe: String(e).slice(0, 120) }));
+      if (!m || typeof m !== "object" || m.ok === false || m.erro || !m.funil) {
+        return { metricas: null, metricas_erro: (m && (m.erro || m.detalhe || (m.erro_http && `HTTP ${m.erro_http}`))) || "resposta_estranha" };
+      }
+      return { metricas: m };
+    }
+    if (action === "metricas") return json({ ok: true, ready: true, dias, ...(await lerMetricas()) });
+
     // ── SALVAR ────────────────────────────────────────────────────────────────────────────────
     if (action === "salvar") {
       const c = (b.campanha && typeof b.campanha === "object") ? b.campanha : {};
@@ -145,7 +161,7 @@ export async function onRequestPost(context) {
       const s = await rpc("meta_comment_stats", { p_secret: segredo, p_email: email, p_dias: 30 });
       if (s.ok) stats = (await s.json().catch(() => ({}))) || {};
     } catch { /* estatística é extra, nunca derruba a lista */ }
-    return json({ ok: true, ready: true, campanhas: Array.isArray(campanhas) ? campanhas : [], stats });
+    return json({ ok: true, ready: true, campanhas: Array.isArray(campanhas) ? campanhas : [], stats, dias, ...(await lerMetricas()) });
   } catch (e) {
     return json({ ok: false, error: String(e).slice(0, 160) }, 500);
   }

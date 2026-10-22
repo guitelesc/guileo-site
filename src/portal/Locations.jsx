@@ -4,7 +4,8 @@
    same per-tenant gate (email + connection key) as special dates. Demo keeps samples. */
 import { useState, useEffect } from "react";
 import { FaLocationDot, FaPlus } from "react-icons/fa6";
-import { toast } from "../lib/portalApi.js";
+import { toast, chamarApi } from "../lib/portalApi.js";
+import FalhaDeLeitura, { fraseDaFalha } from "./FalhaDeLeitura.jsx";
 import { waLink } from "../data/contact.js";
 import { loadCreated, genLocations, pushCreated, Card, tr, MiniStats, Drawer } from "../pages/Portal.jsx";
 
@@ -22,32 +23,41 @@ function RealLocations({ email, dataKey }) {
   const [ready, setReady] = useState(true);   // false until db/multi_location.sql is pasted
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(null);     // null = form closed; {…} = add/edit form open
-  const call = async (payload) => {
-    try {
-      const r = await fetch("/api/agent-schedule", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, token: dataKey, ...payload }) });
-      return r.ok ? await r.json() : null;
-    } catch { return null; }
+  const [falha, setFalha] = useState(null);   // motivo da falha de LEITURA
+  // 🚨 (2026-09-28) `call` devolvia `null` em falha e o `load` lia null como "pronto, zero
+  // unidades": a dona de um spa com duas unidades via "No locations yet — add your first branch"
+  // e 0 agendamentos hoje. Pior, o convite era para CADASTRAR DE NOVO o que já existe.
+  const call = (payload) => chamarApi("/api/agent-schedule", { email, token: dataKey, ...payload });
+  const aplicar = (r) => {
+    if (r.motivo) { setFalha(r.motivo); setLocs([]); return; }
+    const d = r.data;
+    setFalha(null);
+    setReady(d.ready !== false);
+    if (Array.isArray(d.locations)) setLocs(d.locations.filter(Boolean));
+    else if (d.ready === false) setLocs([]);
+    else { setFalha("resposta_estranha"); setLocs([]); }
   };
-  const load = async () => {
-    const d = await call({ action: "loc_list" });
-    setReady(d ? d.ready !== false : true);
-    setLocs(Array.isArray(d?.locations) ? d.locations : []);
-  };
-  useEffect(() => { let alive = true; call({ action: "loc_list" }).then((d) => { if (!alive) return; setReady(d ? d.ready !== false : true); setLocs(Array.isArray(d?.locations) ? d.locations : []); }); return () => { alive = false; }; }, [email, dataKey]); // eslint-disable-line
+  const load = async () => { setLocs(null); aplicar(await call({ action: "loc_list" })); };
+  useEffect(() => { let alive = true; setLocs(null); call({ action: "loc_list" }).then((r) => { if (alive) aplicar(r); }); return () => { alive = false; }; }, [email, dataKey]); // eslint-disable-line
   const save = async () => {
     if (!form.id && !form.name.trim()) { toast(tr("Give the location a name first")); return; }
     setBusy(true);
-    const d = await call({ action: "loc_set", id: form.id || undefined, name: form.name, address: form.address, city: form.city, phone: form.phone, tz: form.tz });
+    const r = await call({ action: "loc_set", id: form.id || undefined, name: form.name, address: form.address, city: form.city, phone: form.phone, tz: form.tz });
     setBusy(false);
-    if (d?.ready === false) { setReady(false); toast(d.note || tr("Couldn't save — try again.")); return; }
+    if (r.motivo) { toast(`${tr("Couldn't save — try again.")} ${fraseDaFalha(r.motivo)}`); return; }
+    const d = r.data;
+    // a nota do servidor aqui é instrução de engenharia ("Paste db/…sql") — não vai pra tela
+    if (d?.ready === false) { setReady(false); toast(tr("Almost there — one activation step is pending on our side. Your locations will be saved as soon as it's live.")); return; }
     if (d?.ok) { toast(tr("Saved ✓ — your AI covers this location too")); setForm(null); load(); }
     else toast(d?.reason === "bad_tz" ? tr("That timezone isn't valid") : tr("Couldn't save — try again."));
   };
   const setActive = async (l, active) => {
     setBusy(true);
-    const d = await call({ action: "loc_set", id: l.id, active });
+    const r = await call({ action: "loc_set", id: l.id, active });
     setBusy(false);
-    if (d?.ok) { toast(active ? tr("Location reactivated ✓") : tr("Location deactivated ✓")); load(); }
+    const d = r.data;
+    if (r.motivo) toast(`${tr("Couldn't save — try again.")} ${fraseDaFalha(r.motivo)}`);
+    else if (d?.ok) { toast(active ? tr("Location reactivated ✓") : tr("Location deactivated ✓")); load(); }
     else toast(d?.reason === "last_location" ? tr("You need at least one active location") : tr("Couldn't save — try again."));
   };
   const act = (locs || []).filter((l) => l.active);
@@ -59,10 +69,15 @@ function RealLocations({ email, dataKey }) {
           <button onClick={() => setForm({ ...EMPTY_FORM })} className="btn-bright text-sm inline-flex items-center gap-2"><FaPlus size={11} /> {tr("Add location")}</button>
         </div>
       </Card>
-      {!ready && (
+      {falha && <FalhaDeLeitura motivo={falha} onRetry={load} titulo={tr("I couldn't load your locations just now.")} />}
+      {locs === null && <Card><div className="h-20 rounded-xl2 bg-white/[0.03] animate-pulse" /></Card>}
+      {!ready && !falha && (
         <Card><div className="text-xs text-g-muted">{tr("Almost there — one activation step is pending on our side. Your locations will be saved as soon as it's live.")}</div></Card>
       )}
-      <MiniStats items={[[tr("Locations"), `${act.length}`], [tr("Booked today"), `${act.reduce((s, l) => s + (l.today || 0), 0)}`, "good"], [tr("Upcoming"), `${act.reduce((s, l) => s + (l.upcoming || 0), 0)}`, "good"]]} />
+      {/* sem leitura os três números viram "—": zero unidades é uma afirmação, e eu não li */}
+      <MiniStats items={(falha || locs === null)
+        ? [[tr("Locations"), "—"], [tr("Booked today"), "—"], [tr("Upcoming"), "—"]]
+        : [[tr("Locations"), `${act.length}`], [tr("Booked today"), `${act.reduce((s, l) => s + (l.today || 0), 0)}`, "good"], [tr("Upcoming"), `${act.reduce((s, l) => s + (l.upcoming || 0), 0)}`, "good"]]} />
       {form && (
         <Card className="border-g-gold/30">
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{form.id ? tr("Edit location") : tr("New location")}</div>
@@ -81,7 +96,7 @@ function RealLocations({ email, dataKey }) {
           </div>
         </Card>
       )}
-      {locs !== null && locs.length === 0 && ready && (
+      {locs !== null && locs.length === 0 && ready && !falha && (
         <Card><div className="text-xs text-g-muted">{tr("No locations yet — add your first branch above and your AI starts covering it.")}</div></Card>
       )}
       <div className="grid sm:grid-cols-2 gap-4">
@@ -122,7 +137,7 @@ function Locations({ V, real = null, email = "", dataKey = "" }) {
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaLocationDot className="text-g-green" /> {tr("Locations")}</div><div className="text-xs text-g-muted mt-0.5">{tr("One AI, every branch — calls, bookings and orders routed to the right location automatically.")}</div></div>
-          <button onClick={addLocation} className="btn-bright text-sm inline-flex items-center gap-2"><FaPlus size={11} /> Add location</button>
+          <button onClick={addLocation} className="btn-bright text-sm inline-flex items-center gap-2"><FaPlus size={11} /> {tr("Add location")}</button>
         </div>
       </Card>
       <MiniStats items={[["Locations", `${rows.length}`], ["Revenue (all)", `$${totalRev.toLocaleString()}`, "good"], ["Open now", `${rows.filter((r) => r.status !== "Onboarding").length}`, "good"], ["Today's volume", `${rows.reduce((s, r) => s + (r.today || 0), 0)}`]]} />

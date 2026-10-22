@@ -4,6 +4,7 @@
 //   https://guileoai.com/api/elevenlabs-webhook?secret=ELEVEN_WEBHOOK_SECRET
 // Each finished call lands as a `call` event (plus a `booking`/`sale` when the
 // analysis detects one) for the client identified by dynamic_variables.client_email.
+import { leituraDaLigacao } from "../lib/analiseDaLigacao.js";
 import { json, safeEq } from "../lib/guard.js";
 import { callAlertEmail, ownerAlertEmail } from "../lib/emailTemplates.js";
 import { sbKey, svcRpc, svcJson } from "../lib/sb.js";
@@ -13,6 +14,7 @@ import { sbKey, svcRpc, svcJson } from "../lib/sb.js";
 // código, para o dia em que o preço mudar não virar caça ao 5.
 const CREDITOS_POR_LIGACAO = 5;
 import { emitFailure } from "../lib/failure.js";
+import { registrar } from "../lib/registro.js";
 
 const isEmail = (s) => /.+@.+\..+/.test((s || "").toString());
 const fmtDur = (s) => s == null ? "" : (s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`);
@@ -40,42 +42,20 @@ async function logCall(env, row) {
   } catch { /* never block the webhook on the mirror */ }
 }
 
-// #6 — per-call sentiment + intent. Classifies the transcript with Claude Haiku (fast/cheap).
-// Turns every call into tone/intent data (the substrate for the Business Brain, H3).
-// CADEIA de modelos, não um só. A versão anterior chamava `claude-fable-5` e, em QUALQUER
-// falha (modelo indisponível pra chave, 429, erro de rede), devolvia null calado — foi por
-// isso que a 1ª ligação real da Natura ficou com sentiment/intent NULL e o painel do dono
-// não tinha leitura nenhuma da conversa. Agora tenta a cadeia e, se TODOS falharem, grita.
-const CLASSIFY_CHAIN = ["claude-fable-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"];
-async function classifyCall(env, transcript, email) {
-  if (!env.ANTHROPIC_API_KEY || !transcript || transcript.length < 20) return null;
-  let lastStatus = 0, lastDetail = "";
-  for (const model of CLASSIFY_CHAIN) {
+// #6 — humor + intenção + nota de cada ligação. Desde 2026-10-05 quem lê é a PRÓPRIA ElevenLabs, pelos
+// campos de análise do agente (lib/analiseDaLigacao.js) — sem Anthropic (proibida pelo Luis; e sem saldo
+// desde 03/10, quando toda ligação ficou sem humor e o alerta de cliente insatisfeita parou calado).
+// Ligação real com conversa e SEM os campos = agente sem configuração: avisa (uma falha por ligação, que o
+// painel agrupa), nunca inventa humor.
+async function classifyCall(env, analysis, transcript, email, agentId, extra = null) {
+  const r = leituraDaLigacao(analysis, extra);
+  if (r) return r;
+  if (transcript && transcript.length >= 20) {
     try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-        body: JSON.stringify({
-          model, max_tokens: 150,
-          messages: [{ role: "user", content: `Classify this phone call. Reply ONLY compact JSON, no prose: {"sentiment":"positive|neutral|negative","intent":"2-4 words","note":"one short line"}\n\nTRANSCRIPT:\n${transcript.slice(0, 6000)}` }],
-        }),
-      });
-      if (r.ok) {
-        const j = await r.json();
-        const m = (j?.content?.[0]?.text || "").match(/\{[\s\S]*\}/);
-        if (m) { try { return JSON.parse(m[0]); } catch { /* tenta o próximo modelo */ } }
-        lastStatus = 200; lastDetail = "resposta sem JSON";
-      } else {
-        lastStatus = r.status; lastDetail = (await r.text().catch(() => "")).slice(0, 160);
-        if (r.status === 401 || r.status === 402) break; // chave/saldo: outro modelo não resolve
-      }
-    } catch (e) { lastStatus = 0; lastDetail = String(e).slice(0, 120); }
+      await emitFailure(env, "call_classify_failed", email || "",
+        `A ligação chegou sem a leitura da ElevenLabs (humor/intenção): o agente ${agentId || "?"} está sem os campos de análise — reaplicar CAMPOS_DA_LIGACAO.`, { agent_id: agentId || null });
+    } catch { /* nunca bloqueia o webhook */ }
   }
-  // Falha TOTAL: sem isto o dono simplesmente não vê o humor das ligações e ninguém percebe.
-  try {
-    await emitFailure(env, "call_classify_failed", email || "",
-      `Não consegui classificar a ligação (${lastStatus}): ${lastDetail}`, { status: lastStatus });
-  } catch { /* nunca bloqueia o webhook */ }
   return null;
 }
 
@@ -169,15 +149,27 @@ export async function onRequestPost(context) {
     if (!email) email = (vars.client_email || "").toString().trim();
     if (!email) email = (env.OWNER_EMAIL || "smart@guileoai.com").toString();
 
-    const summary = d?.analysis?.transcript_summary || d?.analysis?.call_summary_title || "AI call completed";
+    // O resumo no idioma de quem ligou (campo "resumo" da análise) vem antes do resumo padrão, que é sempre em inglês.
+    const summary = leituraDaLigacao(d?.analysis)?.resumo || d?.analysis?.transcript_summary || d?.analysis?.call_summary_title || "AI call completed";
     const ok = d?.analysis?.call_successful;
     const dur = d?.metadata?.call_duration_secs;
+
+    // ── TEXTO PELO AGENTE NÃO É LIGAÇÃO (2026-09-09) ────────────────────────────────────────────
+    // Com o agente de voz virando o cérebro PRINCIPAL do texto (widget, WhatsApp, SMS), toda
+    // mensagem de chat passou a chegar aqui pelo mesmo webhook de fim-de-conversa — e este arquivo
+    // só conhecia ligação: gravava `call`, cobrava CREDITOS_POR_LIGACAO, abria contato de CRM com
+    // "quem ligou" e somava no custo de voz. Provado em produção no mesmo dia: 6 mensagens de teste
+    // viraram 6 "ligações" no feed do Natura — e teriam zerado o "silencioso há 12 dias" como se
+    // um cliente tivesse ligado. Medir a si mesmo, de novo.
+    // A marca vem do NOSSO servidor: `pelaVozDoCliente()` abre a conversa com `canal:"texto"`.
+    // Segunda pista, não forjável: chat não tem `metadata.phone_call` nem duração de áudio.
+    const ehTexto = String(vars.canal || "") === "texto" || (!d?.metadata?.phone_call && !dur);
 
     // #6 — classify sentiment + intent from the transcript (best-effort; never blocks the event)
     const tx = Array.isArray(d?.transcript)
       ? d.transcript.map((t) => `${t.role === "agent" ? "Gui" : "Customer"}: ${(t.message || "").trim()}`).filter((x) => x.length > 5).join("\n")
       : "";
-    const cls = await classifyCall(env, tx, email);
+    const cls = ehTexto ? leituraDaLigacao(d?.analysis, d) : await classifyCall(env, d?.analysis, tx, email, agentId, d);
     const mood = cls ? ({ positive: "😊", neutral: "😐", negative: "😞" }[cls.sentiment] || "") : "";
 
     // Compact, bounded transcript for the portal drawer: last 60 turns, role + text only.
@@ -233,6 +225,14 @@ export async function onRequestPost(context) {
       } catch { /* o alarme nunca pode derrubar a ingestão da ligação */ }
     }
 
+    // Chat: o widget/canal JÁ gravou o evento do visitante ("💬 Webchat lead…") — e `ingest_client_event`
+    // cobra 2 créditos por `message`. Gravar o resumo do agente aqui como segundo `message` dobrava o
+    // custo de cada turno (provado: −4 por pergunta). Então o chat NÃO grava nada aqui: fim de conversa
+    // de texto é só confirmação, nunca evento nem cobrança. O resumo vai na resposta do webhook (log).
+    if (ehTexto) {
+      return json({ ok: true, chat: true, conversation_id: convId, email, resumo: (summary || "").slice(0, 200),
+        note: "texto pelo agente: sem evento, sem crédito de ligação, sem custo de voz — o canal já registrou o lead" });
+    }
     await ingest(env, email, "call", "voice",
       `${mood ? mood + " " : ""}${summary}${dur ? ` · ${Math.round(dur)}s` : ""}${ok === "success" ? " ✓" : ""}`,
       0, {
@@ -315,6 +315,18 @@ export async function onRequestPost(context) {
           }
         } catch { /* never block the webhook */ }
       }
+    }
+
+    // REGISTRO (2026-09-28) — a ligação sai da plataforma pra onde o dono olha (planilha/ClickUp).
+    // Em segundo plano: a ElevenLabs não espera a planilha, e uma planilha lenta nunca derruba o log.
+    if (isEmail(email)) {
+      const quem = (vars.system__caller_id || vars.caller_id || vars.from || d?.metadata?.phone_call?.external_number || "").toString().trim();
+      const tarefa = registrar(env, { cliente: email, tipo: ehTexto ? "conversa_texto" : "ligacao", nome: (vars.caller_name || vars.customer_name || "").toString(),
+        telefone: quem, duracao_s: dur, sentimento: cls?.sentiment || "", resumo: `${summary}${cls?.intent ? ` [${cls.intent}]` : ""}`, canal: ehTexto ? "texto" : "voz", ref: `call:${convId}`, conversation_id: convId,
+        agente: (d?.agent_name || vars.agent_name || "Agent").toString(),
+        transcricao: (Array.isArray(d?.transcript) ? d.transcript : []).filter((t) => (t?.message || "").trim())
+          .map((t) => `${t.role === "agent" ? "Agent" : "Caller"}: ${(t.message || "").trim()}`).join("\n") });
+      if (context && typeof context.waitUntil === "function") context.waitUntil(tarefa); else await tarefa;
     }
 
     // XM (experience) — unify this call's sentiment into cx_signals, so the client's Experience tab

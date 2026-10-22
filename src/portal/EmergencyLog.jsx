@@ -6,33 +6,30 @@
 import { useState, useEffect } from "react";
 import { FaTriangleExclamation, FaPhoneVolume, FaCheck } from "react-icons/fa6";
 import { tr, Card, Empty, SectionSkeleton, UI_LANG, vnum } from "../pages/Portal.jsx";
+import { chamarApi, toast } from "../lib/portalApi.js";
+import FalhaDeLeitura, { fraseDaFalha } from "./FalhaDeLeitura.jsx";
 
 const AMBER = "#FFC23D";
 
-// Direct fetch — no portalApi import (self-contained, same gate contract as noshow-radar).
+// 🚨 (2026-09-28) FALHA ≠ "AQUECENDO" ≠ ZERO. As duas funções abaixo engoliam 401, 500 e rede
+// caída e devolviam `{ready:false, emergencies:[]}`. A tela então dizia "the emergency log is
+// warming up" e, no cabeçalho, "0 emergencies · 0 awaiting callback" — numa tela cujo único
+// trabalho é garantir que NENHUMA urgência passe despercebida. Um zero falso aqui é alguém com
+// cano estourado esperando uma ligação que o dono não sabe que deve.
+// Agora: {data, motivo}. "Aquecendo" só quando o servidor respondeu e disse ready:false.
 async function fetchEmergencies(key, email) {
-  if (!key) return { ready: false, pending: 0, emergencies: [] };
-  try {
-    const r = await fetch("/api/emergency", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: key, email: email || "" }),
-    });
-    if (!r.ok) return { ready: false, pending: 0, emergencies: [] };
-    const d = await r.json();
-    return { ready: !!d?.ready, pending: Number(d?.pending) || 0, emergencies: Array.isArray(d?.emergencies) ? d.emergencies : [] };
-  } catch { return { ready: false, pending: 0, emergencies: [] }; }
+  if (!key) return { data: null, motivo: "sem_credencial" };
+  const r = await chamarApi("/api/emergency", { token: key, email: email || "" });
+  if (r.motivo) return { data: null, motivo: r.motivo };
+  const d = r.data;
+  if (d.ready !== false && !Array.isArray(d.emergencies)) return { data: null, motivo: "resposta_estranha" };
+  return { data: { ready: !!d.ready, pending: Number(d.pending) || 0, emergencies: (Array.isArray(d.emergencies) ? d.emergencies : []).filter(Boolean) }, motivo: null };
 }
 async function markCalled(key, email, id) {
-  if (!key || !id) return { ok: false, called: false };
-  try {
-    const r = await fetch("/api/emergency", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: key, email: email || "", action: "mark_called", id }),
-    });
-    if (!r.ok) return { ok: false, called: false };
-    const d = await r.json();
-    return { ok: !!d?.ok, called: !!d?.called };
-  } catch { return { ok: false, called: false }; }
+  if (!key || !id) return { ok: false, called: false, motivo: "sem_credencial" };
+  const r = await chamarApi("/api/emergency", { token: key, email: email || "", action: "mark_called", id });
+  if (r.motivo) return { ok: false, called: false, motivo: r.motivo };
+  return { ok: !!r.data.ok, called: !!r.data.called, motivo: null };
 }
 
 const fmtWhen = (iso) => {
@@ -59,13 +56,21 @@ function EmergencyLog({ V, real = null, email = "", dataKey = "" }) {
   const [state, setState] = useState(null);   // null = fetch in flight (real mode)
   const [called, setCalled] = useState({});   // id → true (optimistic)
   const [busy, setBusy] = useState({});        // id → true while the call-back mark is in flight
+  const [falha, setFalha] = useState(null);    // motivo da falha de leitura
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     let alive = true;
-    if (real && email && dataKey) fetchEmergencies(dataKey, email).then((d) => { if (alive) setState(d); });
-    else if (real) setState({ ready: false, emergencies: [] });   // no key yet → honest "warming up", never an eternal skeleton
+    if (real && email && dataKey) {
+      setState(null); setFalha(null);
+      fetchEmergencies(dataKey, email).then((r) => {
+        if (!alive) return;
+        if (r.motivo) { setFalha(r.motivo); setState({ ready: false, emergencies: [] }); return; }
+        setState(r.data);
+      });
+    } else if (real) { setFalha("sem_credencial"); setState({ ready: false, emergencies: [] }); }   // sem chave: diz isso, nunca um esqueleto eterno
     return () => { alive = false; };
-  }, [real, email, dataKey]);
+  }, [real, email, dataKey, tentativa]);
 
   const demo = !real;
   const rows = demo ? genEmergencyDemo(V) : (state?.emergencies || []);
@@ -77,11 +82,17 @@ function EmergencyLog({ V, real = null, email = "", dataKey = "" }) {
     setCalled((c) => ({ ...c, [r.id]: true }));   // optimistic
     const res = await markCalled(dataKey, email, r.id);
     setBusy((b) => { const n = { ...b }; delete n[r.id]; return n; });
-    if (!(res.ok && res.called)) setCalled((c) => { const n = { ...c }; delete n[r.id]; return n; });   // revert on failure
+    if (!(res.ok && res.called)) {
+      // Reverter CALADO era o defeito: o ✓ aparecia, sumia, e a pessoa concluía que tinha marcado.
+      // A urgência continuava "aguardando retorno" no banco. Agora reverte e DIZ.
+      setCalled((c) => { const n = { ...c }; delete n[r.id]; return n; });
+      toast(`${tr("I couldn't save that you called back. It still shows as waiting — try again.")}${res.motivo ? ` ${fraseDaFalha(res.motivo)}` : ""}`);
+    }
   };
 
   // Real mode, fetch still in flight → skeleton (never a false "no emergencies").
   if (real && state === null) return <SectionSkeleton rows={4} />;
+  const semLeitura = !!(real && (falha || (state && !state.ready)));
 
   return (
     <div className="space-y-4 stagger">
@@ -94,7 +105,10 @@ function EmergencyLog({ V, real = null, email = "", dataKey = "" }) {
             : <span className="text-g-muted normal-case font-bold text-[9px] border border-white/10 rounded-full px-1.5 py-px">{tr("estimate")}</span>}
         </div>
         <div className="mt-1 text-xl font-black text-g-word">
-          {rows.length} {tr("emergencies")} · <span style={{ color: pending ? AMBER : "#3E9468" }}>{pending} {tr("awaiting callback")}</span>
+          {/* Sem leitura não há contagem: "—", nunca "0 emergencies". */}
+          {semLeitura
+            ? <span className="text-g-muted">— {tr("emergencies")} · — {tr("awaiting callback")}</span>
+            : <>{rows.length} {tr("emergencies")} · <span style={{ color: pending ? AMBER : "#3E9468" }}>{pending} {tr("awaiting callback")}</span></>}
         </div>
         <p className="mt-1 text-xs text-g-muted max-w-xl">{tr("When a caller has a real emergency, Gui rings your phone on the spot. Every one lands here so nothing slips through the night.")}</p>
       </div>
@@ -106,7 +120,9 @@ function EmergencyLog({ V, real = null, email = "", dataKey = "" }) {
       )}
 
       {/* Real mode but the log RPC isn't live yet → honest warming-up state, never a fake list */}
-      {real && state && !state.ready ? (
+      {real && falha ? (
+        <FalhaDeLeitura motivo={falha} onRetry={() => setTentativa((n) => n + 1)} titulo={tr("I couldn't load your emergency log just now.")} />
+      ) : real && state && !state.ready ? (
         <Card><Empty icon="📡" text={tr("The emergency log is warming up — it turns on the moment Gui is answering your calls.")} /></Card>
       ) : rows.length === 0 ? (
         <Card><Empty icon="🛟" text={tr("No emergencies — Gui rings your phone on the spot if one comes in.")} /></Card>

@@ -6,8 +6,20 @@
    (marketing_dates_list/set/delete RPCs, per-tenant gated by email+dataKey). The birthday config
    is the single row with kind:'birthday'. Demo mode: representative presets, actions disabled. */
 import { useState, useEffect } from "react";
-import { fetchMarketingDates, saveMarketingDate, deleteMarketingDate, toast } from "../lib/portalApi.js";
-import { tr, Card, SectionSkeleton, UI_LANG } from "../pages/Portal.jsx";
+import { saveMarketingDate, deleteMarketingDate, toast } from "../lib/portalApi.js";
+import { tr, Card, SectionSkeleton, RetryState, UI_LANG } from "../pages/Portal.jsx";
+
+// Leitura direta de /api/crm (action marketing_dates). `fetchMarketingDates` devolve
+// `{ready:false, dates:[]}` TAMBÉM quando a rede cai ou o servidor responde erro — e a tela
+// traduzia isso como "falta um passo de ativação do nosso lado". Aqui a falha vem marcada.
+async function lerDatas(dataKey, email) {
+  try {
+    const r = await fetch("/api/crm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "marketing_dates", token: dataKey, email: email || "" }) });
+    const d = r.ok ? await r.json().catch(() => null) : null;
+    if (!d || typeof d !== "object" || d.error || d.erro) return { falha: true, ready: false, dates: [] };
+    return { falha: false, ready: d.ready !== false, dates: Array.isArray(d.dates) ? d.dates : [] };
+  } catch { return { falha: true, ready: false, dates: [] }; }
+}
 
 const MONTHS = {
   en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
@@ -32,7 +44,7 @@ function demoDates() {
     { id: "d1", kind: "date", label: L === "pt" ? "Dia das Mães" : L === "es" ? "Día de la Madre" : "Mother's Day", month: 5, day: 11, message: L === "pt" ? "Feliz Dia das Mães! 💐 Reserve já a sua mesa." : "Happy Mother's Day! 💐 Book your table today.", offer: "-10%", active: true },
     { id: "d2", kind: "date", label: L === "pt" ? "Dia dos Namorados" : L === "es" ? "San Valentín" : "Valentine's Day", month: 2, day: 14, message: L === "pt" ? "Feliz Dia dos Namorados! ❤️ Faça uma surpresa." : "Happy Valentine's! ❤️ Make it special.", offer: "", active: true },
     { id: "d3", kind: "date", label: "Black Friday", month: 11, day: 28, message: L === "pt" ? "Black Friday chegou! 🖤 Ofertas só hoje." : "Black Friday is here! 🖤 Deals today only.", offer: "-25%", active: false },
-    { id: "d4", kind: "date", label: "Natal", month: 12, day: 25, message: L === "pt" ? "Feliz Natal! 🎄 Obrigado por estar com a gente." : "Merry Christmas! 🎄 Thank you for being with us.", offer: "", active: true },
+    { id: "d4", kind: "date", label: L === "pt" ? "Natal" : L === "es" ? "Navidad" : "Christmas", month: 12, day: 25, message: L === "pt" ? "Feliz Natal! 🎄 Obrigado por estar com a gente." : "Merry Christmas! 🎄 Thank you for being with us.", offer: "", active: true },
   ];
 }
 
@@ -44,26 +56,37 @@ function MarketingDates({ V, onNav, email = "", dataKey = "" }) {
   const [ready, setReady] = useState(true);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(emptyForm);
-  const [bday, setBday] = useState({ active: true, message: DEFAULT_BDAY[UI_LANG] || DEFAULT_BDAY.en });
+  // 🚨 O INTERRUPTOR NASCIA LIGADO (2026-09-28). `useState({ active: true })`: uma conta que nunca
+  // configurou aniversário via o interruptor VERDE sob o selo "LIVE — real data" — a tela afirmava
+  // que a Gui parabeniza os clientes, e nenhuma linha de aniversário existia no servidor. Nasce
+  // DESLIGADO, e só liga quando o servidor devolve a linha `kind:'birthday'` ativa. Sem essa
+  // linha (`configurado:false`) a tela diz que ainda não foi configurado.
+  const [bday, setBday] = useState({ active: false, configurado: false, message: DEFAULT_BDAY[UI_LANG] || DEFAULT_BDAY.en });
+  const [falha, setFalha] = useState(false);
 
   const hydrate = (list) => {
     const b = list.find((r) => r.kind === "birthday");
-    if (b) setBday({ active: b.active !== false, message: b.message || DEFAULT_BDAY[UI_LANG] || DEFAULT_BDAY.en });
+    if (b) setBday({ active: b.active === true, configurado: true, message: b.message || DEFAULT_BDAY[UI_LANG] || DEFAULT_BDAY.en });
+    else setBday((cur) => ({ ...cur, active: false, configurado: false }));
     setRows(list);
   };
 
   const load = async () => {
-    const d = await fetchMarketingDates(dataKey, email);
-    setReady(d.ready !== false);
-    hydrate(Array.isArray(d.dates) ? d.dates : []);
+    const d = await lerDatas(dataKey, email);
+    setFalha(d.falha);
+    if (d.falha) { setRows((cur) => cur || []); return; }   // mantém o que já estava lido
+    setReady(d.ready);
+    hydrate(d.dates);
   };
   useEffect(() => {
     let alive = true;
     if (demo) { hydrate(demoDates()); return () => { alive = false; }; }
     setRows(null);
-    fetchMarketingDates(dataKey, email).then((d) => { if (!alive) return; setReady(d.ready !== false); hydrate(Array.isArray(d.dates) ? d.dates : []); });
+    lerDatas(dataKey, email).then((d) => { if (!alive) return; setFalha(d.falha); if (d.falha) { setRows([]); return; } setReady(d.ready); hydrate(d.dates); });
     return () => { alive = false; };
   }, [demo, dataKey, email]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A nota do servidor (`res.note`) é recado de engenharia ("Paste db/….sql") — a tela usa a própria frase.
+  const FRASE_PENDENTE = "Almost there — one activation step is pending on our side. Your dates will be saved as soon as it's live.";
 
   const dateRows = (rows || []).filter((r) => r.kind !== "birthday");
 
@@ -73,7 +96,7 @@ function MarketingDates({ V, onNav, email = "", dataKey = "" }) {
     setBusy(true);
     const res = await saveMarketingDate(dataKey, email, { kind: "birthday", label: "Birthday", active: bday.active, message: bday.message });
     setBusy(false);
-    if (res.ready === false) { setReady(false); toast(res.note || tr("Couldn't save — try again.")); return; }
+    if (res.ready === false) { setReady(false); toast(tr(FRASE_PENDENTE)); return; }
     if (res.ok) { toast(tr("Saved ✓")); load(); } else toast(tr("Couldn't save — try again."));
   };
   // O interruptor decide se a Gui manda mensagem de aniversário para os clientes do cliente.
@@ -89,8 +112,11 @@ function MarketingDates({ V, onNav, email = "", dataKey = "" }) {
     if (res.ready === false || !res.ok) {
       setBday((b) => ({ ...b, active: prev }));          // volta: nada foi gravado
       if (res.ready === false) setReady(false);
-      toast(res.note || tr("Couldn't save — try again."));
+      toast(res.ready === false ? tr(FRASE_PENDENTE) : tr("Couldn't save — try again."));
+      return;
     }
+    setBday((b) => ({ ...b, configurado: true }));
+    toast(next ? tr("Birthday messages on ✓") : tr("Birthday messages off"));
   };
 
   // ── Commemorative dates (add / edit / remove) ──
@@ -102,14 +128,14 @@ function MarketingDates({ V, onNav, email = "", dataKey = "" }) {
     setBusy(true);
     const res = await saveMarketingDate(dataKey, email, { id: form.id || undefined, kind: "date", label: form.label.trim(), month: parseInt(form.month, 10) || 1, day: parseInt(form.day, 10) || 1, message: form.message.trim(), offer: form.offer.trim(), active: form.active });
     setBusy(false);
-    if (res.ready === false) { setReady(false); toast(res.note || tr("Couldn't save — try again.")); return; }
+    if (res.ready === false) { setReady(false); toast(tr(FRASE_PENDENTE)); return; }
     if (res.ok) { toast(tr("Saved ✓")); resetForm(); load(); } else toast(tr("Couldn't save — try again."));
   };
   const toggleDate = async (r, next) => {
     setRows((cur) => (cur || []).map((x) => (x.id === r.id ? { ...x, active: next } : x)));
     if (demo) { setRows((cur) => (cur || []).map((x) => (x.id === r.id ? { ...x, active: r.active } : x))); toast(tr("Sample data — connect your account to save.")); return; }
     const res = await saveMarketingDate(dataKey, email, { id: r.id, kind: "date", label: r.label, month: r.month, day: r.day, message: r.message, offer: r.offer, active: next });
-    if (res.ready === false) { setReady(false); toast(res.note || tr("Couldn't save — try again.")); }
+    if (res.ready === false) { setReady(false); setRows((cur) => (cur || []).map((x) => (x.id === r.id ? { ...x, active: r.active } : x))); toast(tr(FRASE_PENDENTE)); }
     else if (!res.ok) { toast(tr("Couldn't save — try again.")); load(); }
   };
   const removeDate = async (r) => {
@@ -121,6 +147,8 @@ function MarketingDates({ V, onNav, email = "", dataKey = "" }) {
   };
 
   if (!demo && rows === null) return <SectionSkeleton rows={5} />;
+  // leitura falhou e não há nada lido → "não consegui ler", nunca a tela vazia com selo de dado real
+  if (!demo && falha && (rows || []).length === 0) return <RetryState onRetry={() => { setRows(null); load(); }} />;
 
   return (
     <div className="space-y-4 stagger">
@@ -154,6 +182,7 @@ function MarketingDates({ V, onNav, email = "", dataKey = "" }) {
           <div className="flex-1">
             <div className="text-sm font-extrabold text-g-word">{tr("Birthday messages")}</div>
             <div className="text-[11px] text-g-muted">{tr("Gui wishes each customer a happy birthday automatically. Use {name} to insert their name.")}</div>
+            {!demo && !bday.configurado && <div className="text-[11px] font-bold text-g-gold mt-0.5">{tr("Not set up yet — turn it on to start.")}</div>}
           </div>
           <button onClick={() => toggleBirthday(!bday.active)}
             className={`relative h-6 w-11 rounded-full transition shrink-0 ${bday.active ? "bg-g-green/80" : "bg-white/15"}`} aria-pressed={bday.active} aria-label={tr("Birthday messages")}>
@@ -226,6 +255,8 @@ function MarketingDates({ V, onNav, email = "", dataKey = "" }) {
           </div>
         </div>
       </Card>
+      {/* 🌿 A volta no tempo certo de cada serviço (só com a conta conectada) */}
+      <ReturnCycles email={email} dataKey={dataKey} />
     </div>
   );
 }

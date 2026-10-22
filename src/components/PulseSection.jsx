@@ -138,7 +138,7 @@ export const PULSE_COPY = {
     ],
     price: "$49",
     per: "/mo · flat, all locations",
-    degrau: "Start here for $49 — and it becomes credit on your plan when you're ready.",
+    degrau: "Talk to us to add Pulse — $49/mo, flat, across every location.",
     ctaLine: "See your Pulse score — Gui calls you now.",
     placeholder: "Your phone number",
     cta: "Call me",
@@ -180,7 +180,7 @@ export const PULSE_COPY = {
     ],
     price: "US$ 49",
     per: "/mês · fixo, todas as unidades",
-    degrau: "Comece aqui por $49 — e ele vira crédito no seu plano quando você quiser subir.",
+    degrau: "Fale com a gente pra adicionar o Pulse — US$ 49/mês, fixo, em todas as unidades.",
     ctaLine: "Veja seu score Pulse — a Gui te liga agora.",
     placeholder: "Seu número de telefone",
     cta: "Me ligar",
@@ -221,7 +221,7 @@ export const PULSE_COPY = {
     ],
     price: "$49",
     per: "/mes · fijo, todos los locales",
-    degrau: "Empieza aquí por $49 — y se vuelve crédito en tu plan cuando quieras subir.",
+    degrau: "Habla con nosotros para agregar Pulse — $49/mes, fijo, en todos los locales.",
     ctaLine: "Ve tu score Pulse — Gui te llama ahora.",
     placeholder: "Tu número de teléfono",
     cta: "Llamarme",
@@ -262,7 +262,7 @@ export const PULSE_COPY = {
     ],
     price: "$49",
     per: "/माह · फ़्लैट, सभी लोकेशन",
-    degrau: "यहाँ से $49 में शुरू करें — और तैयार होने पर यह आपके प्लान में क्रेडिट बन जाता है।",
+    degrau: "Pulse जोड़ने के लिए हमसे बात करें — $49/माह, फ़्लैट, हर लोकेशन में।",
     ctaLine: "अपना Pulse स्कोर देखें — Gui अभी आपको कॉल करती है।",
     placeholder: "आपका फ़ोन नंबर",
     cta: "मुझे कॉल करें",
@@ -479,8 +479,15 @@ export default function PulseSection() {
               · o formulário próprio de "me liga"
             Três máquinas de decisão empilhadas antes do quadro de planos não somam — dividem.
             🚨 O QUE ENTRA NO LUGAR é a única linha que impede a inversão de desqualificar o
-            plano de $449: dizer que o $49 é CRÉDITO, não alternativa. Uma escada lida de baixo
-            para cima funciona; dois produtos lado a lado, não. */}
+            plano principal: dizer que o Pulse é complemento, não alternativa. Uma escada lida de
+            baixo para cima funciona; dois produtos lado a lado, não.
+            ⚠️ HONESTIDADE DO DEGRAU (2026-09-27): a frase dizia "comece aqui por $49 — e vira
+            crédito no seu plano". Não existe Payment Link do Pulse em nenhum lugar (não está em
+            selfServePlans.js nem em TOPUPS), e nenhum código credita compra de Pulse num plano —
+            era uma mecânica de billing que nunca foi construída. O único CTA vivo abaixo desta
+            linha é o link pra /pulse (nenhum form de cobrança). Corrigido para "fale com a gente" —
+            o preço ($49/mês) continua aparecendo no cartão acima porque é fato real; só a PROMESSA
+            de ação self-serve que não existe foi removida. */}
         <div className="mt-7 rounded-xl3 border border-white/10 bg-white/[0.035] px-5 py-4 text-center backdrop-blur-sm"
 >
           <p className="text-[14.5px] font-semibold leading-snug text-g-word">{G.degrau}</p>

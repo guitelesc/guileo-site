@@ -35,6 +35,7 @@ import SellerProcesso from "../components/SellerProcesso.jsx";
 import SellerCriativo from "../components/SellerCriativo.jsx";
 import SellerPitch from "../components/SellerPitch.jsx";
 import { ACTIVATION_STEPS, ACTIVATION_SECTORS, pickL } from "../data/activation.js";
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 
 // Shared hub-wide CSS: the AI-CTA glow (Gui orange #FF8A33, subtle pulse — cement design stays
 // intact) + the copilot typing dots. Injected once in the hub root.
@@ -236,19 +237,19 @@ const ACAD = {
   pt: {
     q5: ["Quantas ligações perde por dia?", "Quem responde o WhatsApp à noite?", "E quem pede orçamento e some?", "Quantos clientes ninguém chamou de volta?", "A $50–100 cada… quanto vaza por mês?"],
     obj: [["Sem tempo", "“15 min e a demo é a IA te ligando. Terça ou quarta?”"], ["Quanto custa?", "“Antes do preço, deixa eu mostrar — ela te liga agora?”"], ["IA irrita cliente", "“Ouve a demo. E tem humano supervisionando.”"], ["Já tenho recepcionista", "“Ela cobre o que a recepcionista não alcança: noite, domingo, 3 ligações juntas.”"], ["Vou pensar", "“O que precisaria ser verdade? Te mostro na demo. 30 dias de garantia.”"]],
-    plan: ["0-3 · perguntas (ele fala)", "3-5 · a frase", "5-9 · ⚡ GUI LIGA (silêncio!)", "9-12 · cockpit + a dor dele", "12-15 · orçamento + garantia"],
+    plan: ["0-3 · perguntas (ele fala)", "3-5 · a frase", "5-9 · ⚡ GUI LIGA (silêncio!)", `9-12 · ${NOME_DO_PAINEL} + a dor dele`, "12-15 · orçamento + garantia"],
     never: "Que a IA nunca erra · resultado exato em $ · entregar em menos de 7 dias",
   },
   en: {
     q5: ["How many calls do you miss per day?", "Who answers WhatsApp at night?", "What about quote-and-ghost people?", "How many customers never got a call back?", "At $50–100 each… how much leaks per month?"],
     obj: [["No time", "“15 min and the demo is the AI calling you. Tue or Wed?”"], ["How much?", "“Before price, let me show you — can she call you now?”"], ["AI annoys customers", "“Hear the demo. And a human supervises.”"], ["Have a receptionist", "“She covers what they can't: nights, Sunday, 3 calls at once.”"], ["I'll think", "“What would need to be true? I'll show you in the demo. 30-day guarantee.”"]],
-    plan: ["0-3 · questions (they talk)", "3-5 · the sentence", "5-9 · ⚡ GUI CALLS (silence!)", "9-12 · cockpit + their pain", "12-15 · quote + guarantee"],
+    plan: ["0-3 · questions (they talk)", "3-5 · the sentence", "5-9 · ⚡ GUI CALLS (silence!)", `9-12 · ${NOME_DO_PAINEL} + their pain`, "12-15 · quote + guarantee"],
     never: "That the AI never errs · exact $ results · delivering in under 7 days",
   },
   es: {
     q5: ["¿Cuántas llamadas pierdes por día?", "¿Quién responde el WhatsApp de noche?", "¿Y quién pide presupuesto y desaparece?", "¿A cuántos clientes nadie volvió a llamar?", "A $50–100 cada uno… ¿cuánto se fuga por mes?"],
     obj: [["Sin tiempo", "“15 min y la demo es la IA llamándote. ¿Martes o miércoles?”"], ["¿Cuánto cuesta?", "“Antes del precio, déjame mostrarte — ¿te llama ahora?”"], ["La IA molesta", "“Escucha la demo. Y un humano supervisa.”"], ["Ya tengo recepcionista", "“Cubre lo que ella no alcanza: noche, domingo, 3 llamadas a la vez.”"], ["Lo pensaré", "“¿Qué tendría que ser verdad? Te lo muestro en la demo. Garantía de 30 días.”"]],
-    plan: ["0-3 · preguntas (él habla)", "3-5 · la frase", "5-9 · ⚡ GUI LLAMA (¡silencio!)", "9-12 · cockpit + su dolor", "12-15 · presupuesto + garantía"],
+    plan: ["0-3 · preguntas (él habla)", "3-5 · la frase", "5-9 · ⚡ GUI LLAMA (¡silencio!)", `9-12 · ${NOME_DO_PAINEL} + su dolor`, "12-15 · presupuesto + garantía"],
     never: "Que la IA nunca falla · resultado exacto en $ · entregar en menos de 7 días",
   },
 };

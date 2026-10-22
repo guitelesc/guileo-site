@@ -268,7 +268,7 @@ export async function onRequestPost(context) {
         body: JSON.stringify({ token, ...body }),
       });
       const out = await pr.json().catch(() => ({}));
-      if (!pr.ok || out.error) return json({ error: out.error || `provision failed (${pr.status})`, steps: out.steps }, 502);
+      if (!pr.ok || out.error) return json({ error: out.error || `provision failed (${pr.status})`, steps: out.steps }, 503);
       // mark the draft live + persist what was born — incl. the connection_code, so the seller's
       // permanent wallet (action=wallet below) can show it forever (best-effort).
       try {

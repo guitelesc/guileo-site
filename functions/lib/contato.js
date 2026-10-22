@@ -29,8 +29,37 @@ const digitos = (s) => (s || "").toString().replace(/\D/g, "");
  * Avalia o contato que a agente capturou.
  * Devolve { ok, tipo, motivo } — `ok:false` significa PERGUNTE DE NOVO, nunca "descarte".
  */
+// NÚMERO FALADO → DÍGITOS (2026-09-28). Na ligação do Luis (conv_9201…) a Lilian mandou para a
+// agenda "nine two nine five three five zero one nine one" — exatamente como ouviu. A validação
+// contou 0 dígitos e recusou duas vezes; a cliente saiu sem horário. O modelo transcreve voz em
+// palavras com frequência, então quem converte é o servidor, nos três idiomas da casa.
+const PALAVRA_DIGITO = {
+  zero: "0", oh: "0", o: "0", one: "1", two: "2", to: "2", too: "2", three: "3", four: "4", for: "4", five: "5",
+  six: "6", seven: "7", eight: "8", nine: "9",
+  um: "1", uma: "1", dois: "2", duas: "2", tres: "3", "três": "3", quatro: "4", cinco: "5", seis: "6", meia: "6",
+  sete: "7", oito: "8", nove: "9",
+  cero: "0", uno: "1", dos: "2", cuatro: "4", siete: "7", ocho: "8", nueve: "9",
+};
+export function numeroFalado(bruto) {
+  const s = (bruto || "").toString();
+  if (s.includes("@")) return s;
+  const toks = s.toLowerCase().split(/[\s,.;:\-–—/]+/).filter(Boolean);
+  if (!toks.length) return s;
+  let saida = "", convertidos = 0, repetir = 1;
+  for (const t of toks) {
+    if (t === "double" || t === "duplo") { repetir = 2; continue; }
+    if (t === "triple" || t === "triplo") { repetir = 3; continue; }
+    if (/^\+?\d+$/.test(t)) { saida += t.replace(/^\+/, saida ? "" : "+"); repetir = 1; continue; }
+    const d = PALAVRA_DIGITO[t];
+    if (d) { saida += d.repeat(repetir); convertidos++; repetir = 1; continue; }
+    if (t === "plus" || t === "mais") { if (!saida) saida = "+"; continue; }
+    return s; // palavra que não é número → não é um telefone falado; devolve como veio
+  }
+  return convertidos ? saida : s;
+}
+
 export function avaliarContato(bruto) {
-  const s = (bruto || "").toString().trim();
+  const s = numeroFalado((bruto || "").toString().trim()).trim();
   if (!s) return { ok: false, tipo: "vazio", motivo: "nada foi capturado" };
 
   // E-MAIL: forma mínima. Ditar e-mail em voz alta erra muito ("L-U-I-S T-E-L-E-S c@gmail.com"
@@ -64,6 +93,32 @@ export function avaliarContato(bruto) {
   if (d.length === 11 && d.startsWith("1")) return { ok: true, tipo: "telefone_us" };
   // ESTE é o caso do GUI-42F0: 9 dígitos. Um a menos, e a linha não existe.
   return { ok: false, tipo: "telefone", motivo: `${d.length} dígitos — um telefone americano tem 10` };
+}
+
+// CONTATO DA LIGAÇÃO (2026-09-28): na 2ª ligação do Luis o agendamento GUI-439D gravou 929-525-0191
+// — o ouvido da agente trocou 535 por 525, e o número ditado era VÁLIDO (10 dígitos), então a regra
+// "BINA só quando o ditado quebra" não entrou. Numa ligação, o número de onde a pessoa liga veio da
+// operadora; o ditado veio de um ouvido. Telefone: vence o BINA. O ditado diferente não some — volta
+// em `ditado` para ir às notas (pode ser o celular de outra pessoa, de propósito). E-mail passa intacto.
+export function contatoDaLigacao(ditoBruto, binaBruto) {
+  const bina = (binaBruto || "").toString().trim();
+  const binaOk = bina && !bina.includes("{{") && avaliarContato(bina).ok ? bina : "";
+  let dito = numeroFalado((ditoBruto || "").toString().trim()).trim();
+  if (/caller_phone|caller_id|\{\{/i.test(dito)) dito = "";
+  if (!binaOk || dito.includes("@")) return { contato: dito || binaOk, ditado: "" };
+  const d = digitos(dito).replace(/^1(?=\d{10}$)/, "");
+  const b = digitos(binaOk).replace(/^1(?=\d{10}$)/, "");
+  return { contato: binaOk, ditado: d && d !== b ? dito : "" };
+}
+
+// E-MAIL FALADO (2026-09-28): na voz o modelo manda "luis at gmail dot com" ou "l u i s @ gmail . com".
+// Mesma lógica do número falado: quem conserta é o servidor. Só devolve se sair um e-mail válido.
+export function emailFalado(bruto) {
+  let s = (bruto || "").toString().trim().toLowerCase();
+  if (!s) return "";
+  s = s.replace(/\s+(at|arroba|arroba\s+de)\s+/g, "@").replace(/\s+(dot|ponto|punto)\s+/g, ".")
+    .replace(/\s*@\s*/g, "@").replace(/\s*\.\s*/g, ".").replace(/\s+(underscore)\s+/g, "_").replace(/\s+(dash|hífen|hifen)\s+/g, "-").replace(/\s+/g, "");
+  return /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)*\.[a-z]{2,}$/.test(s) ? s : "";
 }
 
 // A frase que a agente fala. Curta de propósito: no meio de um agendamento, um parágrafo de
@@ -104,4 +159,45 @@ export function paraE164(bruto) {
   if (d.length === 11 && d.startsWith("1")) return `+${d}`;
   // Qualquer outra coisa sem `+` é um palpite, e palpite aqui vira ligação para a pessoa errada.
   return null;
+}
+
+// ── PARA ONDE A GUI PODE LIGAR (2026-09-10) ──────────────────────────────────────────────────────
+// Entre 03 e 09/09 robôs preencheram os formulários do site com e-mails falsos e números de Israel
+// (+972 2…), e o speed-to-lead discou: 717 ligações de madrugada, 522 minutos a US$0,36, US$189 —
+// a conta Twilio zerou e foi SUSPENSA, derrubando o telefone de todos os clientes junto. É fraude
+// de tarifa internacional (IRSF): o golpista é dono do número caro e recebe parte do que pagamos.
+// O limite por IP não segurou porque os IPs giravam; o cooldown por destino não segurou porque cada
+// envio trazia um número diferente. A única trava que não dá pra girar é o DESTINO.
+// Liga-se só para onde a Guileo vende: EUA/Canadá (+1) e Brasil (+55). Dentro do +1 moram ilhas do
+// Caribe com tarifa internacional e os 900 de tarifa premium — os alvos clássicos do mesmo golpe.
+const NANP_FORA = new Set(["242", "246", "264", "268", "284", "345", "441", "473", "649", "658", "664",
+  "721", "758", "767", "784", "809", "829", "849", "868", "869", "876", "900", "976"]);
+// `extraCsv` = env CALL_DDI_EXTRA ("+44,+351"): mercado novo liga no Cloudflare, sem deploy de código.
+export function destinoPermitido(e164, extraCsv = "") {
+  const s = (e164 || "").toString();
+  if (/^\+1\d{10}$/.test(s)) return NANP_FORA.has(s.slice(2, 5)) ? { ok: false, motivo: "nanp_internacional" } : { ok: true };
+  if (/^\+55\d{10,11}$/.test(s)) return { ok: true };
+  const extra = (extraCsv || "").split(",").map((x) => x.trim()).filter((x) => /^\+[2-9]\d{1,3}$/.test(x)); // 2–4 dígitos: "+9" abriria +972 junto
+  if (/^\+\d{8,15}$/.test(s) && extra.some((p) => s.startsWith(p))) return { ok: true };
+  return { ok: false, motivo: "pais_fora" };
+}
+
+// AS FORMAS DE UM MESMO CONTATO (CR-02, 2026-10-08). O agendamento guarda o contato do jeito que o
+// book gravou ("+19175550143"), e a busca (biz_find_appointments) compara texto EXATO. Na simulação
+// da ElevenLabs a agente mandou "+1 917 555 0143" — o mesmo número — e o find voltou vazio três
+// vezes; a cliente desistiu e foi escalada. Aqui o servidor tenta as formas plausíveis do MESMO
+// número (falado → dígitos, com e sem +1), na ordem, sem nunca inventar outro número.
+// E-mail volta só em minúsculas. Texto sem dígito nem @ ("the number they are calling from") → [].
+export function variantesDoContato(bruto) {
+  const s = (bruto || "").toString().trim();
+  if (!s) return [];
+  if (s.includes("@")) { const e = (emailFalado(s) || s).toLowerCase(); return [...new Set([e, s])]; }
+  const falado = numeroFalado(s).trim();
+  const d = digitos(falado);
+  if (d.length < 7) return [];
+  const out = [s, falado, falado.startsWith("+") ? `+${d}` : ""];
+  if (d.length === 10) out.push(`+1${d}`, d);
+  if (d.length === 11 && d.startsWith("1")) out.push(`+${d}`, d.slice(1), d);
+  if (d.length > 11 || (d.length === 11 && !d.startsWith("1"))) out.push(`+${d}`, d);
+  return [...new Set(out.filter(Boolean))];
 }

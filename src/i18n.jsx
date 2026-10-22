@@ -1,9 +1,10 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { NOME_DO_PAINEL } from "./portal/nome.js";
 
 // ---- Translations (EN source · PT · ES · HI) ----
 export const T = {
   en: {
-    nav: { solutions:"Solutions", engine:"Engine", industries:"Industries", results:"Results", academy:"Academy", pricing:"Pricing", services:"Services", cta:"Get Started", cockpit:"Growth Cockpit", exp:"Experience" },
+    nav: { solutions:"Solutions", engine:"Engine", industries:"Industries", results:"Results", academy:"Academy", pricing:"Pricing", services:"Services", cta:"Get Started", cockpit:NOME_DO_PAINEL, exp:"Experience" },
     hero: { eyebrow:"✨ Guileo · intelligent solutions that solve whatever your business needs", h1a:"We bring the customers.", h1b:"The AI answers, books & sells.", h1c:"You grow.",
       sub_a:"Guileo is intelligent solutions for your business — whatever you need, we solve it: answering, booking, selling, collecting, automating and growing, across every channel, 24/7. It starts with Gui, your AI. ", sub_b:"Enter your number and Gui calls you", sub_c:" — hear it live, right now.",
       cta1:"Meet Gui — try it live →", cta2:"Talk to Gui now", b1:"📞 Gui, live now", b2:"📅 Books for you",
@@ -48,7 +49,11 @@ export const T = {
       ["What if the AI makes a mistake?","The agent is trained on your business and escalates to a human whenever needed. Calls are recorded; a human reviews flagged ones and steps in when needed. Voice quality is non-negotiable — if it ever sounds off, we fix it."],
       ["Is my data safe and compliant?","Yes. Multi-tenant isolation, encryption at rest and in transit, and a 3-tier consent model. We follow practices aligned with HIPAA, GDPR, LGPD, CCPA and PCI DSS; a BAA is available on request. Your customers stay yours."],
       ["How much does it cost?","Self-serve plans start at $149/mo with no setup fee — pay-as-you-go credits power every action Gui takes (roughly 5 credits per task). Tailored, done-for-you setups include a one-time setup fee. Either way you only pay for work done, never a percentage of your revenue. 30-day money-back guarantee."],
-      ["Do you only serve one industry?","No. Restaurants, clinics, salons, law firms, contractors, e-commerce and more — each gets a tailored agent on the same powerful platform."]] },
+      ["Do you only serve one industry?","No. Restaurants, clinics, salons, law firms, contractors, e-commerce and more — each gets a tailored agent on the same powerful platform."],
+      ["Who is responsible when Gui answers?","You are — and we make that safe. Gui only says what you approved: your prices, your services, your rules. A human supervises, every call is recorded and transcribed, and anything outside the script goes to a person."],
+      ["Can I listen to the calls?","Yes. Every call lands in your cockpit with the recording, the transcript and how the customer felt. You can read what Gui did on each one."],
+      ["Does it work with my calendar and tools?","Gui books into a real calendar and connects to the tools you already use (Google, WhatsApp, Instagram, Stripe, delivery apps). We wire it during the 7-day setup."],
+      ["What happens if I want to leave?","No lock-in. 30-day money-back on plans, month to month after that, and your customer data is yours — you can export it any time."]] },
     final: { h2:"Stop losing customers. Start tonight.", sub:"Live in under 7 days · 30-day money-back · talk to our AI right now.", wa:"💬 Start on WhatsApp", demo:"📅 Book a demo" },
     manifesto: { quote:"Imagine your business selling, booking and growing — while you sleep.", tag:"We don't just imagine it. We build it for you." },
     footer: { tagline:"AI systems for business — voice agents, websites, apps and growth. We replace the chaos with automation that books, closes and grows. Work smart, grow faster, sleep better.", company:"Company", findus:"Find Us", solutions:"Solutions", svc:"Services & Pricing", academy:"Guileo Academy", faq:"FAQ" },
@@ -57,7 +62,7 @@ export const T = {
 
 // ---- Portuguese ----
 T.pt = {
-  nav:{ solutions:"Soluções", engine:"Motor", industries:"Setores", results:"Resultados", academy:"Academy", pricing:"Preços", services:"Serviços", cta:"Começar", cockpit:"Growth Cockpit", exp:"Experience" },
+  nav:{ solutions:"Soluções", engine:"Motor", industries:"Setores", results:"Resultados", academy:"Academy", pricing:"Preços", services:"Serviços", cta:"Começar", cockpit:NOME_DO_PAINEL, exp:"Experience" },
   hero:{ eyebrow:"✨ Guileo · soluções inteligentes que resolvem o que seu negócio precisar", h1a:"A gente traz os clientes.", h1b:"A AI atende, agenda e vende.", h1c:"Você cresce.",
     sub_a:"A Guileo é soluções inteligentes para o seu negócio — o que você precisar, a gente resolve: atende, agenda, vende, cobra, automatiza e faz crescer, em todos os canais, 24/7. Começa com a Gui, sua IA. ", sub_b:"Coloque seu número e a Gui te liga", sub_c:" — ouça ao vivo, agora.",
     cta1:"Conheça a Gui — teste ao vivo →", cta2:"Fale com a Gui agora", b1:"📞 Gui, ao vivo", b2:"📅 Agenda por você",
@@ -102,7 +107,11 @@ T.pt = {
     ["E se a IA errar?","A IA é treinada no seu negócio e passa pra um humano quando precisa. As ligações são gravadas; um humano revisa as sinalizadas e entra quando necessário. Qualidade de voz é inegociável — se soar mal, a gente corrige."],
     ["Meus dados estão seguros e em conformidade?","Sim. Isolamento multi-tenant, criptografia em repouso e em trânsito, e consentimento de 3 níveis. Seguimos práticas alinhadas a HIPAA, GDPR, LGPD, CCPA e PCI DSS; um BAA está disponível mediante solicitação. Seus clientes continuam seus."],
     ["Quanto custa?","Planos self-service começam em $149/mês, sem taxa de setup — créditos pré-pagos movem cada ação da Gui (cerca de 5 créditos por tarefa). Setups sob medida, feitos por nós, incluem uma taxa de setup única. De qualquer forma, você só paga pelo que a Gui faz, nunca um percentual do seu faturamento. Garantia de 30 dias."],
-    ["Vocês só atendem uma indústria?","Não. Restaurantes, clínicas, salões, advocacia, prestadores, e-commerce e mais — cada um ganha uma IA sob medida na mesma plataforma."]] },
+    ["Vocês só atendem uma indústria?","Não. Restaurantes, clínicas, salões, advocacia, prestadores, e-commerce e mais — cada um ganha uma IA sob medida na mesma plataforma."],
+      ["Quem responde quando a Gui atende?","Você — e a gente torna isso seguro. A Gui só diz o que você aprovou: seus preços, seus serviços, suas regras. Um humano supervisiona, toda ligação é gravada e transcrita, e o que sai do roteiro vai pra uma pessoa."],
+      ["Posso ouvir as ligações?","Pode. Toda ligação cai no seu cockpit com a gravação, a transcrição e como o cliente se sentiu. Você lê o que a Gui fez em cada uma."],
+      ["Funciona com a minha agenda e minhas ferramentas?","A Gui agenda numa agenda de verdade e se conecta ao que você já usa (Google, WhatsApp, Instagram, Stripe, apps de delivery). A gente liga tudo nos 7 dias de ativação."],
+      ["E se eu quiser sair?","Sem prisão. Garantia de 30 dias nos planos, mês a mês depois, e os dados dos seus clientes são seus — exporta quando quiser."]] },
   final:{ h2:"Pare de perder clientes. Comece hoje à noite.", sub:"No ar em menos de 7 dias · garantia de 30 dias · fale com nossa IA agora.", wa:"💬 Começar no WhatsApp", demo:"📅 Agendar demo" },
   manifesto:{ quote:"Imagine seu negócio vendendo, agendando e crescendo — enquanto você dorme.", tag:"A gente não só imagina. A gente constrói pra você." },
   footer:{ tagline:"Sistemas de IA para negócios — agentes de voz, sites, apps e crescimento. Trocamos o caos por automação que agenda, fecha e cresce. Trabalhe com inteligência, cresça mais rápido, durma melhor.", company:"Empresa", findus:"Onde Achar", solutions:"Soluções", svc:"Serviços & Preços", academy:"Guileo Academy", faq:"FAQ" },
@@ -110,7 +119,7 @@ T.pt = {
 
 // ---- Spanish ----
 T.es = {
-  nav:{ solutions:"Soluciones", engine:"Motor", industries:"Industrias", results:"Resultados", academy:"Academy", pricing:"Precios", services:"Servicios", cta:"Empezar", cockpit:"Growth Cockpit", exp:"Experience" },
+  nav:{ solutions:"Soluciones", engine:"Motor", industries:"Industrias", results:"Resultados", academy:"Academy", pricing:"Precios", services:"Servicios", cta:"Empezar", cockpit:NOME_DO_PAINEL, exp:"Experience" },
   hero:{ eyebrow:"✨ Guileo · soluciones inteligentes que resuelven lo que tu negocio necesite", h1a:"Nosotros traemos los clientes.", h1b:"La IA contesta, agenda y vende.", h1c:"Tú creces.",
     sub_a:"Guileo es soluciones inteligentes para tu negocio — lo que necesites, lo resolvemos: contesta, agenda, vende, cobra, automatiza y hace crecer, en cada canal, 24/7. Empieza con Gui, tu IA. ", sub_b:"Pon tu número y Gui te llama", sub_c:" — escúchalo en vivo, ahora.",
     cta1:"Conoce a Gui — pruébalo en vivo →", cta2:"Habla con Gui ahora", b1:"📞 Gui, en vivo", b2:"📅 Agenda por ti",
@@ -155,7 +164,11 @@ T.es = {
     ["¿Y si la IA se equivoca?","La IA se entrena en tu negocio y escala a un humano cuando hace falta. Las llamadas se graban; un humano revisa las marcadas e interviene cuando hace falta. La calidad de voz es innegociable — si suena mal, lo arreglamos."],
     ["¿Mis datos están seguros y en cumplimiento?","Sí. Aislamiento multi-tenant, cifrado en reposo y en tránsito, y consentimiento de 3 niveles. Seguimos prácticas alineadas con HIPAA, GDPR, LGPD, CCPA y PCI DSS; un BAA está disponible a pedido. Tus clientes siguen siendo tuyos."],
     ["¿Cuánto cuesta?","Los planes self-service arrancan en $149/mes, sin cargo de setup — créditos prepago impulsan cada acción de Gui (unos 5 créditos por tarea). Los setups a medida, hechos por nosotros, incluyen un cargo de setup único. En cualquier caso, solo pagas por lo que Gui hace, nunca un porcentaje de tus ingresos. Garantía de 30 días."],
-    ["¿Solo atienden una industria?","No. Restaurantes, clínicas, salones, despachos, contratistas, e-commerce y más — cada uno recibe una IA a medida en la misma plataforma."]] },
+    ["¿Solo atienden una industria?","No. Restaurantes, clínicas, salones, despachos, contratistas, e-commerce y más — cada uno recibe una IA a medida en la misma plataforma."],
+      ["¿Quién responde cuando Gui atiende?","Tú — y lo hacemos seguro. Gui solo dice lo que aprobaste: tus precios, tus servicios, tus reglas. Una persona supervisa, cada llamada se graba y transcribe, y lo que sale del guion va a una persona."],
+      ["¿Puedo escuchar las llamadas?","Sí. Cada llamada cae en tu cockpit con la grabación, la transcripción y cómo se sintió el cliente. Lees lo que hizo Gui en cada una."],
+      ["¿Funciona con mi agenda y mis herramientas?","Gui agenda en una agenda real y se conecta a lo que ya usas (Google, WhatsApp, Instagram, Stripe, apps de delivery). Lo conectamos en los 7 días de activación."],
+      ["¿Y si quiero irme?","Sin ataduras. Garantía de 30 días en los planes, mes a mes después, y los datos de tus clientes son tuyos — exportas cuando quieras."]] },
   final:{ h2:"Deja de perder clientes. Empieza esta noche.", sub:"En vivo en menos de 7 días · garantía de 30 días · habla con nuestra IA ahora.", wa:"💬 Empezar en WhatsApp", demo:"📅 Agendar demo" },
   manifesto:{ quote:"Imagina tu negocio vendiendo, agendando y creciendo — mientras duermes.", tag:"No solo lo imaginamos. Lo construimos para ti." },
   footer:{ tagline:"Sistemas de IA para negocios — agentes de voz, webs, apps y crecimiento. Cambiamos el caos por automatización que agenda, cierra y crece. Trabaja inteligente, crece más rápido, duerme mejor.", company:"Empresa", findus:"Encuéntranos", solutions:"Soluciones", svc:"Servicios y Precios", academy:"Guileo Academy", faq:"FAQ" },
@@ -163,11 +176,11 @@ T.es = {
 
 // ---- Hindi ----
 T.hi = {
-  nav:{ solutions:"समाधान", engine:"इंजन", industries:"उद्योग", results:"परिणाम", academy:"Academy", pricing:"मूल्य", services:"सेवाएँ", cta:"शुरू करें", cockpit:"Growth Cockpit", exp:"Experience" },
+  nav:{ solutions:"समाधान", engine:"इंजन", industries:"उद्योग", results:"परिणाम", academy:"Academy", pricing:"मूल्य", services:"सेवाएँ", cta:"शुरू करें", cockpit:NOME_DO_PAINEL, exp:"Experience" },
   hero:{ eyebrow:"✨ Guileo · बुद्धिमान समाधान जो आपके व्यवसाय की हर ज़रूरत हल करें", h1a:"ग्राहक हम लाते हैं।", h1b:"AI जवाब देती, बुक करती और बेचती है।", h1c:"आप बढ़ते हैं।",
     sub_a:"Guileo आपके व्यवसाय के लिए बुद्धिमान समाधान है — आपको जो भी चाहिए, हम हल करते हैं: जवाब देना, बुकिंग, बिक्री, वसूली, ऑटोमेशन और ग्रोथ, हर चैनल पर, 24/7। शुरुआत Gui से, आपकी AI। ", sub_b:"अपना नंबर डालें और Gui आपको कॉल करेगी", sub_c:" — अभी लाइव सुनिए।",
     cta1:"Gui को लाइव आज़माएँ →", cta2:"अभी Gui से बात करें", b1:"📞 Gui, लाइव", b2:"📅 आपके लिए बुकिंग",
-    method:["Performance","Sales","Growth"],
+    method:["परफ़ॉर्मेंस","बिक्री","ग्रोथ"],
     rotors:["आपकी कॉल उठाती है","अपॉइंटमेंट बुक करती है","कोटेशन भेजती है","फ़ॉलो-अप करती है","पेमेंट वसूलती है","आपके लिए बेचती है"],
     phCountry:"देश कोड", phPhone:"आपका फ़ोन (एरिया + नंबर)", phName:"आपका नाम", phBiz:"अपना व्यवसाय बताएँ (वैकल्पिक)",
     callBtn:"अभी कॉल करें — Gui को लाइव सुनें", callingBtn:"आपको कॉल कर रहे हैं…", callDone:"अभी आपको कॉल कर रहे हैं — उठाएँ! Gui लाइन पर है, लाइव।",
@@ -195,10 +208,13 @@ T.hi = {
   industries:{ eyebrow:"हम आपका व्यवसाय जानते हैं", h2:"आपके उद्योग के लिए बना", sub:"रात 9 बजे मरीज़ कॉल करता है। रविवार को ग्राहक कोटेशन चाहता है। कोई अभी टेबल चाहता है। आपकी AI तुरंत संभालती है।" },
   steps:{ eyebrow:"राजस्व तक 3 कदम", h2:"7 दिनों से कम में लाइव",
     items:[["🌰","बीज बोएँ","अपने लक्ष्य बताएँ। हम आपके राजस्व रिसाव ढूँढते हैं और पहले दिन से बिक्री लाने वाली AI डिज़ाइन करते हैं।"],["🌿","ग्रोथ को पोषें","हम 7 दिनों से कम में बनाकर लॉन्च करते हैं। आपकी AI 24/7 काम करती है — डील बंद करना, लागत घटाना, स्केल करना।"],["🌳","परिणाम काटें","मुनाफ़ा बढ़ता देखें। औसतन +286% परफ़ॉर्मेंस और 3x तेज़ बिक्री चक्र।"]] },
-  proof:{ eyebrow:"परिणाम, वादे नहीं", h2:"भरोसेमंद, प्रमाणित, अनुपालन-योग्य", poweredby:"तकनीक", compliant:"अनुपालन",
-    seals:[["🤝","असली इंसान की गारंटी","हमेशा एक असली व्यक्ति"],["🛡️","30-दिन मनी-बैक","ज़ीरो जोखिम"],["⚡","7 दिनों में लाइव","तेज़, बिना इंतज़ार"]],
-    sec_t:"सुरक्षा और सहमति अंतर्निहित", sec_d:"मल्टी-टेनेंट आइसोलेशन, हर जगह एन्क्रिप्शन, और पूर्ण ऑडिट के साथ 3-स्तरीय सहमति मॉडल। आपके ग्राहक आपके ही रहते हैं।",
-    ally_t:"हम आपके सहयोगी हैं, विक्रेता नहीं", ally_d:"मानव + AI सपोर्ट, 7 दिनों से कम में ऑनबोर्डिंग, लाइव डैशबोर्ड, और एक टीम जो घंटों में जवाब देती है — दिनों में नहीं।",
+  // hi.proof REESCRITO (2026-09-27) para dizer o MESMO que o inglês. A versão anterior afirmava
+  // "प्रमाणित" (certificado) e "ज़ीरो जोखिम" (risco zero) — duas coisas que o original nunca disse e
+  // que a casa não pode provar: seguimos práticas ALINHADAS aos padrões, não temos certificação.
+  proof:{ eyebrow:"प्रमाण इसी पेज पर है", h2:"हमारी बात पर मत जाइए — Gui ने अभी-अभी आपको जवाब दिया", poweredby:"उसी तकनीक पर बना जिस पर दिग्गज भरोसा करते हैं", compliant:"स्वतंत्र रूप से तय मानक, जिनका हम पालन करते हैं",
+    seals:[["🤝","फ़ाउंडर के साथ सेटअप","एक असली इंसान आपके साथ बनाता है"],["🛡️","30-दिन मनी-बैक","कभी भी रद्द करें, कोई बंधन नहीं"],["🔐","आपका डेटा आपका ही रहता है","एक्सपोर्ट करें, साथ ले जाएँ"]],
+    sec_t:"सुरक्षा और सहमति अंतर्निहित — जाँचने योग्य, सिर्फ़ दावे नहीं", sec_d:"मल्टी-टेनेंट आइसोलेशन, ट्रांज़िट और रेस्ट में एन्क्रिप्शन, और पूरे ऑडिट ट्रेल के साथ 3-स्तरीय सहमति मॉडल — Gui की हर कार्रवाई दर्ज होती है और देखी जा सकती है। आपके ग्राहक और आपका डेटा आपके ही रहते हैं।",
+    ally_t:"आपके साथ एक फ़ाउंडर बनाता है — बॉट नहीं, टिकट की कतार नहीं", ally_d:"यह ऐसा सेल्फ़-सर्विस टूल नहीं जिसे आपको अकेले समझना पड़े। एक असली इंसान आपका व्यवसाय समझता है, आपका सिस्टम डिज़ाइन करता है और उसे लागू करता है — फिर लाइव डैशबोर्ड के साथ आपके साथ रहता है और घंटों में जवाब देता है, दिनों में नहीं। काम AI करती है; उसके हर हिस्से के पीछे इंसान खड़े हैं।",
     testimonials:[] },
   pricing:{ eyebrow:"आपके हिसाब से मूल्य", h2:"कोई जेनेरिक प्लान नहीं। आपके व्यवसाय के लिए बना सिस्टम।", sub:"एक असली इंसान आपके व्यवसाय को समझता है और ठीक वही कोट करता है जो आपको चाहिए — एक सरल मासिक प्लान, क्रेडिट के साथ जो मापते हैं कि Gui आपके लिए क्या करती है। 30-दिन मनी-बैक।", cap1:"आपके पूरे स्टैक से जुड़ता है", cap2:"24/7 जवाब, कोई भी भाषा", cap3:"7 दिनों में लाइव", cap4:"30-दिन मनी-बैक" },
   academy:{ eyebrow:"Guileo Academy · मुफ़्त", h2:"व्यवसाय के पीछे के व्यवसाय को बढ़ाएँ", sub:"हर उस मालिक के लिए उद्यमिता, वित्त और निवेश जिनके साथ हम काम करते हैं — क्लिनिक, रेस्टोरेंट, सैलून, दुकानें और सेवाएँ। मुफ़्त गाइड जो आपको और तेज़ बनाएँ।", cta:"मालिक की मुफ़्त गाइड पाएँ →" },
@@ -208,7 +224,11 @@ T.hi = {
     ["अगर AI गलती करे तो?","AI आपके व्यवसाय पर ट्रेन होती है और ज़रूरत पड़ने पर इंसान को सौंप देती है। कॉल रिकॉर्ड होती हैं; इंसान फ़्लैग की गई कॉल की समीक्षा करता है और ज़रूरत पड़ने पर हस्तक्षेप करता है। वॉइस क्वालिटी पर समझौता नहीं — अगर कभी खराब लगे, हम ठीक करते हैं।"],
     ["क्या मेरा डेटा सुरक्षित और अनुपालन में है?","हाँ। मल्टी-टेनेंट आइसोलेशन, रेस्ट और ट्रांज़िट में एन्क्रिप्शन, और 3-स्तरीय सहमति। हम HIPAA, GDPR, LGPD, CCPA और PCI DSS के अनुरूप प्रथाओं का पालन करते हैं; अनुरोध पर BAA उपलब्ध है। आपके ग्राहक आपके ही रहते हैं।"],
     ["कीमत कितनी है?","सेल्फ-सर्व प्लान $149/माह से शुरू, कोई सेटअप शुल्क नहीं — पे-ऐज़-यू-गो क्रेडिट Gui की हर क्रिया को चलाते हैं (लगभग 5 क्रेडिट प्रति टास्क)। हमारे द्वारा तैयार किए गए कस्टम सेटअप में एक बार का सेटअप शुल्क शामिल होता है। किसी भी हाल में आप सिर्फ़ किए गए काम का भुगतान करते हैं, कभी अपने राजस्व का प्रतिशत नहीं। 30-दिन मनी-बैक।"],
-    ["क्या आप सिर्फ़ एक उद्योग की सेवा करते हैं?","नहीं। रेस्टोरेंट, क्लिनिक, सैलून, लॉ फ़र्म, ठेकेदार, ई-कॉमर्स और बहुत कुछ — हर एक को उसी शक्तिशाली प्लेटफ़ॉर्म पर अनुकूलित AI मिलती है।"]] },
+    ["क्या आप सिर्फ़ एक उद्योग की सेवा करते हैं?","नहीं। रेस्टोरेंट, क्लिनिक, सैलून, लॉ फ़र्म, ठेकेदार, ई-कॉमर्स और बहुत कुछ — हर एक को उसी शक्तिशाली प्लेटफ़ॉर्म पर अनुकूलित AI मिलती है।"],
+      ["जब Gui जवाब देती है तो ज़िम्मेदार कौन?","आप — और हम इसे सुरक्षित बनाते हैं। Gui सिर्फ़ वही कहती है जो आपने मंज़ूर किया: आपके दाम, सेवाएँ, नियम। इंसान निगरानी करता है, हर कॉल रिकॉर्ड और ट्रांसक्राइब होती है, और स्क्रिप्ट से बाहर की बात इंसान के पास जाती है।"],
+      ["क्या मैं कॉल सुन सकता हूँ?","हाँ। हर कॉल आपके कॉकपिट में रिकॉर्डिंग, ट्रांसक्रिप्ट और ग्राहक की भावना के साथ आती है। आप पढ़ सकते हैं Gui ने हर कॉल में क्या किया।"],
+      ["क्या यह मेरे कैलेंडर और टूल्स के साथ चलता है?","Gui असली कैलेंडर में बुक करती है और आपके मौजूदा टूल्स (Google, WhatsApp, Instagram, Stripe, डिलीवरी ऐप) से जुड़ती है। 7 दिन के सेटअप में हम सब जोड़ते हैं।"],
+      ["अगर मैं छोड़ना चाहूँ तो?","कोई बंधन नहीं। प्लान पर 30-दिन मनी-बैक, फिर महीने-दर-महीने, और आपके ग्राहकों का डेटा आपका है — कभी भी एक्सपोर्ट करें।"]] },
   final:{ h2:"ग्राहक खोना बंद करें। आज रात ही शुरू करें।", sub:"7 दिनों से कम में लाइव · 30-दिन मनी-बैक · अभी हमारी AI से बात करें।", wa:"💬 WhatsApp पर शुरू करें", demo:"📅 डेमो बुक करें" },
   manifesto:{ quote:"कल्पना कीजिए आपका व्यवसाय बेच रहा है, बुकिंग ले रहा है और बढ़ रहा है — जब आप सो रहे हैं।", tag:"हम सिर्फ़ कल्पना नहीं करते। हम इसे आपके लिए बनाते हैं।" },
   footer:{ tagline:"व्यवसाय के लिए AI सिस्टम — वॉइस एजेंट, वेबसाइट, ऐप और ग्रोथ। हम अराजकता को ऐसे ऑटोमेशन से बदलते हैं जो बुक करता, बंद करता और बढ़ाता है। स्मार्ट काम करें, तेज़ बढ़ें, चैन से सोएँ।", company:"कंपनी", findus:"हमें खोजें", solutions:"समाधान", svc:"सेवाएँ और मूल्य", academy:"Guileo Academy", faq:"FAQ" },

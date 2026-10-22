@@ -26,10 +26,8 @@
 // arquivo existe para não repetir. `ok:false` no JSON quando qualquer sonda não pôde ser lida.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 import { json, safeEq } from "../lib/guard.js";
-import { sbKey } from "../lib/sb.js";
-import { opsAlertEmail } from "../lib/emailTemplates.js";
+import { avisarDono } from "../lib/avisarDono.js";
 
-const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const API = "https://api.elevenlabs.io";
 const TIMEOUT_MS = 10000;
 
@@ -43,17 +41,7 @@ const JANELA_HORAS = 26;
 // (pay-link recusado), que é outro problema, com outro dono e outro alarme.
 const MARCA_PAGAMENTO = "payment issue";
 
-async function rpc(env, fn, args) {
-  try {
-    const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {
-      method: "POST",
-      headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ p_secret: env.INGEST_SECRET || "", ...args }),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    return r.ok ? await r.json() : null;
-  } catch { return null; }
-}
+// (o helper `rpc` local saiu junto com a cópia do e-mail: a trava e o feed agora vivem no avisarDono)
 
 const H = (env) => ({ "xi-api-key": env.ELEVENLABS_API_KEY || "" });
 
@@ -129,31 +117,20 @@ async function sondaLigacoesMortas(env) {
 // Balde de 6h por TIPO: o flagrante e o saldo baixo são problemas diferentes e não podem calar um
 // ao outro. Sem a trava, um saldo baixo persistente mandaria e-mail de hora em hora e treinaria o
 // dono a ignorar — que é como um alarme morre sem ninguém desligar.
+// (2026-09-09) A cópia local de "manda e-mail" virou `avisarDono`: mesma trava de 6h por tipo, e
+// agora feed + e-mail + WhatsApp com o recibo de cada canal em `out.aviso`. `out.email` continua
+// existindo (é o que o /admin lia) e reflete a resposta REAL da Resend, nunca "enviado" por fé.
 async function avisar(env, out, tipo, detalhe) {
-  if (!env.RESEND_API_KEY) { out.email = { enviado: false, motivo: "RESEND_API_KEY ausente" }; return; }
-  const OWNER = (env.OWNER_EMAIL || "smart@guileoai.com").toString().split(",")[0].trim();
-  const agora = new Date();
-  const balde = `${agora.toISOString().slice(0, 10)}-${Math.floor(agora.getUTCHours() / 6)}`;
-  const claimed = await rpc(env, "health_claim", { p_email: OWNER.toLowerCase(), p_kind: `voz_saldo_${tipo}_${balde}` });
-  if (claimed === null) { out.email = { enviado: false, motivo: "health_claims.sql não colado" }; out.alertReady = false; return; }
-  if (claimed !== true) { out.email = { enviado: false, motivo: "já avisado neste balde de 6h" }; return; }
-  try {
-    const { subject, html } = opsAlertEmail({
-      type: `voz_${tipo}`, client: "Guileo (conta de voz — afeta TODOS os clientes)", detail: detalhe,
-      cta: "Abrir a conta da ElevenLabs →", ctaUrl: "https://elevenlabs.io/app/subscription",
-    });
-    const r = await fetch("https://api.resend.com/emails", {
-      method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: OWNER, subject, html }),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    // Conferir o `ok`: alarme que a Resend recusou é o mesmo silêncio que este arquivo veio matar.
-    if (!r.ok) { out.email = { enviado: false, motivo: `resend HTTP ${r.status}` }; console.error(JSON.stringify({ voz_saldo_email: tipo, resend: r.status })); return; }
-    out.email = { enviado: true, tipo, para: OWNER };
-  } catch (e) {
-    out.email = { enviado: false, motivo: String(e).slice(0, 120) };
-    console.error(JSON.stringify({ voz_saldo_email: tipo, erro: String(e).slice(0, 120) }));
-  }
+  const r = await avisarDono(env, {
+    kind: `voz_${tipo}`, summary: detalhe, cliente: "Guileo (conta de voz — afeta TODOS os clientes)",
+    link: "https://elevenlabs.io/app/subscription",
+  });
+  out.aviso = r;
+  if (r.trava && /ilegível/.test(r.trava)) out.alertReady = false;
+  if (r.pulado) { out.email = { enviado: false, motivo: r.pulado }; return; }
+  out.email = r.email && r.email.ok
+    ? { enviado: true, tipo, para: r.email.para, id: r.email.id }
+    : { enviado: false, motivo: (r.email && r.email.motivo) || "sem resposta" };
 }
 
 async function run(request, env) {

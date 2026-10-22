@@ -19,8 +19,9 @@
    devolvia `[]` tanto para "nenhuma campanha" quanto para 401/erro de rede, e a tela
    dizia "Nenhuma campanha ainda" para quem só tinha perdido a sessão. */
 import { useState, useCallback, useEffect } from "react";
-import { fetchCrmCampaigns } from "../lib/portalApi.js";
-import { SectionSkeleton, RetryState, tr, DeptTabs, Card, Empty, UI_LANG } from "../pages/Portal.jsx";
+import { fetchCrmCampaignsDetalhado } from "../lib/portalApi.js";
+import { SectionSkeleton, tr, DeptTabs, Card, Empty, UI_LANG } from "../pages/Portal.jsx";
+import FalhaDeLeitura from "./FalhaDeLeitura.jsx";
 
 const t = (o) => o[UI_LANG] || o.en;
 
@@ -28,15 +29,20 @@ function MarketingDept({ V, onNav, email = "", dataKey = "" }) {
   const demo = !dataKey;
   const [campaigns, setCampaigns] = useState([]);
   const [state, setState] = useState(demo ? "ok" : "loading");
+  const [falha, setFalha] = useState(null);    // motivo da falha de leitura
   const [seg, setSeg] = useState(null);        // { key, label, count|null, err }
   const [counting, setCounting] = useState("");
   const load = useCallback(() => {
     setState("loading");
-    fetchCrmCampaigns(dataKey, email)
-      // `null` = a helper conseguiu distinguir falha (ver patch em portalApi.js no relatório).
-      // Enquanto ela devolver `[]` em falha, o pior caso continua sendo o de hoje — nunca pior.
-      .then((d) => { if (d === null) { setState("err"); return; } setCampaigns(d || []); setState("ok"); })
-      .catch(() => setState("err"));
+    // 🚨 (2026-09-28) O `if (d === null)` que morava aqui NUNCA era verdadeiro: o leitor antigo
+    // devolve `[]` em toda falha, então a promessa do cabeçalho deste arquivo ("distingue FALHA de
+    // VAZIO") não estava cumprida — 401 e wifi caído seguiam mostrando "No campaigns yet".
+    // O leitor detalhado devolve o motivo; agora o estado "err" é alcançável.
+    setFalha(null);
+    fetchCrmCampaignsDetalhado(dataKey, email).then((r) => {
+      if (r.motivo) { setFalha(r.motivo); setState("err"); return; }
+      setCampaigns((r.data || []).filter(Boolean)); setState("ok");
+    });
   }, [dataKey, email]);
   useEffect(() => {
     if (demo) {
@@ -67,7 +73,7 @@ function MarketingDept({ V, onNav, email = "", dataKey = "" }) {
   };
 
   if (state === "loading") return <SectionSkeleton />;
-  if (state === "err") return <RetryState onRetry={load} />;
+  if (state === "err") return <FalhaDeLeitura motivo={falha} onRetry={load} titulo={tr("I couldn't load your campaigns just now.")} />;
   const SEGMENTS = [["all", tr("Everyone")], ["lead", tr("Leads")], ["customer", tr("Customers")], ["vip", tr("VIPs")], ["lapsed", tr("Lapsed")], ["at_risk", tr("At risk")]];
   const chColor = (c) => c === "whatsapp" ? "#25D366" : c === "email" ? "#D6C29A" : "#3E9468";
   const stColor = (s) => s === "sent" ? "#3E9468" : s === "scheduled" ? "#D6C29A" : "#9AA0A6";

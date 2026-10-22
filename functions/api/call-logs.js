@@ -3,7 +3,8 @@
 // and the full transcript. Two-step, mirroring billing-portal's gate:
 //   1) validate email+key via get_client_data on the legacy data project (rejects a mismatch)
 //   2) read the analysis+transcript from call_logs in the OWNED project (gated by SCHED_SECRET)
-import { json } from "../lib/guard.js";
+import { json, rateLimited } from "../lib/guard.js";
+import { svcJson } from "../lib/sb.js";
 
 // legacy data project — used ONLY to validate the connection key (same gate as fetchRealData)
 const DATA_SB = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -40,6 +41,22 @@ export async function onRequestPost(context) {
   if (!env.SCHED_SECRET) return json({ calls: [], nao_deu_pra_ler: true, motivo: "sem SCHED_SECRET neste ambiente" });
 
   if (!(await validClient(email, key))) return json({ error: "unauthorized" }, 401);
+
+  // ── OUVIR A LIGAÇÃO (2026-09-28) — { email, key, audio: <id da linha> } → o MP3 da ElevenLabs.
+  // O id sozinho não autoriza: o banco só devolve o conversation_id se a ligação for DESTE e-mail
+  // (call_log_conv), e o e-mail acabou de ser validado com a chave. A chave da ElevenLabs nunca
+  // sai do servidor — o áudio passa por aqui. Sem gravação: diz que não há, não finge tocar.
+  if (body.audio) {
+    const id = String(body.audio);
+    if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ ok: false, motivo: "id inválido" }, 400);
+    if (await rateLimited(request, env, "call-audio", 30)) return json({ ok: false, motivo: "muitos pedidos — tente em 1 minuto" }, 429);
+    if (!env.ELEVENLABS_API_KEY) return json({ ok: false, motivo: "gravações indisponíveis neste ambiente" }, 503);
+    const conv = await svcJson(env, "call_log_conv", { p_secret: env.SCHED_SECRET, p_email: email, p_id: id }).catch(() => null);
+    if (!conv || typeof conv !== "string") return json({ ok: false, motivo: "ligação não encontrada nesta conta" }, 404);
+    const ar = await fetch(`https://api.elevenlabs.io/v1/convai/conversations/${encodeURIComponent(conv)}/audio`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+    if (!ar.ok) return json({ ok: false, motivo: ar.status === 404 ? "a gravação desta ligação não está disponível" : `o provedor de voz respondeu HTTP ${ar.status}` }, ar.status === 404 ? 404 : 503);
+    return new Response(ar.body, { headers: { "Content-Type": ar.headers.get("content-type") || "audio/mpeg", "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" } });
+  }
 
   try {
     const r = await fetch(`${SCHED_SB}/rest/v1/rpc/get_call_logs`, {

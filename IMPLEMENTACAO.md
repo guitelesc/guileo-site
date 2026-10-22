@@ -132,6 +132,16 @@ Depois: as 3 aparecem em `call_logs` do tenant (`select … from call_logs where
 **Prova:** token forjado → 401 · sem token na porta fechada → 401 · link assinado → 200 com o documento no idioma e na marca do tenant.
 **Arquivos:** `functions/api/encaminhar.js`, `functions/lib/sellerSession.js` (assinatura), RPCs `get_client_profile` / `draft_payload_for` / `client_number_lookup`. Referência visual do original à mão: `docs/encaminhamento-natura.html`.
 
+## ROTA-AVISO · provar que o alerta do dono chega (e-mail + WhatsApp)
+**Quando:** depois de trocar segredo do Twilio/Resend, cadastrar telefone do dono, ou toda vez que um alarme "não apareceu". **Como:** `curl -s -H "x-guileo-secret: <INGEST_SECRET>" https://guileoai.com/api/aviso-teste` → recibo por canal: `feed.id`, `email.id` (Resend), `whatsapp.ok/motivo`. Sem segredo → 401. **Telefone do dono:** `client_notify_phone_lookup('smart@guileoai.com')` (cadastro via `/api/notify-phone` na Central ou `set_client_notify_phone`). **Prova (2026-09-10):** feed ✓ e-mail ✓ WhatsApp `twilio http 401` = segredos TWILIO_* do Cloudflare apontando pra conta antiga — trocar com `wrangler pages secret put TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN/TWILIO_FROM` e repetir a rota. **Escada do WhatsApp (2026-09-10, "usa o que já tem"):** 1) Meta Cloud texto (só na janela de 24h) → 2) Meta Cloud template `OWNER_WA_TEMPLATE` (padrão `hello_world`) → 3) Twilio. A linha Cloud é a 1ª de `whatsapp_cloud_saude` (prefere `env≠test`; `OWNER_WA_TENANT` força). Motivos traduzidos: 131047 = fora da janela · 131030 = número não é destinatário de teste da Meta (Meta App → WhatsApp → API Setup → "To" → Manage list → adicionar + código) · 132001 = template inexistente. **Arquivos:** `functions/api/aviso-teste.js`, `functions/lib/avisarDono.js`, `functions/api/whatsapp-cloud.js`.
+
+## ROTA-LANCAR · marcar a entrada em operação de um cliente (esconde os testes de pré-lançamento)
+**Quando:** o cliente vai abrir a Central pela primeira vez e a conta tem teste NOSSO (ligações de prova, agendamentos "TESTE", leads 555). **O que faz:** grava `live_desde` no perfil; o painel passa a mostrar só o que aconteceu dali em diante. **Nada é apagado.**
+1. **Ligar:** `select set_client_profile('<INGEST>','<email>', jsonb_build_object('live_desde', to_char(now() at time zone 'utc','YYYY-MM-DD"T"HH24:MI:SS"Z"')));`
+2. **Provar:** `get_client_data` do tenant devolve `events: []`, `events_total: 0`, `identity.live_since`; `select count(*) from call_logs where client_email=…` continua com o total guardado.
+3. **Desfazer:** `update client_integrations set tokens = tokens - 'live_desde' where client_email='<email>' and provider='profile';`
+**Coberto:** feed de eventos, ligações, contatos do CRM, leads de hoje, experiência. **NÃO coberto (37 funções, lista em `db/live_desde.sql`):** agenda, negócios, caixa de entrada, receita, Company OS, follow-ups e as automações que escolhem destinatário. No Natura essas telas AINDA mostram teste (6 agendamentos, 3 negócios). As fontes `vivo_<tabela>(email)` já existem e estão provadas; falta trocar a fonte nas 37 leituras — decisão do Luis. **Ordem certa num cliente novo:** marcar `live_desde` ANTES de importar a base real dele; importação feita antes da data some junto com os testes. **Limite:** a data esconde o ANTES; teste feito DEPOIS aparece como dado real → depois do lançamento, teste no `e2e-test@guileoai.com` ou na linha de demonstração. **Arquivos:** `db/live_desde.sql`, RPC `tenant_live_desde`. **Primeiro uso:** Natura Spa, 2026-09-28 19:39Z.
+
 ## ROTA-MARKETPLACE · conectar Yelp/Angi/Thumbtack/Zillow/StreetEasy
 **Quando:** cliente de serviços/imóveis vive de marketplace. **Passos:** no cockpit `Leads Marketplace` copia a URL pessoal (`/api/marketplace-leads?email=…&key=…&source=…`) → cliente cria um Zap (novo lead por e-mail → POST nessa URL) OU encaminha os e-mails de lead. Lead chega → CRM → **Gui liga em 60s**. **Prova:** `mkt_lead_record(...)` → `mkt_leads_list` mostra o lead; segundo envio deduplica.
 
@@ -140,6 +150,7 @@ Depois: as 3 aparecem em `call_logs` do tenant (`select … from call_logs where
 
 ## ROTA-CUPOM · criar cupom/campanha branded
 **Quando:** cliente quer promoção. **Passos:** cockpit `Cupons & Campanhas` → botão de gerar rápido (BOGO/1+1/aniversário/%) → salvar → compor campanha (e-mail com logo/cor do cliente) → enviar/agendar. **Prova:** `coupon_upsert`→`coupon_validate`→`coupon_redeem` (atômico, tenant-bound).
+**No balcão (desk_v14, 2026-10-21):** o MESMO cupom vale no Caixa do Desk — campo "Cupom" nos totais. % e valor fixo: o servidor calcula e mostra antes de cobrar (`coupon_check`); BOGO/aniversário/indicação/brinde: a recepção digita quanto desconta e o uso conta igual. Vale-presente nunca leva desconto. Estorno devolve o uso. Fechamento mostra "Cupons usados". `firstvisit` hoje é só um % com rótulo — o caixa NÃO confere se é mesmo a 1ª visita (a recepção vê o rótulo).
 
 ## ROTA-DATAS · aniversário + datas comemorativas automáticas
 **Quando:** ligar marketing sazonal. **Passos:** cockpit `Datas & Aniversários` (toggle aniversário + adicionar Dia das Mães/Natal/Black Friday com mensagem/oferta). Dispara sozinho via cron (`/api/proactive`). **Prova:** `marketing_dates_set`→`marketing_dates_today`; envio deduplicado por `marketing_date_claim`.
@@ -1047,3 +1058,136 @@ impossível por construção — e o direct que o comentário abre já é conver
 **Limite honesto:** conta de TERCEIRO só conecta com **Advanced Access** (App Review + verificação
 de empresa). Sem isso, só contas com papel no app (tester convidado que ACEITOU o convite dentro do
 Instagram). Publicar o app NÃO substitui isso.
+
+## ROTA-REVIEW-LINK · o link de avaliação do Google de cada cliente (e de cada unidade)
+**Quando:** cliente novo, ou o motor de avaliação acusa `semLinkReview`. **Por quê:** a Natura tinha
+`review_link = https://g.page/r/naturaspa/review` — parece do Google, cai na home do google.com. Link
+digitado à mão é palpite; o motor mandaria o cliente feliz pra lugar nenhum.
+1. Buscar (só leitura): `GET /api/review-link?q=<nome + endereço>` com `x-guileo-secret: INGEST` →
+   devolve nome/endereço/nota/nº de avaliações + `review_link` oficial (`search.google.com/local/writereview?placeid=…`).
+   Conferir nome e endereço batem com a unidade ANTES de gravar.
+2. Gravar ONDE O MOTOR LÊ: `client_integrations` (provider='profile').tokens → `review_link` (geral) e
+   `review_links` = `{ "<nome da unidade em biz_locations>": "<link>" }`. (Gravar só em
+   `client_profile_extras` NÃO chega no motor — o proactive lê `get_client_profile`.)
+3. Prova: `get_client_profile(INGEST, email)->>'review_link'` devolve o link novo; `curl -sL` no link não cai em google.com.
+O proactive escolhe o link da UNIDADE da visita (`biz_review_due` devolve `location`, db/review_due_unidade.sql)
+e cai no geral quando a unidade não tem. Natura (28/09): Astoria 4.7★/1.007 · UES Salon 4.8★/269 · UES Med Spa 4.6★/18.
+
+## ROTA-RELACIONAMENTO · volta no tempo certo, aniversário, relatório do mês, produto, gift card, transferência (2026-09-30)
+Tudo aqui só age no negócio que CONFIGUROU a peça. Sem configuração, o agente e os e-mails ficam idênticos.
+
+**A volta de cada serviço** (`db/relacionamento_fila.sql`, `functions/lib/cicloRetorno.js`)
+- Quando: o dono quer lembrar a cliente de voltar (facial 28 dias, Botox 90, consulta 0 = nunca).
+- Passos: Central → Dates & Birthdays → "Return reminders" → conferir os dias sugeridos → Save. Serviço sem número salvo NÃO manda lembrete.
+- Roda: `cron-tick` diário (13h/14h UTC) → `/api/proactive?apenas=relacionamento`. Um lembrete por visita, um por pessoa a cada 14 dias, nada para quem já tem horário futuro. Quem marcou por telefone entra (e-mail vem do CRM).
+- Prova num negócio só: `curl -X POST 'https://guileoai.com/api/proactive?apenas=relacionamento&so=<email>' -H "x-guileo-secret: $INGEST"` → `{voltas, aniversarios, naFila, semEmail…}`.
+
+**Aniversário**
+- A data vem da própria cliente: o e-mail de confirmação leva o link assinado `/api/aniversario` (só dia e mês).
+- Só sai parabéns se o dono LIGOU o botão em Dates & Birthdays; a mensagem e a oferta são as que ele escreveu. Sem oferta escrita, o e-mail não promete brinde.
+
+**Relatório mensal de valor** (`db/relatorio_mensal_fila.sql`)
+- Mês FECHADO, fuso do negócio, só do `live_desde` em diante. Sai nos dias 1–7 (`?apenas=relatorio-mensal`), e só para quem teve dinheiro recebido ou agendamento no mês.
+- Prova: `...?apenas=relatorio-mensal&so=<email>&agora=2026-11-01T14:00:00Z` com o cabeçalho INGEST.
+
+**Produtos de prateleira** (`db/produtos.sql`, `/api/produtos`, tela "Retail products")
+- O dono cadastra nome, preço e (opcional) estoque. Depois: `POST /api/sync-agent {email}` para a agente aprender a lista.
+- A agente RESERVA (`do_action` action=`product`) — a cliente paga no balcão. A reserva aparece em "Recent sales" com nome e contato; o balcão fecha como paga ou cancela (cancelar devolve ao estoque). Reserva não entra em receita.
+
+**Gift card**
+- Checkout de gift card / pacote / assinatura só funciona com o Stripe DO NEGÓCIO conectado (`lib/contaDoCliente.js`, cobrança de destino). Sem conta: recusa com `payments_not_connected`.
+- Para a agente oferecer: perfil `vende_gift_card: true` + sync. Sem Stripe conectado ela anota o pedido e avisa o dono; com Stripe, manda o link por e-mail.
+- ABERTO: depois do pagamento o cartão é emitido no painel, mas o código ainda não é enviado por e-mail à compradora.
+
+**Passar a ligação para uma pessoa** (`lib/vendasDaAgente.js`)
+- Perfil `transfer: [{ "label": "Astoria front desk", "phone": "+1…", "when": "the caller asks for a person at Astoria" }]` + sync.
+- 🚨 O número tem que ser uma linha DIRETA, que não encaminhe para a agente — senão a ligação volta para ela. O número da própria agente é recusado pelo código; um encaminhamento feito na operadora, não dá para detectar.
+- Prova: `/api/agente-config?agent_id=…&cru=1` tem `transfer_to_number` com o número. Teste de verdade só ligando.
+
+**Reconhecer pelo nome no chat** (`lib/identidadeChat.js`)
+- Número/e-mail digitado no chat do site → só o primeiro nome. WhatsApp/SMS (o canal garante o número) → contexto completo. Teto de 40 consultas por IP por dia.
+- PENDENTE de aplicar: `db/customer_memory_v2.sql` (mesma régua de telefone dentro do RPC). Hoje o código cobre pelo `crm_caller_context`.
+
+## ROTA-TEXTO · confirmação e lembrete por WhatsApp/SMS, e a conversa que continua (2026-09-30)
+Quem marca por telefone quase nunca dá e-mail. O caminho por texto está escrito e travado: sai sozinho no dia em que o canal for aprovado.
+
+**O que já funciona hoje**
+- WhatsApp, SMS, Instagram e Messenger lembram da conversa por 24h (`lib/conversa.js`). Antes cada mensagem chegava sem contexto.
+- `START` tira a pessoa da lista de não-contato (só o bloqueio que ela mesma criou com STOP). `HELP` responde quem é e como sair.
+- Resposta `C` / `confirm` / `yes` / `sim` ao lembrete marca o horário como confirmado (`biz_confirm_by_phone`, em `attributes.confirmed_at`).
+- A resposta do dono pela caixa de entrada sai do número do próprio negócio.
+
+**O que acende com a aprovação** (`lib/avisoPorTexto.js`)
+| Canal | O que liga | Onde |
+|---|---|---|
+| SMS | `SMS_A2P_APROVADO=1` no Cloudflare (+ redeploy) | depois da campanha A2P aprovada na Twilio |
+| WhatsApp do negócio | número conectado (`/admin` → WhatsApp) + nome do modelo aprovado nos tokens: `templates: { "book": "...", "hold": "...", "reminder": "..." }`, `template_lang: "en_US"` | depois da Meta aprovar os modelos |
+
+Ordem: WhatsApp (com modelo) → SMS. Travas em todos: número válido e de país atendido, fora da lista de STOP (se não der para conferir, NÃO manda), lembrete só entre 8h e 21h no fuso do negócio. Só transacional: confirmação, pré-reserva e lembrete. Campanha por texto não existe — falta o registro de consentimento.
+
+**Modelos para cadastrar na Meta** (categoria UTILITY; os parâmetros são sempre nesta ordem: {{1}} primeiro nome, {{2}} serviço, {{3}} data e hora, {{4}} unidade)
+- `appointment_confirmation`: "Hi {{1}}, your {{2}} is confirmed for {{3}} at {{4}}. Need to change it? Just reply to this message."
+- `appointment_request`: "Hi {{1}}, we received your request for {{2}} on {{3}} at {{4}}. Our team will confirm it with you."
+- `appointment_reminder`: "Hi {{1}}, a reminder of your {{2}} on {{3}} at {{4}}. Reply C to confirm, or tell us if you need to change it."
+
+**Prova sem Meta/Twilio** (só na conta de teste): `curl -X POST https://guileoai.com/api/canal-teste -H "x-guileo-secret: $INGEST" -H 'Content-Type: application/json' -d '{"channel":"whatsapp","from":"+12125550147","text":"..."}'` → a resposta volta no JSON; nada é enviado.
+
+**Aberto:** o botão "1/2" antigo (`booking_reply`) olha uma tabela que a agenda não usa mais; conectar Instagram/Facebook/WhatsApp ainda é só pelo `/admin` (o dono não consegue sozinho); consentimento de marketing por texto.
+
+## ROTA-LINHA · encaminhar a linha principal do negócio para a agente (2026-09-30)
+- **Ligar:** a linha do negócio encaminha para o número da agente (na operadora: `*72<número>` tudo, ou só sem-resposta/ocupado — varia por operadora; VoIP se faz no painel).
+- **Anotar:** `perfil.encaminhadas: ["+1718…"]` (as linhas que encaminham) + `POST /api/sync-agent`. Essas linhas ficam proibidas como destino de transferência — transferir para elas devolveria a ligação para a agente.
+- **Prova:** ligar do celular para a linha principal e ouvir a agente; a ligação aparece no registro com o número de quem ligou.
+- **Trava em produção:** se mesmo assim a agente ligar para si mesma (quem liga = o próprio número dela), o início da ligação é recusado (`ehLaco`, twilio-inbound.js) e a transferência falha de volta para o recado. Não cobre o caso em que a operadora repassa o número do cliente original — por isso a lista acima.
+- **Limite:** um número só atende as 3 unidades: a agente não sabe qual linha foi discada. Para saber, é um número por linha.
+
+## ROTA-DOMINIO · publicar o site do cliente no domínio DELE (2026-09-30)
+- **O que é:** `tenant_domains` (db/dominios.sql) + roteamento por host em `functions/_middleware.js` (`lib/dominio.js`). Host nosso (guileoai.com, www, *.pages.dev) não muda em nada.
+- **Ligar:** `select domain_set('<INGEST>','<email>','www.cliente.com','vitrine','<slug>', true, <indexable>, <pixel_meta|null>, <tag_google|null>);`
+- **Prova antes do DNS:** `curl https://guileoai.com/astoria -H "x-guileo-host: www.cliente.com" -H "x-guileo-secret: $INGEST"` → 200 com título, canonical no domínio do cliente e zero "guileo" no `<head>`; `/admin` → 404; sem o segredo → resposta normal da Guileo. (Linha nova leva até 1 min para valer.)
+- **Dia do go-live:** Pages → guileoai → Custom domains: `www.cliente.com` e o apex. DNS do cliente: `CNAME www → guileoai.pages.dev`; apex com ALIAS/flattening (ou redirecionamento para o www). Depois `indexable=true`.
+- **Natura:** linha `www.naturaspanyc.com` ativa e `indexable=false` (provada pelo gancho). Páginas: `/`, `/astoria`, `/upper-east-side`, `/med-spa-ues`.
+- **Pixel/tag do cliente:** vão na linha; só carregam com consentimento (`grantTenantConsent()`), e hoje nada concede — falta decidir o banner.
+- **Não verificado:** allowlist de domínio do widget de voz da ElevenLabs no domínio novo.
+
+## ROTA-GOOGLE-REVIEWS · avaliações do Google com várias fichas e aprovação (2026-09-30)
+- **Fluxo:** o cron (`review-responder.js`, de hora em hora) só RASCUNHA e avisa o dono por e-mail (`reviewDraftsEmail`). Publicar é ação do dono na tela Reputation/Google: editar → aprovar → publica. Nada sai sem aprovação, com qualquer configuração.
+- **Várias fichas:** o consentimento descobre todas as contas e fichas e casa cada uma com uma unidade (`biz_locations`) pelo endereço; ficha ambígua espera o dono confirmar (`map_locations`).
+- **Ligar:** `GOOGLE_BUSINESS_CLIENT_ID/SECRET` no Cloudflare (depois de o Google aprovar a API) → o dono conecta na tela Google.
+- **Não verificado contra a API real:** leitura por conta/ficha, `readMask`, verbo do updateReply (PUT), resposta de projeto não aprovado.
+
+## ROTA-MINDBODY · agenda externa (reescrita 2026-09-30)
+- **Estado:** `MINDBODY_API_KEY` já está no Cloudflare e a API responde. Natura: sites 767008 (Astoria) e 5734109 (UES) gravados, login RECUSADO (o site ainda não ativou o acesso) → segue no motor interno.
+- **Ativar:** Central → Connect calendar → MindBody: Site ID → "Get my activation link" (a dona aprova no MindBody) → conectar cada site → conferir o MAPA (serviço/unidade/profissional ↔ MindBody) → Save → Import customers.
+- **Só vira a agenda oficial com:** chave + login de todos os sites + mapa salvo. Meia configuração continua no motor interno.
+- **Volta do MindBody:** `cron-tick` → `/api/mindbody?sync=1` de hora em hora (cancelado/remarcado lá não recebe lembrete aqui).
+- **Prova:** `curl -X POST https://guileoai.com/api/mindbody -H "x-guileo-secret: $INGEST" -d '{"email":"<tenant>","action":"status"}'`.
+- **Não verificado contra a API real (9 pontos):** formato do header de autorização, parâmetros de paginação, busca de cliente por telefone, se `bookableitems` já desconta horário ocupado, códigos de erro de horário tomado, etc. Conferir no sandbox (site -99) antes da Natura.
+- **Aberto:** agendamento feito no balcão não é espelhado; a operação `recurring` ainda agenda no motor interno.
+
+## ROTA-DESK-VIRADA · tirar um cliente do MindBody e passar para o Guileo Desk
+**Quando:** a recepção vai começar a marcar no Balcão (Central → Operações → Balcão). **Nunca antes:** enquanto o balcão marca no MindBody, o motor da Guileo não enxerga essa agenda e o site/IA podem marcar por cima.
+1. **Importar** (Balcão → Importar): clientes (Mailing Lists) e agenda futura (Schedule at a Glance), simulação antes. Conferir saldo de vale e pacote ao centavo. Depois, **Clientes → "possíveis fichas duplicadas" → Revisar** (desk_v15): juntar a mesma cliente que veio com telefone numa ficha e e-mail na outra (dá para desfazer; nada muda de saldo).
+2. **Cadastro**: equipe com horário e comissão (Equipe e serviços), sinal por serviço (Natura: 25% arredondado, mín. US$ 20, serviços ≥ US$ 75 — feito em 2026-10-05), produtos e pacotes.
+3. **Stripe do negócio** ligado → o sinal passa a valer sozinho (IA manda o link depois de marcar; sem Stripe fica parado e calado).
+4. **Site**: Natura = `src/novo/NaturaSpa.jsx` → `AGENDA_GUILEO = true` e deploy; os botões "Book" passam a abrir `/agendar/natura-spa?local=<unidade>`. Prévia antes: `?agenda=guileo` na URL do site.
+5. **Prova**: marcar um horário pelo site (prévia) e ver o cartão no Balcão; ligar na linha e marcar um serviço com sinal; fechar uma conta no Caixa e ver o Fechamento.
+6. **Desligar o MindBody** só depois de um mês sem diferença, e antes do aviso de 30 dias do contrato dele.
+**Desfazer:** `AGENDA_GUILEO = false` + deploy devolve o site ao MindBody. Nada é apagado.
+
+## ROTA-DESK-SQL · aplicar SQL do Desk pelo SQL Editor (quando a sessão não tem o conector do Guileo)
+**Quando:** a sessão não tem o MCP do projeto `ynihodbknhjirkdogxby` (o `supabase-origem` é OUTRO projeto, `liqwwqfsvdalvuflwmvf` — nunca usar para o Guileo) e o Luis cola o SQL no SQL Editor.
+1. **Um arquivo por entrega**, idempotente, que termina num `select … as <nome>` que tem de devolver `true`. Remendo textual de função viva (`pg_get_functiondef` + `replace` + `execute`) que se reconhece e PARA com erro se não achar o texto — nada muda pela metade (o Editor roda tudo numa transação).
+2. **Trava no topo** quando o arquivo depende de versões anteriores (ex.: `desk_v14_cupom.sql` recusa rodar se o caixa no ar não tiver `_desk_pp_redeem`).
+3. **Teste antes num Postgres local descartável** (`initdb` no scratchpad, `LC_ALL=en_US.UTF-8`, socket curto em `/private/tmp/…`): aplica a versão que está no ar + o arquivo novo → a checagem dá `true`, rodar 2× dá `true`.
+4. **Prova** = arquivo `db/desk_vNN_*_prova.sql`: bloco `DO` na conta e2e que termina em `raise exception 'PROVA (desfeita): N/N ok …'` (nada fica gravado). Toda checagem é `if not coalesce((…), false) then raise` — `if not (x = y)` com x NULL dá NULL e o passo PASSA sem ter sido checado. Dentro de uma transação `now()` não anda: o que depende de ordem grava `clock_timestamp()`. **A prova roda SEMPRE numa aba separada, depois do arquivo principal dar `true`**: o SQL Editor roda a aba numa transação só, e o erro final da prova desfaria o arquivo junto (2026-10-22: "24/24" na tela e nada no banco). As provas têm trava: se a função principal foi criada na mesma execução (`pg_proc.xmin = pg_current_xact_id()`), param com "PROVA NÃO RODOU e NADA FOI APLICADO".
+**🚨 NUNCA rodar de novo um `desk_vN.sql` antigo inteiro.** Em 2026-10-21 o `desk_v2.sql` (05/10) foi colado de novo e trocou 7 funções vivas pela versão velha (caixa sem comissão por regra/pacote de 2 sessões, estorno, agenda, catálogo, ficha, serviço, equipe). Volta: `db/desk_restaura_pos_v2.sql` (reaplica v5_salas → v10 → v11 → v13 → v13_1 na ordem original; termina em `restaurado = true`). Sintoma ao vivo para conferir: `catalog.packages[]` sem `valid_days`/`activation` e `agenda.services[]` sem `pkg_sessions`.
+
+## ROTA-DESK-SMOKE · provar o Desk inteiro depois de um deploy (2026-10-05)
+**Quando:** depois de qualquer deploy que mexa em `functions/api/desk*.js`, `lib/deskTrava.js`, agenda, caixa, pagamentos ou SQL `desk_*`/`biz_*`.
+1. `DESK_E2E_KEY=$(cat scripts/.desk_e2e_key) python3 scripts/desk_smoke.py` (opcional: URL de prévia como 1º argumento). A chave da e2e-test fica em `scripts/.desk_e2e_key` (fora do git, chmod 600; é `client_credits.access_key` da conta). Chave recusada → o script para na hora com a explicação. 2026-10-21: **95/95** ao vivo (47 de sempre + exportar, casal, profissional × serviço, adicionais, falta automática/cancelou em cima/concluir pelo caixa, pacotes com validade/ativação/2 sessões e estorno que devolve as sessões). 2026-10-22: **110/110** com o cupom no caixa (desk_v14) — cria 3 cupons de teste e os apaga no fim; todo agendamento criado termina cancelado.
+2. Roda **47 verificações** só na conta `e2e-test@guileoai.com`: chave errada recusada, plano, agenda, horários, marcar → confirmar → chegou → nota → mover, caixa (cobrar, ler, estornar), fechamento, busca, relatórios (com unidades e opiniões), "alguém faltou", sinal inerte sem Stripe, cancelar + fila, cartão/cancelamento, link falso da cliente, Minha conta neutra, link de voz da assistente, leitura do resumo da manhã e do relatório mensal, checkout com plano inválido; e o acesso da recepção (cria código, entra, lê a agenda, é recusada em relatórios/estorno/acessos/Stripe/avisos, revoga, não entra mais); e a agenda da profissional (presa à Ana: só os agendamentos dela, sem contato; nota e terminei nos dela; recusada em agendamento de outra, cancelar, marcar e caixa; revogada não entra).
+3. **Limpa o que cria:** a marcação de teste termina cancelada e a venda estornada, o código da recepção termina revogado.
+**Prova:** sai `47/47 ok` e código 0. Qualquer ❌ → código 1, com a ação e a resposta na linha.
+**Nunca:** apontar para outra conta, nem para a do Natura (tudo depois de `live_desde` aparece como real para ela).
+**Ponto e mês da profissional:** `DESK_E2E_KEY=… python3 scripts/desk_eu_smoke.py` → `24/24` (deixa 1 turno de prova no ponto da e2e).

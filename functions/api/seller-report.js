@@ -78,8 +78,13 @@ export async function onRequest(context) {
     const lang = (env.SELLER_REPORT_LANG || "pt").toLowerCase() === "en" ? "en" : "pt";
     const play = playText(SELLER_PLAYS[isoWeek(new Date()) % SELLER_PLAYS.length], lang);
 
-    let sellers = (await rpc("seller_list", { p_secret: ING })) || [];
-    if (!Array.isArray(sellers)) sellers = [];
+    // "NÃO CONSEGUI LER" ≠ "ZERO VENDEDORES" (2026-09-09). O `|| []` fazia seller_list fora do ar
+    // parecer uma segunda-feira sem vendedor — 200, `reports:0`, e ninguém recebia o espelho
+    // semanal sem que nada acusasse. Agora a leitura falha em voz alta (502) e o cron-tick, que
+    // vigia alvo não-2xx, avisa o dono.
+    const sellersRaw = await rpc("seller_list", { p_secret: ING });
+    if (!Array.isArray(sellersRaw)) return json({ ok: false, error: "não consegui ler seller_list (RPC fora ou sem permissão)", reports: 0, skipped: 0 }, 503);
+    let sellers = sellersRaw;
     sellers = sellers.filter((s) => s && s.active && s.email);
     if (onlyEmail) sellers = sellers.filter((s) => (s.email || "").toLowerCase() === onlyEmail);
     sellers = sellers.slice(0, 50);

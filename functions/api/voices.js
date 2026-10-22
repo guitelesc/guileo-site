@@ -27,7 +27,7 @@ export async function onRequestPost(context) {
     if (!env.ELEVENLABS_API_KEY) return json({ ok: false, ready: false, note: "ELEVENLABS_API_KEY não configurada" }, 503);
 
     const r = await fetch("https://api.elevenlabs.io/v1/voices", { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
-    if (!r.ok) return json({ ok: false, error: `elevenlabs ${r.status}` }, 502);
+    if (!r.ok) return json({ ok: false, error: `elevenlabs ${r.status}` }, 503);
     const d = await r.json().catch(() => ({}));
 
     // O idioma nativo mora em labels.language / labels.accent, e nem toda voz declara.

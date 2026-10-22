@@ -74,7 +74,7 @@ export async function onRequestPost(context) {
       if (!env.ELEVENLABS_API_KEY) return json({ error: "ELEVENLABS_API_KEY ausente" }, 501);
       const id = String(b.detalhe).slice(0, 80);
       const r = await ler(`https://api.elevenlabs.io/v1/convai/conversations/${encodeURIComponent(id)}`, { "xi-api-key": env.ELEVENLABS_API_KEY });
-      if (!r.ok) return json({ error: `ElevenLabs recusou (HTTP ${r.status})` }, 502);
+      if (!r.ok) return json({ error: `ElevenLabs recusou (HTTP ${r.status})` }, 503);
       const d = r.d || {};
       const meta = d.metadata || {};
       return json({

@@ -195,7 +195,9 @@ export async function onRequestPost(context) {
       try {
         const cr = await fetch(`${origin}/api/call`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", Origin: origin, "x-guileo-internal": env.DIGEST_TOKEN || "" },
+          // (2026-09-22) SEM `x-guileo-internal`: este clique vem do navegador do cliente, e o
+          // cabeçalho interno pulava os dois freios fail-closed do /api/call (2/min · 25/dia por IP).
+          headers: { "Content-Type": "application/json", Origin: origin },
           body: JSON.stringify({ phone, name: (b.name || "").toString().slice(0, 120), need: "returning your request", lang: "auto" }),
         });
         const cj = await cr.json().catch(() => ({}));

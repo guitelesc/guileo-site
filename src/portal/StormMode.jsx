@@ -4,8 +4,9 @@
    Real mode: /api/storm-mode (storm_* RPCs in db/storm_mode.sql, per-tenant gated by email+dataKey).
    Demo mode: a representative storm state built from the sector's schedule (actions disabled). */
 import { useState, useEffect } from "react";
-import { toast } from "../lib/portalApi.js";
+import { toast, chamarApi } from "../lib/portalApi.js";
 import { tr, Card, Empty, SectionSkeleton, UI_LANG } from "../pages/Portal.jsx";
+import FalhaDeLeitura, { fraseDaFalha } from "./FalhaDeLeitura.jsx";
 
 const iso = (d) => d.toISOString().slice(0, 10);
 const todayIso = () => iso(new Date());
@@ -24,8 +25,12 @@ const fmtWhen = (isoTs) => {
   return d.toLocaleString(loc, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 };
 
-// Sensible default closure message — bilingual (EN for Miami + PT for the Latin WhatsApp culture).
-const DEFAULT_MSG = "We will be temporarily closed for the storm — your safety comes first. We'll rebook every appointment as soon as we reopen. / Estaremos temporariamente fechados pela tempestade — sua segurança vem primeiro. Reagendamos todos os horários assim que reabrirmos.";
+// Mensagem inicial de fechamento — no idioma da tela.
+// 🌐 (2026-09-28) Era uma frase só com INGLÊS + PORTUGUÊS colados ("…as we reopen. / Estaremos
+// temporariamente fechados…"), pensada para Miami. Ela vai para TODO cliente agendado e é o que a
+// Gui diz a quem liga: a dona de um spa em Nova York avisaria a clientela inteira em dois
+// idiomas, um deles que ninguém ali fala. Agora nasce em um idioma só — o dela — e ela edita.
+const defaultMsg = () => tr("We will be temporarily closed for the storm — your safety comes first. We'll rebook every appointment as soon as we reopen.");
 
 // Status pill color by meaning — active = live pink (something is ON), reopened = done green,
 // canceled = muted.
@@ -47,41 +52,36 @@ function genStormDemo(V) {
   };
 }
 
-async function stormApi(dataKey, email, body = {}) {
-  try {
-    const r = await fetch("/api/storm-mode", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: dataKey, email: email || "", ...body }),
-    });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch { return null; }
-}
+// Devolve {data, motivo} e nunca levanta.
+const stormApi = (dataKey, email, body = {}) => chamarApi("/api/storm-mode", { token: dataKey, email: email || "", lang: UI_LANG, ...body });
 
 function StormMode({ V, real = null, email = "", dataKey = "" }) {
   const demo = !dataKey;
   const [data, setData] = useState(demo ? genStormDemo(V) : null);   // null = fetch in flight
-  const [err, setErr] = useState(false);
+  const [err, setErr] = useState(null);   // motivo da falha de leitura, ou null
   const [busy, setBusy] = useState(false);
-  const [form, setForm] = useState({ starts_on: todayIso(), reopen_on: plusDaysIso(3), message: DEFAULT_MSG });
+  const [form, setForm] = useState(() => ({ starts_on: todayIso(), reopen_on: plusDaysIso(3), message: defaultMsg() }));
 
   const load = () => {
     if (demo) { setData(genStormDemo(V)); return; }
-    setErr(false);
-    stormApi(dataKey, email, { action: "status" }).then((d) => {
-      if (!d) { setErr(true); setData({ ready: false, active: null, affected: 0, history: [], appointments: [] }); return; }
-      setData(d);
+    setErr(null);
+    stormApi(dataKey, email, { action: "status" }).then((r) => {
+      if (r.motivo) { setErr(r.motivo); setData({ ready: false, active: null, affected: 0, history: [], appointments: [] }); return; }
+      setData(r.data);
     });
   };
+  const tentarDeNovo = () => { setData(null); load(); };
   useEffect(() => { setData(demo ? genStormDemo(V) : null); load(); }, [demo, dataKey, email]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activate = async () => {
     if (demo) { toast(tr("Sample data — connect your account to activate storm mode for real.")); return; }
     if (!form.starts_on || !form.reopen_on || form.reopen_on <= form.starts_on) { toast(tr("Reopen date must be after the closing date.")); return; }
     setBusy(true);
-    const res = await stormApi(dataKey, email, { action: "activate", starts_on: form.starts_on, reopen_on: form.reopen_on, message: form.message });
+    const r = await stormApi(dataKey, email, { action: "activate", starts_on: form.starts_on, reopen_on: form.reopen_on, message: form.message });
     setBusy(false);
-    if (res?.ok) { toast(tr("Storm mode ON 🌀 — Gui is telling callers and notifying every booking.")); load(); }
+    const res = r.data;
+    if (r.motivo) toast(`${tr("I couldn't activate storm mode — check your connection and try again.")} ${fraseDaFalha(r.motivo)}`);
+    else if (res?.ok) { toast(tr("Storm mode ON 🌀 — Gui is telling callers and notifying every booking.")); load(); }
     else if (res?.reason === "already_active") { toast(tr("Storm mode is already active — reopen it first to change the window.")); load(); }
     else toast(tr("I couldn't activate storm mode — check your connection and try again."));
   };
@@ -89,9 +89,11 @@ function StormMode({ V, real = null, email = "", dataKey = "" }) {
   const reopen = async (cancel = false) => {
     if (demo) { toast(tr("Sample data — connect your account to activate storm mode for real.")); return; }
     setBusy(true);
-    const res = await stormApi(dataKey, email, { action: cancel ? "cancel" : "reopen" });
+    const r = await stormApi(dataKey, email, { action: cancel ? "cancel" : "reopen" });
     setBusy(false);
-    if (res?.ok) {
+    const res = r.data;
+    if (r.motivo) toast(`${tr("I couldn't reopen — check your connection and try again.")} ${fraseDaFalha(r.motivo)}`);
+    else if (res?.ok) {
       toast(cancel ? tr("Storm mode canceled — your calendar is open again ✓") : (res.sent ? `${tr("Reopened ✅ — 'we're back' sent to")} ${res.sent}` : tr("Reopened ✅ — your calendar is open again")));
       load();
     } else toast(tr("I couldn't reopen — check your connection and try again."));
@@ -101,8 +103,13 @@ function StormMode({ V, real = null, email = "", dataKey = "" }) {
   if (!demo && data === null) return <SectionSkeleton rows={5} />;
 
   const active = data?.active || null;
-  const appts = data?.appointments || [];
-  const history = data?.history || [];
+  const appts = (Array.isArray(data?.appointments) ? data.appointments : []).filter(Boolean);
+  const history = (Array.isArray(data?.history) ? data.history : []).filter(Boolean);
+  // 🚨 (2026-09-28) "Everyone here was notified" era texto FIXO. A contagem real mora em
+  // `active.notified`; com 12 agendamentos na janela e 3 avisos entregues, a tela afirmava que
+  // os 12 sabiam. Numa tempestade isso é cliente indo até uma porta fechada.
+  const avisados = Math.max(0, Number(active?.notified) || 0);
+  const todosAvisados = appts.length > 0 && avisados >= appts.length;
 
   return (
     <div className="space-y-4 stagger">
@@ -128,7 +135,7 @@ function StormMode({ V, real = null, email = "", dataKey = "" }) {
 
       {/* Error state — the fetch failed outright (network / server). */}
       {!demo && err ? (
-        <Card><Empty icon="📡" text={tr("I couldn't load storm mode — check your connection and refresh.")} /></Card>
+        <FalhaDeLeitura motivo={err} onRetry={tentarDeNovo} titulo={tr("I couldn't load storm mode just now.")} />
       ) : /* Connected but the SQL isn't pasted yet → honest warming-up state. */
       !demo && data && !data.ready ? (
         <Card><Empty icon="📡" text={tr("Storm mode is warming up — it turns on as soon as your account is fully live.")} /></Card>
@@ -161,7 +168,11 @@ function StormMode({ V, real = null, email = "", dataKey = "" }) {
             <Card className="p-0 overflow-hidden">
               <div className="px-5 py-2.5 border-b border-white/10 flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Bookings inside the storm window")}</span>
-                <span className="text-[11px] text-g-muted hidden sm:inline">{tr("Everyone here was notified — Gui rebooks them after reopening")}</span>
+                <span className={`text-[11px] hidden sm:inline ${todosAvisados ? "text-g-muted" : "text-[#FFC23D] font-bold"}`}>
+                  {todosAvisados
+                    ? tr("Everyone here was notified — Gui rebooks them after reopening")
+                    : `${avisados} ${tr("of")} ${appts.length} ${tr("notified so far — check the ones without a contact on file")}`}
+                </span>
               </div>
               <div className="divide-y divide-white/[0.05]">
                 {appts.map((a, i) => (

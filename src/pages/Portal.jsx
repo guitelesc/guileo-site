@@ -1,6 +1,14 @@
-import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { portalApi, CONNECTED, toast, onToast, fetchRealData, fetchRealDataDetalhado, loadDataKey, saveDataKey } from "../lib/portalApi.js";
+import { NOME_DO_PAINEL } from "../portal/nome.js";
+import { lazyRetry } from "../lib/lazyRetry.js";
+import { instalarTetoDeRede } from "../lib/tetoDeRede.js";
+import LimiteDeTela from "../portal/LimiteDeTela.jsx";
+import { setorParaVertical } from "../portal/setor.js";
+
+// Nenhuma chamada da Central espera para sempre — ver src/lib/tetoDeRede.js.
+instalarTetoDeRede();
 import {
   FaGaugeHigh, FaComments, FaBullhorn, FaUsers, FaHeadset, FaFileLines, FaListCheck,
   FaArrowLeft, FaArrowTrendUp, FaWhatsapp, FaInstagram, FaPhone, FaFacebook, FaTiktok, FaGoogle,
@@ -576,72 +584,76 @@ import { waLink } from "../data/contact.js";
 import { VERTICALS, VERTICAL_KEYS } from "../data/verticals.js";
 
 /* Heavy tab views split into lazy chunks (performance) — code unchanged, just moved to src/portal/. */
-const Hoje = lazy(() => import("../portal/Hoje.jsx")); // Hoje — a primeira tela do app: o dia inteiro em 3 respostas
-const Overview = lazy(() => import("../portal/Overview.jsx"));
-const Deliveries = lazy(() => import("../portal/Deliveries.jsx"));
-const Support = lazy(() => import("../portal/Support.jsx"));
-const Relacionamento = lazy(() => import("../portal/Relacionamento.jsx")); // Relacionamento — chamados com a thread visível + meu consultor + a nota (sem o nome)
-const CommandCenter = lazy(() => import("../portal/CommandCenter.jsx"));
-const CRM360 = lazy(() => import("../portal/CRM360.jsx"));
-const CallLogs = lazy(() => import("../portal/CallLogs.jsx"));
-const Inbox = lazy(() => import("../portal/Inbox.jsx"));
-const SettingsView = lazy(() => import("../portal/SettingsView.jsx"));
-const AIBrain = lazy(() => import("../portal/AIBrain.jsx"));
-const Billing = lazy(() => import("../portal/Billing.jsx"));
-const ScheduleScreen = lazy(() => import("../portal/ScheduleScreen.jsx"));
-const AIAnalytics = lazy(() => import("../portal/AIAnalytics.jsx"));
-const LeadsDigest = lazy(() => import("../portal/LeadsDigest.jsx"));
-const Integrations = lazy(() => import("../portal/Integrations.jsx"));
-const Operations = lazy(() => import("../portal/Operations.jsx"));
-const LiveOrders = lazy(() => import("../portal/LiveOrders.jsx"));
-const Kitchen = lazy(() => import("../portal/Kitchen.jsx"));
-const MenuView = lazy(() => import("../portal/MenuView.jsx"));
-const Customers = lazy(() => import("../portal/Customers.jsx"));
-const Campaigns = lazy(() => import("../portal/Campaigns.jsx"));
-const Audiences = lazy(() => import("../portal/Audiences.jsx"));
-const Convos = lazy(() => import("../portal/Convos.jsx"));
-const CatalogScreen = lazy(() => import("../portal/CatalogScreen.jsx"));
-const SocialInbox = lazy(() => import("../portal/SocialInbox.jsx"));
-const AIInsights = lazy(() => import("../portal/AIInsights.jsx"));
-const Locations = lazy(() => import("../portal/Locations.jsx"));
-const Team = lazy(() => import("../portal/Team.jsx"));
-const Payments = lazy(() => import("../portal/Payments.jsx"));
-const Loyalty = lazy(() => import("../portal/Loyalty.jsx"));
-const GuileoImpact = lazy(() => import("../portal/GuileoImpact.jsx"));
-const Followups = lazy(() => import("../portal/Followups.jsx"));
-const Waitlist = lazy(() => import("../portal/Waitlist.jsx"));
-const Reputation = lazy(() => import("../portal/Reputation.jsx"));
-const Recurring = lazy(() => import("../portal/Recurring.jsx"));
-const Channels = lazy(() => import("../portal/Channels.jsx"));
-const Ads = lazy(() => import("../portal/Ads.jsx"));
-const Leads = lazy(() => import("../portal/Leads.jsx"));
-const Docs = lazy(() => import("../portal/Docs.jsx"));
-const DocsArea = lazy(() => import("../portal/DocsArea.jsx"));
-const GrowthDept = lazy(() => import("../portal/GrowthDept.jsx"));
-const FinanceDept = lazy(() => import("../portal/FinanceDept.jsx"));
-const MarketingDept = lazy(() => import("../portal/MarketingDept.jsx"));
-const Dialer = lazy(() => import("../portal/Dialer.jsx"));
-const Grow = lazy(() => import("../portal/Grow.jsx"));
-const RiskRadar = lazy(() => import("../portal/RiskRadar.jsx"));
-const ScheduleSync = lazy(() => import("../portal/ScheduleSync.jsx"));
-const GoogleHub = lazy(() => import("../portal/GoogleHub.jsx"));
-const SocialHub = lazy(() => import("../portal/SocialHub.jsx"));
-const EmergencyLog = lazy(() => import("../portal/EmergencyLog.jsx"));
-const LeadsToday = lazy(() => import("../portal/LeadsToday.jsx"));
-const MeuSite = lazy(() => import("../portal/MeuSite.jsx")); // o site REAL do cliente (produto foundation)
-const MarketingDates = lazy(() => import("../portal/MarketingDates.jsx"));
-const Coupons = lazy(() => import("../portal/Coupons.jsx"));
-const GrowthIntel = lazy(() => import("../portal/GrowthIntel.jsx"));
-const CaptureTools = lazy(() => import("../portal/CaptureTools.jsx"));
-const Comentarios = lazy(() => import("../portal/Comentarios.jsx"));
-const QuoteEngine = lazy(() => import("../portal/QuoteEngine.jsx")); // Motor de Orçamento — fila de aprovação (teto/auto-envio)
-const MarketplaceLeads = lazy(() => import("../portal/MarketplaceLeads.jsx"));
-const StormMode = lazy(() => import("../portal/StormMode.jsx"));
-const Trainer = lazy(() => import("../portal/Trainer.jsx"));
-const KnowledgeBase = lazy(() => import("../portal/KnowledgeBase.jsx"));
-const Experience = lazy(() => import("../portal/Experience.jsx")); // XM — customer-experience score (customer-of-the-customer)
-const Timeline = lazy(() => import("../portal/Timeline.jsx")); // Linha do tempo — do fornecedor ao cliente: custo→lucro→risco
-const MyCompanyOS = lazy(() => import("../portal/MyCompanyOS.jsx")); // Minha Empresa — the client's OWN 8 Company-OS departments, live
+const Hoje = lazyRetry(() => import("../portal/Hoje.jsx")); // Hoje — a primeira tela do app: o dia inteiro em 3 respostas
+const Overview = lazyRetry(() => import("../portal/Overview.jsx"));
+const Deliveries = lazyRetry(() => import("../portal/Deliveries.jsx"));
+const Support = lazyRetry(() => import("../portal/Support.jsx"));
+const Relacionamento = lazyRetry(() => import("../portal/Relacionamento.jsx")); // Relacionamento — chamados com a thread visível + meu consultor + a nota (sem o nome)
+const CommandCenter = lazyRetry(() => import("../portal/CommandCenter.jsx"));
+const CRM360 = lazyRetry(() => import("../portal/CRM360.jsx"));
+const CallLogs = lazyRetry(() => import("../portal/CallLogs.jsx"));
+const Inbox = lazyRetry(() => import("../portal/Inbox.jsx"));
+const SettingsView = lazyRetry(() => import("../portal/SettingsView.jsx"));
+const AIBrain = lazyRetry(() => import("../portal/AIBrain.jsx"));
+const Billing = lazyRetry(() => import("../portal/Billing.jsx"));
+const ScheduleScreen = lazyRetry(() => import("../portal/ScheduleScreen.jsx"));
+const Desk = lazyRetry(() => import("../portal/Desk.jsx"));
+const GuiCentral = lazyRetry(() => import("../portal/GuiCentral.jsx"));   // Guileo Desk — agenda do balcão (2026-10-04)
+const AIAnalytics = lazyRetry(() => import("../portal/AIAnalytics.jsx"));
+const LeadsDigest = lazyRetry(() => import("../portal/LeadsDigest.jsx"));
+const Integrations = lazyRetry(() => import("../portal/Integrations.jsx"));
+const Operations = lazyRetry(() => import("../portal/Operations.jsx"));
+const LiveOrders = lazyRetry(() => import("../portal/LiveOrders.jsx"));
+const Kitchen = lazyRetry(() => import("../portal/Kitchen.jsx"));
+const MenuView = lazyRetry(() => import("../portal/MenuView.jsx"));
+const Customers = lazyRetry(() => import("../portal/Customers.jsx"));
+const Campaigns = lazyRetry(() => import("../portal/Campaigns.jsx"));
+const Audiences = lazyRetry(() => import("../portal/Audiences.jsx"));
+const Convos = lazyRetry(() => import("../portal/Convos.jsx"));
+const CatalogScreen = lazyRetry(() => import("../portal/CatalogScreen.jsx"));
+const SocialInbox = lazyRetry(() => import("../portal/SocialInbox.jsx"));
+const AIInsights = lazyRetry(() => import("../portal/AIInsights.jsx"));
+const Locations = lazyRetry(() => import("../portal/Locations.jsx"));
+const Team = lazyRetry(() => import("../portal/Team.jsx"));
+const Payments = lazyRetry(() => import("../portal/Payments.jsx"));
+const Loyalty = lazyRetry(() => import("../portal/Loyalty.jsx"));
+const GuileoImpact = lazyRetry(() => import("../portal/GuileoImpact.jsx"));
+const Followups = lazyRetry(() => import("../portal/Followups.jsx"));
+const Waitlist = lazyRetry(() => import("../portal/Waitlist.jsx"));
+const Reputation = lazyRetry(() => import("../portal/Reputation.jsx"));
+const Recurring = lazyRetry(() => import("../portal/Recurring.jsx"));
+const Productivity = lazyRetry(() => import("../portal/Productivity.jsx"));
+const Products = lazyRetry(() => import("../portal/Products.jsx"));
+const Channels = lazyRetry(() => import("../portal/Channels.jsx"));
+const Ads = lazyRetry(() => import("../portal/Ads.jsx"));
+const Leads = lazyRetry(() => import("../portal/Leads.jsx"));
+const Docs = lazyRetry(() => import("../portal/Docs.jsx"));
+const DocsArea = lazyRetry(() => import("../portal/DocsArea.jsx"));
+const GrowthDept = lazyRetry(() => import("../portal/GrowthDept.jsx"));
+const FinanceDept = lazyRetry(() => import("../portal/FinanceDept.jsx"));
+const MarketingDept = lazyRetry(() => import("../portal/MarketingDept.jsx"));
+const Dialer = lazyRetry(() => import("../portal/Dialer.jsx"));
+const Grow = lazyRetry(() => import("../portal/Grow.jsx"));
+const RiskRadar = lazyRetry(() => import("../portal/RiskRadar.jsx"));
+const ScheduleSync = lazyRetry(() => import("../portal/ScheduleSync.jsx"));
+const GoogleHub = lazyRetry(() => import("../portal/GoogleHub.jsx"));
+const SocialHub = lazyRetry(() => import("../portal/SocialHub.jsx"));
+const EmergencyLog = lazyRetry(() => import("../portal/EmergencyLog.jsx"));
+const LeadsToday = lazyRetry(() => import("../portal/LeadsToday.jsx"));
+const MeuSite = lazyRetry(() => import("../portal/MeuSite.jsx")); // o site REAL do cliente (produto foundation)
+const MarketingDates = lazyRetry(() => import("../portal/MarketingDates.jsx"));
+const Coupons = lazyRetry(() => import("../portal/Coupons.jsx"));
+const GrowthIntel = lazyRetry(() => import("../portal/GrowthIntel.jsx"));
+const CaptureTools = lazyRetry(() => import("../portal/CaptureTools.jsx"));
+const Comentarios = lazyRetry(() => import("../portal/Comentarios.jsx"));
+const QuoteEngine = lazyRetry(() => import("../portal/QuoteEngine.jsx")); // Motor de Orçamento — fila de aprovação (teto/auto-envio)
+const MarketplaceLeads = lazyRetry(() => import("../portal/MarketplaceLeads.jsx"));
+const StormMode = lazyRetry(() => import("../portal/StormMode.jsx"));
+const Trainer = lazyRetry(() => import("../portal/Trainer.jsx"));
+const KnowledgeBase = lazyRetry(() => import("../portal/KnowledgeBase.jsx"));
+const Experience = lazyRetry(() => import("../portal/Experience.jsx")); // XM — customer-experience score (customer-of-the-customer)
+const Timeline = lazyRetry(() => import("../portal/Timeline.jsx")); // Linha do tempo — do fornecedor ao cliente: custo→lucro→risco
+const MyCompanyOS = lazyRetry(() => import("../portal/MyCompanyOS.jsx")); // Minha Empresa — the client's OWN 8 Company-OS departments, live
 
 /* ───────────────────────── Mock data (demo — swap for Supabase/integrations later) ───────────────────────── */
 
@@ -738,7 +750,8 @@ function sectionsFor(vid, V) {
     l = inject(l, "meusite", "My Website", "mktleads"); // publica o site do negocio (produto foundation)
     l = inject(l, "crm", "CRM 360", "customers");
     l = inject(l, "finance", "Finance", "crm");
-    l = inject(l, "marketing", "Marketing", "finance");
+    l = inject(l, "productivity", "Productivity", "finance"); // quem e o que mais vendeu no período (2026-09-30)
+    l = inject(l, "marketing", "Marketing", "productivity");
     l = inject(l, "dates", "Dates & Birthdays", "marketing"); // birthday + commemorative-date config
     l = inject(l, "coupons", "Coupons & Campaigns", "dates"); // per-client branded coupons + campaigns
     // ANÚNCIOS ficava INALCANÇÁVEL: a view existia no roteador e nenhum item de menu apontava
@@ -754,6 +767,9 @@ function sectionsFor(vid, V) {
     l = inject(l, "retention", "Growth & Retention", "marketing");
     l = inject(l, "documents", "Documents", "billing");
     l = inject(l, "relacionamento", "Relationship", "documents"); // Relacionamento — suporte com resposta visível + consultor + nota
+    l = inject(l, "products", "Retail products", "catalog"); // o que se vende de prateleira: preço, estoque e reservas (2026-09-30)
+    // GUILEO DESK (2026-10-04): a agenda do balcão, substituta do MindBody — vem ANTES da agenda antiga.
+    if (!l.some((s) => s[0] === "desk")) { const si = l.findIndex((s) => s[0] === "schedule" || s[0] === "operations"); l = l.slice(); l.splice(si >= 0 ? si : l.length, 0, ["desk", "Front desk"]); }
     l = inject(l, "riskradar", "Risk Radar", "schedule"); // no-show radar rides with Operations everywhere
     l = inject(l, "schedulesync", "Connect calendar", "schedule"); // connect MindBody/Square/Google Cal
     l = inject(l, "googlehub", "Google", "reputation"); // GBP reviews + SEO + ads
@@ -803,18 +819,63 @@ function ocultaSemFeed(sections, real) {
   if (temPedido) return sections;
   return sections.filter(([k]) => k !== "liveorders" && k !== "kitchen");
 }
+/* ── NAV: TELA DE AMOSTRA SOME DO MENU DE QUEM PAGA (2026-09-09) ─────────────────────────────────
+   Generaliza a regra acima (que valia só para Pedidos ao vivo e Cozinha). Decisão do dono: tela
+   que só desenha dado gerado NÃO aparece no menu de um cliente real até existir dado real. O
+   motivo é o mesmo do FaixaAmostra: o pedido de reembolso nasce de "parecia que existia".
+   Três portas para uma tela ficar no menu em modo real:
+     1. REAL_VIEWS — desenha dado do tenant (ganha o selo LIVE);
+     2. VIEWS_COM_MOTOR_REAL — busca o dado do tenant sozinha (fetchCatalogo, fetchEquipe,
+        /api/agent-schedule…); não está em REAL_VIEWS só porque a lista do selo foi conservadora.
+        Esconder a Agenda de um spa pagante seria tirar O produto do menu;
+     3. PROVA_DE_DADO — tela de amostra que vira real quando um evento do tenant existe
+        (pedido → Pedidos/Cozinha/Entregas; lead → Leads · Daily).
+   Fora das três portas = some do menu. Continua no roteador (`views`) e alcançável por ⌘K/link —
+   nada quebra, só não convida. Em DEMO nada muda: é a vitrine, o vendedor precisa de tudo. */
+const VIEWS_COM_MOTOR_REAL = new Set(["desk", "schedule", "catalog", "menu", "team", "waitlist", "followups", "payments", "customers",
+  "reputation", "loyalty", "campaigns", "audiences", "social", "analytics", "insights", "ads", "marketing", "retention", "integrations", "channels", "docs"]);
+const temEvento = (real, tipo) => Array.isArray(real?.events) && real.events.some((e) => e && e.type === tipo);
+const PROVA_DE_DADO = {
+  liveorders: (r) => temEvento(r, "order"),
+  kitchen: (r) => temEvento(r, "order"),
+  deliveries: (r) => temEvento(r, "order"),
+  leads: (r) => temEvento(r, "lead"),
+};
+function ocultaAmostra(sections, real) {
+  if (!real) return sections;
+  return sections.filter(([k]) => REAL_VIEWS.has(k) || VIEWS_COM_MOTOR_REAL.has(k) || (PROVA_DE_DADO[k] ? PROVA_DE_DADO[k](real) : false));
+}
+/* ── NAV: O DISCADOR NÃO ENTRA NO MENU DE CONTA REAL (2026-09-27) ────────────────────────────────
+   A tela do Discador já diz a verdade ("nada aqui discaria hoje") — mas continuava no menu, e item
+   de menu é convite: o dono toca esperando ligar e encontra um aviso. Com dados carregados o
+   `ocultaAmostra` acima já o tirava (ele não está em nenhuma das três portas); o furo era a conta
+   REAL SEM CHAVE, em que `real` é null e nenhum filtro roda — ali o menu mostrava o teclado de
+   demonstração para quem paga.
+   A trava aqui é a CONTA (logado e não-demo), não o dado. Como as irmãs: só esconde do menu, a
+   view segue no roteador (um link antigo `?tab=dialer` não quebra). Em DEMO nada muda. Volta ao menu no dia em
+   que esta tela discar de verdade pelo portão blindado (functions/api/call.js) — apague este filtro. */
+function ocultaDiscador(sections, contaReal) {
+  return contaReal ? sections.filter(([k]) => k !== "dialer") : sections;
+}
 // Red notification counts per menu item — drives urgency badges in the sidebar
 // Views that render REAL tenant data when connected — ONLY these earn the LIVE badge.
 // Everything else shows an honest "Sample preview" chip even when the account is linked.
 const REAL_VIEWS = new Set(["hoje", "overview", "impact", "billing", "inbox", "calllogs", "convos", "whatsapp", "sms",
   "mycompany", "crm", "command", "finance", "leadstoday", "dates", "coupons", "growthintel", "capture", "comentarios", "orcamentos", "experience", "timeline", "mktleads", "storm", "meusite",
-  "riskradar", "emergency", "locations", "recurring", "kb", "brain", "settings", "support", "relacionamento", "trainer", "grow", "documents", "schedulesync", "googlehub", "socialhub", "operations"]);
+  "riskradar", "emergency", "locations", "recurring", "productivity", "products", "kb", "brain", "settings", "support", "relacionamento", "trainer", "grow", "documents", "schedulesync", "googlehub", "socialhub", "operations"]);
 
-function notifFor(key, V, real = null) {
+function notifFor(key, V, real = null, conectada = false) {
   // For a connected client, these channels have no real backing data yet — don't show
   // fabricated unread counts. Demo mode keeps them so the tour looks alive.
   // real mode: every branch below is demo-derived — a red badge would be a lie. No badges.
-  if (real) return 0;
+  // 🚨 A TRAVA É A CONTA CONECTADA, NÃO SÓ O DADO (2026-09-28). `if (real)` deixava passar a
+  // conta com chave cujos dados ainda não chegaram (carregando, chave errada, rede fora): nesses
+  // segundos o menu acendia "Inbox 3 · Call Logs 2 · Payments 4" em vermelho — contagens da
+  // amostra — para quem paga. `conectada` = sessão real + chave de conexão salva. Conta conectada
+  // nunca recebe selo gerado; quando existir contagem REAL por tela (não lidas do inbox, por
+  // exemplo), ela entra aqui, acima deste retorno. Quem ainda não colou a chave continua na
+  // vitrine, que é declaradamente amostra.
+  if (real || conectada) return 0;
   switch (key) {
     case "overview": return V.alerts ? V.alerts.items.length : 0;
     case "leads": { const a = portalApi.loadState(`${V.label}:leadActions`, {}); return genLeads(V).filter((l) => l.temp === "hot" && !a[l._id]).length; }
@@ -835,12 +896,12 @@ function notifFor(key, V, real = null) {
   }
 }
 const SECTION_ICON = {
-  hoje: FaCalendarDays, overview: FaGaugeHigh, operations: FaListCheck, schedule: FaListCheck, catalog: FaBookOpen, brain: FaBrain, analytics: FaChartLine, insights: FaWandMagicSparkles, integrations: FaPlug, liveorders: FaReceipt,
+  hoje: FaCalendarDays, desk: FaCalendarDays, overview: FaGaugeHigh, operations: FaListCheck, schedule: FaListCheck, catalog: FaBookOpen, brain: FaBrain, analytics: FaChartLine, insights: FaWandMagicSparkles, integrations: FaPlug, liveorders: FaReceipt,
   kitchen: FaUtensils, menu: FaBookOpen, deliveries: FaTruck, customers: FaUsers, campaigns: FaBullhorn, audiences: FaBullseye,
   inbox: FaComments, calllogs: FaPhone, dialer: FaPhoneVolume, whatsapp: FaWhatsapp, sms: FaCommentSms, social: FaShareNodes, grow: FaStore, billing: FaCreditCard,
   impact: FaArrowTrendUp, followups: FaArrowsRotate, waitlist: FaClock, recurring: FaIdCard, reputation: FaStar, loyalty: FaGift, payments: FaReceipt,
   channels: FaComments, ads: FaBullhorn, leads: FaUsers, support: FaHeadset, relacionamento: FaHeadset, docs: FaFileLines, settings: FaGear, team: FaUsers, locations: FaLocationDot,
-  crm: FaIdCard, command: FaGaugeHigh, finance: FaCreditCard, marketing: FaBullhorn, retention: FaArrowsRotate, documents: FaFileLines,
+  crm: FaIdCard, command: FaGaugeHigh, finance: FaCreditCard, productivity: FaChartLine, products: FaStore, marketing: FaBullhorn, retention: FaArrowsRotate, documents: FaFileLines,
   riskradar: FaTriangleExclamation, emergency: FaBell, schedulesync: FaCalendarDays, googlehub: FaGoogle, socialhub: FaShareNodes, leadstoday: FaUsers, dates: FaGift, coupons: FaTag, growthintel: FaChartLine, capture: FaListCheck, comentarios: FaComments, orcamentos: FaFileInvoiceDollar, experience: FaFaceSmile, timeline: FaChartLine, mktleads: FaBullseye, storm: FaBell, meusite: FaGlobe,
   trainer: FaGraduationCap, kb: FaBrain, mycompany: FaBuilding,
 };
@@ -852,10 +913,18 @@ const NAV_GROUPS = [
   // it can NOT live buried inside "Your AI ✨" where nobody shopping for a website would look.
   ["", ["hoje", "overview", "grow", "mycompany", "leads", "leadstoday", "mktleads", "meusite"]],
   ["Your AI ✨", ["command", "trainer", "brain", "kb", "analytics", "insights"]],
-  ["Operations", ["liveorders", "kitchen", "menu", "schedule", "riskradar", "storm", "catalog", "deliveries", "operations"]],
-  ["Conversations", ["inbox", "calllogs", "dialer", "whatsapp", "sms", "social"]],
-  ["Customers", ["crm"]],
-  ["Grow revenue", ["impact", "finance", "marketing", "dates", "coupons", "growthintel", "capture", "comentarios", "orcamentos", "experience", "timeline", "retention", "integrations"]],
+  // 🚨 CINCO TELAS SEM GRUPO (2026-09-28): "ads", "schedulesync", "emergency", "googlehub" e
+  // "socialhub" entravam em `sectionsFor` e em nenhum grupo daqui — caíam no balde automático
+  // "More", no fim do menu, longe de tudo com que se relacionam. A dona do spa procurava "conectar
+  // a agenda" em Operations (onde está a Agenda) e ela estava três rolagens abaixo. Cada uma foi
+  // para junto da vizinha: agenda com agenda, emergência com o modo tempestade, contas sociais com
+  // as conversas, Google e anúncios com crescimento.
+  ["Operations", ["desk", "liveorders", "kitchen", "menu", "schedule", "schedulesync", "riskradar", "storm", "emergency", "catalog", "products", "deliveries", "operations"]],
+  ["Conversations", ["inbox", "calllogs", "dialer", "whatsapp", "sms", "social", "socialhub"]],
+  // "customers" estava em sectionsFor mas em nenhum grupo — caía no balde automático "More",
+  // longe do CRM 360 que é a mesma lista de gente. Fica ao lado.
+  ["Customers", ["customers", "crm"]],
+  ["Grow revenue", ["impact", "finance", "productivity", "marketing", "dates", "coupons", "ads", "googlehub", "growthintel", "capture", "comentarios", "orcamentos", "experience", "timeline", "retention", "integrations"]],
   ["Account", ["locations", "team", "billing", "documents", "relacionamento", "support", "settings"]],
 ];
 // Portal UI translations (PT/ES/HI) — each dictionary now lives in its own lazy
@@ -948,10 +1017,10 @@ const EXTRA_ROWS = [
   ["These run 24/7, whether or not you are logged in. Shown read-only — the two opt-in ones are marked.", "Isso roda 24/7, com você logado ou não. Aqui é só leitura — os dois opcionais estão marcados.", "Esto corre 24/7, estés conectado o no. Aquí es solo lectura — los dos opcionales están marcados.", "ये 24/7 चलते हैं, चाहे आप लॉग इन हों या नहीं। यहाँ केवल पढ़ने के लिए — दो वैकल्पिक चिह्नित हैं।"],
   ["Read-only", "Somente leitura", "Solo lectura", "केवल पढ़ने के लिए"],
   ["Opt-in", "Opcional", "Opcional", "वैकल्पिक"],
-  ["The “Automations” list on your Overview is your own plan inside this cockpit: it organizes and records what you ran here — it does not send anything by itself. The real sending is the list above.",
-    "A lista “Automações” do seu Overview é o seu plano dentro deste painel: ela organiza e registra o que você rodou aqui — ela não envia nada sozinha. Quem envia de verdade é a lista acima.",
-    "La lista “Automatizaciones” de tu Overview es tu propio plan dentro de este panel: organiza y registra lo que ejecutaste aquí — no envía nada por sí sola. Quien envía de verdad es la lista de arriba.",
-    "आपके Overview की “Automations” सूची इस कॉकपिट के भीतर आपकी अपनी योजना है: यह व्यवस्थित करती है और रिकॉर्ड रखती है — यह स्वयं कुछ नहीं भेजती। असली भेजना ऊपर की सूची करती है।"],
+  [`The “Automations” list on your Overview is your own plan inside this ${NOME_DO_PAINEL}: it organizes and records what you ran here — it does not send anything by itself. The real sending is the list above.`,
+    `A lista “Automações” do seu Overview é o seu plano dentro desta ${NOME_DO_PAINEL}: ela organiza e registra o que você rodou aqui — ela não envia nada sozinha. Quem envia de verdade é a lista acima.`,
+    `La lista “Automatizaciones” de tu Overview es tu propio plan dentro de esta ${NOME_DO_PAINEL}: organiza y registra lo que ejecutaste aquí — no envía nada por sí sola. Quien envía de verdad es la lista de arriba.`,
+    `आपके Overview की “Automations” सूची इस ${NOME_DO_PAINEL} के भीतर आपकी अपनी योजना है: यह व्यवस्थित करती है और रिकॉर्ड रखती है — यह स्वयं कुछ नहीं भेजती। असली भेजना ऊपर की सूची करती है।`],
   ["Booking reminders (24h and 2h before)", "Lembretes de horário (24h e 2h antes)", "Recordatorios de cita (24h y 2h antes)", "बुकिंग रिमाइंडर (24 घंटे और 2 घंटे पहले)"],
   ["Cuts no-shows without anyone remembering to send anything.", "Corta as faltas sem ninguém precisar lembrar de mandar nada.", "Reduce las ausencias sin que nadie tenga que acordarse de enviar nada.", "बिना किसी को याद दिलाए नो-शो घटाता है।"],
   ["Review request after the visit", "Pedido de avaliação depois do atendimento", "Solicitud de reseña después de la visita", "विज़िट के बाद समीक्षा अनुरोध"],
@@ -971,10 +1040,45 @@ const EXTRA_ROWS = [
   // Used by the Overview "Automations" card once it is renamed to what it really is (the patch
   // is in this wave's report — Overview.jsx belongs to another owner). Pre-translated so the
   // rename lands in all 4 languages the moment it is applied.
-  ["🗓️ My plan (inside this cockpit)", "🗓️ Meu plano (dentro deste painel)", "🗓️ Mi plan (dentro de este panel)", "🗓️ मेरी योजना (इस कॉकपिट में)"],
-  ["Reminders you set here: Gui prepares and records them in this cockpit — they do not send anything on their own.", "Lembretes que você definiu aqui: a Gui prepara e registra neste painel — eles não enviam nada sozinhos.", "Recordatorios que definiste aquí: Gui los prepara y registra en este panel — no envían nada por sí solos.", "यहाँ आपके द्वारा तय किए गए रिमाइंडर: Gui इन्हें इस कॉकपिट में तैयार और दर्ज करती है — ये स्वयं कुछ नहीं भेजते।"],
+  [`🗓️ My plan (inside this ${NOME_DO_PAINEL})`, `🗓️ Meu plano (dentro desta ${NOME_DO_PAINEL})`, `🗓️ Mi plan (dentro de esta ${NOME_DO_PAINEL})`, `🗓️ मेरी योजना (इस ${NOME_DO_PAINEL} में)`],
+  [`Reminders you set here: Gui prepares and records them in this ${NOME_DO_PAINEL} — they do not send anything on their own.`, `Lembretes que você definiu aqui: a Gui prepara e registra nesta ${NOME_DO_PAINEL} — eles não enviam nada sozinhos.`, `Recordatorios que definiste aquí: Gui los prepara y registra en esta ${NOME_DO_PAINEL} — no envían nada por sí solos.`, `यहाँ आपके द्वारा तय किए गए रिमाइंडर: Gui इन्हें इस ${NOME_DO_PAINEL} में तैयार और दर्ज करती है — ये स्वयं कुछ नहीं भेजते।`],
   ["See what runs on the server →", "Ver o que roda no servidor →", "Ver lo que corre en el servidor →", "देखें सर्वर पर क्या चलता है →"],
   ["▶ Prepare now", "▶ Preparar agora", "▶ Preparar ahora", "▶ अभी तैयार करें"],
+  // ── "Everything you have" → pedido de serviço (Grow.jsx): aria-label e placeholder eram EN fixo
+  ["Request a service we don't offer yet", "Pedir um serviço que ainda não oferecemos", "Pedir un servicio que aún no ofrecemos", "ऐसी सेवा माँगें जो हम अभी नहीं देते"],
+  ["e.g. A reservations widget for my website…", "ex.: Um widget de reservas pro meu site…", "ej.: Un widget de reservas para mi sitio…", "जैसे: मेरी वेबसाइट के लिए रिज़र्वेशन विजेट…"],
+  // ── Meu site (MeuSite.jsx) — a tela era PT fixo sem tr(): um dono em EN/ES/HI lia português
+  ["My website", "Meu site", "Mi sitio web", "मेरी वेबसाइट"],
+  [`Your site builds itself from what is already here — services, prices, locations and FAQ. Change a price in the ${NOME_DO_PAINEL} and the site and Gui's answers change with it.`,
+    `Seu site monta sozinho com o que já está aqui — serviços, preços, unidades e perguntas frequentes. Mudou o preço na ${NOME_DO_PAINEL}, muda no site e na fala da Gui junto.`,
+    `Tu sitio se arma solo con lo que ya está aquí — servicios, precios, sucursales y preguntas frecuentes. Cambias el precio en la ${NOME_DO_PAINEL} y cambia en el sitio y en lo que dice Gui.`,
+    `आपकी साइट यहाँ पहले से मौजूद चीज़ों से खुद बनती है — सेवाएँ, कीमतें, शाखाएँ और सामान्य प्रश्न। ${NOME_DO_PAINEL} में कीमत बदलें, साइट और Gui के जवाब साथ में बदलते हैं।`],
+  ["Site address", "Endereço do site", "Dirección del sitio", "साइट का पता"],
+  ["your-business", "seu-negocio", "tu-negocio", "your-business"],
+  ["Main headline", "Chamada principal", "Titular principal", "मुख्य शीर्षक"],
+  ["E.g.: Your moment of care starts here", "Ex.: Seu momento de cuidado começa aqui", "Ej.: Tu momento de cuidado empieza aquí", "उदा.: आपकी देखभाल का पल यहाँ से शुरू होता है"],
+  ["About the business (2 lines)", "Sobre o negócio (2 linhas)", "Sobre el negocio (2 líneas)", "व्यवसाय के बारे में (2 पंक्तियाँ)"],
+  ["What you do, for whom, and what makes you different.", "O que você faz, pra quem, e o que te torna diferente.", "Qué haces, para quién, y qué te hace diferente.", "आप क्या करते हैं, किसके लिए, और आपको क्या अलग बनाता है।"],
+  ["Brand color", "Cor da marca", "Color de la marca", "ब्रांड का रंग"],
+  ["Save and update", "Salvar e atualizar", "Guardar y actualizar", "सहेजें और अपडेट करें"],
+  ["Publish site", "Publicar site", "Publicar sitio", "साइट प्रकाशित करें"],
+  ["Take offline", "Tirar do ar", "Dar de baja", "ऑफ़लाइन करें"],
+  ["Save draft", "Salvar rascunho", "Guardar borrador", "ड्राफ़्ट सहेजें"],
+  ["Live at:", "No ar em:", "En línea en:", "यहाँ लाइव है:"],
+  ["Will be at:", "Vai ficar em:", "Quedará en:", "यहाँ होगी:"],
+  ["Still a draft — only you can see it. Nobody finds this address until you publish.", "Ainda é rascunho — só você enxerga. Ninguém acha esse endereço até você publicar.", "Todavía es un borrador — solo tú lo ves. Nadie encuentra esta dirección hasta que publiques.", "अभी ड्राफ़्ट है — सिर्फ़ आप देख सकते हैं। प्रकाशित करने तक यह पता किसी को नहीं मिलता।"],
+  ["Anyone who fills in the site form becomes a lead instantly, and Gui calls them back in ~1 minute.", "Quem preencher o formulário do site vira lead na hora, e a Gui liga de volta em ~1 minuto.", "Quien complete el formulario del sitio se vuelve lead al instante, y Gui le devuelve la llamada en ~1 minuto.", "साइट का फ़ॉर्म भरने वाला तुरंत लीड बन जाता है, और Gui ~1 मिनट में वापस कॉल करती है।"],
+  ["Your site is also an app", "Seu site também é um app", "Tu sitio también es una app", "आपकी साइट एक ऐप भी है"],
+  ["Your customers install this address on their phone's home screen — with your icon and your name, no app store. Send the link and the invite appears on its own.", "Seus clientes instalam esse endereço na tela inicial do celular — com o seu ícone e o seu nome, sem loja de aplicativos. Mande o link que o convite aparece sozinho.", "Tus clientes instalan esta dirección en la pantalla de inicio del celular — con tu ícono y tu nombre, sin tienda de apps. Envía el enlace y la invitación aparece sola.", "आपके ग्राहक यह पता फ़ोन की होम स्क्रीन पर इंस्टॉल करते हैं — आपके आइकन और नाम के साथ, बिना ऐप स्टोर के। लिंक भेजें, निमंत्रण अपने आप दिखता है।"],
+  ["Share", "Compartilhar", "Compartir", "साझा करें"],
+  ["Our app", "Nosso app", "Nuestra app", "हमारा ऐप"],
+  ["The address needs at least 3 characters.", "O endereço precisa de pelo menos 3 letras.", "La dirección necesita al menos 3 caracteres.", "पते में कम से कम 3 अक्षर चाहिए।"],
+  ["That address already belongs to another business — pick another.", "Esse endereço já é de outro negócio — escolhe outro.", "Esa dirección ya es de otro negocio — elige otra.", "यह पता पहले से किसी और व्यवसाय का है — दूसरा चुनें।"],
+  ["Invalid address: use only letters, numbers and hyphens.", "Endereço inválido: use só letras, números e hífen.", "Dirección inválida: usa solo letras, números y guiones.", "अमान्य पता: केवल अक्षर, अंक और हाइफ़न का उपयोग करें।"],
+  ["Couldn't save.", "Não consegui salvar.", "No pude guardar.", "सहेज नहीं सका।"],
+  ["Live! 🌱", "No ar! 🌱", "¡En línea! 🌱", "लाइव! 🌱"],
+  ["Saved as draft.", "Salvo como rascunho.", "Guardado como borrador.", "ड्राफ़्ट के रूप में सहेजा गया।"],
+  ["Couldn't save — try again?", "Não consegui salvar — tenta de novo?", "No pude guardar — ¿intentas de nuevo?", "सहेज नहीं सका — फिर कोशिश करें?"],
   // ── credit meter honesty (Gui assistant) ─────────────────────────────────────────────────────
   ["Couldn't read your balance", "Não consegui ler seu saldo", "No pude leer tu saldo", "आपका बैलेंस नहीं पढ़ पाया"],
   ["Top up in Billing →", "Recarregar em Cobrança →", "Recargar en Facturación →", "बिलिंग में टॉप-अप करें →"],
@@ -1048,10 +1152,42 @@ export async function loadDict(lang) {
 }
 // Warm the persisted language's dict the moment this module loads, so the boot
 // gate's `await loadDict(...)` usually resolves instantly — zero added boot time.
-loadDict(portalApi.loadState("portal_lang", "en"));
+// ── IDIOMA DA PRIMEIRA CARGA (2026-09-27) ──────────────────────────────────────────────────────
+// Todo mundo nascia em "en": a dona de um salão em São Paulo abria o link do e-mail de boas-vindas
+// (escrito em português) e caía numa tela de login em inglês, sem botão de idioma — o seletor só
+// existia DEPOIS de entrar. Ordem de quem manda:
+//   1. `?lang=` no link — intenção explícita de quem mandou o link (e fica salvo: o próximo acesso
+//      sem o parâmetro continua no mesmo idioma);
+//   2. `portal_lang` salvo — a escolha que a própria pessoa já fez no seletor;
+//   3. idioma do navegador — o primeiro da lista que o painel fala (pt/es/hi/en);
+//   4. "en".
+// O palpite do navegador (3) NÃO é gravado: palpite não é escolha, e gravá-lo impediria o painel de
+// acompanhar a pessoa se ela trocar o idioma do aparelho.
+const IDIOMAS = ["en", "pt", "es", "hi"];
+function idiomaInicial() {
+  try {
+    const q = (new URLSearchParams(window.location.search).get("lang") || "").toLowerCase().slice(0, 2);
+    if (IDIOMAS.includes(q)) { portalApi.saveState("portal_lang", q); return q; }
+  } catch { /* URL ilegível → segue a ordem */ }
+  const salvo = portalApi.loadState("portal_lang", null);
+  if (IDIOMAS.includes(salvo)) return salvo;
+  try {
+    const lista = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ""]);
+    for (const l of lista) { const c = (l || "").toLowerCase().slice(0, 2); if (IDIOMAS.includes(c)) return c; }
+  } catch { /* sem navigator (SSR/teste) */ }
+  return "en";
+}
+const IDIOMA_INICIAL = idiomaInicial();
+loadDict(IDIOMA_INICIAL);
 export let UI_LANG = "en";
 const setUiLang = (l) => { UI_LANG = l; };
 export const tr = (s, lang) => { const L = lang || UI_LANG; const T = UI_DICTS[L]; return (T && T[s]) ? T[s] : s; };
+// PORTA DE PROVA (2026-10-04): permite renderizar uma aba isolada num idioma (prova visual sem login,
+// ex.: DirectMetricas com números reais). Não é usada pelo app — o idioma real vem do componente Portal.
+export { setUiLang as _setUiLangParaProva };
+// TELA AVULSA (2026-10-05): /balcao (acesso da recepção) usa o Desk fora do painel — mesmo idioma inicial
+// (navegador) e o mesmo aviso flutuante. Carrega o dicionário antes de pintar.
+export async function prepararTelaAvulsa() { await loadDict(IDIOMA_INICIAL); setUiLang(IDIOMA_INICIAL); return IDIOMA_INICIAL; }
 
 // ── Voice of Gui — browser speechSynthesis, feature-detected (graceful no-op where
 // unsupported, no deps). NEVER autoplays: every call sits behind a user gesture.
@@ -1160,6 +1296,9 @@ const PORTAL_FX = `
   50%{ box-shadow:0 0 28px rgba(255,138,51,.75), 0 0 0 1px rgba(255,138,51,.5), 0 6px 18px rgba(0,0,0,.45); }
 }
 .gui-breathe{ animation:fx-guibreathe 3.4s ease-in-out infinite; }
+/* Painel lateral (Drawer) aberto: a bolha da assistente some, senão ela cobre o canto do painel
+   (o ✕ de "tirar a pessoa 2" e a borda do "+ Adicionar pessoa" no Balcão, 2026-10-21). */
+body.drawer-open .gui-breathe, body.drawer-open .gui-bolha{ visibility:hidden; }
 .clicky{ transition:border-color .18s ease, background-color .18s ease, transform .18s ease, box-shadow .18s ease; }
 .clicky:hover{ border-color:rgba(255,255,255,.22); background-color:rgba(255,255,255,.055); transform:translateY(-1px); }
 .clicky:active{ transform:translateY(0); }
@@ -1175,7 +1314,7 @@ export function Empty({ icon = "✅", text }) {
   return <div className="px-5 py-10 text-center text-xs text-g-muted">{icon} {tr(text)}</div>;
 }
 // Transient action feedback, bottom-center
-function Toaster() {
+export function Toaster() {
   const [items, setItems] = useState([]);
   useEffect(() => onToast((text) => {
     const id = `${text}-${performance.now()}`;
@@ -1204,8 +1343,9 @@ export function Drawer({ open = true, title, subtitle, badge, fields = [], note,
     window.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";          // lock background scroll
+    document.body.classList.add("drawer-open");       // hides the floating assistant bubble (CSS above)
     panelRef.current?.focus();                          // move focus into the panel
-    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prevOverflow; };
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prevOverflow; document.body.classList.remove("drawer-open"); };
   }, [open, onClose]);
   if (!open) return null;
   return (
@@ -1393,7 +1533,6 @@ const SECTOR_STACK = {
     ["athenahealth", "💉", "#7B2D8E", "Confirms visits, bills and chases balances", "Confirma visitas, fatura e cobra saldos", false],
   ],
   "Salon & Spa": [
-    ["Mindbody", "💆", "#6C2EB9", "Books, rebooks and fills last-minute openings", "Agenda, reagenda e preenche vagas de última hora", true],
     ["Fresha", "💈", "#0E1B39", "Takes online bookings and deposits, cuts no-shows", "Recebe agendamentos e sinais online, reduz faltas", false],
     ["Vagaro", "💅", "#1FA67A", "Online booking, memberships and reminders", "Agendamento online, planos e lembretes", false],
     ["Booksy", "💇", "#00D1B2", "Fills the calendar from Booksy's marketplace", "Enche a agenda com o marketplace do Booksy", false],
@@ -1411,7 +1550,6 @@ const SECTOR_STACK = {
     ["Follow Up Boss", "📇", "#FF6B00", "Nurtures every lead until they tour or buy", "Nutre cada lead até a visita ou a compra", false],
   ],
   "Gym & Fitness": [
-    ["Mindbody", "💪", "#6C2EB9", "Books classes, recovers cancellations, wins back lapsed members", "Agenda aulas, recupera cancelamentos, reativa ex-alunos", true],
     ["ClassPass", "🤸", "#0B2A3C", "Fills empty class spots from new-member demand", "Preenche vagas de aulas com demanda de novos alunos", false],
     ["Glofox", "🏋️", "#2F80ED", "Memberships, bookings and billing on autopilot", "Planos, agendamentos e cobrança no automático", false],
     ["Trainerize", "📲", "#1FA463", "Onboards members and keeps them engaged", "Integra alunos e mantém o engajamento", false],
@@ -1453,10 +1591,10 @@ export const SECTOR_ONBOARD = {
   "Restaurant": { auto: ["WhatsApp", "Toast POS", "Uber Eats", "OpenTable", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, Toast POS, Uber Eats, OpenTable, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Toast POS, Uber Eats, OpenTable, Google Calendar e Stripe." },
   "Clinic": { auto: ["WhatsApp", "Dentrix", "Weave", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, Dentrix, Weave, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Dentrix, Weave, Google Calendar e Stripe." },
   "Medical": { auto: ["WhatsApp", "Epic / EHR", "Zocdoc", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, Epic / EHR, Zocdoc, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Epic / EHR, Zocdoc, Google Calendar e Stripe." },
-  "Salon & Spa": { auto: ["WhatsApp", "Instagram", "Mindbody", "Fresha", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, Instagram, Mindbody, Fresha, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Instagram, Mindbody, Fresha, Google Calendar e Stripe." },
+  "Salon & Spa": { auto: ["WhatsApp", "Instagram", "Fresha", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, Instagram, Fresha, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Instagram, Fresha, Google Calendar e Stripe." },
   "Law Firm": { auto: ["Email / Gmail", "Clio", "DocuSign", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your Email / Gmail, Clio, DocuSign, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu Email / Gmail, Clio, DocuSign, Google Calendar e Stripe." },
   "Real Estate": { auto: ["WhatsApp", "Zillow", "DocuSign", "Google Calendar", "Email / Gmail"], en: "Done — Guileo is live across your WhatsApp, Zillow, DocuSign, Google Calendar, and Email / Gmail.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Zillow, DocuSign, Google Calendar e Email / Gmail." },
-  "Gym & Fitness": { auto: ["WhatsApp", "Instagram", "Mindbody", "ClassPass", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, Instagram, Mindbody, ClassPass, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Instagram, Mindbody, ClassPass, Google Calendar e Stripe." },
+  "Gym & Fitness": { auto: ["WhatsApp", "Instagram", "ClassPass", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, Instagram, ClassPass, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Instagram, ClassPass, Google Calendar e Stripe." },
   "Auto Dealership": { auto: ["WhatsApp", "DealerSocket", "CarGurus", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, DealerSocket, CarGurus, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, DealerSocket, CarGurus, Google Calendar e Stripe." },
   "Plumbing & HVAC": { auto: ["WhatsApp", "ServiceTitan", "Jobber", "Google Calendar", "Stripe"], en: "Done — Guileo is live across your WhatsApp, ServiceTitan, Jobber, Google Calendar, and Stripe.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, ServiceTitan, Jobber, Google Calendar e Stripe." },
   "Education": { auto: ["WhatsApp", "Canvas LMS", "Zoom", "Google Calendar", "Email / Gmail"], en: "Done — Guileo is live across your WhatsApp, Canvas LMS, Zoom, Google Calendar, and Email / Gmail.", pt: "Pronto — a Guileo já está conectada ao seu WhatsApp, Canvas LMS, Zoom, Google Calendar e Email / Gmail." },
@@ -1513,9 +1651,21 @@ function PlantBloom({ V, real = null }) {
   // If the owner set a monthly booking goal, the plant blooms with GOAL progress (their own
   // target beats plan usage as the "am I winning?" signal); otherwise the plan-usage stage.
   const og = ownerGoalProgress(V, real);
-  const pct = og ? Math.round(og.pct * 100) : Math.min(100, Math.round((V.plan.used / (V.plan.total || 1)) * 100));
+  // sem meta definida, conta real usa o consumo REAL de créditos do plano dela (não `V.plan.used`,
+  // que é o medidor da vitrine); plano desconhecido → semente, sem inventar estágio.
+  const totalReal = real ? ({ starter: 500, growth: 2000, scale: 6000 }[real.plan] || 0) : 0;
+  const pctPlano = real
+    ? (totalReal ? Math.max(0, Math.min(100, Math.round(((totalReal - (Number(real.credits) || 0)) / totalReal) * 100))) : 0)
+    : Math.min(100, Math.round((V.plan.used / (V.plan.total || 1)) * 100));
+  const pct = og ? Math.round(og.pct * 100) : pctPlano;
   const stage = pct >= 75 ? 3 : pct >= 40 ? 2 : pct >= 12 ? 1 : 0;
-  const grew = weeklySummary(V).created || vnum(V.label, "wkc", 6, 24);
+  // CLIENTE REAL VÊ O NÚMERO DELE (2026-09-28). Isto mostrava "Your Gui grew 12 bookings this week"
+  // tirado da amostra para quem já tinha conta ligada — uma frase de resultado inventada, no menu,
+  // em toda tela. Com conta real conta os agendamentos dos últimos 7 dias no feed dele; zero é zero.
+  const semana = Date.now() - 7 * 864e5;
+  const grew = real
+    ? (Array.isArray(real.events) ? real.events : []).filter((e) => e && e.type === "booking" && new Date(e.created_at).getTime() >= semana).length
+    : (weeklySummary(V).created || vnum(V.label, "wkc", 6, 24));
   return (
     <div className="rounded-xl2 border border-g-green/20 bg-g-green/[0.05] p-3 flex items-center gap-2.5">
       {/* key={stage} remounts the emoji on a stage change so the grow-in transition plays */}
@@ -1628,15 +1778,21 @@ export function convoAction(V) {
 export function ConvoActions({ V, who, channel, onNav, onDone }) {
   const act = convoAction(V);
   const cfg = deliveryCfg(V);
-  const fire = (msg, view) => { toast(msg); onDone?.(); if (view) onNav?.(view); };
-  const firePrimary = () => { const rec = recordFor(act.view, who, channel, V); if (rec) pushCreated(V.label, act.view, rec); fire(`${act.done} from ${who}'s ${channel} ✓ — see it in the tab`, act.view); };
-  const fireDelivery = () => { const rec = recordFor("deliveries", who, channel, V); pushCreated(V.label, "deliveries", rec); fire(`${who} sent to ${deliveryTab(V).toLowerCase()} ✓ — see it in the tab`, "deliveries"); };
+  // 🚨 QUATRO BOTÕES, NENHUM MOTOR (2026-09-28). Tudo aqui grava no localStorage (`pushCreated`) e
+  // respondia "Appointment booked from Ana's Phone ✓": nenhum agendamento era criado, nenhum
+  // retorno marcado, nenhuma ficha salva. CONTA CONECTADA NÃO VÊ A BARRA — a trava é a sessão
+  // real + chave de conexão, e fica AQUI para valer em toda tela que a monta (Inbox, gaveta de
+  // ligações) sem depender de cada uma lembrar. Na vitrine o toast diz que é demonstração.
+  if (portalApi.contaReal() && loadDataKey()) return null;
+  const fire = (msg, view) => { toast(`${tr("Demo")} — ${msg}`); onDone?.(); if (view) onNav?.(view); };
+  const firePrimary = () => { const rec = recordFor(act.view, who, channel, V); if (rec) pushCreated(V.label, act.view, rec); fire(`${act.done} from ${who}'s ${channel} — ${tr("added to the sample tab, nothing was booked or sent")}`, act.view); };
+  const fireDelivery = () => { const rec = recordFor("deliveries", who, channel, V); pushCreated(V.label, "deliveries", rec); fire(`${who} → ${deliveryTab(V).toLowerCase()} — ${tr("added to the sample tab, nothing was booked or sent")}`, "deliveries"); };
   return (
     <div className="flex flex-wrap gap-2">
       <button onClick={firePrimary} className="text-[11px] font-bold rounded-full border border-g-green/40 bg-g-green/[0.1] px-3 py-1.5 text-g-green hover:bg-g-green/20 transition">{act.label}</button>
       <button onClick={fireDelivery} className="text-[11px] font-bold rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">{cfg.partners.length ? "🚚 To delivery" : "📍 Dispatch"}</button>
-      <button onClick={() => fire(`${who} added to follow-ups ✓`, "followups")} className="text-[11px] font-bold rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">⏰ Follow-up</button>
-      <button onClick={() => fire(`Saved to ${who}'s customer profile ✓`, "customers")} className="text-[11px] font-bold rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">👤 Save to customer</button>
+      <button onClick={() => fire(`${who} — ${tr("sample follow-up, nothing was saved")}`, "followups")} className="text-[11px] font-bold rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">⏰ Follow-up</button>
+      <button onClick={() => fire(`${who} — ${tr("sample profile, nothing was saved")}`, "customers")} className="text-[11px] font-bold rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-g-word hover:border-g-gold/40 transition">👤 Save to customer</button>
     </div>
   );
 }
@@ -1682,7 +1838,7 @@ export function kbMatch(q, kb) {
 
 // The handful of facts the AI repeats most — editable in Settings, feeds the KB.
 export function defProfile(V) {
-  return { name: V.business.name, place: V.business.place, hours: "Mon–Sun, 9am–10pm", phone: "" };
+  return { name: V.business.name, place: V.business.place, hours: HORARIO_DE_AMOSTRA, phone: "" };
 }
 const profBiz = (p) => `We're ${p.name}, located at ${p.place}. I can send directions on WhatsApp — want them?`;
 const profHours = (p) => `We're open ${p.hours}. Want me to book you in?`;
@@ -1724,10 +1880,20 @@ export function syncOnboardingToAgent(me, vid, extra = {}) {
       kb = kb.some((e) => e.id === "onb_channels") ? kb.map((e) => (e.id === "onb_channels" ? entry : e)) : [...kb, entry];
       portalApi.saveKB(OV.label, kb);
     }
-    // 2) Push to the live voice agent — the exact payload shape AIBrain.syncLiveAgent sends.
-    const brain = (kb.map((e) => `${e.topic || ""}${e.triggers ? ` (${e.triggers})` : ""}: ${e.answer || ""}`).filter((s) => s.replace(/[^a-z0-9]/gi, "").length > 2).join("\n")
-      + (extra.owner ? `\nOwner: ${extra.owner}.` : "")).slice(0, 4000);
-    fetch("/api/sync-agent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, key, brain, business: prof.name || OV.business?.name || "", industry: OV.label || "", lang: UI_LANG }) }).catch(() => { /* agent will pick it up on the next Brain save */ });
+    // 2) Push to the live voice agent.
+    // 🚨 SÓ O QUE O DONO DISSE (2026-09-28). Isto mandava a base semeada inteira (serviços, endereço
+    // e horário de AMOSTRA) e `business: OV.business.name` — o nome do negócio da vitrine — para o
+    // agente ao vivo. E no servidor `brain` no corpo SUBSTITUI o treino guardado, então até um
+    // "Owner: Maria." sozinho apagaria o treino feito no cadastro.
+    //   · `brain` só vai no corpo quando existe linha ESCRITA PELO DONO; sem isso a chave é omitida
+    //     e o servidor reusa o treino que já tem;
+    //   · `business` só vai quando é nome digitado por ele; vazio → o servidor resgata o nome real.
+    const meu = brainDoDono(OV, kb);
+    const corpo = { email, key, industry: OV.label || "", lang: UI_LANG };
+    const nome = nomeDoDono(extra.name) || nomeDoDono(prof.name);
+    if (nome) corpo.business = nome;
+    if (meu) corpo.brain = (meu + (extra.owner ? `\nOwner: ${extra.owner}.` : "")).slice(0, 4000);
+    fetch("/api/sync-agent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) }).catch(() => { /* fica para o próximo save na aba do cérebro */ });
     return true;
   } catch { return false; } // never block the wizard on persistence
 }
@@ -1744,6 +1910,61 @@ export function seedKB(V, profile = defProfile(V)) {
     { id: "services", topic: "Services offered", triggers: "service services offer menu catalog produtos", answer: services ? `We offer: ${services}. Which one can I help you with?` : "We offer a full range of services — tell me what you need and I'll guide you.", locked: false },
     { id: "cancel", topic: "Cancellations & refunds", triggers: "cancel cancellation refund reschedule reembolso cancelar", answer: "No problem — I'll take care of that and loop in a human if needed. Can I have your name?", locked: true },
   ];
+}
+
+/* ── O QUE O DONO ENSINOU × O QUE É SEMENTE (2026-09-28) ────────────────────────────────────────
+   `seedKB` enche a base com seis respostas de AMOSTRA: serviços de VERTICALS, endereço da vitrine
+   ("Miami"), horário "Mon–Sun, 9am–10pm" que ninguém informou, e três respostas genéricas. A aba
+   "Train your AI" mostrava isso a uma cliente REAL como "what your AI knows" e, em QUALQUER save,
+   mandava a lista INTEIRA — semente junto — para o agente ao vivo por /api/sync-agent, onde `brain`
+   SUBSTITUI o treino guardado. Um spa de verdade passava a informar horário e serviços inventados
+   na próxima ligação.
+   `kbDoDono` devolve só o que o dono escreveu. Linha de semente intocada sai; linha de semente que
+   o dono reescreveu fica (é dele). As duas linhas que dependem do perfil (endereço e horário) só
+   ficam se o valor NÃO for o da amostra.
+   `nomeDoDono` faz o mesmo com o nome do negócio: "Lumière Spa" nunca vai para o agente de ninguém. */
+const HORARIO_DE_AMOSTRA = "Mon–Sun, 9am–10pm";
+export function nomeDoDono(n) {
+  const s = (n || "").toString().trim();
+  if (!s) return "";
+  const amostra = new Set(Object.values(VERTICALS).map((v) => v?.business?.name).filter(Boolean));
+  return amostra.has(s) ? "" : s;
+}
+export function kbDoDono(V, kb) {
+  const semente = new Map(seedKB(V, defProfile(V)).map((e) => [e.id, e.answer]));
+  const lugares = new Set(Object.values(VERTICALS).map((v) => v?.business?.place).filter(Boolean));
+  return (Array.isArray(kb) ? kb : []).filter((e) => {
+    if (!e) return false;
+    if (!semente.has(e.id)) return true;                       // linha criada pelo dono
+    const a = (e.answer || "").toString();
+    if (a === semente.get(e.id)) return false;                 // semente intocada
+    if (e.id === "biz") {
+      const m = a.match(/^We're (.+), located at (.*)\. I can send directions on WhatsApp — want them\?$/);
+      if (m) return !!m[2].trim() && !lugares.has(m[2].trim()) && !!nomeDoDono(m[1]);
+    }
+    if (e.id === "hours") {
+      const m = a.match(/^We're open (.+)\. Want me to book you in\?$/);
+      if (m) return m[1].trim() !== HORARIO_DE_AMOSTRA;
+    }
+    if (e.id === "services") {
+      // frase GERADA ("We offer: A, B, C. Which one…") cuja lista traz QUALQUER serviço de vitrine
+      // — de qualquer ramo, de qualquer versão guardada no navegador — é semente, não é do dono
+      const m = a.match(/^We offer: (.+)\. Which one can I help you with\?$/);
+      if (m) {
+        const vitrine = new Set(Object.values(VERTICALS).flatMap((v) => (v?.ops?.list || []).map((x) => (x?.name || "").toLowerCase())).filter(Boolean));
+        return !m[1].split(",").some((s) => vitrine.has(s.trim().toLowerCase()));
+      }
+      if (/^We offer a full range of services/.test(a)) return false;
+    }
+    return true;                                               // semente reescrita pelo dono
+  });
+}
+/** Texto de treino que vai para o agente ao vivo — SÓ linhas do dono. "" = nada a enviar. */
+export function brainDoDono(V, kb) {
+  return kbDoDono(V, kb)
+    .filter((e) => e.id !== "onb_channels")   // "we answer 24/7 on every one of them": promessa de canal que pode não estar no ar
+    .map((e) => `${e.topic || ""}${e.triggers ? ` (${e.triggers})` : ""}: ${e.answer || ""}`)
+    .filter((s) => s.replace(/[^a-z0-9]/gi, "").length > 2).join("\n");
 }
 
 export function aiAnswer(q, V, kb) {
@@ -1782,8 +2003,8 @@ export function genRecommendations(V) {
   const t = iq ? iq.recs : ["Your quietest weekday runs ~30% below capacity — a targeted promo fills it.", "A dozen happy customers haven't been asked for a review yet — reviews drive new demand.", "Several customers lapsed in the last 30 days — a win-back sequence recovers ~1 in 4."];
   return [
     { ic: "📣", text: t[0], cta: "Launch promo", view: "campaigns", apply: (onNav) => { onNav?.("campaigns"); toast("Opening Campaigns — type your offer in ⚡ Flash Campaign, preview who'll get it, then send for real"); } },
-    { ic: "⭐", text: t[1], cta: "Request reviews", view: "reputation", apply: (onNav) => { (V.customers || genCustomers(V)).slice(0, 3).forEach((c) => pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel })); toast("Review blast queued ✓"); onNav?.("reputation"); } },
-    { ic: "🔁", text: t[2], cta: "Start win-back", view: "followups", apply: (onNav) => { toast("Win-back sequence started ✓"); onNav?.("followups"); } },
+    { ic: "⭐", text: t[1], cta: "Request reviews", view: "reputation", apply: (onNav) => { (V.customers || genCustomers(V)).slice(0, 3).forEach((c) => pushCreated(V.label, "reviewreq", { name: c.name, ch: c.channel })); toast(tr("Demo — 3 sample review requests added to the sample list. Nothing was sent.")); onNav?.("reputation"); } },
+    { ic: "🔁", text: t[2], cta: "Start win-back", view: "followups", apply: (onNav) => { toast(tr("Demo — nothing was started. Opening Follow-ups.")); onNav?.("followups"); } },
   ];
 }
 // Predictive AI — demand forecast + no-show risk, derived deterministically per sector.
@@ -1918,7 +2139,7 @@ function FirstValue({ V, onNav, onDone }) {
         </>)}
         {step === 1 && (<>
           <div className="text-lg font-extrabold text-g-word">{tr("Now watch Gui do real work")}</div>
-          <p className="text-xs text-g-muted mt-1">{tr("Gui will")} {act.done.toLowerCase()} {tr("— a real record in your cockpit. This is what it does 24/7.")}</p>
+          <p className="text-xs text-g-muted mt-1">{tr("Gui will")} {act.done.toLowerCase()} {tr(`— a real record in your ${NOME_DO_PAINEL}. This is what it does 24/7.`)}</p>
           <button onClick={runTask} disabled={running} className="btn-bright text-sm w-full mt-4">{running ? tr("Gui is working…") : act.label}</button>
           <button onClick={finish} className="block mx-auto mt-3 text-[11px] font-bold text-g-muted hover:text-g-word">{tr("Skip")}</button>
         </>)}
@@ -1926,9 +2147,9 @@ function FirstValue({ V, onNav, onDone }) {
           <div className="text-center py-2">
             <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 300 }} className="text-5xl mb-2">🎉</motion.div>
             <div className="text-lg font-extrabold text-g-word">{tr("First win — Gui just did that for you")}</div>
-            <p className="text-xs text-g-muted mt-1">{act.done} ✓ {tr("It's in your cockpit now. Gui handles this around the clock.")}</p>
+            <p className="text-xs text-g-muted mt-1">{act.done} ✓ {tr(`It's in your ${NOME_DO_PAINEL} now. Gui handles this around the clock.`)}</p>
             <button onClick={seeIt} className="btn-bright text-sm w-full mt-5">{tr("See it →")}</button>
-            <button onClick={finish} className="block mx-auto mt-3 text-[11px] font-bold text-g-muted hover:text-g-word">{tr("Go to my cockpit")}</button>
+            <button onClick={finish} className="block mx-auto mt-3 text-[11px] font-bold text-g-muted hover:text-g-word">{tr(`Go to my ${NOME_DO_PAINEL}`)}</button>
           </div>
         )}
       </motion.div>
@@ -1948,7 +2169,8 @@ function OnboardingWizard({ onDone }) {
     try {
       const c = contact.trim();
       if (!c.includes("@")) return; // only email a real email address
-      const lang = (() => { const l = portalApi.loadState("portal_lang", "en"); return l === "pt" || l === "es" ? l : "en"; })();
+      // o idioma que a pessoa está VENDO (pode ter vindo do navegador, sem nada salvo ainda)
+      const lang = UI_LANG === "pt" || UI_LANG === "es" ? UI_LANG : "en";
       const who = (owner.trim() || name.trim() || "there").split(" ")[0];
       const biz = name.trim() || (lang === "pt" ? "seu negócio" : "your business");
       // Branded welcome email (graphite + champagne template) is rendered server-side.
@@ -1988,8 +2210,8 @@ function OnboardingWizard({ onDone }) {
           <div className="text-center py-3">
             <div className="text-4xl mb-2">🎉</div>
             <div className="text-lg font-extrabold text-g-word">{tr("You're all set")}, {name || tr("there")}!</div>
-            <p className="text-xs text-g-muted mt-1">{tr("Your AI is live and your Growth Cockpit is ready.")}</p>
-            <button onClick={() => { captureLead(); sendWelcome(); onDone(vid, { name: name.trim(), owner: owner.trim(), contact: contact.trim(), channels: Object.keys(chs).filter((c) => chs[c]) }); }} className="btn-bright text-sm w-full mt-5">{tr("Enter my cockpit →")}</button>
+            <p className="text-xs text-g-muted mt-1">{tr(`Your AI is live and your ${NOME_DO_PAINEL} is ready.`)}</p>
+            <button onClick={() => { captureLead(); sendWelcome(); onDone(vid, { name: name.trim(), owner: owner.trim(), contact: contact.trim(), channels: Object.keys(chs).filter((c) => chs[c]) }); }} className="btn-bright text-sm w-full mt-5">{tr(`Enter my ${NOME_DO_PAINEL} →`)}</button>
           </div>
         )}
         {step < 3 && <button onClick={() => onDone(vid)} className="block mx-auto mt-4 text-[11px] font-bold text-g-muted hover:text-g-word">{tr("Skip setup")}</button>}
@@ -1999,55 +2221,206 @@ function OnboardingWizard({ onDone }) {
 }
 
 /* ───────────────────────── Login gate (demo) ───────────────────────── */
-function Login({ onEnter }) {
+/* ── ERRO DE LOGIN EM LÍNGUA DE GENTE (2026-09-27) ────────────────────────────────────────────
+   A tela imprimia `error.message` do Supabase cru: "Invalid login credentials", "Email not
+   confirmed", "For security purposes, you can only request this after 47 seconds" — em inglês,
+   dentro de uma tela em português, e sem dizer o que fazer. Aqui cada mensagem conhecida vira uma
+   frase com o PRÓXIMO PASSO. As chaves são o texto em inglês (passam pelo tr()).
+   ⚠️ Mensagem DESCONHECIDA não é engolida: devolve a frase genérica E o texto cru em `cru`, que a
+   tela mostra pequeno embaixo. Frase bonita escondendo o erro real é o fallback que cega quem vai
+   diagnosticar — aqui os dois aparecem. */
+function erroDeLogin(bruto) {
+  const m = (bruto || "").toString();
+  const t = m.toLowerCase();
+  if (/invalid login credentials|invalid_credentials/.test(t)) return { msg: "Wrong email or password. Check both and try again." };
+  if (/email not confirmed|not confirmed/.test(t)) return { msg: "Confirm your email first — open the link we sent when you signed up." };
+  if (/already registered|already been registered|user already exists/.test(t)) return { msg: "This email already has an account — sign in instead." };
+  if (/password should be at least|weak password|password is too short/.test(t)) return { msg: "Password too short — use at least 6 characters." };
+  if (/different from the old password|same password/.test(t)) return { msg: "Choose a password different from the old one." };
+  if (/rate limit|too many|for security purposes|only request this after/.test(t)) return { msg: "Too many attempts — wait a minute and try again." };
+  if (/unable to validate email|invalid email|email address .* is invalid|invalid format/.test(t)) return { msg: "That email doesn't look right — check it and try again." };
+  if (/signups? not allowed|signup is disabled|signups are disabled/.test(t)) return { msg: "New accounts are closed right now — talk to our team." };
+  if (/session missing|session_not_found|jwt expired|otp_expired|token has expired|link is invalid/.test(t)) return { msg: "This link expired or was already used. Ask for a new one." };
+  if (/failed to fetch|networkerror|network request failed|load failed/.test(t)) return { msg: "No connection — check your internet and try again." };
+  return { msg: "We couldn't complete that. Try again in a moment.", cru: m.slice(0, 140) };
+}
+const LOGIN_INPUT = "w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70";
+
+/* Seletor de idioma da tela de login — o MESMO desenho do seletor do cabeçalho do painel, mas cada
+   sigla é um botão próprio: quem não lê inglês precisa acertar o idioma num toque, não rodar o
+   carrossel EN→PT→ES→HI às cegas. */
+function IdiomaLogin({ lang, onLang }) {
+  if (!onLang) return null;
+  return (
+    <div role="group" aria-label={tr("Language")} className="mb-4 inline-flex items-center gap-0.5 rounded-full border border-white/15 bg-white/[0.04] px-1.5 py-1">
+      {IDIOMAS.map((l) => (
+        <button key={l} type="button" onClick={() => onLang(l)} aria-pressed={lang === l}
+          className={`rounded-full px-2.5 py-1 text-[11px] font-black uppercase transition ${lang === l ? "text-g-gold bg-white/[0.06]" : "text-g-muted hover:text-g-word"}`}>{l}</button>
+      ))}
+    </div>
+  );
+}
+
+function Login({ onEnter, lang = "en", onLang }) {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
-  const [mode, setMode] = useState("signup");   // signup | signin (real backend only)
+  // Link de recuperação vencido/usado volta com #error_code=… → a pessoa já cai no "esqueci a
+  // senha" com o motivo na tela, em vez de um login mudo que parece não ter feito nada.
+  const linkVencido = !!portalApi.erroDoLink();
+  const [mode, setMode] = useState(linkVencido ? "forgot" : "signup");   // signup | signin | forgot (real backend only)
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
-  const [err, setErr] = useState("");
+  const [err, setErr] = useState(() => (linkVencido ? erroDeLogin(portalApi.erroDoLink()) : null));   // {msg, cru?} | null
+  const [enviado, setEnviado] = useState(false);   // pedido de recuperação ACEITO pelo Supabase
+  // 🚨 QUEM TEM CHAVE NÃO É VISITANTE. "▶ Enter demo" na frente de um cliente pagante (que chegou
+  // pelo link `?code=` do e-mail de boas-vindas, ou já tem a chave salva neste aparelho) é um
+  // convite para entrar num negócio INVENTADO achando que é o dele — a mesma família do defeito de
+  // 2026-08-20 (ver `onboarded`). Lido uma vez na montagem: o efeito do Portal apaga o `?code=` da
+  // URL logo depois, mas a essa altura a chave já está salva e a segunda perna responde.
+  const [temChave] = useState(() => { try { return !!new URLSearchParams(window.location.search).get("code") || !!loadDataKey(); } catch { return false; } });
+  const mostraDemo = !temChave && !loadDataKey();
+  const trocarModo = (m) => { setMode(m); setErr(null); setEnviado(false); };
   const submit = async () => {
-    setBusy(true); setErr("");
+    setBusy(true); setErr(null);
     try {
+      if (mode === "forgot") {
+        const r = await portalApi.resetPassword(email);
+        if (r?.error) setErr(erroDeLogin(r.error)); else setEnviado(true);
+        setBusy(false);
+        return;
+      }
       const res = CONNECTED
         ? (mode === "signup" ? await portalApi.signUp(email, pw) : await portalApi.login(email, pw))
         : await portalApi.login(email, pw);
-      if (res?.error) { setErr(res.error); setBusy(false); }
+      // CLIENTE QUE VOLTA NÃO LEVA BRONCA (2026-09-28). A tela abre em "criar conta" para todos;
+      // quem já tinha conta recebia um erro vermelho e precisava achar o link pequeno de "entrar".
+      // Não é erro: é alguém que já é cliente. Tenta ENTRAR com o que ele acabou de digitar — se
+      // a senha bater, ele está dentro; se não, a tela já muda para "entrar" com o motivo certo.
+      if (res?.error && CONNECTED && mode === "signup" && /already registered|already been registered|user already exists/i.test(String(res.error))) {
+        const r2 = await portalApi.login(email, pw);
+        if (!r2?.error) { onEnter(); return; }
+        setMode("signin"); setErr(erroDeLogin(r2.error)); setBusy(false);
+        return;
+      }
+      if (res?.error) { setErr(erroDeLogin(res.error)); setBusy(false); }
       else if (res?.confirm) { setConfirm(true); setBusy(false); }
       else onEnter();
-    } catch (e) { setErr(String(e?.message || e)); setBusy(false); }
+    } catch (e) { setErr(erroDeLogin(e?.message || e)); setBusy(false); }
   };
   const demoEnter = () => { try { localStorage.setItem("guileo_portal_session", JSON.stringify({ email: "demo@guileoai.com", name: "Jane Staff", role: "Staff", demo: true, at: Date.now() })); } catch { /* */ } onEnter(); };
+  const erroNaTela = err && (
+    <div role="alert" className="text-[11px] text-red-400 text-center">
+      {tr(err.msg)}
+      {err.cru ? <div className="mt-0.5 text-[10px] text-g-muted break-words">{err.cru}</div> : null}
+    </div>
+  );
   return (
     <div className="min-h-screen grid place-items-center px-5">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm rounded-xl3 border border-white/15 bg-white/[0.04] backdrop-blur-xl p-8 shadow-lift text-center">
+        <IdiomaLogin lang={lang} onLang={onLang} />
         <img src={logo} alt="Guileo" className="h-12 w-12 object-contain mx-auto" />
-        <div className="mt-3 text-xl font-black uppercase tracking-tight bg-gradient-to-r from-g-green via-g-gold to-g-green bg-[length:200%_auto] bg-clip-text text-transparent animate-shimmer">{tr("Growth Cockpit")}</div>
+        <div className="mt-3 text-xl font-black uppercase tracking-tight bg-gradient-to-r from-g-green via-g-gold to-g-green bg-[length:200%_auto] bg-clip-text text-transparent animate-shimmer">{NOME_DO_PAINEL}</div>
         {confirm ? (
           <div className="mt-6">
             <div className="text-3xl mb-2">📬</div>
             <div className="text-sm font-extrabold text-g-word">{tr("Confirm your email")}</div>
             <p className="text-xs text-g-muted mt-1">{tr("We sent a confirmation to")} <span className="text-g-light font-semibold">{email}</span>{tr(". Click the link, then come back and sign in.")}</p>
-            <button onClick={() => { setConfirm(false); setMode("signin"); }} className="mt-4 btn-bright text-sm w-full">{tr("I confirmed — sign in →")}</button>
+            <button onClick={() => { setConfirm(false); trocarModo("signin"); }} className="mt-4 btn-bright text-sm w-full">{tr("I confirmed — sign in →")}</button>
+          </div>
+        ) : mode === "forgot" ? (
+          <div className="mt-6">
+            {enviado ? (
+              <>
+                <div className="text-3xl mb-2">📬</div>
+                <div className="text-sm font-extrabold text-g-word">{tr("Check your email")}</div>
+                {/* "SE existe conta": o Supabase responde igual para e-mail que existe e que não existe.
+                    Afirmar "enviamos" seria prometer um e-mail que talvez nunca saia. */}
+                <p className="text-xs text-g-muted mt-1">{tr("If there's an account for")} <span className="text-g-light font-semibold">{email}</span>{tr(", a link to choose a new password is on its way. It can take a minute — check spam too.")}</p>
+                <button type="button" onClick={() => trocarModo("signin")} className="mt-4 btn-bright text-sm w-full">{tr("Back to sign in")}</button>
+                <button type="button" onClick={() => setEnviado(false)} className="mt-3 text-xs font-bold text-g-muted hover:text-g-word">{tr("Send it again")}</button>
+              </>
+            ) : (
+              <>
+                <div className="text-sm font-extrabold text-g-word">{tr("Forgot your password?")}</div>
+                <p className="text-xs text-g-muted mt-1">{tr("Type your account email and we'll send you a link to choose a new one.")}</p>
+                <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="mt-4 space-y-2.5 text-left">
+                  <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} aria-label={tr("Email address")} placeholder="you@email.com" className={LOGIN_INPUT} />
+                  <button disabled={busy} className="btn-bright text-sm w-full disabled:opacity-70">{busy ? "…" : tr("Send reset link")}</button>
+                  {erroNaTela}
+                </form>
+                <button type="button" onClick={() => trocarModo("signin")} className="mt-3 text-xs font-bold text-g-gold hover:underline">{tr("Back to sign in")}</button>
+              </>
+            )}
           </div>
         ) : (
           <>
             <p className="text-xs text-g-muted mt-1">{tr(CONNECTED ? (mode === "signup" ? "Create your account" : "Welcome back") : "Sign in to your private dashboard")}</p>
             <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="mt-6 space-y-2.5 text-left">
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} aria-label={tr("Email address")} placeholder="you@email.com" className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-              <input type="password" required minLength={6} value={pw} onChange={(e) => setPw(e.target.value)} aria-label={tr("Password")} placeholder={CONNECTED ? tr("Password (min 6 chars)") : tr("Password")} className="w-full rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
-              <button disabled={busy} className="btn-bright text-sm w-full disabled:opacity-70">{busy ? "…" : tr(CONNECTED ? (mode === "signup" ? "Create account →" : "Sign in →") : "Enter Growth Cockpit →")}</button>
-              {err && <div className="text-[11px] text-red-400 text-center">{err}</div>}
+              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} aria-label={tr("Email address")} placeholder="you@email.com" className={LOGIN_INPUT} />
+              <input type="password" required minLength={6} value={pw} onChange={(e) => setPw(e.target.value)} aria-label={tr("Password")} placeholder={CONNECTED ? tr("Password (min 6 chars)") : tr("Password")} className={LOGIN_INPUT} />
+              {CONNECTED && mode === "signin" && (
+                <div className="text-right"><button type="button" onClick={() => trocarModo("forgot")} className="text-[11px] font-bold text-g-muted hover:text-g-word">{tr("Forgot password?")}</button></div>
+              )}
+              <button disabled={busy} className="btn-bright text-sm w-full disabled:opacity-70">{busy ? "…" : tr(CONNECTED ? (mode === "signup" ? "Create account →" : "Sign in →") : `Enter ${NOME_DO_PAINEL} →`)}</button>
+              {erroNaTela}
             </form>
             {CONNECTED && (
-              <button onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setErr(""); }} className="mt-3 text-xs font-bold text-g-gold hover:underline">
+              <button onClick={() => trocarModo(mode === "signup" ? "signin" : "signup")} className="mt-3 text-xs font-bold text-g-gold hover:underline">
                 {tr(mode === "signup" ? "Already have an account? Sign in" : "New here? Create an account")}
               </button>
             )}
-            <button onClick={demoEnter} disabled={busy} className="block mx-auto mt-3 text-xs font-bold text-g-muted hover:text-g-word disabled:opacity-60">{tr("▶ Enter demo (sample data)")}</button>
+            {mostraDemo && <button onClick={demoEnter} disabled={busy} className="block mx-auto mt-3 text-xs font-bold text-g-muted hover:text-g-word disabled:opacity-60">{tr("▶ Enter demo (sample data)")}</button>}
           </>
         )}
         <div className="mt-4 text-[11px] text-g-muted"><a href="/" className="hover:text-g-word">{tr("← Back to guileoai.com")}</a></div>
+      </motion.div>
+    </div>
+  );
+}
+
+/* ── SENHA NOVA — a segunda metade do "esqueci a senha" ───────────────────────────────────────
+   O link do e-mail já abre uma sessão (é assim que o Supabase prova que a pessoa é dona da caixa).
+   Sem esta tela ela cairia direto no painel, logada, e continuaria SEM SABER A SENHA: no próximo
+   aparelho, trancada de novo. Só diz "salva" com a confirmação do Supabase na mão. */
+function NovaSenha({ onDone, lang = "en", onLang }) {
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [ok, setOk] = useState(false);
+  const salvar = async () => {
+    setErr(null);
+    if (pw.length < 6) { setErr({ msg: "Password too short — use at least 6 characters." }); return; }
+    if (pw !== pw2) { setErr({ msg: "The two passwords don't match." }); return; }
+    setBusy(true);
+    const r = await portalApi.updatePassword(pw);
+    setBusy(false);
+    if (r?.ok) setOk(true); else setErr(erroDeLogin(r?.error));
+  };
+  return (
+    <div className="min-h-screen grid place-items-center px-5">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm rounded-xl3 border border-white/15 bg-white/[0.04] backdrop-blur-xl p-8 shadow-lift text-center">
+        <IdiomaLogin lang={lang} onLang={onLang} />
+        <img src={logo} alt="Guileo" className="h-12 w-12 object-contain mx-auto" />
+        {ok ? (
+          <div className="mt-5">
+            <div className="text-3xl mb-2">🔑</div>
+            <div className="text-sm font-extrabold text-g-word">{tr("New password saved ✓")}</div>
+            <p className="text-xs text-g-muted mt-1">{tr("Use it the next time you sign in.")}</p>
+            <button type="button" onClick={onDone} className="mt-4 btn-bright text-sm w-full">{tr(`Enter ${NOME_DO_PAINEL} →`)}</button>
+          </div>
+        ) : (
+          <div className="mt-5">
+            <div className="text-sm font-extrabold text-g-word">{tr("Choose a new password")}</div>
+            <form onSubmit={(e) => { e.preventDefault(); salvar(); }} className="mt-4 space-y-2.5 text-left">
+              <input type="password" required minLength={6} autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} aria-label={tr("New password")} placeholder={tr("New password (min 6 chars)")} className={LOGIN_INPUT} />
+              <input type="password" required minLength={6} autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} aria-label={tr("Repeat the new password")} placeholder={tr("Repeat the new password")} className={LOGIN_INPUT} />
+              <button disabled={busy} className="btn-bright text-sm w-full disabled:opacity-70">{busy ? "…" : tr("Save new password")}</button>
+              {err && <div role="alert" className="text-[11px] text-red-400 text-center">{tr(err.msg)}{err.cru ? <div className="mt-0.5 text-[10px] text-g-muted break-words">{err.cru}</div> : null}</div>}
+            </form>
+            <button type="button" onClick={() => { portalApi.dispensarRecuperacao(); onDone(); }} className="mt-3 text-xs font-bold text-g-muted hover:text-g-word">{tr("Not now — keep my current password")}</button>
+          </div>
+        )}
       </motion.div>
     </div>
   );
@@ -2175,6 +2548,9 @@ function guiPlan(text, V, ctx = {}, real = null) {
   const connected = (name) => stack[name] !== false; // default-on if never toggled
   // R2 — explainability: Gui justifies its suggestions from the real data it sees.
   if (/\b(why|por\s?que|por\s?qu[êe]|explain|explica|explique|motivo|reason)\b/.test(s)) {
+    // conta conectada: `guiAlerts` lê geradores de amostra — "Because I'm watching your live data:
+    // 4 invoices overdue" era uma explicação inventada sobre dados que não são dela (2026-09-28).
+    if (real) return { cost: 0, ctx, reply: L("What I flag for you comes from your own account — missed calls, customers at risk, bookings likely to no-show. You'll find each one on Today and in the Command Center, with the numbers behind it.", "O que eu sinalizo vem da sua própria conta — ligações perdidas, clientes em risco, agendamentos com chance de falta. Cada um está em Hoje e na Central de Comando, com os números por trás."), run: (onNav) => onNav?.("hoje") };
     const al = guiAlerts(V);
     const top = al[0];
     const because = top ? L(`Because I'm watching your live data: ${top.en} That's money on the table, so I flag it first. I rank actions by $ at risk × how fast they decay — overdue invoices and empty slots lose value by the hour.`, `Porque estou de olho nos seus dados ao vivo: ${top.pt} Isso é dinheiro na mesa, então priorizo. Eu ranqueio ações por $ em risco × velocidade que perdem valor — faturas atrasadas e vagas vazias perdem valor a cada hora.`) : L("I base every suggestion on your live numbers — bookings, unpaid invoices, at-risk customers and quiet hours — and rank them by the revenue at stake. Right now things look healthy.", "Eu baseio cada sugestão nos seus números ao vivo — agendamentos, faturas em aberto, clientes em risco e horários vazios — e ranqueio pela receita em jogo. Agora está tudo saudável.");
@@ -2200,7 +2576,7 @@ function guiPlan(text, V, ctx = {}, real = null) {
     // HONESTY: this creates a PLAN inside the cockpit, not a server job. It prepares the work and
     // records it here; the sending engines that run on our servers 24/7 are a separate, read-only
     // list ("Everything you have" tab). Promising "automatically, from now on" was the old lie.
-    return { cost: 3, ctx, reply: L(`Saved ✓ — I put "${what} ${day}" on your plan, on the Overview under Automations. Heads up, so there's no confusion: this is your plan inside this cockpit — I prepare it and log it here, I don't send it out on my own. What our servers DO send by themselves (reminders, review requests, win-backs) is listed under "Everything you have".`, `Anotado ✓ — coloquei "${what} ${day}" no seu plano, lá no Overview em Automações. Só pra não ter confusão: isso é o seu plano dentro deste painel — eu preparo e registro aqui, eu não disparo sozinha. O que os nossos servidores mandam sozinhos (lembretes, avaliações, reconquista) está na aba "Tudo que você tem".`), next: [{ label: L("⚙️ See automations", "⚙️ Ver automações"), cmd: "open overview" }], run: (onNav) => { addAutomation(V.label, { what: what.charAt(0).toUpperCase() + what.slice(1), when, ic }); onNav?.("overview"); } };
+    return { cost: 3, ctx, reply: L(`Saved ✓ — I put "${what} ${day}" on your plan, on the Overview under Automations. Heads up, so there's no confusion: this is your plan inside this ${NOME_DO_PAINEL} — I prepare it and log it here, I don't send it out on my own. What our servers DO send by themselves (reminders, review requests, win-backs) is listed under "Everything you have".`, `Anotado ✓ — coloquei "${what} ${day}" no seu plano, lá no Overview em Automações. Só pra não ter confusão: isso é o seu plano dentro deste painel — eu preparo e registro aqui, eu não disparo sozinha. O que os nossos servidores mandam sozinhos (lembretes, avaliações, reconquista) está na aba "Tudo que você tem".`), next: [{ label: L("⚙️ See automations", "⚙️ Ver automações"), cmd: "open overview" }], run: (onNav) => { addAutomation(V.label, { what: what.charAt(0).toUpperCase() + what.slice(1), when, ic }); onNav?.("overview"); } };
   }
   if (/(remind|chase|collect all|chase all|overdue|atrasad|cobrar todos|all unpaid)/.test(s)) { const sm = semMotor("chaseall", real, pt, ctx); if (sm) return sm; const open = genPayments(V).filter((p) => p.status !== "Paid"); return { intent: "chaseall", cost: 5, ctx, reply: L(`Done ✓ — I sent payment reminders to ${open.length} customer${open.length !== 1 ? "s" : ""} with open invoices. They're in Payments.`, `Pronto ✓ — enviei lembretes de pagamento para ${open.length} cliente${open.length !== 1 ? "s" : ""} com faturas em aberto. Estão em Pagamentos.`), next: [{ label: L("⭐ Ask them for reviews too", "⭐ Pedir avaliações também"), cmd: "request reviews from my recent customers" }], run: (onNav) => onNav?.("payments") }; }
   if (/(invoice|charge|bill|cobr|fatur|payment|receb)/.test(s)) return semMotor("invoice", real, pt, ctx) || { intent: "invoice", cost: 5, ctx: C(target), reply: L(`Consider it handled — I've sent ${target} the invoice with a payment link, and I'll keep an eye on it until it's paid. It's in Payments.`, `Deixa comigo — enviei a fatura para ${target} com o link de pagamento, e fico de olho até ser paga. Está em Pagamentos.`), next: [{ label: L(`📅 Book ${target} too`, `📅 Agendar ${target} também`), cmd: `book them` }, { label: L("⭐ Request a review", "⭐ Pedir avaliação"), cmd: `request a review from them` }], run: (onNav) => { const id = pushCreated(V.label, "payments", { id: `INV-${3000 + (Date.now() % 900)}`, customer: target, amount: vnum(V.label, "guiinv", 60, 320), status: "Pending", color: "#D6C29A", method: "Payment link", due: "in 3 days" }); onNav?.("payments"); return undoer([{ view: "payments", id }], "payments"); } };
@@ -2210,15 +2586,32 @@ function guiPlan(text, V, ctx = {}, real = null) {
   if (/(order|pedido|book|appointment|agend|marcar|reserv|schedule)/.test(s)) return semMotor("book", real, pt, ctx) || { cost: 5, ctx: C(target), reply: L(`${act.done}${forTxt} ✓ — it's in the right tab now.`, `${act.done}${forPt} ✓ — já está na aba certa.`), next: [{ label: L("💳 Send the invoice too", "💳 Enviar a fatura também"), cmd: `send an invoice to them` }], run: (onNav) => { const rec = recordFor(act.view, target, "Gui", V); const id = rec ? pushCreated(V.label, act.view, rec) : null; onNav?.(act.view); return id ? undoer([{ view: act.view, id }], act.view) : undefined; } };
   if (/(follow|nudge|win-?back|lapse|reativ)/.test(s)) return semMotor("followup", real, pt, ctx) || { cost: 3, ctx, reply: L("Consider it handled — I've started a warm follow-up sequence to win them back. You'll find it under Follow-ups.", "Deixa comigo — comecei uma sequência de follow-up pra reconquistá-los. Está na aba Follow-ups."), run: (onNav) => onNav?.("followups") };
   if (/(audience|p[úu]blico|segment)/.test(s)) return semMotor("audience", real, pt, ctx) || { cost: 5, ctx, reply: L("Built ✓ — an audience of your most engaged customers is ready in Ad Audiences.", "Pronto ✓ — um público com seus clientes mais engajados está pronto em Públicos de Anúncio."), run: (onNav) => { const id = pushCreated(V.label, "audiences", { name: "Gui · best customers", size: vnum(V.label, "guiaud", 1200, 9000), source: "CRM" }); onNav?.("audiences"); return undoer([{ view: "audiences", id }], "audiences"); } };
-  if (/(hour|open|close|price|cost|where|location|menu|service)/.test(s)) { const kb = portalApi.loadKB(V.label, seedKB(V, portalApi.loadProfile(V.label, defProfile(V)))); return { cost: 1, ctx, reply: aiAnswer(text, V, kb) }; }
+  if (/(hour|open|close|price|cost|where|location|menu|service)/.test(s)) {
+    // conta conectada: a base semeada responde "We're open Mon–Sun, 9am–10pm" e lista serviços da
+    // vitrine — fato inventado dito à dona sobre o próprio negócio. Aqui só vale o que ELA ensinou;
+    // sem resposta dela, a Gui diz onde o dado real mora, sem cobrar crédito.
+    if (real) {
+      const hit = kbMatch(text, kbDoDono(V, portalApi.loadKB(V.label, [])));
+      if (hit) return { cost: 0, ctx, reply: hit.answer };
+      return { cost: 0, ctx, reply: L("I don't have that written down here. Your services and prices are in Services, and what your agent answers is in Business Brain — I opened Services for you.", "Não tenho isso anotado aqui. Seus serviços e preços estão em Serviços, e o que a sua agente responde está no Cérebro do negócio — abri Serviços pra você."), run: (onNav) => onNav?.("catalog") };
+    }
+    const kb = portalApi.loadKB(V.label, seedKB(V, portalApi.loadProfile(V.label, defProfile(V)))); return { cost: 1, ctx, reply: aiAnswer(text, V, kb) };
+  }
   return { cost: 0, ctx, reply: L("I can create orders & bookings, send invoices, request reviews, launch promos, start follow-ups, build audiences, or push to delivery. Try: \"send an invoice to my top customer\" — then \"book them too\".", "Eu crio pedidos e agendamentos, envio faturas, peço avaliações, lanço promoções, inicio follow-ups, monto públicos ou mando pra entrega. Tente: \"manda uma fatura pro meu melhor cliente\" — depois \"agenda ele também\"."), next: [{ label: L("💳 Send an invoice", "💳 Enviar fatura"), cmd: "send an invoice to my top customer" }, { label: L("⭐ Request reviews", "⭐ Pedir avaliações"), cmd: "request reviews" }, { label: L("📣 Launch a promo", "📣 Lançar promoção"), cmd: "launch a promo" }] };
 }
-function Gui({ V, onNav, real = null }) {
+function Gui({ V, onNav, real = null, conectada = false }) {
   const [open, setOpen] = useState(false);
   const [credits, setCredits] = useState(() => portalApi.loadState("gui_credits", 250));
-  const alerts = useMemo(() => guiAlerts(V), [V]);     // proactive radar — real pending items
+  // 🚨 O SELO "9+" EM TODA TELA (2026-09-28). O botão flutuante da Gui somava os `count` de
+  // `guiAlerts(V)` — faturas vencidas, fila de espera e follow-ups GERADOS — e pendurava um "9+"
+  // laranja pulsando no canto de todas as telas de uma conta real. E a conversa abria com
+  // `dailyBriefing(V)` ("$1,840 to collect") e um "Heads up" tirado da mesma amostra.
+  // Conta conectada (sessão real + chave — com ou sem dados já lidos): sem selo, sem briefing de
+  // amostra. O que pede atenção de verdade está em Hoje e na Central de Comando, lido do servidor.
+  const alerts = useMemo(() => (real || conectada ? [] : guiAlerts(V)), [V, real, conectada]);     // proactive radar — demo only
   const alertCount = alerts.reduce((n, a) => n + (a.count || 0), 0);
   const [msgs, setMsgs] = useState(() => {
+    if (real || conectada) return [{ from: "gui", text: tr("Hi! I'm Gui — your AI assistant 👋 Tell me what to do and I'll handle it.") }];
     const base = [
       { from: "gui", text: tr("Hi! I'm Gui — your AI assistant 👋 Tell me what to do and I'll handle it.") },
       { from: "gui", text: `${tr("Quick read on today:")} ${dailyBriefing(V)}. ${tr("Want me to get started?")}` },
@@ -2405,7 +2798,7 @@ export default function Portal() {
   // Keep the active section in the URL (?tab=) so Back works and any view is shareable/deep-linkable.
   const setView = useCallback((v) => { _setView(v); try { const u = new URL(window.location.href); u.searchParams.set("tab", v); window.history.replaceState({}, "", u); } catch { /* */ } }, []);
   const [period, setPeriod] = useState("30 days");
-  const [lang, setLang] = useState(() => portalApi.loadState("portal_lang", "en"));
+  const [lang, setLang] = useState(IDIOMA_INICIAL);   // ?lang= > salvo > navegador > en (ver idiomaInicial)
   // Render-timing guarantee: tr()/helpers read the module-global UI_LANG, so it MUST reflect the
   // current language synchronously on EVERY render — before any JSX or helper that reads it — to
   // avoid painting a frame of English. Re-assert it here at the top of the component body (not only
@@ -2414,7 +2807,8 @@ export default function Portal() {
   // Cycles EN → PT → ES → HI. Async on purpose: the next dict chunk is fetched and cached
   // BEFORE the lang state flips, so the current language stays painted while it loads —
   // flash-free by construction. Updates tr() at the change, never in render body.
-  const toggleLang = async () => { const order = ["en", "pt", "es", "hi"]; const n = order[(order.indexOf(lang) + 1) % order.length] || "en"; await loadDict(n); portalApi.saveState("portal_lang", n); setUiLang(n); setLang(n); };
+  const escolherIdioma = async (n) => { if (!IDIOMAS.includes(n)) return; await loadDict(n); portalApi.saveState("portal_lang", n); setUiLang(n); setLang(n); };
+  const toggleLang = () => escolherIdioma(IDIOMAS[(IDIOMAS.indexOf(lang) + 1) % IDIOMAS.length] || "en");
   // Vertical can be deep-linked via ?v=<id> (shareable per-sector links) and is remembered.
   const [vertical, setVertical] = useState(() => {
     try {
@@ -2430,6 +2824,9 @@ export default function Portal() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [me, setMe] = useState(null);            // current session (real or demo) — drives the sidebar identity
+  // Chegou pelo link do "esqueci a senha"? A marca nasce do hash lido na carga do módulo
+  // (portalApi.recuperando) e é confirmada pelo evento PASSWORD_RECOVERY quando ele chega a tempo.
+  const [recuperando, setRecuperando] = useState(() => portalApi.recuperando());
   // 🚨 CLIENTE PAGANTE NÃO É VISITANTE (2026-08-20). Isto olhava SÓ a marca no navegador, então a
   // dona do negócio clicava no link do próprio e-mail de boas-vindas e caía no assistente de
   // demonstração: escolhe um nicho, digita o nome do negócio, informa um contato — tudo que já
@@ -2451,17 +2848,28 @@ export default function Portal() {
   useEffect(() => {
     let unsub = () => {};
     (async () => {
-      const s = await portalApi.session();
-      if (s) { if (!s.demo) await portalApi.hydrate(); setMe(s); setAuthed(true); }
-      // Persisted non-EN language: hold the existing boot screen until the dict chunk is
-      // cached, so the first shell paint is already translated (no English flash). The
-      // module-scope warm-up started this fetch at import time, so this usually resolves
-      // instantly; on failure loadDict falls back to EN silently.
-      await loadDict(lang);
-      setBooting(false);
+      // 🚨 O BOOT SEMPRE TERMINA (2026-09-28). Eram três `await` em fila sem try/catch e sem relógio:
+      // qualquer um que lançasse ou pendurasse deixava `setBooting(false)` sem nunca rodar, e a
+      // cliente olhando "Loading your Central…" para sempre, sem erro, sem botão, sem saída.
+      // Agora cada passo corre contra um teto, e o `finally` abre a tela de qualquer jeito: uma
+      // Central que abre sem o estado da nuvem é um incômodo; uma que não abre é o produto fora do ar.
+      const comTeto = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r(undefined), ms))]);
+      try {
+        const s = await comTeto(portalApi.session(), 6000);
+        if (s) {
+          setMe(s); setAuthed(true);
+          if (!s.demo) await comTeto(portalApi.hydrate().catch(() => 0), 5000);
+        }
+        // Persisted non-EN language: hold the existing boot screen until the dict chunk is
+        // cached, so the first shell paint is already translated (no English flash). The
+        // module-scope warm-up started this fetch at import time, so this usually resolves
+        // instantly; on failure loadDict falls back to EN silently.
+        await comTeto(Promise.resolve(loadDict(lang)).catch(() => {}), 5000);
+      } catch { /* abre mesmo assim */ }
+      finally { setBooting(false); }
     })();
     // React to magic-link sign-in (the email link lands back on /portal).
-    if (CONNECTED) unsub = portalApi.onAuthChange((sess) => { if (sess) { setMe((m) => m || sess); setAuthed(true); } else { setMe(null); setAuthed(false); } });
+    if (CONNECTED) unsub = portalApi.onAuthChange((sess, evt) => { if (evt === "PASSWORD_RECOVERY") setRecuperando(true); if (sess) { setMe((m) => m || sess); setAuthed(true); } else { setMe(null); setAuthed(false); } });
     return () => unsub();
   }, []);
   // ── REAL MODE — logged-in email + connection code → live backend data.
@@ -2473,7 +2881,9 @@ export default function Portal() {
   const refreshReal = useCallback(async () => {
     const key = loadDataKey();
     const seq = ++realSeq.current;                  // claim the latest-request slot FIRST…
-    if (!me?.email || me.demo || !key) { if (seq === realSeq.current) setReal(null); return; } // …so a late clear can't wipe fresh data from a still-in-flight fetch
+    // `setRealLoading(false)` TAMBÉM aqui (2026-09-28): tirar a chave ou sair no meio de uma leitura
+    // deixava o "carregando" ligado para sempre — a saída antecipada pulava o desligamento.
+    if (!me?.email || me.demo || !key) { if (seq === realSeq.current) { setReal(null); setRealLoading(false); } return; } // …so a late clear can't wipe fresh data from a still-in-flight fetch
     setRealLoading(true);
     // 🚨 UM PISCAR DE REDE APAGAVA A CONTA INTEIRA (auditoria 2026-08-20).
     // `setReal(null)` desliga a camada de honestidade toda de uma vez: KPIs voltam a ser amostra,
@@ -2481,8 +2891,10 @@ export default function Portal() {
     // PAGANTE lia números fabricados como se fossem dele — e o aviso ainda o culpava.
     // Agora: falha de LEITURA preserva o que já estava na tela (o padrão que SellerDashboard.jsx:156
     // já usava e que nunca chegou aqui) e guarda o MOTIVO; só credencial ausente/errada zera.
-    const res = await fetchRealDataDetalhado(me.email, key);
-    if (seq !== realSeq.current) return;
+    let res;
+    try { res = await fetchRealDataDetalhado(me.email, key); }
+    catch (e) { res = { data: null, motivo: "rede", detalhe: String(e?.message || e).slice(0, 80) }; }
+    if (seq !== realSeq.current) return; // uma leitura mais nova assumiu — é ela que desliga o "carregando"
     setRealFalha(res.data ? null : res.motivo);
     if (res.data) setReal(res.data);
     else if (res.motivo === "chave_invalida" || res.motivo === "sem_credencial") setReal(null);
@@ -2504,6 +2916,15 @@ export default function Portal() {
     } catch { /* private mode / bad URL — code stays visible as email fallback */ }
   }, []);
   useEffect(() => { refreshReal(); }, [refreshReal]); // on boot / session change
+  // 🚨 O RAMO VEM DA CONTA (2026-09-28). Quem chega pelo link de acesso pula o assistente — e o
+  // assistente era o único lugar que escolhia o ramo. Dona de spa abria a Central com menu de
+  // RESTAURANTE: "Cardápio" no lugar de "Agenda". O feed agora traz `identity.sector` (texto livre
+  // do cadastro: "salon", "hair salon", "dental clinic", "restaurante"…) e aqui ele vira um ramo
+  // que a Central conhece. Sem correspondência → não mexe: adivinhar ramo é pior que manter.
+  useEffect(() => {
+    const alvo = setorParaVertical(real?.identity?.sector);
+    if (alvo && alvo !== vertical) { setVertical(alvo); try { portalApi.saveState("vertical", alvo); } catch { /* */ } }
+  }, [real]); // eslint-disable-line react-hooks/exhaustive-deps
   // ── GUILEO APP — registra o service worker (public/sw.js) com escopo "/portal" e SÓ aqui.
   // Escopo apertado de propósito: a landing e os sites de cliente em /site/* (que têm o worker
   // deles, por tenant) nunca ficam sob este. O worker cacheia SÓ a casca estática — /api/** é
@@ -2582,14 +3003,18 @@ export default function Portal() {
     }
     return base;
   })();
-  const sections = ocultaSemFeed(sectionsFor(vertical, V), real);
-  const nf = (k) => (notifsRead ? 0 : notifFor(k, V, real));
+  // conta REAL = sessão logada que não é a de demonstração (tenha ou não a chave de conexão)
+  const contaReal = !!me?.email && !me.demo;
+  const sections = ocultaDiscador(ocultaAmostra(ocultaSemFeed(sectionsFor(vertical, V), real), real), contaReal);
+  // conta CONECTADA = sessão real + chave de conexão salva (os dados podem ainda estar a caminho)
+  const conectada = contaReal && !!loadDataKey();
+  const nf = (k) => (notifsRead ? 0 : notifFor(k, V, real, conectada));
   const totalNotif = sections.reduce((s, [k]) => s + nf(k), 0);
-  const notifList = notifsRead ? [] : sections.map(([k, l]) => ({ k, l, n: notifFor(k, V, real) })).filter((x) => x.n > 0);
+  const notifList = notifsRead ? [] : sections.map(([k, l]) => ({ k, l, n: notifFor(k, V, real, conectada) })).filter((x) => x.n > 0);
   const cur = sections.find((s) => s[0] === view);
   const title = view === "operations" ? `${V.label} operations` : (cur ? cur[1] : "Overview");
   const switchVertical = (k) => { setVertical(k); portalApi.saveState("vertical", k); setView("overview"); setVertOpen(false); setNotifsRead(portalApi.loadState(`${k}:notifsRead`, false)); };
-  const markAllRead = () => { setNotifsRead(true); portalApi.saveState(`${vertical}:notifsRead`, true); setBellOpen(false); toast("All caught up ✓"); };
+  const markAllRead = () => { setNotifsRead(true); portalApi.saveState(`${vertical}:notifsRead`, true); setBellOpen(false); toast(tr("All caught up ✓")); };
   const logout = () => portalApi.logout().then(() => setAuthed(false));
   // Polished, print-ready monthly report (open → Cmd/Ctrl-P → Save as PDF).
   const exportReport = () => {
@@ -2673,22 +3098,25 @@ export default function Portal() {
     leads: () => <LeadsDigest V={V} onNav={setView} lang={lang} real={real} />,
     leadstoday: () => <LeadsToday V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
     meusite: () => <MeuSite V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
-    deliveries: () => <Deliveries V={V} />,
+    deliveries: () => <Deliveries V={V} real={real} />,
     inbox: () => <Inbox V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
-    impact: () => <GuileoImpact V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    impact: () => <GuileoImpact V={V} real={real} email={me?.email} dataKey={loadDataKey()} onNav={setView} />,
     // Followups.jsx troca de tela inteira com `real && email && dataKey`: em modo real ele lê as duas
     // listas verdadeiras do /api/growth-intel (abandoned + churn) em vez de genFollowups. Montar sem
     // email/dataKey devolveria a amostra a um cliente pagante — os 3 props andam juntos, sempre.
     followups: () => <Followups V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     waitlist: () => <Waitlist V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     recurring: () => <Recurring V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
-    reputation: () => <Reputation V={V} onNav={setView} />,
+    productivity: () => <Productivity V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    products: () => <Products V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    reputation: () => <Reputation V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
     loyalty: () => <Loyalty V={V} />,
     payments: () => <Payments V={V} />,
     team: () => <Team V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     locations: () => <Locations V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     operations: () => <Operations V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     schedule: () => <ScheduleScreen V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    desk: () => <Desk real={real} email={me?.email} dataKey={loadDataKey()} />,
     riskradar: () => <RiskRadar V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     schedulesync: () => <ScheduleSync V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     googlehub: () => <GoogleHub V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
@@ -2704,30 +3132,30 @@ export default function Portal() {
     liveorders: () => <LiveOrders V={V} real={real} />,
     kitchen: () => <Kitchen V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     menu: () => <MenuView V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
-    customers: () => <Customers V={V} onNav={setView} />,
+    customers: () => <Customers V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
     crm: () => <CRM360 V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
     command: () => <CommandCenter V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
     // `real` entrou para o convite NoSeuPlano (close_collect) poder gatear por plano — sem a
     // prop o convite fica mudo de propósito (o componente não chuta plano que não conhece).
     finance: () => <FinanceDept V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
     marketing: () => <MarketingDept V={V} onNav={setView} email={me?.email} dataKey={loadDataKey()} />,
-    dates: () => <MarketingDates V={V} onNav={setView} email={me?.email} dataKey={loadDataKey()} />,
+    dates: () => <MarketingDates V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
     coupons: () => <Coupons V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     mycompany: () => <MyCompanyOS V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     growthintel: () => <GrowthIntel V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     experience: () => <Experience V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     timeline: () => <Timeline V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
-    capture: () => <CaptureTools V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    capture: () => <CaptureTools V={V} real={real} email={me?.email} dataKey={loadDataKey()} onNav={setView} />,
     comentarios: () => <Comentarios V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     orcamentos: () => <QuoteEngine V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     mktleads: () => <MarketplaceLeads V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     storm: () => <StormMode V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
-    retention: () => <GrowthDept V={V} onNav={setView} email={me?.email} dataKey={loadDataKey()} />,
-    documents: () => <DocsArea V={V} email={me?.email} dataKey={loadDataKey()} />,
-    campaigns: () => <Campaigns V={V} onNav={setView} />,
+    retention: () => <GrowthDept V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
+    documents: () => <DocsArea V={V} onNav={setView} email={me?.email} dataKey={loadDataKey()} />,
+    campaigns: () => <Campaigns V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
     audiences: () => <Audiences V={V} onNav={setView} />,
     calllogs: () => <CallLogs V={V} onNav={setView} real={real} email={me?.email} dataKey={loadDataKey()} />,
-    dialer: () => <Dialer real={real} />,
+    dialer: () => <Dialer real={real} contaReal={contaReal} />,
     whatsapp: () => <Convos V={V} title="WhatsApp" real={real} />,
     sms: () => <Convos V={V} title="SMS" real={real} />,
     channels: () => <Channels real={real} email={me?.email} dataKey={loadDataKey()} />,
@@ -2738,14 +3166,39 @@ export default function Portal() {
     kb: () => <KnowledgeBase V={V} real={real} email={me?.email} dataKey={loadDataKey()} />,
     docs: () => <Docs real={real} />,
     grow: () => <Grow onNav={setView} sections={sections} />,
-    brain: () => <AIBrain V={V} me={me} />,
+    brain: () => <AIBrain V={V} me={me} real={real} onNav={setView} />,
     billing: () => <Billing V={V} real={real} onNav={setView} email={me?.email} />,
     settings: () => <SettingsView V={V} real={real} me={me} />,
   };
-  const content = (views[view] || views.overview)();
+  /* ── PORTÃO DA AMOSTRA (2026-09-28) ───────────────────────────────────────────────────────────
+     Conta real COM chave cujos dados ainda não chegaram tinha `real === null` — e com `real` nulo
+     toda tela cai no ramo de demonstração. Recarregar em ?tab=recurring, ?tab=catalog ou
+     ?tab=coupons montava a tela com a amostra (pacotes, serviços e cupons inventados), e várias
+     guardavam essa amostra no estado até a leitura voltar — algumas para sempre, se ela falhasse.
+     Aqui a tela NEM MONTA enquanto não há leitura: esqueleto enquanto carrega, "não consegui ler"
+     (com nova tentativa) se a leitura falhou, e o aviso da chave se ela não confere. Quando `real`
+     chega, a tela monta uma vez, já com o dado dela.
+     Ficam de fora as telas que têm os próprios estados de carregando/falha e não desenham amostra
+     (Hoje), e as que a pessoa precisa alcançar JUSTAMENTE quando a conta não lê (Configurações
+     para recolar a chave; Suporte e Relacionamento para pedir ajuda).
+     Conta SEM chave (a vitrine, com a faixa "you're seeing sample data") não passa por aqui. */
+  const SEM_PORTAO = new Set(["hoje", "settings", "support", "relacionamento"]);
+  const esperaLeitura = conectada && !real && !SEM_PORTAO.has(view) && !!views[view];
+  const falhaDeLeitura = realFalha === "rede" || realFalha === "servidor" || realFalha === "resposta_estranha";
+  const content = !esperaLeitura ? (views[view] || views.overview)()
+    : falhaDeLeitura ? <RetryState onRetry={refreshReal} />
+    : realFalha === "chave_invalida" ? (
+      <Card className="p-5">
+        <div className="text-base font-extrabold text-g-word">{tr("Your connection code isn't matching.")}</div>
+        <p className="mt-1.5 text-[13px] leading-relaxed text-g-muted">{tr("Paste it again in Settings — it's in your welcome email. This screen opens with your real data as soon as the code matches.")}</p>
+        <button type="button" onClick={() => setView("settings")} className="btn-bright text-sm mt-4">{tr("Open Settings →")}</button>
+      </Card>
+    ) : <SectionSkeleton />;
 
-  if (booting) return <div className="min-h-screen grid place-items-center text-g-muted text-sm">{tr("Loading your cockpit…")}</div>;
-  if (!authed) return <div className="min-h-screen text-g-ink"><Login onEnter={() => { portalApi.session().then((s) => s && setMe(s)); setAuthed(true); }} /></div>;
+  if (booting) return <div className="min-h-screen grid place-items-center text-g-muted text-sm">{tr(`Loading your ${NOME_DO_PAINEL}…`)}</div>;
+  if (!authed) return <div className="min-h-screen text-g-ink"><Login lang={lang} onLang={escolherIdioma} onEnter={() => { portalApi.session().then((s) => s && setMe(s)); setAuthed(true); }} /></div>;
+  // Sessão aberta PELO LINK de recuperação → antes do painel, a senha nova (ver NovaSenha).
+  if (recuperando) return <div className="min-h-screen text-g-ink"><NovaSenha lang={lang} onLang={escolherIdioma} onDone={() => setRecuperando(false)} /></div>;
   if (!onboarded) return <div className="min-h-screen text-g-ink"><OnboardingWizard onDone={(vid, extra) => {
     setVertical(vid); portalApi.saveState("vertical", vid); setNotifsRead(portalApi.loadState(`${vid}:notifsRead`, false)); setView("overview"); setOnboarded(true);
     try { localStorage.setItem("guileo_onboarded", "1"); } catch { /* private */ }
@@ -2775,7 +3228,12 @@ export default function Portal() {
       if (isEmail) {
         fetch("/api/selfserve-signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: contact, business: extra?.name || "", industry: vid, lang: UI_LANG, brain: seedBrain, phone: "" }) }).catch(() => {});
       }
-      fetch("/api/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: extra?.owner || extra?.name || "", phone: isEmail ? "" : contact, email: isEmail ? contact : "", business: extra?.name || "", industry: vid, lang: UI_LANG, source: "portal-wizard", noCall: true, consent: false }) }).catch(() => {});
+      // LEAD SEM CONTATO NÃO É LEAD (2026-09-28). Quem clicava em "Skip setup" disparava este POST
+      // com tudo vazio: o servidor recusava (400), o console do visitante ganhava um erro vermelho,
+      // e o funil contava uma tentativa de captura que nunca teve o que capturar.
+      if (contact) {
+        fetch("/api/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: extra?.owner || extra?.name || "", phone: isEmail ? "" : contact, email: isEmail ? contact : "", business: extra?.name || "", industry: vid, lang: UI_LANG, source: "portal-wizard", noCall: true, consent: false }) }).catch(() => {});
+      }
     } catch { /* never block the wizard */ }
   }} /></div>;
 
@@ -2787,10 +3245,17 @@ export default function Portal() {
       {/* Mobile backdrop */}
       {navOpen && <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden" onClick={() => setNavOpen(false)} />}
       {/* Sidebar — slide-over on mobile, static on desktop */}
-      <aside id="portal-sidebar" className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[82vw] overflow-y-auto transform transition-transform duration-300 ${navOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static lg:z-auto lg:w-60 lg:max-w-none lg:min-h-screen border-r border-white/10 bg-[#070b10]/98 lg:bg-white/[0.03] backdrop-blur-xl lg:sticky lg:top-0 flex flex-col`}>
+      {/* 🚨 CASCA QUE NÃO QUEBRA NO SCROLL (2026-09-28, achado pelo Luis logado como Natura).
+          O menu tinha `min-h-screen` dentro de um flex: esticava até a altura da PÁGINA (2.582px
+          medidos), então o `sticky` nunca grudava — ele rolava embora junto — e o `backdrop-blur`
+          virava uma camada gigante que o Chrome redesenha em pedaços: a "quebra no canto".
+          Agora no desktop ele tem a altura da TELA, gruda no topo, rola por dentro e usa fundo
+          sólido (desfoque sobre página escura parada não acrescenta nada e custa o rasgo).
+          O cabeçalho tinha 2% de branco: o que rolava por baixo aparecia borrado através dele. */}
+      <aside id="portal-sidebar" className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[82vw] overflow-y-auto transform transition-transform duration-300 ${navOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:z-auto lg:w-60 lg:max-w-none border-r border-white/10 bg-[#070b10]/98 lg:bg-[#1a1916] backdrop-blur-xl lg:backdrop-blur-none lg:sticky lg:top-0 lg:h-screen lg:self-start lg:shrink-0 flex flex-col`}>
         <div className="flex items-center gap-2 px-5 py-4">
           <img src={logo} alt="Guileo" className="h-8 w-8 object-contain" />
-          <div className="leading-tight flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word">{tr("Growth Cockpit")}</div><div className="text-[10px] text-g-muted truncate">{V.icon} {V.business.name}</div></div>
+          <div className="leading-tight flex-1 min-w-0"><div className="text-sm font-extrabold text-g-word">{NOME_DO_PAINEL}</div><div className="text-[10px] text-g-muted truncate">{V.icon} {V.business.name}</div></div>
           <button onClick={() => setNavOpen(false)} className="lg:hidden text-g-muted hover:text-g-word text-lg leading-none px-1" aria-label={tr("Close menu")}>✕</button>
         </div>
         <nav aria-label="Dashboard sections" className="flex flex-col gap-1 px-3 pb-3 overflow-y-auto">
@@ -2854,7 +3319,7 @@ export default function Portal() {
       {/* Main */}
       <main className="flex-1 min-w-0">
         {/* topbar */}
-        <header className="flex items-center justify-between gap-3 px-5 sm:px-8 py-4 border-b border-white/10 bg-white/[0.02] backdrop-blur-md sticky top-0 z-20">
+        <header className="flex items-center justify-between gap-3 px-5 sm:px-8 py-4 border-b border-white/10 bg-[#161512]/95 backdrop-blur-md sticky top-0 z-20">
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={() => setNavOpen(true)} aria-expanded={navOpen} aria-controls="portal-sidebar" className="lg:hidden grid place-items-center h-9 w-9 rounded-xl border border-white/15 bg-white/[0.04] text-g-word shrink-0" aria-label={tr("Open menu")}>☰</button>
             <div className="min-w-0">
@@ -2927,7 +3392,9 @@ export default function Portal() {
 
         {/* REAL client who hasn't connected yet → label the preview prominently so fabricated
             sample numbers NEVER read as their real money. Clears the moment a valid code is pasted. */}
-        {!me?.demo && !real && (
+        {/* enquanto a PRIMEIRA leitura está a caminho (chave presente, nenhuma resposta ainda) a
+            faixa não aparece: dizer "você está vendo dados de amostra" sobre um esqueleto é falso. */}
+        {!me?.demo && !real && !(loadDataKey() && realFalha == null) && (
           <div className="px-5 sm:px-8 pt-4">
             <button onClick={() => setView("settings")} className="w-full text-left rounded-xl2 border border-g-gold/40 bg-g-gold/[0.10] px-4 py-3 flex flex-wrap items-center gap-3 hover:border-g-gold/70 transition">
               <span className="text-lg">📊</span>
@@ -2936,8 +3403,10 @@ export default function Portal() {
                     inclusive para quem já tinha colado e só perdeu a rede por um segundo. */}
                 {realFalha === "rede" || realFalha === "servidor" || realFalha === "resposta_estranha" ? (
                   <>
-                    <div className="text-[13px] font-bold text-g-word">{tr("I couldn't refresh your data just now.")}</div>
-                    <div className="text-[11.5px] text-g-muted">{tr("This is what I read last — not a live reading. Check your connection and try again.")}</div>
+                    {/* este ramo só roda com `real` nulo: não existe "última leitura" para mostrar —
+                        a frase antiga ("This is what I read last") descrevia uma tela que não havia */}
+                    <div className="text-[13px] font-bold text-g-word">{tr("I couldn't load your data just now.")}</div>
+                    <div className="text-[11.5px] text-g-muted">{tr("Nothing is shown until I can read it — no sample numbers in its place. Check your connection and try again.")}</div>
                   </>
                 ) : realFalha === "chave_invalida" ? (
                   <>
@@ -2960,9 +3429,15 @@ export default function Portal() {
         {/* pb-28 no celular: a barra de baixo é `fixed` e cobriria a última linha do conteúdo. */}
         <div className="p-5 pb-28 sm:p-8 md:pb-8">
           <motion.div key={view + vertical} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
-            <Suspense fallback={<div className="p-8 text-g-muted text-sm">{tr("Loading your cockpit…")}</div>}>
-              {content}
-            </Suspense>
+            <LimiteDeTela key={view} tela={view}
+              titulo={tr("This screen hit a problem")}
+              texto={tr("The rest of your account is fine. Go back and try this screen again in a moment.")}
+              rotulo={view === "hoje" ? tr("Try again") : tr("Back to Today")}
+              onVoltar={() => { if (view === "hoje") window.location.assign("/portal"); else setView("hoje"); }}>
+              <Suspense fallback={<div className="p-8 text-g-muted text-sm">{tr(`Loading your ${NOME_DO_PAINEL}…`)}</div>}>
+                {content}
+              </Suspense>
+            </LimiteDeTela>
           </motion.div>
         </div>
       </main>
@@ -3007,7 +3482,11 @@ export default function Portal() {
       })()}
 
       {/* Gui — the AI assistant that executes tasks (floating, from any view) */}
-      <Gui V={V} onNav={setView} real={real} />
+      {/* GUI · CENTRAL (2026-10-05): o agente da ElevenLabs com ferramentas na tela substitui o guiPlan.
+          O Gui antigo (palavras-chave) continua acessível por ?gui=antigo, para comparar. */}
+      {(() => { try { return new URLSearchParams(window.location.search).get("gui") === "antigo"; } catch { return false; } })()
+        ? <Gui V={V} onNav={setView} real={real} conectada={conectada} />
+        : <Suspense fallback={null}><GuiCentral onNav={setView} real={real} conectada={conectada} email={me?.email || ""} dataKey={loadDataKey() || ""} dono={me?.name || ""} negocio={real?.business || real?.name || ""} logo={logo} GuiMark={GuiMark} /></Suspense>}
 
       {paletteOpen && <Palette V={V} sections={sections} onNav={setView} onClose={() => setPaletteOpen(false)} />}
       <Toaster />

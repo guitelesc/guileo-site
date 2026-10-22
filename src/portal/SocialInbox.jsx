@@ -15,7 +15,8 @@
  * It also accepts real/email/dataKey/onNav if a future wiring passes them. */
 import { useState, useEffect, useCallback } from "react";
 import { FaInstagram, FaFacebook, FaTiktok } from "react-icons/fa6";
-import { toast, portalApi, loadDataKey } from "../lib/portalApi.js";
+import { toast, portalApi, loadDataKey, chamarApi } from "../lib/portalApi.js";
+import FalhaDeLeitura, { fraseDaFalha } from "./FalhaDeLeitura.jsx";
 import { Card, tr, Empty, Drawer, relTime, SectionSkeleton } from "../pages/Portal.jsx";
 
 const NET_META = { Instagram: [FaInstagram, "#E4405F"], Facebook: [FaFacebook, "#1877F2"], TikTok: [FaTiktok, "#e7e7e7"] };
@@ -26,15 +27,14 @@ const SOCIAL = ["Instagram", "Facebook", "TikTok"];
 // A resposta carrega o próprio veredito (`_ok`). Antes devolvia `{}` em qualquer falha e a
 // lista caía em vazio: um 401 ou uma queda de rede virava "Nenhuma DM ainda" — o dono lia
 // que ninguém falou com ele, quando a verdade é que não conseguimos perguntar.
+// (2026-09-28) Agora carrega também o MOTIVO (`_motivo`): chave errada, rede e servidor pedem
+// frases diferentes — e a conversa aberta passou a ter o mesmo cuidado que a lista já tinha.
 async function inboxApi(action, email, key, extra = {}) {
-  try {
-    const r = await fetch("/api/inbox", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, email, token: key, ...extra }),
-    });
-    const d = await r.json().catch(() => ({}));
-    return { ...(d && typeof d === "object" ? d : {}), _ok: r.ok && d?.ok !== false };
-  } catch { return { _ok: false }; }
+  if (!email || !key) return { _ok: false, _motivo: "sem_credencial" };
+  const r = await chamarApi("/api/inbox", { action, email, token: key, ...extra });
+  const d = r.data && typeof r.data === "object" ? r.data : {};
+  const ok = !r.motivo && d.ok !== false;
+  return { ...d, _ok: ok, _motivo: ok ? null : (r.motivo || "servidor") };
 }
 
 function SocialInbox({ V, onNav, real: realProp = null, email: emailProp = "", dataKey: dataKeyProp = "" }) {
@@ -61,12 +61,14 @@ function SocialInbox({ V, onNav, real: realProp = null, email: emailProp = "", d
   }, [onNav]);
 
   // ── REAL: live social threads from the unified inbox read model ─────────────
-  const [rows, setRows] = useState({ list: [], key: "", loaded: false, err: false });
+  const [rows, setRows] = useState({ list: [], key: "", loaded: false, err: false, motivo: null });
   const loadReal = useCallback(async () => {
     const d = await inboxApi("threads", email, dataKey, { limit: 80 });
-    const all = Array.isArray(d.threads) ? d.threads : [];
-    setRows({ list: all.filter((c) => SOCIAL.includes(c.channel)), key: dataKey, loaded: true, err: !d._ok });
+    const all = (Array.isArray(d.threads) ? d.threads : []).filter(Boolean);
+    const falhou = !d._ok || (d._ok && !Array.isArray(d.threads));
+    setRows({ list: all.filter((c) => SOCIAL.includes(c.channel)), key: dataKey, loaded: true, err: falhou, motivo: falhou ? (d._motivo || "resposta_estranha") : null });
   }, [email, dataKey]);
+  const recarregar = () => { setRows((r) => ({ ...r, loaded: false, list: [], err: false })); loadReal(); };
   useEffect(() => {
     if (!isReal) return;
     let alive = true;
@@ -79,24 +81,37 @@ function SocialInbox({ V, onNav, real: realProp = null, email: emailProp = "", d
   // ── Open conversation (shared by real + demo Drawer) ────────────────────────
   const [sel, setSel] = useState(null);
   const [msgs, setMsgs] = useState([]);
+  // estado da CONVERSA aberta: "carregando" | "ok" | motivo da falha
+  const [conversa, setConversa] = useState("ok");
+  const [tentaConversa, setTentaConversa] = useState(0);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const selId = sel?.id;
   useEffect(() => {
     setDraft("");
-    if (!isReal || !sel) { setMsgs([]); return; }
+    if (!isReal || !sel) { setMsgs([]); setConversa("ok"); return; }
     let alive = true;
     const id = sel.id, ch = sel.channel, last = sel.last;
+    setConversa("carregando"); setMsgs([]);
     (async () => {
       const d = await inboxApi("thread", email, dataKey, { thread: id, channel: ch });
       if (!alive) return;
-      const list = (Array.isArray(d.messages) ? d.messages : []).map((m) => ({
+      // 🚨 (2026-09-28) Falha ao abrir a conversa caía no mesmo caminho de "conversa vazia": a
+      // gaveta mostrava só a última mensagem (ou "No messages yet in this conversation") e a dona
+      // respondia SEM VER o histórico — inclusive o que a própria Gui já tinha respondido.
+      if (!d._ok || !Array.isArray(d.messages)) {
+        setMsgs(last ? [{ from: "them", text: last }] : []);
+        setConversa(d._motivo || "resposta_estranha");
+        return;
+      }
+      const list = d.messages.filter(Boolean).map((m) => ({
         from: m.direction === "in" ? "them" : m.direction === "you" ? "you" : "ai", text: m.body,
       }));
       setMsgs(list.length ? list : (last ? [{ from: "them", text: last }] : []));
+      setConversa("ok");
     })();
     return () => { alive = false; };
-  }, [isReal, selId, email, dataKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isReal, selId, email, dataKey, tentaConversa]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sendReal = async (e) => {
     e?.preventDefault?.();
@@ -109,9 +124,16 @@ function SocialInbox({ V, onNav, real: realProp = null, email: emailProp = "", d
     setSending(false);
     // HONEST: "Sent ✓" only when the message truly left the system. Social has no manual push-back
     // path from here → backend returns pending+note; show it and point to where delivery lives.
-    if (d.sent) toast(`${tr("Sent via")} ${sel.channel} ✓`);
-    else if (d.pending) toast(d.note || `${tr("Reply saved — Gui delivers on")} ${sel.channel} ${tr("automatically once connected.")}`);
-    else toast(tr("Reply failed — try again."));
+    if (d._ok && d.sent) toast(`${tr("Sent via")} ${sel.channel} ✓`);
+    // a nota do servidor não vai pra tela: a frase daqui é traduzida e diz a mesma coisa
+    else if (d._ok && d.pending) toast(`${tr("Reply saved — Gui delivers on")} ${sel.channel} ${tr("automatically once connected.")}`);
+    else {
+      // Não saiu E não foi guardado: a bolha otimista SAI da conversa e o texto VOLTA para o campo.
+      // Deixar a bolha lá era mostrar como enviada uma resposta que não existe em lugar nenhum.
+      setMsgs((m) => { const i = m.map((x) => x.from === "you" && x.text === body).lastIndexOf(true); return i < 0 ? m : m.filter((_, j) => j !== i); });
+      setDraft((cur) => cur || body);
+      toast(`${tr("Reply failed — try again.")}${d._motivo ? ` ${fraseDaFalha(d._motivo)}` : ""}`);
+    }
   };
 
   // ── DEMO showcase (sample data) — original lively behavior, unchanged ───────
@@ -129,10 +151,11 @@ function SocialInbox({ V, onNav, real: realProp = null, email: emailProp = "", d
       <div className="space-y-4 stagger">
         <div className="flex flex-wrap items-center gap-2">
           {SOCIAL.map((n) => { const [, c] = netMeta(n); return (
-            <span key={n} className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word"><span className="h-2 w-2 rounded-full" style={{ background: c }} />{n} <span className="text-g-muted">{countNet(n)}</span></span>
+            <span key={n} className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word"><span className="h-2 w-2 rounded-full" style={{ background: c }} />{n} <span className="text-g-muted">{rows.err ? "—" : countNet(n)}</span></span>
           ); })}
           <button onClick={goConnect} className="ml-auto text-[11px] font-bold text-g-gold hover:underline">🔌 {tr("Connect on Social Hub →")}</button>
         </div>
+        {rows.err && <FalhaDeLeitura compacto motivo={rows.motivo} onRetry={recarregar} titulo={tr("I couldn't load your messages just now.")} />}
         <Card className="p-0 overflow-hidden">
           <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Social inbox · Instagram, Facebook & TikTok")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 {tr("tap to open")}</span></div>
           <div className="divide-y divide-white/[0.06]">
@@ -155,11 +178,15 @@ function SocialInbox({ V, onNav, real: realProp = null, email: emailProp = "", d
         {sel && (
           <Drawer
             title={sel.contact || sel.name}
-            subtitle={`${sel.channel} · direct message`}
+            subtitle={`${sel.channel} · ${tr("direct message")}`}
             badge={<span className="grid place-items-center h-7 w-7 rounded-full bg-white/[0.06]" style={{ color: selColor }}><SelIcon size={13} /></span>}
             onClose={() => setSel(null)}
           >
+            {conversa !== "ok" && conversa !== "carregando" && (
+              <div className="mb-2"><FalhaDeLeitura compacto motivo={conversa} onRetry={() => setTentaConversa((n) => n + 1)} titulo={tr("I couldn't load this conversation's history.")} /></div>
+            )}
             <div className="rounded-xl2 border border-white/10 bg-black/10 p-3 space-y-2 max-h-64 overflow-y-auto">
+              {conversa === "carregando" && <div className="text-center text-[11px] text-g-muted py-4 animate-pulse">{tr("Loading…")}</div>}
               {msgs.map((m, i) => (
                 <div key={i} className={`flex ${m.from === "them" ? "justify-start" : "justify-end"}`}>
                   <div className={`max-w-[80%] rounded-2xl px-3 py-1.5 text-xs leading-relaxed ${m.from === "them" ? "bg-white/[0.06] text-g-word" : m.from === "ai" ? "bg-[#FF8A33]/10 text-g-light border border-[#FF8A33]/30" : "bg-g-gold/15 text-g-word border border-g-gold/30"}`}>
@@ -169,7 +196,7 @@ function SocialInbox({ V, onNav, real: realProp = null, email: emailProp = "", d
                   </div>
                 </div>
               ))}
-              {msgs.length === 0 && <div className="text-center text-[11px] text-g-muted py-4">{tr("No messages yet in this conversation.")}</div>}
+              {msgs.length === 0 && conversa === "ok" && <div className="text-center text-[11px] text-g-muted py-4">{tr("No messages yet in this conversation.")}</div>}
             </div>
             <form onSubmit={sendReal} className="mt-3 flex gap-2">
               <input value={draft} onChange={(e) => setDraft(e.target.value)} aria-label={tr("Reply")} placeholder={`${tr("Reply on")} ${sel.channel}…`} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />

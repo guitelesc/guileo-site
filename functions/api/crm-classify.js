@@ -31,7 +31,7 @@ export async function onRequest(context) {
     const r = await svcRpc(env, "crm_classify_sweep", { p_secret: env.INGEST_SECRET || "", p_email: email });
     // Falha aqui não pode ser silenciosa: sem classificação, os motores de retenção param de
     // disparar e ninguém nota — exatamente o buraco que esta rota veio fechar.
-    if (!r || !r.ok) return json({ ok: false, error: `classificação falhou (${r && r.status})` }, 502);
+    if (!r || !r.ok) return json({ ok: false, error: `classificação falhou (${r && r.status})` }, 503);
     return json({ ok: true, scope: email || "todos os clientes", ...(await r.json().catch(() => ({}))) });
   } catch (e) { return json({ error: String(e).slice(0, 160) }, 400); }
 }

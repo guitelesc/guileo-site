@@ -14,8 +14,76 @@
 // rodam na janela horária certa pra não desperdiçar subrequests.
 import { json, rateLimited } from "../lib/guard.js";
 import { svcRpc, svcJson } from "../lib/sb.js";
-import { ownerAlertEmail } from "../lib/emailTemplates.js";
+import { avisarDono } from "../lib/avisarDono.js";
 import { semeiaFila, drenaFila, semeiaEval, drenaEval, semeiaRelatorios, drenaRelatorios } from "../lib/filaAgente.js";
+
+// ── O INTERRUPTOR GERAL DOS MOTORES PROATIVOS (auditoria de lançamento, 2026-09-22) ─────────────
+// POR QUE EXISTE: entre 03 e 09/09 um ataque de fraude de tarifa (+972) zerou a Twilio, e em 22/09
+// a conta seguia suspensa (401) com a Anthropic sem saldo. Nessa hora a pergunta certa é "como eu
+// paro TUDO que fala com o cliente final por conta própria, agora, sem deploy?" — e não havia
+// resposta: cada motor tinha (quando tinha) o seu interruptor por tenant, nenhum tinha o geral.
+//
+// O QUE ELE DESLIGA — só o que escreve/liga para o CLIENTE FINAL sem ninguém ter pedido:
+//   proactive (aniversário, win-back, datas, retorno de orçamento) · cx-survey · nps ·
+//   automations (texto de risco de falta + promoção de dia fraco) · phoneReengageSweep (discagem).
+// O QUE ELE NÃO DESLIGA: lembrete de horário JÁ MARCADO (transacional — a pessoa pediu), soltura
+// de reserva vencida, monitores, backup, alarmes ao dono. Desligar lembrete troca spam por no-show.
+//
+// DOIS LUGARES, UM SENTIDO: env `MOTORES_PROATIVOS=off` (Cloudflare — não depende de banco) OU
+// platform_settings `motores_proativos = "off"` (banco — sem deploy). Qualquer um dos dois desliga.
+//
+// PADRÃO = LIGADO. Setting ausente não muda comportamento nenhum: um interruptor novo que nasce
+// desligado seria uma mudança silenciosa de produto no dia do deploy. E leitura que FALHA também
+// fica ligada, mas com a `fonte` dizendo "ilegivel" — "não consegui ler" e "está ligado" não podem
+// ter a mesma cara na resposta. Quem precisa de garantia com o banco fora usa a env.
+export async function motoresEstado(env) {
+  try {
+    if (String((env && env.MOTORES_PROATIVOS) || "").trim().toLowerCase() === "off") return { ativos: false, fonte: "env" };
+    if (!env || !env.INGEST_SECRET) return { ativos: true, fonte: "padrao (sem INGEST_SECRET, banco não consultado)" };
+    const s = await svcJson(env, "platform_settings_get", { p_secret: env.INGEST_SECRET }).catch(() => null);
+    // svcJson devolve {ok:false, erro_http} em falha de transporte — isso NÃO é um settings vazio.
+    if (!s || typeof s !== "object" || Array.isArray(s) || s.ok === false) return { ativos: true, fonte: "ilegivel" };
+    const v = String(s.motores_proativos ?? "").trim().toLowerCase();
+    if (v === "off") return { ativos: false, fonte: "banco" };
+    return { ativos: true, fonte: v ? "banco" : "padrao" };
+  } catch { return { ativos: true, fonte: "ilegivel" }; }
+}
+export async function motoresAtivos(env) {
+  return (await motoresEstado(env)).ativos;
+}
+
+// ── 200 NÃO É "DEU CERTO" (auditoria de lançamento, 2026-09-22) ─────────────────────────────────
+// O cron lia só o status HTTP de cada alvo. O lifecycle respondeu 200 com `{ok:false, error:"lead
+// store unreachable"}` por 12 DIAS (ADMIN_TOKEN errado) e o cron o listou como saudável em todos
+// os ~1.150 tiques. É a armadilha que sb.js já descreve para RPC, só que um andar acima: `r.ok`
+// é o "deu 200?" do HTTP, não o `ok` que a rota escreveu no corpo.
+//
+// TRÊS ESTADOS, não dois — porque alarme que toca todo dia por motivo conhecido é alarme que
+// ninguém mais lê:
+//   · falhou   → HTTP não-2xx, OU 200 com `ok:false`. Entra em `falhas` e avisa o dono.
+//   · inerte   → `ok:false` com `ready:false`/`pronto:false`: o motor se declara NÃO LIGADO (chave
+//                externa que falta, SQL não colado). É o "honesto-inerte" da casa: aparece na
+//                resposta (`inertes`), não acorda ninguém.
+//   · calado   → `desligado` / `mudo` / `skipped` / `pulou`: alguém DECIDIU que não rodasse
+//                (interruptor geral, e-mails do dono mudos, trava do dia). Não é falha.
+// Função pura e exportada de propósito: dá para provar com `node` sem subir servidor.
+export function leAlvo(status, httpOk, texto) {
+  const st = Number(status) || 0;
+  let corpo = null;
+  try { corpo = texto ? JSON.parse(texto) : null; } catch { corpo = null; }
+  const obj = corpo && typeof corpo === "object" && !Array.isArray(corpo) ? corpo : null;
+  const motivoDe = (o) => (o && (o.error || o.erro || o.motivo || o.reason || o.nota || o.note) || "").toString().slice(0, 120);
+  if (!httpOk) {
+    // O motivo curto vai junto: "500" sozinho é o mesmo silêncio com outro número.
+    return { marca: st, falhou: true, inerte: false, motivo: st ? (motivoDe(obj) || String(texto || "").slice(0, 120)) : "sem resposta (fetch lançou)" };
+  }
+  if (!obj) return { marca: st, falhou: false, inerte: false, motivo: "" };
+  if (obj.desligado === true) return { marca: `${st} desligado`, falhou: false, inerte: false, motivo: "" };
+  if (obj.ok !== false) return { marca: st, falhou: false, inerte: false, motivo: "" };
+  if (obj.mudo || obj.skipped || obj.pulou) return { marca: `${st} calado`, falhou: false, inerte: false, motivo: motivoDe(obj) };
+  if (obj.ready === false || obj.pronto === false) return { marca: `${st} inerte`, falhou: false, inerte: true, motivo: motivoDe(obj) };
+  return { marca: `${st} ok:false`, falhou: true, inerte: false, motivo: motivoDe(obj) || "a rota respondeu ok:false sem dizer o motivo" };
+}
 
 // PHONE RE-ENGAGEMENT EXECUTOR (#19) — turns a queued churn-reengage / booking-recovery
 // client_event that carries a PHONE (not an email) into a REAL Gui callback through the single
@@ -112,6 +180,16 @@ export async function onRequest(context) {
     const t = encodeURIComponent(env.DIGEST_TOKEN);
     const hourUTC = new Date().getUTCHours();
     const minute = new Date().getUTCMinutes();
+    // ⚠️ DECLARADO AQUI, NÃO LÁ EMBAIXO (2026-09-09). `evalSemente` era um `let` declarado DEPOIS
+    // do bloco das 00h que o atribui — zona morta temporal: todo tique da meia-noite estourava
+    // ReferenceError antes de chamar alvo nenhum, o catch final devolvia 500, e o Worker (que
+    // ignora a resposta) seguia feliz. Uma hora inteira de cron morta todo dia, sem uma linha
+    // acusando. Achado ao ler o arquivo para ligar o alarme de alvo falho — o próprio alarme teria
+    // apontado isto no primeiro dia.
+    let evalSemente = null;
+
+    // O interruptor geral é lido UMA vez por tique (uma consulta) e vale para o tique inteiro.
+    const motores = await motoresEstado(env);
 
     // every tick (15 min): operational engines (all claim-protected)
     const targets = [
@@ -126,12 +204,20 @@ export async function onRequest(context) {
     // SÓ PÔDE SER LIGADA depois que a reserva virou porta única dentro de publishRow(): antes,
     // ligar a varredura republicaria o post que o cockpit estava publicando naquele instante.
     // Reserva ANTES de enviar → re-rodar nunca publica duas vezes. Inerte e honesta sem META_APP_*.
+      // ⚠️ `automations` CONTINUA NA LISTA mesmo com os motores proativos desligados, de propósito:
+      // a mesma rota solta a reserva provisória vencida (ENGINE 0), que não fala com ninguém e, se
+      // parar, deixa horário bloqueado por horas. Quem obedece ao interruptor é a própria rota —
+      // ela pula os dois motores de mensagem e responde `desligado:true`.
       { name: "automations", url: `${base}/api/automations?token=${t}` },
       // LEMBRETE DE HORÁRIO, DE HORA EM HORA (2026-08-16). Só a parte transacional — o marketing
       // continua na rodada diária das 13h. Antes, o lembrete só existia 1×/dia com janela de 24h,
       // então reserva criada depois da rodada para o dia seguinte NUNCA era lembrada. No-show é a
       // perda mais cara depois da venda perdida, e essa era invisível: o dono lia como "faltou".
       // Barato quando não há nada vencendo: uma consulta que volta vazia.
+      // MINDBODY — o que mudou LÁ volta para cá ANTES do lembrete (2026-09-30): horário cancelado
+      // ou remarcado dentro do MindBody não pode receber lembrete nem pedido de avaliação. Sem
+      // negócio com MindBody ativo é uma consulta que volta vazia.
+      { name: "mindbody-sync", url: `${base}/api/mindbody?sync=1&token=${t}` },
       { name: "lembretes", url: `${base}/api/proactive?apenas=lembretes&token=${t}` },
       { name: "lifecycle", url: `${base}/api/lifecycle?token=${t}` },
       { name: "social-sweep", url: `${base}/api/social-publish?sweep=1&token=${t}` },
@@ -150,6 +236,23 @@ export async function onRequest(context) {
       targets.push({ name: "health-monitor", url: `${base}/api/health-monitor?token=${t}` });
       // funnel canary: proves chat/pay-links/call-gate/widget are ALIVE every hour (no side effects)
       targets.push({ name: "canary", url: `${base}/api/canary?token=${t}` });
+      // SINAL PAGO NA CONTA PRÓPRIA DO NEGÓCIO (2026-10-05): confere quem pagou e fechou a aba antes
+      // de voltar — o webhook da plataforma não recebe esses pagamentos. Sem pendente, volta vazio.
+      targets.push({ name: "sinal-reconcile", url: `${base}/api/sinal-reconcile?token=${t}` });
+      // Venda online de pacote/vale/assinatura no Stripe DO NEGÓCIO (2026-10-05): o webhook daquela conta não chega
+      // aqui — a volta da compradora (/api/venda-paga) entrega, e esta conferência de hora em hora pega quem fechou a aba.
+      targets.push({ name: "venda-online-reconcile", url: `${base}/api/venda-online-reconcile?token=${t}` });
+      // ☀️ RESUMO DA MANHÃ DO DESK (2026-10-05): DE HORA EM HORA, não só às 13h — cada negócio recebe
+      // na hora LOCAL que escolheu (≈7h no fuso da unidade), e as 7h de NY, de SP e de Delhi caem em
+      // horas UTC diferentes. Opt-in (padrão desligado) e reservado por dia no banco: rodar de novo
+      // nunca manda duas vezes. Ninguém ligou → uma consulta que volta vazia.
+      targets.push({ name: "resumo-manha", url: `${base}/api/resumo-manha?token=${t}` });
+      // 💬 ACOMPANHAMENTO DE CONSULTA (2026-10-13, Natura Parte 4): quem fez a consulta grátis e não marcou nada
+      // em N dias recebe UM e-mail da assistente, das 9h às 20h locais. Carimbo por consulta no banco: de hora em
+      // hora nunca manda em dobro; ninguém devido → uma consulta que volta vazia.
+      targets.push({ name: "consulta-retorno", url: `${base}/api/consulta-retorno?token=${t}` });
+      // Relatório mensal (2026-10-05): mesma cadência — o dia 1 às 7h locais cai em horas UTC diferentes por negócio.
+      targets.push({ name: "relatorio-mensal", url: `${base}/api/relatorio-mensal?token=${t}` });
       // Gui replies to new Google reviews (inert until GOOGLE_BUSINESS_* + a tenant connects)
       targets.push({ name: "review-responder", url: `${base}/api/review-responder?token=${t}` });
       targets.push({ name: "collections", url: `${base}/api/collections?sweep=1&token=${t}` });
@@ -242,23 +345,35 @@ export async function onRequest(context) {
     // two chances (13h AND 14h): a single failed tick must not skip the whole day/week —
     // every daily/weekly target below is claim-protected/idempotent, so the 2nd tick is safe.
     if ((hourUTC === 13 || hourUTC === 14) && minute < 15) {
-      targets.push({ name: "proactive", url: `${base}/api/proactive?token=${t}` });
+      // Os três alvos abaixo marcados com `motores.ativos` escrevem para cliente por conta própria:
+      // com o interruptor geral em "off" eles nem são chamados (e, chamados à mão, se recusam).
+      // RELACIONAMENTO (2026-09-30): a volta no tempo certo de cada serviço + o aniversário, numa
+      // chamada SÓ DELES e ANTES da rodada grande — que gasta ~20 chamadas por negócio e estoura o
+      // teto de subrequests no 3º. Fila global, carimbo depois do envio: as duas chances (13h e
+      // 14h) são seguras.
+      if (motores.ativos) targets.push({ name: "relacionamento", url: `${base}/api/proactive?apenas=relacionamento&token=${t}` });
+      // RELATÓRIO MENSAL DE VALOR: só nos dias 1 a 7 (o mês anterior já fechou; 8 negócios por
+      // chamada, então a primeira semana cobre todos). Depois do dia 7 nem é chamado.
+      if (motores.ativos && new Date().getUTCDate() <= 7) targets.push({ name: "relatorio-mensal", url: `${base}/api/proactive?apenas=relatorio-mensal&token=${t}` });
+      if (motores.ativos) targets.push({ name: "proactive", url: `${base}/api/proactive?token=${t}` });
       // CLASSIFICAÇÃO DO CRM antes dos motores de retenção do dia: aniversário, win-back e
       // churn LEEM lifecycle/LTV/risco. Se a varredura não rodar primeiro, eles decidem em
       // cima da foto de ontem — ou, como era até 2026-08-04, em cima de campo vazio.
       targets.push({ name: "crm-classify", url: `${base}/api/crm-classify?token=${t}` });
-      targets.push({ name: "nps", url: `${base}/api/nps?token=${t}` });
+      if (motores.ativos) targets.push({ name: "nps", url: `${base}/api/nps?token=${t}` });
       // XM active survey: Gui asks each client's OWN recent customers "how was it?" (1-tap NPS/CSAT),
       // ON by default per tenant (they can disable it in the Experience tab). Claim-deduped (30-day
       // window) + capped + email-only, so the daily re-run never double-surveys anyone.
-      targets.push({ name: "cx-survey", url: `${base}/api/cx-survey?token=${t}` });
+      if (motores.ativos) targets.push({ name: "cx-survey", url: `${base}/api/cx-survey?token=${t}` });
       targets.push({ name: "money-reconcile", url: `${base}/api/money-reconcile?token=${t}` });
       // ONBOARDING MACHINE step 7: day-30/60/90 one-question check-in. Atomic-claimed per milestone
       // (onboard_checkin_due), so the daily re-run never re-sends — safe every day.
       targets.push({ name: "onboarding-checkin", url: `${base}/api/onboarding?sweep=checkin&token=${t}` });
       // ONBOARDING MACHINE step 6: monthly ROI report. Claimed per calendar month (onboard_report_due)
       // and fired on the 1st @13h only (not the 14h retry) → exactly one ROI report per client per month.
-      if (hourUTC === 13 && new Date().getUTCDate() === 1) targets.push({ name: "onboarding-report", url: `${base}/api/onboarding?sweep=report&token=${t}` });
+      // DESLIGADO (2026-09-22): o step "report" mandava ao cliente PAGANTE o e-mail de prospect
+      // ("~$4.500/mês em risco · ver planos", onboarding.js:135). Volta quando ler o client-report real.
+      // if (hourUTC === 13 && new Date().getUTCDate() === 1) targets.push({ name: "onboarding-report", url: `${base}/api/onboarding?sweep=report&token=${t}` });
       // Data-cannot-lie: nightly cross-department invariant sweep; alerts if any HIGH contradiction.
       targets.push({ name: "integrity-sweep", url: `${base}/api/integrity-sweep?token=${t}` });
       // weekly (Monday 13:00 UTC): the "Your Gui this week" value report — skipped clients with
@@ -299,15 +414,77 @@ export async function onRequest(context) {
       // `lang=pt` explícito: o padrão da rota é "en" e quem lê este digest é o Luis. Digest em
       // inglês para leitor de português é o mesmo "meio em inglês" que a lei de i18n proíbe.
       if (hourUTC === 13) targets.push({ name: "daily-digest", url: `${base}/api/daily-digest?lang=pt&token=${t}` });
+      // BACKUP DIÁRIO (2026-09-09). /api/backup existia desde o começo — o cabeçalho dele dizia
+      // «wired into the guileo-digest-cron Worker» e NENHUM cron jamais o chamou. A cópia de
+      // segurança que "saía todo dia" nunca saiu uma vez. Duas chances (13h e 14h) como os outros;
+      // o endpoint reserva o dia com `ops_run_claim('backup', 20h)` e responde `ja_rodou_hoje` na
+      // repetição, então a 2ª chance nunca manda dois anexos.
+      targets.push({ name: "backup", url: `${base}/api/backup?token=${t}` });
     }
 
+    // ── ALVO QUE FALHA CONFESSA (2026-09-09) ────────────────────────────────────────────────
+    // Antes: `results[nome] = 0` quando o alvo estourava, e um 500 do alvo ficava gravado como
+    // "500" numa resposta que só o Worker lia — e o Worker ignora a resposta. Um sweep podia
+    // morrer por semanas com o cron "verde". Agora todo alvo não-2xx (ou que lançou) entra em
+    // `falhas`, e UM aviso deduplicado (6h) sai pelo avisarDono com nome + status de cada um.
+    // Não-bloqueante: o fan-out continua igual; o aviso é disparado depois do laço e entregue em
+    // `waitUntil` quando a plataforma oferece (a resposta não espera a Resend/Twilio).
     const results = {};
+    const falhas = [];
+    const inertes = [];
+    const contagens = {};
     for (const tg of targets) {
       try {
         const r = await fetch(tg.url, { method: "POST" }).catch(() => null);
-        const r2 = r && r.ok ? r : await fetch(tg.url); // some sweeps are GET-only
-        results[tg.name] = r2 ? r2.status : 0;
-      } catch { results[tg.name] = 0; }
+        // A 2ª tentativa por GET existe para rota que não aceita POST (405 e primos 4xx) ou quando
+        // o POST nem voltou. Em 5xx ela NÃO repete mais (2026-09-22): 5xx quer dizer que a rota
+        // RODOU e falhou — repetir era executar o motor duas vezes por tique (o lifecycle, que
+        // agora responde 502 sem ADMIN_TOKEN, rodaria em dobro 96×/dia) e gastar subrequest à toa.
+        const repete = !r || (r.status >= 400 && r.status < 500);
+        const r2 = repete ? await fetch(tg.url).catch(() => null) : r;
+        // O CORPO É LIDO SEMPRE, não só no erro: é nele que mora o `ok:false` de um 200 (ver leAlvo).
+        const texto = r2 ? await r2.text().catch(() => "") : "";
+        const v = leAlvo(r2 ? r2.status : 0, !!(r2 && r2.ok), texto);
+        results[tg.name] = v.marca;
+        // O LEMBRETE NUNCA TINHA SAÍDO (2026-09-28: max(reminded_at) = null na base inteira) e o tique
+        // só guardava "200". Status não é medida: guarda os CONTADORES do motor — só números e o
+        // código da recusa, sem e-mail de ninguém (esta rota é pública).
+        if (tg.name === "lembretes") {
+          try {
+            const j = JSON.parse(texto || "{}");
+            contagens.lembretes = { negocios: j.businesses ?? null, lembrados: j.reminded ?? null,
+              recusas: Array.isArray(j.rpcRecusou) ? j.rpcRecusou.length : null,
+              codigos: Array.isArray(j.rpcRecusou) ? [...new Set(j.rpcRecusou.map((x) => String(x).split(":")[0] + ":" + String(x).split(":").slice(-1)[0]))].slice(0, 8) : [],
+              nota: j.note || j.motivo || null, visitas: j.visitas || null };
+          } catch { contagens.lembretes = { ilegivel: String(texto || "").slice(0, 80) }; }
+        }
+        // Mesma régua para a passada de relacionamento: só números e o nome do erro.
+        if (tg.name === "relacionamento") {
+          try {
+            const j = JSON.parse(texto || "{}"); const r = j.relacionamento || {};
+            contagens.relacionamento = { naFila: r.naFila ?? null, voltas: r.voltas ?? null, aniversarios: r.aniversarios ?? null,
+              semEmail: r.semEmail ?? null, suprimidos: r.suprimidos ?? null, envioFalhou: r.envioFalhou ?? null,
+              carimboFalhou: r.carimboFalhou ?? null, adiados: r.adiados ?? null,
+              erros: Array.isArray(r.erros) ? r.erros.map((x) => String(x).slice(0, 60)).slice(0, 4) : [], nota: j.motivo || null };
+          } catch { contagens.relacionamento = { ilegivel: String(texto || "").slice(0, 80) }; }
+        }
+        if (v.falhou) falhas.push({ alvo: tg.name, status: v.marca, motivo: v.motivo });
+        else if (v.inerte) inertes.push({ alvo: tg.name, motivo: v.motivo });
+      } catch (e) { results[tg.name] = 0; falhas.push({ alvo: tg.name, status: 0, motivo: String(e).slice(0, 120) }); }
+    }
+    let avisoFalhas = null;
+    if (falhas.length) {
+      const lista = falhas.map((f) => `${f.alvo} → ${f.status || "sem resposta"}`).join(" · ");
+      const p = avisarDono(env, {
+        kind: "cron_alvo_falhou",
+        summary: `${falhas.length} alvo(s) do cron falharam: ${lista}`,
+        detail: falhas.map((f) => `${f.alvo}: HTTP ${f.status} — ${f.motivo}`).join("\n"),
+        cliente: "Guileo (cron)", link: "https://guileoai.com/admin", payload: { falhas },
+        // A chave carrega os NOMES: duas falhas diferentes no mesmo balde de 6h não se calam.
+        chave: `cron_alvo:${falhas.map((f) => f.alvo).sort().join(",").slice(0, 60)}`,
+      });
+      if (context.waitUntil) { context.waitUntil(p); avisoFalhas = { disparado: true, alvos: falhas.map((f) => f.alvo) }; }
+      else avisoFalhas = await p;
     }
     // ── O SEMÁFORO, EXPOSTO ──────────────────────────────────────────────────────────────────
     // `/api/platform-status` já responde "está tudo funcionando?" num semáforo por área
@@ -317,7 +494,6 @@ export async function onRequest(context) {
     // (cores, sem detalhe sensível). Assim `POST /api/cron-tick` vira a pergunta única, pública e
     // sem segredo: uma chamada, e você vê se alguma máquina caiu.
     // Só no tique da hora: é agregação de sondas, não precisa rodar de 15 em 15 minutos.
-    let evalSemente = null;
     let semaforo = null;
     if (minute < 15 || forcarSemaforo) {
       try {
@@ -386,29 +562,19 @@ export async function onRequest(context) {
         // plataforma é alarme que não existe. Este SAI — por e-mail, para o dono.
         // Uma vez por dia POR CANAL: a varredura roda de hora em hora e 24 avisos iguais viram
         // ruído, e ruído é como um alarme morre no dia em que importa.
+        // (2026-09-09) Porta única: avisarDono. A trava `alarme_uma_vez` daqui exigia service_role
+        // (anon revogado) e, sem ele, `pode !== true` calava o alarme PARA SEMPRE — o anti-spam
+        // virando o silêncio. avisarDono só cala com `false` explícito; trava ilegível deixa sair.
         const m = semaforo && semaforo.mensagens;
-        if (m && env.RESEND_API_KEY && env.INGEST_SECRET) {
+        if (m) {
+          semaforo.avisos = semaforo.avisos || {};
           for (const canal of ["sms", "whatsapp"]) {
             if (m[canal] !== "vermelho") continue;
-            const pode = await svcJson(env, "alarme_uma_vez", {
-              p_secret: env.INGEST_SECRET, p_chave: `canal_caido:${canal}`, p_minutos: 1440,
-            }).catch(() => false);
-            if (pode !== true) continue;
-            try {
-              const { subject, html } = ownerAlertEmail({
-                kind: "canal", business: "Guileo", lang: "pt",
-                customer: canal === "sms" ? "SMS" : "WhatsApp",
-                details: (canal === "sms" ? m.falta_sms : m.falta_whatsapp) || "sem motivo lido",
-              });
-              const to = (env.OWNER_EMAIL || "smart@guileoai.com").toString().split(",")[0].trim();
-              const er = await fetch("https://api.resend.com/emails", {
-                method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to, subject, html }),
-              });
-              // Conferir o retorno: um aviso "enviado" que o Resend recusou é o mesmo silêncio
-              // que este alarme existe para acabar.
-              if (!er.ok) console.error(JSON.stringify({ alarme_canal: canal, resend: er.status }));
-            } catch (e) { console.error(JSON.stringify({ alarme_canal: canal, erro: String(e).slice(0, 80) })); }
+            semaforo.avisos[`canal_${canal}`] = await avisarDono(env, {
+              kind: `canal_caido_${canal}`,
+              summary: `${canal === "sms" ? "SMS" : "WhatsApp"} respondendo para o vazio — ${(canal === "sms" ? m.falta_sms : m.falta_whatsapp) || "sem motivo lido"}`,
+              cliente: "Guileo (canais)", link: "https://guileoai.com/admin",
+            });
           }
         }
       } catch (e) { if (semaforo) semaforo.mensagens = { nota: String(e).slice(0, 60) }; }
@@ -421,27 +587,34 @@ export async function onRequest(context) {
         const hoje = new Date().toISOString().slice(0, 10);
         const barrados = Array.isArray(orc) ? orc.filter((x) => x.dia === hoje && (x.bloqueios || 0) > 0) : [];
         if (semaforo) semaforo.orcamento = Array.isArray(orc) ? { barrados: barrados.length } : { nota: "não deu para ler" };
+        // (2026-09-09) Mesma porta única do bloco dos canais, mesmo motivo (a trava antiga calava
+        // sem service_role). O balde de 6h é suficiente: o teto vira uma vez por dia.
         for (const x of barrados) {
-          const pode = await svcJson(env, "alarme_uma_vez", {
-            p_secret: env.INGEST_SECRET || "", p_chave: `orcamento:${x.proposito}`, p_minutos: 1440,
-          }).catch(() => false);
-          if (pode !== true || !env.RESEND_API_KEY) continue;
-          try {
-            const { subject, html } = ownerAlertEmail({
-              kind: "orcamento", business: "Guileo", lang: "pt", customer: x.proposito,
-              details: `teto ${x.teto} tokens · usado ${x.usado} · recusas hoje: ${x.bloqueios}`,
-            });
-            const to = (env.OWNER_EMAIL || "smart@guileoai.com").toString().split(",")[0].trim();
-            const er = await fetch("https://api.resend.com/emails", {
-              method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-              body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to, subject, html }),
-            });
-            if (!er.ok) console.error(JSON.stringify({ alarme_orcamento: x.proposito, resend: er.status }));
-          } catch (e) { console.error(JSON.stringify({ alarme_orcamento: x.proposito, erro: String(e).slice(0, 80) })); }
+          if (semaforo) { semaforo.avisos = semaforo.avisos || {}; }
+          const r = await avisarDono(env, {
+            kind: `orcamento_${(x.proposito || "geral").toString().slice(0, 30)}`,
+            summary: `o agente "${x.proposito}" bateu no teto de orçamento — teto ${x.teto} tokens · usado ${x.usado} · recusas hoje: ${x.bloqueios}`,
+            cliente: "Guileo (orçamento do agente)",
+          });
+          if (semaforo) semaforo.avisos[`orcamento_${x.proposito}`] = r;
         }
         // Item preso em voo há mais de 30 min volta pra fila — worker morto não pode aposentar trabalho.
         await svcJson(env, "fila_destrava", { p_secret: env.INGEST_SECRET || "" }).catch(() => {});
+        // FALTA AUTOMÁTICA do Desk (desk_v12): pano de fundo a cada 15 min; a leitura da agenda é a varredura viva.
+        await svcJson(env, "desk_auto_noshow_sweep", { p_secret: env.SCHED_SECRET || "" }).catch(() => {});
       } catch (e) { console.error(JSON.stringify({ alarme_orcamento: "geral", erro: String(e).slice(0, 80) })); }
+
+      // ── O PRÓPRIO CRON ENTRA NO SEMÁFORO (2026-09-22) ───────────────────────────────────────
+      // O semáforo media voz, dinheiro, agenda, canais — e não media os motores que o cron
+      // acabou de chamar. Um alvo falho (inclusive o 200 com `ok:false`) ficava em `falhas`, num
+      // canto da resposta, com o `overall` ainda "ok". Alvo falho não derruba o geral para "down"
+      // (voz é o produto), mas verde ele não fica: "ok" vira "degraded".
+      if (semaforo) {
+        semaforo.cron = falhas.length
+          ? { estado: "vermelho", falhas: falhas.length, alvos: falhas.map((f) => f.alvo) }
+          : { estado: "verde", falhas: 0 };
+        if (falhas.length && semaforo.overall === "ok") semaforo.overall = "degraded";
+      }
     }
 
     // PHONE RE-ENGAGEMENT EXECUTOR (#19) — once per hour, dial the queued phone-contact
@@ -472,10 +645,40 @@ export async function onRequest(context) {
 
     let reengage = null;
     if (minute < 15) {
-      try { reengage = await phoneReengageSweep(env, base, hourUTC); }
-      catch (e) { reengage = { error: String(e).slice(0, 80) }; }
+      // Discagem automática é o motor mais caro de errar (foi por discagem que a Twilio zerou):
+      // com o interruptor geral em "off" a varredura nem lê a fila — nada é reservado, nada é
+      // queimado, e os pedidos continuam lá para quando religar.
+      if (!motores.ativos) reengage = { desligado: true, motivo: `motores_proativos=off (${motores.fonte})` };
+      else {
+        try { reengage = await phoneReengageSweep(env, base, hourUTC); }
+        catch (e) { reengage = { error: String(e).slice(0, 80) }; }
+      }
     }
-    return json({ ok: true, semaforo, ran: results, reengage, fila, evalSemente, hourUTC, minute });
+    // `ok` agora diz a verdade: alvo falho = tique com problema (a resposta continua 200 para o
+    // Worker; quem lê o JSON vê `falhas` com nome + status e `avisoFalhas` com o recibo do aviso).
+    // ── A ÚLTIMA RODADA, GUARDADA (2026-10-14) ───────────────────────────────────────────────
+    // "Onde estão as automações e como sei que funcionam?" — a resposta vivia só neste JSON, que ninguém
+    // lia. Cada alvo grava o seu último resultado em KV (3 dias): hora, estado, motivo curto. Alvo de hora
+    // em hora e diário mantém o último resultado entre os tiques de 15 min. Lido por GET /api/automacoes
+    // (público, sem segredo) e mostrado no /admin → ⚙️ Automações. KV fora NUNCA derruba o tique.
+    if (env.RATE_LIMIT) {
+      try {
+        const agora = new Date().toISOString();
+        let alvos = {};
+        try { alvos = JSON.parse((await env.RATE_LIMIT.get("cron:alvos")) || "{}") || {}; } catch { alvos = {}; }
+        for (const [nome, st] of Object.entries(results || {})) {
+          const f = falhas.find((x) => x.alvo === nome); const i = inertes.find((x) => x.alvo === nome);
+          alvos[nome] = { at: agora, status: String(st), estado: f ? "falhou" : i ? "inerte" : /calado|desligado/.test(String(st)) ? "calado" : "ok", motivo: String((f && f.motivo) || (i && i.motivo) || "").slice(0, 160) };
+        }
+        await env.RATE_LIMIT.put("cron:alvos", JSON.stringify(alvos), { expirationTtl: 3 * 86400 });
+        await env.RATE_LIMIT.put("cron:ultimo", JSON.stringify({ at: agora, hourUTC, minute, ok: falhas.length === 0, falhas, inertes, semaforo, alvos_no_tique: Object.keys(results || {}).length }), { expirationTtl: 3 * 86400 });
+      } catch { /* KV fora: o registro falha, o tique não */ }
+    }
+    return json({
+      ok: falhas.length === 0, semaforo, ran: results, contagens, falhas, inertes, avisoFalhas,
+      motores_proativos: motores.ativos ? "on" : "off", motores_proativos_fonte: motores.fonte,
+      reengage, fila, evalSemente, hourUTC, minute,
+    });
   } catch (e) {
     return json({ error: String(e).slice(0, 140) }, 500);
   }

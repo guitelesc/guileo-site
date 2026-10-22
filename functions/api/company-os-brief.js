@@ -5,6 +5,7 @@
 // Só entrega pro OWNER_EMAIL (não vaza dado da companhia pra endereço arbitrário).
 import { json, safeEq, isOwnerEmail } from "../lib/guard.js";
 import { companyBriefEmail } from "../lib/emailTemplates.js";
+import { emailsDoDonoMudos } from "../lib/avisarDono.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -38,7 +39,7 @@ export async function onRequest(context) {
     const { subject, html } = companyBriefEmail({ dateLabel, did: data.did || {}, needs: data.needs || {}, lang });
 
     let sent = false;
-    if (env.RESEND_API_KEY) {
+    if (env.RESEND_API_KEY && !(await emailsDoDonoMudos(env))) {
       const er = await fetch("https://api.resend.com/emails", {
         method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to, subject, html }),

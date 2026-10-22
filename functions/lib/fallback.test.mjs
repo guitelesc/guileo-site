@@ -90,8 +90,17 @@ for (const nome of readdirSync(DIR).filter((f) => f.endsWith(".js"))) {
     if (!m) return;
     const resp = m[1];
     if (!daRede.has(resp)) return;                 // corpo que chega, ou variável de outra origem
-    // janela dos DOIS lados: o status pode ser consultado antes ou depois do parse
-    const volta = linhas.slice(Math.max(0, i - JANELA), Math.min(linhas.length, i + JANELA)).join("\n");
+    // ── PRA TRÁS, O ESCOPO É A PRÓPRIA VARIÁVEL (consertado 2026-10-04) ───────────────────────
+    // Era janela fixa de 10 linhas para os dois lados, e 10 é um número inventado: em
+    // contract.js o `if (!r.ok)` fica 11 linhas acima do parse porque entre os dois existe o
+    // tratamento de `contrato_travado` — código CERTO, reprovado por um palmo de distância.
+    // A regra escrita neste arquivo é "o status foi consultado", não "foi consultado perto".
+    // Então, para trás, a busca vai até onde `resp` NASCEU (a chamada de rede) e para ali: não
+    // é janela, é escopo — e por isso não alcança um `r.ok` de outro bloco com o mesmo nome.
+    // Para a frente a janela continua, porque ali não existe fronteira natural.
+    const nasceu = linhas.findLastIndex((l, k) => k < i &&
+      new RegExp(`(?:const|let|var)\\s+${resp}\\s*=\\s*await\\s+(?:fetch|rpc|svcRpc|svcJson|sapi|graph|el)\\s*\\(`).test(l));
+    const volta = linhas.slice(nasceu >= 0 ? nasceu : Math.max(0, i - JANELA), Math.min(linhas.length, i + JANELA)).join("\n");
     if (new RegExp(`\\b${resp}\\s*\\.(ok|status)\\b`).test(volta)) return;   // guarda por STATUS
     // ⚓ ÂNCORA POR TEXTO, não por número de linha: uma inserção acima não desloca nada, e a
     // isenção só continua valendo enquanto existir EXATAMENTE o código que foi auditado.

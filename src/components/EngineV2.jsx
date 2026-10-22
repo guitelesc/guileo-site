@@ -48,8 +48,8 @@ const ANEL = [
 const EV = {
   en: {
     eyebrow: "The Guileo engine",
-    h1a: "Every conversation ", h1b: "compounds.",
-    sub: "One AI + marketing team — ads, content, marketing, sales & profit, all on one loop while you work.",
+    h1a: "Every interaction becomes ", h1b: "your marketing.",
+    sub: "Data is the fuel. Each call, message and visit Gui handles is saved, understood and reused — so your ads, content and follow-ups talk to people who already know you.",
     nomes: ["Conversation", "Your data", "Content", "Ads", "Sales", "Profit"],
     linhas: [
       "Every call, WhatsApp, SMS and web message — answered and understood.",
@@ -72,8 +72,8 @@ const EV = {
   },
   pt: {
     eyebrow: "O motor da Guileo",
-    h1a: "Cada conversa ", h1b: "se acumula.",
-    sub: "Um time de IA + marketing — anúncios, conteúdo, marketing, vendas e lucro, num ciclo só enquanto você trabalha.",
+    h1a: "Toda interação vira ", h1b: "o seu marketing.",
+    sub: "Dado é o combustível. Cada ligação, mensagem e visita que a Gui atende é guardada, entendida e reaproveitada — seus anúncios, conteúdo e retornos falam com quem já te conhece.",
     nomes: ["Conversa", "Seus dados", "Conteúdo", "Anúncios", "Vendas", "Lucro"],
     linhas: [
       "Toda ligação, WhatsApp, SMS e mensagem do site — atendida e entendida.",
@@ -96,8 +96,8 @@ const EV = {
   },
   es: {
     eyebrow: "El motor de Guileo",
-    h1a: "Cada conversación ", h1b: "se acumula.",
-    sub: "Un equipo de IA + marketing — anuncios, contenido, marketing, ventas y ganancia, en un solo bucle mientras trabajas.",
+    h1a: "Cada interacción se vuelve ", h1b: "tu marketing.",
+    sub: "Los datos son el combustible. Cada llamada, mensaje y visita que Gui atiende se guarda, se entiende y se reutiliza — tus anuncios, contenido y seguimientos hablan con quien ya te conoce.",
     nomes: ["Conversación", "Tus datos", "Contenido", "Anuncios", "Ventas", "Ganancia"],
     linhas: [
       "Cada llamada, WhatsApp, SMS y mensaje de la web — atendida y entendida.",
@@ -120,8 +120,8 @@ const EV = {
   },
   hi: {
     eyebrow: "Guileo इंजन",
-    h1a: "हर बातचीत ", h1b: "जुड़ती जाती है।",
-    sub: "एक AI + मार्केटिंग टीम — विज्ञापन, कॉन्टेंट, मार्केटिंग, बिक्री और मुनाफ़ा, एक ही चक्र में आपके काम करते हुए।",
+    h1a: "हर इंटरैक्शन बन जाता है ", h1b: "आपकी मार्केटिंग।",
+    sub: "डेटा ही ईंधन है। Gui जो भी कॉल, मैसेज और विज़िट संभालती है, वह सहेजी, समझी और दोबारा इस्तेमाल होती है — आपके विज्ञापन, कॉन्टेंट और फ़ॉलो-अप उनसे बात करते हैं जो आपको पहले से जानते हैं।",
     nomes: ["बातचीत", "आपका डेटा", "कॉन्टेंट", "विज्ञापन", "बिक्री", "मुनाफ़ा"],
     linhas: [
       "हर कॉल, WhatsApp, SMS और वेब संदेश — उठाया और समझा जाता है।",

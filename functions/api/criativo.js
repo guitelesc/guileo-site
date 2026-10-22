@@ -120,7 +120,7 @@ export async function onRequestPost(context) {
       // um kit de peças vazias é o desfecho que faz alguém colar nada no gerenciador.
       const vivas = kit.pecas.filter((p) => !p.erro);
       if (!vivas.length) {
-        return json({ ok: false, error: `a IA não escreveu nenhuma peça — ${kit.pecas.map((p) => `${p.canal}: ${p.erro}`).join(" · ")}` }, 502);
+        return json({ ok: false, error: `a IA não escreveu nenhuma peça — ${kit.pecas.map((p) => `${p.canal}: ${p.erro}`).join(" · ")}` }, 503);
       }
 
       // GUARDAR — e dizer com lastro se guardou. O kit é publicado horas depois, por outra pessoa;

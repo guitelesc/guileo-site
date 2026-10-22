@@ -60,11 +60,11 @@ export async function onRequestPost(context) {
       }
       if (!customerId) {
         const lr = await fetch(`https://api.stripe.com/v1/customers?email=${encodeURIComponent(email)}&limit=1`, { headers: stripeHeaders });
-        if (!lr.ok) return json({ error: "stripe error" }, 502);
+        if (!lr.ok) return json({ error: "stripe error" }, 503);
         const ld = await lr.json();
         customerId = ld?.data?.[0]?.id || "";
       }
-    } catch { return json({ error: "stripe error" }, 502); }
+    } catch { return json({ error: "stripe error" }, 503); }
 
     // No saved customer (e.g. paid via a plain Payment Link) — handle gracefully, no portal.
     if (!customerId) return json({ ok: false, reason: "no_customer" });
@@ -74,11 +74,11 @@ export async function onRequestPost(context) {
       const origin = new URL(request.url).origin;
       const form = new URLSearchParams({ customer: customerId, return_url: `${origin}/portal?tab=billing` });
       const pr = await fetch("https://api.stripe.com/v1/billing_portal/sessions", { method: "POST", headers: stripeHeaders, body: form.toString() });
-      if (!pr.ok) return json({ error: "stripe error" }, 502);
+      if (!pr.ok) return json({ error: "stripe error" }, 503);
       const pd = await pr.json();
-      if (!pd?.url) return json({ error: "stripe error" }, 502);
+      if (!pd?.url) return json({ error: "stripe error" }, 503);
       return json({ ok: true, url: pd.url });
-    } catch { return json({ error: "stripe error" }, 502); }
+    } catch { return json({ error: "stripe error" }, 503); }
   } catch (e) {
     return json({ error: String(e).slice(0, 120) }, 400);
   }

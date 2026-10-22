@@ -13,26 +13,31 @@
 //   5. FREQUÊNCIA das mensagens           ❌ FALTAVA
 //   6. link para a Política de Privacidade ❌ FALTAVA
 //
+// 13/10/2026 — 4ª tentativa: o verificador da Twilio acusou "consent to messages from affiliates or
+// other companies" porque a frase nomeava "Gui (Guileo)" e não a empresa REGISTRADA (TRANSPOINT, o EIN).
+// Agora a frase nomeia a empresa registrada pelo nome fantasia + razão social. Mudou aqui, mude a
+// citação em db/A2P_CAMPANHA_COLAR_*.txt e na campanha da Twilio no MESMO dia.
+//
 // O revisor da campanha ABRE o site pra conferir se o consentimento bate com o que foi
 // declarado. Este texto é o que ele vai ler.
 const T = {
   en: {
-    lead: "I agree to be contacted by Gui (Guileo) at the number provided, by call and text.",
+    lead: "I agree to receive calls and text messages from Guileo AI (TRANSPOINT) at the number provided.",
     rates: "Msg & data rates may apply. Msg frequency varies. Reply STOP to opt out, HELP for help.",
     privacy: "Privacy Policy",
   },
   pt: {
-    lead: "Concordo em ser contatado pelo Gui (Guileo) no número informado, por ligação e mensagem.",
+    lead: "Concordo em receber ligações e mensagens de texto da Guileo AI (TRANSPOINT) no número informado.",
     rates: "Podem incidir tarifas de mensagem e dados. A frequência varia. Responda STOP para sair, HELP para ajuda.",
     privacy: "Política de Privacidade",
   },
   es: {
-    lead: "Acepto ser contactado por Gui (Guileo) en el número indicado, por llamada y mensaje.",
+    lead: "Acepto recibir llamadas y mensajes de texto de Guileo AI (TRANSPOINT) en el número indicado.",
     rates: "Pueden aplicar tarifas de mensajes y datos. La frecuencia varía. Responde STOP para cancelar, HELP para ayuda.",
     privacy: "Política de Privacidad",
   },
   hi: {
-    lead: "मैं दिए गए नंबर पर Gui (Guileo) से कॉल और मैसेज द्वारा संपर्क के लिए सहमत हूँ।",
+    lead: "मैं दिए गए नंबर पर Guileo AI (TRANSPOINT) से कॉल और टेक्स्ट मैसेज पाने के लिए सहमत हूँ।",
     rates: "मैसेज और डेटा शुल्क लागू हो सकते हैं। फ़्रीक्वेंसी बदलती रहती है। रोकने के लिए STOP, मदद के लिए HELP भेजें।",
     privacy: "गोपनीयता नीति",
   },

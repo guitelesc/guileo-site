@@ -16,6 +16,7 @@
 import { json, safeEq } from "../lib/guard.js";
 import { npsEmail } from "../lib/emailTemplates.js";
 import { sbKey } from "../lib/sb.js";
+import { motoresAtivos } from "./cron-tick.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -183,6 +184,11 @@ export async function onRequest(context) {
     if (request.method === "POST") { p = await request.json().catch(() => ({})); }
     const tok = (p.token ?? url.searchParams.get("token") ?? "").toString();
     if (env.DIGEST_TOKEN && !safeEq(tok, env.DIGEST_TOKEN)) return json({ ok: false, error: "unauthorized" }, 401);
+    // INTERRUPTOR GERAL (2026-09-22) — só o ENVIO obedece. O voto (acima) segue aberto de
+    // propósito: quem recebeu a pesquisa antes do desligamento ainda tem um botão no e-mail, e
+    // botão que dá erro é pior que pesquisa que não chega. Vem DEPOIS do token (não revela estado
+    // a quem não tem a chave) e ANTES de qualquer reserva (nps_claim de 90 dias não é queimado).
+    if (!(await motoresAtivos(env))) return json({ ok: true, desligado: true, motivo: "motores_proativos=off — nenhuma pesquisa enviada" });
     return await handleSurvey(env);
   } catch (e) {
     return json({ ok: false, error: String(e).slice(0, 160) }, 500);

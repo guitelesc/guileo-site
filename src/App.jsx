@@ -1,8 +1,9 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, MemoryRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { lazy, Suspense, useEffect } from "react";
 import { LangProvider } from "./i18n.jsx";
 import { trackPageView } from "./lib/analytics.js";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import { lerTenant, initTenantTracking } from "./lib/tenantTracking.js";
 
 // Auto-recover from a transient chunk-import failure. Two real failure modes right after a deploy:
 //   1) the apex/alias edge hasn't cached a fresh lazy chunk yet, so the FIRST import() 404s for a few
@@ -48,6 +49,7 @@ function lazyRetry(factory, retries = 4, baseDelay = 400) {
   });
 }
 const Home = lazyRetry(() => import("./pages/Home")); // the ORIGINAL guileoai.com landing serves "/" — lazy so framer-motion + V2 sections stay out of the global chunk
+const Nova = lazyRetry(() => import("./pages/Nova")); // a landing nova: serve "/" desde 2026-09-09 (aprovada); /nova segue como apelido
 const NotFound = lazyRetry(() => import("./pages/NotFound"));
 
 // ── Partner referral attribution ──────────────────────────────────────────────
@@ -111,6 +113,9 @@ const Equipe = lazyRetry(() => import("./pages/Equipe")); // internal team hub �
 const ConectarPagamento = lazyRetry(() => import("./pages/ConectarPagamento")); // client connects their own Stripe → Gui charges land in THEIR account
 const Kit = lazyRetry(() => import("./pages/Kit")); // print-optimized per-niche field kit one-pager (built from pitch-card data)
 const Planos = lazyRetry(() => import("./pages/Planos"));
+const GuileoDesk = lazyRetry(() => import("./pages/GuileoDesk")); // /desk — o Guileo Desk (agenda + caixa + IA), planos de deskPlans.js
+const DeskObrigado = lazyRetry(() => import("./pages/DeskObrigado")); // /desk/obrigado — volta do Stripe
+const Balcao = lazyRetry(() => import("./pages/Balcao")); // /balcao — acesso da recepção (código próprio, só o Balcão)
 const Pulse = lazyRetry(() => import("./pages/Pulse")); // /pulse — a casa do produto de $49 (o conteúdo cortado da landing vive lá, sem cópia) // self-service Track-A plans (Stripe subscribe → auto-activate)
 const HomeServices = lazyRetry(() => import("./pages/HomeServices")); // niche landing — the easiest-to-close vertical
 const NossaGente = lazyRetry(() => import("./pages/NossaGente")); // BLUE OCEAN — bilingual/immigrant + Brazil positioning
@@ -133,6 +138,16 @@ const VerticalCity = lazyRetry(() => import("./pages/VerticalCity")); // niche �
 const LeadGeneration = lazyRetry(() => import("./pages/LeadGeneration")); // lead-gen pillar hub (/lead-generation)
 const SetupAgenda = lazyRetry(() => import("./pages/SetupAgenda")); // admin onboarding for the scheduling engine
 const Sign = lazyRetry(() => import("./pages/Sign")); // public contract e-signature page (/sign?t=token)
+const Projeto = lazyRetry(() => import("./pages/Projeto")); // project checklist for the partner (/projeto?t=token)
+const AdminProjetos = lazyRetry(() => import("./pages/AdminProjetos")); // project checklist, Origem side
+const AdminAgente = lazyRetry(() => import("./pages/AdminAgente")); // sync one tenant's voice agent with the admin password
+const AdminParceiros = lazyRetry(() => import("./pages/AdminParceiros")); // named partner accounts (CR-03)
+const ParceiroEntrar = lazyRetry(() => import("./pages/ParceiroEntrar")); // partner sign-in → one-time code → /portal as the client
+const Agendar = lazyRetry(() => import("./pages/Agendar")); // /agendar/:slug — a cliente do negócio marca horário (público)
+const Formulario = lazyRetry(() => import("./pages/Formulario")); // /f/:id — ficha/termo público com assinatura
+const NaturaSetup = lazyRetry(() => import("./pages/NaturaSetup")); // /natura-setup — checklist que a Natura preenche (2026-10-18)
+const MinhaReserva = lazyRetry(() => import("./pages/MinhaReserva")); // /minha-reserva — a cliente remarca ou cancela pelo link do e-mail (2026-10-05)
+const MinhaConta = lazyRetry(() => import("./pages/MinhaConta")); // /minha-conta — área da cliente do negócio: horários, visitas, pacotes, vales (link mágico, 2026-10-05)
 const DemoLink = lazyRetry(() => import("./pages/DemoLink")); // seller's personalized demo link (/demo/:slug?n=&v=&s=) — Gui calls the prospect already knowing their business
 const AgentePronto = lazyRetry(() => import("./pages/AgentePronto")); // Motor de Agente: vendedor monta pela URL, dono vê a prévia (/agente/:token)
 const DemoPage = lazyRetry(() => import("./pages/DemoPage")); // public "vitrine" — any product rendered in the client's brand (/vitrine/:token?)
@@ -170,7 +185,40 @@ function AnalyticsRouteListener() {
   return null;
 }
 
+// ── DOMÍNIO PRÓPRIO DO CLIENTE ───────────────────────────────────────────────────────────────
+// No domínio de um cliente o servidor (functions/_middleware.js) entrega a casca com o bloco
+// #tenant-boot; lerTenant() devolve {slug, host, …}. Em guileoai.com devolve null e NADA muda.
+// Lá, o app inteiro é UMA página: a vitrine do cliente, em qualquer caminho que o servidor deixou
+// passar ("/" e as páginas de unidade — o resto já voltou 404 antes de chegar aqui).
+// MemoryRouter porque o Novo lê o slug de useParams(): a rota interna é /novo/<slug>, enquanto a
+// barra de endereço continua sendo a do cliente ("/", "/astoria"). Nenhuma rota da Guileo é
+// montada, e os beacons da Guileo (/api/hit, ?ref=) não rodam no domínio dele.
+const TENANT = lerTenant();
+
+function TenantApp() {
+  useEffect(() => { initTenantTracking(); }, []);
+  return (
+    <ErrorBoundary>
+    <LangProvider>
+      <MemoryRouter initialEntries={[`/novo/${TENANT.slug}`]}>
+        <main id="main" tabIndex={-1}>
+        <Suspense fallback={<div className="min-h-screen grid place-items-center text-g-muted">…</div>}>
+          <Routes>
+            <Route path="/novo/:slug" element={<Novo />} />
+          </Routes>
+        </Suspense>
+        </main>
+      </MemoryRouter>
+    </LangProvider>
+    </ErrorBoundary>
+  );
+}
+
 export default function App() {
+  return TENANT && TENANT.kind === "vitrine" ? <TenantApp /> : <GuileoApp />;
+}
+
+function GuileoApp() {
   useReferralAttribution();
   useVisitBeacon();
   return (
@@ -183,7 +231,9 @@ export default function App() {
         <main id="main" tabIndex={-1}>
         <Suspense fallback={<div className="min-h-screen grid place-items-center text-g-muted">…</div>}>
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<Home />} />{/* 2026-09-09: o Luis pediu de volta a landing ORIGINAL (todas as seções) na "/" — a nova fica em /nova pra ele decidir o que cortar */}
+            <Route path="/classica" element={<Home />} />
+            <Route path="/nova" element={<Nova />} />
             <Route path="/servicos" element={<Servicos />} />
             <Route path="/heroi" element={<HeroiEscolha />} />
             <Route path="/site/:slug" element={<ClientSite />} />
@@ -203,6 +253,7 @@ export default function App() {
             <Route path="/pitch" element={<Pitch />} />
             <Route path="/proposta" element={<Proposta />} />
             <Route path="/parceiro" element={<Parceiro />} />
+            <Route path="/parceiro/entrar" element={<ParceiroEntrar />} />
             <Route path="/academia" element={<Academia />} />
             <Route path="/cola" element={<Cola />} />
             <Route path="/roteiro" element={<Roteiro />} />
@@ -229,6 +280,9 @@ export default function App() {
             <Route path="/kit" element={<Kit />} />
             <Route path="/kit/:niche" element={<Kit />} />
             <Route path="/planos" element={<Planos />} />
+            <Route path="/desk" element={<GuileoDesk />} />
+            <Route path="/desk/obrigado" element={<DeskObrigado />} />
+            <Route path="/balcao" element={<Balcao />} />
             <Route path="/pulse" element={<Pulse />} />
             <Route path="/plans" element={<Navigate to="/planos" replace />} />
             <Route path="/precos" element={<Navigate to="/planos" replace />} />
@@ -250,6 +304,9 @@ export default function App() {
             <Route path="/contact" element={<Contact />} />
             <Route path="/cookies" element={<Privacy />} />
             <Route path="/admin/contratos" element={<Contratos />} />
+            <Route path="/admin/projetos" element={<AdminProjetos />} />
+            <Route path="/admin/agente" element={<AdminAgente />} />
+            <Route path="/admin/parceiros" element={<AdminParceiros />} />
             <Route path="/home-services" element={<HomeServices />} />
             <Route path="/nossa-gente" element={<NossaGente />} />
             <Route path="/compliance" element={<Compliance />} />
@@ -267,6 +324,12 @@ export default function App() {
             <Route path="/lead-generation/:city" element={<GeoCity intent="leadgen" />} />
             <Route path="/setup-agenda" element={<SetupAgenda />} />
             <Route path="/sign" element={<Sign />} />
+            <Route path="/projeto" element={<Projeto />} />
+            <Route path="/agendar/:slug" element={<Agendar />} />
+            <Route path="/f/:id" element={<Formulario />} />
+            <Route path="/natura-setup" element={<NaturaSetup />} />
+            <Route path="/minha-reserva" element={<MinhaReserva />} />
+            <Route path="/minha-conta" element={<MinhaConta />} />
             <Route path="/demo/:slug" element={<DemoLink />} />
             <Route path="/agente" element={<AgentePronto />} />
             <Route path="/agente/:token" element={<AgentePronto />} />

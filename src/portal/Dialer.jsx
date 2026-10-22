@@ -3,7 +3,9 @@ import { useState } from "react";
 import { toast } from "../lib/portalApi.js";
 import { tr, Card , FaixaAmostra} from "../pages/Portal.jsx";
 
-function Dialer({ real }) {
+// `contaReal` (2026-09-27): conta logada e não-demo SEM chave de conexão tem `real` null — e caía
+// no teclado de demonstração. Quem paga nunca vê o teclado que não disca, com ou sem chave.
+function Dialer({ real, contaReal = false }) {
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
   const [num, setNum] = useState("");
   const [calling, setCalling] = useState(false);
@@ -28,7 +30,7 @@ function Dialer({ real }) {
   };
 
   // ── MODO REAL: estado honesto, sem ação que não acontece ──────────────────────────────────
-  if (real) return (
+  if (real || contaReal) return (
     <div className="max-w-sm mx-auto">
       <Card className="p-5 text-center">
         <div className="text-3xl">☎️</div>

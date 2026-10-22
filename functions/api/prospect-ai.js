@@ -17,31 +17,18 @@ import { verifySession } from "../lib/sellerSession.js";
 // dez antes de mexer, e é exatamente por estarem iguais que a hora de unificar é agora — depois que
 // uma diverge, alguém já foi atendido pelo modelo errado e ninguém sabe qual superfície foi.
 // É o padrão que esta sessão inteira perseguiu: cópia sem vínculo com a fonte.
-import { MODEL_CHAIN } from "../lib/guiBrain.js";
+import { askClaude as cerebroDeTexto } from "../lib/guiBrain.js";
 async function askClaude(env, { system, messages, max_tokens = 700 }) {
   let msgs = Array.isArray(messages) ? messages.slice() : [];
   while (msgs.length && msgs[0].role !== "user") msgs.shift();
   if (!msgs.length) return { err: "empty_messages", status: 400 };
-  let lastStatus = 0, lastDetail = "";
-  for (const model of MODEL_CHAIN) {
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-        body: JSON.stringify({ model, max_tokens, system, messages: msgs }),
-      });
-      if (r.ok) {
-        const d = await r.json().catch(() => ({}));
-        const text = (d?.content?.[0]?.text || "").trim();
-        if (text) return { text, model };
-        lastStatus = 200; lastDetail = "empty_ai";
-      } else {
-        lastStatus = r.status; lastDetail = (await r.text().catch(() => "")).slice(0, 200);
-        if (r.status === 401 || r.status === 402) break; // auth/billing — another model won't help
-      }
-    } catch (e) { lastStatus = 0; lastDetail = String(e).slice(0, 120); }
-  }
-  return { err: "ai_unavailable", status: lastStatus, detail: lastDetail };
+  // 2026-10-05: sem chamada direta à Anthropic — askClaude usa o Escritor da ElevenLabs quando ela está desligada.
+  // O formato de volta ({ text, model } | { err, status, detail }) continua o mesmo; o motivo vem do `diag`.
+  const diag = [];
+  const text = await cerebroDeTexto(env, { system, messages: msgs, maxTokens: max_tokens, diag });
+  const ult = diag[diag.length - 1] || {};
+  if (text) return { text, model: ult.model || ult.cerebro || "" };
+  return { err: "ai_unavailable", status: ult.status || 0, detail: String(ult.detalhe || ult.erro || ult.bloqueado || "").slice(0, 200) };
 }
 
 // The system prompt injects the per-vertical pains from the playbooks (passed in as `painsHint`)
@@ -88,7 +75,7 @@ export async function onRequestPost(context) {
 
     const langName = lang === "en" ? "US English" : lang === "es" ? "LatAm Spanish" : lang === "hi" ? "Hindi" : "Brazilian Portuguese";
 
-    if (!env.ANTHROPIC_API_KEY) {
+    if (!env.ANTHROPIC_API_KEY && !env.ELEVENLABS_API_KEY) {
       // Honest inert fallback — no invented data, clearly flagged as AI-unavailable.
       return json({ ok: true, plan: {
         perfil: "(IA indisponível: configure ANTHROPIC_API_KEY.)",

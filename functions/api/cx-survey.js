@@ -18,6 +18,7 @@
 //   GET/POST /api/cx-survey?token=DIGEST_TOKEN   (called by cron-tick daily; DIGEST-gated)
 import { json, safeEq } from "../lib/guard.js";
 import { cxSurveyEmail } from "../lib/emailTemplates.js";
+import { motoresAtivos } from "./cron-tick.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -49,6 +50,11 @@ export async function onRequest(context) {
   const { request, env } = context;
   const tok = new URL(request.url).searchParams.get("token") || request.headers.get("x-guileo-secret") || "";
   if (!env.DIGEST_TOKEN || !safeEq(tok, env.DIGEST_TOKEN)) return json({ error: "unauthorized" }, 401);
+  // INTERRUPTOR GERAL (2026-09-22): esta rota escreve para o cliente DO cliente — terceiros que
+  // nunca falaram com a Guileo. O cron já deixa de chamá-la com os motores desligados; a checagem
+  // aqui existe para que a chamada manual com o token não fure o desligamento. Vem ANTES de
+  // qualquer leitura: desligado, não reserva ninguém (a reserva de 30 dias queimaria a pesquisa).
+  if (!(await motoresAtivos(env))) return json({ ok: true, desligado: true, motivo: "motores_proativos=off — nenhuma pesquisa enviada" });
   if (!env.RESEND_API_KEY) return json({ ok: true, ready: false, note: "RESEND_API_KEY not set — no channel to send the survey." });
 
   const roster = await rpc(env, "clients_list", {});

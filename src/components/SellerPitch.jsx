@@ -4,6 +4,7 @@ import { MASTER_SENTENCE, OBJECTION_KILLERS } from "../data/salesKit.js";
 import { waLink } from "../data/contact.js";
 import SellerPitchCards from "./SellerPitchCards.jsx";
 import { SLIDES_BY_LANG, Block, UI as DECK_UI } from "../pages/Deck.jsx";
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 
 // ── Pitch tab — everything the seller needs 2 minutes before the meeting, on ONE
 // screen: (1) the pocket card (same words/visual as /cola), (2) the Pitch Card
@@ -31,7 +32,7 @@ const D = {
     qs: ["Quantas ligações perde por dia?", "Quem responde o WhatsApp à noite?", "E quem pede orçamento e some?", "Quantos clientes ninguém chamou de volta?", "A $50–100 cada… quanto vaza/mês?"],
     oH: "🛡️ As 8 objeções (1 linha cada)",
     mH: "📋 Os 15 minutos",
-    meet: ["0-3 · perguntas (ele fala)", "3-5 · a frase", "5-9 · ⚡ GUI LIGA (silêncio!)", "9-12 · Cockpit + a dor dele", "12-15 · proposta + garantia"],
+    meet: ["0-3 · perguntas (ele fala)", "3-5 · a frase", "5-9 · ⚡ GUI LIGA (silêncio!)", `9-12 · ${NOME_DO_PAINEL} + a dor dele`, "12-15 · proposta + garantia"],
     never: "🚫 Nunca: prometer que a IA não erra · resultado exato em $ · menos de 7 dias",
     tools: "🧰 Ferramentas",
     tabCola: "🫱 Cola", tabCards: "🃏 Cards", tabSlides: "🎞️ Slides",
@@ -44,7 +45,7 @@ const D = {
     qs: ["How many calls do you miss per day?", "Who answers WhatsApp at night?", "What about quote-and-ghost people?", "How many customers never got a call back?", "At $50–100 each… how much leaks/mo?"],
     oH: "🛡️ The 8 objections (one line each)",
     mH: "📋 The 15 minutes",
-    meet: ["0-3 · questions (they talk)", "3-5 · the sentence", "5-9 · ⚡ GUI CALLS (silence!)", "9-12 · Cockpit + their pain", "12-15 · proposal + guarantee"],
+    meet: ["0-3 · questions (they talk)", "3-5 · the sentence", "5-9 · ⚡ GUI CALLS (silence!)", `9-12 · ${NOME_DO_PAINEL} + their pain`, "12-15 · proposal + guarantee"],
     never: "🚫 Never: promise the AI never errs · exact $ results · under 7 days",
     tools: "🧰 Tools",
     tabCola: "🫱 Pocket card", tabCards: "🃏 Cards", tabSlides: "🎞️ Slides",
@@ -57,7 +58,7 @@ const D = {
     qs: ["¿Cuántas llamadas pierde por día?", "¿Quién responde el WhatsApp de noche?", "¿Y quien pide presupuesto y desaparece?", "¿A cuántos clientes nadie llamó de vuelta?", "A $50–100 cada una… ¿cuánto se fuga al mes?"],
     oH: "🛡️ Las 8 objeciones (1 línea cada una)",
     mH: "📋 Los 15 minutos",
-    meet: ["0-3 · preguntas (él habla)", "3-5 · la frase", "5-9 · ⚡ GUI LLAMA (¡silencio!)", "9-12 · Cockpit + su dolor", "12-15 · propuesta + garantía"],
+    meet: ["0-3 · preguntas (él habla)", "3-5 · la frase", "5-9 · ⚡ GUI LLAMA (¡silencio!)", `9-12 · ${NOME_DO_PAINEL} + su dolor`, "12-15 · propuesta + garantía"],
     never: "🚫 Nunca: prometer que la IA no falla · resultado exacto en $ · menos de 7 días",
     tools: "🧰 Herramientas",
     tabCola: "🫱 Chuleta", tabCards: "🃏 Cards", tabSlides: "🎞️ Diapositivas",
@@ -70,7 +71,7 @@ const D = {
     qs: ["रोज़ कितनी कॉल छूट जाती हैं?", "रात में WhatsApp कौन जवाब देता है?", "जो भाव पूछकर गायब हो जाते हैं, उनका क्या?", "कितने ग्राहकों को किसी ने वापस कॉल नहीं किया?", "हर एक $50–100 की… महीने में कितना रिसता है?"],
     oH: "🛡️ 8 आपत्तियाँ (हर एक 1 लाइन)",
     mH: "📋 15 मिनट",
-    meet: ["0-3 · सवाल (वे बोलते हैं)", "3-5 · वह वाक्य", "5-9 · ⚡ गुई कॉल करती है (चुप रहें!)", "9-12 · Cockpit + उनका दर्द", "12-15 · प्रस्ताव + गारंटी"],
+    meet: ["0-3 · सवाल (वे बोलते हैं)", "3-5 · वह वाक्य", "5-9 · ⚡ गुई कॉल करती है (चुप रहें!)", `9-12 · ${NOME_DO_PAINEL} + उनका दर्द`, "12-15 · प्रस्ताव + गारंटी"],
     never: "🚫 कभी नहीं: यह वादा कि AI कभी गलती नहीं करती · $ में सटीक नतीजा · 7 दिन से कम",
     tools: "🧰 टूल्स",
     tabCola: "🫱 पॉकेट कार्ड", tabCards: "🃏 कार्ड्स", tabSlides: "🎞️ स्लाइड्स",

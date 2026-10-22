@@ -3,8 +3,8 @@
 // nothing" or "revenue lost" failure is caught in seconds instead of via a customer's money-back request.
 // Writes to the platform feed (admin_all_events reads it) under the OWNER email, with the affected client
 // named in the summary. Uses the existing ingest_client_event RPC → no new table/SQL required.
-import { svcRpc, svcJson } from "./sb.js";
-import { opsAlertEmail } from "./emailTemplates.js";
+import { svcJson } from "./sb.js";
+import { avisarDono } from "./avisarDono.js";
 
 // ── OS TIPOS QUE ACORDAM ALGUÉM (2026-08-25) ────────────────────────────────────────────────────
 // A lei já estava escrita em cron-tick.js: «alarme que fica dentro da plataforma é alarme que não
@@ -23,55 +23,90 @@ const ehUrgente = (type) => {
   return URGENTES.some((k) => t.includes(k));
 };
 
-// E-mail best-effort do alarme urgente. NUNCA lança (o chamador é sempre um catch de emergência).
-// Mesmo mecanismo de envio do health-monitor.js: POST direto na Resend com env.RESEND_API_KEY.
-async function emailUrgente(env, type, affectedEmail, detail) {
-  if (!env.RESEND_API_KEY) return; // sem mailer: o feed já registrou; não há o que fazer aqui
-  // ANTI-SPAM: no máximo 1 e-mail por (tipo + cliente) a cada 6h, via a MESMA trava genérica que o
-  // cron já usa em produção (`alarme_uma_vez`, chave livre + minutos).
-  // ⚠️ A REGRA DO "NÃO SEI": só o `false` explícito ("já avisei") cala o e-mail. Se a trava não
-  // puder ser consultada (RPC ausente, banco fora, segredo faltando → svcJson devolve um OBJETO de
-  // erro, nem true nem false), o e-mail SAI. Um alarme duplicado é chato; um alarme mudo por causa
-  // do próprio anti-spam é exatamente a falha silenciosa que esta biblioteca existe para acabar.
-  let pode = true;
-  if (env.INGEST_SECRET) {
-    const r = await svcJson(env, "alarme_uma_vez", {
-      p_secret: env.INGEST_SECRET,
-      p_chave: `falha:${(type || "").toString().slice(0, 60)}:${(affectedEmail || "-").toString().slice(0, 80)}`,
-      p_minutos: 360,
-    }).catch(() => null);
-    if (r === false) pode = false;
-  }
-  if (!pode) return;
-  const { subject, html } = opsAlertEmail({ type, client: affectedEmail, detail });
-  const to = (env.OWNER_EMAIL || "smart@guileoai.com").toString().split(",")[0].trim();
-  const r = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to, subject, html }),
+// Alarme urgente ao dono. NUNCA lança (o chamador é sempre um catch de emergência).
+// (2026-09-09) Era uma cópia local de "manda e-mail" com trava `alarme_uma_vez` — que hoje só o
+// service_role executa (anon revogado), então sem SUPABASE_SERVICE_ROLE a trava era ilegível em
+// TODA chamada. Virou `avisarDono`: feed + e-mail (caixa que o dono lê) + WhatsApp, trava de 6h por
+// (tipo + cliente) via health_claim, e a regra do "não sei" preservada — só o `false` explícito cala.
+// O feed que este arquivo grava logo abaixo continua: é a linha de auditoria com `failure_type`.
+// (2026-09-27) DEVOLVE o recibo do avisarDono — antes era `await avisarDono(...)` sem `return`, e
+// o comprovante de que o alarme saiu (ou não) morria aqui dentro.
+async function emailUrgente(env, type, affectedEmail, detail, opts = {}) {
+  return avisarDono(env, {
+    kind: `falha_${(type || "").toString().slice(0, 50)}`, summary: (detail || type || "").toString(),
+    cliente: affectedEmail || "", chave: `falha:${(type || "").toString().slice(0, 40)}:${(affectedEmail || "-").toString().slice(0, 40)}`,
+    semTrava: opts.semTrava === true, ignoraMudo: opts.ignoraMudo === true,
   });
-  // Conferir o retorno: "enviado" sem olhar a resposta da Resend é a promessa sem lastro de sempre.
-  if (!r.ok) console.error(JSON.stringify({ alarme_email: type, resend: r.status }));
 }
 
-// emitFailure(env, type, affectedEmail, detail, payload?) — never throws, never blocks the caller.
-export async function emitFailure(env, type, affectedEmail, detail, payload = {}) {
+// emitFailure(env, type, affectedEmail, detail, payload?, opts?) — never throws, never blocks the caller.
+//
+// 🧾 DEVOLVE UM RECIBO (2026-09-27): { urgente, feed, email, whatsapp, chegou }.
+// Antes devolvia `undefined`: o chamador escrevia "escalei para um humano" sem ter como saber se
+// o aviso saiu por ALGUM canal. Com e-mail mudo + WhatsApp fora, o chamado urgente caía só no feed
+// e ninguém — nem o código — sabia disso. Quem ignora o retorno continua funcionando igual.
+//   · feed     — a linha de auditoria `failure` que ESTE arquivo grava ({ ok, id? | motivo }).
+//   · email / whatsapp — o que o avisarDono respondeu por canal; em tipo não urgente, dizem isso.
+//   · chegou   — true só se e-mail OU WhatsApp confirmaram (feed sozinho não acorda ninguém).
+// opts: { semTrava, ignoraMudo } — repassados ao avisarDono (ver lá o porquê e os limites).
+export async function emitFailure(env, type, affectedEmail, detail, payload = {}, opts = {}) {
+  const urgente = ehUrgente(type);
+  const soFeed = { ok: false, motivo: "tipo não urgente — fica só no feed" };
+  const recibo = {
+    urgente, chegou: false,
+    feed: { ok: false, motivo: "não tentado" },
+    email: urgente ? { ok: false, motivo: "não tentado" } : soFeed,
+    whatsapp: urgente ? { ok: false, motivo: "não tentado" } : soFeed,
+  };
   try {
     // structured log line (surfaces in Cloudflare logs even if the DB write fails)
     try { console.error(JSON.stringify({ failure: type, client: affectedEmail || "", detail: (detail || "").toString().slice(0, 300) })); } catch { /* */ }
     // O E-MAIL VEM ANTES DO FEED, e de propósito: se o banco estiver fora (que é justamente quando
     // as falhas urgentes acontecem em série), o `ingest_client_event` abaixo falha — e o alarme que
     // dependesse dele para sair nunca sairia. Cada um com seu try: um não derruba o outro.
-    if (ehUrgente(type)) {
-      try { await emailUrgente(env, type, affectedEmail, detail); }
-      catch (e) { try { console.error(JSON.stringify({ alarme_email: type, erro: String(e).slice(0, 120) })); } catch { /* */ } }
+    if (urgente) {
+      try {
+        const a = (await emailUrgente(env, type, affectedEmail, detail, opts || {})) || {};
+        if (a.pulado) {
+          // A trava de 6h calou: isso NÃO é "enviado". O recibo diz que foi pulado e por quê.
+          recibo.email = { ok: false, pulado: true, motivo: a.pulado };
+          recibo.whatsapp = { ok: false, pulado: true, motivo: a.pulado };
+        } else if (a.erro) {
+          recibo.email = { ok: false, motivo: a.erro };
+          recibo.whatsapp = { ok: false, motivo: a.erro };
+        } else {
+          recibo.email = a.email || { ok: false, motivo: "avisarDono não devolveu o canal de e-mail" };
+          recibo.whatsapp = a.whatsapp || { ok: false, motivo: "avisarDono não devolveu o canal de WhatsApp" };
+        }
+        recibo.chegou = !!(recibo.email.ok || recibo.whatsapp.ok);
+      } catch (e) {
+        const motivo = String(e).slice(0, 120);
+        recibo.email = { ok: false, motivo }; recibo.whatsapp = { ok: false, motivo };
+        try { console.error(JSON.stringify({ alarme_email: type, erro: motivo })); } catch { /* */ }
+      }
     }
-    if (!env.INGEST_SECRET) return;
+    if (!env.INGEST_SECRET) { recibo.feed = { ok: false, motivo: "sem INGEST_SECRET" }; return recibo; }
     const owner = (env.OWNER_EMAIL || "smart@guileoai.com").toString().split(",")[0].trim().toLowerCase();
-    await svcRpc(env, "ingest_client_event", {
+    // O recibo do aviso vai DENTRO da linha de auditoria: quem abrir o /admin vê o chamado E se o
+    // alarme saiu da plataforma. `svcJson` (não `svcRpc`) porque HTTP 200 não prova que gravou.
+    const r = await svcJson(env, "ingest_client_event", {
       p_secret: env.INGEST_SECRET, p_email: owner, p_type: "failure", p_channel: "system",
       p_summary: `⚠️ ${type}${affectedEmail ? " · " + affectedEmail : ""}${detail ? " · " + detail : ""}`.slice(0, 300),
-      p_amount: 0, p_payload: { failure_type: type, client: affectedEmail || "", ...payload },
+      p_amount: 0, p_payload: {
+        failure_type: type, client: affectedEmail || "", ...payload,
+        ...(urgente ? { aviso: {
+          chegou: recibo.chegou,
+          email: { ok: !!recibo.email.ok, id: recibo.email.id || null, motivo: recibo.email.motivo || "" },
+          whatsapp: { ok: !!recibo.whatsapp.ok, via: recibo.whatsapp.via || "", motivo: (recibo.whatsapp.motivo || "").toString().slice(0, 300) },
+        } } : {}),
+      },
     });
-  } catch { /* failure-bus is itself best-effort — never break the caller */ }
+    recibo.feed = (r && typeof r === "object" && r.ok === false)
+      ? { ok: false, motivo: `http ${r.erro_http || "?"} ${r.detalhe || ""}`.trim() }
+      : { ok: true, id: (r && typeof r !== "object") ? r : (r && r.id) || null };
+  } catch (e) {
+    /* failure-bus is itself best-effort — never break the caller */
+    try { if (!recibo.feed.ok) recibo.feed = { ok: false, motivo: String(e).slice(0, 120) }; } catch { /* */ }
+  }
+  return recibo;
 }

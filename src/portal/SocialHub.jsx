@@ -25,7 +25,10 @@ const t = (o) => o[UI_LANG] || o.en;
 // look like "zero drafts". Callers read _ok before treating the payload as data.
 async function apiPost(url, body) {
   try {
-    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    // `ui_lang` = idioma da TELA. O servidor devolve `note` nesse idioma (functions/api/
+    // social-publish.js → respostaNoIdioma). Sem ele a nota chegava em português para uma tela em
+    // inglês ("Esta conta ainda não foi vinculada ao Instagram/Facebook.").
+    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ui_lang: UI_LANG, ...body }) });
     const d = await r.json().catch(() => ({}));
     return { ...(d && typeof d === "object" ? d : {}), _ok: r.ok && d?.ok !== false, _status: r.status };
   } catch (e) { return { _ok: false, _status: 0, error: String(e).slice(0, 120) }; }
@@ -83,6 +86,19 @@ function SocialHub({ V, real = null, email = "", dataKey = "" }) {
       // The status call either ANSWERED or FAILED — a failure is an error state, never an empty one.
       const stOk = !!st?._ok;
       const netState = (stOk && st.nets) || {};
+      /* 🚨 "APP NÃO APROVADO" ≠ "CONTA NÃO VINCULADA" (2026-09-28). A tela lia só `st.ready`, que o
+         servidor calcula como `live && connected`. Com o app Meta JÁ APROVADO (`live:true`) e a
+         conta do cliente ainda sem vínculo (`connected:false`), `ready` é falso — e a faixa dizia
+         "Waiting on Meta app approval": culpava a Meta por uma espera que não existe mais, e a
+         dona ficava aguardando uma aprovação em vez de nos chamar para vincular a conta.
+         São dois estados, com duas frases e dois donos do próximo passo:
+           live=false                 → esperando a Meta (nada a fazer do lado dela)
+           live=true, connected=false → falta vincular a conta DELA (nossa equipe faz com ela)
+         Servidor antigo sem o campo `live`: só dá para saber `ready`; aí a tela não afirma qual
+         dos dois é — mostra a nota do servidor. */
+      const temLive = stOk && typeof st.live === "boolean";
+      const live = temLive ? st.live : null;
+      const connected = stOk && typeof st.connected === "boolean" ? st.connected : null;
       const appReady = stOk && !!st.ready;
       // Social messages = the inbox threads whose channel is a Meta surface (untrusted content, rendered as data).
       const threads = inbox?._ok && Array.isArray(inbox.threads) ? inbox.threads : [];
@@ -111,7 +127,7 @@ function SocialHub({ V, real = null, email = "", dataKey = "" }) {
       // agora — a Gui vai colocar novos posts aqui pro seu ✓", que é uma promessa falsa
       // enquanto o motor não está instalado. Agora esse estado é carregado até a tela.
       const storeReady = stOk ? st.store_ready !== false : false;
-      setS({ appReady, nets: netState, mode: (stOk && st.mode) || mode, msgs, drafts, note: stOk ? st.note || "" : "", error: !stOk, msgsError: !inbox?._ok, storeReady });
+      setS({ appReady, live, connected, nets: netState, mode: (stOk && st.mode) || mode, msgs, drafts, note: stOk ? st.note || "" : "", error: !stOk, msgsError: !inbox?._ok, storeReady });
       if (stOk && st.mode && st.mode !== mode) { setMode(st.mode); portalApi.saveState(modeKey, st.mode); }
     })();
     return () => { alive = false; };
@@ -130,6 +146,10 @@ function SocialHub({ V, real = null, email = "", dataKey = "" }) {
       return;
     }
     if (r.nets) setS((s) => ({ ...(s || {}), appReady: !!r.ready || !!(s && s.appReady), nets: { ...((s && s.nets) || {}), ...r.nets } }));
+    // `blocked_by` também diz em qual dos dois estados estamos: "meta_app" = app não aprovado;
+    // "tenant_tokens" = app aprovado, falta vincular esta conta.
+    if (r.blocked_by === "tenant_tokens") setS((s) => ({ ...(s || {}), live: true, connected: false }));
+    if (r.blocked_by === "meta_app") setS((s) => ({ ...(s || {}), live: false }));
     // The SERVER decides the blocker (Meta app · this tenant's tokens · nothing); the UI only
     // translates it. Unknown blocker → show the server's own note rather than inventing one.
     const said = {
@@ -216,6 +236,10 @@ function SocialHub({ V, real = null, email = "", dataKey = "" }) {
   // Inert = the motor is genuinely not live yet. If the status call FAILED we don't know that, so we
   // show a connection error instead of blaming Meta for something we couldn't verify.
   const inert = !demo && !appReady && !S.error;
+  // qual dos dois motivos — ver o comentário na leitura do status
+  const esperandoMeta = inert && S.live === false;
+  const faltaVincular = inert && S.live === true && S.connected !== true;
+  const motivoIncerto = inert && !esperandoMeta && !faltaVincular;
 
   // Messages: demo = rich per-sector sample; real = only the social threads the inbox returned (honest empty otherwise).
   const demoMsgs = (() => {
@@ -268,11 +292,20 @@ function SocialHub({ V, real = null, email = "", dataKey = "" }) {
       )}
 
       {/* Honest inert banner — Meta app not approved yet. Nothing here fakes a connection or a post. */}
-      {inert && (
+      {faltaVincular && (
+        <div className="rounded-xl2 border border-g-gold/30 bg-g-gold/[0.07] px-4 py-3 text-[11.5px] text-g-gold leading-snug">
+          <span className="font-black">{t({ en: "Your account isn't linked yet.", pt: "Sua conta ainda não está vinculada.", es: "Tu cuenta aún no está vinculada.", hi: "आपका खाता अभी जुड़ा नहीं है।" })}</span>{" "}
+          {t({ en: "Our Meta app is approved — what's missing is linking YOUR Instagram / Facebook Page. Our team completes that secure link with you; until then Gui doesn't reply to DMs or publish there.", pt: "O nosso app Meta já está aprovado — o que falta é vincular a SUA Página do Facebook / Instagram. A nossa equipe conclui essa vinculação segura com você; até lá a Gui não responde DMs nem publica lá.", es: "Nuestra app de Meta ya está aprobada — lo que falta es vincular TU Página de Facebook / Instagram. Nuestro equipo completa esa vinculación segura contigo; hasta entonces Gui no responde DMs ni publica allí.", hi: "हमारा Meta ऐप स्वीकृत है — अब आपका Instagram / Facebook पेज जोड़ना बाकी है। हमारी टीम आपके साथ यह सुरक्षित लिंक पूरा करती है; तब तक Gui वहाँ DM का जवाब नहीं देती और न प्रकाशित करती है।" })}
+        </div>
+      )}
+      {motivoIncerto && S.note && (
+        <div className="rounded-xl2 border border-g-gold/30 bg-g-gold/[0.07] px-4 py-3 text-[11.5px] text-g-gold leading-snug">{S.note}</div>
+      )}
+      {esperandoMeta && (
         <div className="rounded-xl2 border border-g-gold/30 bg-g-gold/[0.07] px-4 py-3 text-[11.5px] text-g-gold leading-snug">
           <span className="font-black">{t({ en: "Waiting on Meta app approval.", pt: "Aguardando aprovação do app Meta.", es: "Esperando la aprobación de la app de Meta.", hi: "Meta ऐप स्वीकृति का इंतज़ार।" })}</span>{" "}
           {t({ en: "You can link your accounts now — Gui starts replying to DMs and publishing the second Meta approves us. Nothing here pretends to be live until then.", pt: "Você já pode conectar suas contas — a Gui começa a responder DMs e publicar no instante em que o Meta nos aprovar. Nada aqui finge estar no ar até lá.", es: "Ya puedes enlazar tus cuentas — Gui empieza a responder DMs y publicar en cuanto Meta nos apruebe. Nada aquí finge estar activo hasta entonces.", hi: "आप अभी अपने खाते जोड़ सकते हैं — Meta की स्वीकृति मिलते ही Gui DM का जवाब देना और पोस्ट करना शुरू कर देगी। तब तक यहाँ कुछ भी लाइव होने का दिखावा नहीं करता।" })}
-          {/* The server's own reason (Meta app · account not linked · store not installed), verbatim. */}
+          {/* a razão do servidor — agora no idioma da tela (`ui_lang`), não mais em português */}
           {!demo && S.note && <div className="mt-1 opacity-80">{S.note}</div>}
         </div>
       )}
@@ -317,6 +350,8 @@ function SocialHub({ V, real = null, email = "", dataKey = "" }) {
         {msgs.length === 0 ? (
           <Empty icon={!demo && S.msgsError ? "⚠️" : "💬"} text={!demo && S.msgsError
             ? t({ en: "Couldn't load your messages just now — this is a connection problem, not an empty inbox. Reload in a moment.", pt: "Não consegui carregar suas mensagens agora — isso é falha de conexão, não caixa vazia. Recarregue em instantes.", es: "No pude cargar tus mensajes ahora — es un problema de conexión, no una bandeja vacía. Recarga en un momento.", hi: "अभी आपके संदेश लोड नहीं हो सके — यह कनेक्शन की समस्या है, खाली इनबॉक्स नहीं। थोड़ी देर में फिर लोड करें।" })
+            : faltaVincular
+            ? t({ en: "No social DMs yet — once your Instagram / Facebook account is linked, every message lands here and Gui replies for you.", pt: "Nenhuma DM ainda — assim que a sua conta do Instagram / Facebook for vinculada, cada mensagem cai aqui e a Gui responde por você.", es: "Aún no hay DMs — en cuanto tu cuenta de Instagram / Facebook esté vinculada, cada mensaje llega aquí y Gui responde por ti.", hi: "अभी कोई DM नहीं — आपका Instagram / Facebook खाता जुड़ते ही हर संदेश यहाँ आएगा और Gui जवाब देगी।" })
             : inert
             ? t({ en: "No social DMs yet — the moment Meta approves the app, every Instagram, Messenger & WhatsApp message lands here and Gui replies for you.", pt: "Nenhuma DM ainda — assim que o Meta aprovar o app, cada mensagem do Instagram, Messenger e WhatsApp cai aqui e a Gui responde por você.", es: "Aún no hay DMs — en cuanto Meta apruebe la app, cada mensaje de Instagram, Messenger y WhatsApp llega aquí y Gui responde por ti.", hi: "अभी कोई DM नहीं — Meta ऐप स्वीकृति मिलते ही हर Instagram, Messenger और WhatsApp संदेश यहाँ आएगा और Gui जवाब देगी।" })
             : anyConnected
@@ -385,6 +420,8 @@ function SocialHub({ V, real = null, email = "", dataKey = "" }) {
                 ? t({ en: "⚠️ Couldn't load your drafts — connection problem, not an empty list. Reload in a moment.", pt: "⚠️ Não consegui carregar seus rascunhos — falha de conexão, não lista vazia. Recarregue em instantes.", es: "⚠️ No pude cargar tus borradores — problema de conexión, no una lista vacía. Recarga en un momento.", hi: "⚠️ ड्राफ़्ट लोड नहीं हो सके — कनेक्शन की समस्या, खाली सूची नहीं। थोड़ी देर में फिर लोड करें।" })
                 : !demo && !S.storeReady
                 ? t({ en: "⚠️ Post drafting isn't switched on for your account yet — that's why this list is empty. Gui isn't writing posts for you today; our team activates it.", pt: "⚠️ A criação de posts ainda não foi ativada na sua conta — é por isso que esta lista está vazia. A Gui não está escrevendo posts para você hoje; nossa equipe ativa isso.", es: "⚠️ La creación de publicaciones aún no está activada en tu cuenta — por eso esta lista está vacía. Gui no está escribiendo publicaciones hoy; nuestro equipo lo activa.", hi: "⚠️ आपके खाते पर पोस्ट बनाना अभी सक्रिय नहीं — इसीलिए यह सूची खाली है। आज Gui आपके लिए पोस्ट नहीं लिख रही; हमारी टीम इसे चालू करती है।" })
+                : faltaVincular
+                ? t({ en: "Gui starts drafting posts for you once your Instagram / Facebook account is linked.", pt: "A Gui começa a criar posts para você assim que a sua conta do Instagram / Facebook for vinculada.", es: "Gui empieza a crear publicaciones para ti en cuanto tu cuenta de Instagram / Facebook esté vinculada.", hi: "आपका Instagram / Facebook खाता जुड़ते ही Gui आपके लिए पोस्ट बनाना शुरू कर देगी।" })
                 : inert
                 ? t({ en: "Gui starts drafting posts for you the moment your Meta account is live.", pt: "A Gui começa a criar posts para você assim que sua conta Meta estiver no ar.", es: "Gui empieza a crear publicaciones para ti en cuanto tu cuenta de Meta esté activa.", hi: "आपका Meta खाता लाइव होते ही Gui आपके लिए पोस्ट बनाना शुरू कर देगी।" })
                 : mode === "auto"

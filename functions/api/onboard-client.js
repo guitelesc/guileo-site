@@ -86,7 +86,7 @@ async function configureTwilioWebhooks(env, numberSid) {
 // dez antes de mexer, e é exatamente por estarem iguais que a hora de unificar é agora — depois que
 // uma diverge, alguém já foi atendido pelo modelo errado e ninguém sabe qual superfície foi.
 // É o padrão que esta sessão inteira perseguiu: cópia sem vínculo com a fonte.
-import { MODEL_CHAIN } from "../lib/guiBrain.js";
+import { askClaude } from "../lib/guiBrain.js";
 
 // Normalize a raw input into a fetchable https URL, or "" — with the SAME SSRF guard as demo.js
 // (block loopback/link-local/private/metadata so a crafted URL can't probe internal addresses).
@@ -117,7 +117,7 @@ function htmlToText(html) {
 // Fetch the site (hard timeout) and extract a factual kit {name,tagline,facts,services} via Claude.
 // Returns {} on any miss — the caller's completeness gate then decides inject vs needs-review.
 async function scrapeBusinessFacts(env, url, hintName) {
-  if (!env.ANTHROPIC_API_KEY) return {};
+  if (!env.ANTHROPIC_API_KEY && !env.ELEVENLABS_API_KEY) return {};
   let html = "";
   try {
     const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 6000);
@@ -131,21 +131,16 @@ async function scrapeBusinessFacts(env, url, hintName) {
   const system = `You extract a factual brand kit from a business website's text. Reply with ONLY valid JSON, no markdown, no preamble. Shape:
 {"name":"","tagline":"","facts":"","services":[{"name":"","price":""}]}
 RULES: Use ONLY information present in the text. If a field is not found, use "" (or [] for services). NEVER invent a business name, service, or price. "facts" = a compact factual paragraph (hours, location, specialties, what to know) usable as an AI receptionist's brain. "services" = up to 8 real offerings; include "price" only if a price actually appears.`;
-  const deadline = Date.now() + 9000;
-  for (const model of MODEL_CHAIN) {
-    const remaining = deadline - Date.now(); if (remaining <= 500) break;
-    const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), remaining);
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-        body: JSON.stringify({ model, max_tokens: 900, system, messages: [{ role: "user", content: `Website text${hintName ? ` for "${hintName}"` : ""}:\n\n${text}` }] }),
-        signal: ctrl.signal,
-      });
-      if (r.ok) { const d = await r.json().catch(() => ({})); const m = ((d?.content?.[0]?.text || "").trim()).match(/\{[\s\S]*\}/); if (m) { try { return JSON.parse(m[0]); } catch { /* try next */ } } }
-      else if (r.status === 401 || r.status === 402) break;
-    } catch { /* abort/network — next model if budget remains */ }
-    finally { clearTimeout(timer); }
-  }
+  // 2026-10-05: sem chamada direta à Anthropic — askClaude usa o Escritor da ElevenLabs quando ela está desligada.
+  // Teto de ~9s mantido como corrida contra o relógio (askClaude não aceita AbortSignal).
+  let timer;
+  const estourou = new Promise((res) => { timer = setTimeout(() => res(""), 9000); });
+  const t = await Promise.race([
+    askClaude(env, { system, maxTokens: 900, messages: [{ role: "user", content: `Website text${hintName ? ` for "${hintName}"` : ""}:\n\n${text}` }] }),
+    estourou,
+  ]).finally(() => clearTimeout(timer));
+  const m = String(t || "").trim().match(/\{[\s\S]*\}/);
+  if (m) { try { return JSON.parse(m[0]); } catch { /* JSON inválido → {} */ } }
   return {};
 }
 
@@ -439,8 +434,8 @@ export async function onRequestPost(context) {
           // no site AND no brain/KB → the Gui would be born blind. Flag for review, inject nothing.
           result.steps.kb = "needs review (no website + thin brain)";
           await emitFailure(env, "kb_review_needed", email, `${business} self-serve without website/brain — Gui born thin, needs KB review before it's confidently wrong`, {});
-        } else if (!env.ANTHROPIC_API_KEY) {
-          result.steps.kb = "skipped (no ANTHROPIC_API_KEY)";
+        } else if (!env.ANTHROPIC_API_KEY && !env.ELEVENLABS_API_KEY) {
+          result.steps.kb = "skipped (no ANTHROPIC_API_KEY / ELEVENLABS_API_KEY)";
         } else {
           const kit = await scrapeBusinessFacts(env, siteUrl, business);
           const a = assessKbFacts(kit);

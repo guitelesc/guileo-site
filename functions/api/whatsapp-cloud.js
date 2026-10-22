@@ -34,6 +34,7 @@
 import { json, safeEq } from "../lib/guard.js";
 import { ouvirRecado } from "../lib/whatsappAudio.js";
 import { svcRpc } from "../lib/sb.js";
+import { debitar, refMensagem } from "../lib/creditos.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -168,16 +169,23 @@ export async function sendWhatsAppTemplate(env, tenant, to, templateName, langCo
 // ── unified brain: hand the inbound to messageAdapter (same brain every channel uses) ──
 // Loaded dynamically so this webhook stays live even before the adapter lands; if the
 // adapter isn't present we degrade honestly (ACK Meta, no reply) rather than crash.
+// Devolve { texto, cerebro }. `cerebro` = a resposta veio do CÉREBRO de verdade, e não da frase
+// de handoff (`escalate`), do "recebi sua mensagem" sem chave (`ready:false`) ou de uma repetição
+// que o adapter manda não cobrar (`duplicate`). É o que o medidor de crédito precisa saber — antes
+// esta função devolvia só o texto e as duas coisas eram indistinguíveis.
 async function brainReply(env, ctx) {
   try {
     const mod = await import("../lib/messageAdapter.js").catch(() => null);
     if (mod && typeof mod.handleInboundMessage === "function") {
       const res = await mod.handleInboundMessage(env, ctx);
-      if (res && typeof res === "object") return (res.reply || res.text || "").toString();
-      if (typeof res === "string") return res;
+      if (res && typeof res === "object") {
+        const texto = (res.reply || res.text || "").toString();
+        return { texto, cerebro: !!(texto && res.ready === true && !res.escalate && !res.duplicate) };
+      }
+      if (typeof res === "string") return { texto: res, cerebro: false };
     }
   } catch { /* adapter not ready → honest silent degrade */ }
-  return "";
+  return { texto: "", cerebro: false };
 }
 
 // ═══════════════════════ GET — Meta webhook verification ════════════════════════
@@ -279,7 +287,7 @@ export async function onRequestPost(context) {
 
             // Hand to the UNIFIED brain (same handleInboundMessage voice/webchat/SMS use).
             // Its own signature: { channel, tenantEmail, from, text, name, origin, meta }.
-            const reply = await brainReply(env, {
+            const { texto: reply, cerebro } = await brainReply(env, {
               channel: "whatsapp",
               tenantEmail: tenant.client_email,
               from,
@@ -304,6 +312,12 @@ export async function onRequestPost(context) {
                 await logSendFailure(env, tenant.client_email, from, why, {
                   code: err.code ?? null, phone_number_id: String(phoneNumberId || ""), message_id: msgId,
                 });
+              } else if (cerebro) {
+                // MEDIDOR DE CRÉDITO (2026-09-27): só aqui — a Meta ACEITOU o envio (`sent.ok`) e
+                // quem escreveu foi o cérebro. Resposta recusada ou frase enlatada não se cobra.
+                // A referência é o id da mensagem RECEBIDA: reentrega da Meta não cobra de novo.
+                // Já estamos dentro do waitUntil (a resposta ao webhook saiu); `debitar` nunca lança.
+                await debitar(env, { email: tenant.client_email, kind: "whatsapp", ref: refMensagem("whatsapp", msgId) });
               }
             }
           })();

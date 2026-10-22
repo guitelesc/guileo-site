@@ -1,19 +1,16 @@
 import { useEffect, lazy, Suspense } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import VoiceAgent from "../components/VoiceAgent";
-import ExitIntent from "../components/ExitIntent.jsx";
-import LiveCall from "../components/LiveCall.jsx";
 import Intro from "../components/Intro.jsx";
 import LeadForm from "../components/LeadForm.jsx";
-import StickyCtaMobile from "../components/StickyCtaMobile.jsx";
 import { Reveal, Magnetic, Accordion } from "../lib/ui.jsx";
-import HeroV2 from "../components/HeroV2";
-import ServicesMarquee from "../components/ServicesMarquee.jsx";
+import HeroOS, { abrirGui, copyTelefone } from "../components/HeroOS.jsx"; // 2026-09-09: o hero "AI Company OS" + agente ElevenLabs (voz+texto)
 import ResultsV2 from "../components/ResultsV2";
 import PillarsProducts from "../components/PillarsProducts.jsx";
-import LegsV2 from "../components/LegsV2";
 import EngineV2 from "../components/EngineV2.jsx";
+import CompanyOS from "../components/CompanyOS.jsx"; // 2026-09-10: os 8 departamentos que o eyebrow promete
+import CockpitShots from "../components/CockpitShots.jsx"; // 2026-09-10: telas reais do cockpit
+import XRaySection from "../components/XRaySection.jsx"; // 2026-09-10: o Raio-X de volta — a porta da venda // 2026-09-09 (noite): o Luis pediu de volta a animação do "rio de conversas"; título virou "data is the fuel"
 import ChannelsStrip from "../components/ChannelsStrip.jsx";
 import MethodV2 from "../components/MethodV2";
 import ProofV2 from "../components/ProofV2";
@@ -82,6 +79,7 @@ function SilverCta({ href = "#contact", children }) {
 
 export default function Home() {
   const { t, lang } = useLang();
+  const tel = copyTelefone(lang); // promessa de ligação atrás de UMA chave (TELEFONE_NO_AR, HeroOS.jsx)
   useSeo({
     // O SEO falava SÓ da IA — e a Guileo também faz anúncios, marketing, site e software. Quem
     // procurava "agência de marketing" ou "quem faz meu site" no Google nunca nos encontrava, e
@@ -90,8 +88,10 @@ export default function Home() {
     // HONESTIDADE: "anúncios conduzidos por gente" é o que de fato acontece (o time cria e gere as
     // campanhas — functions/api/google-ads.js diz isso explicitamente). App e software entram como
     // PROJETO sob medida, nunca como item do mensal, porque é isso que são.
-    title: lang === "pt" ? "Guileo — IA, anúncios e criação para o seu negócio · atende 24/7, e ainda faz seu site" : lang === "es" ? "Guileo — IA, anuncios y creación para tu negocio · atiende 24/7, y hace tu sitio" : "Guileo — AI, ads & creative for your business · answers 24/7, and builds your site",
-    description: lang === "pt" ? "Uma casa só: a IA atende ligações e mensagens, agenda e vende 24/7 em 16 idiomas — e o time conduz seus anúncios, marketing e conteúdo, e constrói site, app e software sob medida. No ar em até 7 dias. A partir de $149/mês, 30 dias de garantia." : lang === "es" ? "Una sola casa: la IA atiende llamadas y mensajes, agenda y vende 24/7 en 16 idiomas — y el equipo conduce tus anuncios, marketing y contenido, y construye sitio, app y software a medida. En marcha en 7 días. Desde $149/mes, 30 días de garantía." : "One house: the AI answers calls and messages, books and sells 24/7 in 16 languages — and the team runs your ads, marketing and content, and builds your site, app and custom software. Live in 7 days. From $149/mo, 30-day money-back.",
+    // hi entrou em 2026-09-27: a tela em hindi levava <title> e description em inglês — o resto da
+    // página já estava traduzido, só a aba do navegador e o snippet de busca denunciavam.
+    title: lang === "pt" ? "Guileo — IA, anúncios e criação para o seu negócio · atende 24/7, e ainda faz seu site" : lang === "es" ? "Guileo — IA, anuncios y creación para tu negocio · atiende 24/7, y hace tu sitio" : lang === "hi" ? "Guileo — आपके बिज़नेस के लिए AI, विज्ञापन और क्रिएटिव · 24/7 जवाब, और आपकी वेबसाइट भी" : "Guileo — AI, ads & creative for your business · answers 24/7, and builds your site",
+    description: lang === "hi" ? "एक ही घर: AI कॉल और मैसेज का जवाब देती है, बुकिंग और बिक्री करती है — 24/7, 16 भाषाओं में — और टीम आपके विज्ञापन, मार्केटिंग और कंटेंट चलाती है, और वेबसाइट, ऐप और कस्टम सॉफ़्टवेयर बनाती है। 7 दिनों में लाइव। $149/माह से, 30-दिन मनी-बैक।" : lang === "pt" ? "Uma casa só: a IA atende ligações e mensagens, agenda e vende 24/7 em 16 idiomas — e o time conduz seus anúncios, marketing e conteúdo, e constrói site, app e software sob medida. No ar em até 7 dias. A partir de $149/mês, 30 dias de garantia." : lang === "es" ? "Una sola casa: la IA atiende llamadas y mensajes, agenda y vende 24/7 en 16 idiomas — y el equipo conduce tus anuncios, marketing y contenido, y construye sitio, app y software a medida. En marcha en 7 días. Desde $149/mes, 30 días de garantía." : "One house: the AI answers calls and messages, books and sells 24/7 in 16 languages — and the team runs your ads, marketing and content, and builds your site, app and custom software. Live in 7 days. From $149/mo, 30-day money-back.",
     path: "/",
   });
   // FAQPage JSON-LD built from the SAME items the Accordion renders, so the schema always matches
@@ -106,6 +106,11 @@ export default function Home() {
         acceptedAnswer: { "@type": "Answer", text: a },
       })),
     };
+    // O index.html já traz um FAQPage estático (para robô que não roda JavaScript). Dois FAQPage
+    // na mesma página é erro de dado estruturado no Search Console — e o estático tem 5 perguntas
+    // em inglês, enquanto a tela mostra 10 no idioma do visitante. O daqui espelha o que está
+    // VISÍVEL, então ele substitui o estático em vez de somar.
+    document.getElementById("faq-jsonld-estatico")?.remove();
     const s = document.createElement("script");
     s.type = "application/ld+json";
     s.id = "home-faq-jsonld";
@@ -119,6 +124,18 @@ export default function Home() {
   useEffect(() => {
     const id = (window.location.hash || "").slice(1);
     if (!id) return;
+    // "/#gui" — é para onde o "Começar" do menu manda quem está numa página SEM o widget
+    // (/privacy, /servicos, /planos…). Chegando aqui, a conversa abre sozinha assim que o widget
+    // monta os botões dele. Sem rolagem: o widget é fixo no canto, não há para onde rolar.
+    if (id === "gui") {
+      let n = 0;
+      const espera = setInterval(() => {
+        const pronto = document.querySelector("elevenlabs-convai")?.shadowRoot?.querySelector("button");
+        if (pronto) { clearInterval(espera); abrirGui("texto"); }
+        else if (++n > 40) clearInterval(espera); // 10s — script de terceiro pode não carregar; a página segue de pé
+      }, 250);
+      return () => clearInterval(espera);
+    }
     // small retry loop — sections below the hero mount progressively
     let tries = 0;
     const tick = setInterval(() => {
@@ -129,12 +146,12 @@ export default function Home() {
     return () => clearInterval(tick);
   }, []);
   return (
-    <div className="min-h-screen text-g-ink">
+    <div className="tex-vivo min-h-screen text-g-ink">
       <Intro />
       <Navbar />
 
       {/* ── Tightened single-buyer funnel: Hook → Problem/Result → Solution → How → Proof → Demo → Offer → Close ── */}
-      <HeroV2 />              {/* Hook — never miss a call, a lead, or a sale */}
+      <HeroOS />              {/* 2026-09-09 — "Stop running your business. Start leading it." + agente ElevenLabs no canto */}
       <TrustStrip />          {/* Honest trust bar HIGH on the page — money-back · human-supervised · 7-day launch · 20+ langs */}
 
       {/* ── O SIMULADOR SAIU (Luis, 2026-08-11: "tá muito nada, ve") ──────────────────────────
@@ -147,7 +164,7 @@ export default function Home() {
           (só o uso na Home saiu), então volta com uma linha se um dia fizer sentido. */}
 
       <ResultsV2 />          {/* Problem + promise — you buy results; here's the leak (id=industries anchor) */}
-      <LegsV2 />             {/* The WHY — the 3 pillars own performance / sales / growth (the emotional spine) */}
+      {/* LegsV2 (as 3 pernas) SAIU — Luis, 2026-09-09: "tirar a 6" */}
 
       {/* ═══ O MOTOR DE MARKETING — de volta à Home, PRESO no fio que sai da planta ═══════════
           Luis (2026-08-20): «o motor marketing tá horrível! o texto tá lindo mas precisa ser algo
@@ -170,9 +187,11 @@ export default function Home() {
           ⚠️ CUSTO DECLARADO: a amplitude do catálogo sai da PRIMEIRA tela. Existe uma regra antiga
           na casa dizendo que ela deve estar acima da dobra — quem chega por anúncio decidia ali o
           que a Guileo é. Foi decisão explícita do dono; se o topo esfriar, é aqui que se volta. */}
-      <ServicesMarquee />
+      {/* ServicesGrid SAIU (2026-09-10): os 18 serviços moram dentro dos 3 pilares (PillarsProducts) */}
 
-      <PillarsProducts />    {/* The WHAT — each pillar's REAL products → result → value (replaces WholePicture + old ProductResults; aligns landing to the platform) */}
+      <PillarsProducts />
+      <CompanyOS />
+      <CockpitShots />    {/* The WHAT — each pillar's REAL products → result → value (replaces WholePicture + old ProductResults; aligns landing to the platform) */}
       <ChannelsStrip />      {/* Reach — a slim logo strip (folded from the old full ChannelsV2 phone section) */}
 
       {/* ⛔ "VEJA NA SUA MARCA" SAIU (Luis, 2026-08-25: «apagar isso aqui») ──────────────────
@@ -181,8 +200,9 @@ export default function Home() {
           que serve /vitrine/:token e o vendedor — só perdeu a vitrine pública.
           ↩️ Para voltar: reimportar o lazy DemoEngine e devolver a <section id="veja"> aqui. */}
 
-      <MethodV2 />           {/* How you start — live in under 7 days, human-led */}
-      <ProofV2 />            {/* Trust badges, right before the demo + offer */}
+      <MethodV2 />
+      <XRaySection />           {/* How you start — live in under 7 days, human-led */}
+      {/* ProofV2 (selos) desceu pra antes do rodapé — Luis, 2026-09-09: "volta a versão 4K e deixa lá embaixo" */}
       <FounderProof />       {/* Founder note + (future) real client quotes — the human voice before the demo */}
       {/* (GUILEO PULSE desceu para DEPOIS do preço — ver a nota na nova posição.) */}
 
@@ -198,6 +218,12 @@ export default function Home() {
           4. Chips de emoji viraram glifos vetoriais (a regra da casa).
           Com isso a landing recupera sua captura de telefone mais quente (consentimento TCPA +
           speed-to-lead) que a limpeza tinha custado. */}
+      {/* ÂNCORA #try — a seção LiveCall saiu em 2026-09-09 e levou o id junto, mas o endereço
+          continuou sendo usado: /demo, /demonstracao e /demostracion (public/_redirects), o botão da
+          página 404, /servicos, os posts do blog e /heroi apontam todos para "/#try". O link abria
+          a home no topo, sem dizer nada. A âncora volta aqui, no convite "ouça a Gui trabalhar" —
+          que é o que sobrou da demo. Elemento vazio: não muda um pixel da página. */}
+      <span id="try" aria-hidden="true" className="block scroll-mt-24" />
       <Reveal variant="scale" className="relative wrap py-12 text-center">
         <div className="mx-auto h-px w-40 bg-gradient-to-r from-transparent via-g-gold/55 to-transparent" />
         <p className="mt-6 mx-auto max-w-2xl font-black leading-[1.05] tracking-tight" style={{ fontSize: "clamp(1.5rem,3.4vw,2.4rem)" }}>
@@ -207,10 +233,7 @@ export default function Home() {
         <div className="mt-6 mx-auto h-px w-40 bg-gradient-to-r from-transparent via-g-gold/55 to-transparent" />
       </Reveal>
 
-      <section id="try" className="relative px-5 pb-20 pt-4">
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(700px_360px_at_50%_0%,rgba(62,148,104,0.10),transparent)]" />
-        <LiveCall />
-      </section>
+      {/* LiveCall (#try, "Now stop reading. Hear Gui work.") SAIU — Luis, 2026-09-09: "tirar". O "fale com a Gui" é o widget do hero. */}
 
       {/* REAL PRICE — the 3 canonical tiers with the actual number (audit: the price was hidden on /planos) */}
       {/* ═══ GUILEO PULSE, DE VOLTA ANTES DO PREÇO (Luis, 2026-08-25: «inverter de lugar com
@@ -273,66 +296,7 @@ export default function Home() {
              fica grudada no topo ao rolar — o olho não perde qual coluna é a nossa.
           As células viram "sim|nota", "parte|nota", "nao|nota" ou "txt|valor" — o código decide o
           desenho, a nota (opcional) explica a exceção sem virar outra linha. ═══════════════════ */}
-      <section className="wrap py-20">
-        <SectionHead eyebrow={t.more.comp.eyebrow} h2={t.more.comp.h2} sub={t.more.comp.sub} className="mb-6" subMax="max-w-2xl" />
-
-        {/* a legenda vem ANTES e usa os MESMOS discos da tabela — legenda que não parece com o
-            que explica obriga o leitor a fazer a tradução duas vezes */}
-        <div className="mb-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-[12px] font-semibold">
-          {[["sim", lang === "pt" ? "faz" : lang === "es" ? "lo hace" : lang === "hi" ? "करता है" : "does it"],
-            ["parte", lang === "pt" ? "em parte" : lang === "es" ? "en parte" : lang === "hi" ? "आंशिक" : "partly"],
-            ["nao", lang === "pt" ? "não faz" : lang === "es" ? "no lo hace" : lang === "hi" ? "नहीं करता" : "doesn't"]].map(([k, rot]) => (
-            <span key={k} className="inline-flex items-center gap-2 text-g-ink">
-              <CompMarca k={k} /><span>{rot}</span>
-            </span>
-          ))}
-        </div>
-
-        <Reveal>
-          {/* a moldura herda o vidro global (index.css) — sem sombra própria, senão a tabela
-              vira a única superfície da página com outra profundidade */}
-          <div className="overflow-x-auto rounded-xl3 border border-white/10 bg-white/[0.035] backdrop-blur-sm">
-            <table className="w-full min-w-full text-sm md:min-w-[720px]">
-              <thead>
-                <tr>
-                  {t.more.comp.cols.map((c, i) => (
-                    <th key={i} scope="col"
-                      className={`sticky top-0 z-10 p-4 text-[13px] font-black backdrop-blur-md ${i === 0 ? "text-left text-g-muted" : "text-center"} ${i === 1 ? "text-g-word" : "text-g-muted"}`}
-                      style={i === 1
-                        ? { background: "rgba(62,148,104,0.16)", boxShadow: "inset 1px 0 0 rgba(62,148,104,0.45), inset -1px 0 0 rgba(62,148,104,0.45), inset 0 -1px 0 rgba(62,148,104,0.5)" }
-                        : { background: "rgba(22,21,18,0.85)", boxShadow: "inset 0 -1px 0 rgba(255,255,255,0.08)" }}>{c}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {t.more.comp.rows.map((r, i) => (
-                  <tr key={i} className="border-t border-white/[0.06] transition-colors duration-200 hover:bg-white/[0.035]">
-                    {r.map((cell, j) => {
-                      const [cod, nota] = String(cell).split("|");
-                      const guileo = j === 1;
-                      if (j === 0) return <th key={j} scope="row" className="p-4 text-left text-[13.5px] font-semibold text-g-word">{cell}</th>;
-                      return (
-                        <td key={j} className="p-4 text-center align-middle"
-                          style={guileo ? { background: "rgba(62,148,104,0.07)", boxShadow: "inset 1px 0 0 rgba(62,148,104,0.3), inset -1px 0 0 rgba(62,148,104,0.3)" } : undefined}>
-                          {cod === "txt" ? (
-                            <span className={`text-[13px] font-bold ${guileo ? "text-g-light" : "text-g-muted"}`}>{nota}</span>
-                          ) : (
-                            <span className="inline-flex flex-col items-center gap-1">
-                              <CompMarca k={cod} forte={guileo} />
-                              {nota && <span className="text-[10.5px] leading-tight text-g-muted">{nota}</span>}
-                            </span>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Reveal>
-        <div className="text-center mt-8"><Magnetic><SilverCta>{t.more.comp.cta}</SilverCta></Magnetic></div>
-      </section>
+      {/* Comparação (Guileo vs agência vs contratar) SAIU — Luis, 2026-09-09: a objeção vai pro widget e pra FAQ. */}
 
       {/* CTA + LEAD CAPTURE (capture the lead while intent is hot) */}
       <section id="contact" className="wrap py-20 scroll-mt-24">
@@ -364,32 +328,21 @@ export default function Home() {
         <SectionHead eyebrow={t.faq.eyebrow} h2={t.faq.h2} className="mb-8" />
         <Accordion items={t.faq.items} />
         <div className="mt-8 text-center">
-          <a href="#try" onClick={(e)=>{ e.preventDefault(); document.getElementById("try")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
-            className="btn-bright inline-flex"><span className="relative flex h-2 w-2 mr-1"><span className="absolute inline-flex h-full w-full rounded-full bg-black/40 animate-ping" /><span className="relative inline-flex h-2 w-2 rounded-full bg-black/60" /></span>📞 {lang === "pt" ? "Ainda tem dúvidas? Deixe a Gui te ligar" : lang === "es" ? "¿Aún tienes dudas? Deja que Gui te llame" : lang === "hi" ? "अब भी सवाल हैं? Gui से कॉल करवाएँ" : "Still have questions? Let Gui call you"}</a>
+          <a href="#gui" onClick={(e) => { e.preventDefault(); abrirGui("texto"); }}
+            className="btn-bright inline-flex"><span className="relative flex h-2 w-2 mr-1"><span className="absolute inline-flex h-full w-full rounded-full bg-black/40 animate-ping" /><span className="relative inline-flex h-2 w-2 rounded-full bg-black/60" /></span>{/* O botão dizia "Deixe a Gui te ligar" e abria o CHAT — e com o telefone fora do ar a ligação nem existe. O texto agora sai de copyTelefone(): vira "te ligar" de novo quando TELEFONE_NO_AR for true. */}<span aria-hidden="true">{tel.icone}</span> {tel.duvida}</a>
         </div>
       </section>
 
       {/* MANIFESTO — the closing line that sells the dream */}
-      <section className="relative py-20 sm:py-28 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-g-gold/[0.04] to-transparent pointer-events-none" />
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-72 w-72 rounded-full bg-g-green/10 blur-3xl pointer-events-none animate-breathe" />
-        <Reveal variant="scale" className="relative wrap text-center max-w-3xl mx-auto">
-          <span className="text-5xl text-g-gold/40 leading-none">“</span>
-          <p className="mt-1 text-2xl sm:text-4xl font-black leading-tight tracking-tight bg-gradient-to-r from-g-word via-g-gold to-g-word bg-[length:200%_auto] bg-clip-text text-transparent animate-shimmer">
-            {t.manifesto.quote}
-          </p>
-          <p className="mt-5 text-sm sm:text-base font-bold text-g-light">{t.manifesto.tag}</p>
-          <div className="mt-6 mx-auto h-px w-24 bg-gradient-to-r from-transparent via-g-gold/60 to-transparent" />
-          <div className="mt-3 text-xs font-bold uppercase tracking-[0.3em] text-g-muted">Guileo</div>
-        </Reveal>
-      </section>
+      {/* Manifesto (a citação) SAIU — 7ª repetição da promessa. No lugar, os SELOS em 4K, o fecho de confiança antes do rodapé. */}
+      <ProofV2 />
 
       <Footer />
       {/* spacer so the mobile sticky CTA never covers the footer's last line (safe-area) */}
       <div aria-hidden className="h-20 sm:hidden" />
-      <VoiceAgent />
-      <ExitIntent />
-      <StickyCtaMobile />
+      {/* VoiceAgent SAIU — substituído pelo widget da ElevenLabs montado pelo HeroOS (dois balões no canto é erro) */}
+      {/* ExitIntent SAIU — pop-up de saída brigava com o widget da Gui */}
+      {/* StickyCtaMobile SAIU (2026-09-09): no celular ela e o balão da Gui disputavam o rodapé — o balão é o CTA */}
     </div>
   );
 }

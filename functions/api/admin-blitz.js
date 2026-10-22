@@ -34,7 +34,7 @@ export async function onRequestPost(context) {
     if (clean.length === 0) return json({ error: "no valid phones" }, 400);
 
     const ir = await rpc("ingest_dormant", { p_secret: env.INGEST_SECRET || "", p_email: email, p_rows: clean });
-    if (!ir.ok) return json({ error: "ingest failed" }, 502);
+    if (!ir.ok) return json({ error: "ingest failed" }, 503);
     const n = await ir.json();
     return json({ ok: true, uploaded: n });
   } catch (e) {

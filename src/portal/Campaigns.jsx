@@ -52,7 +52,19 @@ function FlashCampaign({ V }) {
         body: JSON.stringify({ token: key, email: me.email, channel, offer: offer.trim(), dryRun }),
       });
       const d = await r.json().catch(() => null);
-      if (!r.ok || !d?.ok) { setErr(d?.error || tr("Preview failed — check your connection code in Settings.")); return null; }
+      // 🚨 A TELA CULPAVA O CLIENTE PELO MOTOR QUE FALTAVA (2026-09-28). Qualquer resposta não-ok
+      // virava "Preview failed — check your connection code in Settings": a dona recolava a chave
+      // (que estava certa) e nada mudava, porque o problema era o motor de reativação fora do ar.
+      // Agora cada causa tem a sua frase: motor indisponível (`motor_indisponivel` + `codigo`),
+      // chave recusada (401), ou o motivo que o servidor mandou (`erro`/`error`).
+      if (d?.motor_indisponivel) {
+        setErr(d.codigo === "sem_canal" ? tr("Reactivation by text or call isn't available on your account yet — text messaging is still waiting for carrier approval. Nothing was sent.")
+          : d.codigo === "fonte_fora" ? tr("The reactivation engine isn't available right now. This does NOT mean there is nobody to win back. Nothing was sent.")
+          : (d.erro || d.error || tr("Reactivation isn't available yet. Nothing was sent.")));
+        return null;
+      }
+      if (r.status === 401) { setErr(tr("Your connection code isn't matching — paste it again in Settings.")); return null; }
+      if (!r.ok || !d?.ok) { setErr(d?.erro || d?.error || tr("The reactivation engine didn't answer. Nothing was sent.")); return null; }
       return d;
     } catch { setErr(tr("Network error — try again.")); return null; }
     finally { setBusy(false); }
@@ -73,8 +85,16 @@ function FlashCampaign({ V }) {
 
   const doSend = async () => {
     const d = await post(false);
-    if (d) { setResult(d); setPreview(null); toast(`⚡ ${tr("Flash campaign sent")} — ${d.sms} SMS · ${d.calls} ${tr("calls")}`); }
+    if (!d) return;
+    setResult(d); setPreview(null);
+    // sucesso só com NÚMERO: `ok:true` com zero alcançados não é "campanha enviada"
+    const n = (Number(d.sms) || 0) + (Number(d.calls) || 0);
+    toast(n > 0 ? `⚡ ${tr("Flash campaign sent")} — ${d.sms} SMS · ${d.calls} ${tr("calls")}` : tr("Nobody was reachable right now — nothing was sent."));
   };
+  // Quem SERIA alcançado é quem tem canal de pé (sms + ligações) — não o tamanho da lista. A
+  // prévia dizia "N customers would be reached" com `pulled`, e o botão "Yes — send to N" idem:
+  // com SMS aguardando aprovação, N pessoas na lista eram ZERO mensagens entregues.
+  const alcance = preview ? (Number(preview.sms) || 0) + (Number(preview.calls) || 0) : 0;
 
   return (
     <Card className="p-0 overflow-hidden">
@@ -105,9 +125,12 @@ function FlashCampaign({ V }) {
         {preview && (
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
             <div className="text-sm font-bold text-g-word">
-              {preview.pulled} {tr(preview.pulled === 1 ? "lapsed customer would be reached" : "lapsed customers would be reached")}
-              <span className="text-[11px] font-bold text-g-muted"> · {preview.sms} SMS{preview.calls ? ` · ${preview.calls} ${tr("calls")}` : ""}{preview.skipped ? ` · ${preview.skipped} ${tr("skipped (opt-out/invalid)")}` : ""}</span>
+              {alcance} {tr(alcance === 1 ? "lapsed customer would be reached" : "lapsed customers would be reached")}
+              <span className="text-[11px] font-bold text-g-muted"> · {preview.sms} SMS{preview.calls ? ` · ${preview.calls} ${tr("calls")}` : ""}{preview.skipped ? ` · ${preview.skipped} ${tr("skipped (opt-out/invalid)")}` : ""} · {preview.pulled} {tr("on the inactive list")}</span>
             </div>
+            {!preview.demo && preview.canais && channel !== "sms" && preview.canais.call && preview.canais.call.ok === false && (
+              <div className="text-[12px] text-g-muted">{tr("Calls in bulk aren't enabled yet — this preview counts text messages only.")}</div>
+            )}
             {(preview.sample || []).map((s, i) => (
               <div key={i} className="text-[12px] text-g-muted border-l-2 border-g-gold/40 pl-3">
                 <span className="font-bold text-g-word">{s.to}</span> — “{s.msg}”
@@ -115,21 +138,26 @@ function FlashCampaign({ V }) {
             ))}
             {preview.pulled === 0 && <div className="text-[12px] text-g-muted">{tr("No lapsed customers in the win-back window right now — nothing would be sent.")}</div>}
             {preview.demo && <div className="text-[11px] font-bold text-g-muted">{tr("Simulated preview — connect your account to send for real.")}</div>}
-            {!demo && preview.pulled > 0 && (
+            {!demo && preview.pulled > 0 && alcance === 0 && (
+              <div className="text-[12px] text-g-muted">{tr("Nobody can be reached by text right now, so there is nothing to send.")}</div>
+            )}
+            {!demo && alcance > 0 && (
               <div className="rounded-lg p-3 space-y-2" style={{ background: "#E2533F14", border: "1px solid #E2533F44" }}>
                 <div className="text-[12px] font-bold" style={{ color: "#E2533F" }}>
-                  ⚠️ {tr(channel === "both" ? "This sends REAL messages and calls to" : channel === "call" ? "This sends REAL calls to" : "This sends REAL messages to")} {preview.pulled} {tr(preview.pulled === 1 ? "customer" : "customers")}. {tr("It can't be undone.")}
+                  ⚠️ {tr(preview.calls && preview.sms ? "This sends REAL messages and calls to" : preview.calls ? "This sends REAL calls to" : "This sends REAL messages to")} {alcance} {tr(alcance === 1 ? "customer" : "customers")}. {tr("It can't be undone.")}
                 </div>
-                <button onClick={doSend} disabled={busy} className="btn-bright text-sm w-full">{busy ? tr("Sending…") : `⚡ ${tr("Yes — send to")} ${preview.pulled} ${tr("customers now")}`}</button>
+                <button onClick={doSend} disabled={busy} className="btn-bright text-sm w-full">{busy ? tr("Sending…") : `⚡ ${tr("Yes — send to")} ${alcance} ${tr("customers now")}`}</button>
               </div>
             )}
           </div>
         )}
 
         {result && (
-          <div className="rounded-xl border p-4 text-sm font-bold" style={{ borderColor: "#3E946855", background: "#3E946814", color: "#3E9468" }}>
-            ✓ {tr("Sent")} — {result.sms} SMS · {result.calls} {tr("calls")} · {result.skipped} {tr("skipped")}. {tr("Replies land in your Inbox.")}
-          </div>
+          (Number(result.sms) || 0) + (Number(result.calls) || 0) > 0
+            ? <div className="rounded-xl border p-4 text-sm font-bold" style={{ borderColor: "#3E946855", background: "#3E946814", color: "#3E9468" }}>
+                ✓ {tr("Sent")} — {result.sms} SMS · {result.calls} {tr("calls")} · {result.skipped} {tr("skipped")}. {tr("Replies land in your Inbox.")}
+              </div>
+            : <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm font-bold text-g-muted">{tr("Nobody was reachable right now — nothing was sent.")}</div>
         )}
       </div>
     </Card>
@@ -174,7 +202,8 @@ function RealCampaigns({ V, onNav, email, dataKey }) {
     setSending(true);
     const d = await couponsApi({ action: "campaign_send", token: dataKey, email, campaign_id: c.id });
     setSending(false);
-    if (!d._ok) { toast(d.note || tr("I couldn't send that — check your connection and try again.")); return; }
+    // `d.note` é texto de engenharia do servidor ("Paste db/….sql") — nunca vai para a tela
+    if (!d._ok) { toast(d.erro || tr("I couldn't send that — check your connection and try again.")); return; }
     if (typeof d.sent === "number" && d.sent > 0) {
       setRows((cs) => (cs || []).map((x) => (x.id === c.id ? { ...x, status: "sent", sent_count: d.sent } : x)));
       setSel((s) => (s && s.id === c.id ? { ...s, status: "sent", sent_count: d.sent } : s));
@@ -183,7 +212,7 @@ function RealCampaigns({ V, onNav, email, dataKey }) {
     } else if ((d.audience || 0) === 0) {
       toast(tr("No customers matched that audience yet — nothing was sent."));
     } else {
-      toast(d.note ? d.note : tr("Queued — email sending isn't fully connected yet, so nothing went out."));
+      toast(tr("Nothing went out — email sending isn't fully connected for your account yet."));
     }
   };
 
@@ -275,7 +304,7 @@ function Campaigns({ V, onNav, real = null, email: emailProp = "", dataKey: data
 function DemoCampaigns({ V, onNav }) {
   const [sel, setSel] = useState(null);
   const rows = [...loadCreated(V.label, "campaigns"), ...(V.campaigns || genCampaigns(V))];
-  const buildAudience = (c) => { pushCreated(V.label, "audiences", { name: `${c.name} · engagers`, size: vnum(V.label, c.name, 1200, 9000), source: "CRM" }); setSel(null); toast(`Audience built from "${c.name}" ✓ — see it in Ad Audiences`); onNav?.("audiences"); };
+  const buildAudience = (c) => { pushCreated(V.label, "audiences", { name: `${c.name} · engagers`, size: vnum(V.label, c.name, 1200, 9000), source: "CRM" }); setSel(null); toast(`${tr("Demo")} — "${c.name}" — ${tr("added to the sample tab, nothing was booked or sent")}`); onNav?.("audiences"); };
   const sent = rows.reduce((s, c) => s + c.sent, 0);
   const rev = rows.reduce((s, c) => s + c.revenue, 0);
   // Divisão por zero devolvia NaN e a tela imprimia "Avg. open rate NaN%" — número
@@ -283,7 +312,7 @@ function DemoCampaigns({ V, onNav }) {
   const open = rows.length ? Math.round(rows.reduce((s, c) => s + (Number(c.opened) || 0), 0) / rows.length) : null;
   return (
     <>
-     <NoSeuPlano real={real} produto="reactivation" />
+     <NoSeuPlano real={null} produto="reactivation" />
    <div className="space-y-4 stagger">
       <div className="rounded-xl border border-g-gold/25 bg-g-gold/[0.06] px-4 py-2.5 text-[11px] font-bold text-g-muted">{tr("Demo — sample data. Connect your account in Settings to see your real campaigns here.")}</div>
       <MiniStats items={[["Campaigns", `${rows.length}`], ["Messages sent", sent.toLocaleString()], ["Avg. open rate", open == null ? "—" : `${open}%`, "good"], ["Revenue", `$${rev.toLocaleString()}`, "good"]]} />
@@ -308,7 +337,7 @@ function DemoCampaigns({ V, onNav }) {
           badge={<span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: (sel.status === "Active" ? "#3E9468" : "#D6C29A") + "22", color: sel.status === "Active" ? "#3E9468" : "#D6C29A" }}>{sel.status}</span>}
           fields={[["Channel", sel.channel], ["Sent", sel.sent.toLocaleString()], ["Open rate", `${sel.opened}%`], ["Revenue", `$${sel.revenue.toLocaleString()}`], ["ROI", `${(sel.revenue / (sel.sent * 0.05) || 0).toFixed(1)}×`]]}
           note={`Run automatically by Guileo. ${sel.status === "Active" ? "Live now — driving revenue while you focus on the business." : "Scheduled — will launch and optimize itself."}`}
-          actions={<><button onClick={() => { toast("Campaign duplicated ✓"); setSel(null); }} className="btn-bright text-sm">⧉ Duplicate</button><button onClick={() => buildAudience(sel)} className="btn-ghost text-sm">🎯 Build audience</button><button onClick={() => { toast(sel.status === "Active" ? "Campaign paused" : "Campaign resumed"); setSel(null); }} className="btn-ghost text-sm">{sel.status === "Active" ? "⏸ Pause" : "▶ Resume"}</button></>}
+          actions={<><button onClick={() => { toast(tr("Demo — nothing was saved. This button has no engine behind it yet.")); setSel(null); }} className="btn-bright text-sm">⧉ {tr("Duplicate")}</button><button onClick={() => buildAudience(sel)} className="btn-ghost text-sm">🎯 {tr("Build audience")}</button><button onClick={() => { toast(tr("Demo — nothing was saved. This button has no engine behind it yet.")); setSel(null); }} className="btn-ghost text-sm">{sel.status === "Active" ? `⏸ ${tr("Pause")}` : `▶ ${tr("Resume")}`}</button></>}
           onClose={() => setSel(null)}
         />
       )}

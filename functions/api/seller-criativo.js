@@ -85,7 +85,7 @@ export async function onRequestPost(context) {
     // vazias é o desfecho que faz o vendedor abrir a tela na frente do cliente e não ter nada.
     const vivas = kit.pecas.filter((p) => !p.erro);
     if (!vivas.length) {
-      return json({ ok: false, error: `a IA não escreveu nenhuma peça — ${kit.pecas.map((p) => `${p.canal}: ${p.erro}`).join(" · ")}`, cota }, 502);
+      return json({ ok: false, error: `a IA não escreveu nenhuma peça — ${kit.pecas.map((p) => `${p.canal}: ${p.erro}`).join(" · ")}`, cota }, 503);
     }
 
     return json({ ok: true, ...kit, demonstracao: true, porta: "vendedor", cota });

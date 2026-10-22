@@ -95,7 +95,7 @@ export async function onRequestPost(context) {
 
     // Números que a conta JÁ possui.
     const listR = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${t.sid}/IncomingPhoneNumbers.json?PageSize=100`, { headers: { Authorization: t.auth } });
-    if (!listR.ok) return json({ error: `twilio ${listR.status}` }, 502);
+    if (!listR.ok) return json({ error: `twilio ${listR.status}` }, 503);
     const owned = ((await listR.json().catch(() => ({}))).incoming_phone_numbers) || [];
 
     // Quais já estão com um cliente? O registro é a verdade, não a Twilio.
@@ -228,7 +228,7 @@ export async function onRequestPost(context) {
       await emitFailure(env, "provision_buy_failed", email,
         `Compra de número FALHOU (${buyR.status}): ${bought?.message || ""} — confira em console.twilio.com se o número foi cobrado`,
         { candidate, status: buyR.status });
-      return json({ ok: false, error: `twilio ${buyR.status}: ${(bought?.message || "").slice(0, 160)}` }, 502);
+      return json({ ok: false, error: `twilio ${buyR.status}: ${(bought?.message || "").slice(0, 160)}` }, 503);
     }
 
     // Confirma a reserva. Se ISSO falhar, o dinheiro saiu e o registro não existe —

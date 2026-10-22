@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { waLink } from "../data/contact.js";
 import { portalApi } from "../lib/portalApi.js";
 import { Card, tr, CATALOG, SERVER_AUTOMATIONS } from "../pages/Portal.jsx";
+import { NOME_DO_PAINEL } from "./nome.js";
 
 /* ── "Indique e ganhe" — client referral program ─────────────────────────────
    The tracking loop already exists site-wide (src/App.jsx useReferralAttribution):
@@ -112,7 +113,7 @@ function ServerAutomations({ canOpen, onNav }) {
         ))}
       </div>
       <div className="px-5 py-3 border-t border-white/10 text-[11px] text-g-muted leading-relaxed bg-black/15">
-        {tr("The “Automations” list on your Overview is your own plan inside this cockpit: it organizes and records what you ran here — it does not send anything by itself. The real sending is the list above.")}
+        {tr(`The “Automations” list on your Overview is your own plan inside this ${NOME_DO_PAINEL}: it organizes and records what you ran here — it does not send anything by itself. The real sending is the list above.`)}
       </div>
     </Card>
   );
@@ -153,7 +154,7 @@ function Grow({ onNav, sections }) {
         <p className="text-xs text-g-muted mt-0.5">{tr("Tell us what you wish we offered — we're always adding services, and your idea shapes what we build next.")}</p>
         {!sent ? (
           <form onSubmit={submit} className="mt-3 flex flex-col sm:flex-row gap-2">
-            <input required value={txt} onChange={(e) => setTxt(e.target.value)} aria-label="Request a service we don't offer yet" placeholder="e.g. A reservations widget for my website…" className="flex-1 rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
+            <input required value={txt} onChange={(e) => setTxt(e.target.value)} aria-label={tr("Request a service we don't offer yet")} placeholder={tr("e.g. A reservations widget for my website…")} className="flex-1 rounded-full border border-white/15 bg-black/20 px-5 py-3 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
             <button className="btn-bright text-sm whitespace-nowrap">{tr("I'll send that to my team →")}</button>
           </form>
         ) : (

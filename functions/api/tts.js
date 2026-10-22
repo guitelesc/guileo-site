@@ -65,9 +65,9 @@ export async function onRequestPost(context) {
       headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json", Accept: "audio/mpeg" },
       body: JSON.stringify({ text, model_id: "eleven_flash_v2_5", voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.25, use_speaker_boost: true } }),
     });
-    if (!r.ok) return json({ error: "tts failed", status: r.status }, 502);
+    if (!r.ok) return json({ error: "tts failed", status: r.status }, 503);
     const audio = await r.arrayBuffer();
-    if (!audio.byteLength) return json({ error: "empty audio" }, 502); // silent clip → let UI fall back
+    if (!audio.byteLength) return json({ error: "empty audio" }, 503); // silent clip → let UI fall back
     if (env.RATE_LIMIT) {
       try { await env.RATE_LIMIT.put(cacheKey, audio, { expirationTtl: 60 * 60 * 24 * 30 }); } catch { /* best-effort cache */ }
       if (dayKey) { try { const used = parseInt((await env.RATE_LIMIT.get(dayKey)) || "0", 10) || 0; await env.RATE_LIMIT.put(dayKey, String(used + 1), { expirationTtl: 60 * 60 * 26 }); } catch { /* best-effort counter */ } }

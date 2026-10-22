@@ -5,16 +5,20 @@
 // Returns all payment-link URLs to paste into selfServePlans.js (PLANS urls + TOPUPS urls).
 //   POST { token }  (admin token)
 import { json } from "../lib/guard.js";
+import { planByKey } from "../../src/data/guileoPlans.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
 
+// amount/credits DERIVAM de guileoPlans.js (fonte única) — nunca escreva o centavo à mão aqui de
+// novo. Este arquivo já divergiu da fonte uma vez (14900/89700/199700 hardcoded ficaram parados no
+// preço antigo enquanto guileoPlans.js já tinha o repreço de 2026-08-21).
 const PLANS = [
   // canonical names (= src/data/guileoPlans.js); legacyName renames the pre-existing Stripe
   // product in place on the next setup run — receipts flip to the new name, links stay valid.
-  { id: "starter", name: "Guileo Essential", legacyName: "Guileo Starter", amount: 14900, credits: 500 },
-  { id: "growth", name: "Guileo Personalized", legacyName: "Guileo Growth", amount: 89700, credits: 3000 },
-  { id: "scale", name: "Guileo Full Operation", legacyName: "Guileo Scale", amount: 199700, credits: 9000 },
+  { id: "starter", name: "Guileo Essential", legacyName: "Guileo Starter", amount: Math.round(planByKey("starter").amount * 100), credits: planByKey("starter").credits },
+  { id: "growth", name: "Guileo Personalized", legacyName: "Guileo Growth", amount: Math.round(planByKey("growth").amount * 100), credits: planByKey("growth").credits },
+  { id: "scale", name: "Guileo Full Operation", legacyName: "Guileo Scale", amount: Math.round(planByKey("scale").amount * 100), credits: planByKey("scale").credits },
 ];
 
 // One-time credit top-ups — mode=payment Payment Links (price has NO recurring interval,
@@ -62,7 +66,7 @@ export async function onRequestGet(context) {
     }
     return json({ ok: true, count: out.length, links: out });
   } catch (e) {
-    return json({ ok: false, error: String(e?.message || e).slice(0, 200) }, 502);
+    return json({ ok: false, error: String(e?.message || e).slice(0, 200) }, 503);
   }
 }
 
@@ -188,6 +192,6 @@ export async function onRequestPost(context) {
     }
     return json({ ok: true, links: out });
   } catch (e) {
-    return json({ ok: false, error: String(e?.message || e).slice(0, 200) }, 502);
+    return json({ ok: false, error: String(e?.message || e).slice(0, 200) }, 503);
   }
 }

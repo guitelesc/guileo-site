@@ -17,6 +17,9 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { matchSupport, SUPPORT_QUICK, SUPPORT_KB } from "../data/supportKB.js";
 import { waLink } from "../data/contact.js";
 import { UI_LANG, tr, Card, GuiMark } from "../pages/Portal.jsx";
+import { NOME_DO_PAINEL } from "./nome.js";
+import { chamarApi } from "../lib/portalApi.js";
+import { fraseDaFalha } from "./FalhaDeLeitura.jsx";
 
 const SUPPORT_NAV = { open_settings: "settings", open_billing: "billing", open_finance: "finance", open_marketing: "marketing", open_crm: "crm", train_ai: "brain", reactivate_agent: "retention", resend_code: "settings" };
 
@@ -36,30 +39,33 @@ export function GuiChat({ onNav, email = "", dataKey = "", onTicket, className =
   useEffect(() => { vivo.current = true; return () => { vivo.current = false; }; }, []);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [thread, busy]);
 
-  const post = useCallback(async (body) => {
-    const r = await fetch("/api/support", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: dataKey || "demo", email, ...body }) });
-    const d = await r.json().catch(() => null);
-    return { http: r.status, d };
-  }, [dataKey, email]);
+  // Devolve {data, motivo, http} e nunca levanta (chamarApi).
+  const post = useCallback((body) => chamarApi("/api/support", { token: dataKey || "demo", email, ...body }), [dataKey, email]);
 
   // Abre o chamado e DEVOLVE O COMPROVANTE. `ok:true` sozinho não é sucesso: o endpoint responde
   // `{ok:true, ready:false}` em HTTP 200 quando o SQL não está colado — 200 sem id é "não gravei".
+  // 🌐 (2026-09-28) O `erro` que volta daqui vai para a TELA, então é sempre frase nossa,
+  // traduzida. Antes saíam "unreadable answer (HTTP 502)", o `d.error` cru, a `d.note` de
+  // engenharia e o `d.motivo` ("nao_gravou") — tudo direto para a cliente.
   const abrirChamado = useCallback(async (p) => {
-    try {
-      const { http, d } = await post({ action: "create", ...p });
-      if (!d) return { erro: `${tr("unreadable answer")} (HTTP ${http})` };
-      if (d.error) return { erro: String(d.error) };
-      if (d.ready === false) return { erro: d.note || tr("support isn't activated yet") };
-      if (d.ok !== true || !d.id) return { erro: d.motivo || tr("it wasn't recorded") };
-      return { id: d.id };
-    } catch (e) { return { erro: String(e?.message || e).slice(0, 80) }; }
-  }, [post]);
+    // `lang` vai junto: o e-mail de confirmação sai no idioma do perfil do cliente e, sem
+    // perfil legível, no idioma em que ele está usando o painel agora.
+    const r = await post({ action: "create", lang, ...p });
+    if (r.motivo) return { erro: fraseDaFalha(r.motivo) };
+    const d = r.data;
+    if (d.error || d.erro) return { erro: tr("Our support desk couldn't record it. Please message our team directly.") };
+    if (d.ready === false) return { erro: tr("support isn't activated yet") };
+    if (d.ok !== true || !d.id) return { erro: tr("it wasn't recorded") };
+    // O e-mail só é anunciado na tela com o COMPROVANTE do servidor (`confirmacao.ok` só vem
+    // true com o id da Resend). Chamado gravado + e-mail recusado são duas verdades separadas.
+    return { id: d.id, emailOk: d.confirmacao?.ok === true };
+  }, [post, lang]);
 
   const registrar = useCallback(async (mid, payload) => {
     setThread((t) => t.map((m) => (m.mid === mid ? { ...m, rec: { st: "wait" } } : m)));
     const r = await abrirChamado(payload);
     if (!vivo.current) return;
-    setThread((t) => t.map((m) => (m.mid === mid ? { ...m, rec: r.id ? { st: "ok", id: r.id } : { st: "erro", motivo: r.erro } } : m)));
+    setThread((t) => t.map((m) => (m.mid === mid ? { ...m, rec: r.id ? { st: "ok", id: r.id, emailOk: r.emailOk === true } : { st: "erro", motivo: r.erro } } : m)));
     if (r.id) onTicket?.(r.id);
   }, [abrirChamado, onTicket]);
 
@@ -78,29 +84,32 @@ export function GuiChat({ onNav, email = "", dataKey = "", onTicket, className =
       return;
     }
     if (demo) {
-      setThread((t) => [...t, { mid: nid.current++, role: "gui", text: tr("In the live cockpit I'd answer this instantly and act on it for you. Connect your account in Settings to turn me on."), action: { kind: "open_settings", label: { en: "Open Settings", pt: "Abrir Configurações", es: "Abrir Configuración" } } }]);
+      setThread((t) => [...t, { mid: nid.current++, role: "gui", text: tr(`In the live ${NOME_DO_PAINEL} I'd answer this instantly and act on it for you. Connect your account in Settings to turn me on.`), action: { kind: "open_settings", label: { en: "Open Settings", pt: "Abrir Configurações", es: "Abrir Configuración" } } }]);
       setBusy(false); return;
     }
-    try {
-      const { d } = await post({ action: "ai", question: query, lang });
-      if (!vivo.current) return;
-      const ans = d?.answer || tr("I've logged this and a teammate will follow up shortly.");
-      const escalate = d?.escalate === true || !d?.answer;
-      const mid = nid.current++;
-      const payload = { subject: query.slice(0, 120), category: "other", body: query, ai_handled: !escalate, status: escalate ? "escalated" : "resolved", priority: escalate ? "high" : "normal" };
-      setThread((t) => [...t, { mid, role: "gui", text: ans, escalate, payload }]);
-      setBusy(false);
-      registrar(mid, payload);
-      return;
-    } catch (e) {
-      if (!vivo.current) return;
-      const mid = nid.current++;
-      const payload = { subject: query.slice(0, 120), category: "other", body: query, ai_handled: false, status: "escalated", priority: "high" };
-      setThread((t) => [...t, { mid, role: "gui", text: `${tr("I couldn't reach my brain right now")} · ${String(e?.message || e).slice(0, 60)}`, escalate: true, payload }]);
-      setBusy(false);
-      registrar(mid, payload);
-      return;
-    }
+    const r = await post({ action: "ai", question: query, lang });
+    if (!vivo.current) return;
+    const resposta = !r.motivo && r.data?.answer ? String(r.data.answer) : "";
+    const escalate = !resposta || r.data?.escalate === true;
+    const mid = nid.current++;
+    const payload = { subject: query.slice(0, 120), category: "other", body: query, ai_handled: !escalate, status: escalate ? "escalated" : "resolved", priority: escalate ? "high" : "normal" };
+    // 🚨 (2026-09-28) SEM RESPOSTA, a bolha dizia na hora "I've logged this and a teammate will
+    // follow up shortly" — ANTES de tentar gravar o chamado, e continuava dizendo se a gravação
+    // falhasse. A cliente fechava a tela esperando um retorno que ninguém do time sabia que devia.
+    // Agora a bolha sem resposta não tem texto fixo: `semResposta` faz o texto SEGUIR o estado do
+    // chamado (abrindo… → registrado, com número → não consegui registrar). Ver `textoDe`.
+    setThread((t) => [...t, { mid, role: "gui", text: resposta, semResposta: !resposta, semCerebro: r.motivo || null, escalate, payload }]);
+    setBusy(false);
+    registrar(mid, payload);
+  };
+
+  // O texto de uma bolha SEM resposta da Gui depende do que aconteceu com o chamado.
+  const textoDe = (m) => {
+    if (!m.semResposta) return m.text;
+    const porque = m.semCerebro ? `${tr("I couldn't reach my brain right now")} — ${fraseDaFalha(m.semCerebro)}` : tr("I don't have a ready answer for this one.");
+    if (m.rec?.st === "ok") return `${porque} ${tr("I've logged this and a teammate will follow up shortly.")}`;
+    if (m.rec?.st === "erro") return `${porque} ${tr("I couldn't log it either — nothing was recorded. Try again below, or message our team directly.")}`;
+    return `${porque} ${tr("Opening a ticket so a teammate can help…")}`;
   };
 
   const quick = SUPPORT_QUICK.map((id) => SUPPORT_KB.find((s) => s.id === id)).filter(Boolean);
@@ -120,13 +129,24 @@ export function GuiChat({ onNav, email = "", dataKey = "", onTicket, className =
           <div key={m.mid} className={`flex ${m.role === "you" ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[88%] rounded-xl2 px-3.5 py-2.5 text-[14px] ${m.role === "you" ? "bg-g-gold/[0.14] border border-g-gold/25 text-g-word" : "bg-white/[0.04] border border-white/10 text-g-word"}`}>
               {m.role === "gui" && <div className="text-[10px] font-black uppercase tracking-wider text-g-gold/80 mb-1">Gui</div>}
-              <div className="whitespace-pre-wrap leading-relaxed break-words">{m.text}</div>
+              <div className="whitespace-pre-wrap leading-relaxed break-words">{textoDe(m)}</div>
               {m.action && m.action.kind && m.action.kind !== "none" && (
                 <button type="button" onClick={() => onNav?.(SUPPORT_NAV[m.action.kind] || "settings")} className="mt-2 btn-bright text-xs min-h-[44px] px-4">{L(m.action.label)} →</button>
               )}
               {m.escalate && (
                 m.rec?.st === "ok" ? (
-                  <div className="mt-2 text-[11px] font-bold text-amber-300">✓ {tr("Escalated to a human teammate — we'll follow up.")} <span className="font-mono font-normal text-g-muted">#{String(m.rec.id).slice(0, 8)}</span></div>
+                  <div className="mt-2 text-[11px] font-bold text-amber-300">
+                    <div>✓ {tr("Escalated to a human teammate — we'll follow up.")}</div>
+                    {/* O número é o MESMO do e-mail (8 primeiros caracteres do id): tela e caixa de
+                        entrada precisam bater. A frase do e-mail só aparece com comprovante. */}
+                    <div className="mt-1 font-normal text-g-muted">
+                      {tr("Ticket number")}: <span className="font-mono text-g-word">#{String(m.rec.id).slice(0, 8)}</span>
+                      {" · "}
+                      {m.rec.emailOk
+                        ? tr("We sent a confirmation email with this number.")
+                        : tr("Your ticket is recorded, but the confirmation email didn't go out — keep this number.")}
+                    </div>
+                  </div>
                 ) : m.rec?.st === "erro" ? (
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-bold text-amber-300">
                     <span>⚠️ {tr("I couldn't open the ticket")}{m.rec.motivo ? <span className="font-normal text-g-muted"> · {m.rec.motivo}</span> : null}</span>
@@ -179,7 +199,7 @@ function Support({ onNav, email = "", dataKey = "" }) {
           <div className="text-sm font-extrabold text-g-word">👋 {tr("Talk to a human")}</div>
           <p className="text-xs text-g-muted mt-1">{tr("Gui handles most things instantly. For anything sensitive, a real teammate is one message away.")}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <a href={waLink("Hi Guileo team! I need help with my account")} target="_blank" rel="noopener" className="btn-ghost text-sm min-h-[48px] inline-flex items-center px-4">💬 {tr("I'll message my team")}</a>
+            <a href={waLink(tr("Hi Guileo team! I need help with my account"))} target="_blank" rel="noopener" className="btn-ghost text-sm min-h-[48px] inline-flex items-center px-4">💬 {tr("I'll message my team")}</a>
           </div>
         </Card>
       </div>

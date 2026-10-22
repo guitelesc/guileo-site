@@ -61,7 +61,7 @@ export async function onRequestPost(context) {
     // Checar o resultado é o ponto da rota: "mandei" sem conferir foi o que criou este problema.
     if (!mr.ok) {
       const detail = (await mr.text().catch(() => "")).slice(0, 200);
-      return json({ ok: false, enviado: false, status: mr.status, detail }, 502);
+      return json({ ok: false, enviado: false, status: mr.status, detail }, 503);
     }
     const rid = await mr.json().catch(() => ({}));
     return json({ ok: true, enviado: true, para: to, assunto: tpl.subject, kind, resend_id: rid.id || null });

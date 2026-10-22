@@ -1,9 +1,14 @@
 /* Split out of Portal.jsx (performance): CallLogs tab view — code moved verbatim. */
 import { useState, useEffect } from "react";
 import { FaPhone } from "react-icons/fa6";
-import { fetchCallLogs } from "../lib/portalApi.js";
+import { fetchCallLogsDetalhado } from "../lib/portalApi.js";
+import FalhaDeLeitura from "./FalhaDeLeitura.jsx";
 import { waLink, waTo } from "../data/contact.js";
 import { genCalls, tr, Card, relTime, Empty, UI_LANG, Drawer, MiniStats, vnum, ConvoActions, SectionSkeleton } from "../pages/Portal.jsx";
+// DATA E HORA EXATAS (2026-09-28): "há 3 horas" não serve pra quem precisa ligar de volta ou
+// conferir com a agenda — o dono pediu ver "a data etc". Mostra os dois: exato + relativo.
+const dataHora = (iso) => { try { const L = UI_LANG === "pt" ? "pt-BR" : UI_LANG === "es" ? "es-ES" : "en-US";
+  return new Date(iso).toLocaleString(L, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); } catch { return ""; } };
 
 // Sentiment vocabulary — one place maps the Haiku label → emoji, color, human word.
 const SENTIMENT_META = {
@@ -23,17 +28,63 @@ function callRowToEvent(c) {
     },
   };
 }
+// OUVIR A LIGAÇÃO (2026-09-28) — busca o áudio pela /api/call-logs (que confere dono + chave) e
+// toca aqui. Só pede quando a pessoa clica: gravação é pesada e a maioria das ligações ninguém ouve.
+const TX_AUDIO = {
+  pt: { ouvir: "▶ Ouvir a ligação", carregando: "Carregando a gravação…", erro: "Não consegui carregar a gravação" },
+  es: { ouvir: "▶ Escuchar la llamada", carregando: "Cargando la grabación…", erro: "No pude cargar la grabación" },
+  en: { ouvir: "▶ Listen to the call", carregando: "Loading the recording…", erro: "Couldn't load the recording" },
+};
+function OuvirLigacao({ id, email, dataKey }) {
+  const T = TX_AUDIO[UI_LANG] || TX_AUDIO.en;
+  const [st, setSt] = useState({ fase: "idle" });
+  useEffect(() => () => { if (st.url) URL.revokeObjectURL(st.url); }, [st.url]);
+  const carregar = async () => {
+    setSt({ fase: "carregando" });
+    try {
+      const r = await fetch("/api/call-logs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, key: dataKey, audio: id }) });
+      const tipo = r.headers.get("content-type") || "";
+      if (!r.ok || tipo.includes("json")) { const j = await r.json().catch(() => ({})); setSt({ fase: "erro", motivo: j.motivo || `HTTP ${r.status}` }); return; }
+      const blob = await r.blob();
+      setSt({ fase: "pronto", url: URL.createObjectURL(blob) });
+    } catch (e) { setSt({ fase: "erro", motivo: String(e).slice(0, 80) }); }
+  };
+  if (st.fase === "pronto") return <audio controls autoPlay src={st.url} className="w-full" />;
+  return (
+    <div>
+      <button onClick={carregar} disabled={st.fase === "carregando"} className="btn-ghost text-sm disabled:opacity-60">{st.fase === "carregando" ? T.carregando : T.ouvir}</button>
+      {/* O motivo cru do servidor ("a base de ligações respondeu HTTP 500") é texto de engenharia,
+          em português — fica guardado em st.motivo para diagnóstico e NÃO vai para a tela. */}
+      {st.fase === "erro" && <p className="mt-1.5 text-[12px] text-[#e8a488]">{T.erro}</p>}
+    </div>
+  );
+}
+
 function CallLogs({ V, onNav, real = null, email = "", dataKey = "" }) {
   const rows = V.callLogs || genCalls(V);
   const [sel, setSel] = useState(null);
   // Real calls WITH transcript come from the owned project via /api/call-logs. Falls back to
   // the events ledger (no transcript) if that fetch is empty — the screen never breaks.
   const [logged, setLogged] = useState(null);
+  // 🚨 (2026-09-28) FALHA ≠ VAZIO. O leitor antigo devolvia [] quando a base de ligações estava
+  // fora (e ignorava o `nao_deu_pra_ler` do servidor): a dona lia "No calls yet" com ligações
+  // atendidas de verdade. Agora o motivo chega, e a tela oferece tentar de novo.
+  const [falha, setFalha] = useState(null);
+  const [tentativa, setTentativa] = useState(0);
   useEffect(() => {
     let alive = true;
-    if (real && email && dataKey) fetchCallLogs(email, dataKey).then((c) => { if (alive) setLogged(Array.isArray(c) ? c.map(callRowToEvent) : []); });
+    if (real && email && dataKey) {
+      setFalha(null);
+      fetchCallLogsDetalhado(email, dataKey).then((r) => {
+        if (!alive) return;
+        if (r.motivo) { setFalha(r.motivo); setLogged([]); return; }
+        // `filter(Boolean)`: uma linha nula no meio da lista derrubava a tela inteira no map.
+        setLogged((r.data || []).filter(Boolean).map(callRowToEvent));
+      });
+    }
     return () => { alive = false; };
-  }, [real, email, dataKey]);
+  }, [real, email, dataKey, tentativa]);
+  const tentarDeNovo = () => { setLogged(null); setTentativa((n) => n + 1); };
   // REAL MODE — the actual calls your AI handled, WITH the per-call analysis
   // (sentiment + intent + duration + why it ended) and the full transcript.
   if (real) {
@@ -57,6 +108,7 @@ function CallLogs({ V, onNav, real = null, email = "", dataKey = "" }) {
             </div>
           )}
         </div>
+        {falha && calls.length > 0 && <FalhaDeLeitura compacto motivo={falha} onRetry={tentarDeNovo} titulo={tr("Transcripts and recordings didn't load.")} />}
         {calls.length ? (
           <Card className="p-0 overflow-hidden">
             <div className="px-5 py-2.5 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recent calls · answered by AI")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 {tr("tap for transcript")}</span></div>
@@ -66,7 +118,7 @@ function CallLogs({ V, onNav, real = null, email = "", dataKey = "" }) {
               return (
               <button key={e.id || i} onClick={() => setSel(e)} style={{ animationDelay: `${i * 50}ms` }} className="row-in w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">
                 <span className="grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] shrink-0 text-base" style={{ color: sm?.color || "#3E9468" }}>{sm ? sm.emoji : <FaPhone size={13} />}</span>
-                <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{p.summary_clean || e.summary}</div><div className="text-[11px] text-g-muted truncate">{p.intent ? p.intent + " · " : ""}{e.channel || "Phone · AI"} · {relTime(e.created_at)}</div></div>
+                <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{p.summary_clean || e.summary}</div><div className="text-[11px] text-g-muted truncate">{p.intent ? p.intent + " · " : ""}{e.channel || "Phone · AI"} · {dataHora(e.created_at)}</div></div>
                 <div className="text-right shrink-0">
                   {fmtDur(p.duration_secs) && <div className="text-[11px] text-g-light font-bold">{fmtDur(p.duration_secs)}</div>}
                   {Number(e.amount) > 0 && <div className="text-xs font-extrabold text-g-green money-glow num">+${Number(e.amount).toLocaleString()}</div>}
@@ -75,15 +127,18 @@ function CallLogs({ V, onNav, real = null, email = "", dataKey = "" }) {
             );})}
           </div></Card>
         ) : logged === null ? <SectionSkeleton rows={4} /> /* fetch in flight — never a false "no calls" */
+          : falha ? <FalhaDeLeitura motivo={falha} onRetry={tentarDeNovo} titulo={tr("I couldn't load your calls just now.")} />
           : <Card><Empty icon="📞" text={tr("No calls yet — I'm standing by, answering 24/7.")} /></Card>}
         {sel && (() => {
           const sm = sentimentOf(sel); const p = sel.payload || {};
-          const tx = Array.isArray(p.transcript) ? p.transcript : [];
+          // 🚨 (2026-09-28) Uma fala nula/sem texto dentro do transcript (`[null, {...}]`) fazia
+          // `t.r` estourar e a gaveta inteira sumir em tela branca. Só entra fala que é objeto.
+          const tx = (Array.isArray(p.transcript) ? p.transcript : []).filter((t) => t && typeof t === "object" && t.t != null);
           const lang = UI_LANG === "es" ? "es" : UI_LANG === "pt" ? "pt" : "en";
           const fields = [
             p.intent && [tr("Intent"), p.intent],
             fmtDur(p.duration_secs) && [tr("Duration"), fmtDur(p.duration_secs)],
-            [tr("When"), relTime(sel.created_at)],
+            [tr("When"), `${dataHora(sel.created_at)} · ${relTime(sel.created_at)}`],
             [tr("Channel"), sel.channel || "Phone · AI"],
             // ⚠️ NÃO volte a escrever "Successful ✓" aqui. Este campo vem da AUTO-AVALIAÇÃO do modelo
             // e significa "a ligação rodou até o fim" — NÃO "o cliente conseguiu o que queria". Em
@@ -112,6 +167,9 @@ function CallLogs({ V, onNav, real = null, email = "", dataKey = "" }) {
               actions={<a href={waLink("")} target="_blank" rel="noopener" className="btn-ghost text-sm">{tr("💬 Message")}</a>}
               onClose={() => setSel(null)}
             >
+              {real && email && dataKey && /^[0-9a-f-]{36}$/i.test(String(sel.id || "")) && (
+                <div className="mb-4"><OuvirLigacao id={sel.id} email={email} dataKey={dataKey} /></div>
+              )}
               <div>
                 <div className="text-[10px] font-black uppercase tracking-wide text-g-muted mb-2">{tr("Full transcript")}</div>
                 {tx.length ? (
@@ -137,7 +195,7 @@ function CallLogs({ V, onNav, real = null, email = "", dataKey = "" }) {
     <div className="space-y-4 stagger">
       <MiniStats items={[["Calls answered", `${vnum(V.label, "callsans", 210, 540)}`], ["Missed calls", "0", "good"], ["Avg. duration", `1m ${vnum(V.label, "calldur", 2, 54)}s`], ["Handled by AI", "100%", "good"]]} />
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recent calls · answered by AI")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 tap for transcript</span></div>
+        <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Recent calls · answered by AI")}</span><span className="text-[11px] text-g-muted hidden sm:inline">👆 {tr("tap for transcript")}</span></div>
         <div className="divide-y divide-white/[0.06]">
           {rows.map((c, i) => (
           <button key={i} onClick={() => setSel(c)} className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-white/[0.04] transition">

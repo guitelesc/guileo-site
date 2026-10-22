@@ -338,8 +338,11 @@ export async function onRequest(context) {
       // ⚠️ CONFERE O RETORNO. `fetch` não levanta em erro HTTP — sem o `.ok` isto vira "enviado"
       // com o e-mail parado no provedor, e a gente esperaria para sempre uma resposta do cliente
       // que nunca recebeu nada. (Regra da casa: todo send confere o resultado real.)
+      // COMPROVANTE (2026-09-28): `r.ok` diz que a Resend aceitou; o `id` é o que permite achar o
+      // e-mail depois. "Enviado" sem id é promessa — a regra da casa, que eu mesmo tinha furado aqui.
+      const recibo = r.ok ? await r.clone().json().catch(() => null) : null;
       envio = r.ok
-        ? { ok: true, para: email, assunto: m.subject }
+        ? { ok: true, para: email, assunto: m.subject, envio_id: recibo?.id || null }
         : { ok: false, motivo: `HTTP ${r.status}`, detalhe: (await r.text().catch(() => "")).slice(0, 200) };
       if (envio.ok) {
         await rpc(env, "ingest_client_event", {

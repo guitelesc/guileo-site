@@ -29,6 +29,10 @@ const ok = (c, o) => { if (!c) { falhas++; console.log("  ✗ " + o); } else con
 
 // ── captura tudo que sai pela rede ───────────────────────────────────────────────────────────
 const chamadas = [];
+// Ajustáveis por cenário: o contexto de quem escreve (null = pessoa nova) e a resposta da reserva.
+let contextoMock = null;
+let anthropicResponde = false;   // false = o modelo devolve vazio (cai na frase segura)
+let claimMock = { ok: true, id: "22222222-2222-2222-2222-222222222222" };
 globalThis.fetch = async (url, init = {}) => {
   const u = String(url);
   let body = {};
@@ -53,7 +57,13 @@ globalThis.fetch = async (url, init = {}) => {
     return new Response(JSON.stringify({ business_name: "Salão Exemplo", lang: "pt" }), { status: 200 });
   }
   if (u.includes("/rpc/meta_comment_claim")) {
-    return new Response(JSON.stringify({ ok: true, id: "22222222-2222-2222-2222-222222222222" }), { status: 200 });
+    return new Response(JSON.stringify(claimMock), { status: 200 });
+  }
+  if (anthropicResponde && u.includes("api.anthropic.com")) {
+    return new Response(JSON.stringify({ content: [{ type: "text", text: "Para 2 pessoas fica R$240 — quer agendar?" }], stop_reason: "end_turn" }), { status: 200 });
+  }
+  if (u.includes("/rpc/direct_contexto_pessoa")) {
+    return new Response(JSON.stringify(contextoMock), { status: 200 });
   }
   // qualquer outra RPC (ingest_client_event, crm_upsert_contact, …) e o Graph
   return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -205,6 +215,75 @@ console.log("\n— REGRESSÃO: foto continua no recado honesto (não finge que v
 res = await disparaCom(dmDeEntrada({ mid: "mid.foto1", attachments: [{ type: "image", payload: { url: "https://lookaside.fbsbx.com/foto" } }] }), { ANTHROPIC_API_KEY: "chave-teste" });
 ok(aoModelo().length === 0, "foto NÃO vai ao modelo (pergunta vazia vira resposta sem sentido)");
 ok(chamadas.some((c) => /\/me\/messages\?access_token=/.test(c.url)), "…mas a pessoa ainda recebe o recado");
+
+console.log("\n— STANDBY: outro app controla a conversa → a Gui NÃO fala por cima, mas o fato fica gravado —");
+// Nasceu de 10/09: um reel mandado pro @chigotravels sumiu sem uma linha, e "a Meta não entregou"
+// e "a Meta entregou pra outro app" eram o MESMO silêncio.
+const emStandby = (message) => JSON.stringify({
+  object: "instagram",
+  entry: [{ id: IG_CONTA, standby: [{ sender: { id: PESSOA }, recipient: { id: IG_CONTA }, message }] }],
+});
+res = await disparaCom(emStandby({ mid: "mid.sb1", text: "quanto custa?", attachments: [REEL] }), { ANTHROPIC_API_KEY: "chave-teste" });
+ok(res.status === 200, "standby responde 200 (a Meta não pode reentregar em loop)");
+ok(!chamadas.some((c) => /\/me\/messages\?access_token=/.test(c.url)), "standby NÃO responde no direct — o fio é de outro app");
+ok(aoModelo().length === 0, "…e não gasta modelo");
+const gritoStandby = chamadas.find((c) => JSON.stringify(c.body || {}).includes("meta_standby"));
+ok(!!gritoStandby, "…mas GRAVA meta_standby em vez de sumir");
+ok(JSON.stringify(gritoStandby?.body || {}).includes("ig_reel"), "…com o tipo do anexo, pra saber o que se perdeu");
+res = await disparaCom(emStandby({ mid: "mid.sb2", text: "eco nosso", is_echo: true }));
+ok(!chamadas.some((c) => JSON.stringify(c.body || {}).includes("meta_standby")), "eco em standby não vira alarme falso");
+
+console.log("\n— GUILEO DIRECT: cada porta do funil vira uma linha com nome fixo —");
+const etapas = () => chamadas.filter((c) => c.url.includes("/rpc/direct_evento")).map((c) => c.body);
+const etapa = (nome) => etapas().find((b) => b.p_etapa === nome);
+res = await dispara(payloadComentario("qual o preço?"));
+ok(["comentario", "casou", "dm_enviado", "publica_ok"].every((e) => etapa(e)), "comentário que casou grava: comentario → casou → dm_enviado → publica_ok");
+ok(etapa("casou")?.p_palavra === "preço" && etapa("casou")?.p_lang && etapa("casou")?.p_lang_via, "o 'casou' já nasce com a palavra, o idioma e o porquê do idioma");
+ok(etapa("dm_enviado")?.p_campaign_id === "11111111-1111-1111-1111-111111111111", "…amarrado à campanha (é o que dá o funil POR campanha)");
+ok(Number.isFinite(etapa("dm_enviado")?.p_ms), "…com o tempo nosso entre receber e entregar");
+ok(etapas().every((b) => b.p_secret === INGEST && b.p_email === "cliente@exemplo.com"), "toda linha vai pro tenant certo, com o portão");
+ok(!JSON.stringify(etapa("comentario") || {}).includes("qual o preço"), "o denominador NÃO grava o texto do comentário (só conta)");
+
+console.log("\n— o carimbo: o lead que vem do DM deixa de chegar órfão —");
+const textoDm = dmEnviado()?.body?.message?.text || "";
+ok(textoDm.includes("utm_medium=direct") && textoDm.includes("utm_source=instagram"), "o link do DM sai carimbado como Direct");
+ok(textoDm.includes("utm_campaign=11111111-1111-1111-1111-111111111111"), "…com o id da campanha (lead_attribution conta por campanha)");
+
+console.log("\n— o freio segurou: vira porta 'segurado' com o motivo —");
+claimMock = { ok: false, motivo: "muito_cedo" };
+res = await dispara(payloadComentario("preço"));
+ok(etapa("segurado")?.p_motivo === "muito_cedo" && !etapa("dm_enviado"), "segurado grava o motivo e NÃO finge envio");
+claimMock = { ok: false, motivo: "duplicado" };
+res = await dispara(payloadComentario("preço"));
+ok(!etapa("segurado"), "reentrega da Meta (duplicado) não vira 'segurado' — não é notícia");
+claimMock = { ok: true, id: "22222222-2222-2222-2222-222222222222" };
+
+res = await dispara(payloadComentario("que lindo esse reel"));
+ok(etapa("comentario") && !etapa("casou"), "comentário sem palavra-chave conta no denominador e para ali");
+
+console.log("\n— a conversa: a Gui sabe de onde a pessoa veio —");
+const dmDireto = (mid, text) => JSON.stringify({ object: "instagram",
+  entry: [{ id: IG_CONTA, messaging: [{ sender: { id: PESSOA }, recipient: { id: IG_CONTA }, message: { mid, text } }] }] });
+contextoMock = { quando: new Date(Date.now() - 3600e3).toISOString(), palavra: "preço", campanha: "Preço do corte" };
+anthropicResponde = true;
+res = await disparaCom(dmDireto("mid.ctx1", "e pra 2 pessoas?"), { ANTHROPIC_API_KEY: "chave-teste" });
+anthropicResponde = false;
+const sysEnviado = chamadas.filter((c) => c.url.includes("api.anthropic.com")).map((c) => String(c.body?.system || "")).join(" ");
+ok(sysEnviado.includes("HOW THIS CONVERSATION STARTED") && sysEnviado.includes("Preço do corte"), "quem veio do comentário chega ao cérebro COM a origem, no prompt de sistema");
+const msgsUser = chamadas.filter((c) => c.url.includes("api.anthropic.com")).map((c) => JSON.stringify(c.body?.messages || [])).join(" ");
+ok(!msgsUser.includes("HOW THIS CONVERSATION STARTED"), "…e a origem NÃO entra como fala da cliente (nem vai pro feed do dono)");
+ok(etapa("dm_recebida")?.p_pessoa === PESSOA, "a DM recebida grava QUEM — é o que liga comentário → conversa");
+ok(etapa("dm_respondida")?.p_motivo === "anthropic" && Number.isFinite(etapa("dm_respondida")?.p_ms), "a resposta grava QUAL cérebro respondeu e em quanto tempo");
+
+contextoMock = null;
+res = await disparaCom(dmDireto("mid.ctx2", "oi, vocês abrem sábado?"), { ANTHROPIC_API_KEY: "chave-teste" });
+ok(etapa("dm_respondida")?.p_motivo === "frase_segura", "modelo mudo → o funil diz 'frase_segura', não finge que a IA respondeu");
+const sys2 = chamadas.filter((c) => c.url.includes("api.anthropic.com")).map((c) => String(c.body?.system || "")).join(" ");
+ok(!sys2.includes("HOW THIS CONVERSATION STARTED"), "quem escreveu direto (sem comentário) não ganha origem inventada");
+
+res = await disparaCom(JSON.stringify({ object: "instagram",
+  entry: [{ id: IG_CONTA, standby: [{ sender: { id: PESSOA }, recipient: { id: IG_CONTA }, message: { mid: "mid.sb9", text: "oi" } }] }] }));
+ok(etapa("standby"), "standby também é porta do funil (DM sem resposta por causa de OUTRO app, não nossa)");
 
 console.log(falhas ? `\n❌ ${falhas} falha(s)\n` : "\n✅ meta-webhook: comentário → DM provado ponta a ponta\n");
 process.exit(falhas ? 1 : 0);

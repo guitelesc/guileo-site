@@ -8,6 +8,7 @@ import { emitFailure } from "../lib/failure.js";
 import { atribuicaoDoPedido, gravarAtribuicao } from "../lib/atribuicao.js";
 import { svcRpc } from "../lib/sb.js";
 import { avisaVendedorDoLead } from "../lib/avisoLeadVendedor.js";
+import { paraE164, destinoPermitido } from "../lib/contato.js";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -40,6 +41,16 @@ export async function onRequestPost(context) {
     // need at least one way to reach them
     if (!lead.email && !lead.phone && !lead.contact) return json({ error: "Need a contact" }, 400);
 
+    // ── ROBÔ? (2026-09-18) — o honeypot acima não segurou o ataque de 03–09/09: os robôs postaram
+    // e-mail NO CAMPO DE NOME ("adam2640@nexora.com") e números +972, e o speed-to-lead discou 717 vezes.
+    // Dois sinais que gente de verdade não produz: nome com "@", e o formulário enviado em menos de
+    // 2,5 s (`t_ms` vem do LeadForm; ausente = cliente antigo, não conta contra). O suspeito é GUARDADO
+    // com etiqueta 🤖 (nada some do /admin), mas não recebe e-mail nem ligação — e-mail pra endereço
+    // inventado queima a reputação do domínio, e ligação queima dinheiro.
+    const tms = Number(body.t_ms);
+    const robo = /@/.test(lead.name) || (Number.isFinite(tms) && tms > 0 && tms < 2500);
+    if (robo) lead.message = `🤖suspeito${lead.message ? " · " + lead.message : ""}`;
+
     // human-readable detail line for the feed
     const bits = [];
     if (lead.industry) bits.push(lead.industry);
@@ -70,7 +81,7 @@ export async function onRequestPost(context) {
 
     // 1b) CRM SPINE — every website lead becomes a contact in Guileo's OWN CRM (dogfooding the Company OS).
     //     Best-effort + graceful: no-op until db/crm_spine.sql is pasted.
-    if (env.SCHED_SECRET) {
+    if (env.SCHED_SECRET && !robo) {
       try {
         const cEmail = lead.email || (/.+@.+\..+/.test(lead.contact) ? lead.contact : "");
         const cPhone = (lead.phone || (/^\+?[0-9][0-9\s()\-]{6,}$/.test(lead.contact) ? lead.contact : "")).replace(/[^0-9+]/g, "");
@@ -102,7 +113,7 @@ export async function onRequestPost(context) {
 
     // 4) Email the owner instantly (works as soon as RESEND_API_KEY is set). Defaults to the
     //    Resend account email so it delivers even before guileoai.com is DNS-verified.
-    if (env.RESEND_API_KEY) {
+    if (env.RESEND_API_KEY && !robo) {
       const OWNER = env.OWNER_EMAIL || "smart@guileoai.com";
       const FROM = env.EMAIL_FROM || "Guileo <noreply@guileoai.com>";
       const kind = lead.source === "configurator" ? "quote request" : lead.source === "portal-onboard" ? "new client signup" : "lead";
@@ -136,7 +147,7 @@ export async function onRequestPost(context) {
       try {
         await fetch(`${SB_URL}/rest/v1/rpc/log_consent`, {
           method: "POST", headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ p_secret: INGEST, p_phone: leadPhone, p_email: lead.email, p_source: lead.source, p_text: body.consent === false ? "NO_CONSENT" : "agreed to be contacted by Gui (call/text), STOP to opt out" }),
+          body: JSON.stringify({ p_secret: INGEST, p_phone: leadPhone, p_email: lead.email, p_source: lead.source, p_text: body.consent === false ? "NO_CONSENT" : "agreed to receive calls and texts from Guileo AI (TRANSPOINT), STOP to opt out" }),
         });
       } catch { /* never block capture */ }
     }
@@ -160,8 +171,12 @@ export async function onRequestPost(context) {
     }
     // noCall:true → caller already triggers /api/call itself (LiveCall, LiveCallBar). Skip the
     // server-side speed-to-lead trigger so the prospect is never dialed twice (one ring, one cost).
-    const callEligible = !!(env.ELEVENLABS_API_KEY && env.ELEVENLABS_PHONE_NUMBER_ID && leadPhone && callConsented && !phoneCooled && body.noCall !== true && (lead.source !== "configurator" || body.callNow === true));
-    if (env.RESEND_API_KEY && lead.email) {
+    // IRSF (2026-09-10): o lead de fora de EUA/Canadá/Brasil é GUARDADO (pode ser gente real), mas não
+    // é discado — foi por aqui que robôs com +972 zeraram a Twilio. call.js tem a mesma trava; esta
+    // evita queimar o teto diário e gerar um speed_to_lead_failed por robô.
+    const destinoOk = destinoPermitido(paraE164(leadPhone), env.CALL_DDI_EXTRA).ok;
+    const callEligible = !!(env.ELEVENLABS_API_KEY && env.ELEVENLABS_PHONE_NUMBER_ID && leadPhone && destinoOk && !robo && callConsented && !phoneCooled && body.noCall !== true && (lead.source !== "configurator" || body.callNow === true));
+    if (env.RESEND_API_KEY && lead.email && !robo) {
       try {
         // CONTACT INSTRUMENT: this email exists to get a reply. So it comes from a HUMAN, replyable
         // address (never noreply@ — that kills replies + hurts inbox placement), with Reply-To pointed

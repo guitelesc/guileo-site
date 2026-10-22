@@ -186,7 +186,7 @@ export async function onRequestPost(context) {
       if (!mr.ok) {
         const porque = await mr.text().catch(() => "");
         await registrar("FALHOU", `HTTP ${mr.status} ${porque.slice(0, 80)}`);
-        return json({ error: `email send failed (${mr.status})` }, 502);
+        return json({ error: `email send failed (${mr.status})` }, 503);
       }
       await registrar("enviado");
       // redacted confirmation — never echo the personal code back to the browser

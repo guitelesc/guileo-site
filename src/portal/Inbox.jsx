@@ -12,7 +12,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { FaPhone, FaWhatsapp, FaCommentSms, FaInstagram, FaFacebook, FaTiktok, FaComments } from "react-icons/fa6";
 import { toast } from "../lib/portalApi.js";
-import { relTime, tr, genInbox, Card, Empty, ConvoActions, SectionSkeleton } from "../pages/Portal.jsx";
+import { relTime, tr, genInbox, Card, Empty, ConvoActions, SectionSkeleton, RetryState } from "../pages/Portal.jsx";
 
 // Channel → [icon, signal color]. Signal palette: WhatsApp=done green, SMS=info blue,
 // Webchat=Gui orange, Instagram=live pink, others brand-ish. One place to map a channel.
@@ -23,16 +23,22 @@ const CHANNEL_META = {
 };
 const metaFor = (ch) => CHANNEL_META[ch] || CHANNEL_META.Message;
 
-// POST /api/inbox — always resolves ({} on any failure) so the UI never throws.
+// POST /api/inbox — always resolves so the UI never throws.
+// 🚨 FALHA NÃO É CAIXA VAZIA (2026-09-28). Isto devolvia `{}` em qualquer erro; quem chamava lia
+// `d.threads` ausente como lista vazia e a tela dizia "No conversations yet" — para uma cliente
+// com 57 ligações, num piscar de rede. Agora a falha vem MARCADA (`_falha`), e a tela mostra
+// "não consegui ler" com o botão de tentar de novo.
 async function inboxApi(action, email, key, extra = {}) {
   try {
     const r = await fetch("/api/inbox", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, email, token: key, ...extra }),
     });
-    if (!r.ok) return {};
-    return (await r.json()) || {};
-  } catch { return {}; }
+    const d = await r.json().catch(() => null);
+    if (!r.ok || !d || typeof d !== "object") return { _falha: true, http: r.status };
+    if (d.ok === false && (d.error || d.erro)) return { ...d, _falha: true, http: r.status };
+    return d;
+  } catch { return { _falha: true, http: 0 }; }
 }
 
 // DEMO thread (mock) — mirrors the original Inbox so demo cockpits stay lively.
@@ -49,11 +55,14 @@ function Inbox({ V, onNav, real = null, email = "", dataKey = "" }) {
   // ── THREAD LIST ──────────────────────────────────────────────────────────
   // Real threads are stamped with the dataKey they were fetched under; if the client switches
   // connection codes in Settings the stale tenant's threads must NEVER render (→ []).
-  const [state, setState] = useState({ threads: [], key: "", loaded: false });
+  const [state, setState] = useState({ threads: [], key: "", loaded: false, falha: false });
   const loadThreads = useCallback(async () => {
     const d = await inboxApi("threads", email, dataKey, { limit: 80 });
-    setState({ threads: Array.isArray(d.threads) ? d.threads : [], key: dataKey, loaded: true });
+    // resposta sem a lista também é falha de leitura: "não veio `threads`" ≠ "não há conversa"
+    const falha = !!d._falha || !Array.isArray(d.threads);
+    setState((s) => ({ threads: falha ? (s.key === dataKey ? s.threads : []) : d.threads, key: dataKey, loaded: true, falha }));
   }, [email, dataKey]);
+  const tentarDeNovo = () => { setState((s) => ({ ...s, loaded: false, falha: false })); loadThreads(); };
   useEffect(() => {
     if (!isReal) return;
     let alive = true;
@@ -78,6 +87,7 @@ function Inbox({ V, onNav, real = null, email = "", dataKey = "" }) {
   // ── OPEN CONVERSATION — messages + takeover flag ─────────────────────────
   const [threads, setThreads] = useState({});   // id → [{from,text}]
   const [human, setHuman] = useState({});        // id → bool (human took over)
+  const [semLeitura, setSemLeitura] = useState({}); // id → true quando as mensagens do fio não puderam ser lidas
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const curKey = cur?.id;
@@ -90,6 +100,7 @@ function Inbox({ V, onNav, real = null, email = "", dataKey = "" }) {
     (async () => {
       const d = await inboxApi("thread", email, dataKey, { thread: snapId, channel: snapCh });
       if (!alive) return;
+      setSemLeitura((s) => ({ ...s, [snapId]: !!d._falha }));
       const msgs = (Array.isArray(d.messages) ? d.messages : []).map((m) => ({
         from: m.direction === "in" ? "them" : m.direction === "you" ? "you" : "ai", text: m.body,
       }));
@@ -124,17 +135,33 @@ function Inbox({ V, onNav, real = null, email = "", dataKey = "" }) {
     setSending(false);
     // HONEST: "Sent ✓" ONLY when the backend confirms the message truly left the system (d.sent).
     // Otherwise it was only logged to the thread → say so (backend note tells which channel/why).
+    // A nota do servidor (`d.note`) é texto de engenharia e vem em português — não vai para a tela.
     if (d.sent) toast(`${tr("Sent via")} ${cur.channel} ✓`);
-    else if (d.pending) toast(d.note || `${tr("Reply saved — not delivered on")} ${cur.channel} ${tr("yet.")}`);
-    else toast(tr("Reply failed — try again."));
+    else if (d.pending) toast(`${tr("Reply saved — not delivered on")} ${cur.channel} ${tr("yet.")}`);
+    else {
+      // não saiu: o balão otimista some e o texto volta para a caixa — balão "You" de mensagem que
+      // nunca foi enviada é recibo falso dentro da conversa.
+      const id = cur.id;
+      setThreads((t) => { const l = [...(t[id] || [])]; const i = l.map((m) => m.from === "you" && m.text === body).lastIndexOf(true); if (i >= 0) l.splice(i, 1); return { ...t, [id]: l }; });
+      setDraft(body);
+      toast(tr("Reply failed — try again."));
+    }
   };
 
   const [Icon, color] = cur ? metaFor(cur.channel) : metaFor("Message");
   // Real fetch still in flight AND nothing to show → cement shimmer, never a false-empty inbox.
   if (isReal && (!state.loaded || state.key !== dataKey) && all.length === 0) return <SectionSkeleton />;
+  // Leitura falhou e não há nada lido antes para mostrar → "não consegui ler", nunca "sem conversas".
+  if (isReal && state.falha && all.length === 0) return <RetryState onRetry={tentarDeNovo} />;
 
   return (
     <div className="space-y-3">
+      {isReal && state.falha && (
+        <div className="rounded-xl border border-[#e0855f]/40 bg-[#e0855f]/[0.08] px-3.5 py-2.5 flex flex-wrap items-center gap-3 text-[12px] text-[#e0855f]">
+          <span className="flex-1 min-w-[12rem]">{tr("I couldn't refresh your conversations just now — this is the last list I read.")}</span>
+          <button onClick={tentarDeNovo} className="btn-ghost text-xs shrink-0">{tr("↻ Try again")}</button>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((f) => (
           <button key={f} onClick={() => setFilter(f)} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold border transition ${filter === f ? "border-g-gold/50 bg-g-gold/15 text-g-gold" : "border-white/15 bg-white/[0.04] text-g-muted hover:text-g-word"}`}>
@@ -152,7 +179,7 @@ function Inbox({ V, onNav, real = null, email = "", dataKey = "" }) {
               const nm = (c.contact || "?").toString();
               return (
                 <button key={c.id} onClick={() => setActiveId(c.id)} className={`w-full text-left flex items-center gap-3 px-4 py-3 transition ${c.id === (cur?.id) ? "bg-white/[0.06]" : "hover:bg-white/[0.03]"}`}>
-                  <span className="relative grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] shrink-0 text-sm font-bold text-g-word">{nm[0]?.toUpperCase() || "?"}<span className="absolute -bottom-1 -right-1 grid place-items-center h-4 w-4 rounded-full bg-g-cream" style={{ color: cc }}><CI size={9} /></span></span>
+                  <span className="relative grid place-items-center h-9 w-9 rounded-full bg-white/[0.06] shrink-0 text-sm font-bold text-g-word">{/[\p{L}]/u.test(nm[0] || "") ? nm[0].toUpperCase() : "#"}<span className="absolute -bottom-1 -right-1 grid place-items-center h-4 w-4 rounded-full bg-g-cream" style={{ color: cc }}><CI size={9} /></span></span>
                   <div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word truncate">{nm}{c.human && <span className="ml-1.5 text-[9px] font-black uppercase text-g-gold">· {tr("you")}</span>}</div><div className="text-[11px] text-g-muted truncate">{c.last}</div></div>
                   <div className="text-right shrink-0"><div className="text-[10px] text-g-muted">{c.t || relTime(c.last_at)}</div>{c.unread > 0 && <span className="inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-g-green text-[10px] font-bold text-black mt-0.5">{c.unread}</span>}</div>
                 </button>
@@ -172,8 +199,8 @@ function Inbox({ V, onNav, real = null, email = "", dataKey = "" }) {
             {/* Gui ↔ human takeover toggle */}
             <div className="px-4 pt-3 shrink-0">
               <div className="inline-flex rounded-full border border-white/12 bg-black/20 p-0.5 text-[11px] font-bold align-middle">
-                <button onClick={() => toggleTakeover(false)} className={`px-3 py-1.5 rounded-full transition ${!isHuman ? "bg-[#FF8A33]/20 text-[#FF8A33]" : "text-g-muted hover:text-g-word"}`}>🤖 {tr("Gui responde")}</button>
-                <button onClick={() => toggleTakeover(true)} className={`px-3 py-1.5 rounded-full transition ${isHuman ? "bg-g-gold/20 text-g-gold" : "text-g-muted hover:text-g-word"}`}>🙋 {tr("Eu assumo")}</button>
+                <button onClick={() => toggleTakeover(false)} className={`px-3 py-1.5 rounded-full transition ${!isHuman ? "bg-[#FF8A33]/20 text-[#FF8A33]" : "text-g-muted hover:text-g-word"}`}>🤖 {tr("Gui answers")}</button>
+                <button onClick={() => toggleTakeover(true)} className={`px-3 py-1.5 rounded-full transition ${isHuman ? "bg-g-gold/20 text-g-gold" : "text-g-muted hover:text-g-word"}`}>🙋 {tr("I'll take over")}</button>
               </div>
               {isHuman ? <span className="ml-2 text-[10px] font-bold uppercase text-g-gold align-middle">{tr("You're handling this")}</span>
                 : <span className="ml-2 text-[10px] font-bold uppercase text-g-green inline-flex items-center gap-1 align-middle"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("AI active")}</span>}
@@ -188,9 +215,13 @@ function Inbox({ V, onNav, real = null, email = "", dataKey = "" }) {
                   </div>
                 </div>
               ))}
-              {(threads[cur.id] || []).length === 0 && <div className="text-center text-[11px] text-g-muted py-6">{tr("No messages yet in this conversation.")}</div>}
+              {semLeitura[cur.id] && <div className="text-center text-[11px] text-[#e0855f] py-2">{tr("I couldn't load the messages of this conversation. Open it again in a moment.")}</div>}
+              {!semLeitura[cur.id] && (threads[cur.id] || []).length === 0 && <div className="text-center text-[11px] text-g-muted py-6">{tr("No messages yet in this conversation.")}</div>}
             </div>
-            <div className="px-3 pt-3 shrink-0"><ConvoActions V={V} who={cur.contact} channel={cur.channel} onNav={onNav} /></div>
+            {/* 🚨 Só em demonstração (2026-09-28). Os quatro botões gravam no localStorage e respondem
+                "Appointment booked from … ✓", "added to follow-ups ✓", "Saved to … customer profile ✓":
+                em conta conectada nada disso acontecia — nem agenda, nem retorno, nem ficha. */}
+            {!isReal && <div className="px-3 pt-3 shrink-0"><ConvoActions V={V} who={cur.contact} channel={cur.channel} onNav={onNav} /></div>}
             <form onSubmit={send} className="p-3 flex gap-2 shrink-0">
               <input value={draft} onChange={(e) => setDraft(e.target.value)} aria-label={tr("Reply")} placeholder={isHuman ? `${tr("Reply on")} ${cur.channel}…` : `${tr("Jump in on")} ${cur.channel}…`} className="flex-1 rounded-full border border-white/15 bg-black/20 px-4 py-2.5 text-sm text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70" />
               <button disabled={sending} className="btn-bright text-sm px-5 disabled:opacity-50">{sending ? tr("Sending…") : tr("Send")}</button>

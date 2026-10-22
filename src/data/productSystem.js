@@ -1,3 +1,4 @@
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 // ============================================================================
 // productSystem.js — THE single source of truth that turns Guileo's products &
 // services into ONE integrated SYSTEM. Every surface reads from here, so a product
@@ -34,6 +35,23 @@ export const PRODUCTS = [
     },
     resultMetric: { value: "+$2k–11k", unit: { en: "/mo recovered", pt: "/mês recuperado", es: "/mes recuperado", hi: "/माह वापस" } },
     resultIsEstimate: true, credits: "call", activationKey: null, plans: ["starter", "growth", "scale"],
+  },
+  // ── GUILEO DIRECT (batizado por Luis em 2026-10-04) ───────────────────────────────────────────
+  // O nome é o do cliente dele: no Brasil ninguém diz "DM", diz "me chama no Direct". Nome próprio
+  // é EXCEÇÃO neste catálogo (só o Pulse tinha) — e, como o Pulse, não se traduz nos 4 idiomas.
+  // `activationKey: "whats"` é a mesma chave Meta da linha "WhatsApp + Instagram DM" do Broto: sem
+  // a conexão Meta do cliente, isto não acende — e dizer o contrário seria o verde falso de sempre.
+  {
+    id: "direct", pilar: "brain", icon: "\u{1F4AC}", accent: "#FF4FA3", category: { en: "Instagram", pt: "Instagram", es: "Instagram", hi: "\u0907\u0902\u0938\u094D\u091F\u093E\u0917\u094D\u0930\u093E\u092E" },
+    name: { en: "Guileo Direct", pt: "Guileo Direct", es: "Guileo Direct", hi: "Guileo Direct" },
+    result: {
+      en: "Someone comments on your post: Gui replies in public and sends the Direct \u2014 then keeps the conversation going in the DM, reading the reel they shared, in their language.",
+      pt: "Algu\u00e9m comenta no seu post: a Gui responde em p\u00fablico e manda o Direct \u2014 e continua a conversa na DM, lendo o reel que a pessoa compartilhou, no idioma dela.",
+      es: "Alguien comenta en tu post: Gui responde en p\u00fablico y manda el Direct \u2014 y sigue la conversaci\u00f3n en el DM, leyendo el reel que compartió, en su idioma.",
+      hi: "\u0915\u094b\u0908 \u0906\u092a\u0915\u0947 \u092a\u094b\u0938\u094d\u091f \u092a\u0930 \u0915\u092e\u0947\u0902\u091f \u0915\u0930\u0924\u093e \u0939\u0948: \u0917\u0941\u0908 \u0938\u093e\u0930\u094d\u0935\u091c\u0928\u093f\u0915 \u091c\u0935\u093e\u092c \u0926\u0947\u0924\u0940 \u0939\u0948, Direct \u092d\u0947\u091c\u0924\u0940 \u0939\u0948 \u0914\u0930 DM \u092e\u0947\u0902 \u0909\u0938\u0940 \u092d\u093e\u0937\u093e \u092e\u0947\u0902 \u092c\u093e\u0924 \u091c\u093e\u0930\u0940 \u0930\u0916\u0924\u0940 \u0939\u0948\u0964",
+    },
+    resultMetric: { value: "24/7", unit: { en: "on the Direct, in 16 languages", pt: "no Direct, em 16 idiomas", es: "en el Direct, en 16 idiomas", hi: "Direct \u092a\u0930, 16 \u092d\u093e\u0937\u093e\u0913\u0902 \u092e\u0947\u0902" } },
+    resultIsEstimate: false, credits: "chat", activationKey: "whats", plans: ["starter", "growth", "scale"],
   },
   {
     id: "speedlead", pilar: "brain", icon: "⚡", accent: "#4C9AFF", category: { en: "Sales", pt: "Vendas", es: "Ventas", hi: "सेल्स" },
@@ -154,10 +172,10 @@ export const PRODUCTS = [
     // projeto de `services.js` e continua sendo cobrado à parte.
     name: { en: "Your site, generated", pt: "Seu site, gerado", es: "Tu sitio, generado", hi: "आपकी साइट, तैयार" },
     result: {
-      en: "A fast site with your name, your services and your prices — generated from what you already told us, editable in the cockpit, with Gui answering inside it. (A bespoke site designed from scratch is a separate project.)",
-      pt: "Um site rápido com seu nome, seus serviços e seus preços — gerado a partir do que você já nos contou, editável no cockpit, com a Gui atendendo dentro dele. (Site sob medida, desenhado do zero, é projeto à parte.)",
-      es: "Un sitio rápido con tu nombre, tus servicios y tus precios — generado con lo que ya nos contaste, editable en el cockpit, con Gui atendiendo dentro. (Un sitio a medida, diseñado desde cero, es un proyecto aparte.)",
-      hi: "आपके नाम, सेवाओं और कीमतों वाली तेज़ साइट — जो आपने बताया उसी से बनी, कॉकपिट में संपादन-योग्य, अंदर गुई जवाब देती है। (शून्य से डिज़ाइन की गई कस्टम साइट अलग प्रोजेक्ट है।)",
+      en: `A fast site with your name, your services and your prices — generated from what you already told us, editable in the ${NOME_DO_PAINEL}, with Gui answering inside it. (A bespoke site designed from scratch is a separate project.)`,
+      pt: `Um site rápido com seu nome, seus serviços e seus preços — gerado a partir do que você já nos contou, editável na ${NOME_DO_PAINEL}, com a Gui atendendo dentro dele. (Site sob medida, desenhado do zero, é projeto à parte.)`,
+      es: `Un sitio rápido con tu nombre, tus servicios y tus precios — generado con lo que ya nos contaste, editable en la ${NOME_DO_PAINEL}, con Gui atendiendo dentro. (Un sitio a medida, diseñado desde cero, es un proyecto aparte.)`,
+      hi: `आपके नाम, सेवाओं और कीमतों वाली तेज़ साइट — जो आपने बताया उसी से बनी, ${NOME_DO_PAINEL} में संपादन-योग्य, अंदर गुई जवाब देती है। (शून्य से डिज़ाइन की गई कस्टम साइट अलग प्रोजेक्ट है।)`,
     },
     resultMetric: { value: "1×", unit: { en: "build, runs forever", pt: "build, roda pra sempre", es: "build, corre siempre", hi: "बिल्ड, हमेशा" } },
     resultIsEstimate: false, credits: null, activationKey: null, plans: ["scale"],

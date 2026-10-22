@@ -10,6 +10,8 @@
 
 **Para os MOTORES de canal (o que a Gui opera pro cliente: voz, agenda, Google, Meta, financeiro…), leia [MOTORES.md](MOTORES.md)** — o mapa vivo: estado de cada motor, arquivos, como gasta crédito (motor financeiro = medidor de tudo), e a chave externa que falta. Ligar/alterar motor → `ROTA-MOTOR` na IMPLEMENTACAO.md. Motor novo → adicione a linha no MOTORES.md.
 
+**Para saber, CANAL POR CANAL (telefone, site, e-mail, SMS, WhatsApp, Instagram/Facebook, Google, TikTok, agenda, pagamentos), as rotas, as automações e o checklist com quem faz cada passo, leia [CANAIS.md](CANAIS.md)** — gerado de `scripts/canais_dados.py` (fonte única; edite lá e rode `python3 scripts/canais_gerar.py`).
+
 **Para o Luis LIGAR as chaves externas (Stripe Connect, A2P, WhatsApp, Google, MindBody, custo de voz, dunning, Mercado Pago), leia [ATIVACOES.md](ATIVACOES.md)** — o runbook clique-a-clique: o que cada chave acende, onde clicar, o nome EXATO da env var no Cloudflare, e o curl de prova. O produto é inerte-que-acende-sozinho; este guia é o que falta pra faturar.
 
 Regras-resumo (detalhes no mapa):

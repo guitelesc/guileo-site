@@ -12,18 +12,25 @@
 import { json, safeEq } from "../lib/guard.js";
 import { sendText } from "../lib/twilio.js";
 import { promoEmail } from "../lib/emailTemplates.js";
-import { svcRpc, sbKey } from "../lib/sb.js";
+import { svcRpc, svcJson, sbKey } from "../lib/sb.js";
+import { unsubUrl } from "../lib/unsub.js";
+import { emitFailure } from "../lib/failure.js";
+import { motoresAtivos } from "./cron-tick.js";
 
 const isEmailAddr = (s) => /.+@.+\..+/.test((s || "").toString());
 // Slow-day promos reach customers TODAY by email (SMS/WhatsApp light up at A2P). Best-effort.
 async function sendPromoEmail(env, to, subject, html) {
   if (!env.RESEND_API_KEY || !isEmailAddr(to)) return false;
   try {
-    await fetch("https://api.resend.com/emails", {
+    const r = await fetch("https://api.resend.com/emails", {
       method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to, subject, html }),
     });
-    return true;
+    // "Enviado" só com o comprovante do provedor (o id da mensagem). Antes contava como enviado
+    // qualquer resposta, inclusive 4xx/5xx — o contador de promoções mentia.
+    if (!r.ok) return false;
+    const d = await r.json().catch(() => null);
+    return !!(d && d.id);
   } catch { return false; }
 }
 
@@ -61,6 +68,28 @@ const whenLabel = (iso, lang) => {
 };
 // Customer texts go out in the CLIENT profile's language — pt / es / en supported.
 const langNorm = (v) => { const l = (v || "").toString().toLowerCase().slice(0, 2); return l === "pt" ? "pt" : l === "es" ? "es" : "en"; };
+
+// ── NÃO-PERTURBE: TRÊS RESPOSTAS, NÃO DUAS (auditoria de lançamento, 2026-09-22) ────────────────
+// Antes: `try { if ((await rpc("is_dnc")) === true) pula } catch { /* fail-open */ }`. E o `rpc`
+// daqui devolve `null` quando o banco recusa — `null === true` é falso, então "não consegui ler a
+// lista" e "a pessoa NÃO pediu para parar" davam no mesmo: manda. Numa varredura automática isso
+// é o pior fail-open possível, porque ninguém pediu a mensagem e ela sai em lote.
+// Agora: true = pediu para parar · false = liberado · null = NÃO SEI → não manda (fail-closed).
+// A assimetria com o caminho público do call.js é de propósito e está explicada lá: aqui nunca
+// há uma pessoa esperando a mensagem naquele instante, então atrasar custa pouco e errar custa caro.
+async function dncLe(env, phone) {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/is_dnc`, {
+      method: "POST",
+      headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_secret: env.INGEST_SECRET || "", p_phone: phone }),
+    });
+    if (!r.ok) return { sabe: false, motivo: `is_dnc http ${r.status}` };
+    const v = await r.json().catch(() => undefined);
+    if (v === true || v === false) return { sabe: true, bloqueado: v };
+    return { sabe: false, motivo: "is_dnc respondeu algo que não é sim/não" };
+  } catch (e) { return { sabe: false, motivo: `is_dnc fora do ar: ${String(e).slice(0, 80)}` }; }
+}
 
 // The scheduling RPCs (noshow_risk) are gated by SCHED_SECRET, not INGEST_SECRET.
 async function schedRpc(env, fn, args) {
@@ -124,9 +153,28 @@ export async function onRequest(context) {
   const configured = !!(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_FROM);
   // reminders24/reminders2/reviews/winback saíram da resposta junto com os motores: campo que só
   // sabe devolver zero é pior que campo ausente — parece um dia parado em vez de código removido.
-  const out = { holdsReleased: 0, holdsReady: true, riskConfirm: 0, riskClaimedDupe: 0, riskSkipped: 0, riskReady: true, slowday: 0, slowdayReady: true, sent: 0, skipped: 0, configured };
+  const out = { holdsReleased: 0, holdsReady: true, riskConfirm: 0, riskClaimedDupe: 0, riskSkipped: 0, riskReady: true, slowday: 0, slowdayReady: true, sent: 0, skipped: 0, dncIlegivel: 0, configured };
   const profiles = new Map();
   const budget = () => out.sent < MAX_SENDS; // shared cap across all three engines
+
+  // INTERRUPTOR GERAL (2026-09-22) — lido AQUI, e não só no cron, para que uma chamada manual com
+  // o token não fure o desligamento. Desligado, a rota ainda solta reserva vencida (ENGINE 0, que
+  // não fala com ninguém) e pula os dois motores que escrevem para cliente (4 e 5).
+  const ligados = await motoresAtivos(env);
+
+  // DNC ilegível: UM aviso por rodada, não um por destinatário — com o banco fora seriam 60
+  // falhas iguais no feed, e falha repetida 60 vezes é a que ninguém lê.
+  let dncAvisado = false;
+  const dncLiberado = async (phone, motor) => {
+    const d = await dncLe(env, phone);
+    if (d.sabe) return d.bloqueado === false;
+    out.dncIlegivel++;
+    if (!dncAvisado) {
+      dncAvisado = true;
+      await emitFailure(env, "dnc_check_unavailable", "", `automations (${motor}): não consegui ler a lista de não-perturbe (${d.motivo}) — envio recusado nesta rodada`, { motor, motivo: d.motivo });
+    }
+    return false;
+  };
 
   // ENGINE 0 — RELEASE EXPIRED HOLDS. Slots put on 'hold' (deposit-to-book) are cleaned
   // lazily by the biz_* RPCs, but only when the next booking touches that service — on a
@@ -145,7 +193,7 @@ export async function onRequest(context) {
   // Idempotent via risk_confirm_claim (ATOMIC 7-day claim, db/risk_autoconfirm.sql) claimed
   // BEFORE the send; DNC-checked via the same is_dnc the dial gate uses; capped at 30/run.
   // Graceful: until db/risk_autoconfirm.sql is pasted, risk_clients is null → riskReady:false, no-op.
-  try {
+  if (ligados) try {
     const RISK_CAP = 30;             // per-run ceiling across ALL clients for this engine
     const RISK_MIN = 60;             // only genuinely risky appointments get the extra touch
     const RISK_WINDOW_MS = 36 * 3600 * 1000; // ~36h horizon — close enough to matter
@@ -171,7 +219,9 @@ export async function onRequest(context) {
           const phone = (a.customer_contact || "").toString().replace(/[^0-9+]/g, "");
           if (!/^\+?[1-9]\d{7,14}$/.test(phone)) { out.riskSkipped++; continue; } // contact is an email or junk
           // COMPLIANCE — same suppression list the hardened dial gate honors. Never text a STOP.
-          try { if ((await rpc(env, "is_dnc", { p_phone: phone })) === true) { out.riskSkipped++; continue; } } catch { /* fail-open, matches call.js */ }
+          // FAIL-CLOSED: lista ilegível = não manda (ver dncLe). O horário não é reservado nem
+          // queimado — a próxima rodada, com o banco de volta, ainda pega este agendamento.
+          if (!(await dncLiberado(phone, "risco de falta"))) { out.riskSkipped++; continue; }
           const nome = a.customer_name || (L === "pt" ? "tudo bem" : "there");
           const hola = `¡Hola${a.customer_name ? ` ${a.customer_name}` : ""}!`;
           const biz = p.business_name || (L === "pt" ? "nosso espaço" : L === "es" ? "nuestro local" : "our place");
@@ -203,7 +253,7 @@ export async function onRequest(context) {
   // (slowday_candidates) and fire a flash promo to recent customers to fill them. EMAIL now (reaches
   // customers today), WhatsApp/SMS when A2P clears. Per-recipient claim (marketing_date_claim, kind
   // 'slowday') dedups so nobody is spammed. Capped per run. Graceful: no opt-ins / no keys → no-op.
-  try {
+  if (ligados) try {
     const SLOW_CAP = 40;                        // hard ceiling across all tenants for this engine
     const PER_DAY = 15;                          // at most N recent customers per soft day
     const optedIn = await rpc(env, "slowday_auto_list", {});
@@ -219,6 +269,19 @@ export async function onRequest(context) {
         if (!days.length) continue;
         const rcp = await rpc(env, "crm_marketing_recipients", { p_client_email: email, p_days: 120, p_limit: 200 });
         const recipients = (rcp && rcp.contacts) || [];
+        // PROMOÇÃO É MARKETING (2026-10-01): este ramo de e-mail saía sem consultar a lista de
+        // descadastro, sem link de descadastro e sem endereço — o resto da casa (proactive.js) já
+        // fazia os três. FAIL-CLOSED igual lá: lista que não foi lida = nenhum e-mail deste negócio
+        // nesta volta. `supressos === null` desliga só o ramo de e-mail; o de WhatsApp tem a própria trava.
+        let supressos = null, endereco = "";
+        try {
+          const sup = await svcJson(env, "email_suppressed_list", { p_secret: env.INGEST_SECRET || "", p_client_email: email });
+          if (Array.isArray(sup)) supressos = new Set(sup.map((x) => String(x).toLowerCase()));
+        } catch { /* fica null → e-mail deste negócio não sai nesta volta */ }
+        try {
+          const a = await svcJson(env, "client_postal_address", { p_secret: env.INGEST_SECRET || "", p_client_email: email });
+          if (typeof a === "string" && a.trim()) endereco = a.trim().slice(0, 200);
+        } catch { /* endereço ausente não bloqueia; a lista de descadastro, sim */ }
         const p = await profileFor(env, profiles, email);
         const L = langNorm(p.lang);
         const biz = p.business_name || (L === "pt" ? "nosso espaço" : L === "es" ? "nuestro local" : "our place");
@@ -231,11 +294,25 @@ export async function onRequest(context) {
             const claimed = await rpc(env, "marketing_date_claim", { p_client_email: email, p_kind: "slowday", p_ref: `${dd.location_id}:${dd.day}`, p_period: who });
             if (claimed !== true) continue;         // already invited to this day (or racing run owns it)
             if (isEmailAddr(c.email)) {
-              const { subject, html } = promoEmail({ name: c.name || (L === "pt" ? "tudo bem" : "there"), business: "", headline, message, offer: "", lang: L, bizEmail: email });
+              const para = String(c.email).trim().toLowerCase();
+              // Sem lista lida, ou pessoa que pediu para sair: não manda. (A reserva do dia já foi
+              // gasta acima — convite perdido é barato perto de promoção para quem descadastrou.)
+              if (!(supressos instanceof Set) || supressos.has(para)) { out.skipped++; continue; }
+              const unsub = await unsubUrl(env, "https://guileoai.com", email, para).catch(() => "");
+              if (!unsub) { out.skipped++; continue; }   // sem link de descadastro não é e-mail de marketing que se mande
+              const { subject, html } = promoEmail({ name: c.name || (L === "pt" ? "tudo bem" : "there"), business: "", headline, message, offer: "", lang: L, bizEmail: email, unsub, address: endereco });
               if (await sendPromoEmail(env, c.email, subject, html)) { slowSent++; out.slowday++; out.sent++; } else out.skipped++;
             } else {
               const phone = (c.phone || "").toString().replace(/[^0-9+]/g, "");
               if (!/^\+?[1-9]\d{7,14}$/.test(phone)) continue;
+              // ⚠️ ESTE RAMO MANDAVA WHATSAPP SEM CONSULTAR O NÃO-PERTURBE (achado em 2026-09-22).
+              // Só o motor de risco consultava; a promoção — marketing puro — ia para o telefone
+              // de quem tinha mandado STOP. Fail-closed como o resto do arquivo: lista ilegível =
+              // não manda. A consulta vem DEPOIS da reserva de propósito: antes dela seria uma
+              // consulta por destinatário por tique (a rota roda a cada 15 min) mesmo para quem já
+              // foi convidado. O custo é o convite deste dia ficar queimado numa queda do banco —
+              // barato perto de promoção para quem pediu para parar.
+              if (!(await dncLiberado(phone, "dia fraco"))) { out.skipped++; continue; }
               const r = await sendText(env, phone, `🌱 ${headline} ${message}`.slice(0, 300), { channel: "whatsapp" });
               if (r.sent) { slowSent++; out.slowday++; out.sent++; } else out.skipped++;
             }
@@ -245,5 +322,6 @@ export async function onRequest(context) {
     }
   } catch { /* isolated — slow-day engine failing must never block the revenue loops */ }
 
+  if (!ligados) return json({ ok: true, desligado: true, motivo: "motores_proativos=off — só a soltura de reserva vencida rodou; nenhuma mensagem saiu", ...out });
   return json(out);
 }

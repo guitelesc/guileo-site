@@ -98,7 +98,7 @@ export async function onRequestPost(context) {
 
     const lido = action === "auditar" ? { estado: "vazio" } : await lerCreds(env, ING, email);
     // "Não consegui ler" NUNCA vira "não tem". Falha de leitura sai como falha, com o motivo.
-    if (lido.estado === "erro") return json({ ok: false, error: lido.motivo }, 502);
+    if (lido.estado === "erro") return json({ ok: false, error: lido.motivo }, 503);
     const atual = lido.estado === "ok" ? lido.tokens : null;
 
     if (action === "status") {
@@ -121,7 +121,7 @@ export async function onRequestPost(context) {
     if (action === "auditar") {
       const lista = await svcJson(env, "whatsapp_cloud_list_tenants", { p_secret: ING });
       if (!Array.isArray(lista)) {
-        return json({ ok: false, error: `não consegui listar: ${JSON.stringify(lista).slice(0, 160)}` }, 502);
+        return json({ ok: false, error: `não consegui listar: ${JSON.stringify(lista).slice(0, 160)}` }, 503);
       }
       const linhas = await Promise.all(lista.map(async (t) => {
         if (!t.tem_token) return { ...t, vivo: false, motivo: "nenhum token guardado" };

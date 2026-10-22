@@ -1,8 +1,15 @@
 /* Split out of Portal.jsx (performance): FinanceDept tab view — code moved verbatim. */
 import { useState, useCallback, useEffect } from "react";
-import { fetchCrmInvoices } from "../lib/portalApi.js";
-import { genCustomers, SectionSkeleton, RetryState, DeptTabs, Card, tr, Empty, UI_LANG, Toggle } from "../pages/Portal.jsx";
+import { fetchCrmInvoicesDetalhado, chamarApi } from "../lib/portalApi.js";
+import { genCustomers, SectionSkeleton, DeptTabs, Card, tr, Empty, UI_LANG, Toggle } from "../pages/Portal.jsx";
 import NoSeuPlano from "./NoSeuPlano.jsx";
+import FalhaDeLeitura, { fraseDaFalha } from "./FalhaDeLeitura.jsx";
+
+// Frase única para "o recurso existe mas ainda não foi ligado para esta conta".
+// 🚨 (2026-09-28) A tela mandava a CLIENTE "paste db/collections_optin.sql in Supabase". Ela não
+// tem Supabase, não sabe o que é SQL e não deveria saber: instrução de engenharia na tela de quem
+// paga é um pedido de socorro disfarçado de texto. Quem liga o recurso somos nós.
+const naoLigadoAinda = () => tr("This feature isn't switched on for your account yet. Message our team and we'll turn it on.");
 
 // Which invoice statuses are open/collectible. crm_invoices_list flags 'overdue' at read
 // time (sent + past due); the /api/collections nudge engine (finance_overdue_list) can only
@@ -13,7 +20,10 @@ const isOverdue = (iv) => (iv && iv.status === "overdue");
 // Flow: list overdue → "Prever cobrança" (dryRun, sends NOTHING) → honest confirm → real run.
 function Receivables({ demo, email, dataKey, V, fmtMoney }) {
   const [rows, setRows] = useState([]);
-  const [state, setState] = useState("loading"); // loading | ok | off
+  const [state, setState] = useState("loading"); // loading | ok | off | err
+  const [falha, setFalha] = useState(null);      // motivo da falha de leitura (state === "err")
+  const [tentativa, setTentativa] = useState(0);
+  const [avisoPrevia, setAvisoPrevia] = useState(null); // frase quando a prévia não veio
   const [preview, setPreview] = useState(null);  // dryRun result awaiting confirm
   const [result, setResult] = useState(null);    // real-run result
   const [busy, setBusy] = useState(false);
@@ -22,12 +32,11 @@ function Receivables({ demo, email, dataKey, V, fmtMoney }) {
   const [payBusy, setPayBusy] = useState(null);     // invoice id currently being marked
   const [toast, setToast] = useState(null);         // { kind:"ok"|"err", text }
   // AUTO-COLLECTIONS opt-in — mirrors the flag the weekly cron sweep reads (auto_get/auto_set).
-  // state: loading | ready | pending (opt-in SQL not pasted yet) | demo
+  // state: loading | ready | pending (ainda não ligado para a conta) | erro (não consegui ler) | demo
   const [auto, setAuto] = useState({ state: demo ? "demo" : "loading", on: false });
-  const api = useCallback((body) => fetch("/api/collections", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token: dataKey, email: email || "", lang: UI_LANG, ...body }),
-  }).then((r) => r.json()), [dataKey, email]);
+  // Devolve {data, motivo} e NUNCA levanta. A versão antiga fazia `.then(r => r.json())` sem olhar
+  // `r.ok`: um 401/500 com corpo JSON passava por resposta boa.
+  const api = useCallback((body) => chamarApi("/api/collections", { token: dataKey, email: email || "", lang: UI_LANG, ...body }), [dataKey, email]);
 
   useEffect(() => {
     let alive = true;
@@ -37,33 +46,64 @@ function Receivables({ demo, email, dataKey, V, fmtMoney }) {
       setState("ok");
       return () => { alive = false; };
     }
-    api({ action: "list" }).then((d) => { if (alive) { setRows(Array.isArray(d?.invoices) ? d.invoices : []); setState(d?.ready === false ? "off" : "ok"); } }).catch(() => { if (alive) setState("ok"); });
-    // Fetch the auto-collections opt-in state (honest "pending" until the opt-in SQL exists).
-    api({ action: "auto_get" }).then((d) => { if (alive) setAuto(d?.ok && d.ready === true ? { state: "ready", on: d.enabled === true } : { state: "pending", on: false }); }).catch(() => { if (alive) setAuto({ state: "pending", on: false }); });
+    // 🚨 (2026-09-28) O `.catch(() => setState("ok"))` daqui transformava QUALQUER falha em
+    // "Nothing overdue — every invoice is on time". Dizer a uma dona de negócio que ninguém está
+    // devendo, quando a verdade é "não consegui ler", é o erro mais caro desta tela.
+    setState("loading"); setFalha(null);
+    api({ action: "list" }).then((r) => {
+      if (!alive) return;
+      if (r.motivo) { setFalha(r.motivo); setState("err"); return; }
+      const d = r.data;
+      if (d.ready === false) { setRows([]); setState("off"); return; }
+      if (!Array.isArray(d.invoices)) { setFalha("resposta_estranha"); setState("err"); return; }
+      setRows(d.invoices.filter(Boolean)); setState("ok");
+    });
+    // Estado do opt-in: "pending" só quando o SERVIDOR disse que não está ligado. Falha de leitura
+    // é "erro" — outro estado, outra frase.
+    api({ action: "auto_get" }).then((r) => {
+      if (!alive) return;
+      if (r.motivo) { setAuto({ state: "erro", on: false, motivo: r.motivo }); return; }
+      const d = r.data;
+      setAuto(d.ok && d.ready === true ? { state: "ready", on: d.enabled === true } : { state: "pending", on: false });
+    });
     return () => { alive = false; };
-  }, [demo, api, V]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [demo, api, V, tentativa]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Optimistic flip with revert on failure; a ready:false answer drops to honest "pending".
   const flipAuto = async () => {
     if (demo || auto.state !== "ready") return;
     const want = !auto.on;
     setAuto({ state: "ready", on: want });
-    try {
-      const d = await api({ action: "auto_set", enabled: want });
-      if (d?.ok && d.ready === true) setAuto({ state: "ready", on: d.enabled === true });
-      else if (d?.ok && d.ready === false) setAuto({ state: "pending", on: false });
-      else setAuto({ state: "ready", on: !want }); // revert
-    } catch { setAuto({ state: "ready", on: !want }); } // revert
+    const r = await api({ action: "auto_set", enabled: want });
+    const d = r.data;
+    if (!r.motivo && d?.ok && d.ready === true) setAuto({ state: "ready", on: d.enabled === true });
+    else if (!r.motivo && d?.ok && d.ready === false) setAuto({ state: "pending", on: false });
+    else {
+      // Reverte E AVISA: o botão voltar sozinho, calado, parece defeito do dedo de quem clicou.
+      setAuto({ state: "ready", on: !want });
+      setToast({ kind: "err", text: `${tr("Couldn't change this setting.")} ${r.motivo ? fraseDaFalha(r.motivo) : ""}`.trim() });
+    }
   };
 
   const doPreview = async () => {
-    setBusy(true); setResult(null);
-    try { const d = await api({ action: "nudge", dryRun: true }); setPreview(d && d.ok ? d : null); } catch { setPreview(null); }
+    setBusy(true); setResult(null); setAvisoPrevia(null);
+    const r = await api({ action: "nudge", dryRun: true });
+    if (!r.motivo && r.data?.ok) setPreview(r.data);
+    else {
+      // Antes: prévia que falhava não mostrava NADA — o botão piscava e a pessoa ficava sem saber
+      // se tinha clicado. Agora diz que não veio, e que nada foi enviado.
+      setPreview(null);
+      setAvisoPrevia(`${tr("I couldn't prepare the preview. Nothing was sent.")} ${r.motivo ? fraseDaFalha(r.motivo) : ""}`.trim());
+    }
     setBusy(false);
   };
   const doSend = async () => {
     setBusy(true);
-    try { const d = await api({ action: "nudge" }); setResult(d && d.ok ? d : { ok: false }); setPreview(null); const l = await api({ action: "list" }); setRows(Array.isArray(l?.invoices) ? l.invoices : rows); } catch { setResult({ ok: false }); }
+    const r = await api({ action: "nudge" });
+    setResult(!r.motivo && r.data?.ok ? r.data : { ok: false, motivo: r.motivo });
+    setPreview(null);
+    const l = await api({ action: "list" });
+    if (!l.motivo && Array.isArray(l.data?.invoices)) setRows(l.data.invoices.filter(Boolean));
     setBusy(false);
   };
 
@@ -72,16 +112,14 @@ function Receivables({ demo, email, dataKey, V, fmtMoney }) {
   const markPaid = async (iv) => {
     if (demo || payBusy) return;
     setPayBusy(iv.id); setToast(null);
-    try {
-      const d = await api({ action: "mark_paid", id: iv.id });
-      if (d?.ok && d.paid === true) {
-        setRows((rs) => rs.filter((r) => r.id !== iv.id));
-        setToast({ kind: "ok", text: `${tr("Marked paid")}: ${iv.number || iv.contact_name || tr("invoice")}` });
-      } else {
-        // honest: not found / already paid / other tenant — no fake success
-        setToast({ kind: "err", text: tr("Couldn't mark it paid — refresh and try again.") });
-      }
-    } catch { setToast({ kind: "err", text: tr("Couldn't mark it paid — refresh and try again.") }); }
+    const r = await api({ action: "mark_paid", id: iv.id });
+    if (!r.motivo && r.data?.ok && r.data.paid === true) {
+      setRows((rs) => rs.filter((x) => x.id !== iv.id));
+      setToast({ kind: "ok", text: `${tr("Marked paid")}: ${iv.number || iv.contact_name || tr("invoice")}` });
+    } else {
+      // honest: not found / already paid / other tenant / rede — no fake success
+      setToast({ kind: "err", text: tr("Couldn't mark it paid — refresh and try again.") });
+    }
     setPayBusy(null); setConfirmId(null);
   };
 
@@ -92,9 +130,9 @@ function Receivables({ demo, email, dataKey, V, fmtMoney }) {
         <span className="text-xs font-bold uppercase tracking-wide text-g-gold">💳 {tr("Receivables")}</span>
         <button
           onClick={doPreview}
-          disabled={demo || busy || state === "off" || !rows.length}
+          disabled={demo || busy || state !== "ok" || !rows.length}
           title={demo ? tr("Demo") : undefined}
-          className={`rounded-full px-3 py-1 text-[11.5px] font-bold border transition ${demo || busy || state === "off" || !rows.length ? "border-white/10 text-g-muted/50 cursor-not-allowed" : "border-g-green/40 bg-g-green/10 text-g-green hover:bg-g-green/20"}`}
+          className={`rounded-full px-3 py-1 text-[11.5px] font-bold border transition ${demo || busy || state !== "ok" || !rows.length ? "border-white/10 text-g-muted/50 cursor-not-allowed" : "border-g-green/40 bg-g-green/10 text-g-green hover:bg-g-green/20"}`}
         >{busy && !preview ? "…" : tr("Preview collection")}</button>
       </div>
       {/* 🤖 AUTO-COLLECTIONS opt-in — ON puts this business in Gui's weekly sweep; OFF (default) keeps collections manual-only. */}
@@ -103,14 +141,15 @@ function Receivables({ demo, email, dataKey, V, fmtMoney }) {
           <div className="text-[12.5px] font-bold text-g-word">🤖 {tr("Weekly auto-collection")}</div>
           <div className="text-[11px] text-g-muted">
             {demo ? tr("Demo — connect your business to switch this on.")
-              : auto.state === "pending" ? tr("Activation pending — paste db/collections_optin.sql in Supabase to switch this on.")
+              : auto.state === "pending" ? naoLigadoAinda()
+              : auto.state === "erro" ? fraseDaFalha(auto.motivo)
               : auto.on ? tr("On — Gui includes this business in the weekly sweep: max 10 reminders a week, never the same customer twice in 72h.")
               : tr("Off — reminders only go out when you press the button.")}
           </div>
         </div>
         <div
           className={`shrink-0 ${demo || auto.state !== "ready" ? "opacity-40" : ""}`}
-          title={demo ? tr("Demo — connect your business to switch this on.") : auto.state === "pending" ? tr("Activation pending — paste db/collections_optin.sql in Supabase to switch this on.") : undefined}
+          title={demo ? tr("Demo — connect your business to switch this on.") : auto.state === "pending" ? naoLigadoAinda() : undefined}
         >
           {/* pointer-events off on the switch itself so the disabled wrapper still shows its tooltip */}
           <span className={demo || auto.state !== "ready" ? "pointer-events-none inline-block" : "inline-block"}>
@@ -119,7 +158,9 @@ function Receivables({ demo, email, dataKey, V, fmtMoney }) {
         </div>
       </div>
       {state === "off" ? (
-        <div className="px-5 py-6 text-center text-xs text-g-muted">{tr("Paste db/receivables.sql in Supabase to switch collections on.")}</div>
+        <div className="px-5 py-6 text-center text-xs text-g-muted">{naoLigadoAinda()}</div>
+      ) : state === "err" ? (
+        <div className="px-5 py-4"><FalhaDeLeitura compacto motivo={falha} onRetry={() => setTentativa((n) => n + 1)} titulo={tr("I couldn't read your overdue invoices just now.")} /></div>
       ) : (
       <div className="divide-y divide-white/[0.06]">
         {rows.length ? rows.slice(0, 25).map((iv, i) => (
@@ -162,6 +203,9 @@ function Receivables({ demo, email, dataKey, V, fmtMoney }) {
           {toast.kind === "ok" ? "✅ " : "✗ "}{toast.text}
         </div>
       )}
+      {avisoPrevia && !preview && (
+        <div role="alert" className="border-t border-red-400/25 bg-red-500/[0.06] px-5 py-2.5 text-[12px] font-bold text-red-300">✗ {avisoPrevia}</div>
+      )}
       {preview && (
         <div className="border-t border-g-gold/25 bg-g-gold/[0.05] px-5 py-4 space-y-3">
           <div className="text-xs font-bold text-g-word">{tr("Preview — nothing sent yet:")}</div>
@@ -185,7 +229,7 @@ function Receivables({ demo, email, dataKey, V, fmtMoney }) {
         <div className="border-t border-white/10 px-5 py-3 text-[12px]">
           {result.ok
             ? <span className="text-g-green font-bold">✅ {result.sent} {tr("sent")} · {result.skipped} {tr("skipped")}</span>
-            : <span className="text-red-300 font-bold">✗ {tr("Something went wrong — try again.")}</span>}
+            : <span className="text-red-300 font-bold">✗ {tr("Something went wrong — try again.")} {result.motivo ? fraseDaFalha(result.motivo) : ""}</span>}
         </div>
       )}
     </Card>
@@ -198,13 +242,21 @@ function FinanceDept({ V, onNav, email = "", dataKey = "", real = null }) {
   const demo = !dataKey;
   const [invoices, setInvoices] = useState([]);
   const [state, setState] = useState(demo ? "ok" : "loading");
+  const [falha, setFalha] = useState(null);
   // "Collect now" state (declared with the other hooks — must be above the early returns below).
   const [collectId, setCollectId] = useState(null);     // invoice id awaiting 2nd click
   const [collectBusy, setCollectBusy] = useState(null);  // invoice id currently sending
   const [collectToast, setCollectToast] = useState(null); // { kind:"ok"|"err", text }
   const load = useCallback(() => {
     setState("loading");
-    fetchCrmInvoices(dataKey, email).then((d) => { setInvoices(d || []); setState("ok"); }).catch(() => setState("err"));
+    // 🚨 (2026-09-28) O `.catch` daqui era código morto: o leitor antigo engole toda falha e
+    // devolve []. A tela ia para "ok" com Paid $0 · Outstanding $0 · Overdue $0 — três afirmações
+    // falsas sobre dinheiro. Agora o motivo chega e o estado "err" é alcançável de verdade.
+    setFalha(null);
+    fetchCrmInvoicesDetalhado(dataKey, email).then((r) => {
+      if (r.motivo) { setFalha(r.motivo); setState("err"); return; }
+      setInvoices((r.data || []).filter(Boolean)); setState("ok");
+    });
   }, [dataKey, email]);
   useEffect(() => {
     if (demo) {
@@ -215,7 +267,7 @@ function FinanceDept({ V, onNav, email = "", dataKey = "", real = null }) {
     load();
   }, [demo, dataKey, email, load]); // eslint-disable-line react-hooks/exhaustive-deps
   if (state === "loading") return <SectionSkeleton />;
-  if (state === "err") return <RetryState onRetry={load} />;
+  if (state === "err") return <FalhaDeLeitura motivo={falha} onRetry={load} titulo={tr("I couldn't load your invoices just now.")} />;
   const fmtMoney = (c) => `$${Math.round((c || 0) / 100).toLocaleString()}`;
   const paid = invoices.filter((i) => i.status === "paid").reduce((s, i) => s + (i.amount_cents || 0), 0);
   const outstanding = invoices.filter((i) => ["sent", "overdue"].includes(i.status)).reduce((s, i) => s + (i.amount_cents || 0), 0);
@@ -229,13 +281,13 @@ function FinanceDept({ V, onNav, email = "", dataKey = "", real = null }) {
   const collectNow = async (iv) => {
     if (demo || collectBusy) return;
     setCollectBusy(iv.id); setCollectToast(null);
-    try {
-      const r = await fetch("/api/collections", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: dataKey, email: email || "", lang: UI_LANG, action: "nudge", ids: [iv.id] }),
-      });
-      const d = await r.json().catch(() => ({}));
-      if (d?.ok && d.sent >= 1) {
+    {
+      const r = await chamarApi("/api/collections", { token: dataKey, email: email || "", lang: UI_LANG, action: "nudge", ids: [iv.id] });
+      const d = r.data;
+      if (r.motivo) {
+        // Falha NOSSA (rede/servidor/chave) não pode virar "o cliente talvez não tenha telefone".
+        setCollectToast({ kind: "err", text: `${tr("Couldn't send a reminder — try again.")} ${fraseDaFalha(r.motivo)}` });
+      } else if (d?.ok && d.sent >= 1) {
         setCollectToast({ kind: "ok", text: `${tr("Payment reminder sent to")} ${iv.contact_name || tr("customer")}` });
       } else if (d?.ok && d.claimed_dupe >= 1) {
         setCollectToast({ kind: "ok", text: tr("Already reminded in the last 72h — staying polite.") });
@@ -243,7 +295,7 @@ function FinanceDept({ V, onNav, email = "", dataKey = "", real = null }) {
         // honest: no phone / no consent / not collectible — never a fake "sent ✓"
         setCollectToast({ kind: "err", text: tr("Couldn't send a reminder — the customer may have no phone or texting consent on file.") });
       }
-    } catch { setCollectToast({ kind: "err", text: tr("Couldn't send a reminder — try again.") }); }
+    }
     setCollectBusy(null); setCollectId(null);
   };
 

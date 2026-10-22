@@ -7,10 +7,21 @@
 // BRAZIL → WhatsApp (env.TWILIO_WHATSAPP_FROM, the dominant channel there);
 // US/default → SMS (env.TWILIO_FROM, A2P). If the WhatsApp sender isn't configured yet
 // it falls back to TWILIO_FROM so nothing breaks before the sender is approved.
+import { destinoPermitido } from "./contato.js";
+// TRAVA DE DESTINO (2026-09-22): a mesma que fechou a porta das ligações (+972 zerou a Twilio).
+// Toda mensagem paga passa por aqui — inbox do cliente, automações, lembretes — e nenhuma delas
+// conferia o país. WhatsApp entra na mesma trava: o número por trás do "whatsapp:" é o mesmo.
 export async function sendText(env, to, body, opts = {}) {
+  const alvo = String(to || "").replace(/^whatsapp:/, "").trim();
+  const dp = destinoPermitido(alvo, env && env.CALL_DDI_EXTRA);
+  if (!dp.ok) return { sent: false, reason: `destino fora do mercado (${dp.motivo}) — só +1/+55 ou CALL_DDI_EXTRA` };
   const sid = env.TWILIO_ACCOUNT_SID, token = env.TWILIO_AUTH_TOKEN;
   const wantWa = opts.channel === "whatsapp" || opts.market === "BR";
   let from = (wantWa && env.TWILIO_WHATSAPP_FROM) ? env.TWILIO_WHATSAPP_FROM : env.TWILIO_FROM;
+  // `opts.from` (2026-09-30): o número DO NEGÓCIO. O lembrete da Natura tem que sair da linha da
+  // Natura — é para ela que a cliente responde, e é a resposta nesse número que cai na agente certa.
+  // Só vale para SMS e só se for um E.164 de verdade; senão fica o remetente da plataforma.
+  if (!wantWa && /^\+[1-9]\d{7,14}$/.test(String(opts.from || ""))) from = String(opts.from);
   if (!sid || !token || !from) return { sent: false, reason: "not configured" };
   try {
     // WhatsApp senders need the whatsapp: prefix on BOTH sides; mirror From onto To.
@@ -25,7 +36,9 @@ export async function sendText(env, to, body, opts = {}) {
       },
       body: new URLSearchParams({ To: dest, From: from, Body: body }),
     });
-    return { sent: r.ok, status: r.status };
+    // O `sid` é o comprovante: "aceito pela Twilio" com id, não só um 2xx.
+    const d = await r.json().catch(() => ({}));
+    return { sent: r.ok, status: r.status, sid: (d && d.sid) || null, ...(r.ok ? {} : { reason: `twilio ${r.status}${d && d.code ? ` (${d.code})` : ""}` }) };
   } catch (e) {
     return { sent: false, reason: String(e).slice(0, 120) };
   }

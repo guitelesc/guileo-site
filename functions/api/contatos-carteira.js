@@ -60,7 +60,7 @@ export async function onRequestPost({ request, env }) {
 
     const ING = env.INGEST_SECRET || "";
     const lista = await svcJson(env, "prospects_sem_contato", { p_secret: ING, p_limit: LOTE });
-    if (!Array.isArray(lista)) return json({ ok: false, motivo: "não consegui ler a carteira" }, 502);
+    if (!Array.isArray(lista)) return json({ ok: false, motivo: "não consegui ler a carteira" }, 503);
     if (!lista.length) return json({ ok: true, fim: true, feitos: 0, restam: 0, itens: [] });
 
     const itens = [];

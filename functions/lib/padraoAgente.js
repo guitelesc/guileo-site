@@ -9,6 +9,10 @@
 //
 // Aqui a norma vira peça: a rota continua servindo o operador, e a VARREDURA HORÁRIA passa a rodar
 // os mesmos 17 itens em todo agente que ela toca — e a avisar quando um sai do padrão.
+// As palavras que provam o anúncio, em todo idioma da tabela GREETINGS (provision.js).
+export const ANUNCIO_VIRTUAL = /virtual|virtuel|virtuale|virtuelle|wirtualn|виртуальн|віртуальн|वर्चुअल|虚拟|虛擬|バーチャル|가상|vityèl|trợ lý ảo|افتراضي/i;
+export const ANUNCIO_GRAVACAO = /record|gravad|grabad|enregistr|registrat|aufgezeichnet|nagrywan|записыва|записува|रिकॉर्ड|录音|錄音|録音|녹음|anrejistre|ghi âm|تسجيل/i;
+
 export function conferePadrao(d) {
   const cc = d?.conversation_config || {};
   const ag = cc?.agent || {}; const pr = ag?.prompt || {};
@@ -19,14 +23,23 @@ export function conferePadrao(d) {
   const ps = d?.platform_settings || {};
   const wh = (ps?.workspace_overrides || {}).conversation_initiation_client_data_webhook || {};
   const vozDe = (k) => ((presets[k] || {}).overrides || {}).tts?.voice_id || null;
-  const motorDe = (k) => ((presets[k] || {}).overrides || {}).tts?.model_id || null;
+  // (2026-09-27) O IDIOMA PRINCIPAL CONTA. A norma foi escrita quando todo agente nascia em inglês:
+  // exigia um PRESET de pt/pt-br. Agente de cliente brasileiro tem o português como idioma
+  // PRINCIPAL — e a ElevenLabs não aceita preset do próprio idioma principal. O MedMundo passou a
+  // atender em português e a régua o reprovou por isso. Quem fala português como base cumpre o
+  // item pelo idioma base, com o motor lido da voz base.
+  const base = (ag?.language || "").toString().toLowerCase();
+  const baseEh = (k) => base === k || base.split("-")[0] === k.split("-")[0];
+  const motorDe = (k) => (baseEh(k) && !presets[k] ? (cc?.tts?.model_id || null) : ((presets[k] || {}).overrides || {}).tts?.model_id || null);
 
     const itens = [
     ["1 · nome branco", /·/.test(d?.name || ""), d?.name],
     ["1 · saudação de CUIDADO", /take care of you|cuidar de você|cuidarle/i.test(fm), fm.slice(0, 60)],
     ["1 · 1ª fala SEM variável", !/\{\{/.test(fm), "derruba a ligação se tiver"],
+    // CR-01 (2026-10-08): a 1ª fala se apresenta como ASSISTENTE VIRTUAL e avisa a GRAVAÇÃO (contrato).
+    ["1 · 1ª fala: assistente virtual + gravação", ANUNCIO_VIRTUAL.test(fm) && ANUNCIO_GRAVACAO.test(fm), fm.slice(0, 120)],
     ["2 · language_detection em tools", tools.includes("language_detection"), tools.join(",")],
-    ["2 · preset pt E pt-br", !!presets.pt && !!presets["pt-br"], Object.keys(presets).filter((k) => k.startsWith("pt")).join(",")],
+    ["2 · preset pt E pt-br", baseEh("pt") || (!!presets.pt && !!presets["pt-br"]), baseEh("pt") ? `idioma base ${base}` : Object.keys(presets).filter((k) => k.startsWith("pt")).join(",")],
     ["2 · motor multilíngue no pt-br", motorDe("pt-br") === "eleven_flash_v2_5", motorDe("pt-br")],
     ["2 · motor multilíngue no es", motorDe("es") === "eleven_flash_v2_5", motorDe("es")],
     ["2 · regra 'trocar idioma é ferramenta'", /TOOL CALL, NOT A CHOICE OF WORDS/.test(prompt), null],

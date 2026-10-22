@@ -7,6 +7,7 @@
 // Twilio config: Phone Numbers → your number → Voice → webhook POST
 //   https://guileoai.com/api/twilio-voice
 import { json, safeEq } from "./../lib/guard.js";
+import { podeRetornar, leitorDnc } from "./../lib/retornoAutomatico.js";
 import { svcRpc, sbKey } from "./../lib/sb.js";
 import { sendText } from "./../lib/twilio.js";
 
@@ -154,8 +155,15 @@ async function autoCallBack(env, email, profile, from) {
   try {
     if (profile?.auto_callback === false) return;                 // per-client opt-out
     if (!env.ELEVENLABS_API_KEY || !env.ELEVENLABS_PHONE_NUMBER_ID) return; // not configured
-    const e164 = (from || "").replace(/[^0-9+]/g, "");
-    if (!/^\+?[1-9]\d{7,14}$/.test(e164)) return;                  // need a real number to call back
+    // PORTÃO (lib/retornoAutomatico.js): destino só onde a Guileo vende e lista de não-perturbe LIDA.
+    // Antes este caminho discava para qualquer país e ligava mesmo sem conseguir ler a lista.
+    const pode = await podeRetornar(env, from, leitorDnc(env, SB_ANON));
+    if (!pode.ok) {
+      if (pode.motivo !== "dnc" && pode.motivo !== "numero_invalido")
+        await ingest(env, email, `📞 Auto-callback NOT placed to ${from} (${pode.motivo})`, { from, auto: true, blocked: pode.motivo });
+      return;
+    }
+    const e164 = pode.e164;
 
     // per-number cap: at most one auto-callback per caller per hour (KV best-effort)
     const kv = env.RATE_LIMIT;
@@ -163,18 +171,6 @@ async function autoCallBack(env, email, profile, from) {
       const key = `cb:${e164}:${Math.floor(Date.now() / 3600000)}`;
       if (await kv.get(key)) return;                               // already called this number this hour
       await kv.put(key, "1", { expirationTtl: 3600 });
-    }
-
-    // DNC / TCPA STOP — never dial a number that opted out
-    if (env.INGEST_SECRET) {
-      try {
-        const dr = await fetch(`${SB_URL}/rest/v1/rpc/is_dnc`, {
-          method: "POST",
-          headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ p_secret: env.INGEST_SECRET, p_phone: e164 }),
-        });
-        if (dr.ok && (await dr.json()) === true) return;
-      } catch { /* DNC down → the hourly cap still bounds volume */ }
     }
 
     // CALLER MEMORY: fetch agent + contact in parallel (lookup is 800ms-bounded, never delays the dial)

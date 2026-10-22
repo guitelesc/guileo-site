@@ -1,0 +1,23 @@
+{
+  "id": "/portal?app=desk",
+  "name": "Guileo Desk",
+  "short_name": "Desk",
+  "description": "Your front desk: calendar, checkout, clients, team and reports — with the AI assistant built in.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/portal?tab=desk&app=desk&src=desk-app",
+  "scope": "/portal",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#161512",
+  "background_color": "#161512",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "/desk-app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/desk-app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Agenda", "url": "/portal?tab=desk&app=desk" },
+    { "name": "Checkout", "url": "/portal?tab=desk&app=desk&aba=caixa" }
+  ]
+}

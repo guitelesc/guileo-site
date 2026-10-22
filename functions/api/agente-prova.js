@@ -94,7 +94,7 @@ async function provar(request, env) {
   if (!frotaR || frotaR.erro_http || !frotaR.ok || !Array.isArray(frotaR.lista)) {
     // Lista ausente NÃO é frota vazia. Sem isto, "0 agentes com problema" sairia de um 401 do banco.
     return json({ ok: false, nao_deu_pra_provar: true,
-      motivo: `não consegui ler a frota (${frotaR?.erro_http || frotaR?.detalhe || "resposta inesperada"}) — isto NÃO é um ok` }, 502);
+      motivo: `não consegui ler a frota (${frotaR?.erro_http || frotaR?.detalhe || "resposta inesperada"}) — isto NÃO é um ok` }, 503);
   }
   let frota = frotaR.lista.filter((a) => a && a.agente);
   if (so) frota = frota.filter((a) => (a.cliente || "").toLowerCase() === so);
@@ -151,6 +151,9 @@ async function provar(request, env) {
   }
 
   const resumo = resumirFrota(resultados);
+  // (2026-09-22) Twilio ilegível (401/403 = conta suspensa) NÃO pode virar "2/2 linhas verdes": a
+  // linha existe na ElevenLabs, mas ninguém consegue ligar pra ela. O semáforo lia `ok` e mentia.
+  if (!twilio.lido) resumo.ok = false;
   return json({
     // `ok` = ninguém caído E nada essencial por ler. Uma frota "ok" com metade não lida seria a
     // mentira mais cara que esta rota poderia contar.

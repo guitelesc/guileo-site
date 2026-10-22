@@ -10,6 +10,7 @@
 // as linhas ⏳ viram ✅ aqui e no produto ao mesmo tempo.
 import { useLang } from "../i18n.jsx";
 import { useSeo } from "../lib/seo.js";
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 
 const C = {
   pt: {
@@ -24,7 +25,7 @@ const C = {
       ["Dia 1", "Você paga e a Gui nasce: nome do seu negócio, sua voz, seus serviços e preços. Sem reunião de setup."],
       ["Dia 2", "Você aponta seu telefone pra ela (ou a gente aponta). A partir daí, nenhuma ligação cai no vazio."],
       ["Dia 3–4", "Ela aprende com as primeiras ligações. Você ajusta o que ela fala direto no painel."],
-      ["Dia 5–7", "Primeiros agendamentos e orçamentos entrando sozinhos. Você vê tudo no cockpit, com nome e horário."],
+      ["Dia 5–7", `Primeiros agendamentos e orçamentos entrando sozinhos. Você vê tudo na ${NOME_DO_PAINEL}, com nome e horário.`],
     ],
     guaranteeHead: "Se não valer a pena",
     guarantee: "30 dias de garantia. Você pede o dinheiro de volta e a gente devolve — sem discussão e sem letra miúda.",
@@ -43,7 +44,7 @@ const C = {
       ["Day 1", "You pay and Gui is born: your business name, your voice, your services and prices. No setup meeting."],
       ["Day 2", "You point your phone line at her (or we do). From then on, no call goes unanswered."],
       ["Day 3–4", "She learns from the first calls. You adjust what she says, right in your dashboard."],
-      ["Day 5–7", "First bookings and quotes come in on their own. You see it all in the cockpit, with names and times."],
+      ["Day 5–7", `First bookings and quotes come in on their own. You see it all in the ${NOME_DO_PAINEL}, with names and times.`],
     ],
     guaranteeHead: "If it isn't worth it",
     guarantee: "30-day money-back guarantee. You ask, we refund — no argument, no fine print.",

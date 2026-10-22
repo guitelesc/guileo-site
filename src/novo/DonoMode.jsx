@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { waLink } from "../data/contact.js";
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RAIO-X DO DONO — a camada de venda do motor de WEBSITE UPGRADE.
@@ -36,10 +37,10 @@ const CATALOG = [
     ["Review Machine", "Requests, collects and answers 5★ reviews automatically. Reputation becomes a funnel.", 750],
     ["Ads · creative · local SEO", "Campaigns, creative and search built on top of the same engine — scoped and quoted per campaign, never guessed here.", 0],
   ]],
-  ["BUILD", "the site · the cockpit · the CRM", [
+  ["BUILD", `the site · the ${NOME_DO_PAINEL} · the CRM`, [
     ["Website Upgrade", "This page. Rebuilt, fast, on your brand — with the AI layer already wired in.", 0, "$500 one-time"],
     ["Full Backend CRM (Company OS)", "Every conversation becomes a record, history and next step — the whole business on one spine.", 3000],
-    ["Growth Cockpit Dashboard", "~30 screens of live operation: calls, schedule, payments, campaigns. The owner SEES it working.", 1500],
+    [`${NOME_DO_PAINEL} Dashboard`, "~30 screens of live operation: calls, schedule, payments, campaigns. The owner SEES it working.", 1500],
   ]],
 ];
 
@@ -313,7 +314,7 @@ export default function DonoMode({
               </div>
 
               <div className="flex gap-1.5 px-5 pt-3">
-                {[["system", "The menu"], ["cockpit", "Sample cockpit"], ["list", "On this page"]].map(([k, t]) => (
+                {[["system", "The menu"], ["cockpit", `Sample ${NOME_DO_PAINEL}`], ["list", "On this page"]].map(([k, t]) => (
                   <button key={k} onClick={() => setTab(k)}
                     className="dm-f rounded-full px-3 py-1.5 text-[11px] font-bold transition"
                     style={tab === k ? { background: accent, color: "#fff" } : { background: "rgba(255,255,255,.06)", color: "rgba(255,255,255,.62)" }}>

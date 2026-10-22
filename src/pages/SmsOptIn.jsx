@@ -1,4 +1,3 @@
-import { useState } from "react";
 import ConsentText from "../components/ConsentText.jsx";
 import LeadForm from "../components/LeadForm.jsx";
 import { useLang } from "../i18n.jsx";
@@ -21,7 +20,6 @@ import { useLang } from "../i18n.jsx";
 
 export default function SmsOptIn() {
   const { lang } = useLang();
-  const [amostra, setAmostra] = useState(false);
 
   const T = {
     en: {
@@ -34,7 +32,7 @@ export default function SmsOptIn() {
         "They tick the consent box below. It is UNCHECKED by default — the form cannot be submitted without it.",
         "They press “Get started”. Only then is the number added, and only for the messages described here.",
       ],
-      sampleH: "The consent box, exactly as it appears on the form",
+      sampleH: "The consent text, exactly as it appears next to the checkbox on the form below",
       whatH: "What we send",
       what: [
         ["Appointment confirmations and reminders", "after you book with a business that uses Guileo"],
@@ -50,6 +48,7 @@ export default function SmsOptIn() {
       ctaH: "Want to sign up?",
       cta: "Go to the form",
       legal: "Legal",
+      who: "Guileo AI is a brand operated by TRANSPOINT, Astoria, New York. Messages in this program are sent by TRANSPOINT under the Guileo AI name.",
     },
     pt: {
       eyebrow: "Programa de SMS · consentimento",
@@ -61,7 +60,7 @@ export default function SmsOptIn() {
         "Ela marca a caixa de consentimento abaixo. Ela vem DESMARCADA — sem marcar, o formulário não envia.",
         "Ela clica em “Começar”. Só então o número passa a receber as mensagens descritas aqui.",
       ],
-      sampleH: "A caixa de consentimento, exatamente como aparece no formulário",
+      sampleH: "O texto de consentimento, exatamente como aparece ao lado da caixa no formulário abaixo",
       whatH: "O que enviamos",
       what: [
         ["Confirmação e lembrete de agendamento", "depois que você marca com um negócio que usa a Guileo"],
@@ -77,6 +76,7 @@ export default function SmsOptIn() {
       ctaH: "Quer se cadastrar?",
       cta: "Ir para o formulário",
       legal: "Jurídico",
+      who: "Guileo AI é uma marca operada pela TRANSPOINT, Astoria, Nova York. As mensagens deste programa são enviadas pela TRANSPOINT com o nome Guileo AI.",
     },
   };
   const t = T[lang === "pt" ? "pt" : "en"];
@@ -86,6 +86,9 @@ export default function SmsOptIn() {
       <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-g-gold">{t.eyebrow}</div>
       <h1 className="mt-3 text-[34px] font-black leading-tight tracking-tight text-g-word">{t.h1}</h1>
       <p className="mt-4 text-[16px] leading-relaxed text-g-ink">{t.intro}</p>
+      {/* QUEM ENVIA (2026-10-13): a marca A2P registrada na Twilio é TRANSPOINT (o EIN). O revisor
+          compara esse nome com o site; sem esta linha, "Guileo" e "TRANSPOINT" parecem duas empresas. */}
+      <p className="mt-3 text-[14px] leading-relaxed text-g-muted">{t.who}</p>
 
       <h2 className="mt-10 text-[13px] font-bold uppercase tracking-wider text-g-muted">{t.stepsH}</h2>
       <ol className="mt-3 space-y-3">
@@ -97,14 +100,14 @@ export default function SmsOptIn() {
         ))}
       </ol>
 
-      {/* A AMOSTRA. Desmarcada por padrão — é este estado que a operadora precisa ver. */}
+      {/* A AMOSTRA SAIU (2026-09-28). Havia aqui uma segunda caixa de consentimento, "de exemplo",
+          acima do formulário real. Duas caixas com o mesmo texto confundem quem confere — e numa
+          leitura ao vivo a de exemplo apareceu MARCADA, numa página que afirma "desmarcada por
+          padrão". A campanha A2P reprovou duas vezes por CTA não verificável (erro 30909); a prova
+          tem que ser uma só e inequívoca: a caixa do formulário real, logo abaixo. */}
       <h2 className="mt-10 text-[13px] font-bold uppercase tracking-wider text-g-muted">{t.sampleH}</h2>
       <div className="mt-3 rounded-2xl border border-g-line bg-white/[0.04] p-5">
-        <label className="flex cursor-pointer items-start gap-3">
-          <input type="checkbox" checked={amostra} onChange={(e) => setAmostra(e.target.checked)}
-            className="mt-0.5 h-5 w-5 shrink-0 accent-g-green" aria-label="consent sample" />
-          <span className="text-[13.5px] leading-relaxed text-g-ink"><ConsentText /></span>
-        </label>
+        <p className="text-[13.5px] leading-relaxed text-g-ink"><ConsentText /></p>
       </div>
 
       <h2 className="mt-10 text-[13px] font-bold uppercase tracking-wider text-g-muted">{t.whatH}</h2>
@@ -136,6 +139,7 @@ export default function SmsOptIn() {
         {t.legal}: <a href="/privacy" className="text-g-gold hover:underline">Privacy Policy</a>
         <span className="mx-2 text-g-faint">·</span>
         <a href="/terms" className="text-g-gold hover:underline">Terms of Service</a>
+        <div className="mt-2">{t.who}</div>
       </div>
     </main>
   );

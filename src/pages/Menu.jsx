@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import logo from "../assets/guileo-mark.png";
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // /menu — ARMA DE PITCH (não linkada no site). O cardápio done-for-you por
@@ -57,7 +58,7 @@ const MODULES = [
   { icon: "📅", price: 800, pt: ["Lembretes + Escudo No-Show", "Confirmações inteligentes + risco de falta calculado por cliente. Agenda cheia de verdade."], en: ["Reminders + No-Show Shield", "Smart confirmations + per-customer no-show risk. A schedule that actually holds."], proof: "/produtos" },
   { icon: "⚡", price: 2000, pt: ["Speed-to-Lead 60s", "Lead novo (site, Yelp, formulário) recebe ligação da IA em ~60 segundos. Velocidade fecha."], en: ["Speed-to-Lead 60s", "New lead (site, Yelp, form) gets an AI call in ~60 seconds. Speed closes."], proof: "/produtos" },
   { icon: "🏗️", price: 3000, pt: ["CRM Completo (Company OS)", "Toda conversa vira cadastro, histórico e próximo passo — o negócio inteiro numa espinha só."], en: ["Full Backend CRM (Company OS)", "Every conversation becomes a record, history and next step — the whole business on one spine."], proof: "/portal" },
-  { icon: "📊", price: 1500, pt: ["Growth Cockpit", "~30 telas de operação real: ligações, agenda, pagamentos, campanhas. O dono VÊ funcionando."], en: ["Growth Cockpit Dashboard", "~30 screens of live operation: calls, schedule, payments, campaigns. The owner SEES it working."], proof: "/portal" },
+  { icon: "📊", price: 1500, pt: [NOME_DO_PAINEL, "~30 telas de operação real: ligações, agenda, pagamentos, campanhas. O dono VÊ funcionando."], en: [`${NOME_DO_PAINEL} Dashboard`, "~30 screens of live operation: calls, schedule, payments, campaigns. The owner SEES it working."], proof: "/portal" },
   { icon: "📐", price: 1800, pt: ["Motor de Orçamento", "A IA liga, coleta os dados do serviço e manda o orçamento por SMS+e-mail com link pra aprovar e agendar. Acima do teto, o escritório aprova antes de sair."], en: ["AI Quote Engine", "The AI calls, collects the job details and sends the quote by SMS+email with a link to approve and book. Above a set amount, the office approves before it goes out."], proof: "/produtos" },
   { icon: "🧾", price: 700, pt: ["Cobrança na Ligação", "Fechou no telefone? Link de pagamento por SMS ali mesmo. Orçamento perseguido até pagar."], en: ["Collect-on-the-Call", "Closed on the phone? Payment link by SMS right there. Quotes chased until paid."], proof: "/produtos" },
 ];

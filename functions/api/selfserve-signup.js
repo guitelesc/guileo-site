@@ -42,7 +42,7 @@ export async function onRequestPost(context) {
     // migration (db/pending_onboarding_agentname.sql) hasn't been applied yet — never regress signup.
     let r = await rpc("save_pending_onboarding", { ...base, p_agent_name: s(b.agent_name, 40) });
     if (!r.ok) r = await rpc("save_pending_onboarding", base);
-    if (!r.ok) return json({ ok: false, stored: false, error: `db ${r.status}` }, 502);
+    if (!r.ok) return json({ ok: false, stored: false, error: `db ${r.status}` }, 503);
     return json({ ok: true, stored: true });
   } catch (e) {
     return json({ error: String(e).slice(0, 140) }, 400);

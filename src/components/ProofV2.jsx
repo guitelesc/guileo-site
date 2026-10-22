@@ -18,11 +18,11 @@ export default function ProofV2() {
   const { lang } = useLang();
   const P = PV_COPY[lang] || PV_COPY.en;
   return (
-    <section className="relative overflow-hidden px-5 py-20">
+    <section className="relative overflow-hidden px-5 py-16">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(640px_300px_at_50%_20%,rgba(62,148,104,0.09),transparent)]" />
       <style>{`@keyframes pvreveal{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}@keyframes pvfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important}}`}</style>
 
-      <div className="mx-auto max-w-5xl text-center">
+      <div className="relative mx-auto max-w-4xl overflow-hidden rounded-3xl border border-g-line bg-g-creamd/70 px-6 py-10 text-center backdrop-blur sm:px-10">
         <div className="text-[12px] font-bold uppercase tracking-[0.26em] text-g-gold" style={{ animation: "pvreveal .7s ease both" }}>{P.eyebrow}</div>
 
         {/* compliance badges — "aligned with", not certified */}
@@ -33,13 +33,14 @@ export default function ProofV2() {
             Por que isso é melhor aqui: caixa em volta transforma cada norma num "produto"; solto,
             vira o que é — uma lista de padrões que a casa segue. E repetir a gramática do topo faz
             a página inteira parecer o mesmo sistema, que é o que estava faltando. */}
-        <div className="mx-auto mt-5 flex max-w-4xl flex-wrap items-center justify-center gap-x-8 gap-y-4">
+        {/* SELOS EM PÍLULA (Luis, 2026-09-09, print da apresentação de 19/08): escudo + nome numa
+            pílula de vidro, todas dentro de uma placa — aro de luz, verniz e sombra pela lei 4K. */}
+        <div className="mx-auto mt-6 flex max-w-4xl flex-wrap items-center justify-center gap-3">
           {BADGES.map((b, i) => (
-            <div key={b} className="flex items-center gap-2.5" style={{ animation: `pvreveal .7s cubic-bezier(.2,.7,.2,1) ${0.1 + i * 0.09}s both` }}>
-              <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/[0.04] text-[15px] ring-1 ring-white/10"
-                style={{ color: "rgba(237,231,220,0.85)" }}><FaShieldHalved /></span>
-              <div className="text-[12.5px] font-black tracking-tight text-g-word">{b}</div>
-            </div>
+            <span key={b} className="relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-g-line bg-white/[0.04] px-5 py-2.5 text-[14px] font-black tracking-tight text-g-word backdrop-blur-md"
+              style={{ animation: `pvreveal .7s cubic-bezier(.2,.7,.2,1) ${0.1 + i * 0.09}s both` }}>
+              <FaShieldHalved className="text-[13px] text-g-gold" /> {b}
+            </span>
           ))}
         </div>
         <p className="mx-auto mt-5 max-w-2xl text-[15px] leading-relaxed text-g-ink" style={{ animation: "pvreveal .8s ease .2s both" }}>

@@ -1,0 +1,4 @@
+-- GUILEO DESK v6 · opinião das clientes por profissional (2026-10-05). Migração desk_v6_4_opiniao_por_profissional.
+-- desk_opinioes(email,key,from,to) [porta _desk_ok] → por_profissional[{pro_id,name,total,visitas,ultimos[≤5]{texto,quando,servico,cliente(1º nome)}}].
+-- Fonte: biz_appointments.feedback (comentário privado de biz_visit_feedback). Sem nota numérica — nunca inventada.
+-- Provado com dados plantados (rollback): Ana 2 visitas/1 comentário, Bia 1/1.

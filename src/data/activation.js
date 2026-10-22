@@ -1,3 +1,4 @@
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 // ONE source of truth for the client-activation step-by-step. Used by:
 //   • /vendedor (seller hub → Ativação tab)   • /go-live (client-facing guide)   • /admin (owner tracking)
 // Keep it neutral/imperative so it reads fine for both the client and the operator. Trilingual.
@@ -18,9 +19,9 @@ export const ACTIVATION_STEPS = [
     icon: "🔗",
     title: { pt: "Conectar o portal", en: "Connect the portal", es: "Conectar el portal" },
     body: {
-      pt: "Entre em guileoai.com/portal com o MESMO email do pagamento e cole o código do email. O cockpit passa a mostrar seus dados reais.",
-      en: "Sign in at guileoai.com/portal with the SAME email you paid with and paste the code from the email. The cockpit now shows your real data.",
-      es: "Entra a guileoai.com/portal con el MISMO correo del pago y pega el código del correo. El cockpit muestra tus datos reales.",
+      pt: `Entre em guileoai.com/portal com o MESMO email do pagamento e cole o código do email. A ${NOME_DO_PAINEL} passa a mostrar seus dados reais.`,
+      en: `Sign in at guileoai.com/portal with the SAME email you paid with and paste the code from the email. The ${NOME_DO_PAINEL} now shows your real data.`,
+      es: `Entra a guileoai.com/portal con el MISMO correo del pago y pega el código del correo. La ${NOME_DO_PAINEL} muestra tus datos reales.`,
     },
   },
   {
@@ -63,9 +64,9 @@ export const ACTIVATION_STEPS = [
     icon: "🚀",
     title: { pt: "No ar", en: "Live", es: "En vivo" },
     body: {
-      pt: "Pronto! Acompanhe tudo no cockpit: ligações, agenda, pedidos e receita — em um lugar só.",
-      en: "Done! Track everything in the cockpit: calls, calendar, orders and revenue — in one place.",
-      es: "¡Listo! Sigue todo en el cockpit: llamadas, agenda, pedidos e ingresos — en un solo lugar.",
+      pt: `Pronto! Acompanhe tudo na ${NOME_DO_PAINEL}: ligações, agenda, pedidos e receita — em um lugar só.`,
+      en: `Done! Track everything in the ${NOME_DO_PAINEL}: calls, calendar, orders and revenue — in one place.`,
+      es: `¡Listo! Sigue todo en la ${NOME_DO_PAINEL}: llamadas, agenda, pedidos e ingresos — en un solo lugar.`,
     },
   },
 ];
@@ -75,9 +76,9 @@ export const ACTIVATION_SECTORS = [
     icon: "🍽️",
     name: { pt: "Restaurante — delivery", en: "Restaurant — delivery", es: "Restaurante — delivery" },
     note: {
-      pt: "Abra conta num agregador (Otter recomendado), ligue Uber/DoorDash/Grubhub nele e aponte o webhook de pedido para a Guileo. Aí todo pedido cai no cockpit junto dos diretos.",
-      en: "Open an aggregator account (Otter recommended), connect Uber/DoorDash/Grubhub there and point its order webhook at Guileo. Every order then lands in the cockpit next to direct ones.",
-      es: "Abre cuenta en un agregador (Otter recomendado), conecta Uber/DoorDash/Grubhub ahí y apunta su webhook de pedido a Guileo. Cada pedido cae en el cockpit junto a los directos.",
+      pt: `Abra conta num agregador (Otter recomendado), ligue Uber/DoorDash/Grubhub nele e aponte o webhook de pedido para a Guileo. Aí todo pedido cai na ${NOME_DO_PAINEL} junto dos diretos.`,
+      en: `Open an aggregator account (Otter recommended), connect Uber/DoorDash/Grubhub there and point its order webhook at Guileo. Every order then lands in the ${NOME_DO_PAINEL} next to direct ones.`,
+      es: `Abre cuenta en un agregador (Otter recomendado), conecta Uber/DoorDash/Grubhub ahí y apunta su webhook de pedido a Guileo. Cada pedido cae en la ${NOME_DO_PAINEL} junto a los directos.`,
     },
   },
   {

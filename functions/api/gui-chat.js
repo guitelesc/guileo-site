@@ -5,6 +5,8 @@
 import { factsBlock } from "../lib/productFacts.js";
 import { guardSystemPrompt } from "../lib/guiConstitution.js";
 import { json, sameOrigin, rateLimited } from "../lib/guard.js";
+import { falarComAgente } from "../lib/chatEleven.js";
+import { askClaude } from "../lib/guiBrain.js";
 
 const SYS = `You are Gui, the warm concierge AI on the website of Guileo (guileoai.com) — talk like a Four Seasons concierge: calm, confident, generous, never pushy.
 
@@ -62,7 +64,7 @@ export async function onRequestPost(context) {
       } catch { /* capture is best-effort — never break the concierge reply */ }
     }
 
-    if (!env.ANTHROPIC_API_KEY) {
+    if (!env.ANTHROPIC_API_KEY && !env.ELEVENLABS_API_KEY) {
       return json({ ok: true, answer: "I'm Gui — drop your number on this page and I'll call you in seconds to show you exactly how I'd answer, book and sell for your business. Or message us on WhatsApp." });
     }
     const langName = lang === "pt" ? "Brazilian Portuguese" : lang === "es" ? "LatAm Spanish" : lang === "hi" ? "Hindi" : "English";
@@ -70,19 +72,12 @@ export async function onRequestPost(context) {
       ...history.filter((h) => h && h.role && h.text).map((h) => ({ role: h.role === "gui" ? "assistant" : "user", content: String(h.text).slice(0, 800) })),
       { role: "user", content: msg },
     ];
-    // Model fallback chain (mirrors widget-chat.js) — a transient failure on one model must not drop
-    // the visitor to a generic line. Try each in order; stop early on auth/billing errors.
+    // 2026-10-05: sem chamada direta à Anthropic — askClaude usa o Escritor da ElevenLabs quando ela está desligada.
+    // Aqui, porém, o chat é PÚBLICO: sem a chave da Anthropic ele NÃO vai pro Escritor — pula direto
+    // para o agente de voz da Gui (falarComAgente, abaixo), que já atende este chat em produção.
     let answer = "";
-    for (const model of ["claude-fable-5", "claude-sonnet-5", "claude-haiku-4-5-20251001"]) {
-      try {
-        const r = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-          body: JSON.stringify({ model, max_tokens: 320, system: `${guardSystemPrompt(SYS, { audience: "public" })}\n\n${factsBlock()}\n\nReply in ${langName}.`, messages }),
-        });
-        if (r.ok) { const d = await r.json(); answer = (d?.content?.[0]?.text || "").trim(); if (answer) break; }
-        else if (r.status === 401 || r.status === 402) break; // auth/billing won't improve with another model
-      } catch { /* try next model */ }
+    if (env.ANTHROPIC_API_KEY) {
+      answer = await askClaude(env, { system: `${guardSystemPrompt(SYS, { audience: "public" })}\n\n${factsBlock()}\n\nReply in ${langName}.`, maxTokens: 320, messages });
     }
     // 🚨 A FRASE ENLATADA PRECISA SE IDENTIFICAR (24/08). Ela existe para o visitante nunca ver
     // uma tela muda — e isso está certo. O errado era ela sair com `ok:true` e mais nada: o
@@ -96,8 +91,21 @@ export async function onRequestPost(context) {
       es: "Estoy aquí. La forma más rápida de ver Guileo es dejar su número en esta página — Gui le llama en segundos. O escríbanos por WhatsApp.",
       en: "I'm here. The fastest way to see Guileo is to drop your number on this page — Gui calls you in seconds. Or message us on WhatsApp.",
     };
+    // ── SOCORRO PELO AGENTE DA ELEVENLABS (2026-09-22) ──────────────────────────────────────────
+    // O widget-chat ganhou este degrau em 25/08 e ficou verde; este endpoint ficou só na Anthropic —
+    // e quando ela cala (saldo/modelo), o canary do semáforo fica VERMELHO e o chat do portal
+    // responde enlatado. É a MESMA Gui do telefone respondendo por texto, no mesmo caminho que o
+    // widget já usa. Só entra se a Anthropic não respondeu; `cerebro_de` diz quem respondeu.
+    let cerebroDe = answer && env.ANTHROPIC_API_KEY ? "anthropic" : null;
+    if (!answer) {
+      try {
+        const r = await falarComAgente(env, { agentId: env.ELEVENLABS_AGENT_ID || "agent_5901ktdkev68f5kb161fmeax1rdm", texto: msg,
+          vars: { name: "", business: "", need: "", lang: (b.lang || "en").toString().slice(0, 2), canal: "texto", contato: "" } });
+        if (r && r.ok && r.texto) { answer = String(r.texto).trim(); cerebroDe = "elevenlabs"; }
+      } catch { /* sem socorro → enlatada abaixo, identificada */ }
+    }
     const cerebro = !!answer;
     if (!answer) answer = ENLATADA[(b.lang || "en").toString().slice(0, 2)] || ENLATADA.en;
-    return json({ ok: true, answer, cerebro });
+    return json({ ok: true, answer, cerebro, cerebro_de: cerebroDe });
   } catch (e) { return json({ error: String(e).slice(0, 160) }, 400); }
 }

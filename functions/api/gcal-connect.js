@@ -57,7 +57,7 @@ export async function onRequestGet(context) {
         redirect_uri: REDIRECT, grant_type: "authorization_code",
       }),
     });
-    if (!tr.ok) return json({ error: "token exchange failed" }, 502);
+    if (!tr.ok) return json({ error: "token exchange failed" }, 503);
     const tokens = await tr.json();
     await fetch(`${SB_URL}/rest/v1/rpc/store_integration`, {
       method: "POST",

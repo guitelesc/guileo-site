@@ -5,8 +5,9 @@
    tenant-gated exactly like /api/operations). Falls back to the demo view otherwise, so it looks alive
    before an account is connected. Cement-locked (#161512) + signal palette, mirroring the sibling tabs. */
 import { useEffect, useState } from "react";
-import { loadDataKey } from "../lib/portalApi.js";
+import { loadDataKey, chamarApi } from "../lib/portalApi.js";
 import { Card, SectionSkeleton, UI_LANG } from "../pages/Portal.jsx";
+import FalhaDeLeitura from "./FalhaDeLeitura.jsx";
 
 // signal palette (cimento locked): supplier muted · operation Gui-orange · close info-blue · profit done-green · risk attention-amber
 const GUI = "#FF8A33", INFO = "#5B9BD5", OK = "#3E9468", AMBER = "#FFC23D", MUTE = "#948C7B", ALERT = "#e0855f";
@@ -15,6 +16,13 @@ const KIND_ICON = { supplier: "🏭", operation: "⚙️", close: "🤝", profit
 
 const STR = {
   en: {
+    customer: "Customer", falhou: "I couldn't load your timeline just now.",
+    notOn: "Your money timeline isn't switched on for your account yet. Message our team and we'll turn it on.",
+    nSupplier: "What it costs Gui to operate (voice, texts, providers).", nOperation: "Jobs Gui handled in this window.",
+    nClose: "Completed jobs — the money came in.", nProfit: "Revenue minus the cost of operating.",
+    nNotMeasured: "Not measured for your account yet.", nRefunds: "refund(s)", nDisputes: "dispute(s)/chargeback(s)",
+    nWentBack: "money that went back to the customer.", nAtRisk: "job(s) at risk (no-shows/delays)",
+    nHealthy: "No refunds and no jobs at risk in this window — healthy.",
     title: "From supplier to customer", live: "LIVE", est: "sample",
     sub: "Your whole flow, left to right — from cost to profit in your hand, and the return risk.",
     window: "This month", cost: "Cost", revenue: "Revenue", profit: "Profit", risk: "Return risk",
@@ -28,6 +36,13 @@ const STR = {
     riskWord: "risk", daysAgo: "d ago", ltvWord: "at risk",
   },
   pt: {
+    customer: "Cliente", falhou: "Não consegui carregar a sua linha do tempo agora.",
+    notOn: "A sua linha do tempo do dinheiro ainda não está ligada para a sua conta. Fale com a nossa equipe e a gente liga.",
+    nSupplier: "O que custa pra Gui operar (voz, mensagens, provedores).", nOperation: "Serviços que a Gui conduziu nesta janela.",
+    nClose: "Serviços concluídos — o dinheiro entrou.", nProfit: "Receita menos o custo de operar.",
+    nNotMeasured: "Ainda não medido para a sua conta.", nRefunds: "reembolso(s)", nDisputes: "disputa(s)/chargeback(s)",
+    nWentBack: "dinheiro que voltou pro cliente.", nAtRisk: "serviço(s) em risco (faltas/atrasos)",
+    nHealthy: "Nenhum reembolso e nenhum serviço em risco nesta janela — saudável.",
     title: "Do fornecedor ao cliente", live: "AO VIVO", est: "exemplo",
     sub: "Seu fluxo inteiro, da esquerda pra direita — do custo ao lucro na sua mão, e o risco de retorno.",
     window: "Este mês", cost: "Custo", revenue: "Receita", profit: "Lucro", risk: "Risco de retorno",
@@ -41,6 +56,13 @@ const STR = {
     riskWord: "risco", daysAgo: "d atrás", ltvWord: "em risco",
   },
   es: {
+    customer: "Cliente", falhou: "No pude cargar tu línea de tiempo ahora.",
+    notOn: "Tu línea de tiempo del dinero aún no está activada para tu cuenta. Escríbele a nuestro equipo y la activamos.",
+    nSupplier: "Lo que le cuesta a Gui operar (voz, mensajes, proveedores).", nOperation: "Servicios que Gui atendió en esta ventana.",
+    nClose: "Servicios completados — el dinero entró.", nProfit: "Ingresos menos el costo de operar.",
+    nNotMeasured: "Aún no medido para tu cuenta.", nRefunds: "reembolso(s)", nDisputes: "disputa(s)/contracargo(s)",
+    nWentBack: "dinero que volvió al cliente.", nAtRisk: "servicio(s) en riesgo (ausencias/retrasos)",
+    nHealthy: "Sin reembolsos ni servicios en riesgo en esta ventana — saludable.",
     title: "Del proveedor al cliente", live: "EN VIVO", est: "ejemplo",
     sub: "Todo tu flujo, de izquierda a derecha — del costo a la ganancia en tu mano, y el riesgo de retorno.",
     window: "Este mes", cost: "Costo", revenue: "Ingresos", profit: "Ganancia", risk: "Riesgo de retorno",
@@ -54,6 +76,13 @@ const STR = {
     riskWord: "riesgo", daysAgo: "d atrás", ltvWord: "en riesgo",
   },
   hi: {
+    customer: "ग्राहक", falhou: "मैं अभी आपकी टाइमलाइन लोड नहीं कर सका।",
+    notOn: "आपकी मनी टाइमलाइन अभी आपके खाते के लिए चालू नहीं है। हमारी टीम को संदेश भेजें, हम चालू कर देंगे।",
+    nSupplier: "Gui को चलाने की लागत (वॉइस, संदेश, प्रदाता)।", nOperation: "इस अवधि में Gui द्वारा संभाले गए काम।",
+    nClose: "पूरे हुए काम — पैसा आ गया।", nProfit: "आय में से संचालन की लागत घटाकर।",
+    nNotMeasured: "आपके खाते के लिए अभी मापा नहीं गया।", nRefunds: "रिफंड", nDisputes: "विवाद/चार्जबैक",
+    nWentBack: "पैसा जो ग्राहक को वापस गया।", nAtRisk: "काम जोखिम में (नो-शो/देरी)",
+    nHealthy: "इस अवधि में कोई रिफंड नहीं और कोई काम जोखिम में नहीं — स्वस्थ।",
     title: "आपूर्तिकर्ता से ग्राहक तक", live: "लाइव", est: "नमूना",
     sub: "आपका पूरा प्रवाह, बाएँ से दाएँ — लागत से लेकर आपके हाथ में मुनाफ़ा, और वापसी का जोखिम।",
     window: "इस महीने", cost: "लागत", revenue: "आय", profit: "मुनाफ़ा", risk: "वापसी जोखिम",
@@ -111,6 +140,34 @@ function genDemo(V) {
   };
 }
 
+// 🌐 (2026-09-28) NOTA DE CADA ETAPA — montada AQUI, a partir dos números, no idioma da tela.
+// O servidor manda a nota pronta em português ("Serviços concluídos — o dinheiro entrou.") e,
+// quando a etapa não é medida, manda instrução de ENGENHARIA ("Instale db/cost_ledger.sql…").
+// As duas coisas iam direto para a tela de uma cliente que lê inglês. A nota do servidor só é
+// usada se ele confirmar que respondeu no idioma pedido (`lang` ecoado) E não for de engenharia.
+const ehEngenharia = (t) => /\bdb\/[\w.-]+|\.sql\b|supabase|cloudflare|\benv\b|_KEY\b|_SECRET\b|INGEST|instale|paste|HTTP \d{3}/i.test(String(t || ""));
+const notaDoEstagio = (st, langDoServidor) => {
+  const crua = String(st.note || "");
+  if (crua && ehEngenharia(crua)) return T("nNotMeasured");
+  if (crua && langDoServidor && langDoServidor === UI_LANG) return crua;
+  if (!crua) return "";
+  if (st.kind === "supplier") return T("nSupplier");
+  if (st.kind === "operation") return T("nOperation");
+  if (st.kind === "close") return T("nClose");
+  if (st.kind === "profit") return T("nProfit");
+  if (st.kind === "risk") {
+    if (st.real) {
+      const partes = [
+        Number(st.refund_count) > 0 ? `${num(st.refund_count)} ${T("nRefunds")}` : null,
+        Number(st.dispute_count) > 0 ? `${num(st.dispute_count)} ${T("nDisputes")}` : null,
+      ].filter(Boolean).join(" · ");
+      return `${partes} — ${T("nWentBack")}`;
+    }
+    return Number(st.count) > 0 ? `${num(st.count)} ${T("nAtRisk")}` : T("nHealthy");
+  }
+  return "";
+};
+
 const STAGE_LABEL = (k) => {
   const m = {
     supplier: T("cost"), operation: T("jobs"), close: T("closed"), profit: T("profit"), risk: T("risk"),
@@ -118,8 +175,9 @@ const STAGE_LABEL = (k) => {
   return m[k] || k;
 };
 
-function Node({ stage, i }) {
+function Node({ stage, i, langDoServidor }) {
   const c = KIND_COLOR[stage.kind] || MUTE;
+  const nota = notaDoEstagio(stage, langDoServidor);
   const hasAmt = Number.isFinite(Number(stage.amount_cents));
   return (
     <div className="relative flex flex-col items-center text-center shrink-0 w-[128px] sm:w-auto sm:flex-1"
@@ -147,7 +205,7 @@ function Node({ stage, i }) {
           {Number.isFinite(Number(stage.dispute_cents)) && Number(stage.dispute_cents) > 0 ? ` · ${money(stage.dispute_cents)}` : ""}
         </div>
       )}
-      {stage.note && <div className="mt-1 text-[10px] text-g-muted leading-snug max-w-[150px] mx-auto opacity-80">{stage.note}</div>}
+      {nota && <div className="mt-1 text-[10px] text-g-muted leading-snug max-w-[150px] mx-auto opacity-80">{nota}</div>}
     </div>
   );
 }
@@ -168,13 +226,9 @@ function ReturnRiskRecover({ email, dk }) {
   useEffect(() => {
     let alive = true;
     if (!email || !dk) { setRows([]); return; }
-    fetch("/api/growth-intel", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, token: dk, action: "churn" }),
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => { if (alive) setRows(j && j.ready && Array.isArray(j.atRisk) ? j.atRisk : []); })
-      .catch(() => { if (alive) setRows([]); });
+    // Bloco OPCIONAL: se a lista não veio, ele some (a falha da tela é dita pelo bloco principal).
+    chamarApi("/api/growth-intel", { email, token: dk, action: "churn", lang: UI_LANG })
+      .then((r) => { if (alive) setRows(!r.motivo && r.data.ready && Array.isArray(r.data.atRisk) ? r.data.atRisk.filter(Boolean) : []); });
     return () => { alive = false; };
   }, [email, dk]);
 
@@ -184,15 +238,10 @@ function ReturnRiskRecover({ email, dk }) {
 
   async function recover(r, i, contact) {
     setSt((s) => ({ ...s, [i]: "sending" }));
-    try {
-      const res = await fetch("/api/growth-intel", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, token: dk, action: "reengage", name: r.name, contact, suggested: r.suggested_action, risk: r.risk }),
-      });
-      const j = res.ok ? await res.json().catch(() => null) : null;
-      if (j && j.ok) setSt((s) => ({ ...s, [i]: j.sent ? "sent" : "queued" })); // honest: sent NOW vs queued
-      else setSt((s) => ({ ...s, [i]: "error" }));
-    } catch { setSt((s) => ({ ...s, [i]: "error" })); }
+    const res = await chamarApi("/api/growth-intel", { email, token: dk, action: "reengage", name: r.name, contact, suggested: r.suggested_action, risk: r.risk, lang: UI_LANG });
+    const j = res.motivo ? null : res.data;
+    if (j && j.ok) setSt((s) => ({ ...s, [i]: j.sent ? "sent" : "queued" })); // honest: sent NOW vs queued
+    else setSt((s) => ({ ...s, [i]: "error" }));
   }
 
   return (
@@ -207,7 +256,7 @@ function ReturnRiskRecover({ email, dk }) {
           return (
             <div key={i} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
               <div className="min-w-0">
-                <div className="text-sm font-bold text-g-word truncate">{r.name || "Cliente"}</div>
+                <div className="text-sm font-bold text-g-word truncate">{r.name || T("customer")}</div>
                 <div className="text-[11px] text-g-muted num truncate">
                   {Number.isFinite(Number(r.risk)) ? `${num(r.risk)}% ${T("riskWord")}` : ""}
                   {Number.isFinite(days) ? ` · ${num(days)}${T("daysAgo")}` : ""}
@@ -234,7 +283,7 @@ function ReturnRiskRecover({ email, dk }) {
 }
 
 function TimelineView({ d, real, email = "", dk = "" }) {
-  const stages = Array.isArray(d.stages) ? d.stages : [];
+  const stages = (Array.isArray(d.stages) ? d.stages : []).filter(Boolean);
   const m = d.money || {};
   const cost = intCents(m.cost_cents), rev = intCents(m.revenue_cents), profit = intCents(m.profit_cents), risk = intCents(m.risk_cents);
   // width of each money segment (cost + profit + risk share the revenue bar; guard div-by-zero)
@@ -265,7 +314,7 @@ function TimelineView({ d, real, email = "", dk = "" }) {
           <div className="hidden sm:block absolute left-10 right-10 top-[52px] h-[2px] rounded-full"
             style={{ background: `linear-gradient(90deg, ${MUTE}55, ${GUI}, ${INFO}, ${OK}, ${AMBER}88)` }} />
           <div className="relative flex sm:grid sm:grid-cols-5 gap-2 sm:gap-1 items-start min-w-[560px] sm:min-w-0">
-            {stages.map((s, i) => <Node key={s.key || i} stage={s} i={i} />)}
+            {stages.map((s, i) => <Node key={s.key || i} stage={s} i={i} langDoServidor={d.lang} />)}
           </div>
         </div>
       </Card>
@@ -317,19 +366,29 @@ function Metric({ label, value, color, big }) {
 function Timeline({ V, real = null, email = "", dataKey = "" }) {
   const dk = dataKey || loadDataKey();
   const [data, setData] = useState(null); // null = fetch in flight (real mode)
+  const [falha, setFalha] = useState(null);
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     let alive = true;
-    if (!real || !email || !dk) { setData(null); return; }
-    fetch("/api/timeline", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, dataKey: dk }) })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => { if (alive) setData(j || { ready: false }); })
-      .catch(() => { if (alive) setData({ ready: false }); });
+    // 🚨 (2026-09-28) Dois defeitos aqui. (1) Conta real SEM chave/e-mail: `data` ficava null e a
+    // tela era esqueleto para sempre. (2) Falha de leitura virava `{ready:false}` e a tela dizia
+    // "Connect your account and install the money engines" — para quem JÁ está conectada, e
+    // pedindo que a cliente "instale motores".
+    if (!real) { setData(null); setFalha(null); return; }
+    if (!email || !dk) { setFalha("sem_credencial"); setData({ ready: false }); return; }
+    setData(null); setFalha(null);
+    chamarApi("/api/timeline", { email, dataKey: dk, lang: UI_LANG }).then((r) => {
+      if (!alive) return;
+      if (r.motivo) { setFalha(r.motivo); setData({ ready: false }); return; }
+      setData(r.data);
+    });
     return () => { alive = false; };
-  }, [real, email, dk]);
+  }, [real, email, dk, tentativa]);
 
   const demo = !real;
   if (real && data === null) return <SectionSkeleton rows={5} />;
+  if (real && falha) return <FalhaDeLeitura motivo={falha} onRetry={() => setTentativa((n) => n + 1)} titulo={T("falhou")} />;
 
   const d = demo ? genDemo(V) : (data || { ready: false });
 
@@ -338,7 +397,8 @@ function Timeline({ V, real = null, email = "", dataKey = "" }) {
     return (
       <div className="space-y-4 stagger">
         <Card>
-          <div className="text-sm text-g-muted">{d.note || T("notReady")}</div>
+          {/* a nota do servidor aqui é de engenharia ("Instale db/…sql") — a tela diz a versão da cliente */}
+          <div className="text-sm text-g-muted">{T("notOn")}</div>
         </Card>
       </div>
     );

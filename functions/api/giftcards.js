@@ -13,8 +13,11 @@
 //     create{ card:{amount_cents,code?,purchaser_contact?,recipient_contact?} } -> { ok, card }
 //     validate{ code }                                -> { valid, card? }
 //     redeem{ code, amount_cents }                    -> { ok, balance_cents, redeemed_cents }
-//     buy{ amount_cents, recipient_contact?, purchaser_contact? } -> { ok, url }   (Stripe Checkout)
+//     buy{ amount_cents, recipient_contact?, purchaser_contact? } -> { ok, url, via? }   (Stripe Checkout:
+//        Stripe PRÓPRIO do negócio quando há chave; senão plataforma; sem nenhum → payments_not_connected)
 import { json } from "../lib/guard.js";
+import { camposDoDestino } from "../lib/contaDoCliente.js";
+import { caminhoDaVenda, criarVendaPropria } from "../lib/vendaOnlineNegocio.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -92,29 +95,46 @@ export async function onRequestPost(context) {
       if (!isFinite(cents) || cents < 50) return json({ error: "amount_cents too low (min $0.50)" }, 400);
       const MAX = (Number(env.MAX_CHARGE_USD) || 100000) * 100;
       if (cents > MAX) return json({ error: "amount exceeds the cap" }, 400);
-      if (!env.STRIPE_SECRET_KEY) return json({ ok: false, ready: false, note: "Set STRIPE_SECRET_KEY in Cloudflare to sell online." });
-
+      // PARA ONDE VAI O DINHEIRO (2026-09-30): para a conta Stripe DO NEGÓCIO, ou a venda não
+      // acontece. Antes este checkout saía sem destino e o pagamento cairia na conta da Guileo.
+      // 2026-10-05 (lib/vendaOnlineNegocio.js): chave PRÓPRIA do negócio (Stripe dos EUA) → a sessão
+      // nasce na conta dele; o vale nasce na volta /api/venda-paga ou na conferência de hora em hora
+      // (mesma SQL do webhook, uma vez só). Sem nada → payments_not_connected (EUA: guileoai.com/receber).
       const recipient = (b.recipient_contact || "").toString().slice(0, 160);
       const purchaser = (b.purchaser_contact || "").toString().slice(0, 160);
+      const caminho = await caminhoDaVenda(env, email);
+      if (caminho.via === "recusa") return json(caminho.corpo);
+      if (caminho.via === "propria") {
+        const res = await criarVendaPropria(env, { tenant: email, chave: caminho.chave, kind: "giftcard", cents, recipient, purchaser, recipientName: String(b.recipient_name || ""), message: String(b.message || "") });
+        if (!res.ok) return json({ ok: false, ...res }, res.reason === "stripe_error" || res.reason === "stripe_rejected_key" || res.reason === "permission_missing" ? 503 : 400);
+        return json({ ok: true, url: res.url, id: res.id, via: "stripe_own", conferencia: res.conferencia });
+      }
+      const destino = caminho.destino;
+      if (!env.STRIPE_SECRET_KEY) return json({ ok: false, ready: false, note: "Set STRIPE_SECRET_KEY in Cloudflare to sell online." });
       const form = {
         mode: "payment",
         "line_items[0][quantity]": "1",
         "line_items[0][price_data][currency]": "usd",
         "line_items[0][price_data][unit_amount]": String(cents),
         "line_items[0][price_data][product_data][name]": `Gift card — $${(cents / 100).toFixed(2)}`,
-        success_url: "https://guileoai.com/portal?bought=1",
-        cancel_url: "https://guileoai.com/portal",
+        // quem paga é a CLIENTE do negócio — ela não tem painel. /api/obrigado diz o que aconteceu.
+        success_url: `https://guileoai.com/api/obrigado?o=${"gift"}`,
+        cancel_url: "https://guileoai.com/api/obrigado?o=cancel",
         "metadata[guileo]": "giftcard",
         "metadata[client_email]": email,
         "metadata[amount_cents]": String(cents),
         "metadata[recipient_contact]": recipient,
         "metadata[purchaser_contact]": purchaser,
+        // nome de quem ganha e o recado vão no e-mail do vale (webhook → enviarValePresente)
+        ...(String(b.recipient_name || "").replace(/[\r\n]+/g, " ").trim() ? { "metadata[recipient_name]": String(b.recipient_name).replace(/[\r\n]+/g, " ").trim().slice(0, 80) } : {}),
+        ...(String(b.message || "").trim() ? { "metadata[gift_message]": String(b.message).trim().slice(0, 400) } : {}),
         "payment_intent_data[metadata][guileo]": "giftcard",
         "payment_intent_data[metadata][client_email]": email,
         "payment_intent_data[metadata][amount_cents]": String(cents),
         // A Stripe promo code could discount a gift card below its face value — a coupon must never
         // hand out full value. Keep checkout at the exact amount the buyer is paying for.
         allow_promotion_codes: "false",
+        ...camposDoDestino(destino, { cents, feePct: parseFloat(env.GUILEO_FEE_PCT || "0") }),
       };
       const sr = await fetch("https://api.stripe.com/v1/checkout/sessions", {
         method: "POST",
@@ -122,7 +142,7 @@ export async function onRequestPost(context) {
         body: new URLSearchParams(form).toString(),
       });
       const sd = await sr.json().catch(() => ({}));
-      if (!sr.ok) return json({ ok: false, error: (sd?.error?.message || `stripe ${sr.status}`).slice(0, 200) }, 502);
+      if (!sr.ok) return json({ ok: false, error: (sd?.error?.message || `stripe ${sr.status}`).slice(0, 200) }, 503);
       return json({ ok: true, url: sd.url || "", id: sd.id || "" });
     }
 

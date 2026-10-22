@@ -18,7 +18,7 @@
 // replies are logged to the thread and returned as { sent:false, pending:true } with a note.
 import { json } from "../lib/guard.js";
 import { sendText } from "../lib/twilio.js";
-import { svcRpc } from "../lib/sb.js";
+import { svcRpc, svcJson } from "../lib/sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -107,8 +107,26 @@ export async function onRequestPost(context) {
       const logSummary = `${contact}: ${body}`; // stripped to `body` by the read model's prefix rule
       const logPayload = { kind: "human_reply", to: phone || thread, channel };
 
+      // A RESPOSTA DO DONO SAI PELO NÚMERO DO PRÓPRIO NEGÓCIO (2026-09-30). Conversa de WhatsApp
+      // que chegou pelo número do negócio (WhatsApp Cloud) era respondida pelo número COMPARTILHADO
+      // da plataforma na Twilio: a cliente recebia a resposta de um desconhecido, em outra conversa.
+      // Com o WhatsApp do negócio conectado, a resposta vai por ele — dentro da janela de 24h da
+      // Meta; fora dela a Meta recusa e isso volta escrito, sem fingir entrega.
+      if (isWa && phone) {
+        const wa = await svcJson(env, "whatsapp_cloud_creds_lookup", { p_secret: env.INGEST_SECRET || "", p_email: email }).catch(() => null);
+        if (wa && typeof wa === "object" && !wa.erro_http && wa.phone_number_id && wa.access_token) {
+          const { sendWhatsApp } = await import("./whatsapp-cloud.js");
+          const r = await sendWhatsApp(env, wa, phone, body);
+          await ingest(env, email, "WhatsApp", logSummary, logPayload);
+          if (r && r.ok && r.id) return json({ ok: true, sent: true, via: "whatsapp_cloud" });
+          return json({ ok: true, sent: false, pending: true, note: "WhatsApp did not accept the message — outside the 24-hour window you can only send an approved template. Reply logged, not delivered." });
+        }
+      }
       if ((isSms || isWa) && phone) {
-        const res = await sendText(env, phone, body, { channel: isWa ? "whatsapp" : "sms" });
+        // SMS sai do número do negócio quando ele tem um (é para onde a pessoa responde).
+        let de = "";
+        if (isSms) { try { const ag = await svcJson(env, "client_agent_resolve", { p_secret: env.INGEST_SECRET || "", p_email: email }); if (ag && ag.number) de = String(ag.number); } catch { /* remetente da plataforma */ } }
+        const res = await sendText(env, phone, body, { channel: isWa ? "whatsapp" : "sms", from: de });
         await ingest(env, email, isWa ? "WhatsApp" : "SMS", logSummary, logPayload);
         if (res.sent) return json({ ok: true, sent: true });
         // Twilio not configured / send failed → keep the logged bubble, tell the truth.

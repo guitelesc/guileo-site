@@ -27,6 +27,32 @@ import { FaRotateRight, FaArrowLeft, FaStar, FaUserTie, FaComments, FaInbox } fr
 import { tr, UI_LANG, Card } from "../pages/Portal.jsx";
 import { GuiChat } from "./Support.jsx";
 import { PERDA, GANHO, NOT_MEASURED } from "../lib/reportScale.js";
+import { chamarApi } from "../lib/portalApi.js";
+import { fraseDaFalha } from "./FalhaDeLeitura.jsx";
+
+/* ── A FRASE DE UMA FALHA (2026-09-28) ─────────────────────────────────────────────────────────
+   O bloco do consultor mostrava "unreadable answer (HTTP 502)" com um "Tentar de novo" que nunca
+   funcionava: a Cloudflare troca o corpo de todo 502 por texto puro, o JSON com o motivo morria no
+   caminho e a tela imprimia o código HTTP. O backend passou a responder 503/409 (o corpo
+   sobrevive) com `{error|erro|motivo}` já no idioma pedido — por isso `lang` vai em toda chamada.
+   Regra da tela: NUNCA imprimir código HTTP, nome de RPC ou texto cru. A frase do servidor só
+   entra se for frase de gente (tem espaço, não tem jargão) e estiver no idioma da tela; senão,
+   vale a nossa. */
+const pareceEngenharia = (t) => /HTTP\s*\d{3}|\b[a-z]+_[a-z_]+\b|\.sql\b|supabase|cloudflare|\brpc\b|_KEY\b|_SECRET\b|undefined|TypeError|fetch failed/i.test(t);
+const pareceOutroIdioma = (t) => UI_LANG === "en" && /[ãõçáéíóúâêôà]/i.test(t);
+const fraseDoServidor = (d) => {
+  // Só `motivo`/`erro`: são os campos que o servidor preenche com frase PARA A TELA, no idioma
+  // pedido. `error` e `note` carregam texto de máquina ("unauthorized", exceção crua, "paste
+  // db/…sql") e nunca são impressos.
+  const t = String((d && (d.motivo || d.erro)) || "").trim();
+  if (!t || !/\s/.test(t) || pareceEngenharia(t) || pareceOutroIdioma(t)) return "";
+  return t.slice(0, 200);
+};
+/** r = {http, d, motivo} (ver `post`). `padrao` = frase nossa para quando nada melhor existe. */
+const fraseDe = (r, padrao) => {
+  if (r?.motivo === "rede" || r?.motivo === "resposta_estranha" || r?.motivo === "chave_invalida" || r?.motivo === "sem_credencial") return fraseDaFalha(r.motivo);
+  return fraseDoServidor(r?.d) || (r?.motivo ? fraseDaFalha(r.motivo) : padrao);
+};
 
 // ── idioma ──────────────────────────────────────────────────────────────────────────────────────
 // "en-US" cravado num Intl já fez a agente falar metade em inglês numa ligação em português.
@@ -121,10 +147,11 @@ export default function Relacionamento({ onNav, email = "", dataKey = "" }) {
   const vivo = useRef(true);
   useEffect(() => { vivo.current = true; return () => { vivo.current = false; }; }, []);
 
+  // Mesmo formato de antes ({http, d}) + `motivo` de transporte. NUNCA levanta (os `catch` dos
+  // chamadores ficaram só como cinto de segurança).
   const post = useCallback(async (body) => {
-    const r = await fetch("/api/support", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: dataKey, email, ...body }) });
-    const d = await r.json().catch(() => null);
-    return { http: r.status, d };
+    const r = await chamarApi("/api/support", { token: dataKey, email, lang: UI_LANG, ...body });
+    return { http: r.http, d: r.data, motivo: r.motivo };
   }, [dataKey, email]);
 
   // ── chamados. `ready:false` é "não consegui ler", NÃO "vazio" — o servidor manda a bandeira de
@@ -136,27 +163,31 @@ export default function Relacionamento({ onNav, email = "", dataKey = "" }) {
     // para a lista — ou seja, o comprovante sumia da tela de quem acabou de escrever.
     setCh((c) => ({ ...c, st: "loading" }));
     try {
-      const { http, d } = await post({ action: "list", limit: 100 });
+      const r = await post({ action: "list", limit: 100 });
+      const { d } = r;
       if (!vivo.current) return;
-      if (!d) { setCh({ st: "fail", motivo: `${tr("unreadable answer")} (HTTP ${http})` }); return; }
-      if (d.error) { setCh({ st: "fail", motivo: String(d.error) }); return; }
-      if (d.ok !== true) { setCh({ st: "fail", motivo: d.motivo || `HTTP ${http}` }); return; }
-      if (d.ready !== true) { setCh({ st: "notready", motivo: d.note || tr("support isn't activated yet") }); return; }
-      setCh({ st: "ok", lista: Array.isArray(d.tickets) ? d.tickets : [] });
-    } catch (e) { if (vivo.current) setCh({ st: "fail", motivo: String(e?.message || e).slice(0, 70) }); }
+      if (r.motivo || !d || d.error || d.ok !== true) { setCh({ st: "fail", motivo: fraseDe(r, fraseDaFalha("servidor")) }); return; }
+      // a nota do servidor aqui é de engenharia ("paste db/…sql") — a tela diz a versão da cliente
+      if (d.ready !== true) { setCh({ st: "notready", motivo: tr("support isn't activated yet") }); return; }
+      if (!Array.isArray(d.tickets)) { setCh({ st: "fail", motivo: fraseDaFalha("resposta_estranha") }); return; }
+      setCh({ st: "ok", lista: d.tickets.filter(Boolean) });
+    } catch { if (vivo.current) setCh({ st: "fail", motivo: fraseDaFalha("rede") }); }
   }, [conectado, post]);
 
   const lerConsultor = useCallback(async () => {
     if (!conectado) return;
     setConsultor({ st: "loading" });
     try {
-      const { http, d } = await post({ action: "consultor" });
+      const r = await post({ action: "consultor" });
+      const { d } = r;
       if (!vivo.current) return;
-      if (!d) { setConsultor({ st: "fail", motivo: `${tr("unreadable answer")} (HTTP ${http})` }); return; }
-      if (d.ok !== true) { setConsultor({ st: "fail", motivo: d.motivo || d.error || `HTTP ${http}` }); return; }
-      if (!d.consultor || !d.consultor.nome) { setConsultor({ st: "sem", motivo: d.motivo || "" }); return; }
+      // "Sem consultor atribuído" é ESTADO DA CONTA, não pane: o servidor marca `sem_consultor`
+      // (e responde 409 nas ações). Cai no bloco calmo, sem botão de tentar de novo.
+      if (d && d.sem_consultor === true) { setConsultor({ st: "sem" }); return; }
+      if (r.motivo || !d || d.ok !== true) { setConsultor({ st: "fail", motivo: fraseDe(r, tr("I couldn't load your consultant. Please try again.")) }); return; }
+      if (!d.consultor || !d.consultor.nome) { setConsultor({ st: "sem" }); return; }
       setConsultor({ st: "ok", nome: d.consultor.nome, idioma: d.consultor.idioma || "" });
-    } catch (e) { if (vivo.current) setConsultor({ st: "fail", motivo: String(e?.message || e).slice(0, 70) }); }
+    } catch { if (vivo.current) setConsultor({ st: "fail", motivo: fraseDaFalha("rede") }); }
   }, [conectado, post]);
 
   useEffect(() => { lerChamados(); }, [lerChamados]);
@@ -218,7 +249,7 @@ export default function Relacionamento({ onNav, email = "", dataKey = "" }) {
           RELAÇÃO. O cliente não escolhe pra qual vendedor escreve: o banco resolve o par por
           `seller_of_client`. Só aparece quando existe consultor — canal sem ninguém do outro lado
           é pior que canal nenhum: o cliente escreve e o silêncio vira abandono. */}
-      {consultor.st === "ok" && <ChatDoConsultor post={post} nome={consultor.c?.nome || ""} />}
+      {consultor.st === "ok" && <ChatDoConsultor post={post} nome={consultor.nome || ""} />}
 
       <ComoEstamos post={post} temConsultor={consultor.st === "ok"} />
     </div>
@@ -296,11 +327,12 @@ function Detalhe({ t, post, onBack, onReplied }) {
     if (!texto || env.st === "wait") return;
     setEnv({ st: "wait" });
     try {
-      const { http, d } = await post({ action: "reply", id: t.id, text: texto });
+      const r = await post({ action: "reply", id: t.id, text: texto });
+      const { d } = r;
       // 🚨 a RPC devolve BOOLEANO: `r.ok` do fetch não prova nada. Só `replied === true` é sucesso.
-      if (d && d.replied === true) { setEnv({ st: "ok" }); setTxt(""); onReplied?.(); return; }
-      setEnv({ st: "erro", motivo: d?.motivo || d?.error || (d ? tr("it wasn't recorded") : `HTTP ${http}`) });
-    } catch (err) { setEnv({ st: "erro", motivo: String(err?.message || err).slice(0, 70) }); }
+      if (!r.motivo && d && d.replied === true) { setEnv({ st: "ok" }); setTxt(""); onReplied?.(); return; }
+      setEnv({ st: "erro", motivo: fraseDe(r, tr("it wasn't recorded")) });
+    } catch { setEnv({ st: "erro", motivo: fraseDaFalha("rede") }); }
   };
 
   return (
@@ -368,14 +400,15 @@ function MeuConsultor({ c, post, onRetry, onSent }) {
     if (!texto || env.st === "wait") return;
     setEnv({ st: "wait" });
     try {
-      const { http, d } = await post({
+      const r = await post({
         action: "create", subject: `${tr("Message for my consultant")}: ${texto.slice(0, 80)}`,
         category: "consultor", body: texto, ai_handled: false, status: "escalated", priority: "high",
       });
+      const { d } = r;
       // Comprovante ou nada: `{ok:true, ready:false}` chega em HTTP 200 e NÃO é sucesso.
-      if (d && d.ok === true && d.ready === true && d.id) { setEnv({ st: "ok", id: d.id }); setTxt(""); setAbrir(false); onSent?.(); return; }
-      setEnv({ st: "erro", motivo: d?.motivo || d?.note || d?.error || `HTTP ${http}` });
-    } catch (err) { setEnv({ st: "erro", motivo: String(err?.message || err).slice(0, 70) }); }
+      if (!r.motivo && d && d.ok === true && d.ready === true && d.id) { setEnv({ st: "ok", id: d.id }); setTxt(""); setAbrir(false); onSent?.(); return; }
+      setEnv({ st: "erro", motivo: d && d.ready === false ? tr("support isn't activated yet") : fraseDe(r, tr("it wasn't recorded")) });
+    } catch { setEnv({ st: "erro", motivo: fraseDaFalha("rede") }); }
   };
 
   return (
@@ -435,11 +468,12 @@ function ComoEstamos({ post, temConsultor }) {
     if (!n || env.st === "wait") return;
     setEnv({ st: "wait" });
     try {
-      const { http, d } = await post({ action: "avaliar", nota: n, comentario: comentario.trim() || undefined });
+      const r = await post({ action: "avaliar", nota: n, comentario: comentario.trim() || undefined });
+      const { d } = r;
       // "ok" sem id é promessa sem lastro.
-      if (d && d.ok === true && d.id) { setEnv({ st: "ok", id: d.id, nota: n }); return; }
-      setEnv({ st: "erro", motivo: d?.motivo || d?.error || (d ? tr("it wasn't recorded") : `HTTP ${http}`) });
-    } catch (e) { setEnv({ st: "erro", motivo: String(e?.message || e).slice(0, 70) }); }
+      if (!r.motivo && d && d.ok === true && d.id) { setEnv({ st: "ok", id: d.id, nota: n }); return; }
+      setEnv({ st: "erro", motivo: fraseDe(r, tr("it wasn't recorded")) });
+    } catch { setEnv({ st: "erro", motivo: fraseDaFalha("rede") }); }
   };
 
   const dada = env.st === "ok" ? env.nota : null;
@@ -494,10 +528,14 @@ function ChatDoConsultor({ post, nome }) {
   const [txt, setTxt] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
+  const [naoLeu, setNaoLeu] = useState("");   // frase da falha de LEITURA do histórico
 
+  // 🚨 (2026-09-28) Falha ao ler o histórico era ignorada: o chat aparecia VAZIO, como se o
+  // consultor nunca tivesse respondido. Quem espera resposta e vê vazio conclui que foi ignorado.
   const ler = useCallback(async () => {
-    const { http, d } = await post({ action: "chat_ler" });
-    if (http === 200 && d?.ok) setMsgs(Array.isArray(d.mensagens) ? d.mensagens : []);
+    const r = await post({ action: "chat_ler" });
+    if (!r.motivo && r.d?.ok && Array.isArray(r.d.mensagens)) { setMsgs(r.d.mensagens.filter(Boolean)); setNaoLeu(""); }
+    else setNaoLeu(fraseDe(r, fraseDaFalha("servidor")));
   }, [post]);
   useEffect(() => { ler(); }, [ler]);
 
@@ -505,9 +543,9 @@ function ChatDoConsultor({ post, nome }) {
     const t2 = txt.trim();
     if (!t2) return;
     setEnviando(true); setErro("");
-    const { http, d } = await post({ action: "chat_enviar", texto: t2 });
-    if (http === 200 && d?.ok && d.id) { setTxt(""); await ler(); }
-    else setErro(d?.motivo || `HTTP ${http}`);
+    const r = await post({ action: "chat_enviar", texto: t2 });
+    if (!r.motivo && r.d?.ok && r.d.id) { setTxt(""); await ler(); }
+    else setErro(fraseDe(r, tr("it wasn't recorded")));
     setEnviando(false);
   };
 
@@ -519,6 +557,12 @@ function ChatDoConsultor({ post, nome }) {
       <p className="mt-1 text-[12px] text-g-muted">
         {tr("Direct line to the person who sold you Guileo — not the support queue.")}
       </p>
+      {naoLeu && (
+        <div role="alert" className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-amber-300">
+          <span className="min-w-0 flex-1">⚠️ {tr("I couldn't load the conversation")} · <span className="text-g-muted">{naoLeu}</span></span>
+          <button type="button" onClick={ler} className="min-h-[44px] rounded-full border border-white/15 px-3.5 text-[11px] font-bold text-g-word">{tr("Try again")}</button>
+        </div>
+      )}
       {msgs.length > 0 && (
         <ul className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
           {msgs.map((m) => (

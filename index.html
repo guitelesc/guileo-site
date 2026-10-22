@@ -3,8 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Guileo — Intelligent Solutions for Your Business · Work Smart. Grow Faster. Sleep Better.</title>
-    <meta name="description" content="Guileo is intelligent solutions for your business — we solve whatever you need. It starts with an AI that answers calls, books, sells and collects 24/7, plus websites, apps, marketing and automation. Live in under 7 days. 30-day money-back." />
+    <!-- TITLE/DESCRIPTION/OG = os MESMOS textos do useSeo() de src/pages/Home.jsx (en).
+         Este HTML cru é o que WhatsApp, LinkedIn, Facebook e o primeiro passe do Google leem —
+         eles não rodam JavaScript. O título antigo ("Intelligent Solutions for Your Business")
+         era o posicionamento de antes: quem compartilhava o link mostrava uma empresa, quem abria
+         a página via outra. Mudou o useSeo da Home? Mude aqui no mesmo commit. -->
+    <title>Guileo — AI, ads & creative for your business · answers 24/7, and builds your site</title>
+    <meta name="description" content="One house: the AI answers calls and messages, books and sells 24/7 in 16 languages — and the team runs your ads, marketing and content, and builds your site, app and custom software. Live in 7 days. From $149/mo, 30-day money-back." />
     <meta name="author" content="Guileo · ORIGEM LTDA" />
     <!-- favicon: browsers that support SVG load the tiny 9kb vector; PNG is the fallback -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -34,7 +39,10 @@
          in the fallback, so there is no invisible-text flash. -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
     <link rel="preconnect" href="https://unpkg.com" />
-    <link rel="preconnect" href="https://fccwbafkbhkyrvauzshl.supabase.co" />
+    <!-- o preconnect apontava para fccwbafkbhkyrvauzshl.supabase.co, um projeto que o site NÃO usa
+         (src/lib/supabase.js fala com ynihodbknhjirkdogxby): abria conexão à toa e deixava a de
+         verdade fria. -->
+    <link rel="preconnect" href="https://ynihodbknhjirkdogxby.supabase.co" />
     <!-- preconnect: ad pixels (only actually load when their IDs are set in src/lib/analytics.js) -->
     <link rel="preconnect" href="https://connect.facebook.net" />
     <link rel="preconnect" href="https://www.googletagmanager.com" />
@@ -46,46 +54,70 @@
       Google gtag/GA4 (www.googletagmanager.com / www.google-analytics.com /
       *.google-analytics.com / *.analytics.google.com), TikTok (analytics.tiktok.com).
       NOTE: public/_headers MUST be updated with the SAME additions (it is the
-      authoritative production header and is NOT owned/edited here).
+      authoritative production header).
+      cdn.jsdelivr.net/npm/@alexanderolsen/ (2026-09-27): o widget da ElevenLabs carrega o
+      reamostrador de áudio (libsamplerate.worklet.js) DESSE endereço quando o navegador não
+      entrega o microfone na taxa pedida (Firefox, alguns aparelhos). Worklet é script: sem a
+      origem em script-src a chamada de VOZ morre calada nesses navegadores — o texto segue
+      funcionando e ninguém percebe. Liberado só o caminho do pacote, não o CDN inteiro.
     ──────────────────────────────────────────────────────────────────────── -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'wasm-unsafe-eval' blob: https://static.cloudflareinsights.com https://unpkg.com https://*.elevenlabs.io https://connect.facebook.net https://www.googletagmanager.com https://analytics.tiktok.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://cloudflareinsights.com https://*.supabase.co wss://*.supabase.co https://*.elevenlabs.io wss://*.elevenlabs.io https://*.livekit.cloud wss://*.livekit.cloud https://unpkg.com https://connect.facebook.net https://www.facebook.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.tiktok.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io; frame-src 'self' https://*.elevenlabs.io; media-src 'self' blob: https://*.elevenlabs.io; worker-src 'self' blob: https://unpkg.com https://*.elevenlabs.io" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'wasm-unsafe-eval' blob: https://static.cloudflareinsights.com https://unpkg.com https://cdn.jsdelivr.net/npm/@alexanderolsen/ https://*.elevenlabs.io https://connect.facebook.net https://www.googletagmanager.com https://analytics.tiktok.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://use.typekit.net https://p.typekit.net; font-src 'self' data: https://fonts.gstatic.com https://use.typekit.net; img-src 'self' data: blob: https:; connect-src 'self' https://cloudflareinsights.com https://*.supabase.co wss://*.supabase.co https://*.elevenlabs.io wss://*.elevenlabs.io https://*.livekit.cloud wss://*.livekit.cloud https://unpkg.com https://connect.facebook.net https://www.facebook.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.tiktok.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io; frame-src 'self' https://*.elevenlabs.io; media-src 'self' blob: https://*.elevenlabs.io; worker-src 'self' blob: https://unpkg.com https://*.elevenlabs.io" />
     <meta name="theme-color" content="#161512" />
-    <meta property="og:title" content="Guileo — AI Systems for Business" />
-    <meta property="og:description" content="Work Smart. Grow Faster. Sleep Better. AI that answers, books and closes 24/7." />
+    <meta property="og:title" content="Guileo — AI, ads & creative for your business · answers 24/7, and builds your site" />
+    <meta property="og:description" content="One house: the AI answers calls and messages, books and sells 24/7 in 16 languages — and the team runs your ads, marketing and content, and builds your site, app and custom software. Live in 7 days. From $149/mo, 30-day money-back." />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://guileoai.com" />
+    <!-- og:url com a barra final: igual ao canonical. "guileoai.com" e "guileoai.com/" contam como
+         dois endereços na contagem de compartilhamentos. -->
+    <meta property="og:url" content="https://guileoai.com/" />
+    <!-- og.jpg conferido em produção em 2026-09-27: 200, image/jpeg, 1200x630, 149 KB. -->
     <meta property="og:image" content="https://guileoai.com/og.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://guileoai.com/og.jpg" />
-    <meta name="twitter:title" content="Guileo — AI Systems for Business" />
-    <meta name="twitter:description" content="Work Smart. Grow Faster. Sleep Better. AI that answers, books and closes 24/7." />
-    <meta property="og:site_name" content="Guileo" />
+    <meta name="twitter:image:alt" content="Guileo — AI that answers, books and closes 24/7" />
+    <meta name="twitter:title" content="Guileo — AI, ads & creative for your business · answers 24/7, and builds your site" />
+    <meta name="twitter:description" content="One house: the AI answers calls and messages, books and sells 24/7 in 16 languages — and the team runs your ads, marketing and content, and builds your site, app and custom software. Live in 7 days. From $149/mo, 30-day money-back." />
+    <meta property="og:site_name" content="Guileo AI" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="pt_BR" />
     <meta property="og:locale:alternate" content="es_ES" />
+    <meta property="og:locale:alternate" content="hi_IN" />
     <meta property="og:image:alt" content="Guileo — AI that answers, books and closes 24/7" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
     <meta name="keywords" content="AI voice agent, AI receptionist, AI for restaurants, AI for clinics, AI for home services, missed call text back, bilingual AI, atendimento por IA, recepcionista virtual, IA para negócios" />
     <link rel="canonical" href="https://guileoai.com/" />
+    <!-- hreflang: o idioma é escolhido por ?lang= (LangProvider em src/i18n.jsx lê o parâmetro
+         antes da preferência salva). São os únicos endereços por idioma que EXISTEM — não há
+         /pt, /es ou /hi, e inventá-los aqui mandaria o Google para 404. -->
     <link rel="alternate" hreflang="x-default" href="https://guileoai.com/" />
     <link rel="alternate" hreflang="en" href="https://guileoai.com/" />
     <link rel="alternate" hreflang="pt" href="https://guileoai.com/?lang=pt" />
     <link rel="alternate" hreflang="es" href="https://guileoai.com/?lang=es" />
     <link rel="alternate" hreflang="hi" href="https://guileoai.com/?lang=hi" />
+    <!-- JSON-LD em DOIS blocos, os dois marcados com data-guileo-global (src/pages/Novo.jsx remove
+         por esse atributo nas vitrines de cliente):
+         1) a empresa — vale para o site inteiro;
+         2) o FAQ — só faz sentido na home. Tem id próprio porque a Home.jsx o SUBSTITUI pelo FAQ
+            que está visível na tela (10 perguntas, no idioma do visitante). Juntos num bloco só,
+            a home ficava com dois FAQPage — erro de dado estruturado no Search Console.
+         sameAs: só perfis que existem e respondem (LinkedIn conferido 200 em 2026-09-27; os dois
+         Instagram são os de src/data/contactData.js). -->
     <script type="application/ld+json" data-guileo-global>
     {"@context":"https://schema.org","@graph":[
-      {"@type":"Organization","@id":"https://guileoai.com/#org","name":"Guileo","legalName":"ORIGEM LTDA","url":"https://guileoai.com","logo":"https://guileoai.com/favicon.png","image":"https://guileoai.com/og.jpg","email":"smart@guileoai.com","founder":{"@type":"Person","name":"Luis Teles"},"description":"AI systems for business — voice agents, websites, apps and growth.","areaServed":["US","BR"],"knowsLanguage":["en","pt","es"],"sameAs":[],"contactPoint":{"@type":"ContactPoint","contactType":"sales","email":"smart@guileoai.com","availableLanguage":["English","Portuguese","Spanish"]}},
-      {"@type":"WebSite","@id":"https://guileoai.com/#website","url":"https://guileoai.com","name":"Guileo","publisher":{"@id":"https://guileoai.com/#org"},"inLanguage":["en","pt","es"]},
-      {"@type":"Service","name":"AI voice agent & growth automation","provider":{"@id":"https://guileoai.com/#org"},"areaServed":["US","BR"],"serviceType":"AI receptionist, booking, lead capture and marketing automation","description":"An AI team that answers every call and message 24/7, books appointments, recovers leads and grows revenue — for restaurants, clinics, home services and more.","offers":{"@type":"Offer","priceCurrency":"USD","price":"149","description":"Self-service plans from $149/mo; tailored done-for-you packages quoted per business."}},
-      {"@type":"FAQPage","mainEntity":[
+      {"@type":"Organization","@id":"https://guileoai.com/#org","name":"Guileo AI","alternateName":"Guileo","legalName":"ORIGEM LTDA","url":"https://guileoai.com/","logo":{"@type":"ImageObject","url":"https://guileoai.com/favicon.png","width":512,"height":512},"image":"https://guileoai.com/og.jpg","email":"smart@guileoai.com","founder":{"@type":"Person","name":"Luis Teles"},"description":"AI systems for business — voice agents, ads, websites, apps and growth.","areaServed":["US","BR"],"knowsLanguage":["en","pt","es","hi"],"sameAs":["https://www.linkedin.com/company/guileoai/","https://instagram.com/guileoai","https://instagram.com/guileo.ad"],"contactPoint":{"@type":"ContactPoint","contactType":"sales","email":"smart@guileoai.com","availableLanguage":["English","Portuguese","Spanish","Hindi"]}},
+      {"@type":"WebSite","@id":"https://guileoai.com/#website","url":"https://guileoai.com/","name":"Guileo AI","alternateName":"Guileo","publisher":{"@id":"https://guileoai.com/#org"},"inLanguage":["en","pt","es","hi"]},
+      {"@type":"Service","name":"AI voice agent & growth automation","provider":{"@id":"https://guileoai.com/#org"},"areaServed":["US","BR"],"serviceType":"AI receptionist, booking, lead capture and marketing automation","description":"An AI team that answers every call and message 24/7, books appointments, recovers leads and grows revenue — for restaurants, clinics, home services and more.","offers":{"@type":"Offer","priceCurrency":"USD","price":"149","description":"Self-service plans from $149/mo; tailored done-for-you packages quoted per business."}}
+    ]}
+    </script>
+    <script type="application/ld+json" id="faq-jsonld-estatico" data-guileo-global>
+    {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
         {"@type":"Question","name":"How fast can Guileo go live?","acceptedAnswer":{"@type":"Answer","text":"Most businesses are live in under 7 days — we build and wire everything for you."}},
         {"@type":"Question","name":"Is there a guarantee?","acceptedAnswer":{"@type":"Answer","text":"Yes — a 30-day money-back guarantee. The risk is ours."}},
         {"@type":"Question","name":"Does the AI replace my staff?","acceptedAnswer":{"@type":"Answer","text":"No. It covers what your team can't — nights, weekends, simultaneous calls and follow-ups — and a real human supervises and takes over when needed."}},
         {"@type":"Question","name":"What does it cost?","acceptedAnswer":{"@type":"Answer","text":"Self-service plans start at $149/month ($149 Essential, $897 Personalized, $1,997 Full Operation). Tailored done-for-you packages are quoted after we study your business."}},
-        {"@type":"Question","name":"What languages does the AI speak?","acceptedAnswer":{"@type":"Answer","text":"It speaks your customers' language automatically — English, Portuguese and Spanish."}}
-      ]}
+        {"@type":"Question","name":"What languages does the AI speak?","acceptedAnswer":{"@type":"Answer","text":"It answers in your customers' language automatically — 16 languages, including English, Portuguese, Spanish and Hindi."}}
     ]}
     </script>
   </head>

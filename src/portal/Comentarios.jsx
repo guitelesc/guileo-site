@@ -13,23 +13,19 @@
    Registered by the Portal orchestrator (tab key 'comentarios'). */
 import { useState, useEffect, useCallback } from "react";
 import { FaComments, FaPlus, FaTrash, FaPen, FaCheck, FaXmark } from "react-icons/fa6";
-import { toast } from "../lib/portalApi.js";
-import { tr, Card, Empty, SectionSkeleton } from "../pages/Portal.jsx";
+import { toast, chamarApi } from "../lib/portalApi.js";
+import { tr, Card, Empty, SectionSkeleton, UI_LANG } from "../pages/Portal.jsx";
+import { fraseDaFalha } from "./FalhaDeLeitura.jsx";
+import DirectMetricas from "./DirectMetricas.jsx";
 import { LANGS_ORDENADOS, rotuloIdioma } from "../data/langs.js";
 // AMBIGUAS vem do MESMO módulo que o webhook usa pra decidir. Se a tela tivesse a própria lista,
 // ela avisaria sobre uma palavra e o servidor decidiria por outra — aviso que mente é pior que
 // aviso nenhum.
 import { AMBIGUAS, normalizar } from "../../functions/lib/comentarios.js";
 
-async function api(body) {
-  try {
-    const r = await fetch("/api/meta-comentarios", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-    });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch { return null; }
-}
+// Devolve {data, motivo} e nunca levanta. (2026-09-28: devolvia `null` em toda falha — 401, 500
+// e rede caída viravam a mesma frase "Could not reach the server".)
+const api = (body) => chamarApi("/api/meta-comentarios", { ...body, lang: UI_LANG });
 
 const VAZIA = {
   id: "", nome: "", ig_id: "", media_id: "", keywords: "", match_mode: "palavra",
@@ -51,8 +47,11 @@ export default function Comentarios({ email, dataKey }) {
   const [carregando, setCarregando] = useState(!!(email && dataKey));
   const [pronto, setPronto] = useState(true);
   const [nota, setNota] = useState("");
+  const [falhou, setFalhou] = useState(false);   // true = não consegui LER (tem "tentar de novo")
   const [campanhas, setCampanhas] = useState([]);
-  const [stats, setStats] = useState({});
+  // O funil do Guileo Direct (db/direct_metricas.sql). `versao` remonta o painel quando a lista
+  // recarrega (salvar/apagar campanha) — sem isso ele ficaria mostrando o número de antes.
+  const [metricas, setMetricas] = useState({ m: null, erro: "", dias: 30, versao: 0 });
   const [form, setForm] = useState(null);       // null = nenhum formulário aberto
   const [salvando, setSalvando] = useState(false);
   const [aba, setAba] = useState("en");         // qual idioma está sendo editado
@@ -62,23 +61,31 @@ export default function Comentarios({ email, dataKey }) {
   // Aplica a resposta na tela. Separado do fetch para o efeito abaixo poder DESCARTAR uma
   // resposta que chegou tarde demais (troca de conta / desmontagem) em vez de escrever estado
   // de um pedido que já não interessa — a corrida clássica que faz a tela mostrar dado de outro.
-  const aplicar = useCallback((d) => {
+  const aplicar = useCallback((r) => {
     // ⚠️ resposta nula NÃO vira lista vazia silenciosa: "zero campanhas" e "a chamada falhou"
     // parecem idênticos na tela, e esse disfarce já produziu diagnóstico falso neste projeto.
-    if (!d) { setPronto(false); setNota(tr("Could not reach the server. Nothing was changed.")); }
+    const d = r.data;
+    if (r.motivo || !d) { setPronto(false); setFalhou(true); setNota(fraseDaFalha(r.motivo || "resposta_estranha")); }
+    else if (d.ready === false) {
+      // 🌐 A `nota` do servidor é instrução de ENGENHARIA, em português ("cole db/meta_comment_dm.sql
+      // no Supabase (rpc 404)", "INGEST_SECRET não configurado"). Ia direto para a tela da cliente.
+      // A tela diz o que ELA precisa saber: ainda não está ligado, e quem liga somos nós.
+      setPronto(false); setFalhou(false);
+      setNota(tr("This feature isn't switched on for your account yet. Message our team and we'll turn it on."));
+    } else if (!Array.isArray(d.campanhas)) { setPronto(false); setFalhou(true); setNota(fraseDaFalha("resposta_estranha")); }
     else {
-      setPronto(d.ready !== false);
-      setNota(d.nota || "");
-      setCampanhas(Array.isArray(d.campanhas) ? d.campanhas : []);
-      setStats(d.stats || {});
+      setPronto(true); setFalhou(false);
+      setNota("");
+      setCampanhas(d.campanhas.filter(Boolean));
+      setMetricas((v) => ({ m: d.metricas || null, erro: d.metricas_erro || "", dias: d.dias || 30, versao: v.versao + 1 }));
     }
     setCarregando(false);
   }, []);
 
   const carregar = useCallback(async (aindaVale = () => true) => {
     if (!live) return;
-    const d = await api({ email, token: dataKey });
-    if (aindaVale()) aplicar(d);
+    const r = await api({ email, token: dataKey });
+    if (aindaVale()) aplicar(r);
   }, [email, dataKey, live, aplicar]);
 
   useEffect(() => {
@@ -101,7 +108,7 @@ export default function Comentarios({ email, dataKey }) {
     for (const [c, t] of Object.entries(form.dm_i18n || {})) if (String(t).trim()) dm[c] = String(t).trim();
     for (const [c, t] of Object.entries(form.public_reply_i18n || {})) if (String(t).trim()) pr[c] = String(t).trim();
     setSalvando(true);
-    const d = await api({
+    const r = await api({
       email, token: dataKey, action: "salvar",
       campanha: {
         ...form, id: form.id || undefined,
@@ -115,14 +122,18 @@ export default function Comentarios({ email, dataKey }) {
     });
     setSalvando(false);
     // Sem o id de volta não houve gravação — "ok" sem comprovante é promessa sem lastro.
-    if (d && d.ok && d.id) { toast(tr("Campaign saved ✓")); setForm(null); carregar(); }
-    else toast(`${tr("Could not save")}${d && d.motivo ? ` (${d.motivo})` : ""}`);
+    const d = r.data;
+    if (!r.motivo && d && d.ok && d.id) { toast(tr("Campaign saved ✓")); setForm(null); carregar(); }
+    // o `motivo`/`error` cru do servidor ("ig_id e dm_text são obrigatórios", "resposta inesperada")
+    // ia entre parênteses para a tela; agora vai a frase da falha, no idioma dela
+    else if (d && d.ready === false) toast(tr("This feature isn't switched on for your account yet. Message our team and we'll turn it on."));
+    else toast(`${tr("Could not save")}${r.motivo && r.http !== 400 ? ` — ${fraseDaFalha(r.motivo)}` : ""}`);
   };
 
   const apagar = async (id) => {
-    const d = await api({ email, token: dataKey, action: "apagar", id });
-    if (d && d.ok) { toast(tr("Campaign deleted")); carregar(); }
-    else toast(tr("Could not delete"));
+    const r = await api({ email, token: dataKey, action: "apagar", id });
+    if (!r.motivo && r.data && r.data.ok) { toast(tr("Campaign deleted")); carregar(); }
+    else toast(`${tr("Could not delete")}${r.motivo ? ` — ${fraseDaFalha(r.motivo)}` : ""}`);
   };
 
   // Derivados da campanha aberta. Fora de hook de propósito: são cálculo puro do form atual,
@@ -137,11 +148,13 @@ export default function Comentarios({ email, dataKey }) {
   return (
     <div className="space-y-4">
       {/* ── o que esta tela faz, em uma frase ───────────────────────────────── */}
-      <Card tone="gui">
+      {/* tone="gui" não existe no Card (só green/gold/red) — o cartão saía sem o destaque. */}
+      <Card tone="gold">
         <div className="flex items-start gap-3">
           <FaComments className="mt-1 shrink-0 text-[#FF8A33]" />
           <div>
-            <h3 className="text-sm font-semibold">{tr("Comment → DM")}</h3>
+            {/* Nome próprio do produto: não se traduz (como o Guileo Pulse). */}
+            <h3 className="text-sm font-semibold">Guileo Direct <span className="ml-1 text-[11px] font-normal text-g-muted">· {tr("Comment → DM")}</span></h3>
             <p className="mt-1 text-xs text-g-muted">
               {tr("Someone comments your keyword on a post or reel and gets the answer in their DM a second later. The DM opens a real conversation — Gui takes it from there.")}
             </p>
@@ -155,28 +168,19 @@ export default function Comentarios({ email, dataKey }) {
 
       {/* ── estado honesto: por que não está pronto ─────────────────────────── */}
       {live && !pronto && (
-        <Card tone="attention">
+        <Card tone={falhou ? "red" : "gold"}>
           <p className="text-xs">
-            <strong>{tr("Not active yet.")}</strong>{" "}
-            {nota || tr("The database step is missing.")}
+            <strong>{falhou ? tr("I couldn't load this just now.") : tr("Not active yet.")}</strong>{" "}
+            {nota}
           </p>
+          {falhou && <button type="button" onClick={() => { setCarregando(true); carregar(); }} className="mt-2 rounded-full border border-g-gold/40 px-3 py-1 text-[11px] font-black text-g-gold hover:bg-g-gold/10 transition">{tr("↻ Try again")}</button>}
         </Card>
       )}
 
-      {/* ── números ─────────────────────────────────────────────────────────── */}
+      {/* ── o funil do Guileo Direct (substitui os 3 números de antes, que só contavam o envio) ── */}
       {live && pronto && (
-        <div className="grid gap-3 sm:grid-cols-3">
-          {[
-            [tr("DMs sent · 30d"), stats.enviados ?? 0],
-            [tr("People reached"), stats.pessoas ?? 0],
-            [tr("Active campaigns"), campanhas.filter((c) => c.active).length],
-          ].map(([rot, val]) => (
-            <Card key={rot}>
-              <div className="text-[11px] uppercase tracking-wide text-g-muted">{rot}</div>
-              <div className="mt-2 text-2xl font-semibold">{val}</div>
-            </Card>
-          ))}
-        </div>
+        <DirectMetricas key={metricas.versao} api={api} email={email} dataKey={dataKey}
+          inicial={metricas.m} erroInicial={metricas.erro} diasInicial={metricas.dias} />
       )}
 
       {/* ── lista ───────────────────────────────────────────────────────────── */}
@@ -193,7 +197,12 @@ export default function Comentarios({ email, dataKey }) {
             </button>
           </div>
 
-          {!campanhas.length
+          {/* "No campaigns yet" só com a lista LIDA. Sem leitura (falha ou recurso desligado) a
+              lista vazia por baixo do aviso dizia as duas coisas ao mesmo tempo: "não consegui
+              ler" e "você não tem nenhuma". */}
+          {!pronto
+            ? <p className="px-5 py-6 text-center text-xs text-g-muted">{nota}</p>
+            : !campanhas.length
             ? <Empty icon="💬" text="No campaigns yet. Create one and every comment starts working for you." />
             : (
               <ul className="divide-y divide-white/5">
@@ -265,7 +274,7 @@ export default function Comentarios({ email, dataKey }) {
               <input value={form.media_id} onChange={(e) => setForm({ ...form, media_id: e.target.value })} className={INPUT} placeholder={tr("all posts")} />
             </Campo>
             <Campo rot={tr("Keywords")} hint={tr("Comma separated. Accents and punctuation are handled for you.")}>
-              <input value={form.keywords} onChange={(e) => setForm({ ...form, keywords: e.target.value })} className={INPUT} placeholder="preço, valor, quanto" />
+              <input value={form.keywords} onChange={(e) => setForm({ ...form, keywords: e.target.value })} className={INPUT} placeholder={tr("price, cost, how much")} />
             </Campo>
             <Campo rot={tr("Matching")} hint={tr("Whole word is safer: it never fires inside a longer word.")}>
               <select value={form.match_mode} onChange={(e) => setForm({ ...form, match_mode: e.target.value })} className={INPUT}>

@@ -92,12 +92,12 @@ export async function onRequest(context) {
       body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: [para], subject: tpl.subject, html: tpl.html }),
     });
   } catch (e) {
-    return json({ ok: false, enviado: false, erro: String(e).slice(0, 200) }, 502);
+    return json({ ok: false, enviado: false, erro: String(e).slice(0, 200) }, 503);
   }
   // "ok" sem comprovante é promessa sem lastro: só 2xx é envio, e o id do Resend é o recibo.
   if (!r.ok) {
     const detail = (await r.text().catch(() => "")).slice(0, 300);
-    return json({ ok: false, enviado: false, status: r.status, detail }, 502);
+    return json({ ok: false, enviado: false, status: r.status, detail }, 503);
   }
   const rid = await r.json().catch(() => ({}));
   return json({ ok: true, enviado: true, para, assunto: tpl.subject, link, resend_id: rid.id || null });

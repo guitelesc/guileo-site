@@ -10,7 +10,8 @@
 // Reads via growth_intel.sql RPCs (INGEST-gated server-side). Same proven per-tenant
 // gate call-logs/crm/noshow-radar use: get_client_data binds email↔connection-key and
 // returns null on a mismatch, so one tenant's key can NEVER read another tenant's data.
-// No OWNER_EMAIL fallback. Graceful { ready:false } note until db/growth_intel.sql is pasted.
+// No OWNER_EMAIL fallback. Falha de RPC → { ok:false, ready:false, note, error, erro,
+// detalhe_tecnico } em HTTP 200 (as telas descartam corpo de resposta não-2xx; ver `fora`).
 import { json } from "../lib/guard.js";
 import { winbackCustomerEmail } from "../lib/emailTemplates.js";
 import { sbKey, svcJson } from "../lib/sb.js";
@@ -80,30 +81,56 @@ export async function onRequestPost(context) {
       method: "POST", headers: { apikey: sbKey(env), Authorization: `Bearer ${sbKey(env)}`, "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const notPasted = { ok: true, ready: false, note: "Paste db/growth_intel.sql in Supabase to activate Growth Intelligence." };
+    // 🚨 "PASTE db/growth_intel.sql" ERA MENTIRA E ERA PARA O CLIENTE (incidente 2026-09-28).
+    // As RPCs EXISTEM. O que falhava era o NOME DO PARÂMETRO: este arquivo mandava `p_email` e
+    // crm_lead_sources / crm_forecast / booking_intents_abandoned / intent_recovery_claim recebem
+    // `p_client_email` (conferido no pg_proc). O PostgREST devolvia 404 "function not found", a
+    // rota traduzia qualquer falha em "cole o SQL" com ok:true, e o dono do spa lia uma instrução
+    // de engenharia na aba Inteligência. Agora: frase segura no idioma da tela, `ok:false`, e o
+    // motivo real em `detalhe_tecnico`.
+    // HTTP 200 DE PROPÓSITO: GrowthIntel/Followups/Overview fazem `if (!r.ok) return null` — um
+    // 503 aqui jogaria a frase fora e a tela voltaria a adivinhar.
+    const tela = ["en", "pt", "es", "hi"].includes(String(b.lang || "").toLowerCase().slice(0, 2))
+      ? String(b.lang).toLowerCase().slice(0, 2)
+      : (["en", "pt", "es", "hi"].includes(String((gdj.identity && gdj.identity.lang) || "").slice(0, 2)) ? String(gdj.identity.lang).slice(0, 2) : "en");
+    const FRASE_FORA = {
+      en: "I couldn't load this data right now. Please try again in a moment.",
+      pt: "Não consegui carregar estes dados agora. Tente de novo em instantes.",
+      es: "No pude cargar estos datos ahora. Inténtelo de nuevo en un momento.",
+      hi: "मैं अभी यह डेटा लोड नहीं कर सका। कृपया थोड़ी देर में फिर कोशिश करें।",
+    }[tela];
+    const fora = async (nome, r, extra = {}) => {
+      let cru = ""; try { cru = (await r.text()).slice(0, 200); } catch { /* corpo já lido */ }
+      return json({ ok: false, ready: false, note: FRASE_FORA, error: FRASE_FORA, erro: FRASE_FORA, detalhe_tecnico: `${nome} HTTP ${r.status}: ${cru}`, ...extra });
+    };
+    const notPasted = { ok: false, ready: false, note: FRASE_FORA, error: FRASE_FORA, erro: FRASE_FORA };
 
     const action = (b.action || "ltv").toString();
 
     if (action === "sources") {
       const days = Math.min(Math.max(parseInt(b.days, 10) || 90, 7), 365);
-      const r = await rpc("crm_lead_sources", { p_secret: secret, p_email: email, p_days: days });
-      if (!r.ok) return json({ ...notPasted, sources: [] });
-      const sources = (await r.json()) || [];
+      const r = await rpc("crm_lead_sources", { p_secret: secret, p_client_email: email, p_days: days });
+      if (!r.ok) return fora("crm_lead_sources", r, { sources: [] });
+      const sources = await r.json().catch(() => null);
+      // lista ausente ≠ lista vazia: `|| []` diria "nenhuma origem" quando a leitura falhou.
+      if (!Array.isArray(sources)) return json({ ...notPasted, detalhe_tecnico: "crm_lead_sources: resposta não é lista", sources: [] });
       return json({ ok: true, ready: true, sources });
     }
 
     if (action === "forecast") {
-      const r = await rpc("crm_forecast", { p_secret: secret, p_email: email });
-      if (!r.ok) return json({ ...notPasted, forecast: null });
+      const r = await rpc("crm_forecast", { p_secret: secret, p_client_email: email });
+      if (!r.ok) return fora("crm_forecast", r, { forecast: null });
       const forecast = await r.json().catch(() => null);
+      if (!forecast || typeof forecast !== "object") return json({ ...notPasted, detalhe_tecnico: "crm_forecast: resposta ilegível", forecast: null });
       return json({ ok: true, ready: true, forecast });
     }
 
     if (action === "abandoned") {
       const older = Math.min(Math.max(parseInt(b.older_min, 10) || 30, 5), 1440);
-      const r = await rpc("booking_intents_abandoned", { p_secret: secret, p_email: email, p_older_min: older, p_limit: 50 });
-      if (!r.ok) return json({ ...notPasted, count: 0, intents: [] });
-      const intents = (await r.json()) || [];
+      const r = await rpc("booking_intents_abandoned", { p_secret: secret, p_client_email: email, p_older_min: older, p_limit: 50 });
+      if (!r.ok) return fora("booking_intents_abandoned", r, { count: 0, intents: [] });
+      const intents = await r.json().catch(() => null);
+      if (!Array.isArray(intents)) return json({ ...notPasted, detalhe_tecnico: "booking_intents_abandoned: resposta não é lista", count: 0, intents: [] });
       return json({ ok: true, ready: true, count: intents.length, intents });
     }
 
@@ -112,8 +139,10 @@ export async function onRequestPost(context) {
       // client_event so it shows in the live feed and Gui's callback picks it up.
       const intentId = (b.intent_id || "").toString().trim();
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(intentId)) return json({ error: "bad intent_id" }, 400);
-      const cr = await rpc("intent_recovery_claim", { p_secret: secret, p_email: email, p_intent_id: intentId });
-      if (!cr.ok) return json({ ...notPasted, claimed: false });
+      // mesmo defeito de nome: a RPC recebe `p_client_email` — com `p_email` o "recuperar" nunca
+      // reivindicou um agendamento abandonado sequer.
+      const cr = await rpc("intent_recovery_claim", { p_secret: secret, p_client_email: email, p_intent_id: intentId });
+      if (!cr.ok) return fora("intent_recovery_claim", cr, { claimed: false });
       const claimed = await cr.json().catch(() => false);
       if (claimed === true) {
         const who = (b.name || "").toString().slice(0, 120) || "Cliente";
@@ -131,7 +160,7 @@ export async function onRequestPost(context) {
       // Clientes fiéis prestes a sumir: pontua 0-100 quem tem PADRÃO real (≥3 visitas, ≥14d),
       // devolve top em risco (>=50) com ação sugerida (call/sms/watch). Nunca cria falso-positivo.
       const r = await rpc("churn_risk_scan", { p_secret: secret, p_email: email, p_limit: Math.min(Math.max(parseInt(b.limit, 10) || 25, 1), 100) });
-      if (!r.ok) return json({ ...notPasted, atRisk: [] });
+      if (!r.ok) return fora("churn_risk_scan", r, { atRisk: [] });
       const atRisk = (await r.json()) || [];
       return json({ ok: true, ready: true, count: Array.isArray(atRisk) ? atRisk.length : 0, atRisk });
     }
@@ -152,7 +181,11 @@ export async function onRequestPost(context) {
         p_channel: emailed ? "email" : "Portal",
         p_summary: (emailed ? `♻️ Gui reativou ${who} por email (risco de perder)` : `Reativação: Gui vai ${suggested === "call" ? "ligar para" : "mandar SMS para"} ${who} (risco de perder)`).slice(0, 300),
         p_amount: 0,
-        p_payload: { kind: "churn-reengage", contact: emailed ? contact.toLowerCase() : contact, suggested, via, risk: Number(b.risk) || null },
+        // "SMS" NÃO PODE VIRAR LIGAÇÃO (2026-10-01). A varredura que disca (cron-tick → phone_reengage_due)
+        // só pula `suggested: "watch"`; o pedido de SMS entrava com "sms" e a pessoa recebia uma LIGAÇÃO
+        // enquanto a tela dizia "a Gui vai mandar mensagem". Quem pediu texto fica fora da fila de
+        // discagem (`suggested: "watch"`) e o pedido original fica em `pedido`, para o motor de texto.
+        p_payload: { kind: "churn-reengage", contact: emailed ? contact.toLowerCase() : contact, suggested: (!emailed && suggested === "sms") ? "watch" : suggested, pedido: suggested, via, risk: Number(b.risk) || null },
       });
       return json({ ok: true, queued: true, via, sent: emailed });
     }
@@ -215,7 +248,7 @@ export async function onRequestPost(context) {
 
     // default: ltv
     const r = await rpc("crm_ltv", { p_secret: secret, p_client_email: email, p_key: key });
-    if (!r.ok) return json({ ...notPasted, ltv: null });
+    if (!r.ok) return fora("crm_ltv", r, { ltv: null });
     const ltv = await r.json().catch(() => null);
     return json({ ok: true, ready: true, ltv });
   } catch (e) { return json({ error: String(e).slice(0, 160) }, 400); }

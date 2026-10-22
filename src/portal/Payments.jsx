@@ -7,7 +7,8 @@
    clearly labelled as sample data. */
 import { useEffect, useState } from "react";
 import { FaCreditCard, FaPlus } from "react-icons/fa6";
-import { toast, portalApi, loadDataKey, fetchCrmInvoices } from "../lib/portalApi.js";
+import { toast, portalApi, loadDataKey, fetchCrmInvoicesDetalhado } from "../lib/portalApi.js";
+import FalhaDeLeitura from "./FalhaDeLeitura.jsx";
 import { waLink } from "../data/contact.js";
 import { loadCreated, genPayments, logImpact, genCustomers, pushCreated, vnum, Card, tr, MiniStats, Empty, Drawer, SectionSkeleton } from "../pages/Portal.jsx";
 
@@ -25,12 +26,22 @@ const fmtDue = (iso) => { if (!iso) return "—"; const d = new Date(iso); retur
 function RealPayments({ V, email, dataKey }) {
   const [rows, setRows] = useState(null);   // null = fetch in flight
   const [sel, setSel] = useState(null);
+  // 🚨 (2026-09-28) Falha de leitura virava `[]` → "No invoices yet" + $0 cobrado / $0 em aberto.
+  // Para quem cobra cliente, "zero em aberto" é uma afirmação sobre DINHEIRO; não pode sair de um
+  // wifi caído. Agora: carregando · falhou (com tentar de novo) · vazio de verdade.
+  const [falha, setFalha] = useState(null);
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     let alive = true;
-    fetchCrmInvoices(dataKey, email).then((list) => { if (alive) setRows(Array.isArray(list) ? list : []); });
+    setRows(null); setFalha(null);
+    fetchCrmInvoicesDetalhado(dataKey, email).then((r) => {
+      if (!alive) return;
+      if (r.motivo) { setFalha(r.motivo); return; }
+      setRows((r.data || []).filter(Boolean));
+    });
     return () => { alive = false; };
-  }, [dataKey, email]);
+  }, [dataKey, email, tentativa]);
 
   const isPaid = (r) => (r.status || "").toString().toLowerCase() === "paid";
   const isOpen = (r) => { const k = (r.status || "").toString().toLowerCase(); return k === "sent" || k === "pending" || k === "overdue"; };
@@ -50,6 +61,7 @@ function RealPayments({ V, email, dataKey }) {
     </Card>
   );
 
+  if (falha) return <div className="space-y-4 stagger">{hero}<FalhaDeLeitura motivo={falha} onRetry={() => setTentativa((n) => n + 1)} titulo={tr("I couldn't load your invoices just now.")} /></div>;
   if (rows === null) return <div className="space-y-4 stagger">{hero}<SectionSkeleton rows={5} /></div>;
 
   return (
@@ -105,7 +117,12 @@ function Payments({ V, real = null, email: emailProp = "", dataKey: dataKeyProp 
   useEffect(() => {
     if (emailProp) return;
     let alive = true;
-    portalApi.session().then((s) => { if (!alive) return; if (s?.email && s?.demo !== true) setSessEmail(s.email); setSessDone(true); });
+    // 🚨 (2026-09-28) Sem `.catch`, uma rejeição do getSession() (token vencido + rede fora) deixava
+    // `sessDone` falso para sempre = esqueleto eterno. Terminar é obrigatório, com ou sem sessão.
+    portalApi.session()
+      .then((s) => { if (!alive) return; if (s?.email && s?.demo !== true) setSessEmail(s.email); })
+      .catch(() => { /* sem sessão legível: cai no modo demonstração rotulado, não num carregando eterno */ })
+      .finally(() => { if (alive) setSessDone(true); });
     return () => { alive = false; };
   }, [emailProp]);
   const email = emailProp || sessEmail;

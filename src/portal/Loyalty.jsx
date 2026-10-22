@@ -11,7 +11,8 @@
  * mirroring Campaigns.jsx, because Portal renders <Loyalty V={V}/> without email/dataKey props. */
 import { useState, useEffect } from "react";
 import { FaGift, FaUserPlus } from "react-icons/fa6";
-import { portalApi, toast, loadDataKey } from "../lib/portalApi.js";
+import { portalApi, toast, loadDataKey, chamarApi } from "../lib/portalApi.js";
+import FalhaDeLeitura, { fraseDaFalha } from "./FalhaDeLeitura.jsx";
 import { loyaltyCfg, genLoyaltyMembers, genReferrals, logImpact, loadCreated, pushCreated, createdKey, Card, Toggle, MiniStats, vnum, tr, Empty } from "../pages/Portal.jsx";
 
 function Loyalty({ V }) {
@@ -37,40 +38,47 @@ function Loyalty({ V }) {
 // REAL MODE — honest, per-tenant. Gift cards are live; loyalty/referrals coming soon.
 // ════════════════════════════════════════════════════════════════════════════
 function LoyaltyReal({ email, dataKey }) {
-  // state: loading | ready (engine on) | pending (recurring_revenue.sql not pasted)
+  // state: loading | ready (motor ligado) | pending (ainda não ligado para a conta) | erro (não li)
   const [gc, setGc] = useState({ state: "loading", cards: [] });
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState(null); // { kind:"ok"|"err", text }
-  const api = (body) => fetch("/api/giftcards", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token: dataKey, email, ...body }),
-  }).then((r) => r.json());
-  const loadCards = () => api({ action: "list" })
-    .then((d) => setGc(d?.ok && d.ready ? { state: "ready", cards: Array.isArray(d.cards) ? d.cards : [] } : { state: "pending", cards: [] }))
-    .catch(() => setGc({ state: "pending", cards: [] }));
-  useEffect(() => { loadCards(); }, [dataKey, email]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 🚨 (2026-09-28) Sem olhar `r.ok`, um 401/500 e uma rede caída viravam "pending" — e "pending"
+  // mostrava à CLIENTE a instrução "paste db/recurring_revenue.sql in Supabase". Duas falhas numa
+  // só: uma leitura que falhou dita como "recurso desligado", e engenharia na tela de quem paga.
+  const api = (body) => chamarApi("/api/giftcards", { token: dataKey, email, ...body });
+  const naoLigado = () => tr("Gift cards aren't switched on for your account yet. Message our team and we'll turn them on.");
+  const loadCards = async () => {
+    const r = await api({ action: "list" });
+    if (r.motivo) { setGc({ state: "erro", motivo: r.motivo, cards: [] }); return; }
+    const d = r.data;
+    if (d.ok && d.ready && Array.isArray(d.cards)) setGc({ state: "ready", cards: d.cards.filter(Boolean) });
+    else if (d.ready === false) setGc({ state: "pending", cards: [] });
+    else setGc({ state: "erro", motivo: "resposta_estranha", cards: [] });
+  };
+  useEffect(() => { setGc({ state: "loading", cards: [] }); loadCards(); }, [dataKey, email]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Issue a real gift card (a real DB row with a real code). Honest: "created", not "sold" — the
   // owner delivers/sells it; only a real ok + code toasts success.
   const issue = async (amt) => {
-    if (busy || gc.state === "pending") return;
+    if (busy || gc.state !== "ready") return;
     setBusy(true); setNote(null);
-    try {
-      const d = await api({ action: "create", card: { amount_cents: amt * 100 } });
-      if (d?.ok && d.card && d.card.code) { setNote({ kind: "ok", text: `$${amt} ${tr("gift card created")} ✓ — ${d.card.code}` }); await loadCards(); }
-      else if (d?.ready === false) setNote({ kind: "err", text: tr("Gift cards aren't active yet — paste db/recurring_revenue.sql in Supabase.") });
-      else setNote({ kind: "err", text: tr("Couldn't create the gift card — try again.") });
-    } catch { setNote({ kind: "err", text: tr("Couldn't create the gift card — try again.") }); }
+    const r = await api({ action: "create", card: { amount_cents: amt * 100 } });
+    const d = r.data;
+    if (r.motivo) setNote({ kind: "err", text: `${tr("Couldn't create the gift card — try again.")} ${fraseDaFalha(r.motivo)}` });
+    else if (d?.ok && d.card && d.card.code) { setNote({ kind: "ok", text: `$${amt} ${tr("gift card created")} ✓ — ${d.card.code}` }); await loadCards(); }
+    else if (d?.ready === false) setNote({ kind: "err", text: naoLigado() });
+    else setNote({ kind: "err", text: tr("Couldn't create the gift card — try again.") });
     setBusy(false);
   };
   const redeem = async (code, cents) => {
     if (busy) return;
     setBusy(true); setNote(null);
-    try {
-      const d = await api({ action: "redeem", code, amount_cents: cents });
-      if (d?.ok) { setNote({ kind: "ok", text: `$${(cents / 100).toLocaleString()} ${tr("redeemed from")} ${code} ✓` }); await loadCards(); }
-      else setNote({ kind: "err", text: tr("Couldn't redeem — check the balance and try again.") });
-    } catch { setNote({ kind: "err", text: tr("Couldn't redeem — try again.") }); }
+    const r = await api({ action: "redeem", code, amount_cents: cents });
+    // Falha de rede/servidor NÃO é "confira o saldo": culpar o saldo por um wifi caído manda a
+    // pessoa conferir a coisa errada.
+    if (r.motivo) setNote({ kind: "err", text: `${tr("Couldn't redeem — try again.")} ${fraseDaFalha(r.motivo)}` });
+    else if (r.data?.ok) { setNote({ kind: "ok", text: `$${(cents / 100).toLocaleString()} ${tr("redeemed from")} ${code} ✓` }); await loadCards(); }
+    else setNote({ kind: "err", text: tr("Couldn't redeem — check the balance and try again.") });
     setBusy(false);
   };
 
@@ -93,7 +101,9 @@ function LoyaltyReal({ email, dataKey }) {
         {gc.state === "loading" ? (
           <div className="p-6"><div className="h-16 rounded-xl2 bg-white/[0.03] animate-pulse" /></div>
         ) : gc.state === "pending" ? (
-          <div className="px-5 py-6 text-center text-xs text-g-muted">{tr("Gift cards aren't active yet — paste db/recurring_revenue.sql in Supabase to switch them on.")}</div>
+          <div className="px-5 py-6 text-center text-xs text-g-muted">{naoLigado()}</div>
+        ) : gc.state === "erro" ? (
+          <div className="p-4"><FalhaDeLeitura compacto motivo={gc.motivo} onRetry={() => { setGc({ state: "loading", cards: [] }); loadCards(); }} titulo={tr("I couldn't load your gift cards just now.")} /></div>
         ) : (
           <>
             <div className="p-4 flex flex-wrap items-center gap-4">

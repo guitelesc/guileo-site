@@ -21,6 +21,7 @@ import PainelComando from "../components/PainelComando.jsx";
 // Cobrança (MRR/vencidos/churn + regras) e o semáforo consolidado da plataforma — ambos no topo
 // da Visão geral, porque decidem o dia.
 import AdminCobranca from "../components/AdminCobranca.jsx";
+import AdminFunil from "../components/AdminFunil.jsx";
 import AdminPlataforma from "../components/AdminPlataforma.jsx";
 import DemoEngine from "../components/DemoEngine.jsx";
 import { ACTIVATION_STEPS, ACTIVATION_SECTORS, pickL } from "../data/activation.js";
@@ -90,6 +91,62 @@ function idadeEntrega(e) {
   // o parado é a própria idade (nunca ninguém tocou).
   const parado = e.updated_at ? dias(e.updated_at) : nasceu;
   return { nasceu, parado };
+}
+
+/* ⚙️ AUTOMAÇÕES (2026-10-14) — "onde estão as automações e como sei que funcionam?". Lê GET /api/automacoes
+   (o cron grava o último resultado de cada alvo em KV). Estado por rotina com a régua do cron-tick:
+   ok · inerte (falta chave, dito com nome) · calado (desligado de propósito) · falhou · sem registro. */
+function Automacoes() {
+  const [d, setD] = useState(null);
+  const [nota, setNota] = useState("");
+  const [carregando, setCarregando] = useState(false);
+  const carregar = async () => {
+    setCarregando(true); setNota("");
+    try {
+      const r = await fetch("/api/automacoes");
+      const j = await r.json().catch(() => ({}));
+      if (j && j.ok) setD(j); else { setD(null); setNota((j && (j.note || j.error)) || "não consegui ler as automações"); }
+    } catch { setNota("falha de rede"); }
+    setCarregando(false);
+  };
+  useEffect(() => { carregar(); }, []);
+  const COR = { ok: "text-g-green", inerte: "text-g-gold", calado: "text-g-muted", falhou: "text-[#e0855f]", "sem registro": "text-g-muted" };
+  const BOLA = { ok: "🟢", inerte: "🟡", calado: "⚪", falhou: "🔴", "sem registro": "⚫" };
+  const quando = (iso) => { try { return iso ? new Date(iso).toLocaleString("pt-BR", { timeZone: "America/New_York", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + " NY" : "—"; } catch { return iso || "—"; } };
+  const c = (d && d.contagem) || {};
+  return (
+    <div className="rounded-2xl border border-g-line bg-white/[0.04] p-5 backdrop-blur-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[12px] font-bold uppercase tracking-wider text-g-gold">⚙️ Automações — última rodada de cada rotina</div>
+          <p className="mt-1 text-[12.5px] text-g-muted">
+            Um relógio só (<span className="font-mono">/api/cron-tick</span>, a cada 15 min) dispara tudo. {d && d.ultimo ? <>Último tique {quando(d.ultimo.at)} · {d.ultimo.alvos_no_tique} rotinas · {d.ultimo.ok ? "sem falhas" : `${(d.ultimo.falhas || []).length} falha(s)`}.</> : null}
+            {d ? <> Agora: {c.ok || 0} ok · {c.inerte || 0} inertes · {c.calado || 0} caladas · {c.falhou || 0} falhas · {c["sem registro"] || 0} sem registro.</> : null}
+          </p>
+        </div>
+        <button onClick={carregar} disabled={carregando} className="shrink-0 rounded-full border border-g-gold/40 px-4 py-2 text-[12.5px] font-bold text-g-gold disabled:opacity-50">{carregando ? "…" : "Atualizar"}</button>
+      </div>
+      {nota && <p className="mt-3 rounded-xl border border-[#e0855f]/40 bg-[#e0855f]/[0.08] px-3 py-2 text-[12.5px] text-[#e0855f]">{nota}</p>}
+      {d && (
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-[12px]">
+            <thead><tr className="text-left text-[10.5px] uppercase tracking-wide text-g-muted"><th className="py-1.5 pr-3">Rotina</th><th className="py-1.5 pr-3">O que faz</th><th className="py-1.5 pr-3">Cadência</th><th className="py-1.5 pr-3">Última rodada</th><th className="py-1.5 pr-3">Estado</th></tr></thead>
+            <tbody>
+              {d.alvos.map((a) => (
+                <tr key={a.nome} className="border-t border-white/[0.06] align-top">
+                  <td className="py-1.5 pr-3 font-mono text-g-word whitespace-nowrap">{a.nome}</td>
+                  <td className="py-1.5 pr-3 text-g-light">{a.oQueFaz}</td>
+                  <td className="py-1.5 pr-3 text-g-muted whitespace-nowrap">{a.cadencia}</td>
+                  <td className="py-1.5 pr-3 text-g-muted whitespace-nowrap">{quando(a.at)}</td>
+                  <td className={`py-1.5 pr-3 font-bold ${COR[a.estado] || "text-g-muted"}`}>{BOLA[a.estado] || "⚫"} {a.estado}{a.motivo ? <span className="block font-normal text-[11px] text-g-muted">{a.motivo}</span> : null}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function Entregas({ token }) {
@@ -502,6 +559,9 @@ export default function Admin() {
 
             {/* 💰 MRR real · vencidos · churn 30d + as regras de cobrança editáveis. */}
             <AdminCobranca token={token} />
+
+            {/* 🔎 Funil do site: visita → clicou → abriu a Gui → conversou → deixou contato. */}
+            <AdminFunil token={token} />
 
             <div className="grid items-start gap-5 sm:grid-cols-2">
               <ColBanner tag="🎛️ Operação · Comando" tone="orange" tiles={[
@@ -1016,6 +1076,9 @@ export default function Admin() {
 
             {/* ── ENTREGAS done-for-you: o que foi vendido e ainda não foi entregue ── */}
             <Entregas token={token} />
+
+            {/* ── AUTOMAÇÕES: a última rodada de cada rotina do relógio (2026-10-14) ── */}
+            <Automacoes />
 
             {/* Stripe self-serve plans — create/sync the $149/$897/$1.997 Payment Links from the server (owner-only).
                 You click it (so you authorize live payment setup); it returns the 3 links to wire into the site. */}

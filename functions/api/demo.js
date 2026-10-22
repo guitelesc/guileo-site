@@ -27,7 +27,7 @@ const INGEST = (env) => env.INGEST_SECRET || "";
 // dez antes de mexer, e é exatamente por estarem iguais que a hora de unificar é agora — depois que
 // uma diverge, alguém já foi atendido pelo modelo errado e ninguém sabe qual superfície foi.
 // É o padrão que esta sessão inteira perseguiu: cópia sem vínculo com a fonte.
-import { MODEL_CHAIN } from "../lib/guiBrain.js";
+import { askClaude } from "../lib/guiBrain.js";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -148,47 +148,29 @@ function extractLogo(html, base) {
 // nenhuma: mandou a gente investigar o site do cliente em vez do nosso próprio código.
 // `_motivo` é diagnóstico, não texto de tela.
 async function summarizeBrand(env, text, hintName, diag = {}) {
-  if (!env.ANTHROPIC_API_KEY) { diag.motivo = "ANTHROPIC_API_KEY ausente"; return null; }
+  if (!env.ANTHROPIC_API_KEY && !env.ELEVENLABS_API_KEY) { diag.motivo = "ANTHROPIC_API_KEY e ELEVENLABS_API_KEY ausentes"; return null; }
   const system = `You extract a factual brand kit from a business website's text. Reply with ONLY valid JSON, no markdown, no preamble. Shape:
 {"name":"","tagline":"","facts":"","services":[{"name":"","price":""}]}
 RULES: Use ONLY information present in the text. If a field is not found, use "" (or [] for services). NEVER invent a business name, service, or price. "tagline" = one short line describing what the business does. "facts" = a compact factual paragraph (hours, location, specialties, what to know) usable as an AI receptionist's brain. "services" = up to 8 real offerings; include "price" only if a price actually appears, else "".`;
   const user = `Website text${hintName ? ` for "${hintName}"` : ""}:\n\n${text}`;
-  // Overall ~10s budget on the demo path: a slow model must never stall the pitch. Each call gets a
-  // per-request AbortController bounded by the remaining budget; once it's spent we stop trying.
-  const deadline = Date.now() + 10000;
-  for (const model of MODEL_CHAIN) {
-    const remaining = deadline - Date.now();
-    if (remaining <= 500) break; // out of budget — return null → honest colors/logo-only kit
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), remaining);
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-        body: JSON.stringify({ model, max_tokens: 900, system, messages: [{ role: "user", content: user }] }),
-        signal: ctrl.signal,
-      });
-      if (r.ok) {
-        const d = await r.json().catch(() => ({}));
-        let t = (d?.content?.[0]?.text || "").trim();
-        const m = t.match(/\{[\s\S]*\}/);
-        if (m) { try { return JSON.parse(m[0]); } catch { /* try next */ } }
-        diag.motivo = `modelo ${model} respondeu sem JSON`;
-      } else {
-        let corpo = ""; try { corpo = (await r.text()).slice(0, 180); } catch { /* */ }
-        diag.motivo = `HTTP ${r.status} em ${model}: ${corpo}`;
-        // 🚨 A ANTHROPIC DEVOLVE 400 QUANDO O SALDO ACABA, não 402 (24/08). O teste só olhava
-        // 401/402, então "sem crédito" não era reconhecido como problema de billing: a corrente
-        // tentava TODOS os modelos, um a um, queimando os 10s de orçamento para receber o mesmo
-        // 400 — e no fim reportava um genérico. Saldo é a única falha que nenhum outro modelo
-        // resolve; sair na primeira é o certo, e dizer o nome dela é o que faltava.
-        const semSaldo = /credit balance is too low|insufficient.*credit/i.test(corpo);
-        if (semSaldo) { diag.motivo = "SEM SALDO ANTHROPIC — recarregar em console.anthropic.com"; break; }
-        if (r.status === 401 || r.status === 402) { diag.motivo = `billing/auth ${r.status}`; break; }
-      }
-    } catch (e) { diag.motivo = `${String(e).slice(0, 60)} em ${model}`; }
-    finally { clearTimeout(timer); }
-  }
+  // Overall ~10s budget on the demo path: a slow model must never stall the pitch. askClaude não
+  // aceita AbortSignal, então o teto é uma corrida contra o relógio: passou de 10s → null (kit honesto).
+  // 2026-10-05: sem chamada direta à Anthropic — askClaude usa o Escritor da ElevenLabs quando ela está desligada.
+  const tentativas = [];
+  let timer;
+  const estourou = new Promise((res) => { timer = setTimeout(() => res(null), 10000); });
+  const t = await Promise.race([
+    askClaude(env, { system, maxTokens: 900, messages: [{ role: "user", content: user }], diag: tentativas }),
+    estourou,
+  ]).finally(() => clearTimeout(timer));
+  if (t == null) { diag.motivo = "sem resposta do cérebro em 10s"; return null; }
+  const m = String(t).trim().match(/\{[\s\S]*\}/);
+  if (m) { try { return JSON.parse(m[0]); } catch { /* JSON inválido → motivo abaixo */ } }
+  const ult = tentativas[tentativas.length - 1] || {};
+  const quem = ult.model || ult.cerebro || "cérebro";
+  if (t) diag.motivo = `modelo ${quem} respondeu sem JSON`;
+  else if (ult.status) diag.motivo = `HTTP ${ult.status} em ${quem}: ${String(ult.detalhe || ult.tipo || "").slice(0, 180)}`;
+  else diag.motivo = `${String(ult.erro || ult.bloqueado || "falhou").slice(0, 60)} em ${quem}`;
   return null;
 }
 

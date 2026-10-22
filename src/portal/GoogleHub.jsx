@@ -1,18 +1,24 @@
 /* Google tab — the CLIENT's OWN Google presence (not Guileo's). Google Business Profile IS
    local SEO: the profile that shows up on Maps/Search when someone searches "spa perto de mim".
-   Reviews answered + frequent posts = what RANKS. Four honest sections:
-     (a) 📍 Perfil no Google  — connect / status (OAuth via /api/google-business)
-     (b) ⭐ Avaliações        — real reviews (list_reviews) + "a Gui responde automaticamente"
-     (c) 📈 SEO local         — the checklist that lifts ranking, with the real state
-     (d) 📣 Anúncios no Google — done-for-you request form (/api/google-ads) + pedido status
-   HONESTY: the Google Business Profile API needs per-project Google approval (env GOOGLE_BUSINESS_*),
-   so real accounts see amber "aguardando aprovação da API do Google" until it's live — we NEVER
-   show a fake review or pretend an ad campaign ran. Demo mode = rich per-sector preview.
+     (a) 📍 Google profile   — connection state + WHICH Google listings are this business's
+     (b) ⭐ Reviews          — real reviews, read through the server-side normalizer
+     (c) 📈 Local SEO        — the checklist, with the real state (or "can't check yet")
+     (d) 📣 Google Ads       — done-for-you request form (/api/google-ads) + request status
+   HONESTY (rewritten 2026-09-30 after the review):
+     • Replies are NEVER automatic. A draft waits in the Reputation tab until the owner approves
+       it. Every "Gui replies automatically" sentence is gone, in all four languages.
+     • "Complete profile ✓" used to light up just because the account was connected. We cannot
+       read profile completeness, so in a real account that item says "can't check yet".
+     • Four different states get four different sentences: not connected · connected but Google
+       hasn't approved the API · access revoked (needs re-consent) · no reviews yet.
+     • A business can have SEVERAL Google listings; the owner confirms which is which here.
+   Demo mode = clearly labelled sample. A connected account never sees sample data.
+   New copy goes through tr() (English key; pt/es in src/portal/_pending_dict_google.json).
    Props {V, real, email, dataKey} — same contract as GrowthIntel/RiskRadar. */
 import { useState, useEffect } from "react";
-import { FaLocationDot, FaStar, FaChartLine, FaBullhorn, FaCircleCheck, FaArrowRotateRight } from "react-icons/fa6";
+import { FaLocationDot, FaStar, FaChartLine, FaBullhorn, FaArrowRotateRight } from "react-icons/fa6";
 import { portalApi, toast } from "../lib/portalApi.js";
-import { genReviews, Card, Empty, SectionSkeleton, UI_LANG } from "../pages/Portal.jsx";
+import { genReviews, Card, Empty, SectionSkeleton, UI_LANG, tr } from "../pages/Portal.jsx";
 import { GoogleConnectCard } from "../components/GoogleConnect.jsx";
 import NoSeuPlano from "./NoSeuPlano.jsx";
 
@@ -32,8 +38,10 @@ async function apiPost(url, body) {
 // Chip: connected / pending-API / disconnected — honest signal colors.
 function StatusChip({ state }) {
   const map = {
-    live: ["#3E9468", t({ en: "Connected · Gui is answering", pt: "Conectado · a Gui responde", es: "Conectado · Gui responde", hi: "कनेक्टेड · Gui जवाब देती है" })],
+    live: ["#3E9468", tr("Connected · reading your reviews")],
     pending: ["#FFC23D", t({ en: "Connected · waiting for Google API approval", pt: "Conectado · aguardando aprovação da API do Google", es: "Conectado · esperando aprobación de la API de Google", hi: "कनेक्टेड · Google API स्वीकृति का इंतज़ार" })],
+    attention: ["#FFC23D", tr("Connected · one step left")],
+    reconsent: ["#E2533F", tr("Reconnect needed")],
     off: ["#9A8F82", t({ en: "Not connected yet", pt: "Ainda não conectado", es: "Aún no conectado", hi: "अभी कनेक्ट नहीं" })],
     // O terceiro estado. Sem ele, "não consegui perguntar" era exibido como "não conectado" —
     // e um problema nosso virava uma afirmação sobre a conta do cliente.
@@ -50,11 +58,25 @@ function StatusChip({ state }) {
 
 function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
   const demo = !real;
-  // real backend state: null = loading, else { connected, apiReady, reviews:[] }
+  // real backend state: null = loading, else { st (status), rv (list_reviews|null), fila, statusErr }
   const [gb, setGb] = useState(null);
+  const [mapa, setMapa] = useState({});      // location_id → escolha do dono (id da unidade | "" = do negócio, sem unidade | "__no" = não é meu)
+  const [salvando, setSalvando] = useState("");
   // Ad request lives in local state (honest: it's the OWNER's intent) + is POSTed to the team.
   const key = `${email || V.label}:google_ads_req`;
-  const [adReq, setAdReq] = useState(() => portalApi.loadState(key, null));
+  // 🚨 (2026-09-28) O RECIBO MORA NO SERVIDOR, NÃO NO NAVEGADOR. O cartão lia o pedido do
+  // localStorage e, se lá dizia "requested", mostrava em verde "Request received — the Guileo team
+  // is on it" — mesmo quando o servidor não tinha pedido nenhum (fila apagada, outra conta no
+  // mesmo navegador, gravação que nunca aconteceu). A cliente esperava uma ligação do time de
+  // anúncios que ninguém sabia que devia. Em conta real o que veio do navegador é só RASCUNHO:
+  // "requested" local vira "checking" até o servidor confirmar.
+  const contaLigada = !!(real && email && dataKey);
+  const [adReq, setAdReq] = useState(() => {
+    const salvo = portalApi.loadState(key, null);
+    if (!salvo) return null;
+    return contaLigada && salvo.status === "requested" ? { ...salvo, status: "checking" } : salvo;
+  });
+  const [tentativa, setTentativa] = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ goal: "calls", budget: "", area: "" });
 
@@ -68,24 +90,38 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
       ]);
       if (!alive) return;
       const statusErr = !st._ok;
-      const connected = !statusErr && !!st.connected;
-      const apiReady = !statusErr && !!st.ready;
-      let reviews = [];
-      if (connected && apiReady) {
-        const rv = await apiPost("/api/google-business", { action: "list_reviews", email, token: dataKey });
-        if (Array.isArray(rv?.reviews)) reviews = rv.reviews;
+      let rv = null, fila = null;
+      if (!statusErr && st.state === "ready") {
+        [rv, fila] = await Promise.all([
+          apiPost("/api/google-business", { action: "list_reviews", email, token: dataKey, max_pages: 1 }),
+          apiPost("/api/google-business", { action: "queue_list", email, token: dataKey }),
+        ]);
       }
       if (!alive) return;
-      setGb({ connected, apiReady, reviews, statusErr });
+      setGb({ st: statusErr ? null : st, rv, fila, statusErr });
+      setMapa({});
       // Hydrate the real ad request (if the team already has one on file) — honest server truth.
-      const rows = Array.isArray(adSt?.requests) ? adSt.requests : [];
-      if (rows.length) {
+      const rows = (Array.isArray(adSt?.requests) ? adSt.requests : []).filter(Boolean);
+      if (adSt._ok && rows.length) {
         const r = rows[0];
-        setAdReq({ goal: r.goal || "", budget: r.budget_cents ? `$${Math.round(r.budget_cents / 100)}` : "", area: r.area || "", status: r.status || "requested", at: Date.parse(r.created_at) || Date.now() });
+        const rec = { goal: r.goal || "", budget: r.budget_cents ? `$${Math.round(r.budget_cents / 100)}` : "", area: r.area || "", status: "requested", at: Date.parse(r.created_at) || Date.now() };
+        setAdReq(rec); portalApi.saveState(key, rec);
+      } else if (adSt._ok) {
+        // O servidor respondeu e NÃO tem pedido. O que o navegador guardava como "recebido" não
+        // chegou (ou não existe mais): vira "não enviado", com as respostas preservadas e o botão
+        // de tentar de novo — e o recibo falso sai do navegador.
+        setAdReq((cur) => {
+          if (!cur || cur.status === "demo") return null;
+          if (cur.status === "requested" || cur.status === "checking") { portalApi.saveState(key, null); return { ...cur, status: "unsent" }; }
+          return cur;
+        });
+      } else {
+        // Não consegui perguntar: não afirmo "recebido" nem "não enviado".
+        setAdReq((cur) => (cur && (cur.status === "requested" || cur.status === "checking") ? { ...cur, status: "unverified" } : cur));
       }
     })();
     return () => { alive = false; };
-  }, [real, email, dataKey]);
+  }, [real, email, dataKey, tentativa]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── O PEDIDO DE ANÚNCIOS ───────────────────────────────────────────────────
      O DEFEITO (corrigido 2026-08-11): o pedido era marcado como `status:"requested"`
@@ -120,23 +156,66 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
   // ── real mode, still loading → skeleton (never a false empty state) ──
   if (real && gb === null) return <SectionSkeleton rows={6} />;
 
-  const connected = demo ? true : gb.connected;
-  const apiReady = demo ? true : gb.apiReady;
+  // ── O ESTADO, UM SÓ, vindo do servidor (functions/lib/googleReviews.js · connectionState) ──
   const unverified = !demo && !!gb.statusErr;
-  const state = unverified ? "unknown" : connected ? (apiReady ? "live" : "pending") : "off";
-  const bizName = t({ en: "Your business", pt: "Seu negócio", es: "Tu negocio", hi: "आपका व्यवसाय" });
+  const gstate = demo ? "ready" : unverified ? "unknown" : ((gb.rv && gb.rv._ok && gb.rv.state) || gb.st.state);
+  const connected = demo ? true : !unverified && gstate !== "not_connected";
+  const ready = gstate === "ready";
+  const state = unverified ? "unknown" : gstate === "not_connected" ? "off" : gstate === "needs_reconsent" ? "reconsent" : gstate === "api_pending" ? "pending" : ready ? "live" : "attention";
+  const fichas = !demo && gb.st && Array.isArray(gb.st.locations) ? gb.st.locations : [];
+  const unidades = !demo && gb.st && Array.isArray(gb.st.biz_locations) ? gb.st.biz_locations : null;
+  const leu = !demo && !!(gb.rv && gb.rv._ok);
+  const lidas = leu && Array.isArray(gb.rv.reviews) ? gb.rv.reviews : [];
+  const falhas = leu && Array.isArray(gb.rv.per_location) ? gb.rv.per_location.filter((p) => !p.ok) : [];
+  const rascunhos = !demo && gb.fila && gb.fila._ok && Array.isArray(gb.fila.rows) ? gb.fila.rows.filter((q) => ["draft", "approved", "failed"].includes(q.status)).length : null;
 
-  // Reviews: demo = rich per-sector sample; real = only what the API returned (honest empty otherwise).
+  // Reviews: demo = per-sector sample (labelled); real = ONLY what the server normalized from Google.
   const demoReviews = genReviews(V).slice(0, 5);
-  const reviews = demo ? demoReviews.map((r) => ({ name: r.name, stars: r.stars, text: r.text, replied: r.stars >= 4 })) : (gb.reviews || []);
+  const reviews = demo
+    ? demoReviews.map((r) => ({ id: r.name, reviewer: r.name, stars: r.stars, text: r.text, replied: r.stars >= 4 }))
+    : lidas.slice().sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || ""))).slice(0, 5);
+  const semResposta = lidas.filter((r) => !r.replied).length;
+
+  const frase = {
+    api_pending: tr("Your Google account is connected. Google hasn't approved review access for this platform yet, so nothing is being read. We show nothing rather than guess."),
+    needs_reconsent: tr("Google access was revoked or has expired. Tap Reconnect above and sign in to Google again. Until then no review can be read or answered."),
+    needs_scope: tr("Your Google account is connected without the reviews permission. Tap Reconnect above and leave the Business Profile box ticked on Google's screen."),
+    needs_discovery: tr("Connected. We haven't fetched your Google listings yet."),
+    discovery_failed: tr("Connected, but fetching your Google listings failed. This is on our side or Google's, not yours."),
+    no_locations: tr("This Google account has no Business Profile listing. Connect the Google account that manages your listings."),
+    needs_mapping: tr("Confirm below which Google listings belong to this business. Until you do, no reviews are read."),
+  }[gstate] || "";
+
+  // ── ações do mapa ficha ↔ unidade ──
+  const recarregar = () => setTentativa((n) => n + 1);
+  const escolhaDe = (f) => (mapa[f.location_id] != null ? mapa[f.location_id] : (f.include ? (f.biz_location_id || "") : (f.match === "owner" ? "__no" : "__pick")));
+  const salvarMapa = async () => {
+    const mappings = fichas.map((f) => ({ f, v: escolhaDe(f) })).filter((x) => x.v !== "__pick")
+      .map(({ f, v }) => ({ location_id: f.location_id, biz_location_id: v === "__no" || v === "" ? null : v, include: v !== "__no" }));
+    if (!mappings.length) { toast(tr("Choose an option for at least one listing first.")); return; }
+    setSalvando("mapa");
+    const r = await apiPost("/api/google-business", { action: "map_locations", email, token: dataKey, mappings });
+    setSalvando("");
+    if (r._ok && r.saved) { toast(tr("Saved. Reviews are read only from the listings you confirmed.")); recarregar(); }
+    else toast(tr("Couldn't save. Nothing was changed."));
+  };
+  const verificarDeNovo = async () => {
+    setSalvando("discover");
+    const r = await apiPost("/api/google-business", { action: "discover", email, token: dataKey });
+    setSalvando("");
+    if (!r._ok) toast(tr("Couldn't check right now. Nothing was changed."));
+    else if (!r.discovered) toast(tr("Still no access to your listings. Nothing was changed."));
+    recarregar();
+  };
 
   // SEO checklist — the three levers that actually rank a local profile.
-  // TRÊS ESTADOS por item: feito · não feito · NÃO DEU PARA VERIFICAR. "Posts novos toda
-  // semana" nunca teve fonte de dado — em modo real ficava eternamente com ○, dizendo ao
-  // cliente que ele não posta quando a verdade é que a plataforma não consegue olhar.
+  // TRÊS ESTADOS por item: feito · não feito · NÃO DEU PARA VERIFICAR.
+  //  • "Perfil completo" acendia ✓ só por a conta estar conectada. Não lemos horário/fotos/
+  //    serviços do perfil — então, em conta real, o item diz "ainda não conseguimos verificar".
+  //  • "Avaliações respondidas" só é ✓ quando LEMOS as avaliações e nenhuma está sem resposta.
   const seo = [
-    { k: "profile", label: t({ en: "Complete profile (hours, photos, services)", pt: "Perfil completo (horário, fotos, serviços)", es: "Perfil completo (horario, fotos, servicios)", hi: "पूरी प्रोफ़ाइल (समय, फ़ोटो, सेवाएँ)" }), done: connected, unknown: unverified, weight: t({ en: "Foundation", pt: "Base", es: "Base", hi: "आधार" }) },
-    { k: "reviews", label: t({ en: "Reviews answered (Gui replies for you)", pt: "Avaliações respondidas (a Gui responde por você)", es: "Reseñas respondidas (Gui responde por ti)", hi: "समीक्षाओं के जवाब (Gui देती है)" }), done: connected && apiReady, unknown: unverified, weight: t({ en: "Biggest lever", pt: "Maior alavanca", es: "Mayor palanca", hi: "सबसे बड़ा" }) },
+    { k: "profile", label: t({ en: "Complete profile (hours, photos, services)", pt: "Perfil completo (horário, fotos, serviços)", es: "Perfil completo (horario, fotos, servicios)", hi: "पूरी प्रोफ़ाइल (समय, फ़ोटो, सेवाएँ)" }), done: demo, unknown: !demo, weight: t({ en: "Foundation", pt: "Base", es: "Base", hi: "आधार" }) },
+    { k: "reviews", label: tr("Reviews answered (you approve every reply)"), done: demo || (leu && !falhas.length && lidas.length > 0 && semResposta === 0), unknown: !demo && !(leu && !falhas.length), weight: t({ en: "Biggest lever", pt: "Maior alavanca", es: "Mayor palanca", hi: "सबसे बड़ा" }) },
     { k: "posts", label: t({ en: "Fresh posts every week", pt: "Posts novos toda semana", es: "Publicaciones nuevas cada semana", hi: "हर हफ़्ते नई पोस्ट" }), done: demo, unknown: !demo, weight: t({ en: "Keeps you visible", pt: "Mantém você visível", es: "Te mantiene visible", hi: "दृश्यता बनाए रखे" }) },
   ];
   const seoKnown = seo.filter((s) => !s.unknown);
@@ -177,7 +256,7 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
           (escopos calendar.events + business.manage no mesmo client OAuth). Antes havia aqui um
           botão "Conectar meu Google" que só relia o status e avisava que a equipe terminaria a
           conexão à mão; agora a conexão acontece de verdade e o estado é lido do servidor. */}
-      <GoogleConnectCard lang={UI_LANG} email={email} dataKey={dataKey} focus="reviews" />
+      <GoogleConnectCard lang={UI_LANG} email={email} dataKey={dataKey} focus="reviews" needsReconsent={gstate === "needs_reconsent"} />
 
       {/* (a) 📍 Perfil no Google */}
       <Card>
@@ -186,48 +265,97 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
             <span className="grid place-items-center h-11 w-11 rounded-xl bg-[#4285F4]/15 text-[#4285F4] shrink-0"><FaLocationDot /></span>
             <div className="min-w-0">
               <div className="text-sm font-extrabold text-g-word flex items-center gap-2">📍 {t({ en: "Google profile", pt: "Perfil no Google", es: "Perfil de Google", hi: "Google प्रोफ़ाइल" })}</div>
-              <div className="text-[11px] text-g-muted leading-snug mt-0.5 max-w-md">{t({ en: "This is where your customers find you on the Map. Link it once and Gui keeps it working for you.", pt: "É aqui que seus clientes te acham no Maps. Conecte uma vez e a Gui mantém funcionando pra você.", es: "Aquí te encuentran en el Mapa. Conéctalo una vez y Gui lo mantiene funcionando.", hi: "यहीं ग्राहक आपको Map पर पाते हैं। एक बार जोड़ें, Gui संभालती है।" })}</div>
+              <div className="text-[11px] text-g-muted leading-snug mt-0.5 max-w-md">{tr("This is where your customers find you on the Map. Connect it once to read your reviews here and answer them with your approval.")}</div>
               <div className="mt-2"><StatusChip state={state} /></div>
             </div>
           </div>
         </div>
-        {connected && !apiReady && (
-          <div className="mt-3 rounded-xl border border-g-gold/25 bg-g-gold/[0.06] px-3 py-2 text-[11px] text-g-gold leading-snug">
-            {t({ en: "Your profile is linked. Reading & replying to reviews switches on automatically the moment Google approves the API — nothing more for you to do.", pt: "Seu perfil está conectado. Ler e responder avaliações liga automaticamente assim que o Google aprovar a API — nada mais pra você fazer.", es: "Tu perfil está conectado. Leer y responder reseñas se activa automáticamente cuando Google apruebe la API.", hi: "आपकी प्रोफ़ाइल जुड़ गई है। Google API स्वीकृति मिलते ही समीक्षाएँ पढ़ना/जवाब देना अपने-आप चालू।" })}
+        {!demo && frase && (
+          <div className="mt-3 rounded-xl px-3 py-2 text-[11.5px] leading-snug"
+            style={gstate === "needs_reconsent" ? { color: "#E2533F", background: "#E2533F12", border: "1px solid #E2533F40" } : { color: "#C8A24A", background: "#C8A24A12", border: "1px solid #C8A24A40" }}>
+            {frase}
+            {["needs_discovery", "discovery_failed", "api_pending"].includes(gstate) && gb.st && gb.st.api_configured && (
+              <button type="button" disabled={salvando === "discover"} onClick={verificarDeNovo} className="ml-2 font-black underline disabled:opacity-50">{tr("Check again")}</button>
+            )}
+          </div>
+        )}
+
+        {/* QUAL FICHA É QUAL UNIDADE — o dono confirma/corrige. Só as confirmadas são lidas. */}
+        {!demo && fichas.length > 0 && (
+          <div className="mt-4">
+            <div className="text-[10.5px] font-black uppercase tracking-wider text-g-muted">{tr("Your Google listings")}</div>
+            <p className="mt-1 text-[11px] text-g-muted leading-snug">{tr("Reviews are read only from the listings you confirm as yours. We matched what we could by address and name and left the rest for you.")}</p>
+            <div className="mt-2 space-y-2">
+              {fichas.map((f) => {
+                const v = escolhaDe(f);
+                return (
+                  <div key={f.location_id} className="rounded-xl border border-white/[0.07] bg-black/15 px-3 py-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-g-word truncate">{f.title || f.location_id}</div>
+                        {f.address && <div className="text-[10.5px] text-g-muted truncate">{f.address}</div>}
+                      </div>
+                      <span className="text-[9.5px] font-black uppercase tracking-wide shrink-0" style={{ color: f.include ? "#3E9468" : f.match === "owner" ? "#9A8F82" : "#C8A24A" }}>
+                        {f.include ? (f.match === "owner" ? tr("confirmed by you") : tr("matched automatically")) : f.match === "owner" ? tr("not read") : f.match === "ambiguous" ? tr("needs your choice") : tr("not matched")}
+                      </span>
+                    </div>
+                    <select value={v} onChange={(e) => setMapa((m) => ({ ...m, [f.location_id]: e.target.value }))}
+                      className="mt-2 w-full rounded-lg bg-white/[0.04] border border-white/10 px-2.5 py-2 text-sm text-g-word">
+                      <option value="__pick">{tr("Choose…")}</option>
+                      {(unidades || []).map((u) => <option key={u.id} value={u.id}>{u.name}{u.address ? ` · ${u.address}` : ""}</option>)}
+                      <option value="">{tr("It's my business (no specific location)")}</option>
+                      <option value="__no">{tr("Not my business · don't read it")}</option>
+                    </select>
+                  </div>
+                );
+              })}
+            </div>
+            {unidades === null && <div className="mt-2 text-[10.5px]" style={{ color: "#C8A24A" }}>{tr("Couldn't load your locations list just now, so a listing can't be tied to a specific location yet.")}</div>}
+            <button type="button" disabled={salvando === "mapa" || Object.keys(mapa).length === 0} onClick={salvarMapa} className="btn-bright text-sm mt-3 disabled:opacity-50">{tr("Save my listings")}</button>
           </div>
         )}
       </Card>
 
-      {/* (b) ⭐ Avaliações */}
+      {/* (b) ⭐ Avaliações — só leitura aqui; aprovar/editar/escrever resposta é na aba Reputação */}
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-2.5 border-b border-white/10 flex items-center justify-between gap-2">
+        <div className="px-5 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-bold uppercase tracking-wide flex items-center gap-2" style={{ color: "#FFC23D" }}><FaStar size={11} /> {t({ en: "Reviews", pt: "Avaliações", es: "Reseñas", hi: "समीक्षाएँ" })}</span>
-          {connected && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-black text-g-green normal-case"><FaCircleCheck size={10} /> {t({ en: "Gui replies automatically for you", pt: "A Gui responde automaticamente pra você", es: "Gui responde automáticamente por ti", hi: "Gui आपके लिए अपने-आप जवाब देती है" })}</span>
-          )}
+          <span className="text-[10px] font-bold text-g-muted normal-case">{tr("Nothing is posted on Google without your approval")}</span>
         </div>
+        {!demo && ready && rascunhos != null && rascunhos > 0 && (
+          <div className="px-5 py-2.5 border-b border-white/10 text-[11.5px]" style={{ color: "#C8A24A", background: "#C8A24A0d" }}>
+            <b>{rascunhos}</b> {tr("reply draft(s) waiting for your approval in the Reputation tab.")}
+          </div>
+        )}
+        {falhas.map((p) => (
+          <div key={p.location_id} className="px-5 py-2.5 border-b border-white/10 text-[11.5px]" style={{ color: "#E2533F", background: "#E2533F0d" }}>
+            {tr("Couldn't read this location just now. Its reviews are missing from this page, not zero:")} <b>{p.label || p.location_id}</b>
+          </div>
+        ))}
         {reviews.length === 0 ? (
-          <Empty icon="⭐" text={connected
-            ? t({ en: "No reviews synced yet — they'll appear here the moment the Google API is live, and Gui will reply for you.", pt: "Nenhuma avaliação sincronizada ainda — elas aparecem aqui assim que a API do Google ligar, e a Gui responde por você.", es: "Aún no hay reseñas — aparecerán aquí cuando la API de Google esté activa y Gui responderá por ti.", hi: "अभी कोई समीक्षा नहीं — API लाइव होते ही यहाँ दिखेंगी और Gui जवाब देगी।" })
-            : t({ en: "Connect your Google profile above to see and auto-reply to your reviews.", pt: "Conecte seu Perfil do Google acima para ver e responder automaticamente suas avaliações.", es: "Conecta tu Perfil de Google arriba para ver y responder tus reseñas.", hi: "ऊपर अपनी Google प्रोफ़ाइल कनेक्ट करें।" })} />
+          <Empty icon={!demo && ready && (!leu || falhas.length) ? "⚠️" : "⭐"} text={
+            !demo && ready && (!leu || falhas.length) ? tr("Couldn't read your reviews. This is a connection problem, not an empty profile.")
+              : !demo && ready ? tr("No reviews yet on the connected Google listings.")
+              : !demo && gstate === "not_connected" ? tr("Connect your Google account above to see your reviews here.")
+              : !demo && unverified ? tr("Couldn't check right now, so no reviews are shown.")
+              : frase || tr("Reviews show up here once your Google listings are connected and being read.")} />
         ) : (
           <div className="divide-y divide-white/[0.05]">
             {reviews.map((r, i) => (
-              <div key={i} className="px-5 py-3">
+              <div key={r.id || i} className="px-5 py-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-bold text-g-word truncate">{r.name || bizName}</span>
-                  <span className="text-xs text-g-gold shrink-0">{"★".repeat(r.stars || 0)}<span className="text-g-muted">{"★".repeat(5 - (r.stars || 0))}</span></span>
+                  <span className="text-sm font-bold text-g-word truncate">{r.reviewer || tr("Google user")}{r.locationLabel && fichas.filter((f) => f.include).length > 1 ? <span className="text-g-muted font-normal text-[11px]"> · {r.locationLabel}</span> : null}</span>
+                  <span className="text-xs text-g-gold shrink-0">{r.stars == null ? "—" : <>{"★".repeat(r.stars)}<span className="text-g-muted">{"★".repeat(5 - r.stars)}</span></>}</span>
                 </div>
                 {r.text && <div className="text-[12px] text-g-muted mt-0.5 leading-snug">"{r.text}"</div>}
                 <div className="mt-1 text-[10px] font-bold" style={{ color: r.replied ? "#3E9468" : "#9A8F82" }}>
-                  {r.replied
-                    ? t({ en: "✓ Gui replied", pt: "✓ a Gui respondeu", es: "✓ Gui respondió", hi: "✓ Gui ने जवाब दिया" })
-                    : t({ en: "· awaiting reply", pt: "· aguardando resposta", es: "· esperando respuesta", hi: "· जवाब बाकी" })}
+                  {r.replied ? `✓ ${tr("Replied")}` : `· ${tr("no reply yet")}`}
                 </div>
               </div>
             ))}
           </div>
         )}
+        {!demo && ready && <div className="px-5 py-2.5 border-t border-white/10 text-[10.5px] text-g-muted">{tr("Approve, edit or write replies in the Reputation tab.")}</div>}
       </Card>
 
       {/* (c) 📈 SEO local */}
@@ -284,6 +412,22 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
           </div>
         )}
 
+        {/* Pedido que veio só do navegador e o servidor ainda não confirmou. */}
+        {(adReq?.status === "checking" || adReq?.status === "unverified") && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 text-[11.5px] leading-snug" style={{ color: "#C8A24A", background: "#C8A24A12", border: "1px solid #C8A24A40" }}>
+            <span className="min-w-0 flex-1">
+              {adReq.status === "checking"
+                ? t({ en: "Checking your request with the team…", pt: "Conferindo o seu pedido com a equipe…", es: "Verificando tu solicitud con el equipo…", hi: "टीम के साथ आपका अनुरोध जाँच रहे हैं…" })
+                : t({ en: "I couldn't confirm your request right now. It may have reached the team — I can't tell until I can check.", pt: "Não consegui confirmar o seu pedido agora. Ele pode ter chegado à equipe — só dá para saber quando eu conseguir conferir.", es: "No pude confirmar tu solicitud ahora. Puede haber llegado al equipo — no lo sabré hasta poder verificar.", hi: "मैं अभी आपके अनुरोध की पुष्टि नहीं कर सका। यह टीम तक पहुँचा हो सकता है — जाँच होने तक पक्का नहीं कह सकता।" })}
+            </span>
+            {adReq.status === "unverified" && (
+              <button type="button" onClick={() => { setAdReq((c) => (c ? { ...c, status: "checking" } : c)); setTentativa((n) => n + 1); }} className="rounded-full border border-current px-3 py-1 text-[11px] font-black">
+                {t({ en: "↻ Try again", pt: "↻ Tentar de novo", es: "↻ Reintentar", hi: "↻ फिर कोशिश करें" })}
+              </button>
+            )}
+          </div>
+        )}
+
         {adReq?.status === "demo" && (
           <div className="mt-3 rounded-xl px-3 py-2.5 text-[11.5px] leading-snug" style={{ color: "#C8A24A", background: "#C8A24A12", border: "1px solid #C8A24A40" }}>
             {t({ en: "Sample screen — this request wasn't sent to anyone.", pt: "Tela de exemplo — este pedido não foi enviado a ninguém.", es: "Pantalla de ejemplo — esta solicitud no se envió a nadie.", hi: "नमूना स्क्रीन — यह अनुरोध किसी को नहीं भेजा गया।" })}
@@ -302,7 +446,7 @@ function GoogleHub({ V, real = null, email = "", dataKey = "" }) {
           </div>
         )}
 
-        {showForm && adReq?.status !== "requested" && (
+        {showForm && !["requested", "checking", "unverified"].includes(adReq?.status) && (
           <div className="mt-3 space-y-2.5 rounded-xl border border-white/10 bg-black/20 p-3">
             <label className="block text-[10px] font-black uppercase tracking-wide text-g-muted">{t({ en: "What do you want more of?", pt: "Você quer mais o quê?", es: "¿Qué quieres más?", hi: "आपको क्या ज़्यादा चाहिए?" })}
               <select value={form.goal} onChange={(e) => setForm({ ...form, goal: e.target.value })} className="mt-1 w-full rounded-lg bg-white/[0.04] border border-white/10 px-2.5 py-2 text-sm text-g-word">

@@ -172,7 +172,7 @@ export async function onRequestPost(context) {
       if (!quando || !contato) return json({ ok: false, erro: "informe horário e contato" }, 400);
       const svc = await servicoDaCall(env, origin);
       if (svc.erro) return json({ ok: false, agenda_indisponivel: svc.erro });
-      const r = await agenda(env, origin, { op: "book", service: svc.nome, when: quando, name: nome, contact: contato, lang: langMotor });
+      const r = await agenda(env, origin, { op: "book", service: svc.nome, when: quando, name: nome, contact: contato, lang: langMotor, channel: "web" });
       if (r.indisponivel) return json({ ok: false, agenda_indisponivel: r.indisponivel });
       // "ok" sem comprovante é promessa sem lastro (regra da casa): sem `ref`/`ok` da agenda, isto
       // NÃO virou horário marcado — e quem chamou precisa saber para não escrever "confirmado".

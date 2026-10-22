@@ -27,9 +27,9 @@
     // which brand bits the site set explicitly — these always win over API-returned config
     var hasAttrName = !!BRAND_NAME, hasAttrLogo = !!BRAND_LOGO, hasAttrAccent = !!ATTR_ACCENT;
     var T = {
-      en: { greet: "Hi! I'm Gui — I can book, quote or answer anything you need 👋", ph: "Type your message…", send: "Send", sub: "AI assistant · online", err: "I'm having a connection hiccup — please try again in a moment.", errP: "I'm having a connection hiccup — you can also call us: ", open: "Chat with us", close: "Close chat" },
-      pt: { greet: "Oi! Sou a Gui — posso reservar, orçar ou responder o que precisar 👋", ph: "Escreva sua mensagem…", send: "Enviar", sub: "assistente IA · online", err: "Tive uma falha de conexão — tente de novo em instantes.", errP: "Tive uma falha de conexão — você também pode ligar: ", open: "Fale com a gente", close: "Fechar chat" },
-      es: { greet: "¡Hola! Soy Gui — puedo reservar, cotizar o responder lo que necesites 👋", ph: "Escribe tu mensaje…", send: "Enviar", sub: "asistente IA · online", err: "Tuve una falla de conexión — intenta de nuevo en un momento.", errP: "Tuve una falla de conexión — también puedes llamar: ", open: "Habla con nosotros", close: "Cerrar chat" }
+      en: { greet: "Hi! I'm {n}, the virtual assistant here — I can book, quote or answer anything you need 👋", ph: "Type your message…", send: "Send", sub: "AI assistant · online", err: "I'm having a connection hiccup — please try again in a moment.", errP: "I'm having a connection hiccup — you can also call us: ", open: "Chat with us", close: "Close chat" },
+      pt: { greet: "Oi! Sou a {n}, assistente virtual daqui — posso reservar, orçar ou responder o que precisar 👋", ph: "Escreva sua mensagem…", send: "Enviar", sub: "assistente IA · online", err: "Tive uma falha de conexão — tente de novo em instantes.", errP: "Tive uma falha de conexão — você também pode ligar: ", open: "Fale com a gente", close: "Fechar chat" },
+      es: { greet: "¡Hola! Soy {n}, la asistente virtual de aquí — puedo reservar, cotizar o responder lo que necesites 👋", ph: "Escribe tu mensaje…", send: "Enviar", sub: "asistente IA · online", err: "Tuve una falla de conexión — intenta de nuevo en un momento.", errP: "Tuve una falla de conexión — también puedes llamar: ", open: "Habla con nosotros", close: "Cerrar chat" }
     };
     var t = T[LANG];
 
@@ -176,7 +176,8 @@
           if (!greeted) {
             greeted = true;
             if (hist.length) { for (var i = 0; i < hist.length; i++) add(hist[i].role === "user" ? "user" : "gui", String(hist[i].text || "")); }
-            else { add("gui", t.greet); hist.push({ role: "gui", text: t.greet }); save(); }
+            // CR-01 (2026-10-08): a 1ª mensagem do chat se apresenta como ASSISTENTE VIRTUAL (sem aviso de gravação — é texto).
+            else { var g0 = t.greet.replace("{n}", BRAND_NAME || "Gui"); add("gui", g0); hist.push({ role: "gui", text: g0 }); save(); }
             msgs.appendChild(typ);
           }
           setTimeout(function () { try { input.focus(); } catch (e) { /* ok */ } }, 180);

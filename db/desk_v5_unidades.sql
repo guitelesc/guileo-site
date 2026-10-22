@@ -1,0 +1,6 @@
+-- GUILEO DESK v5 · unidades lado a lado (2026-10-05). Aplicado pela migração desk_v5_4_relatorio_unidades.
+-- desk_reports_unidades(email,key,from,to) [porta _desk_ok]: por unidade — visits, booked, no_show, cancelled,
+-- clients, revenue_cents (desk_sales pagas), sales, avg_ticket_cents, utilization_pct (só staff; null sem expediente).
+-- Ignora bloqueios e as linhas de sala/equipamento vinculadas (attributes ? 'vinculo_de').
+-- Texto integral: select pg_get_functiondef('desk_reports_unidades'::regproc);
+-- Provado com dados plantados (rollback): 2ª unidade com 1 visita, 1 falta, 2 vendas = $120, ticket $60.

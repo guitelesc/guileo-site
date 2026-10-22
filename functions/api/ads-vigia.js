@@ -57,7 +57,7 @@ async function vigiar(request, env) {
   }
 
   const r = await svcJson(env, "ads_alertas", { p_secret: env.INGEST_SECRET || "", p_days: dias });
-  if (!r || r.erro_http) return json({ ok: false, error: `não consegui varrer (${r?.erro_http || "?"})` }, 502);
+  if (!r || r.erro_http) return json({ ok: false, error: `não consegui varrer (${r?.erro_http || "?"})` }, 503);
 
   // ── O TERCEIRO BALDE: 'medir' NÃO VAI PARA O CLIENTE ────────────────────────────────────────
   // `ads_alertas` passou a marcar com gravidade 'medir' a campanha que trouxe agendamento e

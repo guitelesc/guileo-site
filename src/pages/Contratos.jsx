@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CATS, CLAUSES } from "../data/contratos";
 import ContractGenerator from "../components/ContractGenerator.jsx";
+import ProviderSignPanel from "../components/ProviderSignPanel.jsx";
 
 export default function Contratos() {
   const [view, setView] = useState("index");
@@ -33,6 +34,8 @@ export default function Contratos() {
             <a href="/" style={{ fontSize: 12, color: "#7FB800", textDecoration: "none", marginTop: 8, display: "inline-block" }}>← Voltar ao site</a>
             <button onClick={() => setView("generator")} style={{ marginLeft: 14, fontSize: 12, fontWeight: 700, color: "#13211B", background: "#7FB800", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>✨ Gerador inteligente (gera + assina online) →</button>
           </div>
+          {/* o prestador assina PRIMEIRO nos contratos com body.provider_signs_first (ex.: Natura) */}
+          <ProviderSignPanel lang="pt" />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(250px,1fr))", gap: 12 }}>
             {CATS.map((cat) => (
               <div key={cat.code} onClick={() => setView(cat.code)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setView(cat.code); } }} style={{ background: "#fff", borderRadius: 12, overflow: "hidden", cursor: "pointer", boxShadow: "0 2px 8px rgba(20,60,40,.08)", borderTop: `4px solid ${cat.color}` }}>

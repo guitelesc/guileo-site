@@ -206,7 +206,7 @@ export default function QualityPanel({ token }) {
                           não é nota ruim, é nota sobre um PEDAÇO — e a cor tem que dizer isso antes
                           de alguém ler o número da esquerda como se fosse o veredito da Gui. */}
                       <td className="px-1.5 py-1.5 text-center tabular-nums"
-                          style={{ color: (a.esperado && a.cases != null && a.cases < a.esperado) ? WARN : undefined }}
+                          style={{ color: (a.esperado && a.cases != null && a.cases < a.esperado) ? AMBER : undefined }}
                           title={a.esperado && a.cases != null && a.cases < a.esperado
                             ? `esta rodada mediu ${a.cases} dos ${a.esperado} casos declarados — os que faltam estão SEM prova`
                             : undefined}>

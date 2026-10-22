@@ -37,7 +37,7 @@
 // (`_<YYYY-MM-DD>-<0..3>`); the 7-day TTL still auto-expires the stale keys.
 import { json, safeEq, rateLimited } from "../lib/guard.js";
 import { sbKey } from "../lib/sb.js";
-import { opsAlertEmail } from "../lib/emailTemplates.js";
+import { avisarDono } from "../lib/avisarDono.js";
 import { SELF_SERVE_PLANS } from "../../src/data/selfServePlans.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -89,57 +89,23 @@ async function timedFetch(url, opts = {}, ms = PROBE_TIMEOUT_MS) {
 // ingest an ops_alert into the OWNER's feed. claimed===null → db/health_claims.sql not pasted
 // (report-only, alertReady:false). claimed===false → already paged today (correct dedup). Returns
 // { alerted, claimed } so the JSON can prove whether the page actually landed.
-async function alertFail(env, out, probe, summary, payload = {}) {
-  const OWNER = (env.OWNER_EMAIL || "smart@guileoai.com").toString().split(",")[0].trim().toLowerCase();
-  const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC) → once/day per probe
-  const kind = `canary_${probe}_${day}`;
-  const claimed = await rpc(env, "health_claim", { p_email: OWNER, p_kind: kind });
-  // O E-MAIL TEM CADENCIA PROPRIA (6h) E NAO PODE DEPENDER DESTA TRAVA DIARIA. Se ficasse depois do
-  // `return` de "ja avisei hoje", a 2a, 3a e 4a janelas do dia nunca mandariam e-mail nenhum — e a
-  // dedup do FEED teria calado o alarme que sai. Cada canal com a sua trava.
-  const emailed = await emailFail(env, out, probe, summary);
-  if (claimed === null) { out.alertReady = false; return { alerted: false, claimed: null, emailed }; }
-  if (claimed !== true) return { alerted: false, claimed: false, emailed }; // already paged today
-  const ir = await rpc(env, "ingest_client_event", {
-    p_email: OWNER, p_type: "ops_alert", p_channel: "system",
-    p_summary: `🐤 CANÁRIO: ${summary}`.slice(0, 300),
-    p_amount: 0, p_payload: { kind: `canary_${probe}`, probe, ...payload },
-  });
-  return { alerted: ir !== null, claimed: true, emailed };
-}
-
-// ── E O ALARME SAI DA PLATAFORMA (2026-08-25) ────────────────────────────────────────────────
-// A lei já estava escrita em cron-tick.js:344 — «alarme que fica dentro da plataforma é alarme que
+// ── E O ALARME SAI DA PLATAFORMA (2026-08-25 → porta única em 2026-09-09) ───────────────────
+// A lei já estava escrita em cron-tick.js — «alarme que fica dentro da plataforma é alarme que
 // não existe». Este canário provava o funil do DINHEIRO (link de pagamento 404, portão de ligação
-// morto) e guardava o resultado num feed que ninguém abre de madrugada. Um pay-link caído é venda
-// que não acontece enquanto ninguém olha.
-// LATCH DE 6h POR SONDA, sem SQL novo: `health_claim` tem TTL de 7 dias, então a chave carrega o
-// BALDE de 6h (`YYYY-MM-DD-0..3`) — chave nova a cada 6h = no máximo 1 e-mail por sonda por balde,
-// e as chaves velhas expiram sozinhas pelo próprio TTL. É o mesmo truque do `kind` diário acima,
-// com o balde que o pedido pede.
-// Chave de e-mail SEPARADA da chave do feed de propósito: o feed pode continuar 1×/dia enquanto o
-// e-mail vai 4×/dia — misturar as duas faria uma cadência calar a outra.
-async function emailFail(env, out, probe, summary) {
-  if (!env.RESEND_API_KEY) return false;
-  const OWNER = (env.OWNER_EMAIL || "smart@guileoai.com").toString().split(",")[0].trim();
-  const agora = new Date();
-  const balde = `${agora.toISOString().slice(0, 10)}-${Math.floor(agora.getUTCHours() / 6)}`;
-  const claimed = await rpc(env, "health_claim", { p_email: OWNER.toLowerCase(), p_kind: `canary_mail_${probe}_${balde}` });
-  if (claimed === null) { out.alertReady = false; return false; }  // db/health_claims.sql não colado
-  if (claimed !== true) return false;                              // já avisado neste balde de 6h
-  try {
-    const { subject, html } = opsAlertEmail({
-      type: `canario_${probe}`, client: "Guileo (funil)", detail: summary,
-      cta: "Abrir o admin →", ctaUrl: "https://guileoai.com/admin",
-    });
-    const r = await fetch("https://api.resend.com/emails", {
-      method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: OWNER, subject, html }),
-    });
-    // Conferir o `ok`: um alarme que a Resend recusou é o mesmo silêncio que este bloco veio matar.
-    if (!r.ok) { console.error(JSON.stringify({ canary_email: probe, resend: r.status })); return false; }
-    return true;
-  } catch (e) { console.error(JSON.stringify({ canary_email: probe, erro: String(e).slice(0, 100) })); return false; }
+// morto) e guardava o resultado num feed que ninguém abre de madrugada.
+// Até 09/09 este arquivo tinha a PRÓPRIA cópia de "manda e-mail pro dono" (com trava diária no
+// feed e trava de 6h no e-mail, duas chaves, e o padrão `smart@guileoai.com` que ninguém lê à
+// noite). Agora é `avisarDono`: feed + e-mail + WhatsApp, trava de 6h por sonda, e o RECIBO de
+// cada canal volta no JSON — `alerted` só é true quando o feed gravou; `emailed` só quando a
+// Resend aceitou. `alertReady:false` continua significando "a trava não pôde ser lida".
+async function alertFail(env, out, probe, summary, payload = {}) {
+  const r = await avisarDono(env, {
+    kind: `canario_${probe}`, summary: `🐤 CANÁRIO: ${summary}`, cliente: "Guileo (funil)",
+    link: "https://guileoai.com/admin", payload: { probe, ...payload },
+  });
+  if (r.trava && /ilegível/.test(r.trava)) out.alertReady = false;
+  if (r.pulado) return { alerted: false, claimed: false, emailed: false, recibo: r };
+  return { alerted: !!(r.feed && r.feed.ok), claimed: true, emailed: !!(r.email && r.email.ok), recibo: r };
 }
 
 // Classifica uma sonda de IA que RESPONDEU 200, pelo tempo que levou. Separado das sondas porque
@@ -297,6 +263,7 @@ export async function onRequest(context) {
       });
       res.alerted = a.alerted;
       res.emailed = a.emailed === true;
+      res.recibo = a.recibo; // o que cada canal respondeu — é a prova de que o alarme saiu (ou não)
     }
 
     const failed = Object.entries(probes).filter(([, r]) => r && r.status === "failed").map(([n]) => n);

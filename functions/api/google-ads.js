@@ -81,7 +81,7 @@ export async function onRequestPost(context) {
       const status = (b.status || "").toString().trim();
       if (!email.includes("@") || !uuidOk(id) || !status) return json({ error: "email + id + status required" }, 400);
       const r = await rpc("ads_request_set_status", { p_secret: ING, p_email: email, p_id: id, p_status: status });
-      if (!r.ok) return json({ error: "update failed (paste db/ads_requests.sql)" }, 502);
+      if (!r.ok) return json({ error: "update failed (paste db/ads_requests.sql)" }, 503);
       const res = await r.json().catch(() => null);
       if (!res || res.ok !== true) return json({ error: "not found" }, 404);
       return json({ ok: true, request: res });
@@ -120,7 +120,7 @@ export async function onRequestPost(context) {
       });
       if (!cr.ok) return json({ ok: false, ready: false, note: "Paste db/ads_requests.sql in Supabase to activate Google Ads requests." }, 200);
       const req = await cr.json().catch(() => null);
-      if (!req || !req.id) return json({ error: "request failed" }, 502);
+      if (!req || !req.id) return json({ error: "request failed" }, 503);
 
       // Alert the Guileo team (owner email) that a client wants ads built — HONEST:
       // it says a client REQUESTED ads (manual service), never that anything is running.

@@ -6,12 +6,19 @@ import { json, safeEq } from "../lib/guard.js";
 // 🚨 PREÇO E CRÉDITOS: FONTE ÚNICA. Valor escrito à mão aqui é o caminho para o cliente pagar o
 // preço novo e receber crédito de "amount desconhecido" — pagou e não recebeu, sem erro na tela.
 import { GUILEO_PLANS } from "../../src/data/guileoPlans.js";
-import { welcomeSelfServeEmail, ownerAlertEmail, dunningEmail, sellerCommissionEmail, teamKickoffBriefEmail } from "../lib/emailTemplates.js";
+import { DESK_PLANS } from "../../src/data/deskPlans.js";
+import { welcomeSelfServeEmail, ownerAlertEmail, dunningEmail, sellerCommissionEmail, teamKickoffBriefEmail, deskWelcomeEmail } from "../lib/emailTemplates.js";
 import { provisionClientAgent, buyAndBindNumber, forwardingInstructions, buildDefaultSchedulePayload } from "../lib/provision.js";
-import { svcRpc } from "../lib/sb.js";
+import { svcRpc, svcJson } from "../lib/sb.js";
 import { emitFailure } from "../lib/failure.js";
+import { assinaturaDoCliente } from "../lib/assinaturaDoCliente.js";
+import { pagamentoDoClienteDoNegocio } from "../lib/contaDoCliente.js";
+import { itensDaMeta, refDaVenda, enderecoEmLinha, lojaDe } from "../lib/loja.js";
+import { avisarPedidoLoja } from "../lib/lojaAviso.js";
+import { avisarDono } from "../lib/avisarDono.js";
 import { reportPurchase } from "../lib/adsConversions.js";
 import { tentarAutoAprovar } from "../lib/autoApprove.js";
+import { enviarValePresente } from "../lib/vendaOnlineNegocio.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -89,6 +96,41 @@ export async function onRequestPost(context) {
     // dispute id) AND logs a negative "refund" event, then alerts the owner. The event-id gate
     // above already ran this branch exactly once; the deduct ref is a second belt-and-suspenders.
     if (type === "charge.refunded" || type === "charge.dispute.created") {
+      // ESTORNO DE VENDA DE UM NEGÓCIO (gift card, pacote, link de cobrança): quem pagou é cliente
+      // DELE, não nosso — não existe crédito da Guileo a descontar. O que precisa acontecer é o
+      // negócio ficar sabendo (o cartão-presente continua válido até alguém cancelar) e nós também.
+      // `charge.metadata` herda a etiqueta que o checkout gravou no payment_intent.
+      // ESTORNO DE PEDIDO DA LOJA (2026-10-04): estorno TOTAL devolve as peças ao estoque
+      // (db/loja.sql · product_sale_refund_loja, pelas vendas cujo ref começa com o payment_intent).
+      // Estorno PARCIAL não diz quais peças voltaram → não mexe no estoque e avisa para conferir.
+      // Função ainda não colada no Supabase → avisa para devolver à mão. Nunca devolve duas vezes.
+      if (type === "charge.refunded" && obj.metadata && obj.metadata.guileo === "loja") {
+        const tenant = (obj.metadata.client_email || "").toString().toLowerCase();
+        const valor = ((obj.amount_refunded || 0) / 100).toFixed(2);
+        const total = obj.refunded === true || (obj.amount && obj.amount_refunded >= obj.amount);
+        const pi = (obj.payment_intent || "").toString();
+        let resultado = "parcial";
+        if (total && tenant && pi) {
+          const r = await svcJson(env, "product_sale_refund_loja", { p_secret: env.INGEST_SECRET || "", p_email: tenant, p_ref_prefix: `${pi}:` });
+          resultado = r && r.ok === true ? `devolvido (${r.cancelled} venda(s), ${r.restocked_units} peça(s) de volta ao estoque)` : `falhou: ${r?.reason || r?.detalhe || r?.erro_http || "sem resposta"}`;
+        }
+        try {
+          if (tenant) await svcRpc(env, "ingest_client_event", { p_secret: env.INGEST_SECRET || "", p_email: tenant, p_type: "refund", p_channel: "stripe",
+            p_summary: `↩️ Estorno de pedido da loja · -$${valor} · estoque: ${resultado}`, p_amount: -(Number(valor)), p_payload: { charge: obj.id || "", kind: "loja", payment_intent: pi } });
+          if (!resultado.startsWith("devolvido")) await emitFailure(env, "estorno_loja_estoque", tenant, `estorno de $${valor} num pedido da loja — estoque NÃO voltou sozinho (${resultado}); conferir e devolver à mão`, { charge: obj.id || "", payment_intent: pi });
+        } catch { /* melhor esforço: o Stripe continua sendo a fonte da verdade */ }
+        return json({ received: true, refund: true, loja: true, estoque: resultado });
+      }
+      if (type === "charge.refunded" && pagamentoDoClienteDoNegocio(obj.metadata)) {
+        const tenant = (obj.metadata.client_email || obj.metadata.tenant || "").toString().toLowerCase();
+        const valor = ((obj.amount_refunded || 0) / 100).toFixed(2);
+        try {
+          if (tenant) await svcRpc(env, "ingest_client_event", { p_secret: env.INGEST_SECRET || "", p_email: tenant, p_type: "refund", p_channel: "stripe",
+            p_summary: `↩️ Refund · -$${valor} · ${String(obj.metadata.guileo)} — if this was a gift card or package, cancel it so it can't be used`, p_amount: -(Number(valor)), p_payload: { charge: obj.id || "", kind: obj.metadata.guileo } });
+          await emitFailure(env, "estorno_de_venda_do_negocio", tenant, `estorno de $${valor} numa venda de ${String(obj.metadata.guileo)} — o item (gift card/pacote) NÃO é cancelado sozinho e a receita do negócio não foi revertida; conferir`, { charge: obj.id || "" });
+        } catch { /* melhor esforço: o Stripe continua sendo a fonte da verdade */ }
+        return json({ received: true, refund: true, venda_do_negocio: true });
+      }
       try {
         const ING = env.INGEST_SECRET || "";
         // charge.dispute.created → obj is a dispute (obj.amount); charge.refunded → obj is a
@@ -148,6 +190,41 @@ export async function onRequestPost(context) {
     // (b) send the CLIENT a gentle branded reminder pointing at their billing portal
     //     (only on payment_failed — a canceled subscriber must NOT get a "pay now" email),
     // (c) alert the owner with full context. Idempotent via the event-id gate above.
+    // ASSINATURA DE UM CLIENTE DO NEGÓCIO (lib/assinaturaDoCliente.js) — resolve ANTES da cobrança
+    // da Guileo: muda o assinante no painel do negócio e NÃO manda o e-mail de cobrança da Guileo
+    // ao cliente final. Se não der para gravar, vira falha visível — nunca "ativo" para sempre.
+    const dele = assinaturaDoCliente(type, obj);
+    if (dele) {
+      if (dele.incompleta) {
+        await emitFailure(env, "assinatura_de_cliente_sem_dados", dele.tenant || "", `evento ${type} de uma mensalidade de cliente sem negócio/mensalidade/assinatura legíveis — o assinante NÃO foi atualizado`, { sub: dele.subId || "", event: obj.id || "" });
+        return json({ received: true, membership: "incompleta" });
+      }
+      let gravou = false;
+      try {
+        const fr = await rpc("membership_subscriber_record", { p_secret: env.INGEST_SECRET || "", p_client_email: dele.tenant, p_membership_id: dele.id, p_contact: "", p_status: dele.status, p_stripe_sub_id: dele.subId });
+        gravou = fr.ok;
+      } catch { /* gravou fica false → falha visível abaixo */ }
+      if (!gravou) await emitFailure(env, "assinatura_de_cliente_nao_atualizada", dele.tenant, `a assinatura ${dele.subId} ${dele.status === "canceled" ? "foi cancelada" : "teve o pagamento recusado"} no Stripe e o painel NÃO foi atualizado`, { sub: dele.subId, status: dele.status });
+      else await svcRpc(env, "ingest_client_event", { p_secret: env.INGEST_SECRET || "", p_email: dele.tenant, p_type: "billing", p_channel: "stripe",
+        p_summary: dele.status === "canceled" ? "⚠️ Uma assinatura mensal de cliente foi cancelada" : "⚠️ O pagamento de uma assinatura mensal de cliente falhou",
+        p_amount: 0, p_payload: { kind: type, sub: dele.subId, membership_id: dele.id, status: dele.status } }).catch(() => {});
+      return json({ received: true, membership: gravou ? dele.status : "nao_gravou" });
+    }
+    // GUILEO DESK — assinatura cancelada ou com pagamento recusado (etiqueta "desk_plan" gravada por
+    // /api/desk-checkout). O plano vira 'canceled'/'past_due' em desk_assinaturas (lib/deskTrava.js lê).
+    {
+      const dm = { ...(obj.metadata || {}), ...(obj.subscription_details?.metadata || {}), ...(obj.parent?.subscription_details?.metadata || {}) };
+      const subId = type === "customer.subscription.deleted" ? obj.id : (obj.subscription || obj.parent?.subscription_details?.subscription || "");
+      if ((type === "invoice.payment_failed" || type === "customer.subscription.deleted") && dm.guileo === "desk_plan" && subId) {
+        const st = type === "customer.subscription.deleted" ? "canceled" : "past_due";
+        const r = await svcJson(env, "desk_assinatura_status_svc", { p_sub: String(subId), p_status: st });
+        const quem = r?.email || (dm.client_email || "").toString();
+        if (!r?.ok) await emitFailure(env, "desk_assinatura_nao_atualizada", quem, `assinatura do Desk ${subId} ${st} no Stripe, mas o plano NÃO foi atualizado`, { sub: subId, status: st });
+        else await svcRpc(env, "ingest_client_event", { p_secret: env.INGEST_SECRET || "", p_email: quem, p_type: "billing", p_channel: "stripe",
+          p_summary: st === "canceled" ? "⚠️ A assinatura do Guileo Desk foi cancelada" : "⚠️ O pagamento do Guileo Desk foi recusado", p_amount: 0, p_payload: { kind: type, sub: subId } }).catch(() => {});
+        return json({ received: true, desk_plan: st });
+      }
+    }
     if (type === "invoice.payment_failed" || type === "customer.subscription.deleted") {
       try {
         const ING = env.INGEST_SECRET || "";
@@ -240,6 +317,56 @@ export async function onRequestPost(context) {
       const cents = obj.amount_total ?? obj.amount_paid ?? 0;
       const meta = obj.metadata || {};
       const lineMeta = obj.lines?.data?.[0]?.price?.metadata || {};
+      // ── GUILEO DESK — plano pago (1º pagamento e cada renovação) ───────────────────────────────
+      // ANTES de todo o resto, de propósito: $199 (Pro) cairia na "Configuração Assistida" e qualquer
+      // outro valor no ramo padrão, que credita 1/$ e CRIA agente + COMPRA número Twilio para quem pagou.
+      // O plano vem da etiqueta que o NOSSO servidor gravou (/api/desk-checkout); o cliente não a edita.
+      {
+        const dm = { ...(obj.subscription_details?.metadata || {}), ...(obj.parent?.subscription_details?.metadata || {}), ...meta };
+        if (dm.guileo === "desk_plan") {
+          const plano = DESK_PLANS.find((p) => p.key === String(dm.desk_plan || ""));
+          const unidades = Math.min(Math.max(parseInt(dm.units, 10) || 1, 1), 20);
+          const quem = ((dm.client_email || "") || email).toString().toLowerCase();
+          const subId = (obj.subscription || obj.parent?.subscription_details?.subscription || "").toString() || null;
+          if (!plano || !quem) {
+            await emitFailure(env, "desk_pago_sem_dono", quem, `Guileo Desk pago ($${(cents / 100).toFixed(2)}) sem ${!plano ? "plano reconhecido" : "e-mail do cliente"} — resolver no Stripe`, { session: obj.id || "", plan: dm.desk_plan || null });
+            return json({ received: true, desk_plan: "sem_dono" });
+          }
+          let primeira = true;
+          try { const clm = await rpc("claim_credit_event", { p_secret: PEND_SECRET, p_event_id: obj.id || event.id, p_email: quem }); if (clm.ok && (await clm.json()) === false) primeira = false; } catch { /* sem claim → o id do evento acima já deduplica */ }
+          if (!primeira) return json({ received: true, desk_plan: "ja_processado" });
+          const set = await svcJson(env, "desk_assinatura_set_svc", { p_email: quem, p_plan: plano.key, p_status: "active", p_sub: subId, p_customer: (obj.customer || "").toString() || null, p_origem: "checkout" });
+          if (set?.ok !== true) await emitFailure(env, "desk_plano_nao_gravado", quem, `pagou o Guileo Desk ${plano.key} mas o plano NÃO foi gravado — liberar à mão`, { session: obj.id || "" });
+          const creditos = (Number(plano.credits) || 0) * unidades;
+          if (creditos > 0) {
+            // p_plan "" = não troca o rótulo do plano Guileo que a conta já tenha.
+            const cr = await rpc("add_client_credits", { p_secret: ING, p_email: quem, p_credits: creditos, p_plan: "" });
+            if (!cr.ok) await emitFailure(env, "credit_storage_failed", quem, `Desk ${plano.key} pago → ${creditos} créditos NÃO gravados`, { session: obj.id || "" });
+          }
+          const nomePlano = typeof plano.name === "string" ? plano.name : plano.name.en;
+          await svcRpc(env, "ingest_client_event", { p_secret: ING, p_email: quem, p_type: "payment", p_channel: "stripe",
+            p_summary: `🗓️ Guileo Desk ${nomePlano}${unidades > 1 ? ` × ${unidades}` : ""} · $${(cents / 100).toFixed(2)}${creditos ? ` · +${creditos} créditos` : ""}`, p_amount: cents / 100,
+            p_payload: { session: obj.id || "", desk_plan: plano.key, units: unidades, sub: subId } }).catch(() => {});
+          // 1º pagamento: o e-mail com o código de conexão — o único caminho de entrada de quem comprou pela /desk.
+          if (isCheckout) {
+            if (!env.RESEND_API_KEY) await emitFailure(env, "desk_sem_resend", quem, "Desk pago, mas RESEND_API_KEY ausente — enviar o código à mão", {});
+            else {
+              try {
+                const kr = await rpc("client_key_for", { p_secret: ING, p_email: quem });
+                const code = kr.ok ? ((await kr.json()) || "").toString() : "";
+                const lang = String(obj.locale || "").startsWith("pt") ? "pt" : String(obj.locale || "").startsWith("es") ? "es" : "en";
+                const tpl = deskWelcomeEmail({ name: (obj.customer_details?.name || "").toString().split(" ")[0], plan: nomePlano, code, credits: creditos, lang });
+                const mr = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+                  body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: [quem], subject: tpl.subject, html: tpl.html }) });
+                const md = await mr.json().catch(() => ({}));
+                if (!code) await emitFailure(env, "connection_code_missing", quem, "Desk pago mas sem código de conexão — enviar à mão", { session: obj.id || "" });
+                else if (!mr.ok || !md.id) await emitFailure(env, "welcome_email_failed", quem, `e-mail de ativação do Desk não saiu (HTTP ${mr.status}) — reenviar por /api/reenviar-acesso`, { status: mr.status });
+              } catch { await emitFailure(env, "welcome_email_failed", quem, "e-mail de ativação do Desk falhou — reenviar por /api/reenviar-acesso", {}); }
+            }
+          }
+          return json({ received: true, desk_plan: plano.key });
+        }
+      }
       // TOP-UP (one-time credit recharge) — Payment Links minted by setup-selfserve carry
       // metadata { guileo:"topup", credits } which Stripe copies onto the checkout session.
       // These payers are EXISTING clients buying loose credits: credit them + drop a friendly
@@ -281,7 +408,11 @@ export async function onRequestPost(context) {
       // reconciles against the Stripe charge, but grant ZERO plan credits — so a $199 setup never falls
       // through to the default "1 credit per USD" and wrongly hands out 199 credits. Recognized by
       // metadata.guileo="setup" OR the exact 19900¢ price (STRIPE_SETUP.md · Configuração Assistida).
-      if (isCheckout && (meta.guileo === "setup" || cents === 19900)) {
+      // 🚨 $199 NÃO É SÓ DA GUILEO (2026-09-30): um gift card ou pacote de $199 vendido por um
+      // negócio caía aqui pelo valor — nenhum cartão emitido, nada na receita dele. A etiqueta
+      // da venda do negócio (lib/contaDoCliente.js) tira esses pagamentos deste ramo.
+      const vendaDoNegocio = pagamentoDoClienteDoNegocio(meta, obj.subscription_details?.metadata);
+      if (isCheckout && !vendaDoNegocio && (meta.guileo === "setup" || cents === 19900)) {
         if (email && cents > 0) {
           try {
             await svcRpc(env, "ingest_client_event", {
@@ -352,8 +483,22 @@ export async function onRequestPost(context) {
       ]);
       // SECURITY: credits derive ONLY from the amount actually paid — NEVER from Stripe metadata
       // (price/line metadata is editable and could grant 100k credits for $0.01). Metadata = plan label only.
-      const credits = PLAN_CREDITS[cents] || Math.round(cents / 100);
+      // CUPOM / IMPOSTO (2026-09-22): os Payment Links aceitam código promocional. Com 20% off o
+      // Personalized paga $717,60, sai da tabela e cairia em `cents/100` = 718 créditos em vez de
+      // 3.000 — todo mês, sem erro em lugar nenhum. Quando o valor não bate, o PLANO vem da etiqueta
+      // (metadata.plan / price.metadata.plan, que o setup-selfserve grava) e os créditos vêm do plano.
+      // A etiqueta sozinha NÃO dá crédito (continua sendo texto editável): só entra se o nome casar
+      // com um plano real E o valor pago for pelo menos metade do preço cheio — desconto maior que
+      // 50% não existe na casa e vira alerta, não crédito.
+      const etiqueta = (meta.plan || lineMeta.plan || "").toString().trim().toLowerCase();
+      const planoDaEtiqueta = etiqueta ? GUILEO_PLANS.find((p) => [p.key, p.name].filter(Boolean).some((x) => String(x).toLowerCase() === etiqueta)) : null;
+      const cheio = planoDaEtiqueta ? Math.round(Number(planoDaEtiqueta.amount) * 100) : 0;
+      const porEtiqueta = !PLAN_CREDITS[cents] && planoDaEtiqueta && cents >= cheio / 2 && cents < cheio;
+      const credits = PLAN_CREDITS[cents] || (porEtiqueta ? Number(planoDaEtiqueta.credits) : Math.round(cents / 100));
       const plan = (meta.plan || lineMeta.plan || PLAN_NAME[cents] || obj.lines?.data?.[0]?.description || "").toString();
+      const valorConhecido = !!PLAN_CREDITS[cents] || !!porEtiqueta || meta.guileo === "topup" || meta.guileo === "setup" || cents === 19900;
+      if (porEtiqueta) await emitFailure(env, "plan_credited_by_label", email, `pagou ${(cents / 100).toFixed(2)} (desconto) — creditado pelo plano "${planoDaEtiqueta.name}" = ${credits} créditos`, { cents, plan: planoDaEtiqueta.name });
+      else if (!valorConhecido && isCheckout && !vendaDoNegocio) await emitFailure(env, "unknown_amount_paid", email, `pagou ${(cents / 100).toFixed(2)} fora da tabela de planos — creditado ${credits} (1/$) e NÃO provisionado; conferir à mão`, { cents, session: obj.id || "" });
       // CLIENT-CHARGE GUARD (money): Gui close&collect links on the OWNER fallback account are tagged
       // metadata.guileo="client_charge" (agent-action.js). That payer is a CLIENT'S customer — never
       // credit/provision THEM; instead ledger the payment as the tenant's revenue so "collected on the
@@ -366,14 +511,79 @@ export async function onRequestPost(context) {
         }
         return json({ received: true, client_charge: true });
       }
+      // LOJA DA VITRINE (2026-10-04): a cliente do negócio comprou pela sacola da vitrine
+      // (functions/api/loja-checkout.js). Cada item vira uma venda PAGA em biz_product_sales e baixa o
+      // estoque. product_sale_record é idempotente pelo ref "sessão:produto": reentrega do Stripe não
+      // duplica a venda nem baixa o estoque duas vezes. Nunca credita nem provisiona quem pagou.
+      // PAGO E NÃO REGISTRADO (esgotou entre a sacola e o pagamento, banco fora) acorda alguém: a
+      // cliente pagou, e o salão precisa entregar ou estornar.
+      if (isCheckout && meta.guileo === "loja") {
+        const tenant = (meta.client_email || "").toString().toLowerCase();
+        const itens = itensDaMeta(meta.itens);
+        const nome = (obj.customer_details?.name || "").toString().slice(0, 120);
+        const contato = email || (obj.customer_details?.phone || "").toString();
+        const entrega = (meta.entrega || "").toString();
+        const endereco = obj.shipping_details?.address || obj.collected_information?.shipping_details?.address || null;
+        const problemas = [];
+        const vendidos = [];   // { nome, qtd } para o aviso ao salão
+        if (!tenant || !itens.length) problemas.push("sessão sem tenant ou sem itens no metadado");
+        for (const it of itens) {
+          const r = await svcJson(env, "product_sale_record", {
+            p_secret: ING, p_email: tenant, p_product_id: it.id, p_qty: it.qtd, p_ref: refDaVenda(obj, it.id),
+            p_customer_name: nome || null, p_customer_contact: contato || null, p_status: "paid", p_source: "loja",
+          });
+          vendidos.push({ nome: (r && r.name) || "", qtd: it.qtd });
+          if (!r || r.ok !== true) problemas.push(`${it.id} ×${it.qtd}: ${r?.reason || r?.detalhe || r?.erro_http || "sem resposta"}`);
+        }
+        if (tenant && cents > 0 && env.SCHED_SECRET) {
+          const rr = await rpc("revenue_record", { p_secret: env.SCHED_SECRET, p_email: tenant, p_category: "loja", p_amount_cents: cents, p_ref: obj.id || null, p_source: "stripe-link", p_meta: { payer: contato, entrega } });
+          if (!rr.ok) problemas.push(`revenue_record ${rr.status}`);
+        }
+        const qtd = itens.reduce((n, i) => n + i.qtd, 0);
+        const rotulo = entrega === "envio" ? "envio" : `retirada ${entrega === "ues" ? "Upper East Side" : entrega === "astoria" ? "Astoria" : entrega}`;
+        try {
+          await svcRpc(env, "ingest_client_event", {
+            p_secret: ING, p_email: tenant, p_type: "payment", p_channel: "stripe",
+            p_summary: `🛍️ Pedido da loja · $${(cents / 100).toFixed(2)} · ${qtd} ${qtd === 1 ? "item" : "itens"} · ${rotulo}${nome ? ` · ${nome}` : ""}`,
+            p_amount: cents / 100, p_payload: { session: obj.id || "", kind: "loja", entrega, itens, contato, endereco },
+          });
+        } catch { problemas.push("ingest_client_event falhou"); }
+        // O SALÃO PRECISA SABER: e-mail + WhatsApp/SMS no telefone de alerta (lib/lojaAviso.js).
+        // Nenhum dos dois saiu = ninguém no balcão sabe do pedido pago → entra nos problemas e acorda alguém.
+        if (tenant) {
+          const aviso = await avisarPedidoLoja(env, { tenant, negocio: lojaDe(meta.slug)?.nome || "", cliente: nome || contato, itens: vendidos, entrega, endereco: enderecoEmLinha(endereco), cents });
+          if (!aviso.email && !aviso.texto) problemas.push("o salão NÃO foi avisado do pedido (e-mail e texto falharam ou não configurados) — avisar à mão");
+        }
+        if (problemas.length) {
+          const resumo = `Pedido da loja PAGO ($${(cents / 100).toFixed(2)}, sessão ${obj.id || "?"}) com problema no registro: ${problemas.join("; ").slice(0, 400)}. Conferir estoque e entregar ou estornar.`;
+          await emitFailure(env, "loja_pago_sem_registro", tenant, resumo, { session: obj.id || "", problemas });
+          try { await avisarDono(env, { kind: "loja_pago_sem_registro", summary: resumo, cliente: tenant, chave: `loja:${obj.id || ""}` }); } catch { /* o feed acima já registrou */ }
+        }
+        return json({ received: true, loja: true, problemas: problemas.length });
+      }
       // RECURRING-REVENUE FULFILL (money): the tenant's CUSTOMER bought a package / membership / gift
       // card via a Gui sell-link (functions/api/packages.js / giftcards.js). Fulfill into the TENANT's
       // data — never credit/provision the payer. Merges subscription_details.metadata so a membership
       // RENEWAL invoice is caught too. Event-id dedup above + per-record idempotency make this once-only.
-      const gmeta = { ...(obj.subscription_details?.metadata || {}), ...meta };
+      // API nova do Stripe (2026-10-05): na fatura de RENOVAÇÃO os dados da assinatura vêm em
+      // obj.parent.subscription_details — o cancelamento (linha ~215) e o desk_plan já liam; este ramo não,
+      // e a 2ª cobrança de uma assinatura não era reconhecida (ou virava "assinante novo" com o id da fatura).
+      const gmeta = { ...(obj.subscription_details?.metadata || {}), ...(obj.parent?.subscription_details?.metadata || {}), ...meta };
+      const subDaFatura = (obj.subscription || obj.parent?.subscription_details?.subscription || "").toString();
+      // GUILEO DESK — sinal de agendamento pago (link de /api/desk action "deposit_link"). Marca o
+      // agendamento DO NEGÓCIO; nunca credita quem pagou. Uma falha vira alerta, não silêncio.
+      if (gmeta.guileo === "desk_deposit") {
+        const tenant = (gmeta.client_email || "").toString().toLowerCase();
+        try {
+          const fr = await svcJson(env, "desk_deposit_mark", { p_tenant: tenant, p_appointment_id: gmeta.appointment_id || null, p_session: obj.id || "", p_cents: cents || 0 });
+          if (fr?.ok !== true) throw new Error("desk_deposit_mark");
+          await svcRpc(env, "ingest_client_event", { p_secret: ING, p_email: tenant, p_type: "payment", p_channel: "stripe", p_summary: `💳 Sinal pago · $${(cents / 100).toFixed(2)}`, p_amount: cents / 100, p_payload: { session: obj.id || "", kind: "desk_deposit", appointment_id: gmeta.appointment_id || "" } });
+        } catch { await emitFailure(env, "desk_deposit_mark_failed", tenant, `deposit paid $${(cents / 100).toFixed(2)} but appointment not marked`, { session: obj.id || "", appointment_id: gmeta.appointment_id || "" }); }
+      }
       if (gmeta.guileo === "package" || gmeta.guileo === "membership" || gmeta.guileo === "giftcard") {
         const tenant = (gmeta.client_email || "").toString().toLowerCase();
         const buyer = email || (gmeta.contact || gmeta.purchaser_contact || "").toString().toLowerCase();
+        let valeNovo = null;
         try {
           // fetch does NOT throw on non-2xx — every fulfill RPC must be .ok-checked or a DB 500
           // becomes a silently-dropped paid order (the catch below only saw network errors).
@@ -386,13 +596,18 @@ export async function onRequestPost(context) {
             const fr = await rpc("package_purchase_record", { p_secret: ING, p_client_email: tenant, p_package_id: gmeta.id, p_contact: buyer, p_sessions: sessions, p_stripe_session_id: obj.id || null });
             if (!fr.ok) throw new Error(`package_purchase_record ${fr.status}`);
           } else if (gmeta.guileo === "membership" && tenant && gmeta.id) {
-            const fr = await rpc("membership_subscriber_record", { p_secret: ING, p_client_email: tenant, p_membership_id: gmeta.id, p_contact: buyer, p_status: "active", p_stripe_sub_id: (obj.subscription || obj.id || "").toString() });
+            const fr = await rpc("membership_subscriber_record", { p_secret: ING, p_client_email: tenant, p_membership_id: gmeta.id, p_contact: buyer, p_status: "active", p_stripe_sub_id: subDaFatura || obj.id || null });
             if (!fr.ok) throw new Error(`membership_subscriber_record ${fr.status}`);
           } else if (gmeta.guileo === "giftcard" && tenant) {
             // anchor to the AMOUNT PAID (a promo code must shrink the card, not mint full value)
             const amt = Math.max(0, Math.round(cents || Number(gmeta.amount_cents) || 0));
-            const fr = await rpc("giftcard_create", { p_secret: ING, p_client_email: tenant, p_card: { amount_cents: amt, recipient_contact: gmeta.recipient_contact || "", purchaser_contact: gmeta.purchaser_contact || buyer || "" } });
-            if (!fr.ok) throw new Error(`giftcard_create ${fr.status}`);
+            // VALE UMA VEZ POR SESSÃO (2026-10-05, db/desk_v7_6_vale_plataforma.sql): a MESMA giftcard_create,
+            // agora dentro de giftcard_platform_fulfill_svc — trava por sessão e `already` honesto. Dois eventos
+            // da mesma sessão (completed + async_payment_succeeded) não criam dois vales nem dois e-mails.
+            const fr = await svcJson(env, "giftcard_platform_fulfill_svc", { p_secret: ING, p_tenant: tenant, p_session: (obj.id || "").toString(), p_cents: amt, p_recipient: gmeta.recipient_contact || "", p_purchaser: gmeta.purchaser_contact || buyer || "" });
+            if (!fr || fr.ok !== true) throw new Error(`giftcard_platform_fulfill_svc ${fr?.reason || fr?.erro_http || fr?.detalhe || "sem resposta"}`);
+            // o e-mail sai SÓ quando o banco diz que o vale acabou de nascer (nunca em retentativa / evento repetido)
+            if (fr.already !== true) valeNovo = { code: String(fr.result?.code || ""), cents: Number(fr.result?.cents) || amt };
           }
           // also ledger as the tenant's revenue so it lands in their Finance (best-effort)
           if (tenant && cents > 0 && env.SCHED_SECRET) {
@@ -400,7 +615,23 @@ export async function onRequestPost(context) {
           }
           await svcRpc(env, "ingest_client_event", { p_secret: ING, p_email: tenant, p_type: "payment", p_channel: "stripe", p_summary: `💳 ${gmeta.guileo === "package" ? "Pacote" : gmeta.guileo === "membership" ? "Assinatura" : "Gift card"} · $${(cents / 100).toFixed(2)}`, p_amount: cents / 100, p_payload: { session: obj.id || "", kind: gmeta.guileo } });
         } catch { await emitFailure(env, "recurring_fulfill_failed", tenant, `${gmeta.guileo} paid $${(cents / 100).toFixed(2)} but fulfill failed`, { session: obj.id || "" }); }
-        return json({ received: true, recurring: gmeta.guileo });
+        // E-MAIL DO VALE (2026-10-05): o mesmo envio do caminho da chave própria (lib/vendaOnlineNegocio.js ·
+        // enviarValePresente → valePresenteEmail). "Enviado" só com id do Resend; qualquer falha vira linha
+        // no feed do dono "vale NÃO enviado — mandar o código à mão", com o código. Fora do try acima:
+        // falhar no e-mail não é "fulfill failed" — o vale existe.
+        let vale = null;
+        if (valeNovo) {
+          try {
+            vale = await enviarValePresente(env, { tenant, session: (obj.id || "").toString(), code: valeNovo.code, cents: valeNovo.cents,
+              recipient: gmeta.recipient_contact || "", recipientName: gmeta.recipient_name || "", message: gmeta.gift_message || "",
+              buyer: email || (gmeta.purchaser_contact || "").toString().toLowerCase(), buyerName: String(obj.customer_details?.name || "").slice(0, 80) });
+          } catch (ve) {
+            await svcRpc(env, "ingest_client_event", { p_secret: ING, p_email: tenant, p_type: "message", p_channel: "Email",
+              p_summary: `⚠️ Vale ${valeNovo.code} ($${(valeNovo.cents / 100).toFixed(2)}) NÃO enviado (erro) — mandar o código à mão`, p_amount: 0,
+              p_payload: { kind: "giftcard_email", session: obj.id || "", code: valeNovo.code, delivery: "failed", reason: String(ve).slice(0, 120) } }).catch(() => null);
+          }
+        }
+        return json({ received: true, recurring: gmeta.guileo, ...(valeNovo ? { email: { sent: vale?.sent?.length || 0, failed: vale ? vale.failed.length : 1 } } : {}) });
       }
       if (email && credits > 0) {
         // CURRENCY ANCHOR — a 14900-cents payment in BRL/JPY must not hit the USD PLAN_CREDITS
@@ -485,9 +716,13 @@ export async function onRequestPost(context) {
         // Só o `approved` interrompe. "Falta 1 clique" (número compartilhado), "desligado",
         // "sem rascunho" ou falha NÃO interrompem: nesses casos o cliente pagou e ainda não tem
         // agente nenhum, e a Gui magra de hoje é melhor do que linha muda. O módulo nunca lança.
+        // Valor fora da tabela (link avulso sem etiqueta): crédito já entrou acima, mas NÃO nasce
+        // agente nem se compra número — isso custa dinheiro nosso por um pagamento que não é plano.
+        if (!valorConhecido) return;
         const aa = await tentarAutoAprovar(env, request, { email, source: "stripe", cents });
         if (aa && aa.approved) return;
         let provNumber = "", provLang = langFromCountry((obj.customer_details?.address?.country || "").toString().toUpperCase()), fwd = null, pend = null, bizName = "";
+        if (!env.ELEVENLABS_API_KEY) await emitFailure(env, "provision_sem_elevenlabs", email, "pagou, mas ELEVENLABS_API_KEY ausente — agente NÃO nasceu", {});
         if (env.ELEVENLABS_API_KEY) {
           try {
             try {
@@ -613,6 +848,7 @@ export async function onRequestPost(context) {
 
         // SELF-SERVE ACTIVATION — on the FIRST payment, email the connection code so the
         // client can link their portal to real data themselves (no manual onboarding).
+        if (!env.RESEND_API_KEY) await emitFailure(env, "provision_sem_resend", email, "pagou, mas RESEND_API_KEY ausente — e-mail de acesso NÃO saiu; enviar o código à mão", {});
         if (env.RESEND_API_KEY) {
           try {
             const kr = await rpc("client_key_for", { p_secret: ING, p_email: email });
@@ -621,10 +857,15 @@ export async function onRequestPost(context) {
               const lang = provLang;
               const business = (pend?.business || bizName || (lang === "en" ? "your business" : "seu negócio")).toString();
               const tpl = welcomeSelfServeEmail({ name: (obj.customer_details?.name || "").toString().split(" ")[0] || (lang === "en" ? "there" : "tudo bem"), business, lang, plan, code, credits, number: provNumber, forwarding: fwd });
-              await fetch("https://api.resend.com/emails", {
+              const mr = await fetch("https://api.resend.com/emails", {
                 method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
                 body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: [email], subject: tpl.subject, html: tpl.html }),
               });
+              // O e-mail de acesso é o ÚNICO caminho de entrada do cliente. "Enviado" sem conferir a
+              // resposta = cliente pagou, tem agente, e não tem como entrar — sem ninguém saber.
+              const md = await mr.json().catch(() => ({}));
+              if (!mr.ok) await emitFailure(env, "welcome_email_failed", email, `Resend recusou o e-mail de acesso (HTTP ${mr.status}) — reenviar por /api/reenviar-acesso`, { status: mr.status, motivo: (md && md.message) || "" });
+              else if (!md.id) await emitFailure(env, "welcome_email_sem_id", email, "Resend respondeu 200 sem id — conferir se o e-mail de acesso saiu", {});
             } else {
               // paid + Gui born, but no activation code to send → the client can't self-connect.
               // Surface loudly so the owner sends it manually (never a silent dead-end).

@@ -4,19 +4,24 @@ export default {
   theme: {
     extend: {
       colors: {
+        // TOKENS POR VARIÁVEL (2026-09-09). Os VALORES continuam os do cimento queimado — o padrão
+        // em `:root` (index.css) é byte a byte o de antes, então dashboard/portal não mudam um pixel
+        // (lei de 2026-06-20: nunca re-tonar tokens globais). O que muda: um escopo pode redefinir as
+        // variáveis — `.frio` na landing traz de volta a paleta elétrica da v1 (ciano/verde elétrico
+        // sobre azul-preto) sem tocar em quem está fora dele. `<alpha-value>` mantém bg-g-gold/10 etc.
         g: {
-          green:  "#3E9468",  // verde amazônia — discreet, deep (detail accent only)
-          light:  "#6FB892",  // emerald light (small text accents)
-          dark:   "#2C6E4B",  // deep forest
-          word:   "#EDE7DC",  // headings — warm ivory / champagne white
-          gold:   "#D6C29A",  // champanhe (soft metallic, not yellow gold)
-          copper: "#C2A878",  // champagne darker
-          cream:  "#161512",  // base bg — cimento queimado (warm cement charcoal) — the APP/dashboard identity
-          creamd: "#1C1A16",  // alt section — lighter cement
-          deep:   "#100F0C",  // deepest cement charcoal
-          line:   "#2B2720",  // cement border
-          ink:    "#C5BEB0",  // body text — warm greige
-          muted:  "#948C7B",  // muted warm taupe
+          green:  "rgb(var(--g-green) / <alpha-value>)",   // cimento: #3E9468 · frio: #1BC76B
+          light:  "rgb(var(--g-light) / <alpha-value>)",   // cimento: #6FB892 · frio: #08D4F0 (ciano)
+          dark:   "rgb(var(--g-dark) / <alpha-value>)",    // cimento: #2C6E4B
+          word:   "rgb(var(--g-word) / <alpha-value>)",    // cimento: #EDE7DC
+          gold:   "rgb(var(--g-gold) / <alpha-value>)",    // cimento: #D6C29A · frio: #F5A827
+          copper: "rgb(var(--g-copper) / <alpha-value>)",  // cimento: #C2A878 · frio: #D4A520
+          cream:  "rgb(var(--g-cream) / <alpha-value>)",   // cimento: #161512 · frio: #060A10
+          creamd: "rgb(var(--g-creamd) / <alpha-value>)",  // cimento: #1C1A16
+          deep:   "rgb(var(--g-deep) / <alpha-value>)",    // cimento: #100F0C
+          line:   "rgb(var(--g-line) / <alpha-value>)",    // cimento: #2B2720
+          ink:    "rgb(var(--g-ink) / <alpha-value>)",     // cimento: #C5BEB0
+          muted:  "rgb(var(--g-muted) / <alpha-value>)",   // cimento: #948C7B
         },
       },
       fontFamily: { sans: ['Inter','system-ui','sans-serif'] },

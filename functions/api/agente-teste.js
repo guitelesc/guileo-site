@@ -25,8 +25,8 @@ export async function onRequest(context) {
   if (ver) {
     const r = await fetch(`${EL}/convai/test-invocations/${encodeURIComponent(ver)}`, { headers: H });
     const t = await r.text();
-    if (!r.ok) return json({ ok: false, erro: `HTTP ${r.status}`, detalhe: t.slice(0, 400) }, 502);
-    let d; try { d = JSON.parse(t); } catch { return json({ ok: false, erro: "resposta não-JSON", amostra: t.slice(0, 200) }, 502); }
+    if (!r.ok) return json({ ok: false, erro: `HTTP ${r.status}`, detalhe: t.slice(0, 400) }, 503);
+    let d; try { d = JSON.parse(t); } catch { return json({ ok: false, erro: "resposta não-JSON", amostra: t.slice(0, 200) }, 503); }
     const runs = Array.isArray(d?.test_runs) ? d.test_runs : [];
     return json({
       ok: true, id: ver,
@@ -64,7 +64,7 @@ export async function onRequest(context) {
     body: JSON.stringify({ tests: ids.map((id) => ({ test_id: id })) }),
   });
   const t = await r.text();
-  if (!r.ok) return json({ ok: false, erro: `HTTP ${r.status}`, detalhe: t.slice(0, 500) }, 502);
-  let d; try { d = JSON.parse(t); } catch { return json({ ok: false, erro: "resposta não-JSON", amostra: t.slice(0, 200) }, 502); }
+  if (!r.ok) return json({ ok: false, erro: `HTTP ${r.status}`, detalhe: t.slice(0, 500) }, 503);
+  let d; try { d = JSON.parse(t); } catch { return json({ ok: false, erro: "resposta não-JSON", amostra: t.slice(0, 200) }, 503); }
   return json({ ok: true, invocation_id: d?.id || d?.test_invocation_id || null, rodando: ids.length, bruto: d });
 }

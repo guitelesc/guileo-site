@@ -8,11 +8,26 @@ import { waLink } from "../data/contact.js";
 import { tr, growthOps, loadAutomations, dueAutomations, runAutomation, weeklySummary, eventsInPeriod, sumAmounts, realDaily, EstChip, guiAlerts, UI_LANG, Card, GuiMark, dailyBriefing, scaleMoney, alertTarget, PLAY_COLOR, EVENT_ICON, relTime, recentActivity, vnum, Toggle, toggleAutomation, removeAutomation, Spark, Bars, SECTOR_OPS, speakLine, stopSpeaking, monthBookings, sectorBaseline } from "../pages/Portal.jsx";
 import GuiPlant from "./GuiPlant.jsx";
 import MorningBriefing from "./MorningBriefing.jsx";
+import { NOME_DO_PAINEL } from "./nome.js";
 
 // The tenant PAYING Guileo (subscription / credit top-up) is NEVER part of the ROI Gui drove for
 // them — only their own customers' money counts. In this data model a `payment` event = a charge TO
 // Guileo (client-report uses it as guiCost); customer revenue is sale/order/invoice/deposit/booking.
 // (get_client_data returns no payload, so this replaces any payload-based guess with a real rule.)
+/* ── NÚMERO DE CONTA REAL NASCE NO VALOR (2026-09-28) ──────────────────────────────────────────
+   `Count` sobe de 0 até o valor em ~1,4s e depende de requestAnimationFrame: numa aba em segundo
+   plano o rAF congela e o cartão fica parado em "0 Conversations" sob o selo "live" até a trava de
+   segurança (2,6s) — tempo de sobra para a dona ler zero. É a lei que a tela Hoje já segue
+   ("nenhum contador animado"). Conta real: número impresso direto. Vitrine: a animação continua. */
+function Num({ to, prefix = "", suffix = "", animar = false, chave }) {
+  if (animar) return <Count key={chave} to={to} prefix={prefix} suffix={suffix} />;
+  return <>{prefix}{Math.round(Number(to) || 0).toLocaleString()}{suffix}</>;
+}
+// Ligação PERDIDA entra no feed como type "call" (mesmo ingest do twilio-voice) e traz 📵 no
+// resumo. Contá-la como "conversa atendida" transforma telefone tocando sem resposta em prova de
+// atendimento — a tela Hoje já separa; aqui é a mesma régua.
+const ehPerdida = (e) => (e?.summary || "").includes("📵");
+const ehConversa = (e) => (e.type === "call" && !ehPerdida(e)) || e.type === "message";
 const isGuileoPayment = (e) =>
   !!e && e.type === "payment" && !/^💳/.test(e.summary || "") && (
     /stripe|mercado\s?pago|mercadopago|system|billing/i.test(e.channel || "") ||
@@ -134,14 +149,14 @@ function MoneyRecovered({ email = "", dataKey = "", onNav, views }) {
         </div>
         {collectedUsd > 0 ? (
           <>
-            <div className="mt-1 text-4xl sm:text-5xl font-black text-g-green money-glow num tracking-tight"><Count key={"mr-" + collectedUsd} to={collectedUsd} prefix="$" /></div>
+            <div className="mt-1 text-4xl sm:text-5xl font-black text-g-green money-glow num tracking-tight"><Num to={collectedUsd} prefix="$" /></div>
             <div className="mt-1 text-[11px] font-bold text-g-muted">{L("collected for you this month by Gui", "cobrado pra você neste mês pela Gui", "cobrado para ti este mes por Gui")}</div>
           </>
         ) : (bookings > 0 && estimatedUsd > 0) ? (
           // No cash collected yet, but Gui booked real jobs → show the benchmarked value as the hero,
           // clearly flagged as an estimate (never as collected money).
           <>
-            <div className="mt-1 text-4xl sm:text-5xl font-black text-g-green money-glow num tracking-tight"><Count key={"est-" + estimatedUsd} to={estimatedUsd} prefix="$" /></div>
+            <div className="mt-1 text-4xl sm:text-5xl font-black text-g-green money-glow num tracking-tight"><Num to={estimatedUsd} prefix="$" /></div>
             <div className="mt-1 text-[11px] font-bold text-g-muted">{L("estimated · benchmarked vs a receptionist", "estimado · comparado a uma recepcionista", "estimado · comparado con una recepcionista")}</div>
           </>
         ) : (
@@ -280,12 +295,23 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
   useEffect(() => { setResolved(portalApi.loadState(`${V.label}:alerts`, [])); }, [V.label]);
   const resolveAlert = (i) => { portalApi.resolveAlert(i); setResolved((r) => { const n = [...r, i]; portalApi.saveState(`${V.label}:alerts`, n); return n; }); toast(tr("All set — I've marked it handled.")); };
   const validViews = new Set(sections.map(([k]) => k));
-  const ops = growthOps(V).filter((o) => validViews.has(o.view)).slice(0, 3);
+  // 🚨 A VISÃO GERAL DE QUEM PAGA NÃO LÊ GERADOR DE AMOSTRA (2026-09-28). Sob o selo "LIVE — real
+  // data" esta tela imprimia, para um spa com 3 agendamentos e receita zero: o briefing montado
+  // por `dailyBriefing(V)` ("$1,840 to collect"), os alertas de VERTICALS.salon ("5 open slots
+  // tomorrow to fill", "2 clients with expiring packages"), os "growth moves", a agenda "next up"
+  // com clientes que não existem, o mix de canais e o quadro do setor — a maioria com um chip
+  // "estimate", que não transforma nome inventado em estimativa. Em conta conectada cada bloco
+  // desses ou é calculado de `real`, ou não é desenhado. `ops` vazio desliga os três botões que
+  // dependiam dele ("I'll get you started", "Close the gap" e o card de growth moves).
+  const ops = real ? [] : growthOps(V).filter((o) => validViews.has(o.view)).slice(0, 3);
   const [autoTick, setAutoTick] = useState(0);                 // force re-render on automation toggle/remove
   const automations = loadAutomations(V.label); void autoTick;
   // Scheduler — on load, run any automations that are due (the client-side cron).
   const ranRef = useRef(false);
   useEffect(() => {
+    // conta conectada: `runAutomation` trabalha sobre genPayments/genCustomers (amostra) e o toast
+    // dizia "Gui prepared the list of 4 overdue invoices" para quem não tem fatura nenhuma.
+    if (real) return;
     if (ranRef.current) return; ranRef.current = true;
     const due = dueAutomations(V).slice(0, 2);
     if (due.length) {
@@ -299,14 +325,19 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
   // PROGRESS (below, once monthMoney is known) tracks the live ledger, never a fabricated number.
   const defGoal = Math.max(500, Math.round((V.impact.total * 2.4) / 100) * 100);
   const [goal, setGoal] = useState(() => portalApi.loadState(`${V.label}:goal`, defGoal));
+  // A meta só "existe" para conta conectada depois que o DONO a escreveu. O padrão sai de
+  // `V.impact.total` (amostra): sem esta marca, a tela dizia "You're at 0% of this month's goal"
+  // sobre uma meta que ninguém definiu.
+  const [goalSet, setGoalSet] = useState(() => portalApi.loadState(`${V.label}:goal`, null) != null);
   const [editGoal, setEditGoal] = useState(false);
   const [goalDraft, setGoalDraft] = useState(goal);
-  useEffect(() => { const g = portalApi.loadState(`${V.label}:goal`, defGoal); setGoal(g); setGoalDraft(g); }, [V.label]); // eslint-disable-line
-  const saveGoal = () => { const g = Math.max(100, parseInt(String(goalDraft).replace(/\D/g, ""), 10) || defGoal); setGoal(g); portalApi.saveState(`${V.label}:goal`, g); setEditGoal(false); toast(`Monthly goal set to $${g.toLocaleString()} ✓`); };
+  useEffect(() => { const g = portalApi.loadState(`${V.label}:goal`, defGoal); setGoal(g); setGoalDraft(g); setGoalSet(portalApi.loadState(`${V.label}:goal`, null) != null); }, [V.label]); // eslint-disable-line
+  const saveGoal = () => { const digitado = parseInt(String(goalDraft).replace(/\D/g, ""), 10) || 0; if (real && !digitado) { setEditGoal(false); return; } const g = Math.max(100, digitado || defGoal); setGoal(g); setGoalSet(true); portalApi.saveState(`${V.label}:goal`, g); setEditGoal(false); toast(`${tr("Monthly goal set to")} $${g.toLocaleString()} ✓`); };
+  const temMeta = !real || goalSet;
   // The seed data represents a 30-day window; 7d/90d scale the cumulative money.
   const periodFactor = { "7 days": 7 / 30, "30 days": 1, "90 days": 3 }[period] || 1;
   const periodLabel = period === "30 days" ? "this month" : `last ${period}`;
-  const openAlerts = V.alerts ? V.alerts.items.map((a, i) => ({ a, i })).filter(({ i }) => !resolved.includes(i)) : [];
+  const openAlerts = !real && V.alerts ? V.alerts.items.map((a, i) => ({ a, i })).filter(({ i }) => !resolved.includes(i)) : [];
   const quick = (V.quick || [["📋", "See today's operations", "ops"], ["💬", "Message my team", "support"], ["📣", "Ask for a campaign", "wa"]]).map(([ic, label, kind]) =>
     kind === "ops" ? { ic, label, on: () => onNav("operations") }
       : kind === "support" ? { ic, label, on: () => onNav("support") }
@@ -316,9 +347,14 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
   const realEvents = real ? eventsInPeriod(real?.events, period) : null;
   // Growth events = real events MINUS what the tenant pays Guileo (their bill isn't ROI they earned).
   const growthEvents = realEvents ? realEvents.filter((e) => !isGuileoPayment(e)) : null;
+  // 🚨 "REAL REVENUE" SOMAVA QUALQUER VALOR (2026-09-28): o `amount` de TODO evento entrava —
+  // inclusive o orçamento citado numa ligação e o valor estimado de um lead. Receita é evento de
+  // pagamento/venda (e nunca o que a cliente paga À Guileo). O mesmo filtro alimenta o gráfico.
+  const ehReceita = (e) => (e.type === "payment" || e.type === "sale") && !isGuileoPayment(e);
+  const revenueEvents = realEvents ? realEvents.filter(ehReceita) : null;
   // Floor at 0 — "profit impact" / "real revenue" is value Gui GENERATED; a refund/chargeback
   // event (negative amount) must never render the headline as "$-96". Net losses show $0, not red.
-  const realMoney = Math.max(0, growthEvents ? sumAmounts(growthEvents) : 0);
+  const realMoney = Math.max(0, revenueEvents ? sumAmounts(revenueEvents) : 0);
   // 💰 AUTHORITATIVE month revenue — read the SAME spine as the weekly email (/api/revenue →
   // revenue_month sums the client_revenue ledger in cents). client_events (what `real` carries) is a
   // marketing feed → summing it ≈ 0, so the headline/goal must come from here in real mode.
@@ -345,10 +381,14 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
   const monthValue = real
     ? Math.max(0, revMonthUsd != null
       ? revMonthUsd
-      : (Array.isArray(real.events) ? (() => { const m0 = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime(); return real.events.filter((e) => !isGuileoPayment(e) && new Date(e.created_at).getTime() >= m0).reduce((s, e) => s + (Number(e.amount) || 0), 0); })() : 0))
+      : (Array.isArray(real.events) ? (() => { const m0 = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime(); return real.events.filter((e) => ehReceita(e) && new Date(e.created_at).getTime() >= m0).reduce((s, e) => s + (Number(e.amount) || 0), 0); })() : 0))
     : null;
   // Goal progress — real mode tracks monthMoney (live ledger); demo tracks V.impact.total.
-  const projected = Math.round(monthMoney * 1.6);
+  // Projeção: em demonstração é o fator fixo da vitrine (×1,6). Em conta conectada é RITMO real —
+  // o que entrou até hoje, dividido pelos dias corridos, vezes os dias do mês. Sem fator mágico.
+  const hojeD = new Date();
+  const diasNoMes = new Date(hojeD.getFullYear(), hojeD.getMonth() + 1, 0).getDate();
+  const projected = real ? Math.round((monthMoney / Math.max(1, hojeD.getDate())) * diasNoMes) : Math.round(monthMoney * 1.6);
   const pctNow = Math.min(100, Math.round((monthMoney / Math.max(1, goal)) * 100));
   const pctProj = Math.round((projected / Math.max(1, goal)) * 100);
   // "Your week by Gui" — in real mode, derive the recap from the live ledger (no vnum, no demo
@@ -357,21 +397,21 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
   const wkView = real ? (() => {
     const since = Date.now() - 7 * 864e5;
     const evs = (real.events || []).filter((e) => new Date(e.created_at).getTime() >= since);
-    const handled = evs.filter((e) => e.type === "call" || e.type === "message").length;
+    const handled = evs.filter(ehConversa).length;
     return {
       handled,
       created: evs.filter((e) => e.type === "booking").length,
-      driven: revWeekUsd != null ? Math.round(revWeekUsd) : Math.max(0, sumAmounts(evs.filter((e) => !isGuileoPayment(e)))),
-      hours: Math.max(1, Math.round(handled * 0.1)), // ~6 min saved per handled conversation (labeled estimate)
+      driven: revWeekUsd != null ? Math.round(revWeekUsd) : Math.max(0, sumAmounts(evs.filter(ehReceita))),
+      hours: Math.round(handled * 0.1), // ~6 min saved per handled conversation (labeled estimate); 0 conversas = 0h, sem piso
       open: 0, // real open-invoice count isn't exposed to the cockpit → omit rather than fabricate
-      peak: wk.peak,
+      peak: null, // o "dia mais cheio" vinha de genForecast (amostra) — sem medida real, não se afirma
     };
   })() : wk;
-  const realSeries = realEvents ? realDaily(realEvents, period) : null;
+  const realSeries = revenueEvents ? realDaily(revenueEvents, period) : null;
   const realHasRevenue = !!realSeries && realSeries.some((n) => n > 0);
   const realKpis = realEvents ? [
     { ic: "💰", label: tr("Real revenue"), num: realMoney, pre: "$", color: "#3E9468" },
-    { ic: "💬", label: tr("Conversations"), num: realEvents.filter((e) => e.type === "call" || e.type === "message").length, color: "#D6C29A" },
+    { ic: "💬", label: tr("Conversations"), num: realEvents.filter(ehConversa).length, color: "#D6C29A" },
     { ic: "📅", label: tr("Bookings"), num: realEvents.filter((e) => e.type === "booking").length, color: "#5fa8d3" },
     { ic: "🎯", label: tr("Leads"), num: realEvents.filter((e) => e.type === "lead").length, color: "#e0855f" },
   ] : null;
@@ -380,14 +420,26 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
   // via the browser's speechSynthesis (feature-detected; the ▶ tap is the user gesture).
   const hour = new Date().getHours();
   const greetLine = UI_LANG === "es" ? (hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches") : UI_LANG === "pt" ? (hour < 12 ? "Bom dia" : hour < 19 ? "Boa tarde" : "Boa noite") : (hour < 12 ? "Good morning" : hour < 19 ? "Good afternoon" : "Good evening");
-  const goalLine = pctNow >= 100 ? tr("You beat your monthly goal!") : `${tr("You're at")} ${pctNow}% ${tr("of this month's goal.")}`;
+  const goalLine = !temMeta ? "" : pctNow >= 100 ? tr("You beat your monthly goal!") : `${tr("You're at")} ${pctNow}% ${tr("of this month's goal.")}`;
+  // BRIEFING — em conta conectada sai do que aconteceu DE VERDADE desde a meia-noite (eventos do
+  // tenant). "Bookings made" é o que a Gui MARCOU hoje, não o que está na agenda de hoje — a
+  // agenda do dia mora na aba Hoje, lida de biz_appointments.
+  const briefing = (() => {
+    if (!real) return dailyBriefing(V);
+    const m0 = new Date(); m0.setHours(0, 0, 0, 0);
+    const hoje = (real.events || []).filter((e) => new Date(e.created_at).getTime() >= m0.getTime());
+    const conv = hoje.filter(ehConversa).length;
+    const marc = hoje.filter((e) => e.type === "booking").length;
+    if (!conv && !marc) return tr("Nothing has come in yet today — I'm on and answering");
+    return `${tr("Today so far")}: ${conv} ${tr(conv === 1 ? "conversation handled" : "conversations handled")} · ${marc} ${tr(marc === 1 ? "booking made by your AI" : "bookings made by your AI")}`;
+  })();
   const [speaking, setSpeaking] = useState(false);
   const canSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
   useEffect(() => () => stopSpeaking(), []); // never keep talking after the tab unmounts
   const hearBriefing = () => {
     setNudgeHear(false);
     if (speaking) { stopSpeaking(); setSpeaking(false); return; }
-    if (speakLine(`${greetLine}. ${dailyBriefing(V)}. ${goalLine}`, () => setSpeaking(false))) setSpeaking(true);
+    if (speakLine(`${greetLine}. ${briefing}. ${goalLine}`, () => setSpeaking(false))) setSpeaking(true);
   };
   // 🎙️ Arrived via the weekly email's "Hear my week" link (?speak=weekly): try the spoken
   // briefing once. Browsers may block speech without a gesture — so we ALSO highlight the
@@ -400,7 +452,7 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
     if (canSpeak) setNudgeHear(true); // spotlight the ▶ pill in case autoplay is blocked
     const t = setTimeout(() => {
       onAutoSpoke?.();
-      if (canSpeak && speakLine(`${greetLine}. ${dailyBriefing(V)}. ${goalLine}`, () => setSpeaking(false))) setSpeaking(true);
+      if (canSpeak && speakLine(`${greetLine}. ${briefing}. ${goalLine}`, () => setSpeaking(false))) setSpeaking(true);
     }, 700);
     return () => clearTimeout(t);
   }, [autoSpeak]); // eslint-disable-line
@@ -428,7 +480,7 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
           Stripe truly isn't receiving yet. Silent for demo/connected. */}
       <ReceberBanner email={email} dataKey={dataKey} />
       {/* MORNING BRIEFING — yesterday's numbers + today's load, greeted by the hour, client-side */}
-      <MorningBriefing V={V} real={real} />
+      <MorningBriefing V={V} real={real} email={email} dataKey={dk} />
 
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -480,8 +532,8 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.05] border-g-green/25">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0">
-            <GuiMark size={40} progress={pctNow / 100} celebrate={pctNow >= 100} />
-            <div className="min-w-0"><div className="text-sm font-extrabold text-g-word flex items-center gap-2">{greetLine} — {tr("here's your briefing")} <span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" /></div><div className="text-xs text-g-muted mt-0.5">{dailyBriefing(V)}. {pctNow >= 100 ? `🎉 ${goalLine}` : goalLine}</div></div>
+            <GuiMark size={40} progress={temMeta ? pctNow / 100 : null} celebrate={temMeta && pctNow >= 100} />
+            <div className="min-w-0"><div className="text-sm font-extrabold text-g-word flex items-center gap-2">{greetLine} — {tr("here's your briefing")} <span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" /></div><div className="text-xs text-g-muted mt-0.5">{briefing}. {temMeta && pctNow >= 100 ? `🎉 ${goalLine}` : goalLine}</div></div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {canSpeak && <button onClick={hearBriefing} title={tr("Hear the briefing")} aria-label={tr("Hear the briefing")} className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition ${speaking ? "border-[#FF8A33]/60 bg-[#FF8A33]/15 text-[#FF8A33]" : nudgeHear ? "gui-breathe border-[#FF8A33]/60 bg-[#FF8A33]/10 text-[#FF8A33]" : "border-white/15 bg-white/[0.04] text-g-muted hover:text-g-word hover:border-[#FF8A33]/40"}`}>{speaking ? tr("⏹ Stop") : tr("▶ Hear it")}</button>}
@@ -497,7 +549,7 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
           <div>
             <div className="text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2">{tr("Guileo profit impact")} · {tr(periodLabel)}{real && <span className="inline-flex items-center gap-1 text-[9px] font-black text-g-green normal-case"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("LIVE — real data")}</span>}</div>
             <div className="flex items-end gap-2.5 flex-wrap mt-1">
-              <div className="text-4xl sm:text-5xl font-black text-g-green money-glow num tracking-tight"><Count key={period + (real ? "-live" : "") + (revMonthUsd != null ? "-m" : "")} to={real ? (period === "30 days" && realMonthUsd != null ? Math.round(realMonthUsd) : realMoney) : Math.round(V.impact.total * periodFactor)} prefix="$" /></div>
+              <div className="text-4xl sm:text-5xl font-black text-g-green money-glow num tracking-tight"><Num animar={!real} chave={period} to={real ? (period === "30 days" && realMonthUsd != null ? Math.round(realMonthUsd) : realMoney) : Math.round(V.impact.total * periodFactor)} prefix="$" /></div>
               {!real && (() => { const last = Math.round(V.impact.total / 1.18); const up = Math.round(((V.impact.total - last) / last) * 100); return <span className="inline-flex items-center gap-1 mb-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full bg-g-green/15 text-g-green"><FaArrowTrendUp size={10} /> +{up}% {tr("vs last month")}</span>; })()}
             </div>
             {real ? (
@@ -527,7 +579,9 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
       <GuiPlant monthValue={monthValue} demo={!real} />
 
       {/* NEEDS ATTENTION — one quiet line by default; expands only on click */}
-      {V.alerts && (
+      {/* só em demonstração: os itens vêm de VERTICALS[ramo].alerts. O que precisa de atenção DE
+          VERDADE numa conta conectada já está no RealTopMoves, no topo. */}
+      {!real && V.alerts && (
         openAlerts.length ? (
           <div className="rounded-xl2 border border-white/[0.08] bg-white/[0.02] overflow-hidden">
             <button onClick={() => setAlertsOpen((o) => !o)} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-left hover:bg-white/[0.02] transition">
@@ -569,13 +623,18 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
       {/* MONTHLY GOAL — editable target + progress + projection vs goal */}
       <Card tone="gold">
         <div className="flex items-center justify-between gap-3 mb-2">
-          <div className="text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2">{tr("🎯 Monthly goal")}{est}</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2">{tr("🎯 Monthly goal")}</div>
           {editGoal ? (
             <div className="flex items-center gap-1.5"><span className="text-g-muted text-sm">$</span><input autoFocus value={goalDraft} onChange={(e) => setGoalDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && saveGoal()} aria-label={tr("Monthly revenue goal")} className="w-24 rounded-lg border border-white/15 bg-black/20 px-2 py-1 text-sm text-g-word outline-none focus:border-g-green/70" /><button onClick={saveGoal} className="text-[11px] font-bold text-g-green hover:underline">{tr("Save")}</button></div>
           ) : (
-            <button onClick={() => { setGoalDraft(goal); setEditGoal(true); }} className="text-sm font-extrabold text-g-word inline-flex items-center gap-1.5">${goal.toLocaleString()} <FaPen size={9} className="text-g-muted" /></button>
+            temMeta
+              ? <button onClick={() => { setGoalDraft(goal); setEditGoal(true); }} className="text-sm font-extrabold text-g-word inline-flex items-center gap-1.5">${goal.toLocaleString()} <FaPen size={9} className="text-g-muted" /></button>
+              : <button onClick={() => { setGoalDraft(""); setEditGoal(true); }} className="rounded-full border border-g-green/35 bg-g-green/10 px-3.5 py-1.5 text-[11px] font-bold text-g-word hover:bg-g-green/20 transition">{tr("Set a goal")}</button>
           )}
         </div>
+        {!temMeta ? (
+          <p className="text-xs text-g-muted">{tr("You haven't set a revenue goal yet. Set one and this bar tracks your real revenue against it.")} <b className="text-g-word">${Math.round(monthMoney).toLocaleString()}</b> {tr("recorded this month so far.")}</p>
+        ) : (<>
         <div className="relative h-3 rounded-full bg-white/10 overflow-hidden">
           <div className="absolute inset-y-0 left-0 rounded-full transition-all" style={{ width: `${pctNow}%`, background: "linear-gradient(90deg,#FF3D8B,#FF85B4)", boxShadow: "0 0 14px rgba(255,61,139,.55)" }} />
           {pctProj > pctNow && pctProj <= 100 && <div className="absolute inset-y-0 rounded-full bg-g-gold/30 transition-all" style={{ left: `${pctNow}%`, width: `${Math.min(100, pctProj) - pctNow}%` }} />}
@@ -585,14 +644,15 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
           {pctProj < 100 && ops[0] && <button onClick={() => onNav(ops[0].view)} className="font-bold text-g-green hover:underline">{tr("Close the gap →")}</button>}
           {pctProj >= 100 && <span className="font-bold text-g-green">{tr("🎉 On track to beat it!")}</span>}
         </div>
+        </>)}
       </Card>
 
       {/* 🎯 BOOKING GOAL + 📊 SECTOR BENCHMARK — compact retention pair */}
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className={`grid gap-4 ${real ? "" : "lg:grid-cols-2"}`}>
         {/* Owner goal — a bookings target the owner sets; the sidebar plant blooms with it */}
         <Card>
           <div className="flex items-center justify-between gap-3 mb-2">
-            <div className="text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2">{tr("🎯 Booking goal")}{est}</div>
+            <div className="text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2">{tr("🎯 Booking goal")}</div>
             {bGoal > 0 && !bEdit && (
               <button onClick={() => { setBDraft(String(bGoal)); setBEdit(true); }} className="text-sm font-extrabold text-g-word inline-flex items-center gap-1.5">{bGoal.toLocaleString()} <span className="text-[10px] font-bold text-g-muted normal-case">{tr("bookings")}</span> <FaPen size={9} className="text-g-muted" /></button>
             )}
@@ -623,8 +683,12 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
             </>
           )}
         </Card>
-        {/* Sector benchmark — you vs. CLEARLY-LABELED static sector estimates (never fake live data) */}
-        <Card>
+        {/* Sector benchmark — you vs. CLEARLY-LABELED static sector estimates (never fake live data).
+            🚨 Só em demonstração (2026-09-28): a coluna "você" afirmava "Answer rate 100%" e
+            "Response time instant" como valor FIXO, sob o selo de dado real — inclusive para quem
+            teve ligação perdida. A taxa de atendimento real não chega a esta tela (o feed de eventos
+            não registra ligação não atendida); até chegar, o card não é desenhado para quem paga. */}
+        {!real && <Card>
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2">{tr("📊 Your sector")}</div>
           <div className="text-[10px] text-g-muted mb-3">{tr("vs. estimated sector average — industry estimates, not live competitor data")}</div>
           <div className="space-y-2.5">
@@ -641,7 +705,7 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
               </div>
             ))}
           </div>
-        </Card>
+        </Card>}
       </div>
 
       {/* GROWTH MOVES — "what to do today to grow", the revenue-share thesis on the home screen */}
@@ -705,8 +769,8 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
         <div className="flex items-start gap-3">
           <GuiMark size={40} />
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-extrabold text-g-word flex items-center gap-2">{tr("Your week, by Gui")}{est}</div>
-            <div className="text-xs text-g-muted mt-1 leading-relaxed">{tr("This week your AI handled")} <span className="text-g-word font-bold">{wkView.handled}</span> {tr("conversations, created")} <span className="text-g-word font-bold">{real ? wkView.created : (wk.created || vnum(V.label, "wkc", 6, 24))}</span> {tr("bookings & orders")}{wkView.driven ? <> {tr("and drove")} <span className="text-g-green font-bold">${wkView.driven.toLocaleString()}</span> {tr("in tracked revenue")}</> : ""} {tr("— saving you about")} <span className="text-g-word font-bold">{wkView.hours}h</span>. {wkView.open ? <>{tr("Next:")} <span className="text-g-word font-semibold">{wkView.open} {wkView.open !== 1 ? tr("invoices") : tr("invoice")}</span> {tr("still to collect, and")} <span className="text-g-word font-semibold">{tr(wkView.peak)}</span> {tr("looks busiest")}.</> : <>{tr("Next week")} <span className="text-g-word font-semibold">{tr(wkView.peak)}</span> {tr("looks busiest — want a promo to fill the quiet days?")}</>}</div>
+            <div className="text-sm font-extrabold text-g-word flex items-center gap-2">{tr("Your week, by Gui")}{real && <span className="inline-flex items-center gap-1 text-[9px] font-black text-g-green normal-case"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("last 7 days")}</span>}</div>
+            <div className="text-xs text-g-muted mt-1 leading-relaxed">{tr("This week your AI handled")} <span className="text-g-word font-bold">{wkView.handled}</span> {tr("conversations, created")} <span className="text-g-word font-bold">{real ? wkView.created : (wk.created || vnum(V.label, "wkc", 6, 24))}</span> {tr("bookings & orders")}{wkView.driven ? <> {tr("and drove")} <span className="text-g-green font-bold">${wkView.driven.toLocaleString()}</span> {tr("in tracked revenue")}</> : ""}{wkView.hours > 0 ? <> {tr("— saving you about")} <span className="text-g-word font-bold">{wkView.hours}h</span> {real ? <EstChip /> : null}</> : ""}. {!wkView.peak ? null : wkView.open ? <>{tr("Next:")} <span className="text-g-word font-semibold">{wkView.open} {wkView.open !== 1 ? tr("invoices") : tr("invoice")}</span> {tr("still to collect, and")} <span className="text-g-word font-semibold">{tr(wkView.peak)}</span> {tr("looks busiest")}.</> : <>{tr("Next week")} <span className="text-g-word font-semibold">{tr(wkView.peak)}</span> {tr("looks busiest — want a promo to fill the quiet days?")}</>}</div>
             <div className="mt-2.5 flex flex-wrap gap-2">
               <button onClick={() => onNav("impact")} className="btn-ghost text-xs px-3 py-1.5">{tr("See the impact →")}</button>
               {wkView.open > 0 && <button onClick={() => onNav("payments")} className="btn-ghost text-xs px-3 py-1.5">{tr("Collect now →")}</button>}
@@ -727,19 +791,19 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
       {automations.length > 0 && (
         <Card className="p-0 overflow-hidden">
           <div className="px-5 py-3 border-b border-white/10 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("🗓️ My plan (inside this cockpit)")}</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr(`🗓️ My plan (inside this ${NOME_DO_PAINEL})`)}</span>
             <span className="text-[10px] text-g-muted">{automations.filter((a) => a.on).length} {tr("active")}</span>
             {onNav && <button onClick={() => onNav("grow")} className="ml-auto text-[10px] font-bold text-g-green hover:text-g-light">{tr("See what runs on the server →")}</button>}
           </div>
-          <div className="px-5 py-2 text-[11px] leading-snug text-g-muted border-b border-white/[0.06]">{tr("Reminders you set here: Gui prepares and records them in this cockpit — they do not send anything on their own.")}</div>
+          <div className="px-5 py-2 text-[11px] leading-snug text-g-muted border-b border-white/[0.06]">{tr(`Reminders you set here: Gui prepares and records them in this ${NOME_DO_PAINEL} — they do not send anything on their own.`)}</div>
           <div className="divide-y divide-white/[0.05]">
             {automations.map((a) => (
               <div key={a._id} className="flex items-center gap-3 px-5 py-3">
                 <span className="text-base shrink-0">{a.ic || "⚡"}</span>
                 <div className="flex-1 min-w-0"><div className={`text-xs font-bold truncate ${a.on ? "text-g-word" : "text-g-muted line-through"}`}>{a.what}</div><div className="text-[10px] text-g-muted">{a.when}{a.lastRun ? ` ${tr("· last run")} ${new Date(a.lastRun).toLocaleDateString(UI_LANG === "pt" ? "pt-BR" : "en-US", { month: "short", day: "numeric" })}` : ` ${tr("· not run yet")}`}</div></div>
-                {a.on && <button onClick={() => runAutoNow(a)} className="text-[10px] font-bold text-g-green hover:text-g-light shrink-0 whitespace-nowrap">{tr("▶ Prepare now")}</button>}
+                {a.on && !real && <button onClick={() => runAutoNow(a)} className="text-[10px] font-bold text-g-green hover:text-g-light shrink-0 whitespace-nowrap">{tr("▶ Prepare now")}</button>}
                 <Toggle on={!!a.on} onClick={() => { toggleAutomation(V.label, a._id); setAutoTick((t) => t + 1); }} />
-                <button onClick={() => { removeAutomation(V.label, a._id); setAutoTick((t) => t + 1); toast("Automation removed"); }} aria-label={tr("Remove")} className="text-g-muted hover:text-red-400 transition shrink-0"><FaTrash size={11} /></button>
+                <button onClick={() => { removeAutomation(V.label, a._id); setAutoTick((t) => t + 1); toast(tr("Removed from your plan")); }} aria-label={tr("Remove")} className="text-g-muted hover:text-red-400 transition shrink-0"><FaTrash size={11} /></button>
               </div>
             ))}
           </div>
@@ -758,7 +822,7 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
                       {k.good ? <FaArrowTrendDown size={10} /> : <FaArrowTrendUp size={10} />} {k.note || (k.delta != null ? `+${k.delta}%` : tr("live"))}
                     </span>}
               </div>
-              <div className={`mt-3 text-2xl font-extrabold num tracking-tight ${k.pre === "$" ? "text-g-green money-glow" : "text-g-word"}`}><Count to={k.num} prefix={k.pre || ""} suffix={k.suf || ""} /></div>
+              <div className={`mt-3 text-2xl font-extrabold num tracking-tight ${k.pre === "$" ? "text-g-green money-glow" : "text-g-word"}`}><Num animar={!real} to={k.num} prefix={k.pre || ""} suffix={k.suf || ""} /></div>
               <div className="text-[11px] text-g-muted">{k.label}</div>
               {(!real || realHasRevenue) && <div className="mt-2"><Spark data={real ? realSeries : V.revenue} color={k.color} h={32} /></div>}
             </Card>
@@ -767,10 +831,11 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
       </div>
 
       {/* TODAY + QUICK ACTIONS — surface ops on the home screen (fewer clicks) */}
-      <div className="grid lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2 p-0 overflow-hidden">
+      <div className={`grid gap-4 ${real ? "" : "lg:grid-cols-3"}`}>
+        {/* "next up" lia V.ops.schedule (clientes de amostra). A agenda real mora em Hoje/Agenda. */}
+        {!real && <Card className="lg:col-span-2 p-0 overflow-hidden">
           <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wide text-g-gold inline-flex items-center gap-2">{tr(V.ops.scheduleTitle)} {tr("· next up")}{est}</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-g-gold inline-flex items-center gap-2">{tr(V.ops.scheduleTitle)} {tr("· next up")}</span>
             <button onClick={() => onNav("operations")} className="text-[11px] font-bold text-g-gold hover:underline">{tr("See all →")}</button>
           </div>
           <div className="divide-y divide-white/[0.06]">
@@ -782,7 +847,7 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
               </div>
             ))}
           </div>
-        </Card>
+        </Card>}
         <Card>
           <div className="text-xs font-bold uppercase tracking-wide text-g-gold mb-3">{tr("Quick actions")}</div>
           <div className="space-y-2">
@@ -796,24 +861,27 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
       </div>
 
       {/* Revenue + channel breakdown (or live activity) */}
-      <div className="grid lg:grid-cols-3 gap-4">
+      <div className={`grid gap-4 ${real ? "" : "lg:grid-cols-3"}`}>
         <Card tone="green" className="lg:col-span-2">
           <div className="flex items-start justify-between mb-4">
             <div>
               <div className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Revenue & order volume")}</div>
-              {real && realHasRevenue
+              {real
                 ? <div className="mt-1 text-[10px] text-g-muted">{tr("Daily revenue from your real events")}</div>
                 : <div className="mt-1 flex items-center gap-3 text-[10px] text-g-muted"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-gold" />{tr("Revenue")}</span><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-g-green" />{tr("Orders")}</span></div>}
             </div>
             {real && realHasRevenue
               ? <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-g-green"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("LIVE — real data")}</span>
               : real
-                ? <EstChip />
+                ? null
                 : <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-g-green"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("Live sync")}</span>}
           </div>
-          <Bars data={real && realHasRevenue ? realSeries : V.revenue} />
+          {/* receita zero é receita zero: antes o gráfico caía em V.revenue (amostra) com um chip "estimate" */}
+          {real && !realHasRevenue
+            ? <p className="py-6 text-center text-xs text-g-muted">{tr("No revenue recorded in this period yet. It shows up here as soon as a payment is registered.")}</p>
+            : <Bars data={real ? realSeries : V.revenue} />}
         </Card>
-        {V.channelMix ? (
+        {real ? null : V.channelMix ? (
           <Card>
             <div className="text-xs font-bold uppercase tracking-wide text-g-gold flex items-center gap-2">{V.channelMix.title}{est}</div>
             <div className="text-[11px] text-g-muted mb-3">{V.channelMix.sub}</div>
@@ -841,7 +909,7 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
       </div>
 
       {/* Rich row: top selling (restaurant) + recent activity */}
-      {(V.topItems || V.channelMix) && (
+      {!real && (V.topItems || V.channelMix) && (
         <div className="grid lg:grid-cols-2 gap-4">
           {V.topItems && (
           <Card>
@@ -877,7 +945,7 @@ function Overview({ V, onNav, sections = [], period = "30 days", real = null, on
       )}
 
       {/* Signature sector ops board (clinic recalls / e-com carts / realestate leads) */}
-      {SECTOR_OPS[V.label] && (() => {
+      {!real && SECTOR_OPS[V.label] && (() => {
         const board = SECTOR_OPS[V.label];
         return (
           <Card>

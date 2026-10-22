@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import logo from "../assets/guileo-mark.png";
 import { waLink } from "../data/contact.js";
 import { useLang } from "../i18n.jsx";
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // /proposta — the close-to-cash bridge. A tailored, print-friendly proposal the
@@ -22,10 +23,10 @@ const LANG_NAMES = { en: "English", pt: "Português", es: "Español", hi: "ह�
 
 // Default included items, per language (used only when ?items= is absent).
 const DEFAULT_ITEMS = {
-  en: ["Voice AI agent 24/7", "WhatsApp & SMS AI", "Lead capture & qualification", "Automatic follow-up", "Ads & content", "Growth Cockpit dashboard"],
-  pt: ["Voice AI agent 24/7", "WhatsApp & SMS AI", "Captura e qualificação de leads", "Follow-up automático", "Anúncios & conteúdo", "Painel Growth Cockpit"],
-  es: ["Agente Voice AI 24/7", "IA de WhatsApp & SMS", "Captura y calificación de leads", "Seguimiento automático", "Anuncios & contenido", "Panel Growth Cockpit"],
-  hi: ["Voice AI एजेंट 24/7", "WhatsApp & SMS AI", "लीड कैप्चर और क्वालिफिकेशन", "स्वचालित फ़ॉलो-अप", "विज्ञापन & कंटेंट", "Growth Cockpit डैशबोर्ड"],
+  en: ["Voice AI agent 24/7", "WhatsApp & SMS AI", "Lead capture & qualification", "Automatic follow-up", "Ads & content", `${NOME_DO_PAINEL} dashboard`],
+  pt: ["Voice AI agent 24/7", "WhatsApp & SMS AI", "Captura e qualificação de leads", "Follow-up automático", "Anúncios & conteúdo", `Painel ${NOME_DO_PAINEL}`],
+  es: ["Agente Voice AI 24/7", "IA de WhatsApp & SMS", "Captura y calificación de leads", "Seguimiento automático", "Anuncios & contenido", `Panel ${NOME_DO_PAINEL}`],
+  hi: ["Voice AI एजेंट 24/7", "WhatsApp & SMS AI", "लीड कैप्चर और क्वालिफिकेशन", "स्वचालित फ़ॉलो-अप", "विज्ञापन & कंटेंट", `${NOME_DO_PAINEL} डैशबोर्ड`],
 };
 
 // Per-page 4-lang dict — PT copy preserved exactly as before.

@@ -28,6 +28,8 @@
 // ═════════════════════════════════════════════════════════════════════════════
 
 import { guiReply } from "./guiBrain.js";
+import { lerConversa, gravarTroca } from "./conversa.js";
+import { avaliarContato } from "./contato.js";
 import { sendText } from "./twilio.js";
 import { svcRpc } from "./sb.js";
 
@@ -65,11 +67,20 @@ function hash(str) {
 // contact by their phone (or email) — the SAME crm_upsert_contact the call/SMS/webchat paths
 // use — so a WhatsApp msg and a phone call collapse onto one contact (cross-channel memory).
 // SCHED-gated, best-effort: no-op until db/crm_spine.sql is pasted. Never breaks the reply.
-function isPhone(s) { return /^[+0-9][0-9\s().-]{6,}$/.test((s || "").trim()); }
+// 🚨 UM ID DO INSTAGRAM NÃO É TELEFONE (2026-09-30). O teste antigo era "começa com dígito e tem
+// 7 ou mais" — e o id de quem manda DM no Instagram/Messenger tem 16–17 dígitos. Cada DM criava
+// no CRM um contato com "telefone" 17841400000000000. Agora só é telefone o que a régua da casa
+// aceita (contato.js), e só nos canais em que o remetente É um telefone.
+function isPhone(s, channel) {
+  if (channel === "instagram" || channel === "messenger") return false;
+  const bruto = String(s || "").replace(/^whatsapp:/, "").trim();
+  const comMais = /^\d{11,15}$/.test(bruto) ? `+${bruto}` : bruto;
+  return avaliarContato(comMais).ok;
+}
 async function crmUpsert(env, email, from, name, channel) {
   try {
     if (!env.SCHED_SECRET || !from) return;
-    const phone = isPhone(from) ? from.replace(/^whatsapp:/, "").trim() : "";
+    const phone = isPhone(from, channel) ? from.replace(/^whatsapp:/, "").trim() : "";
     const contactEmail = from.includes("@") ? from.trim() : "";
     if (!phone && !contactEmail) return; // a webchat session id isn't a contact handle
     await svcRpc(env, "crm_upsert_contact", {
@@ -106,7 +117,7 @@ async function ingest(env, email, channelLabel, summary, payload) {
 //                //         should still send `reply` but must NOT re-charge/re-log
 //     brand, tenant,
 //   }
-export async function handleInboundMessage(env, { channel = "webchat", tenantEmail = "", from = "", text = "", name = "", history = [], lang = "en", meta = {}, origin = "" } = {}) {
+export async function handleInboundMessage(env, { channel = "webchat", tenantEmail = "", from = "", text = "", name = "", history = [], lang = "en", meta = {}, origin = "", origemConversa = "" } = {}) {
   const email = norm(tenantEmail);
   const ch = CHANNEL_LABEL[channel] ? channel : "webchat";
   const label = CHANNEL_LABEL[ch];
@@ -146,12 +157,25 @@ export async function handleInboundMessage(env, { channel = "webchat", tenantEma
     }
   } catch { /* fail-open */ }
 
+  // ── O FIO DA CONVERSA (2026-09-30) ─────────────────────────────────────────────────────────
+  // WhatsApp, SMS, Instagram e Messenger chegam mensagem por mensagem, sem histórico — o cérebro
+  // recebia `history: []` e cada "quinta" chegava sem o "para que dia?" de antes. Quem chama com
+  // histórico próprio (o chat do site) continua mandando o dele; os outros leem o que ficou
+  // guardado das últimas 24h (lib/conversa.js).
+  const temHistorico = Array.isArray(history) && history.length > 0;
+  const anteriores = temHistorico || ch === "webchat" ? [] : await lerConversa(env, email, ch, fromId);
+  const historico = temHistorico ? history : anteriores;
+
   // ── THE BRAIN — one call, tenant-scoped, untrusted text as user content only.
-  const r = await guiReply(env, { email, channel: ch, from: fromId, text: msg, history, lang, origin });
+  const r = await guiReply(env, { email, channel: ch, from: fromId, text: msg, history: historico, lang, origin, origemConversa });
+  // Só guarda a troca quando o cérebro respondeu de verdade e não é repetição do provedor.
+  if (!duplicate && ch !== "webchat" && r && r.tenant && r.tenant.valid && r.reply) {
+    await gravarTroca(env, email, ch, fromId, { anteriores, pergunta: msg, resposta: r.reply });
+  }
 
   // A retry re-sends the same reply but never re-logs (idempotent side effects).
   if (duplicate) {
-    return { ready: r.ready, reply: r.reply, escalate: r.escalate, duplicate: true, brand: r.brand, tenant: r.tenant };
+    return { ready: r.ready, reply: r.reply, escalate: r.escalate, duplicate: true, brand: r.brand, tenant: r.tenant, cerebro: r.cerebro || "" };
   }
 
   // ── SIDE EFFECTS (only for a recognized tenant): CRM contact (cross-channel memory) + Inbox.
@@ -161,7 +185,9 @@ export async function handleInboundMessage(env, { channel = "webchat", tenantEma
     if (r.reply) await ingest(env, email, label, `🤖 Gui replied: ${r.reply.slice(0, 200)}`, { to: fromId, channel: ch });
   }
 
-  return { ready: r.ready, reply: r.reply, escalate: r.escalate, duplicate: false, brand: r.brand, tenant: r.tenant };
+  // `cerebro` volta para quem chamou: "elevenlabs" quando o agente de voz respondeu. Sem isso o funil
+  // do Direct não distingue a Gui de verdade da reserva — e é essa diferença que diz se o KB está vivo.
+  return { ready: r.ready, reply: r.reply, escalate: r.escalate, duplicate: false, brand: r.brand, tenant: r.tenant, cerebro: r.cerebro || "" };
 }
 
 // ── sendOutbound ───────────────────────────────────────────────────────────────

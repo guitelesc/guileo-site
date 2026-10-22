@@ -13,6 +13,12 @@ import { sendText, sendOrFlag } from "../lib/twilio.js";
 import { isEmergency, callOwnerEmergency } from "../lib/emergencyCall.js";
 import { guardCharge } from "../lib/spendGuard.js";
 import { sbKey, svcRpc } from "../lib/sb.js";
+import { registrar } from "../lib/registro.js";
+import { avaliarContato, numeroFalado, contatoDaLigacao } from "../lib/contato.js";
+import { svcJson } from "../lib/sb.js";
+import { acharProduto, dinheiro } from "../lib/produtos.js";
+import { contaDePagamento, camposDoDestino } from "../lib/contaDoCliente.js";
+import { giftCardLinkEmail } from "../lib/emailTemplates.js";
 const isEmailAddr = (s) => /.+@.+\..+/.test((s || "").toString());
 const SB_URL_DEFAULT = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON_DEFAULT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -55,6 +61,11 @@ export async function onRequestPost(context) {
       source: "gui-call",
       at: new Date().toISOString(),
     };
+    // BINA (2026-09-28): contato vazio / placeholder / falado por extenso → o número de quem liga.
+    // 2026-09-28: telefone ditado VÁLIDO mas errado (535→525) também perde pro BINA.
+    { const cl = contatoDaLigacao(rec.contact, request.headers.get("x-guileo-caller"));
+      rec.contact = cl.contato;
+      if (cl.ditado) rec.details = `${rec.details || ""}${rec.details ? " · " : ""}caller also gave another number: ${cl.ditado}`; }
 
     const SB_URL = env.GUI_ACTIONS_SUPABASE_URL || SB_URL_DEFAULT;
     const SB_ANON = env.GUI_ACTIONS_SUPABASE_ANON || SB_ANON_DEFAULT;
@@ -79,6 +90,32 @@ export async function onRequestPost(context) {
           return json({ ok: true, paused: true, action: "escalate", message: msg, escalate: true });
         }
       } catch { /* pause check down → fail OPEN (never block a paying client over a hiccup) */ }
+    }
+
+    // ── PRODUTO DE PRATELEIRA: RESERVA PARA BUSCAR (2026-09-30) ─────────────────────────────────
+    // A agente não cobra produto por telefone: ela SEPARA o item e a cliente paga no balcão. O que
+    // ela fala vem do que o banco respondeu — reservado, em falta, ou "qual deles?".
+    if (["product", "produto", "producto", "retail", "reserve_product"].includes(action)) {
+      const r = await reservarProduto(env, { b, rec, tenant, lang, testMode, conv: request.headers.get("x-guileo-conv") || "" });
+      if (r.reservado && !testMode) {
+        // Aviso ao dono + registro pelo mesmo caminho de um pedido — SEM valor: reserva não é
+        // receita recebida, e o razão só conhece dinheiro que entrou.
+        const aviso = { ...rec, action: "order", amount: "", details: r.resumo };
+        context.waitUntil(sideEffects({ env, b, rec: aviso, action: "order", interval: null, tenant, testMode, connAcct: "", payLink: "", SB_URL, SB_ANON, bg: (p) => context.waitUntil(p) }).catch(() => {}));
+      }
+      return json({ ok: r.ok, reserved: !!r.reservado, message: r.message });
+    }
+
+    // ── GIFT CARD (2026-09-30) ──────────────────────────────────────────────────────────────────
+    // Com o Stripe DO NEGÓCIO conectado: link de pagamento por e-mail, e o cartão nasce quando o
+    // pagamento cai (stripe-webhook). Sem ele: pedido anotado e dono avisado — e a agente diz isso.
+    if (["giftcard", "gift_card", "gift", "vale_presente", "vale-presente", "tarjeta_regalo"].includes(action)) {
+      const r = await pedirGiftCard(env, { b, rec, tenant, lang, testMode });
+      if (!testMode && r.avisar) {
+        const aviso = { ...rec, action: "lead", amount: "", details: r.resumo };
+        context.waitUntil(sideEffects({ env, b, rec: aviso, action: "lead", interval: null, tenant, testMode, connAcct: "", payLink: "", SB_URL, SB_ANON, bg: (p) => context.waitUntil(p) }).catch(() => {}));
+      }
+      return json({ ok: r.ok, link_sent: !!r.linkEnviado, message: r.message });
     }
 
     // ── MONEY DECISION ────────────────────────────────────────────────────────────────────────────
@@ -177,7 +214,7 @@ export async function onRequestPost(context) {
               await emitFailure(env, "pix_mint_failed", tenant, `Gui prometeu PIX de R$${rec.amount} mas o Mercado Pago não gerou (${px.reason}${px.detail ? ": " + px.detail : ""}) — enviar manualmente`, { reason: px.reason });
             }
           }
-          await sideEffects({ env, b, rec, action, interval, tenant, testMode, connAcct, payLink, SB_URL, SB_ANON });
+          await sideEffects({ env, b, rec, action, interval, tenant, testMode, connAcct, payLink, SB_URL, SB_ANON, bg: (p) => context.waitUntil(p) });
         } catch { /* background pipeline is best-effort — the caller already got the bridge reply */ }
       })());
       return json({ ok: true, bridged: true, message: bridgePhrase(lang, rec.amount, interval) });
@@ -195,7 +232,7 @@ export async function onRequestPost(context) {
     // Non-charge actions (and charge-without-collect) have NO slow Stripe calls, so they run inline:
     // never a real pay link here → payLink stays "".
     const { stored, delivered, confirmed, texted, emergencyCalled, urgentEmergency } =
-      await sideEffects({ env, b, rec, action, interval, tenant, testMode, connAcct: "", payLink: "", SB_URL, SB_ANON });
+      await sideEffects({ env, b, rec, action, interval, tenant, testMode, connAcct: "", payLink: "", SB_URL, SB_ANON, bg: (p) => context.waitUntil(p) });
 
     // Natural confirmation the agent speaks back to the caller — covers EVERYTHING Gui does on a call.
     const who = rec.name || "you";
@@ -250,11 +287,112 @@ export async function onRequestPost(context) {
   }
 }
 
+// Frase certa no idioma da ligação. `lang` vem do corpo da ferramenta; sem ele, inglês.
+const fala = (lang, en, pt, es) => { const l = String(lang || "").toLowerCase(); return l.startsWith("pt") ? pt : l.startsWith("es") ? es : en; };
+
+// ── reservarProduto ──────────────────────────────────────────────────────────────────────────────
+// Acha o produto pelo que a pessoa disse (acharProduto: empate = pergunta, nunca chute), reserva no
+// banco (product_sale_record desconta o estoque na MESMA transação e é idempotente por `ref`) e
+// devolve a frase. `ok:false` só quando o nosso lado falhou — aí a agente não finge que reservou.
+async function reservarProduto(env, { b, rec, tenant, lang, testMode, conv }) {
+  const texto = String(b.product || b.details || b.item || "").slice(0, 200);
+  const mq = texto.match(/(?:^|\s)x\s?(\d{1,2})\b/i) || texto.match(/\b(\d{1,2})\s?x\b/i);
+  const qty = Math.min(Math.max(parseInt(b.qty || b.quantity || (mq && mq[1]) || "1", 10) || 1, 1), 20);
+  const nomeDito = texto.replace(/(?:^|\s)x\s?\d{1,2}\b/i, " ").replace(/\b\d{1,2}\s?x\b/i, " ").trim();
+  const lista = await svcJson(env, "product_list", { p_secret: env.INGEST_SECRET || "", p_email: tenant, p_only_active: true });
+  if (!Array.isArray(lista)) {
+    return { ok: false, message: fala(lang, "I couldn't check our products just now — let me take your name and number and the front desk will set it aside for you.", "Não consegui consultar os produtos agora — me passa seu nome e telefone que a recepção separa pra você.", "No pude consultar los productos ahora — déjeme su nombre y teléfono y la recepción se lo aparta.") };
+  }
+  const prod = acharProduto(lista, nomeDito);
+  if (!prod) {
+    const nomes = lista.slice(0, 6).map((p) => p.name).join(", ");
+    return { ok: true, message: lista.length
+      ? fala(lang, `I want to be sure I set aside the right one — which product is it? We have: ${nomes}.`, `Quero separar o certo — qual produto é? Temos: ${nomes}.`, `Quiero apartar el correcto — ¿cuál producto es? Tenemos: ${nomes}.`)
+      : fala(lang, "We don't have products listed for sale right now — I can note what you're looking for and the front desk will tell you.", "Não temos produtos cadastrados para venda agora — posso anotar o que você procura e a recepção te avisa.", "No tenemos productos listados para la venta ahora — puedo anotar lo que busca y la recepción le avisa.") };
+  }
+  const preco = dinheiro(prod.price_cents);
+  if (testMode || b.dry_run === true) return { ok: true, message: `(dry-run) would reserve ${qty} × ${prod.name} (${preco})` };
+  // Uma reserva por conversa+produto: a ElevenLabs REPETE a chamada da ferramenta, e o estoque não
+  // pode descer duas vezes. Sem id de conversa, contato + dia.
+  const ref = `voz:${(conv || `${rec.contact || rec.name || "anon"}:${rec.at.slice(0, 10)}`).slice(0, 120)}:${prod.id}`;
+  const r = await svcJson(env, "product_sale_record", { p_secret: env.INGEST_SECRET || "", p_email: tenant, p_product_id: prod.id, p_qty: qty, p_ref: ref,
+    p_customer_name: rec.name || "", p_customer_contact: rec.contact || "", p_status: "reserved", p_source: "voice" });
+  if (r && r.ok === true && r.sale_id) {
+    const total = dinheiro(r.total_cents);
+    return { ok: true, reservado: true, resumo: `🛍️ Product reserved for pickup: ${qty} × ${prod.name} (${total}) — NOT paid yet, pay at the front desk`.slice(0, 500),
+      message: fala(lang, `Done — I've set aside ${qty > 1 ? `${qty} of the ` : "the "}${prod.name} for you. It's ${total}, and you pay at the front desk when you pick it up.`,
+        `Pronto — separei ${qty > 1 ? `${qty} unidades do ` : "o "}${prod.name} pra você. Fica ${total}, e você paga na recepção quando vier buscar.`,
+        `Listo — le aparté ${qty > 1 ? `${qty} unidades de ` : "el "}${prod.name}. Son ${total}, y paga en recepción cuando lo recoja.`) };
+  }
+  if (r && r.reason === "out_of_stock") {
+    return { ok: true, message: fala(lang, `I'm sorry — the ${prod.name} is out of stock right now${Number(r.stock) > 0 ? ` (only ${r.stock} left)` : ""}. Would you like me to let the front desk know you want it when it's back?`,
+      `Que pena — o ${prod.name} está em falta agora${Number(r.stock) > 0 ? ` (só ${r.stock})` : ""}. Quer que eu avise a recepção que você quer quando chegar?`,
+      `Lo siento — el ${prod.name} está agotado ahora${Number(r.stock) > 0 ? ` (solo ${r.stock})` : ""}. ¿Quiere que avise a recepción para cuando llegue?`) };
+  }
+  try { await emitFailure(env, "reserva_de_produto_falhou", tenant, `a agente tentou reservar ${qty} × ${prod.name} e o banco não confirmou (${String((r && (r.reason || r.detalhe || r.erro_http)) || "sem resposta").slice(0, 80)})`, {}); } catch { /* */ }
+  return { ok: false, message: fala(lang, "I couldn't set it aside just now — let me take your name and number and the front desk will hold it for you.", "Não consegui separar agora — me passa seu nome e telefone que a recepção guarda pra você.", "No pude apartarlo ahora — déjeme su nombre y teléfono y la recepción se lo guarda.") };
+}
+
+// ── pedirGiftCard ────────────────────────────────────────────────────────────────────────────────
+// Só promete link quando o link SAIU (Stripe aceitou E o e-mail foi aceito pelo Resend). Em qualquer
+// outro caso a frase é a verdade: o pedido foi anotado e a equipe fecha.
+async function pedirGiftCard(env, { b, rec, tenant, lang, testMode }) {
+  const cents = valorParaCobranca(rec.amount).cents;
+  const para = String(b.recipient || "").slice(0, 120);
+  if (!cents || cents < 500) {
+    return { ok: true, message: fala(lang, "Happy to — what amount would you like on the gift card?", "Com prazer — de qual valor você quer o vale-presente?", "Con gusto — ¿de qué monto quiere la tarjeta de regalo?") };
+  }
+  const MAX = (Number(env.MAX_CHARGE_USD) || 5000) * 100;
+  const valor = dinheiro(cents);
+  const resumoBase = `🎁 Gift card request: ${valor}${rec.details ? ` · ${rec.details}` : ""}${para ? ` · for ${para}` : ""}`;
+  const anotado = { ok: true, avisar: true, resumo: `${resumoBase} — NOT paid yet: the team completes the sale`.slice(0, 500),
+    message: fala(lang, `I've noted your ${valor} gift card request. I can't take the payment on this call — the front desk will contact you to complete it.`,
+      `Anotei o seu pedido de vale-presente de ${valor}. Não consigo receber o pagamento nesta ligação — a recepção fala com você para concluir.`,
+      `Anoté su pedido de tarjeta de regalo de ${valor}. No puedo cobrar en esta llamada — la recepción le contacta para completarlo.`) };
+  if (testMode || b.dry_run === true) return { ...anotado, avisar: false };
+  if (cents > MAX || !env.STRIPE_SECRET_KEY || !env.RESEND_API_KEY || !isEmailAddr(rec.contact)) return anotado;
+  const destino = await contaDePagamento(env, tenant);
+  if (destino.modo === "sem_conta") return anotado;
+  let url = "";
+  try {
+    const form = {
+      mode: "payment", "line_items[0][quantity]": "1", "line_items[0][price_data][currency]": "usd",
+      "line_items[0][price_data][unit_amount]": String(cents),
+      "line_items[0][price_data][product_data][name]": `Gift card — ${valor}`,
+      success_url: `https://guileoai.com/api/obrigado?o=gift&l=${encodeURIComponent(String(lang || "en").slice(0, 2))}`, cancel_url: "https://guileoai.com/api/obrigado?o=cancel",
+      customer_email: rec.contact,
+      "metadata[guileo]": "giftcard", "metadata[client_email]": tenant, "metadata[amount_cents]": String(cents),
+      "metadata[recipient_contact]": para, "metadata[purchaser_contact]": rec.contact,
+      "payment_intent_data[metadata][guileo]": "giftcard", "payment_intent_data[metadata][client_email]": tenant, "payment_intent_data[metadata][amount_cents]": String(cents),
+      allow_promotion_codes: "false",
+      ...camposDoDestino(destino, { cents, feePct: parseFloat(env.GUILEO_FEE_PCT || "0") }),
+    };
+    const sr = await fetch("https://api.stripe.com/v1/checkout/sessions", { method: "POST",
+      headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`, "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(form).toString() });
+    const sd = await sr.json().catch(() => ({}));
+    if (sr.ok && /^https:\/\//.test(String(sd.url || ""))) url = sd.url;
+  } catch { /* sem link → pedido anotado */ }
+  if (!url) { try { await emitFailure(env, "giftcard_link_falhou", tenant, `pedido de gift card de ${valor}: o Stripe não gerou o link — a equipe precisa concluir`, {}); } catch { /* */ } return anotado; }
+  let enviado = false;
+  try {
+    const { subject, html } = giftCardLinkEmail({ name: rec.name || "", business: rec.business || "", amount: valor, recipient: para, link: url, lang: String(lang || "en") });
+    const er = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: env.EMAIL_FROM || "Guileo <noreply@guileoai.com>", to: rec.contact, subject, html, ...(isEmailAddr(tenant) ? { reply_to: tenant } : {}) }) });
+    const ed = await er.json().catch(() => ({}));
+    enviado = er.ok && !!ed.id;
+  } catch { /* não enviado */ }
+  if (!enviado) return anotado;
+  return { ok: true, linkEnviado: true, avisar: true, resumo: `${resumoBase} — payment link emailed to ${rec.contact}; the card is issued when it is paid`.slice(0, 500),
+    message: fala(lang, `I've just emailed the secure payment link for your ${valor} gift card to ${rec.contact}. The gift card is issued as soon as it's paid.`,
+      `Acabei de mandar o link seguro de pagamento do vale-presente de ${valor} para ${rec.contact}. O vale é emitido assim que o pagamento cair.`,
+      `Acabo de enviar el enlace seguro de pago de la tarjeta de regalo de ${valor} a ${rec.contact}. La tarjeta se emite en cuanto se pague.`) };
+}
+
 // ── SIDE EFFECTS PIPELINE ─────────────────────────────────────────────────────────────────────────
 // Everything that records/forwards/notifies an action. Shared by both the synchronous path (non-charge
 // + charge-without-collect) and the F6 background path (connected charge, run via waitUntil) so the two
 // never drift. Every step is best-effort and NEVER throws → the spoken reply always happens.
-async function sideEffects({ env, b, rec, action, interval, tenant, testMode, connAcct, payLink, SB_URL, SB_ANON }) {
+async function sideEffects({ env, b, rec, action, interval, tenant, testMode, connAcct, payLink, SB_URL, SB_ANON, bg }) {
   // 1) Persist to Supabase so it shows live on /live (public anon key + RLS).
   let stored = false;
   try {
@@ -347,6 +485,16 @@ async function sideEffects({ env, b, rec, action, interval, tenant, testMode, co
       const r = await fetch(env.LEAD_WEBHOOK, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(rec) });
       delivered = r.ok;
     } catch { /* keep going — never fail the call */ }
+  }
+
+  // 2a) REGISTRO (2026-09-28) — lead/orçamento/retorno/escalação vão pra planilha e (lead) pro ClickUp.
+  if (!testMode && ["lead", "quote", "callback", "escalate", "order", "sale"].includes(rec.action)) {
+    const c = String(rec.contact || "");
+    const t = registrar(env, { cliente: tenant, tipo: rec.action === "lead" || rec.action === "quote" ? "lead" : rec.action, nome: rec.name,
+      telefone: /@/.test(c) ? "" : c, email: /@/.test(c) ? c : "", servico: rec.details.slice(0, 160), quando: rec.when, resumo: rec.details, canal: "voz", ref: `acao:${rec.action}:${rec.at}` });
+    // Em segundo plano: o caminho sem cobrança roda com o cliente NA LINHA — esperar a planilha
+    // seria silêncio no telefone. `bg` = context.waitUntil do handler.
+    if (typeof bg === "function") bg(t); else await t;
   }
 
   // 2b) CUSTOMER CONFIRMATION EMAIL — keep the spoken promise for email contacts (branded).

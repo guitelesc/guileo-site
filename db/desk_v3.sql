@@ -1,0 +1,11 @@
+-- GUILEO DESK v3 (2026-10-05): minha reserva + relatórios.
+-- Aplicado pelas migrações desk_v3_1_minha_reserva, desk_v3_2_relatorios, desk_v3_3_ocupacao_decimal.
+-- Funções: desk_self_get_svc(tenant,id) e desk_self_mark_svc(tenant,id,acao) [só service_role; a porta é o
+--   link assinado de lib/visita.js proposito 'reserva'] · desk_reports(email,key,from,to,location?) [porta _desk_ok].
+-- Texto integral: select pg_get_functiondef(oid) from pg_proc where proname in ('desk_self_get_svc','desk_self_mark_svc','desk_reports');
+-- Regras do relatório: visita = não cancelada/falta/bloqueio, já terminada, no período · remarcação = a visita já tinha
+--   (ou ganhou em até 7 dias) o próximo horário da mesma cliente · retenção = clientes do período anterior do MESMO
+--   tamanho que voltaram · ocupação = minutos marcados ÷ (expediente semanal no período − bloqueios), 1 casa decimal.
+-- 2026-10-05 (noite): desk_v3_4_relatorios_extra → desk_reports_extra(email,key,from,to,location?) [heatmap, service_trend,
+--   pro_sales, source_by_location]; desk_v3_5_falta_da_profissional → desk_absence_plan(email,key,pro_id,from,to)
+--   [clientes dela + quem cobre no mesmo horário; só lê]. Ambas com porta _desk_ok, grant anon/authenticated/service_role.

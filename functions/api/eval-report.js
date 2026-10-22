@@ -25,6 +25,7 @@
 import { json, safeEq } from "../lib/guard.js";
 import { svcRpc } from "../lib/sb.js";
 import { evalReportEmail } from "../lib/emailTemplates.js";
+import { emailsDoDonoMudos } from "../lib/avisarDono.js";
 // ⚠️ O CONJUNTO DECLARADO — a única forma de saber que uma rodada foi PARCIAL. Sem isto o relatório
 // só sabe contar o que achou, e "achei 4" é indistinguível de "existem 4". Foi assim que ele
 // assinou "média 80,5" sobre 4 casos de 48 por duas semanas.
@@ -41,6 +42,7 @@ const paraODono = (env) => (env.OWNER_EMAIL || "smart@guileoai.com").toString().
 
 async function enviar(env, to, subject, html) {
   if (!env.RESEND_API_KEY) return { ok: false, motivo: "RESEND_API_KEY ausente" };
+  if (await emailsDoDonoMudos(env)) return { ok: false, mudo: true, motivo: "emails_dono=off" };
   try {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -80,11 +82,11 @@ export async function onRequest(context) {
   // 2) LEITURA. agent_evals_recent devolve as linhas mais novas; agrupo por run_id em memória
   //    porque é o run_id que define "uma rodada" (o run_at varia por linha dentro da mesma).
   const rr = await svcRpc(env, "agent_evals_recent", { p_secret: env.INGEST_SECRET || "", p_limit: 200 });
-  if (!rr.ok) return json({ ok: false, erro: `agent_evals_recent ${rr.status}` }, 502);
+  if (!rr.ok) return json({ ok: false, erro: `agent_evals_recent ${rr.status}` }, 503);
   const linhas = await rr.json().catch(() => null);
   // ⚠️ `|| []` aqui viraria "nenhum caso reprovou" — o mesmo fallback que deixou três motores
   //    mortos rodando 96×/dia. Lista ausente é ERRO, não rodada limpa.
-  if (!Array.isArray(linhas)) return json({ ok: false, erro: "agent_evals_recent não devolveu lista" }, 502);
+  if (!Array.isArray(linhas)) return json({ ok: false, erro: "agent_evals_recent não devolveu lista" }, 503);
 
   const doAgente = linhas.filter((l) => l && l.run_id && (!agente || l.agent === agente));
   if (!doAgente.length) return json({ ok: false, erro: `nenhuma linha para ${rotuloAgente}` }, 200);
@@ -158,5 +160,5 @@ export async function onRequest(context) {
 
   const env_ = await enviar(env, paraODono(env), assunto, html);
   out.email = env_.ok ? "enviado" : `falhou: ${env_.motivo}`;
-  return json(out, env_.ok ? 200 : 502);
+  return json(out, env_.ok ? 200 : 503);
 }

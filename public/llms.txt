@@ -1,0 +1,50 @@
+# Guileo AI
+
+> Guileo is one house for a business's growth: an AI that answers calls and messages, books and sells 24/7 in 16 languages, plus a team that runs ads, marketing and content and builds websites, apps and custom software. Most businesses go live in 7 days. Self-service plans start at $149/month with a 30-day money-back guarantee.
+
+Guileo serves businesses in the United States and Brazil. The AI covers what a team can't — nights, weekends, simultaneous calls and follow-ups — and a real person supervises and takes over when needed. It answers in the customer's language automatically, including English, Portuguese, Spanish and Hindi. Guileo is operated by ORIGEM LTDA; founder Luis Teles; contact smart@guileoai.com.
+
+## Product and pricing
+
+- [Home](https://guileoai.com/): what Guileo does, how it works and the most common questions
+- [Plans](https://guileoai.com/planos): Essential $149/mo, Personalized $897/mo, Full Operation $1,997/mo; tailored done-for-you packages are quoted per business
+- [Services](https://guileoai.com/servicos): AI receptionist, booking, lead capture, ads, marketing, websites and apps
+- [Lead generation](https://guileoai.com/lead-generation): finding and following up with new customers
+- [Marketing](https://guileoai.com/marketing): ads, content and campaigns run by the team
+- [Go live](https://guileoai.com/go-live): the activation checklist — pay, connect the cockpit, forward the line, load the menu and go live
+- [Missed-calls calculator](https://guileoai.com/calculator): estimate the revenue lost to unanswered calls
+
+## By industry
+
+- [Salons and spas](https://guileoai.com/for/salons-spas)
+- [Restaurants](https://guileoai.com/for/restaurants)
+- [Dental clinics](https://guileoai.com/for/dental-clinics)
+- [Medical clinics](https://guileoai.com/for/medical-clinics)
+- [Home services](https://guileoai.com/home-services)
+- [Plumbing and HVAC](https://guileoai.com/for/plumbing-hvac)
+- [Law firms](https://guileoai.com/for/law-firms)
+- [Real estate](https://guileoai.com/for/real-estate)
+
+## Guides
+
+- [What an AI receptionist costs](https://guileoai.com/blog/ai-receptionist-cost)
+- [AI receptionist vs. answering service](https://guileoai.com/blog/ai-vs-answering-service)
+- [The money in missed calls](https://guileoai.com/blog/missed-calls-money)
+- [Speed to lead](https://guileoai.com/blog/speed-to-lead)
+- [Bilingual AI receptionist](https://guileoai.com/blog/bilingual-ai-receptionist)
+- [All articles](https://guileoai.com/blog)
+
+## Company and policies
+
+- [Contact](https://guileoai.com/contact)
+- [Our people](https://guileoai.com/nossa-gente)
+- [Partners](https://guileoai.com/partners)
+- [Compliance](https://guileoai.com/compliance)
+- [Privacy policy](https://guileoai.com/privacy)
+- [Terms of service](https://guileoai.com/terms)
+- [Refund policy](https://guileoai.com/refunds)
+
+## Optional
+
+- [Sitemap](https://guileoai.com/sitemap.xml): every public page
+- [Client sitemap](https://guileoai.com/sitemap-clientes.xml): public pages of businesses built on Guileo

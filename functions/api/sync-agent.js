@@ -3,8 +3,9 @@
 // ElevenLabs voice agent's prompt — so "Train your AI" actually trains the real agent.
 //   POST { email, key, brain, business?, industry?, lang? }
 // Auth: the connection code (key) must match the client (verified via get_client_data).
-import { json, isOwnerEmail, safeEq } from "../lib/guard.js";
+import { json, isOwnerEmail, safeEq, rateLimited } from "../lib/guard.js";
 import { buildConversationConfig, fetchTenantPrices, CEREBRO_VERSAO } from "../lib/provision.js";
+import { blocoDeVendas } from "../lib/vendasDaAgente.js";
 import { appointmentEmail } from "../lib/emailTemplates.js";
 import { brandFor } from "../lib/clientBrand.js";
 import { isReserved } from "../lib/reserved.js";
@@ -38,7 +39,20 @@ export async function onRequestPost(context) {
     // (Correção 2026-08-10: a versão anterior deste comentário afirmava que `safeEq("","")`
     // passaria. Não passa. Comentário errado envelhece pior que código errado — o código alguém
     // testa, o comentário todo mundo acredita.)
-    const interno = !!env.INGEST_SECRET && safeEq((request.headers.get("x-guileo-secret") || "").trim(), env.INGEST_SECRET);
+    let interno = !!env.INGEST_SECRET && safeEq((request.headers.get("x-guileo-secret") || "").trim(), env.INGEST_SECRET);
+    // SENHA DO /admin (2026-10-08, autorizado pelo Luis): o INGEST_SECRET é segredo do Cloudflare —
+    // gravado criptografado, ninguém lê de volta, nem o dono. Sem isto, "sincronizar a Natura depois
+    // do meu OK" dependia de uma chave que ninguém tem. Mesmo portão do agent-evolve/platform-status:
+    // o blitz_stats (mesma senha da tela /admin) só responde 200 com a senha certa. Entra como porta
+    // de serviço (cérebro lido do banco, nunca do corpo). Quem usa: a tela /admin/agente.
+    if (!interno && b.admin_token) {
+      if (await rateLimited(request, env, "sync-admin", 10)) return json({ error: "devagar" }, 429);
+      // MESMA checagem da tela /admin e do /api/contract: o blitz_stats só responde 200 com a senha
+      // certa. (O `_admin_ok` confere outra credencial — a senha do /admin dava "incorreta" nele.)
+      const vr = await rpc("blitz_stats", { p_token: String(b.admin_token).trim(), p_email: "" }).catch(() => null);
+      interno = !!(vr && vr.ok);
+      if (!interno) return json({ error: "unauthorized" }, 401);
+    }
     if (!email.includes("@") || (!key && !interno)) return json({ error: "email + key required" }, 400);
 
     // AUTH — the connection code must belong to this client (get_client_data rejects a mismatch).
@@ -59,7 +73,22 @@ export async function onRequestPost(context) {
     // 2026-07-22 (o sync que perdia o agentName): confiar no corpo da requisição pra um dado
     // que o servidor já conhece. Agora tem cadeia de resgate e, se tudo falhar, RECUSA o sync —
     // melhor não sincronizar do que despersonalizar o agente de quem paga.
-    let business = (b.business || "").toString().slice(0, 160);
+    // 🚨 A FONTE MANDA, O ESPELHO NÃO (2026-09-28). Às 13:10 de hoje a Central mandou um sync com
+    // o nome e o ramo da AMOSTRA ("NATURA SPA", "Salon & Spa") e a Lilian passou a atender
+    // "Thank you for calling NATURA SPA". Consertei a causa (a tela não manda mais amostra) e
+    // limpei o perfil — e o nome errado CONTINUOU, porque a ordem de resgate era: corpo → nome do
+    // agente ao vivo → perfil. O agente ao vivo é um ESPELHO: todo sync escreve nele. Perguntar a
+    // ele primeiro faz um único sync ruim se perpetuar em todos os seguintes, para sempre.
+    // Agora: PERFIL (o cadastro, a fonte) → corpo → agente ao vivo. O corpo só nomeia negócio que
+    // o cadastro ainda não nomeou; renomear um negócio é ato de cadastro, não efeito colateral de
+    // salvar um treino.
+    let perfilFonte = null;
+    try {
+      const pf0 = await rpc("get_client_profile", { p_secret: env.INGEST_SECRET || "", p_email: email });
+      if (pf0.ok) perfilFonte = await pf0.json().catch(() => null);
+    } catch { /* sem perfil: valem o corpo e os resgates abaixo */ }
+    let business = ((perfilFonte?.business_name || "").toString().trim() || (b.business || "").toString()).slice(0, 160);
+    const business_de = (perfilFonte?.business_name || "").toString().trim() ? "perfil" : (b.business ? "corpo" : "resgate");
     // ⚠️ A INDÚSTRIA VEM DO PERFIL QUANDO NÃO É PASSADA (2026-08-18). Ela só chegava pelo CORPO da
     // requisição — e o re-sync automático (agent-evolve) não manda corpo nenhum. Resultado: `industry`
     // sempre vazio, e `licoesPara(ind)` nunca casava um vertical: as lições de SPA, CLÍNICA,
@@ -67,15 +96,39 @@ export async function onRequestPost(context) {
     // Descoberto ao verificar (não supor) se o vocabulário de spa tinha entrado na Lilian: não tinha.
     // O perfil já guardava `industry: "salon"` o tempo todo. É a mesma família do defeito do dia:
     // o dado existe, o caminho até quem usa é que estava partido.
-    let industry = (b.industry || "").toString().slice(0, 80);
+    let industry = ((perfilFonte?.industry || "").toString().trim() || (b.industry || "").toString()).slice(0, 80);
     if (!industry) {
       try {
         const pi = await rpc("get_client_profile", { p_secret: env.INGEST_SECRET || "", p_email: email });
         if (pi.ok) { const pj = await pi.json().catch(() => null); industry = (pj?.industry || "").toString().slice(0, 80); }
       } catch { /* sem perfil o agente sincroniza com as universais — degrada, não quebra */ }
     }
-    const lang = ["pt", "es", "en"].includes(b.lang) ? b.lang : "en";
-    const brain = (b.brain || "").toString().slice(0, 4000);
+    // ── IDIOMA E TREINO VÊM DO PERFIL QUANDO O CORPO NÃO TRAZ (2026-09-27) ─────────────────────
+    // Terceira vez a MESMA família de defeito (nome em 05/08, indústria em 18/08): o re-sync
+    // automático (agent-evolve) manda só {email}. Sem `lang` o código caía em "en" — MedMundo e
+    // Chigo têm `lang: "pt"` no perfil e estavam atendendo "Thank you for calling…" em inglês. E o
+    // que a dona ensina em "Treine sua IA" só existia no NAVEGADOR dela: cada re-sync reconstruía a
+    // agente sem isso. Agora: o corpo manda quando veio do portal (autenticado pela chave do
+    // cliente); senão vale o perfil. E o treino que chega do portal é GUARDADO no perfil — inclusive
+    // vazio, porque apagar tudo também é uma decisão da dona.
+    let perfil = null;
+    try {
+      const pf = await rpc("get_client_profile", { p_secret: env.INGEST_SECRET || "", p_email: email });
+      if (pf.ok) perfil = await pf.json().catch(() => null);
+    } catch { /* sem perfil: vale o corpo; sem os dois, os padrões de sempre */ }
+    const okLang = (v) => ["pt", "es", "en"].includes(v);
+    const lang = okLang(b.lang) ? b.lang : okLang(perfil?.lang) ? perfil.lang : "en";
+    const lang_de = okLang(b.lang) ? "corpo" : okLang(perfil?.lang) ? "perfil" : "padrao";
+    const veioTreino = !interno && Object.prototype.hasOwnProperty.call(b, "brain");
+    const brain = (veioTreino ? (b.brain || "") : (perfil?.brain || "")).toString().slice(0, 4000);
+    const brain_de = veioTreino ? "corpo" : (perfil?.brain ? "perfil" : "vazio");
+    let brain_guardado = null;
+    if (veioTreino) {
+      try {
+        const gr2 = await svcRpc(env, "set_client_profile", { p_secret: env.INGEST_SECRET || "", p_email: email, p_profile: { brain, brain_at: new Date().toISOString() } });
+        brain_guardado = gr2.ok && (await gr2.json().catch(() => null)) === true;
+      } catch { brain_guardado = false; }
+    }
 
     // KB — re-inject the tenant's own Q&A (client_kb) so a brain sync NEVER strips the business
     // knowledge the way provisioning injects it. Best-effort; empty/missing → brain unchanged.
@@ -102,7 +155,22 @@ export async function onRequestPost(context) {
     // PRICES — inject the tenant's REAL live menu so editing the brain never strips the prices the Gui
     // quotes on a call (biz_lookup, SCHED_SECRET; best-effort "" on any miss).
     marco("kb");
-    const prices = await fetchTenantPrices(env, email, lang);
+    let prices = await fetchTenantPrices(env, email, lang);
+    // PRODUTO DE PRATELEIRA + GIFT CARD (2026-09-30) — entram junto dos preços, e SÓ para o negócio
+    // que cadastrou produto (db/produtos.sql) ou ligou gift card no perfil (`vende_gift_card`).
+    // Quem não tem nenhum dos dois fica com o bloco de preços idêntico ao de antes.
+    // Leitura que falha = sem bloco (a agente não anuncia o que eu não consegui ler).
+    let produtos = [];
+    try { const pl = await svcJson(env, "product_list", { p_secret: env.INGEST_SECRET || "", p_email: email, p_only_active: true }); if (Array.isArray(pl)) produtos = pl; } catch { /* sem produtos */ }
+    const vendas = blocoDeVendas({ produtos, giftCard: perfil?.vende_gift_card === true, lang });
+    if (vendas) prices = `${prices || ""}${prices ? "\n\n" : ""}${vendas}`;
+    // PASSAR A LIGAÇÃO: os números vêm do perfil; os da própria agente ficam proibidos (laço).
+    let numerosDaAgente = [];
+    try { const ar = await svcJson(env, "client_agent_resolve", { p_secret: env.INGEST_SECRET || "", p_email: email }); if (ar && ar.number) numerosDaAgente = [String(ar.number)]; } catch { /* sem número conhecido */ }
+    // `perfil.encaminhadas` = as linhas do negócio que ENCAMINHAM para a agente (ex.: a linha
+    // principal depois do *72). Transferir para uma delas devolve a ligação para ela mesma — então
+    // entram na lista proibida junto do número da agente. Quem liga o encaminhamento anota aqui.
+    if (Array.isArray(perfil?.encaminhadas)) numerosDaAgente = [...numerosDaAgente, ...perfil.encaminhadas.map((n) => String(n || "")).filter(Boolean)];
     marco("precos");
 
     // Preserve whatever VOICE + NAME the agent currently uses — read them off the live agent so a brain
@@ -142,7 +210,7 @@ export async function onRequestPost(context) {
     // se a biblioteca não responder, o mapa vem vazio e o agente sincroniza com a voz de sempre.
     const nativeVoices = await resolveNativeVoices(env).catch(() => ({}));
     marco("vozes");
-    const convCfg = buildConversationConfig(env, { business, industry, lang, brain: kbBrain, agentName, email, prices, voiceId, nativeVoices });
+    const convCfg = buildConversationConfig(env, { business, industry, lang, brain: kbBrain, agentName, email, prices, voiceId, nativeVoices, transfer: Array.isArray(perfil?.transfer) ? perfil.transfer : null, proprios: numerosDaAgente });
     const pr = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agentId}`, {
       method: "PATCH",
       headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },
@@ -157,7 +225,7 @@ export async function onRequestPost(context) {
     if (!pr.ok) {
       const detail = await pr.text().catch(() => "");
       console.log("sync-agent error", detail.slice(0, 300));
-      return json({ error: "agent update failed", status: pr.status, detail: detail.slice(0, 400) }, 502);
+      return json({ error: "agent update failed", status: pr.status, detail: detail.slice(0, 400) }, 503);
     }
 
     // O CARIMBO DA VERSÃO — aqui, e em nenhum outro lugar. Este é o único ponto do sistema que sabe
@@ -333,7 +401,9 @@ export async function onRequestPost(context) {
         const contato = "prova-ciclo@guileoai.com";
         let feito = null;
         try {
-          feito = await chamar({ op: "book", when: falado, name: "PROVA CICLO", contact: contato });
+          // `prova:true`: a reserva do ciclo é real (precisa ser, para remarcar e cancelar), mas NÃO
+          // pode entrar no feed da Central como agendamento do cliente (2026-09-28).
+          feito = await chamar({ op: "book", when: falado, name: "PROVA CICLO", contact: contato, prova: true });
           const segundo = (disp.body.slots || [])[1]?.start || null;
           let remarcado = null, faladoNovo = null;
           if (feito.body?.ok && segundo) {
@@ -406,6 +476,6 @@ export async function onRequestPost(context) {
       }
     }
     marco("fim");
-    return json({ ok: true, agent_id: agentId, cerebro_versao, marcos, languages, brand, ...(numeros_soltos.length ? { numeros_soltos } : {}), ...(selftest ? { selftest } : {}), ...(typeof ciclo !== "undefined" && ciclo ? { ciclo } : {}), ...(email_test ? { email_test } : {}) });
+    return json({ ok: true, agent_id: agentId, cerebro_versao, negocio: business, negocio_de: business_de, lang, lang_de, brain_de, brain_chars: brain.length, ...(brain_guardado === null ? {} : { brain_guardado }), marcos, languages, brand, ...(numeros_soltos.length ? { numeros_soltos } : {}), ...(selftest ? { selftest } : {}), ...(typeof ciclo !== "undefined" && ciclo ? { ciclo } : {}), ...(email_test ? { email_test } : {}) });
   } catch (e) { return json({ error: String(e).slice(0, 140) }, 400); }
 }

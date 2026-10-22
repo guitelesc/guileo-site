@@ -83,6 +83,8 @@ function Billing({ V, real = null, onNav = () => {}, email = "" }) {
       toast(tr("Export failed — message us on WhatsApp and we'll send it."));
     } finally { setExporting(false); }
   };
+  // conta de verdade = dado real lido OU sessão logada não-demo (mesmo sem os dados chegarem)
+  const contaDeVerdade = !!real || portalApi.contaReal();
   const plan = V.plan || { label: "Growth Plan", used: 1, total: 2000, unit: "Actions this month" };
   const pct = plan.total ? Math.round((plan.used / plan.total) * 100) : 0;
   const includes = ["AI voice agent · 24/7", "WhatsApp, SMS & social replies", "Bookings & reviews automation", "Live dashboard & monthly reports", "A real human managing it for you"];
@@ -117,7 +119,7 @@ function Billing({ V, real = null, onNav = () => {}, email = "" }) {
     return () => { alive = false; };
   }, [email]);
   const setC = (n) => { setCredits(n); portalApi.saveState("gui_credits", n); window.dispatchEvent(new Event("gui:credits")); };
-  const topUp = (n) => { setC(credits + n); toast(`${n} credits added ✓ — ${payg ? "billed to your account (pay-as-you-go)" : "added to your plan"}`); };
+  const topUp = (n) => { setC(credits + n); toast(`${n} ${tr("credits added ✓ —")} ${payg ? tr("billed to your account (pay-as-you-go)") : tr("added to your plan")}`); };
   const usedThisMonth = vnum(V.label, "guiused", 60, 320);
   // REAL MODE — balance + plan come straight from the backend; demo numbers step aside.
   const shownCredits = real && Number.isFinite(Number(real.credits)) ? Number(real.credits) : credits;
@@ -335,19 +337,26 @@ function Billing({ V, real = null, onNav = () => {}, email = "" }) {
             <div className="text-xs font-bold uppercase tracking-wide text-g-gold">🤝 {tr("Assisted setup — $199")}</div>
             <div className="text-sm font-extrabold text-g-word mt-1">{tr("We get EVERYTHING ready in 48h — line, menu, training and a live test.")}</div>
           </div>
-          <a href={waLink("Quero a configuração assistida ($199)")} target="_blank" rel="noopener" className="btn-bright text-sm shrink-0">{tr("Set it up for me →")}</a>
+          {/* a mensagem pronta saía em português para qualquer cliente; agora segue o idioma da tela */}
+          <a href={waLink(tr("I'd like the assisted setup ($199)"))} target="_blank" rel="noopener" className="btn-bright text-sm shrink-0">{tr("Set it up for me →")}</a>
         </div>
       </Card>
 
-      {/* Gui usage history — what your credits bought, by day */}
-      {(() => {
+      {/* Gui usage history — what your credits bought, by day.
+          🚨 (2026-09-28) SÓ NA DEMONSTRAÇÃO. Este gráfico lê `gui_usage` do localStorage: o que ESTE
+          navegador anotou quando alguém clicou em algo na tela. Não é o consumo medido da conta —
+          não vê ligação atendida, não vê o outro aparelho, e zera ao limpar o navegador. Em conta
+          real ele mostrava "0 credits this week" para quem tinha a Gui atendendo o dia inteiro.
+          O saldo medido (servidor) continua no topo desta tela; este bloco volta para a conta real
+          no dia em que existir consumo por dia vindo do servidor. */}
+      {!contaDeVerdade && (() => {
         const days = usageByDay(7);
         const max = Math.max(1, ...days.map((d) => d.total));
         const weekTotal = days.reduce((s, d) => s + d.total, 0);
         const recent = portalApi.loadState("gui_usage", []).slice(0, 6);
         return (
           <Card className="p-0 overflow-hidden">
-            <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Gui usage · last 7 days")}</span><span className="text-[11px] text-g-muted">{weekTotal} credits this week</span></div>
+            <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Gui usage · last 7 days")}</span><span className="text-[11px] text-g-muted">{weekTotal} {tr("credits this week")}</span></div>
             <div className="p-5">
               <div className="flex items-end gap-2 h-24">
                 {days.map((d) => (
@@ -451,14 +460,15 @@ function Billing({ V, real = null, onNav = () => {}, email = "" }) {
         const code = `GUI-${(V.business.name || "GUILEO").replace(/[^A-Za-z]/g, "").slice(0, 4).toUpperCase()}${vnum(V.label, "refcode", 100, 999)}`;
         const link = `https://guileoai.com/?ref=${code}`;
         const refs = portalApi.loadState("gui_referrals", 0);
-        const grant = () => { setC(credits + 250); portalApi.saveState("gui_referrals", refs + 1); toast("250 credits added ✓ — referral reward"); };
-        const copy = () => { try { navigator.clipboard.writeText(link); } catch { /* */ } toast("Invite link copied ✓"); };
+        const grant = () => { setC(credits + 250); portalApi.saveState("gui_referrals", refs + 1); toast(tr("250 credits added ✓ — referral reward")); };
+        const copy = () => { try { navigator.clipboard.writeText(link); } catch { /* */ } toast(tr("Invite link copied ✓")); };
         // REAL referral link — the client's own ?ref=<b64url(email)>. This is a LIVE loop, not a
         // promise: lead.js captures the ref on any friend's form, App.jsx remembers it 90 days, and
         // stripe-webhook.js converts it (referrer must be an existing tenant → both sides a month
         // free). Same link Grow.jsx already ships. No email on session → honest WhatsApp fallback.
         const refLink = email ? `https://guileoai.com?ref=${b64url(email)}` : "";
-        const waRefMsg = `Conhece a Gui? É uma IA que atende meu telefone 24/7… usa meu link e a gente ganha um mês grátis: ${refLink}`;
+        // a mensagem de indicação saía em português para qualquer cliente (e para o amigo dele)
+        const waRefMsg = `${tr("Have you met Gui? It's an AI that answers my phone 24/7. Use my link and we both get a month free:")} ${refLink}`;
         const copyReal = () => { try { navigator.clipboard.writeText(refLink); } catch { /* clipboard blocked → the link is visible + select-all */ } toast(tr("Invite link copied ✓")); };
         return (
           <Card className="border-g-gold/25 bg-g-gold/[0.05]">
@@ -505,13 +515,24 @@ function Billing({ V, real = null, onNav = () => {}, email = "" }) {
         const hasBrain = Array.isArray(kb) ? kb.length > 0 : !!kb;
         const hasTool = !!(stack && Object.values(stack).some(Boolean));
         const hasCode = !!loadDataKey();
-        const steps = [
-          [tr("Set up your business profile"), hasProfile, "settings"],
-          [tr("Train your AI brain"), hasBrain, "brain"],
-          [tr("Connect your first tool"), hasTool, "integrations"],
-          [tr("Link your live data (connection code)"), hasCode, "settings"],
-          [tr("Going live — real data flowing"), !!real, null],
-        ];
+        // 🚨 (2026-09-28) EM CONTA REAL, SÓ PASSO MEDIDO. "Train your AI brain" e "Connect your
+        // first tool" liam o localStorage — o segundo, os interruptores SIMULADOS da vitrine de
+        // integrações. Um clique num botão de demonstração marcava "✓ ferramenta conectada" no
+        // progresso de uma cliente pagante. Em conta real ficam os passos que têm prova: o
+        // negócio que o servidor conhece, o código colado, e dado real chegando.
+        const steps = contaDeVerdade
+          ? [
+            [tr("Set up your business profile"), !!real?.identity?.business, "settings"],
+            [tr("Link your live data (connection code)"), hasCode, "settings"],
+            [tr("Going live — real data flowing"), !!real, null],
+          ]
+          : [
+            [tr("Set up your business profile"), hasProfile, "settings"],
+            [tr("Train your AI brain"), hasBrain, "brain"],
+            [tr("Connect your first tool"), hasTool, "integrations"],
+            [tr("Link your live data (connection code)"), hasCode, "settings"],
+            [tr("Going live — real data flowing"), !!real, null],
+          ];
         const done = steps.filter((s) => s[1]).length;
         const pct = Math.round((done / steps.length) * 100);
         return (
@@ -553,7 +574,7 @@ function Billing({ V, real = null, onNav = () => {}, email = "" }) {
             <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">{tr("Invoices")}</div>
             <div className="divide-y divide-white/[0.06]">
               {invoices.map(([n, d, s], i) => (
-                <div key={i} className="flex items-center gap-3 px-5 py-3"><span className="text-lg">🧾</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word">{n}</div><div className="text-[11px] text-g-muted">{d}</div></div><span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-g-green/15 text-g-green">{s}</span><button onClick={() => toast(`${n} downloaded ✓`)} aria-label={`Download ${n}`} className="text-g-gold hover:text-g-word transition"><FaDownload size={12} /></button></div>
+                <div key={i} className="flex items-center gap-3 px-5 py-3"><span className="text-lg">🧾</span><div className="flex-1 min-w-0"><div className="text-sm font-bold text-g-word">{n}</div><div className="text-[11px] text-g-muted">{d}</div></div><span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-g-green/15 text-g-green">{s}</span><button onClick={() => toast(`${n} ${tr("downloaded ✓")}`)} aria-label={`Download ${n}`} className="text-g-gold hover:text-g-word transition"><FaDownload size={12} /></button></div>
               ))}
             </div>
           </Card>

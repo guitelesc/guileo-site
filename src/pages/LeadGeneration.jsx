@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import QuoteModal from "../components/QuoteModal";
 import Footer from "../components/Footer";
+import { planByKey } from "../data/guileoPlans.js";
 import VoiceAgent from "../components/VoiceAgent";
 import ExitIntent from "../components/ExitIntent.jsx";
 import LiveCall from "../components/LiveCall.jsx";
@@ -96,7 +97,7 @@ export default function LeadGeneration() {
         pt: "IA que capta e faz follow-up de cada lead 24/7 para negócios locais — retorno em 60s, texto em ligação perdida, recuperação.",
         es: "IA que capta y da seguimiento a cada lead 24/7 para negocios locales — devolución en 60s, texto en llamada perdida, recuperación.",
       }),
-      offers: { "@type": "Offer", priceCurrency: "USD", price: "149", description: "Self-service from $149/mo; tailored done-for-you quoted per business." },
+      offers: { "@type": "Offer", priceCurrency: "USD", price: String(planByKey("starter").amount), description: `Self-service from $${planByKey("starter").amount}/mo; tailored done-for-you quoted per business.` },
     };
     const s = document.createElement("script");
     s.type = "application/ld+json"; s.id = "leadgen-jsonld"; s.textContent = JSON.stringify(node);

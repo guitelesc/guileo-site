@@ -4,6 +4,11 @@ import { FaWhatsapp, FaPhone, FaEnvelope, FaInstagram, FaTelegram, FaLinkedin, F
 import { useLang } from "../i18n.jsx";
 import { waLink } from "../data/contact.js";
 import { trackLead } from "../lib/analytics.js";
+// 🚨 `evento` ERA CHAMADO SEM SER IMPORTADO (achado 2026-09-28 pela varredura no-undef). A chamada
+// fica dentro do `try` do envio: levantava ReferenceError DEPOIS do lead já ter sido gravado, e o
+// `catch` tratava como "o envio falhou" — contava a conversão do pixel DUAS vezes e empurrava TODO
+// lead para o WhatsApp, mesmo o que tinha sido salvo. E a medição do funil nunca recebia o evento.
+import { evento } from "../lib/evento.js";
 import { normalizePhone, phonePlaceholder } from "../lib/intl.js";
 import ConsentText from "./ConsentText.jsx";
 
@@ -26,7 +31,7 @@ const PLACEHOLDER = {
 // `canal` existe para a página /sms: um revisor de campanha A2P abrindo um programa de SMS e
 // encontrando "WhatsApp" pré-selecionado lê incoerência entre o que declaramos e o que ele vê —
 // e incoerência é o que reprova em MESSAGE_FLOW. Padrão segue "whatsapp" em todo o resto.
-export default function LeadForm({ source = "website", canal = "whatsapp" }) {
+export default function LeadForm({ source = "website", canal = "whatsapp", bizLabel, submitLabel }) {
   const { t, lang } = useLang();
   const L = t.more.lead;
   const [name, setName] = useState("");
@@ -37,6 +42,7 @@ export default function LeadForm({ source = "website", canal = "whatsapp" }) {
   const [website, setWebsite] = useState(""); // honeypot — real users never see/fill this
   const [consent, setConsent] = useState(false); // TCPA — UNCHECKED by default; required affirmative opt-in
   const [err, setErr] = useState(false); // a11y: true when submit fails validation
+  const [t0] = useState(() => Date.now()); // tempo de preenchimento → /api/lead marca robô (< 2,5 s)
 
   // Phone-number channels get i18n normalization (E.164 to the API + "assumed +55" hint);
   // handle-based channels (instagram, telegram…) are passed through untouched.
@@ -82,14 +88,14 @@ export default function LeadForm({ source = "website", canal = "whatsapp" }) {
     if (!name.trim() || !contact.trim() || !consent) { setErr(true); return; }
     setErr(false);
     setState("sending");
-    const payload = { name, business: biz, source, lang, channel: ch, website, consent, message: `Preferred channel: ${ch} → ${contact}` };
+    const payload = { name, business: biz, source, lang, channel: ch, website, consent, t_ms: Date.now() - t0, message: `Preferred channel: ${ch} → ${contact}` };
     if (ch === "email") payload.email = contact;
     else payload.phone = isPhoneCh && pn?.ok && pn.e164 ? pn.e164 : contact; // E.164 for phone channels; raw handle otherwise
     try {
       const r = await fetch("/api/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await r.json().catch(() => ({}));
       trackLead(); // fire-and-forget; no-ops until pixel IDs are set
-      setState("done");
+      setState("done"); evento(source === "xray" ? "xray_enviado" : "lead_enviado", { source });
       if (!data.stored) toWhatsApp();
     } catch { trackLead(); setState("done"); toWhatsApp(); }
   };
@@ -139,8 +145,8 @@ export default function LeadForm({ source = "website", canal = "whatsapp" }) {
         className="rounded-full border border-white/20 bg-black/20 px-5 py-3 text-base text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70 transition" />
       {/* country-assumption hint — small + muted, only when we had to guess */}
       {pn?.hint && <p className="text-[11px] text-g-muted px-2 -mt-1" role="status">📞 {pn.e164} · {pn.hint}</p>}
-      <input value={biz} onChange={(e) => setBiz(e.target.value)} aria-label={L.business}
-        placeholder={L.business}
+      <input value={biz} onChange={(e) => setBiz(e.target.value)} aria-label={bizLabel || L.business}
+        placeholder={bizLabel || L.business}
         className="rounded-full border border-white/20 bg-black/20 px-5 py-3 text-base text-g-word placeholder:text-g-muted outline-none focus:border-g-green/70 transition" />
 
       {/* TCPA consent — REQUIRED, unchecked by default (affirmative opt-in) */}
@@ -153,7 +159,7 @@ export default function LeadForm({ source = "website", canal = "whatsapp" }) {
 
       {err && <p id="leadform-err" role="alert" className="text-center text-[12px] font-semibold text-g-gold">{errText}</p>}
       <motion.button whileTap={{ scale: 0.98 }} disabled={state === "sending"} className="btn-bright text-base disabled:opacity-70 min-h-[44px]">
-        {state === "sending" ? L.sending : L.submit}
+        {state === "sending" ? L.sending : (submitLabel || L.submit)}
       </motion.button>
       <p className="text-center text-[11px] font-semibold text-g-muted">{replyText}</p>
       <p className="text-center text-[11px] font-semibold text-g-muted">{trustText}</p>

@@ -14,9 +14,13 @@
 // vende; recurso prometido e não entregue destrói a conta e a reputação de envio.
 // ⚠️ Quando o A2P e o WhatsApp forem aprovados, tire o sufixo AQUI e em `productFacts.js` juntos —
 // os dois arquivos são lidos como lei e não podem discordar.
+// price/credits DERIVAM de guileoPlans.js (fonte única) — nunca hardcode aqui de novo; a
+// divergência de 2026-08-21 (este arquivo ainda em $449/$999 enquanto a fonte já dizia $897/$1.997)
+// foi exatamente isso: dois lugares escrevendo o mesmo número à mão.
+import { planByKey } from "./guileoPlans.js";
 export const SELF_SERVE_PLANS = [
   {
-    id: "starter", name: "Essential", price: 149, credits: 500,
+    id: "starter", name: "Essential", price: planByKey("starter").amount, credits: planByKey("starter").credits,
     tagline: { en: "Get started fast", pt: "Comece rápido", es: "Empieza rápido" },
     features: {
       en: ["AI answers calls & messages 24/7", "Missed-call text-back — the moment the carrier approves A2P (code is ready)", "Booking + reminders", "500 Gui credits / month", "Self-managed dashboard"],
@@ -28,7 +32,7 @@ export const SELF_SERVE_PLANS = [
     annualUrl: "",
   },
   {
-    id: "growth", name: "Personalized", price: 897, credits: 3000, popular: true,
+    id: "growth", name: "Personalized", price: planByKey("growth").amount, credits: planByKey("growth").credits, popular: true,
     tagline: { en: "Most popular", pt: "Mais popular", es: "Más popular" },
     features: {
       en: ["Everything in Essential", "Speed-to-Lead (60s callback)", "Reviews machine + win-back", "3,000 Gui credits / month", "Weekly owner report"],
@@ -40,7 +44,7 @@ export const SELF_SERVE_PLANS = [
     annualUrl: "",
   },
   {
-    id: "scale", name: "Full Operation", price: 1997, credits: 9000,
+    id: "scale", name: "Full Operation", price: planByKey("scale").amount, credits: planByKey("scale").credits,
     tagline: { en: "For busy operations", pt: "Pra operação movimentada", es: "Para operación con volumen" },
     features: {
       en: ["Everything in Personalized", "Multi-channel: webchat + email live today; WhatsApp and SMS switch on when approved", "Campaigns + audiences", "9,000 Gui credits / month", "Priority support"],

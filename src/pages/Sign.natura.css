@@ -1,0 +1,102 @@
+/* ════════════════════════════════════════════════════════════════════════════════════════════════
+   /sign COM A CARA DO DECK DA NATURA (2026-10-04) — só vale dentro de `.sign-natura`, que o Sign.jsx
+   põe na raiz da página APENAS quando o documento carregado tem body.theme === "natura-deck".
+   Fora desse escopo nada aqui encosta em nada: o cimento quente do app continua travado e todo
+   outro contrato sai exatamente como saía. Tokens copiados do deck aprovado (natura-deck-en.html).
+   ⚠️ CONTRASTE: o ouro #8E6D2C dá 4,49:1 sobre o papel #FAF7F0 (abaixo de AA por um fio) e 4,77:1
+   sobre branco — por isso todo texto em ouro mora num painel BRANCO, nunca direto no papel.
+   ⚠️ NADA de `backdrop-blur` aqui: o index.css pendura o verniz de vidro escuro em qualquer
+   classe que contenha esse nome.
+   ════════════════════════════════════════════════════════════════════════════════════════════════ */
+.sign-natura {
+  --sn-paper: #FAF7F0; --sn-panel: #FFFFFF; --sn-panel-2: #F3EEE2;
+  --sn-ink: #161512; --sn-ink-2: #4A463E; --sn-muted: #6F695D;
+  --sn-line: #E4DDCC; --sn-line-strong: #B9B09A;
+  --sn-gold: #8E6D2C; --sn-green: #2F8A60; --sn-green-ink: #1F6B49; --sn-red: #A8432B;
+  --sn-dark: #161512; --sn-dark-fg: #F3EFE7; --sn-dark-muted: #A39D92; --sn-dark-gold: #D9B26A;
+  --sn-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  background: var(--sn-paper); color: var(--sn-ink);
+  font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+body.sign-natura-body { background: #FAF7F0; }
+
+/* foco de teclado: o anel verde global some no papel claro — aqui ele é tinta */
+.sign-natura :focus-visible { outline: 2px solid var(--sn-ink); outline-offset: 2px; border-radius: 6px; }
+
+/* ── a faixa escura = a capa do deck (fundo #161512, filete de ouro em cima) ── */
+.sn-band { background: var(--sn-dark); border-top: 4px solid var(--sn-dark-gold); color: var(--sn-dark-fg); }
+.sn-band-name { font-size: 15px; font-weight: 800; line-height: 1.1; letter-spacing: -0.01em; color: var(--sn-dark-fg); }
+.sn-band-sub { margin-top: 3px; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--sn-dark-muted); }
+.sn-band-logo { width: 28px; height: 28px; border-radius: 50%; object-fit: contain; display: block; }
+
+/* ── superfícies ── */
+.sn-panel { background: var(--sn-panel); border: 1px solid var(--sn-line); border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(22,21,18,.06), 0 8px 28px rgba(22,21,18,.06); }
+.sn-soft { background: var(--sn-panel-2); border: 1px solid var(--sn-line); border-radius: 12px; }
+.sn-cell { background: var(--sn-panel); border: 1px solid var(--sn-line); border-radius: 10px; }
+
+/* ── tipografia do deck ── */
+.sn-eye { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sn-gold); }
+.sn-k { font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sn-muted); }
+.sn-h1 { font-size: 24px; font-weight: 800; line-height: 1.12; letter-spacing: -0.02em; color: var(--sn-ink); text-wrap: balance; }
+.sn-h2 { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: var(--sn-ink); }
+.sn-p { color: var(--sn-ink-2); }
+.sn-muted { color: var(--sn-muted); }
+.sn-ink { color: var(--sn-ink); }
+.sn-mono { font-family: var(--sn-mono); }
+.sn-rule { border-top: 1px solid var(--sn-line); }
+
+/* ── pílula "assinado pelo prestador" = .pill.live do deck ── */
+.sn-pill-live { color: var(--sn-green-ink); background: #E5F1E9;
+  border: 1px solid #B7D8C4; border-radius: 10px; font-weight: 700; }
+
+/* ── seletor de idioma ── */
+.sn-seg { display: inline-flex; overflow: hidden; border: 1px solid var(--sn-line-strong); border-radius: 8px; background: var(--sn-panel); }
+.sn-seg button { min-height: 36px; padding: 0 14px; font-family: var(--sn-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; color: var(--sn-ink); }
+.sn-seg button + button { border-left: 1px solid var(--sn-line-strong); }
+.sn-seg button:hover { background: var(--sn-panel-2); }
+.sn-seg button[aria-pressed="true"] { background: var(--sn-ink); color: var(--sn-paper); }
+
+/* ── botões: o primário do deck é o botão cheio de tinta (.mail .btns span:first-child) ── */
+.sn-btn, .sn-btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px;
+  padding: 0 22px; border-radius: 8px; border: 1.5px solid var(--sn-ink); font-size: 14px; font-weight: 700;
+  letter-spacing: 0.01em; line-height: 1.2; text-decoration: none; transition: background-color .15s ease, color .15s ease; }
+.sn-btn { background: var(--sn-ink); color: var(--sn-paper); }
+.sn-btn:hover { background: #2E2B25; border-color: #2E2B25; }
+.sn-btn:disabled { opacity: .6; cursor: default; }
+.sn-btn-ghost { background: transparent; color: var(--sn-ink); }
+.sn-btn-ghost:hover { background: var(--sn-panel-2); }
+
+/* ── formulário ── */
+.sn-input { width: 100%; min-height: 52px; padding: 12px 16px; border-radius: 10px; border: 1.5px solid var(--sn-line-strong);
+  background: var(--sn-panel); color: var(--sn-ink); font-size: 16px; outline: none; transition: border-color .15s ease; }
+.sn-input::placeholder { color: #8A8476; }
+.sn-input:focus { border-color: var(--sn-ink); }
+.sn-check { accent-color: var(--sn-green); }
+
+/* ── avisos ── */
+.sn-warn { background: #F6ECD6; border: 1px solid #E2CC9C; color: #7A5410; border-radius: 10px; }
+.sn-err { background: #FBF1EE; border: 1px solid #E3BFB4; border-left: 3px solid var(--sn-red); border-radius: 10px; }
+.sn-err-t { color: var(--sn-red); }
+.sn-wait { background: var(--sn-panel); border: 1px solid var(--sn-line); border-left: 3px solid var(--sn-gold); border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(22,21,18,.06), 0 8px 28px rgba(22,21,18,.06); }
+
+/* ── assinado: o bloco com filete verde em cima (.blk do deck) ── */
+.sn-done { background: var(--sn-panel); border: 1px solid var(--sn-line); border-top: 3px solid var(--sn-green); border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(22,21,18,.06), 0 8px 28px rgba(22,21,18,.06); }
+.sn-check-badge { background: #E5F1E9; color: var(--sn-green-ink); border: 1px solid #B7D8C4; }
+.sn-step { font-family: var(--sn-mono); color: var(--sn-green-ink); font-weight: 600; }
+.sn-ok { color: var(--sn-green-ink); }
+.sn-gold-t { color: #7A5410; }
+
+/* ── barra fixa ── */
+.sn-bar { background: rgba(250,247,240,.97); border-top: 1px solid var(--sn-line-strong); box-shadow: 0 -8px 28px rgba(22,21,18,.08); }
+
+/* ── esqueleto ── */
+.sn-skel { background: var(--sn-panel-2); border: 1px solid var(--sn-line); }
+
+@media print {
+  body.sign-natura-body, .sign-natura { background: #fff !important; }
+  .sign-natura .contract-doc { box-shadow: none !important; border: 0 !important; }
+}

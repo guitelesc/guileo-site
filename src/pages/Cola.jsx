@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import logo from "../assets/guileo-mark.png";
 import { waLink } from "../data/contact.js";
 import { MASTER_SENTENCE, OBJECTION_KILLERS } from "../data/salesKit.js";
+import { NOME_DO_PAINEL } from "../portal/nome.js";
 
 // /cola — the partner's POCKET CARD. One mobile screen to open 2 minutes before a
 // meeting: THE sentence + objections come from src/data/salesKit.js (same words in
@@ -19,7 +20,7 @@ const D = {
     oH: "🛡️ As 8 objeções (1 linha cada)",
     objs: objsFor("pt"),
     mH: "📋 Os 15 minutos",
-    meet: ["0-3 · perguntas (ele fala)", "3-5 · a frase", "5-9 · ⚡ GUI LIGA (silêncio!)", "9-12 · Cockpit + a dor dele", "12-15 · proposta + garantia"],
+    meet: ["0-3 · perguntas (ele fala)", "3-5 · a frase", "5-9 · ⚡ GUI LIGA (silêncio!)", `9-12 · ${NOME_DO_PAINEL} + a dor dele`, "12-15 · proposta + garantia"],
     never: "🚫 Nunca: prometer que a IA não erra · resultado exato em $ · menos de 7 dias",
     tools: "🧰 Ferramentas",
   },
@@ -31,7 +32,7 @@ const D = {
     oH: "🛡️ The 8 objections (one line each)",
     objs: objsFor("en"),
     mH: "📋 The 15 minutes",
-    meet: ["0-3 · questions (they talk)", "3-5 · the sentence", "5-9 · ⚡ GUI CALLS (silence!)", "9-12 · Cockpit + their pain", "12-15 · proposal + guarantee"],
+    meet: ["0-3 · questions (they talk)", "3-5 · the sentence", "5-9 · ⚡ GUI CALLS (silence!)", `9-12 · ${NOME_DO_PAINEL} + their pain`, "12-15 · proposal + guarantee"],
     never: "🚫 Never: promise the AI never errs · exact $ results · under 7 days",
     tools: "🧰 Tools",
   },

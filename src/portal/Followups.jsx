@@ -19,21 +19,28 @@
    🚨 SEM CONTATO NÃO HÁ ENVIO: linha de churn sem telefone/e-mail some (nunca um envio fingido).
    Modo demo continua idêntico — o vendedor usa a amostra para vender. */
 import { useState, useEffect, useCallback } from "react";
-import { portalApi, toast } from "../lib/portalApi.js";
+import { portalApi, toast, chamarApi } from "../lib/portalApi.js";
+import FalhaDeLeitura, { fraseDaFalha } from "./FalhaDeLeitura.jsx";
 import { waLink } from "../data/contact.js";
-import { genFollowups, logImpact, MiniStats, vnum, Card, tr, Drawer, SectionSkeleton } from "../pages/Portal.jsx";
+import { genFollowups, logImpact, MiniStats, vnum, Card, tr, Drawer, SectionSkeleton, UI_LANG } from "../pages/Portal.jsx";
 
 /* ═══════════════════════════ MODO REAL ═══════════════════════════ */
 
-async function giPost(body) {
-  try {
-    const r = await fetch("/api/growth-intel", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-    });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch { return null; }
-}
+// 🚨 (2026-09-28) Esta função devolvia `null` para 401, 500 e rede caída — e a tela lia `null`
+// como "motor não ligado": mandava a cliente "pedir ao time para ligar" um motor que estava
+// ligado, só fora do ar. Agora devolve {data, motivo}; "não ligado" só quando o SERVIDOR diz.
+// `lang` vai junto: as frases que o servidor devolve saem no idioma da tela.
+const giPost = (body) => chamarApi("/api/growth-intel", { ...body, lang: UI_LANG });
+
+// Lê UMA fonte e classifica: ok (com a lista) · off (servidor disse ready:false) · falha (motivo).
+const lerFonte = (r, campo) => {
+  if (r.motivo) return { estado: "falha", motivo: r.motivo, lista: [] };
+  // O growth-intel responde HTTP 200 + ok:false quando a leitura falhou lá dentro: é FALHA.
+  if (r.data.ok === false) return { estado: "falha", motivo: "servidor", lista: [] };
+  if (r.data.ready === false || r.data.ready == null) return { estado: "off", lista: [] };
+  if (!Array.isArray(r.data[campo])) return { estado: "falha", motivo: "resposta_estranha", lista: [] };
+  return { estado: "ok", lista: r.data[campo].filter(Boolean) };
+};
 
 // o contato pode chegar em três nomes conforme a RPC; um lugar só decide qual é.
 const contatoDe = (r) => (r.contact || r.phone || r.contact_email || r.email || "").toString().trim();
@@ -47,19 +54,28 @@ function FollowupsReal({ email, dataKey }) {
       giPost({ action: "abandoned", token: dataKey, email }),
       giPost({ action: "churn", token: dataKey, email }),
     ]);
+    const fAb = lerFonte(ab, "intents"), fCh = lerFonte(ch, "atRisk");
     setDados({
-      // `ready:false` = SQL não aplicado. Isso é diferente de "zero follow-ups" e a tela precisa
-      // distinguir os dois: null ≠ 0. Guardo os dois flags separados.
-      prontoAb: !!ab?.ready, prontoCh: !!ch?.ready,
-      abandonados: Array.isArray(ab?.intents) ? ab.intents : [],
-      emRisco: Array.isArray(ch?.atRisk) ? ch.atRisk : [],
+      // TRÊS estados por fonte, guardados separados: ok · off · falha. null ≠ 0 ≠ "não li".
+      fAb, fCh,
+      prontoAb: fAb.estado === "ok", prontoCh: fCh.estado === "ok",
+      abandonados: fAb.lista,
+      emRisco: fCh.lista,
     });
   }, [email, dataKey]);
   useEffect(() => { carrega(); }, [carrega]);
+  const tentarDeNovo = () => { setDados(null); carrega(); };
 
   if (dados === null) return <SectionSkeleton rows={5} />;
 
-  const naoMedido = !dados.prontoAb && !dados.prontoCh;
+  const falhas = [dados.fAb, dados.fCh].filter((f) => f.estado === "falha");
+  // As DUAS fontes falharam: não há nada honesto para desenhar além da falha.
+  if (falhas.length === 2) return <FalhaDeLeitura motivo={falhas[0].motivo} onRetry={tentarDeNovo} titulo={tr("I couldn't load your follow-ups just now.")} />;
+  const parcial = falhas.length === 1;
+  // "Não ligado" = o servidor respondeu e disse que nenhuma das duas fontes está ativa.
+  const naoMedido = dados.fAb.estado === "off" && dados.fCh.estado === "off";
+  // Número de uma fonte que NÃO foi lida é "—", nunca 0.
+  const conta = (f) => (f.estado === "ok" ? `${f.lista.length}` : "—");
 
   // Uma lista só, das duas fontes. `kind` guarda de onde veio porque a AÇÃO é diferente.
   const linhas = [
@@ -99,13 +115,14 @@ function FollowupsReal({ email, dataKey }) {
       ? await giPost({ action: "recover", token: dataKey, email, intent_id: l.id, name: l.nome, contact: l.contato })
       : await giPost({ action: "reengage", token: dataKey, email, name: l.nome, contact: l.contato, suggested: l.sugerido, risk: l.risco });
     // comprovante ou nada: `ok` sozinho não basta — precisa do claimed/queued do backend.
-    const ok = l.kind === "abandoned" ? !!(res && res.ok && res.claimed) : !!(res && res.ok && res.queued);
+    const d = res.motivo ? null : res.data;
+    const ok = l.kind === "abandoned" ? !!(d && d.ok && d.claimed) : !!(d && d.ok && d.queued);
     if (!ok) {
       setFeito((s) => { const n = { ...s }; delete n[l.chave]; return n; });
-      toast(tr("Couldn't send that follow-up — try again."));
+      toast(`${tr("Couldn't send that follow-up — try again.")}${res.motivo ? ` ${fraseDaFalha(res.motivo)}` : ""}`);
       return;
     }
-    const agora = l.kind !== "abandoned" && res.sent === true;   // e-mail branded saiu AGORA
+    const agora = l.kind !== "abandoned" && d.sent === true;   // e-mail branded saiu AGORA
     setFeito((s) => ({ ...s, [l.chave]: agora ? "ok" : "fila" }));
     toast(agora ? `${tr("Gui reached")} ${l.nome} ✓` : `${tr("Gui will follow up with")} ${l.nome} — ${tr("queued ✓")}`);
   };
@@ -115,13 +132,15 @@ function FollowupsReal({ email, dataKey }) {
       {/* null ≠ 0: motor não aplicado é "não sei", não "não tem ninguém". */}
       {naoMedido && (
         <div className="rounded-xl2 border border-white/10 bg-white/[0.03] px-4 py-3 text-[12px] leading-snug text-g-muted">
-          {tr("The follow-up engine isn't switched on for your account yet — so this isn't a zero, it's a blank. Ask your team to turn it on.")}
+          {tr("The follow-up engine isn't switched on for your account yet — so this isn't a zero, it's a blank. Message our team and we'll turn it on.")}
         </div>
       )}
+      {/* Falha PARCIAL: uma lista veio, a outra não. A que veio aparece; a que faltou é dita. */}
+      {parcial && <FalhaDeLeitura compacto motivo={falhas[0].motivo} onRetry={tentarDeNovo} titulo={tr("Part of this list didn't load.")} />}
       <MiniStats items={[
-        [tr("Waiting on a follow-up"), `${abertas.length}`],
-        [tr("Almost booked"), `${dados.abandonados.length}`],
-        [tr("At risk of leaving"), `${dados.emRisco.length}`, dados.emRisco.length ? "bad" : undefined],
+        [tr("Waiting on a follow-up"), parcial || naoMedido ? (abertas.length ? `${abertas.length}+` : "—") : `${abertas.length}`],
+        [tr("Almost booked"), conta(dados.fAb)],
+        [tr("At risk of leaving"), conta(dados.fCh), dados.emRisco.length ? "bad" : undefined],
       ]} />
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b border-white/10 text-xs font-bold uppercase tracking-wide text-g-gold">
@@ -144,7 +163,8 @@ function FollowupsReal({ email, dataKey }) {
               </div>
             );
           })}
-          {abertas.length === 0 && !naoMedido && (
+          {/* "Nada pendente 🎉" só quando as DUAS fontes foram lidas de verdade. */}
+          {abertas.length === 0 && !naoMedido && !parcial && dados.prontoAb && dados.prontoCh && (
             <div className="px-5 py-10 text-center text-xs text-g-muted">{tr("No follow-up pending 🎉")}</div>
           )}
         </div>

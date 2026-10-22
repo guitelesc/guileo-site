@@ -3,11 +3,15 @@ import { useState, useEffect } from "react";
 import { FaTruck, FaCircleCheck, FaLocationDot } from "react-icons/fa6";
 import { portalApi, toast } from "../lib/portalApi.js";
 import { waLink } from "../data/contact.js";
-import { deliveryCfg, loadCreated, genDeliveries, vnum, Card, tr, MiniStats, Toggle, Empty, Drawer, logImpact } from "../pages/Portal.jsx";
+import { deliveryCfg, loadCreated, genDeliveries, vnum, Card, tr, MiniStats, Toggle, Empty, Drawer, logImpact, FaixaAmostra } from "../pages/Portal.jsx";
 
 // Delivery & dispatch — third-party platforms (Uber Eats/DoorDash/Grubhub, carriers)
 // + Guileo's own delivery, unified. Connections persist; every drop is trackable.
-function Deliveries({ V }) {
+// `real`: esta tela é 100% gerada (genDeliveries) e era a ÚNICA sem FaixaAmostra e sem portão
+// de modo real — um restaurante pagante via entregas com nome e horário que nunca existiram.
+// Ela some do menu em modo real (ocultaAmostra no Portal.jsx) e, se alguém chegar por ⌘K/link,
+// a faixa diz a verdade em cima.
+function Deliveries({ V, real = null }) {
   const cfg = deliveryCfg(V);
   const rows = [...loadCreated(V.label, "deliveries"), ...genDeliveries(V)];
   const active = rows.filter((r) => r.status !== "Delivered");
@@ -23,6 +27,7 @@ function Deliveries({ V }) {
 
   return (
     <div className="space-y-4 stagger">
+      <FaixaAmostra real={real} />
       <Card className="bg-gradient-to-br from-g-green/[0.1] to-g-gold/[0.06] border-g-green/30">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><div className="text-sm font-extrabold text-g-word flex items-center gap-2"><FaTruck className="text-g-green" /> {cfg.title}</div><div className="text-xs text-g-muted mt-0.5">{cfg.partners.length ? "Every order — third-party apps and your own delivery — in one place. " : "Dispatch and track every job in one place. "}Your AI texts customers live ETAs automatically.</div></div>

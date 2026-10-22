@@ -13,8 +13,12 @@
 //   POST { token, email, action, ... }
 //   Packages:    list | upsert{package} | delete{id} | purchases | use{purchase_id}
 //   Memberships: membership_list | membership_upsert{membership} | membership_delete{id}
-//   Sell link:   buy{kind:'package'|'membership', id}  ->  { ok, url }   (Stripe Checkout)
+//   Sell link:   buy{kind:'package'|'membership', id, contact?}  ->  { ok, url, via? }   (Stripe Checkout)
+//                → no Stripe PRÓPRIO do negócio quando ele colou a chave (lib/vendaOnlineNegocio.js);
+//                  senão na plataforma (conta conectada); sem nenhum → reason payments_not_connected.
 import { json } from "../lib/guard.js";
+import { camposDoDestino } from "../lib/contaDoCliente.js";
+import { caminhoDaVenda, criarVendaPropria, criarAssinaturaPropria } from "../lib/vendaOnlineNegocio.js";
 import { sbKey } from "../lib/sb.js";
 
 const SB = "https://ynihodbknhjirkdogxby.supabase.co";
@@ -132,7 +136,6 @@ export async function onRequestPost(context) {
       const id = (b.id || "").toString();
       if (!UUID.test(id)) return json({ error: "invalid id" }, 400);
       if (kind !== "package" && kind !== "membership") return json({ error: "kind must be package|membership" }, 400);
-      if (!env.STRIPE_SECRET_KEY) return json({ ok: false, ready: false, note: "Set STRIPE_SECRET_KEY in Cloudflare to sell online." });
 
       // Load the item server-side (never trust a price from the client).
       const listName = kind === "package" ? "package_list" : "membership_list";
@@ -146,6 +149,22 @@ export async function onRequestPost(context) {
       const MAX = (Number(env.MAX_CHARGE_USD) || 100000) * 100;
       if (cents > MAX) return json({ error: "price exceeds the cap" }, 400);
 
+      // PARA ONDE VAI O DINHEIRO (2026-10-05, lib/vendaOnlineNegocio.js): chave PRÓPRIA do negócio
+      // (Stripe dos EUA) → a sessão nasce na conta dele e a entrega é a volta /api/venda-paga + a
+      // conferência de hora em hora. Sem chave própria → o caminho de antes (conta conectada pela
+      // plataforma, negócio BR). Sem nada → payments_not_connected (EUA: dica guileoai.com/receber).
+      const caminho = await caminhoDaVenda(env, email);
+      if (caminho.via === "recusa") return json(caminho.corpo);
+      if (caminho.via === "propria") {
+        const res = kind === "membership"
+          ? await criarAssinaturaPropria(env, { tenant: email, chave: caminho.chave, membership: item, contact: (b.contact || "").toString().slice(0, 160) })
+          : await criarVendaPropria(env, { tenant: email, chave: caminho.chave, kind: "package", item, cents, purchaser: (b.contact || "").toString().slice(0, 160) });
+        if (!res.ok) return json({ ok: false, ...res }, res.reason === "stripe_error" || res.reason === "stripe_rejected_key" || res.reason === "permission_missing" ? 503 : 400);
+        return json({ ok: true, url: res.url, id: res.id, kind, via: "stripe_own", conferencia: res.conferencia });
+      }
+      const destino = caminho.destino;
+      if (!env.STRIPE_SECRET_KEY) return json({ ok: false, ready: false, note: "Set STRIPE_SECRET_KEY in Cloudflare to sell online." });
+
       const name = String(item.name || (kind === "package" ? "Package" : "Membership")).slice(0, 120);
       const interval = kind === "membership" ? (item.interval === "year" ? "year" : "month") : null;
 
@@ -157,8 +176,9 @@ export async function onRequestPost(context) {
         "line_items[0][price_data][currency]": "usd",
         "line_items[0][price_data][unit_amount]": String(cents),
         "line_items[0][price_data][product_data][name]": name,
-        success_url: "https://guileoai.com/portal?bought=1",
-        cancel_url: "https://guileoai.com/portal",
+        // quem paga é a CLIENTE do negócio — ela não tem painel. /api/obrigado diz o que aconteceu.
+        success_url: `https://guileoai.com/api/obrigado?o=${"ok"}`,
+        cancel_url: "https://guileoai.com/api/obrigado?o=cancel",
         "metadata[guileo]": kind,
         "metadata[client_email]": email,
         "metadata[id]": id,
@@ -176,6 +196,7 @@ export async function onRequestPost(context) {
         form["payment_intent_data[metadata][client_email]"] = email;
         form["payment_intent_data[metadata][id]"] = id;
       }
+      Object.assign(form, camposDoDestino(destino, { assinatura: kind === "membership", cents, feePct: parseFloat(env.GUILEO_FEE_PCT || "0") }));
 
       const sr = await fetch("https://api.stripe.com/v1/checkout/sessions", {
         method: "POST",
@@ -183,7 +204,7 @@ export async function onRequestPost(context) {
         body: new URLSearchParams(form).toString(),
       });
       const sd = await sr.json().catch(() => ({}));
-      if (!sr.ok) return json({ ok: false, error: (sd?.error?.message || `stripe ${sr.status}`).slice(0, 200) }, 502);
+      if (!sr.ok) return json({ ok: false, error: (sd?.error?.message || `stripe ${sr.status}`).slice(0, 200) }, 503);
       return json({ ok: true, url: sd.url || "", id: sd.id || "", kind });
     }
 

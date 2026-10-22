@@ -20,11 +20,11 @@ import { Count } from "../lib/ui.jsx";
 const ROTULO = {
   twilio_number: "Telefone", whatsapp_cloud: "WhatsApp", instagram: "Instagram", meta: "Facebook / Meta",
   google_business: "Google Meu Negócio", reviews: "Avaliações", ads: "Anúncios",
-  mindbody: "MindBody", notify_phone: "Alerta do dono", sms: "SMS",
+  mindbody: "MindBody", notify_phone: "Alerta do dono", sms: "SMS", tiktok: "TikTok",
 };
 const ICONE = {
   twilio_number: "📞", whatsapp_cloud: "💬", instagram: "📸", meta: "👍", google_business: "🗺️",
-  reviews: "⭐", ads: "📣", mindbody: "🧘", notify_phone: "🔔", sms: "✉️",
+  reviews: "⭐", ads: "📣", mindbody: "🧘", notify_phone: "🔔", sms: "✉️", tiktok: "🎵",
 };
 
 function Channels({ real, email, dataKey }) {

@@ -349,7 +349,11 @@ export default function SellerContract({ lang = "pt", seller = null, market = "u
                 </select>
               </label>
               <label className="text-[11px] text-g-muted">{t.amount}
-                <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={market === "br" ? "R$ 2.499" : "$449"} className={field} />
+                {/* Placeholder era "$449" (preço antigo) e "R$ 2.499" (moeda sem checkout — nunca
+                    existiu link de pagamento em real; amountBRL em guileoPlans.js é null). Os dois
+                    prometiam algo que o botão de baixo não cobra. Preço-âncora agora vem da fonte,
+                    sempre em dólar — a única moeda que o Stripe realmente cobra aqui. */}
+                <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={String(planByKey("growth").amount)} className={field} />
               </label>
               <label className="text-[11px] text-g-muted">{t.client}
                 <input value={client} onChange={(e) => setClient(e.target.value)} placeholder={market === "br" ? "Ex: Café Aurora" : "e.g. Café Aurora"} className={field} />

@@ -9,6 +9,7 @@
 import { json, isOwnerEmail, safeEq } from "../lib/guard.js";
 import { weeklyReportEmail, valueBlock, guiIdleEmail } from "../lib/emailTemplates.js";
 import { emitFailure } from "../lib/failure.js";
+import { sbKey } from "../lib/sb.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -16,10 +17,12 @@ const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
 const SCHED_SB = "https://ynihodbknhjirkdogxby.supabase.co";
 const SCHED_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
 
+let ENV_REF = null; // (2026-09-22) clients_list só executa com service_role — anon dava 401 toda segunda.
 async function rpc(name, args) {
+  const key = ENV_REF ? sbKey(ENV_REF) : SB_ANON;
   const r = await fetch(`${SB_URL}/rest/v1/rpc/${name}`, {
     method: "POST",
-    headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}`, "Content-Type": "application/json" },
+    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify(args),
   });
   return r.ok ? await r.json() : null;
@@ -56,6 +59,7 @@ const fmtDay = (d) => `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
 
 export async function onRequest(context) {
   const { request, env } = context;
+  ENV_REF = env;
   try {
     if (request.method !== "GET" && request.method !== "POST") return json({ error: "method" }, 405);
     const url = new URL(request.url);
@@ -77,17 +81,25 @@ export async function onRequest(context) {
     // month is all it needs. No new RPCs, no "week × weeks" extrapolation.
     const monthStartISO = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
 
-    let clients = (await rpc("clients_list", { p_secret: env.INGEST_SECRET || "" })) || [];
-    if (!Array.isArray(clients)) clients = [];
+    // "NÃO CONSEGUI LER" ≠ "ZERO CLIENTES" (2026-09-09). `|| []` sobre clients_list fora do ar
+    // fazia a segunda-feira parecer uma carteira vazia — 200, `reports:0`, ninguém avisado.
+    // Leitura que falha sai como 502; o cron-tick vigia alvo não-2xx e avisa o dono.
+    const clientsRaw = await rpc("clients_list", { p_secret: env.INGEST_SECRET || "" });
+    if (!Array.isArray(clientsRaw)) return json({ ok: false, error: "não consegui ler clients_list (RPC fora ou sem permissão)", reports: 0 }, 503);
+    let clients = clientsRaw;
     if (onlyEmail) clients = clients.filter((c) => (c.client_email || "").toLowerCase() === onlyEmail);
     clients = clients.slice(0, 50);
 
     let reports = 0, skipped = 0, idle = 0;
+    const unreadable = []; // clientes cuja leitura FALHOU — não são "ociosos", são "não sei"
     for (const c of clients) {
       const email = c.client_email;
       if (!email) { skipped++; continue; }
 
-      const events = (await rpc("client_events_since", { p_secret: env.INGEST_SECRET || "", p_email: email, p_since: sinceISO })) || [];
+      // O MESMO `|| []` aqui era mais caro: leitura falha virava "zero eventos" e o cliente levava
+      // o e-mail de "sua Gui está ociosa?" (queimando a trava de 14 dias) por um banco engasgado.
+      const events = await rpc("client_events_since", { p_secret: env.INGEST_SECRET || "", p_email: email, p_since: sinceISO });
+      if (events === null) { unreadable.push(email); continue; }
       // ── O CLIENTE OCIOSO NÃO É "NADA A DIZER" (2026-08-25) ──────────────────────────────────
       // Este `continue` existia com a melhor das intenções ("sem evento, não enche a caixa dele") e
       // era exatamente ao contrário: o cliente com ZERO evento na semana é o de MAIOR risco de
@@ -163,8 +175,10 @@ export async function onRequest(context) {
       // Fallback (RPC not deployed yet → r.ok=false → null): legacy client_events sum, so
       // this degrades honestly instead of breaking. mEv is still needed for guiCost below.
       const REVENUE_TYPES = ["sale", "order", "invoice", "deposit", "booking"];
-      const monthEvents = (await rpc("client_events_since", { p_secret: env.INGEST_SECRET || "", p_email: email, p_since: monthStartISO })) || [];
-      const mEv = Array.isArray(monthEvents) ? monthEvents : [];
+      const monthEvents = await rpc("client_events_since", { p_secret: env.INGEST_SECRET || "", p_email: email, p_since: monthStartISO });
+      // Mês ilegível: não mandar um relatório com "R$ 0 este mês" para quem faturou. Pula e acusa.
+      if (!Array.isArray(monthEvents)) { unreadable.push(`${email} (mês)`); continue; }
+      const mEv = monthEvents;
       const rev = await rpc("revenue_month", { p_secret: env.INGEST_SECRET || "", p_email: email, p_since: monthStartISO });
       const totalMonth = (rev && typeof rev.total_cents === "number")
         ? rev.total_cents / 100 // ledger is authoritative, stored in cents → dollars for valueBlock
@@ -248,6 +262,9 @@ export async function onRequest(context) {
       if (sr.ok) reports++; else skipped++;
     }
 
+    // `ok:false` + 502 quando alguém ficou ilegível: relatório que pulou cliente por leitura
+    // falha não é "semana tranquila" — o cron-tick vigia alvo não-2xx e avisa o dono.
+    if (unreadable.length) return json({ ok: false, error: `não consegui ler ${unreadable.length} cliente(s)`, unreadable, reports, skipped, idle }, 503);
     return json({ ok: true, reports, skipped, idle });
   } catch (e) {
     return json({ error: String(e).slice(0, 120) }, 500);

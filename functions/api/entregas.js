@@ -43,7 +43,7 @@ export async function onRequestPost(context) {
       // antigo estava errado e o front recebia um objeto Response serializado como {}. A lição
       // já está escrita no próprio sb.js ("os DOIS erros opostos no mesmo dia").
       const entrega = r && r.ok ? await r.json().catch(() => null) : null;
-      if (entrega == null) return json({ ok: false, erro: "dfy_step_set não confirmou a gravação" }, 502);
+      if (entrega == null) return json({ ok: false, erro: "dfy_step_set não confirmou a gravação" }, 503);
       return json({ ok: true, entrega });
     }
 

@@ -14,7 +14,7 @@ const VARIANTS = {
 };
 
 // Scroll reveal wrapper — spring entrance with variant
-export function Reveal({ children, className = "", delay = 0, variant = "up", amount = 0.18 }) {
+export function Reveal({ children, className = "", delay = 0, variant = "up", amount = 0.08 }) {
   const reduce = useReducedMotion();
   const v = VARIANTS[variant] || VARIANTS.up;
   return (
@@ -24,7 +24,7 @@ export function Reveal({ children, className = "", delay = 0, variant = "up", am
       whileInView="show"
       viewport={{ once: true, amount }}
       variants={v}
-      transition={{ type: "spring", stiffness: 90, damping: 18, mass: 0.7, delay: delay / 1000 }}
+      transition={{ type: "spring", stiffness: 130, damping: 20, mass: 0.6, delay: delay / 1000 }}
     >
       {children}
     </motion.div>

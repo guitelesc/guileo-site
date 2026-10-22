@@ -14,8 +14,8 @@
 // the INGEST-gated RPCs with the server-side INGEST_SECRET. Read-only (no mutations). Never 500 on missing
 // data — each stage degrades honestly, and ready:false with a note when NO underlying SQL is installed.
 //
-//   POST { email, dataKey, from?, to? }
-//     → { ok, ready, window:{from,to}, stages:[{key,label,kind,count,amount_cents,note}],
+//   POST { email, dataKey, from?, to?, lang? }      (lang = en|pt|es|hi; padrão: cadastro → en)
+//     → { ok, ready, lang, window:{from,to}, stages:[{key,label,kind,count,amount_cents,note,detalhe_tecnico?}],
 //         money:{ cost_cents, revenue_cents, profit_cents, risk_cents } }
 import { json } from "../lib/guard.js";
 
@@ -107,52 +107,77 @@ export async function onRequestPost(context) {
 
     const ready = costReady || opsReady || revReady;
 
-    const NOT_OPS = "Instale db/operations.sql (motor de agenda) para ver operação, fechamento e risco reais.";
-    const NOT_COST = "Instale db/cost_ledger.sql para medir o custo por fornecedor/canal.";
-    const NOT_REV = "Instale db/revenue_month.sql para ver receita e lucro reais.";
+    // ── IDIOMA DA TELA (incidente 2026-09-28) ──────────────────────────────────────────────
+    // Rótulos e notas saíam em português fixo — e, quando faltava dado, a nota era uma ordem de
+    // engenharia ("Instale db/operations.sql") lida pelo DONO DO SPA numa interface em inglês.
+    // Agora: `lang` do corpo (en|pt|es|hi) → idioma do cadastro → en. A frase da tela é segura;
+    // o arquivo SQL que falta vai em `detalhe_tecnico` do estágio, só para o admin.
+    const lg = (() => {
+      const ok = ["en", "pt", "es", "hi"];
+      const a1 = String(b.lang || "").toLowerCase().slice(0, 2); if (ok.includes(a1)) return a1;
+      const a2 = String((gdj.identity && gdj.identity.lang) || "").toLowerCase().slice(0, 2); return ok.includes(a2) ? a2 : "en";
+    })();
+    const T = {
+      en: { supplier: "Supplier · Cost", operation: "Operation · Gui at work", close: "Customer closes", profit: "Profit in hand", risk: "Return risk",
+        n_cost: "What it costs for Gui to operate (voice, SMS, providers).", n_ops: "Services Gui handled in this period.", n_close: "Completed services — the money came in.", n_profit: "Revenue minus the cost to operate.",
+        sem_dado: "Not measured for your account yet.", refund: (n) => `${n} refund(s)`, dispute: (n) => `${n} dispute(s)/chargeback(s)`, voltou: " — money that went back to the customer.",
+        em_risco: (n, est) => `${n} service(s) at risk (no-shows/late)${est ? " · exposure estimated from the average ticket" : ""}.`, saudavel: "No refunds and no services at risk in this period — healthy." },
+      pt: { supplier: "Fornecedor · Custo", operation: "Operação · Gui trabalha", close: "Cliente fecha", profit: "Lucro na mão", risk: "Risco de retorno",
+        n_cost: "O que custa pra Gui operar (voz, SMS, provedores).", n_ops: "Serviços que a Gui conduziu na janela.", n_close: "Serviços concluídos — o dinheiro entrou.", n_profit: "Receita menos o custo de operar.",
+        sem_dado: "Ainda não medido para a sua conta.", refund: (n) => `${n} reembolso(s)`, dispute: (n) => `${n} disputa(s)/chargeback`, voltou: " — dinheiro que voltou pro cliente.",
+        em_risco: (n, est) => `${n} serviço(s) em risco (faltas/atrasos)${est ? " · exposição estimada pelo ticket médio" : ""}.`, saudavel: "Nenhum reembolso e nenhum serviço em risco na janela — saudável." },
+      es: { supplier: "Proveedor · Costo", operation: "Operación · Gui trabaja", close: "El cliente cierra", profit: "Ganancia en mano", risk: "Riesgo de devolución",
+        n_cost: "Lo que cuesta que Gui opere (voz, SMS, proveedores).", n_ops: "Servicios que Gui atendió en este período.", n_close: "Servicios completados — el dinero entró.", n_profit: "Ingresos menos el costo de operar.",
+        sem_dado: "Aún no se mide para su cuenta.", refund: (n) => `${n} reembolso(s)`, dispute: (n) => `${n} disputa(s)/contracargo(s)`, voltou: " — dinero que volvió al cliente.",
+        em_risco: (n, est) => `${n} servicio(s) en riesgo (ausencias/retrasos)${est ? " · exposición estimada por el ticket promedio" : ""}.`, saudavel: "Sin reembolsos ni servicios en riesgo en este período — saludable." },
+      hi: { supplier: "आपूर्तिकर्ता · लागत", operation: "संचालन · Gui काम पर", close: "ग्राहक ने पूरा किया", profit: "हाथ में मुनाफ़ा", risk: "वापसी का जोखिम",
+        n_cost: "Gui को चलाने की लागत (वॉइस, एसएमएस, प्रदाता)।", n_ops: "इस अवधि में Gui द्वारा संभाली गई सेवाएँ।", n_close: "पूरी हुई सेवाएँ — पैसा आ गया।", n_profit: "राजस्व में से संचालन की लागत घटाकर।",
+        sem_dado: "आपके खाते के लिए अभी मापा नहीं गया है।", refund: (n) => `${n} रिफ़ंड`, dispute: (n) => `${n} विवाद/चार्जबैक`, voltou: " — पैसा जो ग्राहक को वापस गया।",
+        em_risco: (n, est) => `${n} सेवा(एँ) जोखिम में (अनुपस्थिति/देरी)${est ? " · औसत टिकट से अनुमानित जोखिम" : ""}।`, saudavel: "इस अवधि में कोई रिफ़ंड नहीं और कोई सेवा जोखिम में नहीं — स्वस्थ।" },
+    }[lg];
+    const FALTA_OPS = "db/operations.sql (ops_board) não respondeu";
+    const FALTA_COST = "db/cost_ledger.sql (cost_summary) não respondeu";
+    const FALTA_REV = "db/revenue_month.sql (revenue_month) não respondeu";
+    const sem = (tecnico) => ({ note: T.sem_dado, detalhe_tecnico: tecnico });
 
     const stages = [
       {
-        key: "supplier", label: "Fornecedor · Custo", kind: "supplier",
+        key: "supplier", label: T.supplier, kind: "supplier",
         count: cost_count, amount_cents: cost_cents,
-        note: costReady ? "O que custa pra Gui operar (voz, SMS, provedores)." : NOT_COST,
+        ...(costReady ? { note: T.n_cost } : sem(FALTA_COST)),
       },
       {
-        key: "operation", label: "Operação · Gui trabalha", kind: "operation",
+        key: "operation", label: T.operation, kind: "operation",
         count: jobs_total, amount_cents: null,
-        note: opsReady ? "Serviços que a Gui conduziu na janela." : NOT_OPS,
+        ...(opsReady ? { note: T.n_ops } : sem(FALTA_OPS)),
       },
       {
-        key: "close", label: "Cliente fecha", kind: "close",
+        key: "close", label: T.close, kind: "close",
         count: jobs_done, amount_cents: revReady ? revenue_cents : null,
-        note: opsReady ? "Serviços concluídos — o dinheiro entrou." : NOT_OPS,
+        ...(opsReady ? { note: T.n_close } : sem(FALTA_OPS)),
       },
       {
-        key: "profit", label: "Lucro na mão", kind: "profit",
+        key: "profit", label: T.profit, kind: "profit",
         count: null, amount_cents: profit_cents,
-        note: revReady ? "Receita menos o custo de operar." : NOT_REV,
+        ...(revReady ? { note: T.n_profit } : sem(FALTA_REV)),
       },
       {
-        key: "risk", label: "Risco de retorno", kind: "risk",
+        key: "risk", label: T.risk, kind: "risk",
         count: risk_real ? returns_count : jobs_risk, amount_cents: risk_cents,
         real: risk_real,
         refund_cents, refund_count, dispute_cents, dispute_count,
-        note: risk_real
-          ? [
-              refund_count > 0 ? `${refund_count} reembolso(s)` : null,
-              dispute_count > 0 ? `${dispute_count} disputa(s)/chargeback` : null,
-            ].filter(Boolean).join(" · ") + " — dinheiro que voltou pro cliente."
+        ...(risk_real
+          ? { note: [refund_count > 0 ? T.refund(refund_count) : null, dispute_count > 0 ? T.dispute(dispute_count) : null].filter(Boolean).join(" · ") + T.voltou }
           : opsReady
-            ? (jobs_risk > 0
-                ? `${jobs_risk} serviço(s) em risco (faltas/atrasos)${avg_ticket > 0 ? " · exposição estimada pelo ticket médio" : ""}.`
-                : "Nenhum reembolso e nenhum serviço em risco na janela — saudável.")
-            : NOT_OPS,
+            ? { note: jobs_risk > 0 ? T.em_risco(jobs_risk, avg_ticket > 0) : T.saudavel }
+            : sem(FALTA_OPS)),
       },
     ];
 
     return json({
       ok: true,
       ready,
+      lang: lg,
       window: { from: winFrom, to: winTo },
       stages,
       money: { cost_cents, revenue_cents, profit_cents, risk_cents, refund_cents, dispute_cents },

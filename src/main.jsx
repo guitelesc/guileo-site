@@ -1,3 +1,4 @@
+import './lib/linkDeSenha.js'   // primeiro de todos: ver o arquivo
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'

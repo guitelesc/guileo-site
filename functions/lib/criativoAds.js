@@ -175,7 +175,7 @@ export async function gerarPeca(env, { canal, ctx, lang, langName, objetivo, pub
  * @returns {{ plataforma, idioma, negocio, criativo, excedeu_limite } | { erro } | null}  null = sem chave de IA
  */
 export async function gerarCriativoAds(env, email, opts = {}) {
-  if (!env.ANTHROPIC_API_KEY) return null;
+  if (!env.ANTHROPIC_API_KEY && !env.ELEVENLABS_API_KEY) return null;
   const ctx = await contextoDoNegocio(env, email, opts);
   const canal = normalizarCanal(opts.plataforma || opts.canal);
   const { lang, langName } = idiomaDoNegocio(opts, ctx);
@@ -220,7 +220,7 @@ async function contextoDoNegocio(env, email, opts) {
  * @returns {{ negocio, idioma, publico, chamada, pecas, avisos, canais_pedidos } | null}
  */
 export async function gerarKitCampanha(env, email, opts = {}) {
-  if (!env.ANTHROPIC_API_KEY) return null;
+  if (!env.ANTHROPIC_API_KEY && !env.ELEVENLABS_API_KEY) return null;
   const ctx = await contextoDoNegocio(env, email, opts);
   const { lang, langName } = idiomaDoNegocio(opts, ctx);
 

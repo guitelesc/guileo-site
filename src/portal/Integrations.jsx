@@ -1,9 +1,9 @@
 /* Split out of Portal.jsx (performance): Integrations tab view — code moved verbatim. */
 import { useMemo, useState, useEffect } from "react";
 import { FaCircleCheck, FaPlug } from "react-icons/fa6";
-import { portalApi, toast } from "../lib/portalApi.js";
+import { portalApi, toast, loadDataKey, abrirChamado } from "../lib/portalApi.js";
 import { waLink } from "../data/contact.js";
-import { genIntegrations, SECTOR_ONBOARD, tr, Card, GuiMark, MiniStats, vnum, Toggle } from "../pages/Portal.jsx";
+import { genIntegrations, SECTOR_ONBOARD, tr, Card, GuiMark, MiniStats, vnum, Toggle, UI_LANG } from "../pages/Portal.jsx";
 
 function Integrations({ V, onNav, lang = "en", me }) {
   // HONESTY: in real mode the connect toggles are simulated (localStorage), so we never
@@ -18,38 +18,66 @@ function Integrations({ V, onNav, lang = "en", me }) {
   // yet). Only the demo/showcase seeds the sector's auto list as connected. Prevents the day-one
   // "live across 6 systems" lie the audit caught.
   const seed = useMemo(() => Object.fromEntries(flat.map(([n, , , , , def]) => [n, isReal ? false : (!!def || (onb ? onb.auto.includes(n) : false))])), [V]); // eslint-disable-line
-  const [conn, setConn] = useState(() => portalApi.loadState(`${V.label}:stack`, seed));
-  useEffect(() => { setConn(portalApi.loadState(`${V.label}:stack`, seed)); }, [V.label]); // eslint-disable-line
+  /* 🚨 DOIS DEFEITOS NO MESMO ESTADO (2026-09-28):
+     1. A CHAVE ERA O RAMO, NÃO O CLIENTE. `${V.label}:stack` — dois spas abertos no mesmo navegador
+        (a vendedora que atende dois clientes, a dona com duas unidades) dividiam o MESMO estado:
+        o que um "ligava" aparecia ligado no outro. Conta real usa o e-mail do tenant na chave.
+     2. O INTERRUPTOR NÃO AVISAVA NINGUÉM. Em conta real ele gravava no localStorage e a linha
+        passava a mostrar "⏳ Pending setup" — a dona entendia que o pedido estava com a nossa
+        equipe, e ninguém tinha sido avisado de nada. Agora, em conta real, a linha tem um botão
+        "Request setup" que ABRE UM CHAMADO de verdade (/api/support → abrirChamado); "Pending
+        setup" só aparece com o número do chamado devolvido pelo servidor. Sem interruptor. */
+  const tenant = (me?.email || "").toString().trim().toLowerCase();
+  const chaveStack = isReal ? `stack:${tenant}:${V.label}` : `${V.label}:stack`;
+  const chavePedidos = `stack:${tenant}:pedidos`;
+  const [conn, setConn] = useState(() => (isReal ? {} : portalApi.loadState(chaveStack, seed)));
+  useEffect(() => { setConn(isReal ? {} : portalApi.loadState(chaveStack, seed)); }, [chaveStack]); // eslint-disable-line
+  const [pedidos, setPedidos] = useState(() => (isReal ? portalApi.loadState(chavePedidos, {}) : {}));   // nome → {id, at}
+  useEffect(() => { setPedidos(isReal ? portalApi.loadState(chavePedidos, {}) : {}); }, [chavePedidos, isReal]); // eslint-disable-line
+  const [pedindo, setPedindo] = useState("");
   const [onbSeen, setOnbSeen] = useState(() => portalApi.loadState(`${V.label}:onboard_seen`, false));
   const dismissOnb = () => { setOnbSeen(true); portalApi.saveState(`${V.label}:onboard_seen`, true); };
+  // DEMONSTRAÇÃO: o interruptor é de vitrine, e o toast diz isso.
   const toggle = (name) => setConn((c) => {
     const n = { ...c, [name]: !c[name] };
-    portalApi.saveState(`${V.label}:stack`, n);
-    // Google Calendar gets a REAL connect flow for logged-in accounts; everything else stays demo.
-    if (name === "Google Calendar" && n[name] && me?.email && !me?.demo) {
-      window.open(`https://guileoai.com/api/gcal-connect?email=${encodeURIComponent(me.email)}`, "_blank", "noopener");
-      toast(tr("Real Google Calendar connection — activating", lang));
-    } else {
-      if (isReal) toast(`${name} — ${tr("preview only · this connection activates during your setup")}`);
-      else toast(`${name} ${n[name] ? tr("connected ✓ — your AI is now acting through it") : tr("disconnected")}`);
-    }
+    portalApi.saveState(chaveStack, n);
+    toast(`${tr("Demo")} — ${name}: ${tr("sample switch, nothing was connected.")}`);
     return n;
   });
+  // CONTA REAL: pedir a conexão = abrir chamado. Sucesso só com o id do chamado.
+  const pedir = async (name) => {
+    if (pedindo || pedidos[name]) return;
+    // A agenda do Google tem fluxo próprio e real — mora na tela "Connect calendar".
+    if (name === "Google Calendar") { onNav?.("schedulesync"); return; }
+    const key = loadDataKey();
+    if (!tenant || !key) { toast(tr("Add your connection code in Settings first — then I can send the request to our team.")); return; }
+    setPedindo(name);
+    const r = await abrirChamado(tenant, key, { subject: `Connect ${name}`, category: "other", body: `The client asked to connect ${name} from the Integrations screen of the Central.`, status: "open", priority: "normal", lang: UI_LANG });
+    setPedindo("");
+    if (r && r.id) {
+      const n = { ...pedidos, [name]: { id: r.id, at: Date.now() } };
+      setPedidos(n); portalApi.saveState(chavePedidos, n);
+      toast(`${name} — ${tr("request sent to our team ✓")}`);
+    } else if (r?.tipo === "nao_ativado") toast(tr("I couldn't register the request — support requests aren't switched on yet. Message us on WhatsApp instead."));
+    else toast(tr("I couldn't send the request just now — nothing was registered. Try again."));
+  };
   const liveCount = flat.filter(([n]) => conn[n]).length;
+  const nPedidos = Object.keys(pedidos).length;
 
   // REAL Google Business connect — starts the OAuth flow (google-oauth-start). Honest-inert:
   // if the Google API key isn't set yet, the endpoint returns { ready:false, note } and we say so
   // instead of opening a broken screen. Gated by this tenant's own email + data key (localStorage).
   const [gbBusy, setGbBusy] = useState(false);
   const connectGoogleBiz = async () => {
-    const key = (typeof localStorage !== "undefined" && localStorage.getItem("guileo_data_key")) || "";
+    const key = loadDataKey(); // tolera a forma entre aspas que a hidratação da nuvem grava
     if (!isReal || !me?.email || !key) { toast(tr("Log in with your account to connect Google")); return; }
     setGbBusy(true);
     try {
       const r = await fetch("https://guileoai.com/api/google-oauth-start", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: me.email, token: key }) });
       const d = await r.json().catch(() => ({}));
       if (d && d.url) { window.open(d.url, "_blank", "noopener"); toast(tr("Opening Google authorization…")); }
-      else { toast(d?.note || tr("Google Business isn't available to connect yet")); }
+      // `d.note` é recado de engenharia do servidor (em português) — a tela usa a própria frase
+      else { toast(tr("Google Business isn't available to connect yet")); }
     } catch { toast(tr("Could not reach Google connect — try again")); }
     finally { setGbBusy(false); }
   };
@@ -59,7 +87,7 @@ function Integrations({ V, onNav, lang = "en", me }) {
   // the endpoint returns 503 and we say so. Gated by this tenant's own email + data key.
   const [stBusy, setStBusy] = useState(false);
   const connectStripe = async () => {
-    const key = (typeof localStorage !== "undefined" && localStorage.getItem("guileo_data_key")) || "";
+    const key = loadDataKey(); // tolera a forma entre aspas que a hidratação da nuvem grava
     if (!isReal || !me?.email || !key) { toast(tr("Log in with your account to connect payments")); return; }
     setStBusy(true);
     try {
@@ -137,7 +165,7 @@ function Integrations({ V, onNav, lang = "en", me }) {
       </Card>
 
       <MiniStats items={isReal
-        ? [[tr("Connected"), tr("Pending setup")], [tr("Acting 24/7"), tr("Always-on")], [tr("Hours saved / wk"), tr("Adds up as tools connect")], [tr("Setup"), tr("Done-for-you")]]
+        ? [["Setup requests sent", `${nPedidos}`], ["Setup", tr("Done-for-you")]]
         : [[tr("Connected"), `${liveCount}/${flat.length}`, "good"], [tr("Acting 24/7"), tr("Always-on")], [tr("Hours saved / wk"), `${vnum(V.label, "stackhrs", 8, 26)}h`, "good"], [tr("Setup"), tr("Done-for-you")]]} />
 
       {/* 💬 Gui webchat on THEIR OWN site — one script tag; real email when logged in, placeholder in demo */}
@@ -173,7 +201,7 @@ function Integrations({ V, onNav, lang = "en", me }) {
 
       {/* Gui recommends connecting — surfaces the highest-value disconnected tools */}
       {(() => {
-        const off = flat.filter(([n]) => !conn[n]).slice(0, 2);
+        const off = flat.filter(([n]) => !conn[n] && !pedidos[n]).slice(0, 2);
         return off.length ? (
           <Card className="border-[#FF8A33]/30 bg-[#FF8A33]/[0.05]">
             <div className="flex items-center gap-2 mb-2.5"><GuiMark size={26} /><div className="text-xs font-extrabold text-g-word">{tr("Gui recommends connecting")}</div></div>
@@ -182,7 +210,11 @@ function Integrations({ V, onNav, lang = "en", me }) {
                 <div key={name} className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-black/15 px-3 py-2.5">
                   <span className="grid place-items-center h-8 w-8 rounded-lg text-base" style={{ background: color + "22", color }}>{typeof Icon === "string" ? <span>{Icon}</span> : <Icon size={14} />}</span>
                   <div className="flex-1 min-w-0"><div className="text-xs font-bold text-g-word">{name}</div><div className="text-[10px] text-g-muted leading-snug">{lang === "pt" ? doesPt : doesEn}</div></div>
-                  <button onClick={() => toggle(name)} className="btn-bright text-[11px] px-3 py-1.5 shrink-0">{tr("Connect")}</button>
+                  {isReal
+                    ? (pedidos[name]
+                        ? <span className="text-[10px] font-black uppercase text-[#C98A00] shrink-0">⏳ {tr("Requested")}</span>
+                        : <button onClick={() => pedir(name)} disabled={!!pedindo} className="btn-bright text-[11px] px-3 py-1.5 shrink-0 disabled:opacity-60">{pedindo === name ? "…" : name === "Google Calendar" ? tr("Connect") : tr("Request setup")}</button>)
+                    : <button onClick={() => toggle(name)} className="btn-bright text-[11px] px-3 py-1.5 shrink-0">{tr("Connect")}</button>}
                 </div>
               ))}
             </div>
@@ -199,10 +231,16 @@ function Integrations({ V, onNav, lang = "en", me }) {
                 <span className="grid place-items-center h-10 w-10 rounded-xl text-lg" style={{ background: color + "22", color }}>{typeof Icon === "string" ? <span>{Icon}</span> : <Icon />}</span>
                 <div className="flex-1 min-w-0">
                   {/* HONESTY: real accounts never show "Live" from a demo toggle — they show amber "Pending setup" until the API is truly linked. Only demo shows green Live. */}
-                  <div className="text-sm font-bold text-g-word flex items-center gap-2">{name}{conn[name] && (isReal ? <span className="text-[9px] font-black uppercase text-[#C98A00] inline-flex items-center gap-1">⏳ {tr("Pending setup")}</span> : <span className="text-[9px] font-black uppercase text-g-green inline-flex items-center gap-1"><FaCircleCheck size={9} /> {tr("Live")}</span>)}</div>
+                  <div className="text-sm font-bold text-g-word flex items-center gap-2">{name}{isReal
+                    ? (pedidos[name] ? <span className="text-[9px] font-black uppercase text-[#C98A00] inline-flex items-center gap-1">⏳ {tr("Pending setup")} · {tr("request")} #{String(pedidos[name].id).slice(0, 8)}</span> : null)
+                    : (conn[name] ? <span className="text-[9px] font-black uppercase text-g-green inline-flex items-center gap-1"><FaCircleCheck size={9} /> {tr("Live")} · {tr("Demo")}</span> : null)}</div>
                   <div className="text-[11px] text-g-muted leading-snug">{lang === "pt" ? doesPt : doesEn}</div>
                 </div>
-                <Toggle on={!!conn[name]} onClick={() => toggle(name)} />
+                {isReal
+                  ? (pedidos[name]
+                      ? null
+                      : <button onClick={() => pedir(name)} disabled={!!pedindo} className="btn-ghost text-[11px] px-3 py-1.5 shrink-0 disabled:opacity-60">{pedindo === name ? "…" : name === "Google Calendar" ? tr("Connect") : tr("Request setup")}</button>)
+                  : <Toggle on={!!conn[name]} onClick={() => toggle(name)} />}
               </div>
             ))}
           </div>
