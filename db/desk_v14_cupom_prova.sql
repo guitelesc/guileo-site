@@ -19,7 +19,8 @@ declare e text := 'e2e-test@guileoai.com'; k text; s biz_services; p bigint; r j
   -- uma venda: 1 serviço (+ vale opcional), cupom, desconto manual e um pagamento em dinheiro
 begin
   select access_key into k from client_credits where client_email = e;
-  select * into s from biz_services where client_email = e and price_cents >= 2000 order by price_cents limit 1;
+  select * into s from biz_services where client_email = e and price_cents >= 2000
+     and coalesce(active, true) and not coalesce((config->>'addon')::boolean, false) order by price_cents limit 1;   -- nem adicional nem desativado
   if k is null or s.id is null then raise exception 'FALHOU passo 0: conta e2e sem chave ou sem serviço com preço'; end if;
   p := s.price_cents;
   insert into coupons (client_email, code, kind, value, label) values

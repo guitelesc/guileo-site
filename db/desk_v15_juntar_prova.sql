@@ -16,11 +16,12 @@ end $t$;
 
 do $prova$
 declare e text := 'e2e-test@guileoai.com'; k text; s biz_services; pk uuid; r jsonb; ok int := 0; log text := '';
-        a text := '+1 718 555 0177'; b text := 'prova-juntar@example.com'; c text := '+1 718 555 0188';
-        ak text := '7185550177'; v_m1 uuid; v_m2 uuid; v_pp uuid; v_left int; n int;
+        a text := '+1 646 555 0177'; b text := 'prova-juntar@example.com'; c text := '+1 646 555 0188';
+        ak text := '6465550177'; v_m1 uuid; v_m2 uuid; v_pp uuid; v_left int; n int;
 begin
   select access_key into k from client_credits where client_email = e;
-  select * into s from biz_services where client_email = e and price_cents >= 2000 order by price_cents limit 1;
+  select * into s from biz_services where client_email = e and price_cents >= 2000
+     and coalesce(active, true) and not coalesce((config->>'addon')::boolean, false) order by price_cents limit 1;   -- nem adicional nem desativado
   if k is null or s.id is null then raise exception 'FALHOU passo 0: conta e2e sem chave ou sem serviço com preço'; end if;
   insert into packages (client_email, name, price_cents, sessions) values (e, 'Prova Juntar Pacote', 10000, 5) returning id into pk;
 
@@ -29,7 +30,7 @@ begin
   r := public.desk_checkout(e, k, jsonb_build_object('customer_name', 'Prova Juntar Silva', 'customer_contact', a, 'request_id', 'prova-juntar-a',
         'lines', jsonb_build_array(jsonb_build_object('kind', 'service', 'ref_id', s.id)), 'payments', jsonb_build_array(jsonb_build_object('method', 'cash', 'amount_cents', s.price_cents))));
   if not coalesce((r->>'ok' = 'true'), false) then raise exception 'FALHOU passo 0a: %', r; end if;
-  insert into crm_contacts (client_email, phone, full_name) values (e, '+17185550177', 'Prova Juntar Silva');
+  insert into crm_contacts (client_email, phone, full_name) values (e, '+16465550177', 'Prova Juntar Silva');
   insert into crm_consent_log (client_email, contact_key, channel, granted, source, evidence) values (e, ak, 'sms', true, 'balcao', 'prova');
   -- B (e-mail): perfil com outra alergia e bloqueada para marcar online; compra um pacote; disse "não" a SMS
   perform public.desk_client_save(e, k, b, jsonb_build_object('name', 'Prova  Juntar Silva', 'allergies', 'Latex', 'can_book_online', false, 'tags', '["indicada"]'::jsonb));
@@ -45,7 +46,7 @@ begin
   -- 1. sugestão: mesmo nome (com espaço duplo e tudo) junta A, B e C num grupo
   r := public.desk_merge_suggest(e, k);
   if not exists (select 1 from jsonb_array_elements(r->'groups') g where g->>'reason' = 'same_name'
-                   and (select count(*) from jsonb_array_elements(g->'members') m where m->>'contact_key' in (ak, b, '7185550188')) = 3) then
+                   and (select count(*) from jsonb_array_elements(g->'members') m where m->>'contact_key' in (ak, b, '6465550188')) = 3) then
     raise exception 'FALHOU passo 1: %', r; end if;
   ok := ok + 1;
   -- 2. prévia: soma as alergias, fica bloqueada online (o mais restritivo), confiança passa, SMS = não
@@ -59,7 +60,7 @@ begin
     raise exception 'FALHOU passo 3: a prévia gravou'; end if;
   ok := ok + 1;
   -- 4. recusas: mesma ficha, ficha que não existe, contato inválido
-  r := public.desk_merge(e, k, a, '718-555-0177'); if not coalesce((r->>'reason' = 'same_client'), false) then raise exception 'FALHOU passo 4a: %', r; end if;
+  r := public.desk_merge(e, k, a, '646-555-0177'); if not coalesce((r->>'reason' = 'same_client'), false) then raise exception 'FALHOU passo 4a: %', r; end if;
   r := public.desk_merge(e, k, a, 'ninguem-prova@example.com'); if not coalesce((r->>'reason' = 'client_not_found'), false) then raise exception 'FALHOU passo 4b: %', r; end if;
   r := public.desk_merge(e, k, a, 'x'); if not coalesce((r->>'reason' = 'invalid_contact'), false) then raise exception 'FALHOU passo 4c: %', r; end if;
   ok := ok + 1;
@@ -114,7 +115,7 @@ begin
   ok := ok + 1;
   -- 15. desfazer o 2º: C volta a ser ficha própria
   r := public.desk_merge_undo(e, k, v_m2);
-  if not coalesce((r->>'ok' = 'true' and (public.desk_client_card(e, k, c))->>'contact_key' = '7185550188'), false) then raise exception 'FALHOU passo 15: %', r; end if;
+  if not coalesce((r->>'ok' = 'true' and (public.desk_client_card(e, k, c))->>'contact_key' = '6465550188'), false) then raise exception 'FALHOU passo 15: %', r; end if;
   ok := ok + 1;
   -- 16. desfazer o 1º: B volta com o perfil dela; a edição feita depois na principal FICA (kept_edits)
   r := public.desk_merge_undo(e, k, v_m1);

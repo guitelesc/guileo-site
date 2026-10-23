@@ -59,6 +59,10 @@ const T = {
   kindStaff: { en: "Person", pt: "Pessoa", es: "Persona", hi: "व्यक्ति" },
   kindRoom: { en: "Room / equipment", pt: "Sala / equipamento", es: "Sala / equipo", hi: "कमरा / उपकरण" },
   color: { en: "Color on the agenda", pt: "Cor na agenda", es: "Color en la agenda", hi: "एजेंडा में रंग" },
+  // desk_v16: escolher a profissional no /agendar
+  online: { en: "Clients can book her online", pt: "Clientes podem marcar com ela pelo site", es: "Las clientas pueden reservar con ella en línea", hi: "ग्राहक ऑनलाइन बुक कर सकते हैं" },
+  onlineHint: { en: "Off: she doesn't appear on the booking page and “No preference” never books her from the site. She stays on the agenda — the front desk and the assistant still book her.", pt: "Desligado: ela não aparece na página de agendamento e o “Sem preferência” do site nunca cai nela. Continua na agenda — a recepção e a assistente marcam com ela normalmente.", es: "Apagado: no aparece en la página de reservas y “Sin preferencia” nunca la asigna desde el sitio. Sigue en la agenda — la recepción y la asistente reservan con ella normalmente.", hi: "बंद: वह बुकिंग पेज पर नहीं दिखेगी। एजेंडा में बनी रहती है।" },
+  offline: { en: "not bookable online", pt: "não marca pelo site", es: "no reserva en línea", hi: "ऑनलाइन बुक नहीं" },
   commSvc: { en: "Commission on services (%)", pt: "Comissão em serviços (%)", es: "Comisión en servicios (%)", hi: "सेवाओं पर कमीशन (%)" },
   commProd: { en: "Commission on products (%)", pt: "Comissão em produtos (%)", es: "Comisión en productos (%)", hi: "उत्पादों पर कमीशन (%)" },
   commBad: { en: "Commission must be between 0 and 100.", pt: "A comissão tem que ficar entre 0 e 100.", es: "La comisión debe estar entre 0 y 100.", hi: "कमीशन 0 से 100 के बीच होना चाहिए।" },
@@ -564,6 +568,7 @@ function AbaEquipe({ dados, enviar, mudou }) {
             )}
             {!sala && (Number(p.commission_service_pct) || Number(p.commission_product_pct)) ? ` · ${Number(p.commission_service_pct) || 0}% / ${Number(p.commission_product_pct) || 0}%` : ""}
             {!sala && regrasDe(p.id).length ? ` · ${regrasDe(p.id).length} ${regrasDe(p.id).length === 1 ? t("ownRule") : t("ownRules")}` : ""}
+            {!sala && p.online === false ? <span className="text-g-gold"> · {t("offline")}</span> : null}
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -625,6 +630,7 @@ function PainelPro({ pro, services, locations, enviar, usadaPor = () => [], rule
   const [tipo, setTipo] = useState(ehSala(pro) ? "room" : "staff");
   const [cor, setCor] = useState(pro.color || (ehSala(pro) ? CORES[7] : CORES[0]));
   const [ativo, setAtivo] = useState(true);
+  const [online, setOnline] = useState(pro.online !== false);   // desk_v16: aparece e é marcada pelo /agendar
   const [cs, setCs] = useState(String(pro.commission_service_pct ?? 0));
   const [cp, setCp] = useState(String(pro.commission_product_pct ?? 0));
   const [svcs, setSvcs] = useState(() => new Set(pro.services || []));
@@ -643,7 +649,7 @@ function PainelPro({ pro, services, locations, enviar, usadaPor = () => [], rule
     // Sala "pura" não manda `services`: o banco só mexe em quem-faz-o-quê quando a chave vem (desk_staff_save).
     // Equipamento continua 'room' (o motor aceita 'equipment' também, mas as outras telas leem 'room').
     const corpo = { name: nome.trim(), title: cargo.trim(), kind: tipo === "room" && pro.kind === "equipment" ? "equipment" : tipo, color: cor, active: ativo, locations: [...locs], ...(mostraServicos ? { services: [...svcs] } : {}) };
-    if (tipo === "staff") { corpo.commission_service_pct = ncs; corpo.commission_product_pct = ncp; }
+    if (tipo === "staff") { corpo.commission_service_pct = ncs; corpo.commission_product_pct = ncp; corpo.online = online; }
     // As regras por serviço vão SEMPRE para os serviços marcados (vazio = null = volta ao padrão).
     if (tipo === "staff" && mostraServicos) {
       const n = (v) => (String(v).trim() === "" ? null : Number(String(v).replace(",", ".")));
@@ -695,6 +701,15 @@ function PainelPro({ pro, services, locations, enviar, usadaPor = () => [], rule
             <label className={rotulo}>{t("commSvc")}<input value={cs} onChange={(e) => setCs(e.target.value)} inputMode="decimal" className={campo} /></label>
             <label className={rotulo}>{t("commProd")}<input value={cp} onChange={(e) => setCp(e.target.value)} inputMode="decimal" className={campo} /></label>
           </div>
+        )}
+        {tipo === "staff" && (
+          <label className="flex items-start gap-2.5 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 cursor-pointer">
+            <input type="checkbox" checked={online} onChange={(e) => setOnline(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#2FE39A]" />
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-g-word">{t("online")}</span>
+              <span className="block text-[11px] text-g-muted mt-0.5">{t("onlineHint")}</span>
+            </span>
+          </label>
         )}
         {tipo === "room" && pro.id && (
           <div className={rotulo}>{t("usedBy")}

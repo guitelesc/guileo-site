@@ -719,7 +719,12 @@ export async function onRequestPost(context) {
     // duas pontas: a unidade não casava com nome nenhum (null → busca em tudo → oferece Astoria) e
     // o serviço genérico ganhava do gêmeo da unidade certa. 14 ligações do Natura, 0 agendamentos.
     const { svc, loc, unidadesPossiveis } = resolveServicoLocal(services, locations, pros, b.service, b.location);
-    const pro = pick(pros, b.professional || b.pro);
+    // PROFISSIONAL POR ID (2026-10-22, /agendar com escolha de profissional): a página pública manda o id
+    // EXATO de quem a cliente escolheu (nome pode repetir). Id que não existe → recusa, nunca "qualquer uma".
+    // Sem pro_id (agente, booking-intent) nada muda: segue o nome falado.
+    const proPorId = b.pro_id ? pros.find((x) => String(x.id) === String(b.pro_id)) || null : null;
+    if (b.pro_id && !proPorId) return json({ ok: false, reason: "pro_not_found", slots: [] });
+    const pro = proPorId || pick(pros, b.professional || b.pro);
     if (!svc) return json({ message: servicoIndefinidoMsg(b.lang, services.map((s) => s.name).join(", ")) });
 
     // O SERVIÇO EXISTE EM MAIS DE UMA UNIDADE E NINGUÉM DISSE QUAL. Pergunte antes de procurar.
@@ -770,7 +775,8 @@ export async function onRequestPost(context) {
         p_limit: pedeJanela ? Math.min(Number(b.limit), 300) : 6,
         ...(pedeJanela ? { p_days: Math.min(Math.max(parseInt(b.days, 10) || 14, 1), 30) } : {}),
       });
-      const slots = (av.slots || []).map((s) => ({ start: s.start, pro: s.pro, location: s.location }));
+      // a página pública (janela longa) recebe também QUEM e QUANTO TEMPO (a duração dela, regra profissional × serviço)
+      const slots = (av.slots || []).map((s) => ({ start: s.start, pro: s.pro, location: s.location, ...(pedeJanela ? { pro_id: s.pro_id || null, duration_min: s.duration_min || null } : {}) }));
       if (pedeJanela) return json({ slots, tz: loc?.tz || bizTz });
       if (!slots.length) return json({ message: semVagaMsg(b.lang, svc.name, loc ? emOnde(b.lang, loc.name) : ""), slots: [] });
       const human = slots.slice(0, 4).map((s) => `${fmt(s.start, bizTz, b.lang)}${comQuem(b.lang, s.pro)}${loc ? "" : emOnde(b.lang, s.location)}`).join("; ");

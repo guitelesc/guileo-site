@@ -16,9 +16,15 @@
 //   · O segredo do motor (SCHED_SECRET/INGEST) fica no servidor e nunca é ecoado.
 //
 // OPERAÇÕES
-//   { slug, op:"menu" }                                  → serviços reais do tenant
-//   { slug, op:"horarios", servico, dia? }               → vagas REAIS do motor
-//   { slug, op:"marcar", servico, quando, nome, telefone } → marca de verdade
+//   { slug, op:"menu" }                                  → serviços reais do tenant (+ `equipe`: quem o site pode mostrar)
+//   { slug, op:"horarios", servico, dia?, pro_id? }      → vagas REAIS do motor (com a profissional, se escolhida)
+//   { slug, op:"marcar", servico, quando, nome, telefone, pro_id? } → marca de verdade
+//
+// ESCOLHER A PROFISSIONAL (2026-10-22, desk_v16): `equipe` vem de vitrine_pros (só equipe ativa que a dona não
+// tirou do site; nome, título, cor e a duração DELA por serviço — nunca contato). Quem a dona marcou "não marca
+// pelo site" some da escolha E do "Sem preferência": os horários dela são filtrados aqui. Sem preferência, a
+// marcação tenta as profissionais visíveis livres naquele horário, uma a uma — quem não escolhe não perde vaga.
+// Com pro_id, marca com ELA (antes a tela mostrava "10:00 · Bia" e o motor podia marcar a Ana às 10:00).
 //        (+ `deposito:{url,cents,janela_h?}` quando o serviço tem sinal e o negócio cobra online)
 //
 // ⚠️ "marcar" devolve o COMPROVANTE (id da reserva) ou uma falha honesta. "ok" sem id é promessa
@@ -29,6 +35,18 @@ import { svcRpc, svcJson } from "../lib/sb.js";
 import { sinalNaTela } from "../lib/sinal.js";
 
 const s = (v, n = 200) => (v == null ? "" : v.toString().slice(0, n).trim());
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Quem o site pode mostrar (desk_v16). null = NÃO SEI (rota sem o SQL, banco fora) → a página segue como antes,
+// sem escolha e sem filtro; [] = a dona tirou todo mundo do site.
+async function equipeDoSite(env, dono) {
+  try {
+    const r = await svcRpc(env, "vitrine_pros", { p_tenant: dono });
+    if (!r || !r.ok) return null;
+    const d = await r.json().catch(() => null);
+    return Array.isArray(d) ? d : null;
+  } catch { return null; }
+}
 
 async function donoDoSlug(env, slug) {
   try {
@@ -77,7 +95,9 @@ export async function onRequestPost({ request, env }) {
       if (!r.ok) return json({ ok: false, error: `motor respondeu ${r.status}` }, 503);
       const d = await r.json().catch(() => null);
       if (!d) return json({ ok: false, error: "motor nao respondeu" }, 503);
-      return json({ ok: true, servicos: d.services || d.servicos || [], precos: Array.isArray(d.priced) ? d.priced : [], profissionais: d.professionals || [] });
+      const equipe = await equipeDoSite(env, dono);
+      return json({ ok: true, servicos: d.services || d.servicos || [], precos: Array.isArray(d.priced) ? d.priced : [], profissionais: d.professionals || [],
+        ...(equipe ? { equipe: equipe.map((p) => ({ id: p.id, name: p.name, title: p.title || "", color: p.color || "", services: (p.services || []).map((x) => ({ name: x.name, duration_min: x.duration_min, service_duration_min: x.service_duration_min })) })) } : {}) });
     }
     if (op === "horarios") {
       const servico = s(b.servico, 120);
@@ -93,17 +113,25 @@ export async function onRequestPost({ request, env }) {
       // DIA DE VERDADE (2026-10-05): o motor agora aceita `days`/`limit` e devolve o fuso; o filtro
       // por dia é feito AQUI, no fuso do negócio — não no navegador de quem marca.
       const dia = /^\d{4}-\d{2}-\d{2}$/.test(s(b.dia, 10)) ? s(b.dia, 10) : "";
-      const r = await motor({ op: "availability", service: servico, days: 30, limit: 300 });
+      const proId = UUID.test(s(b.pro_id, 40)) ? s(b.pro_id, 40).toLowerCase() : "";
+      const equipe = await equipeDoSite(env, dono);
+      const visiveis = equipe ? new Set(equipe.map((p) => String(p.id).toLowerCase())) : null;
+      if (proId && visiveis && !visiveis.has(proId)) return json({ ok: false, error: "pro_not_found" }, 404);
+      const r = await motor({ op: "availability", service: servico, days: 30, limit: 300, pro_id: proId || undefined });
       if (!r.ok) return json({ ok: false, error: `motor respondeu ${r.status}` }, 503);
       const d = await r.json().catch(() => null);
       if (!d) return json({ ok: false, error: "motor nao respondeu" }, 503);
       // Lista ausente NÃO é "sem vaga" — a tela precisa saber a diferença.
+      if (d.reason === "pro_not_found") return json({ ok: false, error: "pro_not_found" }, 404);
       if (!Array.isArray(d.slots)) return json({ ok: false, error: d.message || "nao consegui ler a agenda" }, 503);
+      // escolha só existe quando cada vaga diz de quem é (motor interno) e a lista do site respondeu
+      const escolha = !!visiveis && d.slots.length > 0 && d.slots.every((x) => x && x.pro_id);
+      if (escolha) d.slots = d.slots.filter((x) => visiveis.has(String(x.pro_id).toLowerCase()));
       const tz = d.tz || "America/New_York";
       const diaDe = (iso) => { try { return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso)); } catch { return ""; } };
       const dias = [...new Set(d.slots.map((x) => diaDe(x.start)).filter(Boolean))];   // dias com vaga (para o calendário)
       const slots = dia ? d.slots.filter((x) => diaDe(x.start) === dia) : d.slots.slice(0, 12);
-      return json({ ok: true, slots, dias, tz });
+      return json({ ok: true, slots, dias, tz, escolha });
     }
     if (op === "marcar") {
       const nome = s(b.nome, 120), tel = s(b.telefone, 40), servico = s(b.servico, 120), quando = s(b.quando, 60);
@@ -130,10 +158,34 @@ export async function onRequestPost({ request, env }) {
       // `channel:"web"`: sem ele o motor assume voz e o agendamento da vitrine entrava no feed
       // da Central como se fosse ligação (2026-09-28).
       // `email` aqui é o da CLIENTE (ou vazio). O negócio está no cabeçalho x-guileo-client, que vence.
-      const r = await motor({ op: "book", service: servico, when: quando, name: nome, contact: tel, channel: "web", email: emailCliente });
-      if (!r.ok) return json({ ok: false, error: `motor respondeu ${r.status}` }, 503);
-      const d = await r.json().catch(() => null);
-      const id = d && (d.appointment_id || d.id || d.booking_id);
+      // QUEM ATENDE: escolhida → ela. Sem preferência → as profissionais VISÍVEIS livres neste horário, em ordem,
+      // até uma aceitar (nunca uma que a dona tirou do site). Sem lista/sem escolha → como antes (o motor decide).
+      const proId = UUID.test(s(b.pro_id, 40)) ? s(b.pro_id, 40).toLowerCase() : "";
+      const equipe = await equipeDoSite(env, dono);
+      const visiveis = equipe ? new Set(equipe.map((p) => String(p.id).toLowerCase())) : null;
+      if (proId && visiveis && !visiveis.has(proId)) return json({ ok: false, error: "pro_not_found" }, 404);
+      let candidatas = proId ? [proId] : [null];
+      if (!proId && visiveis) {
+        const ra = await motor({ op: "availability", service: servico, days: 30, limit: 300 });
+        const da = ra.ok ? await ra.json().catch(() => null) : null;
+        const alvo = new Date(quando).getTime();
+        const livres = Array.isArray(da?.slots) && da.slots.every((x) => x && x.pro_id)
+          ? [...new Set(da.slots.filter((x) => new Date(x.start).getTime() === alvo && visiveis.has(String(x.pro_id).toLowerCase())).map((x) => String(x.pro_id).toLowerCase()))]
+          : null;
+        if (livres) {
+          if (!livres.length) return json({ ok: false, error: "a agenda recusou", slots: (da.slots || []).filter((x) => visiveis.has(String(x.pro_id).toLowerCase())).slice(0, 12) }, 409);
+          candidatas = livres.slice(0, 3);
+        }
+      }
+      const nomeDe = (id) => (equipe || []).find((p) => String(p.id).toLowerCase() === id)?.name || "";
+      let r = null, d = null, id = null, quem = "";
+      for (const c of candidatas) {
+        r = await motor({ op: "book", service: servico, when: quando, name: nome, contact: tel, channel: "web", email: emailCliente, pro_id: c || undefined });
+        if (!r.ok) return json({ ok: false, error: `motor respondeu ${r.status}` }, 503);
+        d = await r.json().catch(() => null);
+        id = d && (d.appointment_id || d.id || d.booking_id);
+        if (d && d.ok === true && id) { quem = c ? nomeDe(c) : ""; break; }
+      }
       // 🚨 COMPROVANTE OU NADA.
       if (!d || d.ok !== true || !id) {
         return json({ ok: false, error: (d && (d.message || d.error)) || "a agenda recusou", slots: (d && d.slots) || null }, 409);
@@ -169,7 +221,7 @@ export async function onRequestPost({ request, env }) {
         } catch { /* sinal é complemento: a reserva já está de pé */ }
         finally { if (relogio) clearTimeout(relogio); }
       }
-      return json({ ok: true, id, quando: d.when || quando, servico, ...(deposito ? { deposito } : {}) });
+      return json({ ok: true, id, quando: d.when || quando, servico, ...(quem ? { profissional: quem } : {}), ...(deposito ? { deposito } : {}) });
     }
     return json({ ok: false, error: "op invalida" }, 400);
   } catch (e) {
