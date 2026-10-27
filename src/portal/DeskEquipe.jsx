@@ -67,7 +67,11 @@ const T = {
   commProd: { en: "Commission on products (%)", pt: "Comissão em produtos (%)", es: "Comisión en productos (%)", hi: "उत्पादों पर कमीशन (%)" },
   commBad: { en: "Commission must be between 0 and 100.", pt: "A comissão tem que ficar entre 0 e 100.", es: "La comisión debe estar entre 0 y 100.", hi: "कमीशन 0 से 100 के बीच होना चाहिए।" },
   performs: { en: "Services they perform", pt: "Serviços que faz", es: "Servicios que realiza", hi: "कौन-सी सेवाएँ करते हैं" },
-  performsHint: { en: "None checked = can be booked for any service.", pt: "Nenhum marcado = pode ser agendada para qualquer serviço.", es: "Ninguno marcado = se puede reservar para cualquier servicio.", hi: "कोई नहीं चुना = किसी भी सेवा के लिए बुक हो सकते हैं।" },
+  // CORRIGIDO 2026-10-23: dizia "nenhum marcado = qualquer serviço", mas os horários livres (biz_availability: site,
+  // assistente, sugestões de vaga) só oferecem quem tem o serviço marcado; só a marcação à mão aceita sem vínculo.
+  performsHint: { en: "Check every service she does. Online booking, the assistant and the free-time suggestions only offer her for the services checked here.", pt: "Marque cada serviço que ela faz. O site, a assistente e as sugestões de horário livre só oferecem ela nos serviços marcados aqui.", es: "Marca cada servicio que hace. El sitio, la asistente y las sugerencias de horario libre solo la ofrecen en los servicios marcados aquí.", hi: "हर वह सेवा चुनें जो वह करती है। साइट, असिस्टेंट और खाली समय के सुझाव उसे केवल चुनी गई सेवाओं में दिखाते हैं।" },
+  noServicesWarn: { en: "No service checked: she won't get any free time slots — not on the website, not with the assistant, not in suggestions. The front desk can still book her by hand.", pt: "Nenhum serviço marcado: ela não recebe horário livre nenhum — nem no site, nem pela assistente, nem nas sugestões. A recepção ainda consegue marcar com ela à mão.", es: "Ningún servicio marcado: no recibe ningún horario libre — ni en el sitio, ni con la asistente, ni en las sugerencias. La recepción aún puede reservar con ella a mano.", hi: "कोई सेवा नहीं चुनी: उसे कोई खाली समय नहीं मिलेगा — न साइट पर, न असिस्टेंट से, न सुझावों में। रिसेप्शन अब भी हाथ से बुक कर सकता है।" },
+  noServicesShort: { en: "no service checked — no free slots", pt: "nenhum serviço marcado — sem horário livre", es: "ningún servicio marcado — sin horario libre", hi: "कोई सेवा नहीं — कोई खाली समय नहीं" },
   // profissional × serviço (desk_v10): duração, preparo, limpeza e pagamento DELA neste serviço
   rulesHint: { en: "Each checked service can have her own duration, prep and cleanup time, and pay. Empty = the service's default and her general commission.", pt: "Cada serviço marcado pode ter a duração, o preparo, a limpeza e o pagamento dela. Vazio = o padrão do serviço e a comissão geral dela.", es: "Cada servicio marcado puede tener su propia duración, preparación, limpieza y pago. Vacío = el estándar del servicio y su comisión general.", hi: "हर चुनी सेवा की उसकी अपनी अवधि, तैयारी, सफ़ाई और भुगतान हो सकता है। खाली = सेवा का डिफ़ॉल्ट और उसका सामान्य कमीशन।" },
   adjust: { en: "Adjust", pt: "Ajustar", es: "Ajustar", hi: "बदलें" },
@@ -91,6 +95,7 @@ const T = {
   worksAtHint: { en: "None checked = works at every location.", pt: "Nenhuma marcada = atende em todas as unidades.", es: "Ninguna marcada = atiende en todas las sedes.", hi: "कोई नहीं चुना = हर लोकेशन पर काम करते हैं।" },
   noServicesYet: { en: "No services yet — add them in the Services tab.", pt: "Ainda não há serviços — cadastre na aba Serviços.", es: "Aún no hay servicios — agrégalos en la pestaña Servicios.", hi: "अभी कोई सेवा नहीं — सेवाएँ टैब में जोड़ें।" },
   nServices: { en: "services", pt: "serviços", es: "servicios", hi: "सेवाएँ" },
+  nService1: { en: "service", pt: "serviço", es: "servicio", hi: "सेवा" },
   allServices: { en: "all services", pt: "todos os serviços", es: "todos los servicios", hi: "सभी सेवाएँ" },
   noHours: { en: "No weekly hours yet", pt: "Sem horário semanal", es: "Sin horario semanal", hi: "अभी साप्ताहिक समय नहीं" },
   hours: { en: "Hours", pt: "Horário", es: "Horario", hi: "समय" },
@@ -564,7 +569,7 @@ function AbaEquipe({ dados, enviar, mudou }) {
             {pura ? (
               <>{locations.length > 1 && locsSala.length ? `${locsSala.join(", ")} · ` : ""}{quem.length ? `${t("usedBy")}: ${quem.join(", ")}` : t("usedByNone")}</>
             ) : (
-              <>{nsv ? `${nsv} ${t("nServices")}` : t("allServices")} · {resumoHoras(p)}</>
+              <>{nsv ? `${nsv} ${t(nsv === 1 ? "nService1" : "nServices")}` : sala ? t("allServices") : <span className="text-g-gold">{t("noServicesShort")}</span>} · {resumoHoras(p)}</>
             )}
             {!sala && (Number(p.commission_service_pct) || Number(p.commission_product_pct)) ? ` · ${Number(p.commission_service_pct) || 0}% / ${Number(p.commission_product_pct) || 0}%` : ""}
             {!sala && regrasDe(p.id).length ? ` · ${regrasDe(p.id).length} ${regrasDe(p.id).length === 1 ? t("ownRule") : t("ownRules")}` : ""}
@@ -718,6 +723,7 @@ function PainelPro({ pro, services, locations, enviar, usadaPor = () => [], rule
         )}
         {mostraServicos && <div className={rotulo}>{t("performs")}
           <div className={dica}>{t("performsHint")}{tipo === "staff" ? ` ${t("rulesHint")}` : ""}</div>
+          {tipo === "staff" && svcs.size === 0 && <div role="note" className="mt-1.5 rounded-xl border border-g-gold/40 bg-g-gold/[0.08] px-3 py-2 text-[11px] normal-case tracking-normal text-g-word">⚠ {t("noServicesWarn")}</div>}
           {services.length ? (
             <div className="mt-1.5 max-h-[22rem] overflow-y-auto rounded-xl border border-white/10 divide-y divide-white/[0.06]">
               {services.map((s) => {

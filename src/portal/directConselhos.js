@@ -89,3 +89,25 @@ export function conselhosDoDirect(m, agoraMs = Date.now()) {
   const peso = { red: 0, gold: 1, info: 2, green: 3 };
   return out.sort((a, b) => peso[a.nivel] - peso[b.nivel]);
 }
+
+// ── /admin: EM QUE ORDEM O LUIS OLHA OS CLIENTES (2026-10-23) ──────────────────────────────────
+/** Quantos alertas de cada cor — a MESMA regra que o dono lê no portal, contada. */
+export function alertasDoDirect(m, agoraMs = Date.now()) {
+  const cs = conselhosDoDirect(m, agoraMs);
+  return { red: cs.filter((c) => c.nivel === "red").length, gold: cs.filter((c) => c.nivel === "gold").length };
+}
+
+/**
+ * Leitura que falhou primeiro (não sabemos se está tudo bem — o pior estado é o desconhecido),
+ * depois mais vermelhos, mais amarelos, e por fim quem tem mais conversa (mais dinheiro em jogo).
+ * @param {{metricas:object|null}} a
+ * @param {{metricas:object|null}} b
+ */
+export function ordemDeAtencao(a, b, agoraMs = Date.now()) {
+  const falhou = (x) => (x && x.metricas ? 0 : 1);
+  if (falhou(a) !== falhou(b)) return falhou(b) - falhou(a);
+  const A = alertasDoDirect(a.metricas, agoraMs), B = alertasDoDirect(b.metricas, agoraMs);
+  if (A.red !== B.red) return B.red - A.red;
+  if (A.gold !== B.gold) return B.gold - A.gold;
+  return num(b.metricas?.conversa?.recebidas) - num(a.metricas?.conversa?.recebidas);
+}

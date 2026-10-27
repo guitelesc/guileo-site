@@ -1188,6 +1188,8 @@ export { setUiLang as _setUiLangParaProva };
 // TELA AVULSA (2026-10-05): /balcao (acesso da recepção) usa o Desk fora do painel — mesmo idioma inicial
 // (navegador) e o mesmo aviso flutuante. Carrega o dicionário antes de pintar.
 export async function prepararTelaAvulsa() { await loadDict(IDIOMA_INICIAL); setUiLang(IDIOMA_INICIAL); return IDIOMA_INICIAL; }
+// /admin (2026-10-23): o painel do Direct dentro do admin fala o idioma do ADMIN (pt), não o do navegador.
+export async function prepararIdiomaDoPainel(lang) { await loadDict(lang); setUiLang(lang); return lang; }
 
 // ── Voice of Gui — browser speechSynthesis, feature-detected (graceful no-op where
 // unsupported, no deps). NEVER autoplays: every call sits behind a user gesture.

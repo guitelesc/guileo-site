@@ -131,6 +131,11 @@ Nome próprio do produto (como o Guileo Pulse; não se traduz) — `productSyste
 - **Leitura:** `direct_metricas(p_secret,p_email,p_dias)` (só service_role) → `/api/meta-comentarios`
   (lista + `action:"metricas"`, 7/30/90 dias) → `src/portal/DirectMetricas.jsx`. Os conselhos ("o que
   melhorar") são regras puras em `src/portal/directConselhos.js`, cada uma nascida de um caso real.
+- **Duas telas, um painel:** o cliente vê o dele no portal (aba de comentários); o Luis vê TODOS em
+  `/admin` → aba 💬 Guileo Direct (`src/components/AdminDirect.jsx`). A porta do admin é a mesma API com
+  `admin_token` (senha do /admin via `blitz_stats`); a lista de clientes vem de `meta_accounts` +
+  `meta_comment_campaigns` com a service_role (sem ela → erro, nunca lista vazia). Clicar num cliente abre o
+  MESMO `DirectMetricas`. A ordem da tabela é `ordemDeAtencao` (directConselhos.js, testada).
 - **"Não sei" não é zero:** antes da medição ao vivo, conversa e denominador aparecem como "—"; sem link,
   lead é "—". Erro de leitura volta `metricas:null` + motivo, nunca um funil de zeros.
 

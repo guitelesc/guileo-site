@@ -38,6 +38,7 @@ const T = {
     anyoneReview: "No preference — the first professional free at this time",
     bookingWith: (n) => `Booking with ${n}`, seeAll: "See everyone", onlyWith: (n) => `With ${n}`,
     proGone: "This professional isn't available for online booking. Choose someone else or “No preference”.",
+    addOns: "Add something?", addOnsHint: "Optional — done in the same visit.", total: "Total", addOnsRow: "Add-ons",
   },
   pt: {
     book: "Agende seu horário", chooseService: "Escolha o serviço", chooseTime: "Escolha o dia e o horário",
@@ -60,6 +61,7 @@ const T = {
     anyoneReview: "Sem preferência — a primeira profissional livre nesse horário",
     bookingWith: (n) => `Agendando com ${n}`, seeAll: "Ver toda a equipe", onlyWith: (n) => `Com ${n}`,
     proGone: "Esta profissional não está disponível para agendamento online. Escolha outra pessoa ou “Sem preferência”.",
+    addOns: "Quer acrescentar algo?", addOnsHint: "Opcional — feito no mesmo atendimento.", total: "Total", addOnsRow: "Adicionais",
   },
   es: {
     book: "Reserva tu cita", chooseService: "Elige el servicio", chooseTime: "Elige el día y la hora",
@@ -82,6 +84,7 @@ const T = {
     anyoneReview: "Sin preferencia — la primera profesional libre a esa hora",
     bookingWith: (n) => `Reservando con ${n}`, seeAll: "Ver todo el equipo", onlyWith: (n) => `Con ${n}`,
     proGone: "Esta profesional no está disponible para reservas en línea. Elige a otra persona o “Sin preferencia”.",
+    addOns: "¿Quieres añadir algo?", addOnsHint: "Opcional — en la misma cita.", total: "Total", addOnsRow: "Adicionales",
   },
 };
 const LOCALE = { en: "en-US", pt: "pt-BR", es: "es-ES" };
@@ -168,7 +171,11 @@ export default function Agendar() {
   const [equipe, setEquipe] = useState([]);
   const [pro, setPro] = useState("");
   const [escolha, setEscolha] = useState(false);
-  const [proLink, setProLink] = useState("");      // ?pro= reconhecido → "Agendando com …" e só os serviços dela
+  const [proLink, setProLink] = useState("");
+  // ADICIONAIS (desk_v17): o que o site oferece e o que a cliente marcou. O servidor confere os ids e soma os minutos.
+  const [adLista, setAdLista] = useState([]);
+  const [ads, setAds] = useState(() => new Set());
+  const adsRef = useRef(ads);   // cliques seguidos (antes do redesenho) partem da seleção mais nova      // ?pro= reconhecido → "Agendando com …" e só os serviços dela
 
   useEffect(() => { try { document.documentElement.lang = lang; } catch { /* sem DOM */ } }, [lang]);
 
@@ -194,6 +201,7 @@ export default function Agendar() {
         const base = Array.isArray(d.precos) && d.precos.length ? d.precos : d.servicos;
         const list = base.map((s) => (typeof s === "string" ? { name: s } : s)).filter((s) => s && s.name);
         setServices(list);
+        setAdLista(Array.isArray(d.adicionais) ? d.adicionais.filter((a) => a && a.id && a.name) : []);
         const eq = Array.isArray(d.equipe) ? d.equipe.filter((p) => p && p.id && p.name) : [];
         setEquipe(eq);
         // ?pro=<id ou nome> — o link de UMA profissional que a dona manda. Não achou (ou ela não marca pelo site): segue normal, com aviso.
@@ -230,7 +238,7 @@ export default function Agendar() {
         name: s.name,
         minutes: Number(s.duration_min || e.duration_min) || 0,
         category: (s.category || e.category || e.categoria || "").toString().trim(),
-        price: money(cents),
+        price: money(cents), priceCents: Number(cents) || 0,
         priceKnown: known || s.price_cents !== undefined,
         description: (e.description || e.descricao || "").toString(),
       };
@@ -258,12 +266,13 @@ export default function Agendar() {
   // O servidor devolve `dias` (dias com vaga, até 30) e, pedindo `dia`, TODAS as vagas daquele dia.
   const [diasComVaga, setDiasComVaga] = useState(() => new Set());
   const [diasLidos, setDiasLidos] = useState(() => new Set());
-  const loadSlots = (service, quem = pro) => {
+  const loadSlots = (service, quem = pro, comAds = ads) => {
+    const adsCorpo = comAds && comAds.size ? { adicionais: [...comAds] } : {};
     setSlotsState("loading"); setSlots([]); setSlot(null); setDay(""); setDiasComVaga(new Set()); setDiasLidos(new Set());
-    return post({ slug, op: "horarios", servico: service.name, ...(quem ? { pro_id: quem } : {}) })
+    return post({ slug, op: "horarios", servico: service.name, ...(quem ? { pro_id: quem } : {}), ...adsCorpo })
       .then(({ d }) => {
         // a profissional saiu do site (ou o id não vale mais): volta para "sem preferência", com aviso
-        if (d && d.error === "pro_not_found" && quem) { setPro(""); setNotice("pro_gone"); loadSlots(service, ""); return; }
+        if (d && d.error === "pro_not_found" && quem) { setPro(""); setNotice("pro_gone"); loadSlots(service, "", comAds); return; }
         if (!d || d.ok !== true || !Array.isArray(d.slots)) { setSlotsState("error"); return; }
         setEscolha(d.escolha === true);
         const valid = d.slots.filter((s) => s && s.start && !Number.isNaN(new Date(s.start).getTime()));
@@ -274,7 +283,7 @@ export default function Agendar() {
           // o 1º dia pode ter mais vagas que as 12 da primeira leitura: completa aquele dia inteiro
           const primeiro = dayKey(new Date(valid[0].start), tz);
           setDay(primeiro); setDiasLidos(new Set([primeiro]));
-          post({ slug, op: "horarios", servico: service.name, dia: primeiro, ...(quem ? { pro_id: quem } : {}) }).then(({ d: d2 }) => {
+          post({ slug, op: "horarios", servico: service.name, dia: primeiro, ...(quem ? { pro_id: quem } : {}), ...adsCorpo }).then(({ d: d2 }) => {
             if (!d2 || d2.ok !== true || !Array.isArray(d2.slots)) return;
             setSlots((atual) => { const vistos = new Set(atual.map((x) => `${x.start}|${x.pro || ""}`)); return [...atual, ...d2.slots.filter((x) => x && x.start && !vistos.has(`${x.start}|${x.pro || ""}`))]; });
           }).catch(() => {});
@@ -286,7 +295,7 @@ export default function Agendar() {
     setDay(key); setSlot(null);
     if (!svc || diasLidos.has(key)) return;
     setDiasLidos((x) => new Set(x).add(key));
-    post({ slug, op: "horarios", servico: svc.name, dia: key, ...(pro ? { pro_id: pro } : {}) }).then(({ d }) => {
+    post({ slug, op: "horarios", servico: svc.name, dia: key, ...(pro ? { pro_id: pro } : {}), ...(ads.size ? { adicionais: [...ads] } : {}) }).then(({ d }) => {
       if (!d || d.ok !== true || !Array.isArray(d.slots)) return;
       const novos = d.slots.filter((s) => s && s.start && !Number.isNaN(new Date(s.start).getTime()));
       setSlots((atual) => { const vistos = new Set(atual.map((s) => `${s.start}|${s.pro || ""}`)); return [...atual, ...novos.filter((s) => !vistos.has(`${s.start}|${s.pro || ""}`))]; });
@@ -302,6 +311,10 @@ export default function Agendar() {
     setSvc(s); setNotice((n) => (n === "pro_gone" ? n : "")); setStep(2); loadSlots(s, quem);
   };
   const escolherPro = (id) => { if (id === pro) return; setPro(id); setNotice(""); if (svc) loadSlots(svc, id); };
+  const alternarAd = (id) => { const n = new Set(adsRef.current); if (n.has(id)) n.delete(id); else n.add(id); adsRef.current = n; setAds(n); setNotice(""); if (svc) loadSlots(svc, pro, n); };
+  const adsEscolhidos = adLista.filter((a) => ads.has(a.id));
+  const minAds = adsEscolhidos.reduce((s, a) => s + (Number(a.duration_min) || 0), 0);
+  const precoAds = adsEscolhidos.reduce((s, a) => s + (Number(a.price_cents) || 0), 0);
   const proAtual = equipe.find((p) => p.id === pro) || null;
   const minDela = (p, s) => { const x = p && s ? (p.services || []).find((y) => norm(y.name) === norm(s.name)) : null; return x ? Number(x.duration_min) || 0 : 0; };
   // "MARCAR DE NOVO" (2026-10-05): a área da cliente (/minha-conta) manda ?servico=<nome>. Achando o serviço
@@ -347,7 +360,7 @@ export default function Agendar() {
     if (sending || !svc || !slot) return;
     setSending(true); setNotice("");
     try {
-      const { status, d } = await post({ slug, op: "marcar", consentimento: { sms: ofertas, call: ofertas }, servico: svc.name, quando: slot.start, ...(pro ? { pro_id: pro } : {}), nome: nome.trim(), telefone: tel.trim(), lang, ...(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailCli.trim()) ? { email: emailCli.trim() } : {}) });
+      const { status, d } = await post({ slug, op: "marcar", consentimento: { sms: ofertas, call: ofertas }, servico: svc.name, quando: slot.start, ...(pro ? { pro_id: pro } : {}), ...(ads.size ? { adicionais: [...ads] } : {}), nome: nome.trim(), telefone: tel.trim(), lang, ...(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailCli.trim()) ? { email: emailCli.trim() } : {}) });
       if (d && d.error === "call_to_book") { setCallToBook(true); return; }
       // 🚨 comprovante ou nada
       // SINAL (2026-10-05): `deposito` só vem quando o servidor abriu o link no Stripe do negócio. Sem ele,
@@ -355,7 +368,7 @@ export default function Agendar() {
       const dep = d && d.ok === true && d.deposito && /^https:\/\//.test(String(d.deposito.url || "")) && Number(d.deposito.cents) > 0
         ? { url: String(d.deposito.url), cents: Number(d.deposito.cents), janelaH: Number(d.deposito.janela_h) > 0 ? Math.round(Number(d.deposito.janela_h)) : 0 } : null;
       if (d && d.error === "pro_not_found") { setPro(""); setNotice("pro_gone"); setStep(2); loadSlots(svc, ""); return; }
-      if (d && d.ok === true && d.id) { setResult({ id: String(d.id), quando: d.quando || slot.start, deposito: dep, profissional: d.profissional || proAtual?.name || "" }); return; }
+      if (d && d.ok === true && d.id) { setResult({ id: String(d.id), quando: d.quando || slot.start, deposito: dep, profissional: d.profissional || proAtual?.name || "", adicionais: adsEscolhidos.map((a) => a.name) }); return; }
       if (d && Array.isArray(d.slots) && d.slots.length) {
         const valid = d.slots.filter((s) => s && s.start && !Number.isNaN(new Date(s.start).getTime()));
         setSlots(valid); setSlot(null);
@@ -371,7 +384,7 @@ export default function Agendar() {
 
   const downloadIcs = () => {
     if (!result || !svc) return;
-    const text = icsFile({ title: `${svc.name} — ${bizName}`, startIso: result.quando, minutes: minDela(proAtual, svc) || svc.minutes || 60, location: address, uid: result.id });
+    const text = icsFile({ title: `${svc.name} — ${bizName}`, startIso: result.quando, minutes: (minDela(proAtual, svc) || svc.minutes || 60) + minAds, location: address, uid: result.id });
     const blob = new Blob([text], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -380,7 +393,7 @@ export default function Agendar() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  const restart = () => { setResult(null); setCallToBook(false); setSvc(null); setSlot(null); setStep(1); setNotice(""); setPro(proLink || ""); };
+  const restart = () => { setResult(null); setCallToBook(false); setSvc(null); setSlot(null); setStep(1); setNotice(""); setPro(proLink || ""); adsRef.current = new Set(); setAds(adsRef.current); };
 
   // ── render helpers ────────────────────────────────────────────────────────────────────────
   const S = {
@@ -454,6 +467,7 @@ export default function Agendar() {
         <Row k={t.service} v={svc && svc.name} />
         <Row k={t.when} v={fmtFull(result.quando)} />
         {result.profissional ? <Row k={t.pro} v={result.profissional} /> : null}
+        {result.adicionais && result.adicionais.length ? <Row k={t.addOnsRow} v={result.adicionais.join(", ")} /> : null}
         <Row k={t.ref} v={<code style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 13 }}>{result.id}</code>} />
         {address ? <Row k="" v={address} /> : null}
         <button type="button" onClick={downloadIcs} style={dep ? { ...S.btn, marginTop: 20, background: "transparent", color: C.accent, border: `1px solid ${C.accent}` } : { ...S.btn, marginTop: 20 }}>{t.addCal}</button>
@@ -525,6 +539,28 @@ export default function Agendar() {
         <button type="button" onClick={() => { setStep(1); setNotice(""); }} style={S.ghost}>‹ {t.back}</button>
         <h2 style={{ ...S.h2, marginTop: 6 }}>{t.chooseTime}</h2>
         <div style={{ ...S.muted, margin: "-6px 0 14px", color: C.ink, fontWeight: 600 }}>{svc && svc.name}{proAtual && minDela(proAtual, svc) ? <span style={{ fontWeight: 400, color: C.soft }}> · {minDela(proAtual, svc)} {t.min}</span> : null}</div>
+        {adLista.length ? (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ ...S.label, fontWeight: 600, color: C.ink, marginBottom: 2 }}>{t.addOns}</div>
+            <div style={{ ...S.muted, fontSize: 12, marginBottom: 8 }}>{t.addOnsHint}</div>
+            <div style={{ display: "grid", gap: 8 }}>
+              {adLista.map((a) => {
+                const on = ads.has(a.id);
+                return (
+                  <button key={a.id} type="button" role="checkbox" aria-checked={on} onClick={() => alternarAd(a.id)}
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderRadius: 14, cursor: "pointer", fontFamily: FONT, textAlign: "left",
+                      border: `1px solid ${on ? C.accent : C.line}`, background: on ? C.accentSoft : C.card, color: C.ink }}>
+                    <span aria-hidden style={{ width: 20, height: 20, borderRadius: 6, flex: "0 0 auto", display: "grid", placeItems: "center", fontSize: 13, fontWeight: 700,
+                      border: `1.5px solid ${on ? C.accent : "#C9C2B6"}`, background: on ? C.accent : "#fff", color: "#fff" }}>{on ? "✓" : ""}</span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600 }}>{a.name}</span>
+                    <span style={{ fontSize: 13, color: C.soft, whiteSpace: "nowrap" }}>{[a.duration_min ? `+${a.duration_min} ${t.min}` : "", a.price_cents ? `+${money(a.price_cents)}` : ""].filter(Boolean).join(" · ")}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {ads.size ? <div style={{ ...S.muted, fontSize: 13, marginTop: 8, color: C.ink }}>{t.total}: {(minDela(proAtual, svc) || minSvc || 0) + minAds} {t.min}{svc && svc.priceCents ? ` · ${money(svc.priceCents + precoAds)}` : ""}</div> : null}
+          </div>
+        ) : null}
         {escolha && quemFaz.length >= 2 ? (
           <div style={{ marginBottom: 16 }}>
             <div style={{ ...S.label, fontWeight: 600, color: C.ink }}>{t.withWhom}</div>
@@ -632,6 +668,8 @@ export default function Agendar() {
           <Row k={t.service} v={svc && svc.name} />
           <Row k={t.when} v={slot ? `${fmtFull(slot.start)}${!escolha && slot.pro ? ` · ${t.with} ${slot.pro}` : ""}` : ""} />
           {escolha ? <Row k={t.pro} v={proAtual ? proAtual.name : t.anyoneReview} /> : null}
+          {adsEscolhidos.length ? <Row k={t.addOnsRow} v={adsEscolhidos.map((a) => a.name).join(", ")} /> : null}
+          {adsEscolhidos.length && svc && svc.priceCents ? <Row k={t.total} v={`${money(svc.priceCents + precoAds)} · ${(minDela(proAtual, svc) || svc.minutes || 0) + minAds} ${t.min}`} /> : null}
           <Row k={t.name} v={nome} />
           <Row k={t.phone} v={tel} />
           {notice ? <div role="status" style={{ background: C.warnSoft, color: C.warn, borderRadius: 12, padding: "12px 14px", fontSize: 14, marginTop: 12 }}>{notice === "pro_gone" ? t.proGone : notice}</div> : null}

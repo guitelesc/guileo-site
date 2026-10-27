@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+// O painel do Direct puxa o Portal.jsx (tr/Card) — carregado só quando a aba abre, pra não engordar o /admin.
+const AdminDirect = lazy(() => import("../components/AdminDirect.jsx"));
 import { createClient } from "@supabase/supabase-js";
 import { useLang } from "../i18n.jsx";
 import Broto from "../components/Broto.jsx";
@@ -511,6 +513,7 @@ export default function Admin() {
     { key: "jornada", icon: "🧭", label: "Jornada" },
     { key: "clientes", icon: "👥", label: "Clientes & Vendas" },
     { key: "companyos", icon: "🏢", label: "Company OS" },
+    { key: "direct", icon: "💬", label: "Guileo Direct" },
     { key: "integracoes", icon: "🔌", label: "Integrações" },
     { key: "demo", icon: "🎬", label: "Demo Engine" },
     { key: "suporte", icon: "🎧", label: "Suporte & Ops" },
@@ -1112,6 +1115,15 @@ export default function Admin() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ═════════════════════ 💬 GUILEO DIRECT — todos os clientes ═════════════════════ */}
+        {tab === "direct" && (
+          <div className="mt-5">
+            <Suspense fallback={<p className="text-[13px] text-g-muted">Carregando…</p>}>
+              <AdminDirect token={token} />
+            </Suspense>
           </div>
         )}
 

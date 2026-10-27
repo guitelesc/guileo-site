@@ -770,10 +770,14 @@ export async function onRequestPost(context) {
       // A agente pede 6 vagas (fala poucas opções). A página pública de agendamento pede uma janela
       // maior (`days`/`limit`) para montar o calendário — só quem manda os campos recebe mais.
       const pedeJanela = Number.isFinite(Number(b.limit)) && Number(b.limit) > 6;
-      const av = await rpc(env, "biz_availability", {
+      // ADICIONAIS NA PÁGINA PÚBLICA (desk_v17): os minutos a mais entram na conta de "cabe" (biz_availability_x).
+      // Só a janela longa (página) usa; a agente segue no biz_availability de sempre.
+      const extra = pedeJanela ? Math.min(Math.max(parseInt(b.extra_min, 10) || 0, 0), 240) : 0;
+      const av = await rpc(env, extra ? "biz_availability_x" : "biz_availability", {
         p_email: email, p_service_id: svc.id, p_location_id: loc?.id || null, p_pro_id: pro?.id || null,
         p_limit: pedeJanela ? Math.min(Number(b.limit), 300) : 6,
         ...(pedeJanela ? { p_days: Math.min(Math.max(parseInt(b.days, 10) || 14, 1), 30) } : {}),
+        ...(extra ? { p_extra_min: extra } : {}),
       });
       // a página pública (janela longa) recebe também QUEM e QUANTO TEMPO (a duração dela, regra profissional × serviço)
       const slots = (av.slots || []).map((s) => ({ start: s.start, pro: s.pro, location: s.location, ...(pedeJanela ? { pro_id: s.pro_id || null, duration_min: s.duration_min || null } : {}) }));

@@ -25,6 +25,11 @@
 // pelo site" some da escolha E do "Sem preferência": os horários dela são filtrados aqui. Sem preferência, a
 // marcação tenta as profissionais visíveis livres naquele horário, uma a uma — quem não escolhe não perde vaga.
 // Com pro_id, marca com ELA (antes a tela mostrava "10:00 · Bia" e o motor podia marcar a Ana às 10:00).
+//
+// ADICIONAIS (2026-10-23, desk_v17): `menu.adicionais` vem de vitrine_addons; `horarios`/`marcar` aceitam `adicionais`
+// (ids). O SERVIDOR confere os ids contra a lista e soma os minutos (nunca o navegador): os horários saem só os que
+// CABEM com o tempo a mais (biz_availability_x) e a marcação manda os ids ao motor (attributes.addons → biz_book
+// valida, grava o retrato e soma os minutos).
 //        (+ `deposito:{url,cents,janela_h?}` quando o serviço tem sinal e o negócio cobra online)
 //
 // ⚠️ "marcar" devolve o COMPROVANTE (id da reserva) ou uma falha honesta. "ok" sem id é promessa
@@ -39,6 +44,22 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Quem o site pode mostrar (desk_v16). null = NÃO SEI (rota sem o SQL, banco fora) → a página segue como antes,
 // sem escolha e sem filtro; [] = a dona tirou todo mundo do site.
+// Adicionais que o site pode oferecer (desk_v17). null = não sei (sem o SQL) → a página não oferece nenhum.
+async function adicionaisDoSite(env, dono) {
+  try {
+    const r = await svcRpc(env, "vitrine_addons", { p_tenant: dono });
+    if (!r || !r.ok) return null;
+    const d = await r.json().catch(() => null);
+    return Array.isArray(d) ? d : null;
+  } catch { return null; }
+}
+// ids pedidos ∩ lista do servidor → { ids, minutos }
+async function conferirAdicionais(env, dono, pedidos) {
+  const lista = Array.isArray(pedidos) && pedidos.length ? await adicionaisDoSite(env, dono) : null;
+  const validos = (lista || []).filter((a) => pedidos.map((x) => String(x).toLowerCase()).includes(String(a.id).toLowerCase())).slice(0, 5);
+  return { ids: validos.map((a) => a.id), minutos: validos.reduce((s, a) => s + (Number(a.duration_min) || 0), 0) };
+}
+
 async function equipeDoSite(env, dono) {
   try {
     const r = await svcRpc(env, "vitrine_pros", { p_tenant: dono });
@@ -95,8 +116,8 @@ export async function onRequestPost({ request, env }) {
       if (!r.ok) return json({ ok: false, error: `motor respondeu ${r.status}` }, 503);
       const d = await r.json().catch(() => null);
       if (!d) return json({ ok: false, error: "motor nao respondeu" }, 503);
-      const equipe = await equipeDoSite(env, dono);
-      return json({ ok: true, servicos: d.services || d.servicos || [], precos: Array.isArray(d.priced) ? d.priced : [], profissionais: d.professionals || [],
+      const [equipe, adicionais] = await Promise.all([equipeDoSite(env, dono), adicionaisDoSite(env, dono)]);
+      return json({ ok: true, ...(adicionais && adicionais.length ? { adicionais: adicionais.map((a) => ({ id: a.id, name: a.name, duration_min: Number(a.duration_min) || 0, price_cents: a.price_cents ?? null })) } : {}), servicos: d.services || d.servicos || [], precos: Array.isArray(d.priced) ? d.priced : [], profissionais: d.professionals || [],
         ...(equipe ? { equipe: equipe.map((p) => ({ id: p.id, name: p.name, title: p.title || "", color: p.color || "", services: (p.services || []).map((x) => ({ name: x.name, duration_min: x.duration_min, service_duration_min: x.service_duration_min })) })) } : {}) });
     }
     if (op === "horarios") {
@@ -117,7 +138,8 @@ export async function onRequestPost({ request, env }) {
       const equipe = await equipeDoSite(env, dono);
       const visiveis = equipe ? new Set(equipe.map((p) => String(p.id).toLowerCase())) : null;
       if (proId && visiveis && !visiveis.has(proId)) return json({ ok: false, error: "pro_not_found" }, 404);
-      const r = await motor({ op: "availability", service: servico, days: 30, limit: 300, pro_id: proId || undefined });
+      const extras = await conferirAdicionais(env, dono, b.adicionais);
+      const r = await motor({ op: "availability", service: servico, days: 30, limit: 300, pro_id: proId || undefined, extra_min: extras.minutos || undefined });
       if (!r.ok) return json({ ok: false, error: `motor respondeu ${r.status}` }, 503);
       const d = await r.json().catch(() => null);
       if (!d) return json({ ok: false, error: "motor nao respondeu" }, 503);
@@ -164,9 +186,11 @@ export async function onRequestPost({ request, env }) {
       const equipe = await equipeDoSite(env, dono);
       const visiveis = equipe ? new Set(equipe.map((p) => String(p.id).toLowerCase())) : null;
       if (proId && visiveis && !visiveis.has(proId)) return json({ ok: false, error: "pro_not_found" }, 404);
+      const extras = await conferirAdicionais(env, dono, b.adicionais);
+      const comAdicionais = extras.ids.length ? { addons: extras.ids } : undefined;
       let candidatas = proId ? [proId] : [null];
       if (!proId && visiveis) {
-        const ra = await motor({ op: "availability", service: servico, days: 30, limit: 300 });
+        const ra = await motor({ op: "availability", service: servico, days: 30, limit: 300, extra_min: extras.minutos || undefined });
         const da = ra.ok ? await ra.json().catch(() => null) : null;
         const alvo = new Date(quando).getTime();
         const livres = Array.isArray(da?.slots) && da.slots.every((x) => x && x.pro_id)
@@ -180,7 +204,7 @@ export async function onRequestPost({ request, env }) {
       const nomeDe = (id) => (equipe || []).find((p) => String(p.id).toLowerCase() === id)?.name || "";
       let r = null, d = null, id = null, quem = "";
       for (const c of candidatas) {
-        r = await motor({ op: "book", service: servico, when: quando, name: nome, contact: tel, channel: "web", email: emailCliente, pro_id: c || undefined });
+        r = await motor({ op: "book", service: servico, when: quando, name: nome, contact: tel, channel: "web", email: emailCliente, pro_id: c || undefined, attributes: comAdicionais });
         if (!r.ok) return json({ ok: false, error: `motor respondeu ${r.status}` }, 503);
         d = await r.json().catch(() => null);
         id = d && (d.appointment_id || d.id || d.booking_id);

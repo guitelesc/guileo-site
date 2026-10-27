@@ -59,7 +59,7 @@ async function passada(env, { soTenant = "" } = {}) {
   const gasta = (n = 1) => { out.gasto += n; };
   const fila = await svcJson(env, "consulta_followup_due_all", { p_secret: env.SCHED_SECRET || "", p_limit: 40, p_so_tenant: soTenant || null }); gasta();
   if (!fila || !Array.isArray(fila.due)) {
-    out.ok = false; out.erros.push(`fila:${(fila && (fila.erro_http || fila.error || fila.detalhe)) || JSON.stringify(fila || null).slice(0, 80)}`); return out;
+    out.ok = false; out.erros.push(`fila:${(fila && (fila.erro_http || fila.detalhe)) || JSON.stringify(fila || null).slice(0, 80)}`); return out;
   }
   out.naFila = fila.due.length;
   if (!fila.due.length) return out;
