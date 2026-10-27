@@ -38,6 +38,7 @@ const T = {
   pros: { en: "Professionals", pt: "Profissionais", es: "Profesionales", hi: "प्रोफ़ेशनल" },
   rooms: { en: "Rooms & equipment", pt: "Salas e equipamentos", es: "Salas y equipos", hi: "कमरे और उपकरण" },
   roomsHint: { en: "A treatment room or machine that can only be in one booking at a time. Say which services need it in the Services tab.", pt: "Uma sala ou aparelho que só pode estar em um atendimento por vez. Diga quais serviços precisam dela na aba Serviços.", es: "Una sala o equipo que solo puede estar en una reserva a la vez. Indica qué servicios la necesitan en la pestaña Servicios.", hi: "एक कमरा या मशीन जो एक समय में एक ही बुकिंग में हो सकती है। सेवाएँ टैब में बताएँ कि किन सेवाओं को इसकी ज़रूरत है।" },
+  roomsHintSeats: { en: "A treatment room or machine that can only be in one booking at a time (a couples room takes the couple together — set its seats). Say which services need it in the Services tab.", pt: "Uma sala ou aparelho que só pode estar em um atendimento por vez (a sala de casal recebe o casal junto — ajuste os lugares dela). Diga quais serviços precisam dela na aba Serviços.", es: "Una sala o equipo que solo puede estar en una reserva a la vez (la sala de parejas recibe a la pareja junta — ajusta sus lugares). Indica qué servicios la necesitan en la pestaña Servicios.", hi: "एक कमरा या मशीन जो एक समय में एक ही बुकिंग में हो सकती है (कपल रूम में कपल साथ — उसकी सीटें सेट करें)। सेवाएँ टैब में बताएँ कि किन सेवाओं को इसकी ज़रूरत है।" },
   addPro: { en: "+ Add professional", pt: "+ Adicionar profissional", es: "+ Agregar profesional", hi: "+ प्रोफ़ेशनल जोड़ें" },
   addRoom: { en: "+ Add room or equipment", pt: "+ Adicionar sala ou equipamento", es: "+ Agregar sala o equipo", hi: "+ कमरा या उपकरण जोड़ें" },
   noPros: { en: "No professionals yet. Add the first one to start booking.", pt: "Ainda não há profissionais. Adicione a primeira para começar a marcar.", es: "Aún no hay profesionales. Agrega la primera para empezar a reservar.", hi: "अभी कोई प्रोफ़ेशनल नहीं है। बुकिंग शुरू करने के लिए पहला जोड़ें।" },
@@ -46,6 +47,11 @@ const T = {
   newRoom: { en: "New room or equipment", pt: "Nova sala ou equipamento", es: "Nueva sala o equipo", hi: "नया कमरा या उपकरण" },
   roomDesc: { en: "Description", pt: "Descrição", es: "Descripción", hi: "विवरण" },
   roomTitlePh: { en: "e.g. Massage room, Laser machine", pt: "ex.: Sala de massagem, Máquina de laser", es: "ej.: Sala de masajes, Máquina láser", hi: "जैसे: मसाज रूम, लेज़र मशीन" },
+  // desk_v18: sala de casal — lugares só para quem é do MESMO pedido de casal/grupo
+  seats: { en: "Seats", pt: "Lugares", es: "Lugares", hi: "सीटें" },
+  seatsHint: { en: "How many people from the SAME couple/group booking can use it at once (e.g. Couples room = 2). People booked separately never share it — 1 person alone takes the whole room.", pt: "Quantas pessoas do MESMO agendamento de casal/grupo usam ao mesmo tempo (ex.: Sala de casal = 2). Quem marcou separado nunca divide — 1 pessoa sozinha ocupa a sala inteira.", es: "Cuántas personas de la MISMA reserva de pareja/grupo la usan a la vez (ej.: Sala de parejas = 2). Quien reservó aparte nunca la comparte — 1 persona sola ocupa toda la sala.", hi: "एक ही कपल/ग्रुप बुकिंग के कितने लोग एक साथ इस्तेमाल कर सकते हैं (जैसे कपल रूम = 2)। अलग बुकिंग वाले कभी साझा नहीं करते।" },
+  seatsN: { en: "{n} seats", pt: "{n} lugares", es: "{n} lugares", hi: "{n} सीटें" },
+  seatsBad: { en: "Seats: a number from 1 to 6.", pt: "Lugares: um número de 1 a 6.", es: "Lugares: un número del 1 al 6.", hi: "सीटें: 1 से 6 तक की संख्या।" },
   roomLocHint: { en: "None checked = can be used at every location.", pt: "Nenhuma marcada = pode ser usada em todas as unidades.", es: "Ninguna marcada = se puede usar en todas las sedes.", hi: "कोई नहीं चुना = हर लोकेशन पर इस्तेमाल हो सकता है।" },
   usedBy: { en: "Needed by", pt: "Usada por", es: "La usan", hi: "इन सेवाओं में ज़रूरी" },
   usedByNone: { en: "No service needs it yet — set it in the Services tab.", pt: "Nenhum serviço precisa dela ainda — marque na aba Serviços.", es: "Ningún servicio la necesita aún — márcalo en la pestaña Servicios.", hi: "अभी किसी सेवा को इसकी ज़रूरत नहीं — सेवाएँ टैब में चुनें।" },
@@ -218,6 +224,7 @@ const AMOSTRA = (() => {
       { id: "P1", name: "Ana", title: "Massage therapist", kind: "staff", color: "#2FE39A", commission_service_pct: 40, commission_product_pct: 10, locations: ["L1"], services: ["S1"], hours: h("L1") },
       { id: "P2", name: "Bianca", title: "Esthetician", kind: "staff", color: "#3FB4FF", commission_service_pct: 35, commission_product_pct: 10, locations: ["L1"], services: ["S2"], hours: h("L1") },
       { id: "R1", name: "Room 1", title: "", kind: "room", color: "#8E8A80", commission_service_pct: 0, commission_product_pct: 0, locations: ["L1"], services: [], hours: [] },
+      { id: "R2", name: "Couples room", title: "", kind: "room", color: "#8E8A80", commission_service_pct: 0, commission_product_pct: 0, locations: ["L1"], services: [], hours: [], lugares: 2 },
     ],
     // desk_v10: a Ana faz a massagem em 50 min, com 10 de preparo, e ganha 50,00 fixo por atendimento.
     pro_rules: [{ pro_id: "P1", service_id: "S1", duration_min: 50, prep_min: 10, finish_min: null, pay_type: "flat", pay_amount: 5000 }],
@@ -574,6 +581,7 @@ function AbaEquipe({ dados, enviar, mudou }) {
             {!sala && (Number(p.commission_service_pct) || Number(p.commission_product_pct)) ? ` · ${Number(p.commission_service_pct) || 0}% / ${Number(p.commission_product_pct) || 0}%` : ""}
             {!sala && regrasDe(p.id).length ? ` · ${regrasDe(p.id).length} ${regrasDe(p.id).length === 1 ? t("ownRule") : t("ownRules")}` : ""}
             {!sala && p.online === false ? <span className="text-g-gold"> · {t("offline")}</span> : null}
+            {sala && Number(p.lugares) > 1 ? ` · 👥 ${tv("seatsN", { n: p.lugares })}` : ""}
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -598,7 +606,7 @@ function AbaEquipe({ dados, enviar, mudou }) {
         <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
           <div>
             <div className="text-sm font-extrabold text-g-word">{t("rooms")} <span className="text-g-muted font-normal">· {salas.length}</span></div>
-            <div className="text-[11px] text-g-muted">{t("roomsHint")}</div>
+            <div className="text-[11px] text-g-muted">{t(pros.some((p) => p && "lugares" in p) ? "roomsHintSeats" : "roomsHint")}</div>
           </div>
           <button onClick={() => setEditando({ kind: "room" })} className={btnLinha}>{t("addRoom")}</button>
         </div>
@@ -606,7 +614,7 @@ function AbaEquipe({ dados, enviar, mudou }) {
       </Card>
 
       {editando && (
-        <PainelPro pro={editando} services={services} locations={locations} enviar={enviar} usadaPor={usadaPor} rules={editando.id ? regrasDe(editando.id) : []} tz={locations[0]?.tz}
+        <PainelPro pro={editando} comLugares={pros.some((p) => p && "lugares" in p)} services={services} locations={locations} enviar={enviar} usadaPor={usadaPor} rules={editando.id ? regrasDe(editando.id) : []} tz={locations[0]?.tz}
           onClose={fechaEdicao}
           onSaved={(id, criado, base) => { setEditando(null); mudou(); if (criado && base.kind !== "room") setHorario({ ...base, id, hours: [] }); }} />
       )}
@@ -616,7 +624,7 @@ function AbaEquipe({ dados, enviar, mudou }) {
   );
 }
 
-function PainelPro({ pro, services, locations, enviar, usadaPor = () => [], rules = [], tz, onClose, onSaved }) {
+function PainelPro({ pro, comLugares = false, services, locations, enviar, usadaPor = () => [], rules = [], tz, onClose, onSaved }) {
   const novo = !pro.id;
   // PROFISSIONAL × SERVIÇO (desk_v10): a regra dela por serviço marcado. Campo vazio = padrão do serviço / comissão geral.
   const [regras, setRegras] = useState(() => Object.fromEntries(rules.map((r) => [r.service_id, {
@@ -636,6 +644,7 @@ function PainelPro({ pro, services, locations, enviar, usadaPor = () => [], rule
   const [cor, setCor] = useState(pro.color || (ehSala(pro) ? CORES[7] : CORES[0]));
   const [ativo, setAtivo] = useState(true);
   const [online, setOnline] = useState(pro.online !== false);   // desk_v16: aparece e é marcada pelo /agendar
+  const [lugares, setLugares] = useState(String(pro.lugares ?? 1));   // desk_v18: sala de casal
   const [cs, setCs] = useState(String(pro.commission_service_pct ?? 0));
   const [cp, setCp] = useState(String(pro.commission_product_pct ?? 0));
   const [svcs, setSvcs] = useState(() => new Set(pro.services || []));
@@ -655,6 +664,12 @@ function PainelPro({ pro, services, locations, enviar, usadaPor = () => [], rule
     // Equipamento continua 'room' (o motor aceita 'equipment' também, mas as outras telas leem 'room').
     const corpo = { name: nome.trim(), title: cargo.trim(), kind: tipo === "room" && pro.kind === "equipment" ? "equipment" : tipo, color: cor, active: ativo, locations: [...locs], ...(mostraServicos ? { services: [...svcs] } : {}) };
     if (tipo === "staff") { corpo.commission_service_pct = ncs; corpo.commission_product_pct = ncp; corpo.online = online; }
+    // desk_v18: só manda (e só mostra) quando o banco já devolve `lugares` — antes do SQL, "Salvo" seria mentira.
+    if (tipo === "room" && comLugares) {
+      const nl = Number(lugares);
+      if (!Number.isInteger(nl) || nl < 1 || nl > 6) { toast(t("seatsBad")); return; }
+      corpo.lugares = nl;
+    }
     // As regras por serviço vão SEMPRE para os serviços marcados (vazio = null = volta ao padrão).
     if (tipo === "staff" && mostraServicos) {
       const n = (v) => (String(v).trim() === "" ? null : Number(String(v).replace(",", ".")));
@@ -714,6 +729,12 @@ function PainelPro({ pro, services, locations, enviar, usadaPor = () => [], rule
               <span className="block text-sm font-bold text-g-word">{t("online")}</span>
               <span className="block text-[11px] text-g-muted mt-0.5">{t("onlineHint")}</span>
             </span>
+          </label>
+        )}
+        {tipo === "room" && comLugares && (
+          <label className={rotulo}>{t("seats")}
+            <input value={lugares} onChange={(e) => setLugares(e.target.value.replace(/\D/g, "").slice(0, 1))} inputMode="numeric" className={`${campo} block max-w-[6rem]`} />
+            <div className={dica}>{t("seatsHint")}</div>
           </label>
         )}
         {tipo === "room" && pro.id && (
