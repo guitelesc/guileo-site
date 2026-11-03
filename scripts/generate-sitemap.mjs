@@ -2,15 +2,15 @@
 // (verticals × cities matrix, blog, static) so the sitemap never goes stale when we add a
 // city, vertical or combo page. Run: `npm run sitemap` (also wired into the build).
 import { writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, resolve } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 
-const { SEO_VERTICALS } = await import(resolve(root, "src/data/seoVerticals.js"));
-const { SEO_CITIES } = await import(resolve(root, "src/data/seoCities.js"));
-const { BLOG_POSTS } = await import(resolve(root, "src/data/blogPosts.js"));
+const { SEO_VERTICALS } = await import(pathToFileURL(resolve(root, "src/data/seoVerticals.js")));
+const { SEO_CITIES } = await import(pathToFileURL(resolve(root, "src/data/seoCities.js")));
+const { BLOG_POSTS } = await import(pathToFileURL(resolve(root, "src/data/blogPosts.js")));
 
 const SITE = "https://guileoai.com";
 // lastmod must reflect when CONTENT actually changed — stamping build-date on all 900+ URLs

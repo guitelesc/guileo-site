@@ -1,0 +1,10 @@
+/* Hides the native scrollbar on elements using `.scroll-clean` without disabling scrolling —
+   scoped to the Natura channels module only (imported once by NaturaDashboard.jsx), never
+   touches src/index.css or any other page's scrollbars. */
+.scroll-clean {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* old Edge/IE */
+}
+.scroll-clean::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, new Edge */
+}

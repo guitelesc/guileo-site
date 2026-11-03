@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:functions": "npx wrangler pages dev --port 8788 --compatibility-date=2026-06-01 --env-file=.env -- npm run dev",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "build": "node scripts/generate-sitemap.mjs && vite build",
     "lint": "eslint .",

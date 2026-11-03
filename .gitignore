@@ -45,3 +45,4 @@ scripts/.desk_e2e_key
 graphify-out/
 __pycache__/
 *.pyc
+.mcp.json

@@ -143,6 +143,8 @@ const AdminProjetos = lazyRetry(() => import("./pages/AdminProjetos")); // proje
 const AdminAgente = lazyRetry(() => import("./pages/AdminAgente")); // sync one tenant's voice agent with the admin password
 const AdminParceiros = lazyRetry(() => import("./pages/AdminParceiros")); // named partner accounts (CR-03)
 const ParceiroEntrar = lazyRetry(() => import("./pages/ParceiroEntrar")); // partner sign-in → one-time code → /portal as the client
+const NaturaLogin = lazyRetry(() => import("./pages/NaturaLogin")); // /natura — standalone login for the Natura channels module
+const NaturaDashboard = lazyRetry(() => import("./pages/NaturaDashboard")); // /natura/dashboard — email/WhatsApp/voice/SMS/FB/IG, own Supabase project
 const Agendar = lazyRetry(() => import("./pages/Agendar")); // /agendar/:slug — a cliente do negócio marca horário (público)
 const Formulario = lazyRetry(() => import("./pages/Formulario")); // /f/:id — ficha/termo público com assinatura
 const NaturaSetup = lazyRetry(() => import("./pages/NaturaSetup")); // /natura-setup — checklist que a Natura preenche (2026-10-18)
@@ -254,6 +256,8 @@ function GuileoApp() {
             <Route path="/proposta" element={<Proposta />} />
             <Route path="/parceiro" element={<Parceiro />} />
             <Route path="/parceiro/entrar" element={<ParceiroEntrar />} />
+            <Route path="/natura-channels" element={<NaturaLogin />} />
+            <Route path="/natura-channels/dashboard" element={<NaturaDashboard />} />
             <Route path="/academia" element={<Academia />} />
             <Route path="/cola" element={<Cola />} />
             <Route path="/roteiro" element={<Roteiro />} />
