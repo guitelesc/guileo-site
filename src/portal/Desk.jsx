@@ -224,13 +224,24 @@ const CANCELADO = (a) => a.status === "cancelled" || a.status === "late_cancelle
 const TZ0 = "America/New_York";
 
 // ── amostra (só fora de conta conectada) ─────────────────────────────────────────────────────
+// DEMO DA NATURA (2026-11-03): `/portal?tab=desk&demo=natura` mostra a agenda de exemplo com a cara do
+// cliente — unidade, profissionais e serviços/preços REAIS da lista da Natura (catálogo do agente), clientes
+// FICTÍCIOS. Nada é lido da conta real: é a mesma amostra, só com os nomes certos para o Luis apresentar.
+export const demoNatura = () => { try { return new URLSearchParams(window.location.search).get("demo") === "natura"; } catch { return false; } };
+
 export function amostra(dia) {
   const tz = TZ0;
-  const loc = { id: "L1", name: "Astoria", tz };
-  const pros = [["P1", "Ana", "Massage", "#7FB7A0"], ["P2", "Bianca", "Facials", "#D6C29A"], ["P3", "Carla", "Nails", "#C9A4FF"]].map(([id, name, title, color]) => ({ id, name, title, color, kind: "staff", locations: ["L1"], services: [], hours: [0, 1, 2, 3, 4, 5, 6].map((w) => ({ location_id: "L1", weekday: w, start_min: 540, end_min: 1140 })) }));
+  const natura = demoNatura();
+  const loc = { id: "L1", name: natura ? "Astoria · 30-79 Steinway St" : "Astoria", tz };
+  const prosBase = natura
+    ? [["P1", "Sarita", "Massage", "#7FB7A0"], ["P2", "Claudia", "Facials", "#D6C29A"], ["P3", "Kany", "Hair", "#C9A4FF"]]
+    : [["P1", "Ana", "Massage", "#7FB7A0"], ["P2", "Bianca", "Facials", "#D6C29A"], ["P3", "Carla", "Nails", "#C9A4FF"]];
+  const pros = prosBase.map(([id, name, title, color]) => ({ id, name, title, color, kind: "staff", locations: ["L1"], services: [], hours: [0, 1, 2, 3, 4, 5, 6].map((w) => ({ location_id: "L1", weekday: w, start_min: 540, end_min: 1140 })) }));
   // Sala de amostra exigida pela massagem (desk_v5_1): aparece em Equipe → Salas e equipamentos e no cartão "· Sala 1".
   pros.push({ id: "R1", name: "Sala 1", title: "", color: "#8E8A80", kind: "room", locations: ["L1"], services: [], hours: [] });
-  const services = [["S1", "Deep Tissue 60min", 60, 14000], ["S2", "Signature Facial", 75, 16500], ["S3", "Gel Manicure", 45, 5500], ["S4", "Aromatherapy", 10, 2000], ["S5", "Hot stone upgrade", 0, 1500]]
+  const services = (natura
+    ? [["S1", "Deep Tissue 60min", 60, 12500], ["S2", "Deep Pore Cleansing", 75, 13800], ["S3", "Haircut", 45, 6000], ["S4", "Aromatherapy", 10, 2000], ["S5", "Hot stone upgrade", 0, 1500]]
+    : [["S1", "Deep Tissue 60min", 60, 14000], ["S2", "Signature Facial", 75, 16500], ["S3", "Gel Manicure", 45, 5500], ["S4", "Aromatherapy", 10, 2000], ["S5", "Hot stone upgrade", 0, 1500]])
     .map(([id, name, duration_min, price_cents]) => ({ id, name, duration_min, price_cents, ...(id === "S1" ? { recursos: ["R1"] } : {}), ...(id === "S4" || id === "S5" ? { addon: true } : {}),
       // desk_v13: o facial de 75 min debita 2 sessões de um pacote
       pkg_sessions: id === "S2" ? 2 : 1 }));

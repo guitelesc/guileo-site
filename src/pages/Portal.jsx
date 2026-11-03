@@ -2791,6 +2791,9 @@ function Gui({ V, onNav, real = null, conectada = false }) {
 }
 
 /* ───────────────────────── Page ───────────────────────── */
+// ?demo=natura — demonstração com a marca do cliente (Desk.jsx `demoNatura` faz o mesmo na agenda).
+const DEMO_NATURA = (() => { try { return new URLSearchParams(window.location.search).get("demo") === "natura"; } catch { return false; } })();
+
 export default function Portal() {
   const [authed, setAuthed] = useState(false);
   const [booting, setBooting] = useState(true);
@@ -2841,12 +2844,14 @@ export default function Portal() {
   // a alguém identificado o que já sabemos: entra direto, nos dados REAIS dela.
   const [onboarded, setOnboarded] = useState(() => {
     try {
-      if (new URLSearchParams(window.location.search).get("code")) return true;
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("code")) return true;
+      if (sp.get("demo") === "natura") return true;   // demo com a marca do cliente: sem assistente de ramo
       if (loadDataKey()) return true;
       return !!localStorage.getItem("guileo_onboarded");
     } catch { return true; }
   });
-  const [tourDone, setTourDone] = useState(() => { try { return !!localStorage.getItem("guileo_tour_done"); } catch { return true; } });
+  const [tourDone, setTourDone] = useState(() => { try { return !!localStorage.getItem("guileo_tour_done") || new URLSearchParams(window.location.search).get("demo") === "natura"; } catch { return true; } });
   const [fvDone, setFvDone] = useState(true);   // first-value guided path — only fires right after a fresh wizard
   const finishFV = () => { setFvDone(true); try { localStorage.setItem("guileo_firstvalue_done", "1"); } catch { /* */ } };
   const finishTour = () => { setTourDone(true); try { localStorage.setItem("guileo_tour_done", "1"); } catch { /* private */ } };
@@ -3401,7 +3406,11 @@ export default function Portal() {
             sample numbers NEVER read as their real money. Clears the moment a valid code is pasted. */}
         {/* enquanto a PRIMEIRA leitura está a caminho (chave presente, nenhuma resposta ainda) a
             faixa não aparece: dizer "você está vendo dados de amostra" sobre um esqueleto é falso. */}
-        {!me?.demo && !real && !(loadDataKey() && realFalha == null) && (
+        {/* ?demo=natura (apresentação ao cliente): a verdade cabe num selo de uma linha, não numa caixa. */}
+        {DEMO_NATURA && !real && (
+          <div className="px-5 sm:px-8 pt-3"><span className="inline-flex items-center gap-1.5 rounded-full border border-g-gold/40 bg-g-gold/[0.10] px-3 py-1 text-[11px] font-bold text-g-gold">📊 {tr("Demo · sample data")}</span></div>
+        )}
+        {!DEMO_NATURA && !me?.demo && !real && !(loadDataKey() && realFalha == null) && (
           <div className="px-5 sm:px-8 pt-4">
             <button onClick={() => setView("settings")} className="w-full text-left rounded-xl2 border border-g-gold/40 bg-g-gold/[0.10] px-4 py-3 flex flex-wrap items-center gap-3 hover:border-g-gold/70 transition">
               <span className="text-lg">📊</span>
