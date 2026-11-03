@@ -18,7 +18,13 @@ declare e text := 'e2e-test@guileoai.com'; sec text := coalesce(current_setting(
         s1 uuid; sc uuid; s2 uuid; svc uuid; p uuid[] := '{}'; i int; sl jsonb; loc uuid; t timestamptz;
         r jsonb; g jsonb; ok int := 0; log text := ''; v uuid; a1 uuid; a2 uuid; n int;
 begin
-  if sec = '' then raise exception 'FALHOU passo 0: sem app.gui_sched_secret nesta sessão'; end if;
+  -- o segredo do motor: a configuração ou, em produção (que não a tem), o 1º literal do próprio _gui_sched_ok. Fica só nesta variável.
+  if sec = '' or not coalesce(public._gui_sched_ok(sec), false) then
+    sec := replace((regexp_match(pg_get_functiondef('public._gui_sched_ok(text)'::regprocedure), $r$\min\s*\(\s*'((?:[^']|'')+)'$r$, 'i'))[1], '''''', '''');
+  end if;
+  if sec is null or sec = '' or not coalesce(public._gui_sched_ok(sec), false) then
+    raise exception 'FALHOU passo 0: não consegui obter o segredo do motor (nem app.gui_sched_secret nem literal válido no _gui_sched_ok)';
+  end if;
   -- um horário que a e2e oferece (dia aberto), e a unidade dele
   select x into sl from biz_services sv
     cross join lateral jsonb_array_elements(coalesce(public.biz_availability(sec, e, sv.id, null, null, 14, 1)->'slots', '[]'::jsonb)) x

@@ -33,7 +33,13 @@ declare d text := pg_get_functiondef('public.biz_availability(text,text,uuid,uui
        where coalesce(s.active, true)) q $q$;
 begin
   if position('guileo.extra_min' in d) > 0 then return; end if;
-  if v_sec = '' then raise exception 'desk_v17: esta sessão não enxerga app.gui_sched_secret — sem ele não dá para provar que a disponibilidade não muda. Nada foi alterado.'; end if;
+  -- o segredo do motor: a configuração ou, em produção (que não a tem), o 1º literal do próprio _gui_sched_ok. Fica só nesta variável.
+  if v_sec = '' or not coalesce(public._gui_sched_ok(v_sec), false) then
+    v_sec := replace((regexp_match(pg_get_functiondef('public._gui_sched_ok(text)'::regprocedure), $r$\min\s*\(\s*'((?:[^']|'')+)'$r$, 'i'))[1], '''''', '''');
+  end if;
+  if v_sec is null or v_sec = '' or not coalesce(public._gui_sched_ok(v_sec), false) then
+    raise exception 'desk_v17: não consegui obter o segredo do motor (nem app.gui_sched_secret nem literal válido no _gui_sched_ok) — sem ele não dá para provar que a disponibilidade não muda. Nada foi alterado.';
+  end if;
   execute function_sig into antes, vagas using v_sec;
   n := d;
   n := replace(n, 'v_need boolean; v_room record;', 'v_need boolean; v_room record; v_x int := 0;');

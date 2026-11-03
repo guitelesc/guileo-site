@@ -16,7 +16,13 @@ do $prova$
 declare e text := 'e2e-test@guileoai.com'; sec text := coalesce(current_setting('app.gui_sched_secret', true), '');
         s biz_services; ad uuid; base jsonb; x jsonb; r jsonb; ok int := 0; log text := ''; b0 int; sl jsonb;
 begin
-  if sec = '' then raise exception 'FALHOU passo 0: sem app.gui_sched_secret nesta sessão'; end if;
+  -- o segredo do motor: a configuração ou, em produção (que não a tem), o 1º literal do próprio _gui_sched_ok. Fica só nesta variável.
+  if sec = '' or not coalesce(public._gui_sched_ok(sec), false) then
+    sec := replace((regexp_match(pg_get_functiondef('public._gui_sched_ok(text)'::regprocedure), $r$\min\s*\(\s*'((?:[^']|'')+)'$r$, 'i'))[1], '''''', '''');
+  end if;
+  if sec is null or sec = '' or not coalesce(public._gui_sched_ok(sec), false) then
+    raise exception 'FALHOU passo 0: não consegui obter o segredo do motor (nem app.gui_sched_secret nem literal válido no _gui_sched_ok)';
+  end if;
   insert into biz_services (client_email, name, duration_min, price_cents, config, active)
     values (e, 'Prova Adicional', 10, 1500, '{"addon": true}'::jsonb, true) returning id into ad;
   -- um serviço da e2e (não adicional) que tem vaga nos próximos 14 dias
