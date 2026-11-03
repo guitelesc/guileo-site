@@ -58,7 +58,10 @@ export const TENANT_PLATAFORMA = "smart@guileoai.com";
 // o mudo entra NA LISTA, com o porquê escrito aqui — nunca por um `true` solto no chamador.
 //   • "formulario-cliente" (2026-10-22): a Natura mandou o checklist de implantação em 19/10 e o
 //     aviso morreu no mudo — o Luis só soube 3 dias depois. Resposta de cliente é gente, não máquina.
-const PODE_FURAR_MUDO = ["chamado_escalado", "emergency", "formulario-cliente"];
+//   • "voz_" (2026-11-03): a conta ElevenLabs zerou (2 créditos), a Lilian caiu em TODOS os canais e
+//     2 ligações reais da Natura falharam em 01/11. O alarme de saldo existia e morreu no mudo — o
+//     Luis descobriu pelo widget 2 dias depois. Saldo da voz é o único alarme que derruba cliente pagante.
+const PODE_FURAR_MUDO = ["chamado_escalado", "emergency", "formulario-cliente", "voz_"];
 export function furaMudo(kind, ignoraMudo) {
   const k = (kind || "").toString().toLowerCase();
   return ignoraMudo === true && PODE_FURAR_MUDO.some((p) => k.includes(p));

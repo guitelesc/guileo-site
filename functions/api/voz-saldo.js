@@ -124,6 +124,7 @@ async function avisar(env, out, tipo, detalhe) {
   const r = await avisarDono(env, {
     kind: `voz_${tipo}`, summary: detalhe, cliente: "Guileo (conta de voz — afeta TODOS os clientes)",
     link: "https://elevenlabs.io/app/subscription",
+    ignoraMudo: true,   // saldo da voz derruba cliente pagante: atravessa emails_dono=off (lista em avisarDono)
   });
   out.aviso = r;
   if (r.trava && /ilegível/.test(r.trava)) out.alertReady = false;
