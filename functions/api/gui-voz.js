@@ -51,7 +51,7 @@ export async function onRequestPost({ request, env }) {
   const email = String(b.email || "").trim().toLowerCase();
   let key = String(b.key || "").trim();
   const demo = !(email.includes("@") && key);
-  if (await rateLimited(request, env, demo ? "gui-voz-demo" : "gui-voz", demo ? 6 : 40, 3600, demo)) return json({ ok: false, error: "too_many" }, 429);
+  if (await rateLimited(request, env, demo ? "gui-voz-demo" : "gui-voz", demo ? 30 : 40, 3600, demo)) return json({ ok: false, error: "too_many" }, 429);
   // Recepção no /balcao (código "bal_…", lib/deskAcesso.js): a assistente abre; o que ela FAZ volta pelo /api/desk.
   if (!demo && ehCodigoDoBalcao(key)) {
     const p = await abrirComCodigo(env, svcJson, { email, codigo: key, acao: "assistente" });

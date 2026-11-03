@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, Suspense, Fragment } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { portalApi, CONNECTED, toast, onToast, fetchRealData, fetchRealDataDetalhado, loadDataKey, saveDataKey } from "../lib/portalApi.js";
 import { NO_APP_NATIVO } from "../lib/nativeApp.js";
@@ -2815,7 +2815,9 @@ export default function Portal() {
   // Vertical can be deep-linked via ?v=<id> (shareable per-sector links) and is remembered.
   const [vertical, setVertical] = useState(() => {
     try {
-      const q = new URLSearchParams(window.location.search).get("v");
+      const sp = new URLSearchParams(window.location.search);
+      // ?demo=natura → ramo de salão/spa com a marca da Natura (src/portal/Desk.jsx `demoNatura`).
+      const q = sp.get("v") || (sp.get("demo") === "natura" ? "salon" : null);
       const saved = portalApi.loadState("vertical", null);
       const pick = q || saved || "restaurant";
       return VERTICALS[pick] ? pick : "restaurant";
@@ -2998,6 +3000,8 @@ export default function Portal() {
       return { ...base, business: { ...base.business, name: String(ident.business).slice(0, 80), place: "" } };
     }
     if (!real) {
+      // ?demo=natura → a amostra veste a marca da Natura (nome, unidades, data do Go-Live).
+      try { if (new URLSearchParams(window.location.search).get("demo") === "natura") return { ...base, business: { name: "Natura Spa + Salon", place: "Astoria · Upper East Side · Med Spa, NY", since: "Go-Live Oct 29, 2026" } }; } catch { /* */ }
       try {
         const pend = portalApi.loadState("pending_onboard", null);
         const nm = (pend?.extra?.name || "").toString().trim().slice(0, 60);
@@ -3326,14 +3330,14 @@ export default function Portal() {
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={() => setNavOpen(true)} aria-expanded={navOpen} aria-controls="portal-sidebar" className="lg:hidden grid place-items-center h-9 w-9 rounded-xl border border-white/15 bg-white/[0.04] text-g-word shrink-0" aria-label={tr("Open menu")}>☰</button>
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-extrabold text-g-word truncate flex items-center gap-2">{tr(title, lang)}{real && REAL_VIEWS.has(view) ? <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wide bg-g-green/15 text-g-green border border-g-green/40 rounded-full px-2 py-0.5 shrink-0 shadow-[0_0_10px_rgba(62,148,104,0.35)]"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("LIVE — real data")}</span> : real ? <span className="text-[9px] font-black uppercase tracking-wide bg-g-gold/15 text-g-gold border border-g-gold/30 rounded-full px-2 py-0.5 shrink-0">{tr("Sample preview")}</span> : <button onClick={() => setView("settings")} title={tr("Sample data · connect →")} className="text-[9px] font-black uppercase tracking-wide bg-g-gold/20 text-g-gold border border-g-gold/30 rounded-full px-2 py-0.5 shrink-0 hover:bg-g-gold/30 transition">{tr("Sample data · connect →")}</button>}</h1>
+              <h1 className="text-lg sm:text-xl font-extrabold text-g-word truncate flex items-center gap-2">{tr(title, lang)}{real && REAL_VIEWS.has(view) ? <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wide bg-g-green/15 text-g-green border border-g-green/40 rounded-full px-2 py-0.5 shrink-0 shadow-[0_0_10px_rgba(62,148,104,0.35)]"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("LIVE — real data")}</span> : real ? <span className="hidden sm:inline text-[9px] font-black uppercase tracking-wide bg-g-gold/15 text-g-gold border border-g-gold/30 rounded-full px-2 py-0.5 shrink-0">{tr("Sample preview")}</span> : <button onClick={() => setView("settings")} title={tr("Sample data · connect →")} className="hidden sm:inline-block text-[9px] font-black uppercase tracking-wide bg-g-gold/20 text-g-gold border border-g-gold/30 rounded-full px-2 py-0.5 shrink-0 hover:bg-g-gold/30 transition">{tr("Sample data · connect →")}</button>}</h1>
               <p className="text-[11px] text-g-muted truncate">{(() => { const bp = real ? portalApi.loadProfile(V.label, {}) : null; return bp && bp.name ? `${bp.name}${bp.address ? " · " + bp.address : ""}` : `${V.business.name} · ${V.business.place} · ${V.business.since}`; })()}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button onClick={() => setPaletteOpen(true)} className="hidden md:flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs text-g-muted w-40 hover:border-g-gold/40 transition"><FaMagnifyingGlass size={11} /><span className="truncate">{tr("Search… ⌘K")}</span></button>
             {!real && <button onClick={exportReport} className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word hover:border-g-gold/40 transition"><FaDownload size={11} /> {tr("Report", lang)}</button>}
-            <button onClick={toggleLang} title={tr("Language")} aria-label={tr("Toggle language")} className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-black text-g-word hover:border-g-gold/40 transition"><span className={lang === "en" ? "text-g-gold" : "text-g-muted"}>EN</span><span className="text-g-muted">·</span><span className={lang === "pt" ? "text-g-gold" : "text-g-muted"}>PT</span><span className="text-g-muted">·</span><span className={lang === "es" ? "text-g-gold" : "text-g-muted"}>ES</span><span className="text-g-muted">·</span><span className={lang === "hi" ? "text-g-gold" : "text-g-muted"}>HI</span></button>
+            <button onClick={toggleLang} title={tr("Language")} aria-label={tr("Toggle language")} className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-black text-g-word hover:border-g-gold/40 transition">{/* celular: só o idioma atual (o toque troca); telas largas: os 4 */}{["en", "pt", "es", "hi"].map((l, i) => <Fragment key={l}>{i > 0 && <span className="hidden sm:inline text-g-muted">·</span>}<span className={lang === l ? "text-g-gold" : "hidden sm:inline text-g-muted"}>{l.toUpperCase()}</span></Fragment>)}</button>
             <div className="relative">
               <button onClick={() => setBellOpen((o) => !o)} className="relative grid place-items-center h-9 w-9 rounded-full border border-white/15 bg-white/[0.04] text-g-muted hover:text-g-word transition" aria-label={`Notifications (${totalNotif})`}><FaBell size={13} />{totalNotif > 0 && <span className="absolute -top-1 -right-1 inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black shadow-[0_0_8px_rgba(239,68,68,0.6)]">{totalNotif}</span>}</button>
               {bellOpen && (

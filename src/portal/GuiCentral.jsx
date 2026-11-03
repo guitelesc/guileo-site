@@ -286,7 +286,7 @@ export default function GuiCentral({ onNav, real = null, conectada = false, emai
     return {
       assistente: nomeA || "Gui",
       dono: (dono || "").split(/\s+/)[0] || (L === "pt" ? "tudo bem" : L === "es" ? "qué tal" : "there"),
-      negocio: negocio || (conectado ? email : "Lumière Spa (demonstração)"),
+      negocio: negocio || (conectado ? email : "Natura Spa + Salon (demonstração)"),
       hoje: `${hoje} (${diaDe(new Date(), tz)})`, fuso: tz,
       unidades: (a?.locations || []).map((l) => l.name).join(", ") || "—",
       profissionais: (a?.pros || []).filter((p) => (p.kind || "staff") !== "room").map((p) => p.name).join(", ") || "—",
