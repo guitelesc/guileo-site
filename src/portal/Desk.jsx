@@ -13,6 +13,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense, Fragment } from "react";
 import { toast } from "../lib/portalApi.js";
 import { ehIos, jaInstalado, temPrompt, instalarAgora, aoMudarInstalacao } from "../lib/pwa.js";
+import { NO_APP_NATIVO } from "../lib/nativeApp.js";
 import { Card, Drawer, SectionSkeleton } from "../pages/Portal.jsx";
 import { chamarDesk, motivo, nomePlano, assinarDesk, ehRecepcao, dinheiro, tx, lang, paraUtc, diaDe, minutoDe, somaDias, diaDaSemana, hhmm, loc as localeAtual } from "./deskApi.js";
 
@@ -315,7 +316,7 @@ function InstalarApp() {
   const [, setN] = useState(0);
   const [ajuda, setAjuda] = useState(false);
   useEffect(() => aoMudarInstalacao(() => setN((n) => n + 1)), []);
-  if (jaInstalado()) return null;
+  if (jaInstalado() || NO_APP_NATIVO) return null;
   const clicar = async () => {
     if (temPrompt()) { const r = await instalarAgora(); if (r === "aceito") toast(t("installed")); return; }
     setAjuda((v) => !v);
@@ -341,7 +342,7 @@ function Bloqueado({ min, email, dataKey, cancelado = false }) {
       <div className="text-3xl">🔒</div>
       <div className="mt-2 text-lg font-extrabold text-g-word">{cancelado ? t("canceledH") : t("lockedH").replace("{p}", nomePlano(min))}</div>
       <p className="mx-auto mt-1 max-w-md text-sm text-g-muted">{cancelado ? t("canceledP") : t("lockedP")}</p>
-      {ehRecepcao(dataKey) ? <p className="mx-auto mt-3 max-w-md text-xs font-bold text-g-gold">{tx({ en: "Ask the owner to change the plan.", pt: "Peça à dona para mudar o plano.", es: "Pídele a la dueña que cambie el plan.", hi: "प्लान बदलने के लिए मालिक से कहें।" })}</p> : <div className="mt-4 flex flex-wrap justify-center gap-2">
+      {ehRecepcao(dataKey) ? <p className="mx-auto mt-3 max-w-md text-xs font-bold text-g-gold">{tx({ en: "Ask the owner to change the plan.", pt: "Peça à dona para mudar o plano.", es: "Pídele a la dueña que cambie el plan.", hi: "प्लान बदलने के लिए मालिक से कहें।" })}</p> : NO_APP_NATIVO ? <p className="mx-auto mt-3 max-w-md text-xs font-bold text-g-gold">{tx({ en: "Plans are managed at guileoai.com.", pt: "Os planos são administrados em guileoai.com.", es: "Los planes se administran en guileoai.com.", hi: "प्लान guileoai.com पर प्रबंधित होते हैं।" })}</p> : <div className="mt-4 flex flex-wrap justify-center gap-2">
         <button disabled={indo} onClick={vai} className="rounded-full bg-g-green px-5 py-2.5 text-sm font-extrabold text-[#161512] disabled:opacity-50">{indo ? "…" : cancelado ? t("reactivate") : t("subscribe").replace("{p}", nomePlano(min))}</button>
         <a href="/desk#planos" target="_blank" rel="noopener" className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-g-word">{t("planChange")}</a>
       </div>}
@@ -552,6 +553,8 @@ export default function Desk({ real = null, email = "", dataKey = "" }) {
   );
   const ChipPlano = recepcao ? (
     <span className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-[11px] font-black text-g-muted">{tx({ en: "Front desk access", pt: "Acesso da recepção", es: "Acceso de recepción", hi: "रिसेप्शन एक्सेस" })}</span>
+  ) : plano && NO_APP_NATIVO ? (
+    <span className="rounded-full border border-g-gold/40 bg-g-gold/10 px-3 py-1.5 text-[11px] font-black text-g-gold">{plano === "nenhum" ? "⚠ " + t("canceledH") : t("planChip").replace("{p}", nomePlano(plano))}</span>
   ) : plano ? (
     <a href="/desk#planos" target="_blank" rel="noopener" className="rounded-full border border-g-gold/40 bg-g-gold/10 px-3 py-1.5 text-[11px] font-black text-g-gold">{plano === "nenhum" ? "⚠ " + t("canceledH") : t("planChip").replace("{p}", nomePlano(plano))}</a>
   ) : null;

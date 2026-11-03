@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { portalApi, CONNECTED, toast, onToast, fetchRealData, fetchRealDataDetalhado, loadDataKey, saveDataKey } from "../lib/portalApi.js";
+import { NO_APP_NATIVO } from "../lib/nativeApp.js";
 import { NOME_DO_PAINEL } from "../portal/nome.js";
 import { lazyRetry } from "../lib/lazyRetry.js";
 import { instalarTetoDeRede } from "../lib/tetoDeRede.js";
@@ -2269,7 +2270,7 @@ function Login({ onEnter, lang = "en", onLang }) {
   // Link de recuperação vencido/usado volta com #error_code=… → a pessoa já cai no "esqueci a
   // senha" com o motivo na tela, em vez de um login mudo que parece não ter feito nada.
   const linkVencido = !!portalApi.erroDoLink();
-  const [mode, setMode] = useState(linkVencido ? "forgot" : "signup");   // signup | signin | forgot (real backend only)
+  const [mode, setMode] = useState(linkVencido ? "forgot" : NO_APP_NATIVO ? "signin" : "signup");   // signup | signin | forgot (real backend only); no app nativo abre em Entrar (a conta nasce no site)
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [err, setErr] = useState(() => (linkVencido ? erroDeLogin(portalApi.erroDoLink()) : null));   // {msg, cru?} | null
@@ -2366,7 +2367,7 @@ function Login({ onEnter, lang = "en", onLang }) {
               <button disabled={busy} className="btn-bright text-sm w-full disabled:opacity-70">{busy ? "…" : tr(CONNECTED ? (mode === "signup" ? "Create account →" : "Sign in →") : `Enter ${NOME_DO_PAINEL} →`)}</button>
               {erroNaTela}
             </form>
-            {CONNECTED && (
+            {CONNECTED && !NO_APP_NATIVO && (
               <button onClick={() => trocarModo(mode === "signup" ? "signin" : "signup")} className="mt-3 text-xs font-bold text-g-gold hover:underline">
                 {tr(mode === "signup" ? "Already have an account? Sign in" : "New here? Create an account")}
               </button>
