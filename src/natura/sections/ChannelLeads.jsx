@@ -22,7 +22,7 @@ export default function ChannelLeads({ session, channel }) {
 
       <ErrorNote error={error} label={`${label} leads`} />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
         {loading && <Card><div className="text-[12px] text-g-muted">Loading…</div></Card>}
         {!loading && filtered.length === 0 && !error && <Card><div className="text-[12px] text-g-muted">No {label.toLowerCase()} leads yet.</div></Card>}
         {filtered.map((l) => (

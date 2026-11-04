@@ -52,14 +52,14 @@ export function DonutChart({ slices, size = 180, thickness = 28 }) {
 
   if (total === 0) {
     return (
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <svg viewBox={`0 0 ${size} ${size}`} style={{ width: size, maxWidth: "100%", height: "auto" }}>
         <circle cx={cx} cy={cy} r={r} fill="none" stroke="currentColor" className="text-g-line" strokeWidth={thickness} />
       </svg>
     );
   }
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg viewBox={`0 0 ${size} ${size}`} style={{ width: size, maxWidth: "100%", height: "auto" }}>
       <g transform={`rotate(-90 ${cx} ${cy})`}>
         {slices.filter((s) => s.value > 0).map((s, i) => {
           const frac = s.value / total;
@@ -80,6 +80,31 @@ export function DonutChart({ slices, size = 180, thickness = 28 }) {
         })}
       </g>
     </svg>
+  );
+}
+
+// Horizontal bar chart — compares one value per labeled row (channel performance, reply rate,
+// etc). Bars are plain divs (not SVG) so they reflow naturally at any container width instead of
+// needing their own viewBox math.
+export function BarChart({ data, max: maxOverride, formatValue }) {
+  const max = Math.max(1, maxOverride ?? Math.max(...data.map((d) => d.value), 0));
+  return (
+    <div className="grid gap-3">
+      {data.map((d) => (
+        <div key={d.label} className="grid gap-1.5">
+          <div className="flex items-center justify-between gap-2 text-[11.5px]">
+            <span className="font-bold text-g-word">{d.label}</span>
+            <span className="text-g-muted">{formatValue ? formatValue(d) : d.value}</span>
+          </div>
+          <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+            <div
+              className="h-full rounded-full transition-[width] duration-500"
+              style={{ width: `${Math.max(2, (d.value / max) * 100)}%`, background: d.color || "#3FB4FF" }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 

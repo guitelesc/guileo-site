@@ -71,7 +71,7 @@ export default function ChannelAnalytics({ session, channel }) {
       ) : filtered.length === 0 ? (
         <Card><div className="py-10 text-center text-[12px] text-g-muted">No {label.toLowerCase()} leads in this window yet.</div></Card>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3">
           <Breakdown title="Lead Rating" items={breakdowns.rating} colorMap={RATING_COLOR} />
           <Breakdown title="Pipeline Stage" items={breakdowns.stage} colorMap={STAGE_COLOR} />
           <Breakdown title="Top Intents" items={breakdowns.intent} colorMap={breakdowns.intentMap} />

@@ -126,7 +126,7 @@ export default function VoiceCallLogs({ session }) {
       ) : filtered.length === 0 ? (
         <Card><div className="py-10 text-center text-[12px] text-g-muted">No calls match this filter.</div></Card>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[1fr_420px]">
+        <div className="grid gap-4 xl:grid-cols-[1fr_420px]">
           <Card className="!p-0 overflow-hidden">
             <div className="max-h-[640px] overflow-auto scroll-clean">
               <table className="w-full min-w-[640px] text-left text-[12.5px]">

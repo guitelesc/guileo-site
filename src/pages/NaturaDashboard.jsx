@@ -100,21 +100,21 @@ export default function NaturaDashboard() {
   if (!session) return null;
 
   return (
-    <div className="min-h-screen bg-g-cream text-g-word md:flex">
+    <div className="min-h-screen w-full overflow-x-hidden bg-g-cream text-g-word lg:flex">
       {mobileOpen && (
-        <div className="fixed inset-0 z-30 bg-black/60 md:hidden" onClick={() => setMobileOpen(false)} />
+        <div className="fixed inset-0 z-30 bg-black/60 lg:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85vw] shrink-0 flex-col border-r border-g-line bg-g-cream transition-transform duration-200 md:static md:z-auto md:w-64 md:max-w-none md:translate-x-0 md:bg-g-creamd/40 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85vw] shrink-0 flex-col border-r border-g-line bg-g-cream transition-transform duration-200 lg:static lg:z-auto lg:w-64 lg:max-w-none lg:translate-x-0 lg:bg-g-creamd/40 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="flex items-center justify-between gap-2 border-b border-g-line px-4 py-4">
           <div>
             <div className="text-[10px] uppercase tracking-wide text-g-muted">Natura Spa + Salon</div>
             <div className="text-sm font-extrabold text-g-word">Lilian Channels</div>
           </div>
-          <button onClick={() => setMobileOpen(false)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-g-muted hover:bg-white/[0.06] md:hidden">
-            <FaXmark size={15} />
+          <button onClick={() => setMobileOpen(false)} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-g-muted hover:bg-white/[0.06] lg:hidden">
+            <FaXmark size={16} />
           </button>
         </div>
 
@@ -168,10 +168,10 @@ export default function NaturaDashboard() {
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-g-line bg-g-creamd/40 px-4 py-3 md:hidden">
-          <button onClick={() => setMobileOpen(true)} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-g-word hover:bg-white/[0.06]">
-            <FaBars size={16} />
+      <div className="flex min-w-0 flex-1 flex-col lg:h-screen">
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-g-line bg-g-cream/95 px-4 py-3 backdrop-blur lg:hidden">
+          <button onClick={() => setMobileOpen(true)} aria-label="Open menu" className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-g-word hover:bg-white/[0.06]">
+            <FaBars size={18} />
           </button>
           <div className="text-sm font-extrabold text-g-word">Lilian Channels</div>
         </header>

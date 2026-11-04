@@ -74,7 +74,7 @@ export default function Customers({ session, onNavigateToChannel }) {
       ) : filtered.length === 0 ? (
         <Card><div className="py-10 text-center text-[12px] text-g-muted">{q ? "No customers match your search." : "No customers yet."}</div></Card>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+        <div className="grid gap-4 xl:grid-cols-[320px_1fr]">
           <Card className="max-h-[640px] overflow-y-auto scroll-clean !p-2">
             {filtered.map((c) => (
               <button

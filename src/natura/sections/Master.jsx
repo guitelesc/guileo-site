@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { FaUsers, FaPaperPlane, FaEnvelope, FaWhatsapp, FaPhone, FaCommentSms, FaFacebook, FaInstagram, FaChartLine, FaChartPie } from "react-icons/fa6";
+import { FaUsers, FaPaperPlane, FaEnvelope, FaWhatsapp, FaPhone, FaCommentSms, FaFacebook, FaInstagram, FaChartLine, FaChartPie, FaRankingStar, FaArrowsLeftRight } from "react-icons/fa6";
 import { useNaturaTable } from "../useNaturaTable.js";
 import { Card, Kpi, ErrorNote } from "../Card.jsx";
-import { LineChart, DonutChart, Legend } from "../charts.jsx";
+import { LineChart, DonutChart, Legend, BarChart } from "../charts.jsx";
 import { dailySeries, replyRate, CHANNEL_COLOR, CHANNEL_LABEL } from "../metrics.js";
 import DateRangeFilter, { useDateRange } from "../DateRangeFilter.jsx";
 
@@ -76,12 +76,28 @@ export default function Master({ session }) {
       .map((c) => ({ label: c.label, value: c.key === "voice" ? voiceCustomers.size : c.uniqueLeads, color: c.color }))
       .filter((s) => s.value > 0);
 
+    // Channel Performance: unique leads reached per channel, highest first — a quick read on
+    // which channel is actually driving contact, not just activity volume.
+    const leadsByChannel = perChannel
+      .map((c) => ({ label: c.label, value: c.key === "voice" ? voiceCustomers.size : c.uniqueLeads, color: c.color }))
+      .sort((a, b) => b.value - a.value);
+
+    // Reply Rate by Channel: voice is excluded — its outbound_leads rows are only the sparse
+    // post-call confirmation sends, not real call volume, so a %-of-sent rate would be misleading
+    // for it (its real outcome metric, hot/booking rate, is already on the channel's own page).
+    const replyRateByChannel = perChannel
+      .filter((c) => c.key !== "voice" && c.sent > 0)
+      .map((c) => ({ label: c.label, value: c.rate, color: c.color }))
+      .sort((a, b) => b.value - a.value);
+
     return {
       totalLeads: leads.rows.length,
       voiceCalls,
       voiceLeads: voiceCustomers.size,
       perChannel,
       mix,
+      leadsByChannel,
+      replyRateByChannel,
       acquisition: dailySeries(leads.rows, "created_at", WINDOW_DAYS),
     };
   }, [leads.rows, inbound.rows, outbound.rows, WINDOW_DAYS]);
@@ -97,7 +113,7 @@ export default function Master({ session }) {
 
       <ErrorNote error={error} label="overview data" />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
         <Kpi label="Total Leads" value={loading ? "…" : stats.totalLeads} sub="From master_leads" Icon={FaUsers} />
         {stats.perChannel.map((c) => {
           const isVoice = c.key === "voice";
@@ -114,7 +130,7 @@ export default function Master({ session }) {
         })}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
         <Card>
           <div className="mb-3 flex items-center gap-2">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-g-green/10 text-g-green"><FaChartLine size={14} /></span>
@@ -143,6 +159,42 @@ export default function Master({ session }) {
               <DonutChart slices={stats.mix} />
               <Legend slices={stats.mix} />
             </div>
+          )}
+        </Card>
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <Card>
+          <div className="mb-4 flex items-center gap-2">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-g-green/10 text-g-green"><FaRankingStar size={14} /></span>
+            <div>
+              <div className="text-sm font-extrabold text-g-word">Channel Performance</div>
+              <div className="text-[11px] text-g-muted">Unique leads reached, by channel</div>
+            </div>
+          </div>
+          {loading ? (
+            <div className="py-10 text-center text-[12px] text-g-muted">Loading…</div>
+          ) : stats.leadsByChannel.every((c) => c.value === 0) ? (
+            <div className="py-10 text-center text-[12px] text-g-muted">No outreach in this window yet.</div>
+          ) : (
+            <BarChart data={stats.leadsByChannel} />
+          )}
+        </Card>
+
+        <Card>
+          <div className="mb-4 flex items-center gap-2">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-g-gold/10 text-g-gold"><FaArrowsLeftRight size={14} /></span>
+            <div>
+              <div className="text-sm font-extrabold text-g-word">Reply Rate by Channel</div>
+              <div className="text-[11px] text-g-muted">Replies as a % of messages sent (voice excluded — see its own page for hot/booking rate)</div>
+            </div>
+          </div>
+          {loading ? (
+            <div className="py-10 text-center text-[12px] text-g-muted">Loading…</div>
+          ) : stats.replyRateByChannel.length === 0 ? (
+            <div className="py-10 text-center text-[12px] text-g-muted">No sends in this window yet.</div>
+          ) : (
+            <BarChart data={stats.replyRateByChannel} max={100} formatValue={(d) => `${d.value}%`} />
           )}
         </Card>
       </div>

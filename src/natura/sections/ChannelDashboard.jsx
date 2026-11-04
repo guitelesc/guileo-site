@@ -110,7 +110,7 @@ export default function ChannelDashboard({ session, channel }) {
 
       <ErrorNote error={error} label={`${label} data`} />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
         <Kpi label="Unique Leads Contacted" value={loading ? "…" : stats.uniqueLeads} Icon={FaComments} />
         <Kpi label={stats.sentLabel || "Total Messages Sent"} value={loading ? "…" : stats.sent} Icon={FaPaperPlane} />
         <Kpi label={stats.repliesLabel || "Total Replies"} value={loading ? "…" : stats.replies} sub={loading ? "" : stats.rateSub} Icon={FaInbox} tone="green" />
@@ -118,7 +118,7 @@ export default function ChannelDashboard({ session, channel }) {
         <Kpi label="Negative Sentiment" value={loading ? "…" : stats.sentiment.negative} sub={isVoice ? "Calls that sounded negative" : "Replies that sounded uninterested"} Icon={FaCircleExclamation} tone="red" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
         <Card>
           <div className="mb-3 flex items-center justify-between gap-2">
             <div className="text-sm font-extrabold text-g-word">Activity Trend</div>

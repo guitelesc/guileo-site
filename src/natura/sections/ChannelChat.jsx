@@ -304,7 +304,7 @@ export default function ChannelChat({ session, channel }) {
       ) : filtered.length === 0 ? (
         <Card><div className="py-10 text-center text-[12px] text-g-muted">No conversations match this filter.</div></Card>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+        <div className="grid gap-4 xl:grid-cols-[280px_1fr]">
           <Card className="max-h-[560px] overflow-y-auto scroll-clean !p-2">
             {filtered.map((t) => (
               <button

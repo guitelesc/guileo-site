@@ -27,7 +27,7 @@ export default function Credentials({ session }) {
 
       <ErrorNote error={error} label="credential status" />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
         {loading && <Card><div className="text-[12px] text-g-muted">Loading…</div></Card>}
         {!loading && perChannel.map((c) => (
           <Card key={c.key}>
