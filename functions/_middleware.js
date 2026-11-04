@@ -417,6 +417,9 @@ export async function legado(context) {
     // não é a mesma página traduzida na moldura: as evidências e premissas nascem em pt).
     "natura-pt",
     "natura-setup", // checklist da implantação que a Natura preenche (2026-10-18)
+    // /natura-channels (+ /natura-channels/dashboard) — login e painel do módulo de canais
+    // (e-mail/WhatsApp/voz/SMS/FB/IG) da Natura. Pego pelo rotas.test.mjs antes do deploy.
+    "natura-channels",
     // SEXTO caso da rota-que-nasce-404 (24/08). /presente/<negocio> são páginas ESTÁTICAS de
     // prospecção — um HTML por prospect, servido de public/, fora do SPA. O link vai dentro de um
     // e-mail para o dono de um negócio real: um 404 aqui não custa tráfego, custa a única chance
@@ -469,8 +472,13 @@ export async function legado(context) {
   // Os .html legítimos ficam cobertos: /index.html entra por nome no RAIZ acima, e
   // /presente/<negocio>/index.html entra porque "presente" está em KNOWN_SEGMENTS.
   const isPaginaHtml = /\.html?$/i.test(path);
+  // "@..." (first char of the first segment) is Vite's reserved dev-server namespace
+  // (/@vite/client, /@react-refresh, /@fs/…) — never a real route, only present when
+  // `wrangler pages dev` proxies to Vite locally. Production never serves these paths,
+  // so excluding them here has no effect in prod and avoids 404ing Vite's HMR client
+  // (which breaks React's refresh preamble and shows as a blank page / error overlay).
   const isAssetish = first === "" || first === "api" || first === "assets" || first === ".well-known"
-    || RAIZ.has(first) || (!isPaginaHtml && /\.[a-z0-9]{2,12}$/i.test(path));
+    || first.startsWith("@") || RAIZ.has(first) || (!isPaginaHtml && /\.[a-z0-9]{2,12}$/i.test(path));
   // 🚨 ARQUIVO QUE NÃO EXISTE EM /assets NUNCA PODE VOLTAR 200 COM HTML (2026-08-20).
   // Foi assim que o HUB DO VENDEDOR ficou com a tela preta em produção: pedi um
   // /assets/<chunk>.js ANTES do deploy propagar, o Pages respondeu com o index.html da SPA
