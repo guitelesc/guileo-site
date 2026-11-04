@@ -128,8 +128,8 @@ export default function VoiceCallLogs({ session }) {
       ) : (
         <div className="grid gap-4 lg:grid-cols-[1fr_420px]">
           <Card className="!p-0 overflow-hidden">
-            <div className="max-h-[640px] overflow-y-auto scroll-clean">
-              <table className="w-full text-left text-[12.5px]">
+            <div className="max-h-[640px] overflow-auto scroll-clean">
+              <table className="w-full min-w-[640px] text-left text-[12.5px]">
                 <thead className="sticky top-0 bg-g-creamd text-[10px] uppercase tracking-wide text-g-muted">
                   <tr>
                     <th className="px-4 py-2.5 font-bold">Name</th>

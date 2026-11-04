@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import {
   FaGrip, FaEnvelope, FaWhatsapp, FaPhone, FaCommentSms, FaFacebook, FaInstagram,
   FaArrowRightFromBracket, FaChevronDown, FaGaugeHigh, FaComments, FaUsers, FaChartLine, FaKey, FaAddressBook,
+  FaBars, FaXmark,
 } from "react-icons/fa6";
 import { naturaSession, naturaSignOut } from "../lib/naturaSession.js";
 import Master from "../natura/sections/Master.jsx";
@@ -80,32 +81,47 @@ export default function NaturaDashboard() {
   const [session] = useState(() => naturaSession());
   const [openGroup, setOpenGroup] = useState(null);
   const [active, setActive] = useState({ scope: "master" }); // {scope:"master"} | {scope:"channel", channel, subpage} | {scope:"credentials"}
+  // Sidebar is a fixed off-canvas drawer below the `md` breakpoint (phones/small tablets),
+  // toggled by the hamburger in the mobile top bar — and a normal static sidebar at md: and up.
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     if (!session) nav("/natura-channels");
   }, [session, nav]);
 
   const signOut = () => { naturaSignOut(); nav("/natura-channels"); };
-  const pickChannel = (channel, subpage) => setActive({ scope: "channel", channel, subpage });
+  const pickChannel = (channel, subpage) => { setActive({ scope: "channel", channel, subpage }); setMobileOpen(false); };
   const toggleGroup = (key) => {
     setOpenGroup((g) => (g === key ? null : key));
     if (openGroup !== key) pickChannel(key, "dashboard");
   };
+  const pickScope = (scope) => { setActive({ scope }); setOpenGroup(null); setMobileOpen(false); };
 
   if (!session) return null;
 
   return (
-    <div className="min-h-screen bg-g-cream text-g-word flex">
-      <aside className="flex w-64 shrink-0 flex-col border-r border-g-line bg-g-creamd/40">
-        <div className="border-b border-g-line px-4 py-4">
-          <div className="text-[10px] uppercase tracking-wide text-g-muted">Natura Spa + Salon</div>
-          <div className="text-sm font-extrabold text-g-word">Lilian Channels</div>
+    <div className="min-h-screen bg-g-cream text-g-word md:flex">
+      {mobileOpen && (
+        <div className="fixed inset-0 z-30 bg-black/60 md:hidden" onClick={() => setMobileOpen(false)} />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85vw] shrink-0 flex-col border-r border-g-line bg-g-cream transition-transform duration-200 md:static md:z-auto md:w-64 md:max-w-none md:translate-x-0 md:bg-g-creamd/40 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
+      >
+        <div className="flex items-center justify-between gap-2 border-b border-g-line px-4 py-4">
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-g-muted">Natura Spa + Salon</div>
+            <div className="text-sm font-extrabold text-g-word">Lilian Channels</div>
+          </div>
+          <button onClick={() => setMobileOpen(false)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-g-muted hover:bg-white/[0.06] md:hidden">
+            <FaXmark size={15} />
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto scroll-clean px-3 py-3">
           <div className="px-1 pb-2 text-[10px] font-bold uppercase tracking-wide text-g-muted">Channels</div>
           <button
-            onClick={() => { setActive({ scope: "master" }); setOpenGroup(null); }}
+            onClick={() => pickScope("master")}
             className={`mb-2 flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition ${active.scope === "master" ? "bg-g-creamd text-g-word" : "text-g-muted hover:bg-white/[0.03] hover:text-g-word"}`}
           >
             <span className="grid h-7 w-7 place-items-center rounded-lg bg-g-gold/10 text-g-gold"><FaGrip size={13} /></span>
@@ -113,7 +129,7 @@ export default function NaturaDashboard() {
           </button>
 
           <button
-            onClick={() => { setActive({ scope: "customers" }); setOpenGroup(null); }}
+            onClick={() => pickScope("customers")}
             className={`mb-2 flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition ${active.scope === "customers" ? "bg-g-creamd text-g-word" : "text-g-muted hover:bg-white/[0.03] hover:text-g-word"}`}
           >
             <span className="grid h-7 w-7 place-items-center rounded-lg bg-white/[0.06] text-g-muted"><FaAddressBook size={13} /></span>
@@ -135,7 +151,7 @@ export default function NaturaDashboard() {
 
           <div className="mt-4 border-t border-g-line pt-3">
             <button
-              onClick={() => { setActive({ scope: "credentials" }); setOpenGroup(null); }}
+              onClick={() => pickScope("credentials")}
               className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition ${active.scope === "credentials" ? "bg-g-creamd text-g-word" : "text-g-muted hover:bg-white/[0.03] hover:text-g-word"}`}
             >
               <span className="grid h-7 w-7 place-items-center rounded-lg bg-white/[0.06] text-g-muted"><FaKey size={13} /></span>
@@ -152,16 +168,25 @@ export default function NaturaDashboard() {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-y-auto scroll-clean p-6">
-        {active.scope === "master" && <Master session={session} />}
-        {active.scope === "customers" && <Customers session={session} onNavigateToChannel={pickChannel} />}
-        {active.scope === "credentials" && <Credentials session={session} />}
-        {active.scope === "channel" && active.subpage === "dashboard" && <ChannelDashboard session={session} channel={active.channel} />}
-        {active.scope === "channel" && active.subpage === "chat" && active.channel === "voice" && <VoiceCallLogs session={session} />}
-        {active.scope === "channel" && active.subpage === "chat" && active.channel !== "voice" && <ChannelChat session={session} channel={active.channel} />}
-        {active.scope === "channel" && active.subpage === "leads" && <ChannelLeads session={session} channel={active.channel} />}
-        {active.scope === "channel" && active.subpage === "analytics" && <ChannelAnalytics session={session} channel={active.channel} />}
-      </main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex items-center gap-3 border-b border-g-line bg-g-creamd/40 px-4 py-3 md:hidden">
+          <button onClick={() => setMobileOpen(true)} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-g-word hover:bg-white/[0.06]">
+            <FaBars size={16} />
+          </button>
+          <div className="text-sm font-extrabold text-g-word">Lilian Channels</div>
+        </header>
+
+        <main className="min-w-0 flex-1 overflow-y-auto scroll-clean p-4 sm:p-6">
+          {active.scope === "master" && <Master session={session} />}
+          {active.scope === "customers" && <Customers session={session} onNavigateToChannel={pickChannel} />}
+          {active.scope === "credentials" && <Credentials session={session} />}
+          {active.scope === "channel" && active.subpage === "dashboard" && <ChannelDashboard session={session} channel={active.channel} />}
+          {active.scope === "channel" && active.subpage === "chat" && active.channel === "voice" && <VoiceCallLogs session={session} />}
+          {active.scope === "channel" && active.subpage === "chat" && active.channel !== "voice" && <ChannelChat session={session} channel={active.channel} />}
+          {active.scope === "channel" && active.subpage === "leads" && <ChannelLeads session={session} channel={active.channel} />}
+          {active.scope === "channel" && active.subpage === "analytics" && <ChannelAnalytics session={session} channel={active.channel} />}
+        </main>
+      </div>
     </div>
   );
 }
