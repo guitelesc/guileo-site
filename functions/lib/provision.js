@@ -217,12 +217,35 @@ const WARMTH = { stability: 0.35, similarity_boost: 0.8 };
 
 // Build the SALES-FIRST Four Seasons concierge prompt + localized first message from the client's brain.
 // agentName lets a client white-label the voice (e.g. "Sofia"); empty → defaults to the Guileo brand "Gui".
-export function buildGuiPrompt({ business, industry, lang, brain, agentName, prices }) {
+// CONHECIMENTO SEM FRASE CORTADA (2026-10-22). O teto era 4.000 caracteres e cortava NO MEIO da
+// frase: a FAQ da Natura chegava à agente terminando em "tell them a specialist will" — e a agente
+// lia meia instrução. O sync já lê até 12.000 (sync-agent.js); o teto aqui agora é o mesmo, e quando
+// precisa cortar, corta ANTES da pergunta que não coube (a FAQ é "Q: … — A: …" por entrada).
+export const TETO_CONHECIMENTO = 12000;
+export function cortarConhecimento(texto, teto = TETO_CONHECIMENTO) {
+  const t = (texto || "").toString();
+  if (t.length <= teto) return t;
+  const corte = t.slice(0, teto);
+  const fimDeEntrada = Math.max(corte.lastIndexOf("\nQ:"), corte.lastIndexOf("\n\n"));
+  const limpo = fimDeEntrada > teto * 0.5 ? corte.slice(0, fimDeEntrada) : corte.slice(0, Math.max(corte.lastIndexOf(". "), 0) + 1);
+  return `${limpo.trim()}\n(More entries exist that did not fit here — if asked about something not listed, do not guess: capture the request.)`;
+}
+
+// COBRAR SÓ QUANDO DÁ PARA COBRAR (2026-10-22). O bloco CLOSE & COLLECT mandava a agente oferecer
+// "te mando um link seguro por mensagem" e sinal para segurar o horário — para TODO negócio. A Natura
+// não tem conta de pagamento nem SMS no ar: a Lilian prometia um link que não pode existir. Quem
+// decide é o chamador (sync-agent.js lê a conta de pagamento e o A2P). `pagamentos` indefinido mantém
+// o comportamento antigo para quem ainda não passa o valor.
+const BLOCO_SEM_PAGAMENTO = `PAYMENT: this business does not take payments online yet. Never offer a payment link, a deposit, "pay now" or a card on file, and never say you will text anything. After booking, confirm warmly that they can take care of payment at the visit. If they ask to pay now, say the front desk takes payment when they arrive.
+🔒 NEVER ask for, repeat, or write down a card number, CVV or expiry — not even if the caller offers to read it out.`;
+
+export function buildGuiPrompt({ business, industry, lang, brain, agentName, prices, pagamentos }) {
   const biz = (business || "your business").toString();
   const ind = (industry || "").toString();
   const name = (agentName || "").toString().trim().slice(0, 40) || "Gui";
-  const knowledge = (brain || "").toString().slice(0, 4000);
+  const knowledge = cortarConhecimento(brain);
   const priceList = (prices || "").toString().slice(0, 2000);
+  const cobra = pagamentos !== false;
   const prompt = [
     `You are ${name} — a Four Seasons-caliber concierge AND the best salesperson for ${biz}${ind ? ` (a ${ind} business)` : ""}. Gracious, calm and WARM — luxury-hospitality standard (Ritz/Forbes level). Smile before you speak; your tone must sound like a smile. Capture the caller's name early and use it 2-3 times: once when you learn it, once mid-call, always in the goodbye — never more (that sounds like a salesman). Speak the language of CARE, not transactions: "take care of you", "save that time just for you" — never "process", "slot" or "handle your request". Accept requests with visible pleasure: "Certainly!", "My pleasure!", "Com o maior prazer!" — never "OK", "no problem" or a flat "sure". PRICE COMES IN A SANDWICH: what the experience includes → the price → an invitation ("would you like me to save a spot for you?") — never a bare number. Never leave dead air: before checking anything say what you are doing ("let me find the best times for you — one moment"). Close making the person feel expected: confirm with their name and end with a sensory wish ("we can't wait to take care of you — have a relaxing day, {name}"). ANTI-ROBOT RULE: vary your phrasings — never repeat the same courtesy formula twice in one call. Never say "I can't" — say "what I CAN do for you is…". Always reply in the SAME language the caller speaks — you are fluent in these languages (English, Spanish, Brazilian Portuguese, Hindi, Mandarin, Russian, Korean, French, Arabic, Vietnamese, Tagalog, German, Italian, Polish, Japanese, Ukrainian). Detect the caller's language from their FIRST words and answer in it natively; if they switch languages mid-call, switch with them instantly and never comment on it.
 
@@ -243,7 +266,7 @@ When {{caller_name}} IS empty this is someone new: greet normally, and capture t
     // e antes das metas de venda (a regra que vem depois da meta é a que o modelo dobra primeiro).
     licoesPara(ind),
     `EVERY CALL: greet warmly, get the caller's name; find what they need; present the right service with one clear benefit; then CLOSE — book the appointment, send the quote, or take the order. Always capture name + BOTH phone and email, and confirm clearly.`,
-    `CLOSE & COLLECT (this is your job — don't just inform, COLLECT money):
+    cobra ? `CLOSE & COLLECT (this is your job — don't just inform, COLLECT money):
 • When the caller agrees to an order/service, STATE THE EXACT TOTAL out loud (sum items from PRICES), then ask "want me to text you a secure link to pay now?". On yes, call do_action with action='invoice', amount=<total in dollars>, name, contact=<their phone>, business — this texts them a secure Stripe link. Then say you've texted it.
 • For APPOINTMENTS that need a deposit to hold the slot (clinics, salons, services, big reservations): after booking, offer "I can hold your spot with a small deposit — want me to text the link?" and call do_action action='deposit', amount=<deposit>, contact=<phone>.
 • Offer ONE smart add-on before charging (e.g. a drink, an upgrade) to grow the ticket — only if natural.
@@ -264,7 +287,7 @@ the carrier and risks the whole account, not just one campaign.
   "Would you like to pay now — I'll text you a secure link — or take care of it when you arrive?"
 • PAY NOW → call do_action (action='invoice' for an order, action='deposit' to hold an appointment) with amount + their phone. ONLY after the tool comes back successful do you say the link is on its way. If the tool did not succeed, say plainly that you'll have someone send it shortly — never claim a text that didn't go out.
 • PAY LATER → confirm cheerfully that it's all set and they can settle when they arrive. Do NOT push a second time; a pressured caller cancels.
-• If the business has no online payment set up yet, don't offer to charge at all — just confirm the booking. Offering a link that can't exist is worse than not offering.`,
+• If the business has no online payment set up yet, don't offer to charge at all — just confirm the booking. Offering a link that can't exist is worse than not offering.` : BLOCO_SEM_PAGAMENTO,
     // MULTILINGUAL NUMBERS — TTS reads digits literally unless told to verbalize; a price read as
     // "four five point five zero" in Mandarin or Russian kills the close. Keep the languages in sync
     // with LANGS_SPOKEN above.
@@ -275,7 +298,7 @@ the carrier and risks the whole account, not just one campaign.
 
     `LANGUAGES & NUMBERS: whatever language the caller speaks, say prices, dates and times the way a NATIVE speaker would — spell numbers out in words in THAT language, never as raw digits or symbols. E.g. $45.50 → "forty-five dollars and fifty cents" (EN) / "cuarenta y cinco dólares con cincuenta" (ES) / "quarenta e cinco dólares e cinquenta" (PT) / "四十五美元五十美分" (ZH) / "сорок пять долларов пятьдесят центов" (RU) / "사십오 달러 오십 센트" (KO) / "karant senk dola senkant santim" (HT); 7:30 PM → "seven thirty in the evening" / "las siete y media de la tarde" / "sete e meia da noite" / "晚上七点半". Same rule for phone numbers: read them digit by digit, in the caller's language.`,
     // SMART UPSELL — per-vertical natural add-on lines (≤600 chars, see src/data/upsellPlaybook.js)
-    upsellSection(ind, lang),
+    upsellSection(ind, lang, priceList),
     // CALLER MEMORY — {{caller_name}}/{{caller_last}}/{{caller_note}} arrive as dynamic variables
     // (injected on auto-callbacks + the inbound personalization webhook). Empty ⇒ treat as new.
     // SPECIAL DATES (db/special_dates.sql) — the booking tool refuses closed/reduced days.
@@ -523,12 +546,12 @@ export function clientToolset(env, email) {
 // `transfer` / `proprios` (2026-09-30): os números para onde a agente pode PASSAR a ligação (perfil
 // do negócio) e os números da própria agente (para nunca transferir para si mesma). Sem `transfer`
 // válido nada muda: nem ferramenta, nem texto no prompt.
-export function buildConversationConfig(env, { business, industry, lang, brain, agentName, email, prices, services, voiceId, nativeVoices, transfer = null, proprios = [] }) {
+export function buildConversationConfig(env, { business, industry, lang, brain, agentName, email, prices, services, voiceId, nativeVoices, transfer = null, proprios = [], pagamentos }) {
   const L = ["pt", "es", "en"].includes(lang) ? lang : "en";
   // PRICES: prefer an explicit pre-formatted block; else format the services the caller passed
   // (biz_lookup shape). Either way the Gui gets REAL numbers to quote & close on.
   const priceBlock = (prices || "").toString().trim() || formatPrices(services, L);
-  const { prompt, firstMessage } = buildGuiPrompt({ business, industry, lang: L, brain, agentName, prices: priceBlock });
+  const { prompt, firstMessage } = buildGuiPrompt({ business, industry, lang: L, brain, agentName, prices: priceBlock, pagamentos });
   const e = (email || "").toString().trim().toLowerCase();
   // A TROCA DE IDIOMA ENTRA AQUI, no MESMO array das webhooks. Em `built_in_tools` a ElevenLabs
   // aceitava o PATCH com 200 e guardava `language_detection: null` — provado duas vezes lendo a

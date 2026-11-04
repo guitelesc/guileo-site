@@ -1,3 +1,4 @@
+import { NO_APP_NATIVO } from "./nativeApp.js";
 // ─────────────────────────────────────────────────────────────────────────────
 // Guileo — Ad pixels + conversion tracking (privacy-first, CONSENT-GATED)
 //
@@ -220,6 +221,7 @@ let _loaded = false;
 function loadPixels() {
   if (!hasWindow() || _loaded) return;
   if (!hasConsent()) return; // never load without an explicit accept
+  if (NO_APP_NATIVO) return;  // dentro do app iOS nunca: a ficha de privacidade da App Store diz "sem rastreamento"
   _loaded = true;
   try {
     if (TRACKING_IDS.meta) injectMetaPixel(TRACKING_IDS.meta);

@@ -13,6 +13,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense, Fragment } from "react";
 import { toast } from "../lib/portalApi.js";
 import { ehIos, jaInstalado, temPrompt, instalarAgora, aoMudarInstalacao } from "../lib/pwa.js";
+import { NO_APP_NATIVO } from "../lib/nativeApp.js";
 import { Card, Drawer, SectionSkeleton } from "../pages/Portal.jsx";
 import { chamarDesk, motivo, nomePlano, assinarDesk, ehRecepcao, dinheiro, tx, lang, paraUtc, diaDe, minutoDe, somaDias, diaDaSemana, hhmm, loc as localeAtual } from "./deskApi.js";
 
@@ -223,13 +224,24 @@ const CANCELADO = (a) => a.status === "cancelled" || a.status === "late_cancelle
 const TZ0 = "America/New_York";
 
 // ── amostra (só fora de conta conectada) ─────────────────────────────────────────────────────
+// DEMO DA NATURA (2026-11-03): `/portal?tab=desk&demo=natura` mostra a agenda de exemplo com a cara do
+// cliente — unidade, profissionais e serviços/preços REAIS da lista da Natura (catálogo do agente), clientes
+// FICTÍCIOS. Nada é lido da conta real: é a mesma amostra, só com os nomes certos para o Luis apresentar.
+export const demoNatura = () => { try { return new URLSearchParams(window.location.search).get("demo") === "natura"; } catch { return false; } };
+
 export function amostra(dia) {
   const tz = TZ0;
-  const loc = { id: "L1", name: "Astoria", tz };
-  const pros = [["P1", "Ana", "Massage", "#7FB7A0"], ["P2", "Bianca", "Facials", "#D6C29A"], ["P3", "Carla", "Nails", "#C9A4FF"]].map(([id, name, title, color]) => ({ id, name, title, color, kind: "staff", locations: ["L1"], services: [], hours: [0, 1, 2, 3, 4, 5, 6].map((w) => ({ location_id: "L1", weekday: w, start_min: 540, end_min: 1140 })) }));
+  const natura = demoNatura();
+  const loc = { id: "L1", name: natura ? "Astoria · 30-79 Steinway St" : "Astoria", tz };
+  const prosBase = natura
+    ? [["P1", "Sarita", "Massage", "#7FB7A0"], ["P2", "Claudia", "Facials", "#D6C29A"], ["P3", "Kany", "Hair", "#C9A4FF"]]
+    : [["P1", "Ana", "Massage", "#7FB7A0"], ["P2", "Bianca", "Facials", "#D6C29A"], ["P3", "Carla", "Nails", "#C9A4FF"]];
+  const pros = prosBase.map(([id, name, title, color]) => ({ id, name, title, color, kind: "staff", locations: ["L1"], services: [], hours: [0, 1, 2, 3, 4, 5, 6].map((w) => ({ location_id: "L1", weekday: w, start_min: 540, end_min: 1140 })) }));
   // Sala de amostra exigida pela massagem (desk_v5_1): aparece em Equipe → Salas e equipamentos e no cartão "· Sala 1".
   pros.push({ id: "R1", name: "Sala 1", title: "", color: "#8E8A80", kind: "room", locations: ["L1"], services: [], hours: [] });
-  const services = [["S1", "Deep Tissue 60min", 60, 14000], ["S2", "Signature Facial", 75, 16500], ["S3", "Gel Manicure", 45, 5500], ["S4", "Aromatherapy", 10, 2000], ["S5", "Hot stone upgrade", 0, 1500]]
+  const services = (natura
+    ? [["S1", "Deep Tissue 60min", 60, 12500], ["S2", "Deep Pore Cleansing", 75, 13800], ["S3", "Haircut", 45, 6000], ["S4", "Aromatherapy", 10, 2000], ["S5", "Hot stone upgrade", 0, 1500]]
+    : [["S1", "Deep Tissue 60min", 60, 14000], ["S2", "Signature Facial", 75, 16500], ["S3", "Gel Manicure", 45, 5500], ["S4", "Aromatherapy", 10, 2000], ["S5", "Hot stone upgrade", 0, 1500]])
     .map(([id, name, duration_min, price_cents]) => ({ id, name, duration_min, price_cents, ...(id === "S1" ? { recursos: ["R1"] } : {}), ...(id === "S4" || id === "S5" ? { addon: true } : {}),
       // desk_v13: o facial de 75 min debita 2 sessões de um pacote
       pkg_sessions: id === "S2" ? 2 : 1 }));
@@ -315,7 +327,7 @@ function InstalarApp() {
   const [, setN] = useState(0);
   const [ajuda, setAjuda] = useState(false);
   useEffect(() => aoMudarInstalacao(() => setN((n) => n + 1)), []);
-  if (jaInstalado()) return null;
+  if (jaInstalado() || NO_APP_NATIVO) return null;
   const clicar = async () => {
     if (temPrompt()) { const r = await instalarAgora(); if (r === "aceito") toast(t("installed")); return; }
     setAjuda((v) => !v);
@@ -341,7 +353,7 @@ function Bloqueado({ min, email, dataKey, cancelado = false }) {
       <div className="text-3xl">🔒</div>
       <div className="mt-2 text-lg font-extrabold text-g-word">{cancelado ? t("canceledH") : t("lockedH").replace("{p}", nomePlano(min))}</div>
       <p className="mx-auto mt-1 max-w-md text-sm text-g-muted">{cancelado ? t("canceledP") : t("lockedP")}</p>
-      {ehRecepcao(dataKey) ? <p className="mx-auto mt-3 max-w-md text-xs font-bold text-g-gold">{tx({ en: "Ask the owner to change the plan.", pt: "Peça à dona para mudar o plano.", es: "Pídele a la dueña que cambie el plan.", hi: "प्लान बदलने के लिए मालिक से कहें।" })}</p> : <div className="mt-4 flex flex-wrap justify-center gap-2">
+      {ehRecepcao(dataKey) ? <p className="mx-auto mt-3 max-w-md text-xs font-bold text-g-gold">{tx({ en: "Ask the owner to change the plan.", pt: "Peça à dona para mudar o plano.", es: "Pídele a la dueña que cambie el plan.", hi: "प्लान बदलने के लिए मालिक से कहें।" })}</p> : NO_APP_NATIVO ? <p className="mx-auto mt-3 max-w-md text-xs font-bold text-g-gold">{tx({ en: "Plans are managed at guileoai.com.", pt: "Os planos são administrados em guileoai.com.", es: "Los planes se administran en guileoai.com.", hi: "प्लान guileoai.com पर प्रबंधित होते हैं।" })}</p> : <div className="mt-4 flex flex-wrap justify-center gap-2">
         <button disabled={indo} onClick={vai} className="rounded-full bg-g-green px-5 py-2.5 text-sm font-extrabold text-[#161512] disabled:opacity-50">{indo ? "…" : cancelado ? t("reactivate") : t("subscribe").replace("{p}", nomePlano(min))}</button>
         <a href="/desk#planos" target="_blank" rel="noopener" className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-bold text-g-word">{t("planChange")}</a>
       </div>}
@@ -552,6 +564,8 @@ export default function Desk({ real = null, email = "", dataKey = "" }) {
   );
   const ChipPlano = recepcao ? (
     <span className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-[11px] font-black text-g-muted">{tx({ en: "Front desk access", pt: "Acesso da recepção", es: "Acceso de recepción", hi: "रिसेप्शन एक्सेस" })}</span>
+  ) : plano && NO_APP_NATIVO ? (
+    <span className="rounded-full border border-g-gold/40 bg-g-gold/10 px-3 py-1.5 text-[11px] font-black text-g-gold">{plano === "nenhum" ? "⚠ " + t("canceledH") : t("planChip").replace("{p}", nomePlano(plano))}</span>
   ) : plano ? (
     <a href="/desk#planos" target="_blank" rel="noopener" className="rounded-full border border-g-gold/40 bg-g-gold/10 px-3 py-1.5 text-[11px] font-black text-g-gold">{plano === "nenhum" ? "⚠ " + t("canceledH") : t("planChip").replace("{p}", nomePlano(plano))}</a>
   ) : null;

@@ -167,7 +167,7 @@ export const VERTICALS = {
 
   salon: {
     label: "Salon & Spa", icon: "💈",
-    business: { name: "Lumière Spa", place: "Miami · US", since: "Live since May 2026" },
+    business: { name: "Natura Spa + Salon", place: "Astoria, NY · US", since: "Live since Sep 2026" },  // 2026-11-03: a demonstração do salão tem a cara do Natura (apresentação do Luis); nomeDoDono continua travando o nome fora do agente
     impact: { total: 16900, parts: [["Revenue recovered", "$11,200"], ["Slots filled", "$3,900"], ["Packages sold", "$1,800"]] },
     plan: { label: "Growth Plan", used: 511, total: 1500, unit: "Bookings this month" },
     channelMix: { title: "Channel breakdown", sub: "Where bookings come from", items: [["WhatsApp", 40], ["Instagram", 27], ["Phone (AI)", 20], ["Google", 13]] },

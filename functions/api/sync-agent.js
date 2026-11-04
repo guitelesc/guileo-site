@@ -12,6 +12,7 @@ import { isReserved } from "../lib/reserved.js";
 import { resolveNativeVoices } from "../lib/voiceLibrary.js";
 import { svcRpc, svcJson } from "../lib/sb.js";
 import { faladoComoGente } from "../lib/faladoComoGente.js";
+import { contaParaSinal } from "../lib/contaDoCliente.js";
 
 const SB_URL = "https://ynihodbknhjirkdogxby.supabase.co";
 const SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InluaWhvZGJrbmhqaXJrZG9neGJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzU5ODgsImV4cCI6MjA5NjI1MTk4OH0.yT1wPPD40EXgNdAlGPhsS_HGbH7Rt8Ok6EMzX2ECU7E";
@@ -210,7 +211,15 @@ export async function onRequestPost(context) {
     // se a biblioteca não responder, o mapa vem vazio e o agente sincroniza com a voz de sempre.
     const nativeVoices = await resolveNativeVoices(env).catch(() => ({}));
     marco("vozes");
-    const convCfg = buildConversationConfig(env, { business, industry, lang, brain: kbBrain, agentName, email, prices, voiceId, nativeVoices, transfer: Array.isArray(perfil?.transfer) ? perfil.transfer : null, proprios: numerosDaAgente });
+    // PODE COBRAR? (2026-10-22) — só com conta de pagamento ligada E SMS aprovado: o link de
+    // pagamento sai por mensagem. Sem os dois, a agente não oferece link, sinal nem "pagar agora"
+    // (a Lilian da Natura prometia um link que não podia existir). Leitura que falha = não cobra.
+    let pagamentos = false;
+    try {
+      const conta = await contaParaSinal(env, email);
+      pagamentos = !!conta && conta.modo !== "sem_conta" && String(env.SMS_A2P_APROVADO || "") === "1";
+    } catch { pagamentos = false; }
+    const convCfg = buildConversationConfig(env, { business, industry, lang, brain: kbBrain, agentName, email, prices, voiceId, nativeVoices, transfer: Array.isArray(perfil?.transfer) ? perfil.transfer : null, proprios: numerosDaAgente, pagamentos });
     const pr = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${agentId}`, {
       method: "PATCH",
       headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "Content-Type": "application/json" },

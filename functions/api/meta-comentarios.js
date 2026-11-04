@@ -8,6 +8,8 @@
 //   POST { email, token }                          → { ok, ready, campanhas:[...], stats }
 //   POST { email, token, action:"salvar", campanha:{...} } → { ok, id }
 //   POST { email, token, action:"apagar", id }     → { ok, apagadas }
+//   POST { admin_token, dias }                     → { ok, clientes:[{email, nomes, metricas|metricas_erro}] }  (/admin)
+//   POST { admin_token, email, action:"metricas" } → um cliente, mesma forma do portal              (/admin)
 //
 // PORTÃO: o MESMO de noshow-radar.js — get_client_data(email, key) amarra o e-mail do cockpit à
 // chave de conexão. Sem fallback de OWNER_EMAIL. E a validação confere o FORMATO da resposta,
@@ -18,7 +20,7 @@
 // { ready:false, nota } em vez de 500. A tela mostra o motivo real, nunca uma lista vazia que
 // finge que está tudo certo (lista vazia é o disfarce favorito de erro neste projeto).
 import { json } from "../lib/guard.js";
-import { svcJson } from "../lib/sb.js";
+import { svcJson, sbKey, SB_URL } from "../lib/sb.js";
 // A FONTE ÚNICA DE IDIOMA. Importar daqui (e não redigitar a lista) é o que impede este arquivo
 // de virar a QUARTA lista de idiomas do sistema — depois de LANGS_SPOKEN, do i18n da landing e
 // do dicionário do cockpit. Lista repetida diverge; a que diverge em silêncio é a pior.
@@ -62,10 +64,87 @@ async function rpc(nome, corpo) {
   });
 }
 
+const diasValidos = (v) => ([7, 30, 90].includes(Number(v)) ? Number(v) : 30);
+
+// ⚠️ ERRO NÃO VIRA ZERO (vale para o cliente E para o /admin — por isso é uma função só).
+async function lerMetricasDe(env, segredo, email, dias) {
+  const m = await svcJson(env, "direct_metricas", { p_secret: segredo, p_email: email, p_dias: dias }).catch((e) => ({ ok: false, detalhe: String(e).slice(0, 120) }));
+  if (!m || typeof m !== "object" || m.ok === false || m.erro || !m.funil) {
+    return { metricas: null, metricas_erro: (m && (m.erro || m.detalhe || (m.erro_http && `HTTP ${m.erro_http}`))) || "resposta_estranha" };
+  }
+  return { metricas: m };
+}
+
+// ── A PORTA DO /admin (2026-10-23) ────────────────────────────────────────────────────────────
+// O Luis vê TODOS os clientes do Direct num lugar; o cliente continua vendo só o dele no portal.
+// Mesma leitura (direct_metricas), outro portão: a senha do /admin via blitz_stats, igual a
+// /api/entregas e /api/meta-connect. Quem tem a senha do /admin já vê os leads de todo mundo.
+//
+// QUEM É CLIENTE DO DIRECT: quem tem conta Meta (meta_accounts) OU campanha (meta_comment_campaigns).
+// Lido direto da tabela com a service_role — o mesmo caminho de agent-evolve.js. Sem a service_role
+// o sbKey cai na anon, a RLS devolve [] e a tela diria "nenhum cliente": a mentira mais barata deste
+// projeto. Por isso sem a chave de serviço a resposta é ERRO, nunca lista vazia.
+async function clientesDoDirect(env) {
+  if (!(env && env.SUPABASE_SERVICE_ROLE)) return { erro: "SUPABASE_SERVICE_ROLE ausente" };
+  const k = sbKey(env);
+  const ler = async (q) => {
+    const r = await fetch(`${SB_URL}/rest/v1/${q}`, { headers: { apikey: k, Authorization: `Bearer ${k}` } });
+    if (!r.ok) throw new Error(`${q.split("?")[0]} HTTP ${r.status}`);
+    const v = await r.json();
+    if (!Array.isArray(v)) throw new Error(`${q.split("?")[0]} resposta estranha`);
+    return v;
+  };
+  try {
+    const [contas, campanhas] = await Promise.all([
+      ler("meta_accounts?select=client_email,business_name,ig_username"),
+      ler("meta_comment_campaigns?select=client_email"),
+    ]);
+    const porEmail = new Map();
+    const pegar = (e) => {
+      const em = String(e || "").trim().toLowerCase();
+      if (!em.includes("@")) return null;
+      if (!porEmail.has(em)) porEmail.set(em, { email: em, nomes: [] });
+      return porEmail.get(em);
+    };
+    for (const c of contas) {
+      const x = pegar(c.client_email);
+      const nome = c.business_name || (c.ig_username ? `@${c.ig_username}` : "");
+      if (x && nome && !x.nomes.includes(nome)) x.nomes.push(nome);
+    }
+    for (const c of campanhas) pegar(c.client_email);
+    return { clientes: [...porEmail.values()] };
+  } catch (e) {
+    return { erro: String(e.message || e).slice(0, 160) };
+  }
+}
+
+async function portaDoAdmin(env, b) {
+  const gate = await rpc("blitz_stats", { p_token: String(b.admin_token || "").trim().slice(0, 200), p_email: "" });
+  if (!gate.ok) return json({ error: "unauthorized" }, 401);
+  const segredo = env.INGEST_SECRET || "";
+  if (!segredo) return json({ ok: false, erro: "INGEST_SECRET ausente" }, 503);
+  const dias = diasValidos(b.dias);
+  const action = String(b.action || "");
+
+  // Um cliente só — é o que a troca de período do painel pede (mesma forma da resposta do portal).
+  if (action === "metricas") {
+    const email = String(b.email || "").trim().toLowerCase();
+    if (!email.includes("@")) return json({ ok: false, erro: "email" }, 400);
+    return json({ ok: true, ready: true, dias, ...(await lerMetricasDe(env, segredo, email, dias)) });
+  }
+
+  // Visão geral: todos os clientes, cada um com a SUA leitura (uma falha não apaga as outras).
+  const lista = await clientesDoDirect(env);
+  if (lista.erro) return json({ ok: false, erro: lista.erro });
+  const clientes = await Promise.all(lista.clientes.map(async (c) => ({ ...c, ...(await lerMetricasDe(env, segredo, c.email, dias)) })));
+  return json({ ok: true, dias, clientes });
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   try {
     const b = await request.json().catch(() => ({}));
+    if (b.admin_token) return await portaDoAdmin(env, b);
     const email = (b.email || "").toString().trim().toLowerCase();
     const key = (b.token || b.key || "").toString().trim();
     if (!email.includes("@") || !key) return json({ error: "unauthorized" }, 401);
@@ -91,14 +170,8 @@ export async function onRequestPost(context) {
     // falso que este projeto já pagou cinco vezes num dia: o dono conclui "ninguém comenta" quando
     // o certo era "não consegui ler". Falha volta como `metricas: null` + `metricas_erro`, e a tela
     // diz isso com todas as letras.
-    const dias = [7, 30, 90].includes(Number(b.dias)) ? Number(b.dias) : 30;
-    async function lerMetricas() {
-      const m = await svcJson(env, "direct_metricas", { p_secret: segredo, p_email: email, p_dias: dias }).catch((e) => ({ ok: false, detalhe: String(e).slice(0, 120) }));
-      if (!m || typeof m !== "object" || m.ok === false || m.erro || !m.funil) {
-        return { metricas: null, metricas_erro: (m && (m.erro || m.detalhe || (m.erro_http && `HTTP ${m.erro_http}`))) || "resposta_estranha" };
-      }
-      return { metricas: m };
-    }
+    const dias = diasValidos(b.dias);
+    const lerMetricas = () => lerMetricasDe(env, segredo, email, dias);
     if (action === "metricas") return json({ ok: true, ready: true, dias, ...(await lerMetricas()) });
 
     // ── SALVAR ────────────────────────────────────────────────────────────────────────────────

@@ -182,9 +182,29 @@ export function upsellLinesFor(industry, lang) {
   return GENERIC[L] || GENERIC.en;
 }
 
+// Só sugere o que o NEGÓCIO VENDE (2026-10-22). O playbook é por vertical, e a vertical "salão"
+// trazia "Manicure → ofereça a pedicure" para TODO salão — a Lilian da Natura (que não faz unhas)
+// recebia a instrução de oferecer pedicure. Agora, quando há catálogo, cada linha só fica se o
+// GATILHO dela (o que vem antes do "→") aparece no catálogo. Sem catálogo, nada muda.
+const SEM_ACENTO = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const PALAVRAS_DE_LIGA = new Set(["booked", "service", "services", "marcou", "agendo", "agendado", "servico", "servicio", "fechado", "with", "para", "com", "the"]);
+export function linhaCabeNoCatalogo(linha, catalogo) {
+  const cat = SEM_ACENTO(catalogo);
+  if (!cat.trim()) return true;
+  const gatilho = SEM_ACENTO(String(linha).split("→")[0]);
+  const palavras = gatilho.match(/[a-z]{4,}/g) || [];
+  const chave = palavras.filter((p) => !PALAVRAS_DE_LIGA.has(p));
+  if (!chave.length) return true;            // linha genérica ("Serviço fechado → …") fica sempre
+  return chave.some((p) => cat.includes(p));
+}
+
 // The compact prompt section (≤ 600 chars) appended to buildGuiPrompt.
-export function upsellSection(industry, lang) {
-  const lines = upsellLinesFor(industry, lang).slice(0, 3);
+// `catalogo` (opcional) = o bloco de preços do negócio; filtra as linhas pelo que ele vende.
+export function upsellSection(industry, lang, catalogo = "") {
+  const todas = upsellLinesFor(industry, lang);
+  const cabem = todas.filter((l) => linhaCabeNoCatalogo(l, catalogo));
+  const L = ["pt", "es", "en"].includes(lang) ? lang : "en";
+  const lines = (cabem.length ? cabem : (GENERIC[L] || GENERIC.en)).slice(0, 3);
   let out = `## UPSELL — offer naturally, never pushy, max once per call\n${lines.map((l) => `• ${l}`).join("\n")}`;
   if (out.length > 600) out = out.slice(0, 597) + "…";
   return out;

@@ -2,7 +2,7 @@
 // Cada regra tem o caso que a faz aparecer E o caso que a faz ficar quieta — conselho que aparece
 // sempre é ruído, e ruído é o que faz o dono parar de ler o painel.
 //   node functions/lib/directConselhos.test.mjs
-import { conselhosDoDirect, DIAS_CONTA_MUDA } from "../../src/portal/directConselhos.js";
+import { conselhosDoDirect, DIAS_CONTA_MUDA, ordemDeAtencao, alertasDoDirect } from "../../src/portal/directConselhos.js";
 
 let falhas = 0;
 const ok = (c, o) => { if (!c) { falhas++; console.log("  ✗ " + o); } else console.log("  ✓ " + o); };
@@ -60,6 +60,23 @@ console.log("\n— o verde e o vazio —");
 ok(ids(base({ funil: { dm_enviado: 8, conversas: 3 }, contas: conta(1) })).join() === "tudo_certo", "sem nada a consertar e com DMs saindo → 'tudo certo' (e só isso)");
 ok(ids(base()).join() === "sem_dados", "período vazio → diz que está vazio, não inventa conselho");
 ok(conselhosDoDirect(null).length === 0 && conselhosDoDirect({}).length === 0, "métrica ausente → nenhum conselho (a tela mostra o erro de leitura)");
+
+console.log("\n— /admin: a ordem em que o Luis olha os clientes —");
+const emDia = base({ funil: { comentarios: 40, casou: 20, dm_enviado: 20, conversas: 12, leads: 5 }, conversa: { recebidas: 300, respondidas: 290 },
+  contas: [{ ig_id: "1", pagina: "Ok", ultima_dm_recebida: "2026-10-04T10:00:00Z" }], por_campanha: [{ nome: "x", ativa: true, tem_link: true }] });
+const soAmarelo = base({ funil: { casou: 2, dm_enviado: 2 }, conversa: { recebidas: 10 },
+  contas: [{ ig_id: "2", pagina: "Muda", ultima_dm_recebida: "2026-09-01T00:00:00Z" }] });
+const linhas = [
+  { email: "emdia@x", metricas: emDia },
+  { email: "amarelo@x", metricas: soAmarelo },
+  { email: "chigo@x", metricas: chigo },
+  { email: "falhou@x", metricas: null, metricas_erro: "HTTP 500" },
+];
+const ordem = [...linhas].sort((a, b) => ordemDeAtencao(a, b, AGORA)).map((x) => x.email);
+ok(ordem[0] === "falhou@x", "leitura que falhou vem primeiro — não saber é pior que saber de um problema");
+ok(ordem[1] === "chigo@x", "depois quem tem vermelho (a Chigo, com DM que não saiu)");
+ok(ordem.indexOf("amarelo@x") < ordem.indexOf("emdia@x"), "amarelo antes de quem está em dia");
+ok(alertasDoDirect(chigo, AGORA).red >= 1 && alertasDoDirect(null).red === 0, "conta os alertas pela MESMA regra do portal; sem métrica conta zero");
 
 console.log(falhas ? `\n❌ ${falhas} falha(s)\n` : "\n✅ directConselhos: cada regra aparece e cala na hora certa\n");
 process.exit(falhas ? 1 : 0);

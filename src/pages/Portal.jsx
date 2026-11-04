@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, Suspense, Fragment } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { portalApi, CONNECTED, toast, onToast, fetchRealData, fetchRealDataDetalhado, loadDataKey, saveDataKey } from "../lib/portalApi.js";
+import { NO_APP_NATIVO } from "../lib/nativeApp.js";
 import { NOME_DO_PAINEL } from "../portal/nome.js";
 import { lazyRetry } from "../lib/lazyRetry.js";
 import { instalarTetoDeRede } from "../lib/tetoDeRede.js";
@@ -1188,6 +1189,8 @@ export { setUiLang as _setUiLangParaProva };
 // TELA AVULSA (2026-10-05): /balcao (acesso da recepção) usa o Desk fora do painel — mesmo idioma inicial
 // (navegador) e o mesmo aviso flutuante. Carrega o dicionário antes de pintar.
 export async function prepararTelaAvulsa() { await loadDict(IDIOMA_INICIAL); setUiLang(IDIOMA_INICIAL); return IDIOMA_INICIAL; }
+// /admin (2026-10-23): o painel do Direct dentro do admin fala o idioma do ADMIN (pt), não o do navegador.
+export async function prepararIdiomaDoPainel(lang) { await loadDict(lang); setUiLang(lang); return lang; }
 
 // ── Voice of Gui — browser speechSynthesis, feature-detected (graceful no-op where
 // unsupported, no deps). NEVER autoplays: every call sits behind a user gesture.
@@ -2267,7 +2270,7 @@ function Login({ onEnter, lang = "en", onLang }) {
   // Link de recuperação vencido/usado volta com #error_code=… → a pessoa já cai no "esqueci a
   // senha" com o motivo na tela, em vez de um login mudo que parece não ter feito nada.
   const linkVencido = !!portalApi.erroDoLink();
-  const [mode, setMode] = useState(linkVencido ? "forgot" : "signup");   // signup | signin | forgot (real backend only)
+  const [mode, setMode] = useState(linkVencido ? "forgot" : NO_APP_NATIVO ? "signin" : "signup");   // signup | signin | forgot (real backend only); no app nativo abre em Entrar (a conta nasce no site)
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [err, setErr] = useState(() => (linkVencido ? erroDeLogin(portalApi.erroDoLink()) : null));   // {msg, cru?} | null
@@ -2364,7 +2367,7 @@ function Login({ onEnter, lang = "en", onLang }) {
               <button disabled={busy} className="btn-bright text-sm w-full disabled:opacity-70">{busy ? "…" : tr(CONNECTED ? (mode === "signup" ? "Create account →" : "Sign in →") : `Enter ${NOME_DO_PAINEL} →`)}</button>
               {erroNaTela}
             </form>
-            {CONNECTED && (
+            {CONNECTED && !NO_APP_NATIVO && (
               <button onClick={() => trocarModo(mode === "signup" ? "signin" : "signup")} className="mt-3 text-xs font-bold text-g-gold hover:underline">
                 {tr(mode === "signup" ? "Already have an account? Sign in" : "New here? Create an account")}
               </button>
@@ -2788,6 +2791,9 @@ function Gui({ V, onNav, real = null, conectada = false }) {
 }
 
 /* ───────────────────────── Page ───────────────────────── */
+// ?demo=natura — demonstração com a marca do cliente (Desk.jsx `demoNatura` faz o mesmo na agenda).
+const DEMO_NATURA = (() => { try { return new URLSearchParams(window.location.search).get("demo") === "natura"; } catch { return false; } })();
+
 export default function Portal() {
   const [authed, setAuthed] = useState(false);
   const [booting, setBooting] = useState(true);
@@ -2812,7 +2818,9 @@ export default function Portal() {
   // Vertical can be deep-linked via ?v=<id> (shareable per-sector links) and is remembered.
   const [vertical, setVertical] = useState(() => {
     try {
-      const q = new URLSearchParams(window.location.search).get("v");
+      const sp = new URLSearchParams(window.location.search);
+      // ?demo=natura → ramo de salão/spa com a marca da Natura (src/portal/Desk.jsx `demoNatura`).
+      const q = sp.get("v") || (sp.get("demo") === "natura" ? "salon" : null);
       const saved = portalApi.loadState("vertical", null);
       const pick = q || saved || "restaurant";
       return VERTICALS[pick] ? pick : "restaurant";
@@ -2836,12 +2844,14 @@ export default function Portal() {
   // a alguém identificado o que já sabemos: entra direto, nos dados REAIS dela.
   const [onboarded, setOnboarded] = useState(() => {
     try {
-      if (new URLSearchParams(window.location.search).get("code")) return true;
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("code")) return true;
+      if (sp.get("demo") === "natura") return true;   // demo com a marca do cliente: sem assistente de ramo
       if (loadDataKey()) return true;
       return !!localStorage.getItem("guileo_onboarded");
     } catch { return true; }
   });
-  const [tourDone, setTourDone] = useState(() => { try { return !!localStorage.getItem("guileo_tour_done"); } catch { return true; } });
+  const [tourDone, setTourDone] = useState(() => { try { return !!localStorage.getItem("guileo_tour_done") || new URLSearchParams(window.location.search).get("demo") === "natura"; } catch { return true; } });
   const [fvDone, setFvDone] = useState(true);   // first-value guided path — only fires right after a fresh wizard
   const finishFV = () => { setFvDone(true); try { localStorage.setItem("guileo_firstvalue_done", "1"); } catch { /* */ } };
   const finishTour = () => { setTourDone(true); try { localStorage.setItem("guileo_tour_done", "1"); } catch { /* private */ } };
@@ -2995,6 +3005,8 @@ export default function Portal() {
       return { ...base, business: { ...base.business, name: String(ident.business).slice(0, 80), place: "" } };
     }
     if (!real) {
+      // ?demo=natura → a amostra veste a marca da Natura (nome, unidades, data do Go-Live).
+      try { if (new URLSearchParams(window.location.search).get("demo") === "natura") return { ...base, business: { name: "Natura Spa + Salon", place: "Astoria · Upper East Side · Med Spa, NY", since: "Go-Live Oct 29, 2026" } }; } catch { /* */ }
       try {
         const pend = portalApi.loadState("pending_onboard", null);
         const nm = (pend?.extra?.name || "").toString().trim().slice(0, 60);
@@ -3323,14 +3335,14 @@ export default function Portal() {
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={() => setNavOpen(true)} aria-expanded={navOpen} aria-controls="portal-sidebar" className="lg:hidden grid place-items-center h-9 w-9 rounded-xl border border-white/15 bg-white/[0.04] text-g-word shrink-0" aria-label={tr("Open menu")}>☰</button>
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-extrabold text-g-word truncate flex items-center gap-2">{tr(title, lang)}{real && REAL_VIEWS.has(view) ? <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wide bg-g-green/15 text-g-green border border-g-green/40 rounded-full px-2 py-0.5 shrink-0 shadow-[0_0_10px_rgba(62,148,104,0.35)]"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("LIVE — real data")}</span> : real ? <span className="text-[9px] font-black uppercase tracking-wide bg-g-gold/15 text-g-gold border border-g-gold/30 rounded-full px-2 py-0.5 shrink-0">{tr("Sample preview")}</span> : <button onClick={() => setView("settings")} title={tr("Sample data · connect →")} className="text-[9px] font-black uppercase tracking-wide bg-g-gold/20 text-g-gold border border-g-gold/30 rounded-full px-2 py-0.5 shrink-0 hover:bg-g-gold/30 transition">{tr("Sample data · connect →")}</button>}</h1>
+              <h1 className="text-lg sm:text-xl font-extrabold text-g-word truncate flex items-center gap-2">{tr(title, lang)}{real && REAL_VIEWS.has(view) ? <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wide bg-g-green/15 text-g-green border border-g-green/40 rounded-full px-2 py-0.5 shrink-0 shadow-[0_0_10px_rgba(62,148,104,0.35)]"><span className="h-1.5 w-1.5 rounded-full bg-g-green live-dot animate-pulse" />{tr("LIVE — real data")}</span> : real ? <span className="hidden sm:inline text-[9px] font-black uppercase tracking-wide bg-g-gold/15 text-g-gold border border-g-gold/30 rounded-full px-2 py-0.5 shrink-0">{tr("Sample preview")}</span> : <button onClick={() => setView("settings")} title={tr("Sample data · connect →")} className="hidden sm:inline-block text-[9px] font-black uppercase tracking-wide bg-g-gold/20 text-g-gold border border-g-gold/30 rounded-full px-2 py-0.5 shrink-0 hover:bg-g-gold/30 transition">{tr("Sample data · connect →")}</button>}</h1>
               <p className="text-[11px] text-g-muted truncate">{(() => { const bp = real ? portalApi.loadProfile(V.label, {}) : null; return bp && bp.name ? `${bp.name}${bp.address ? " · " + bp.address : ""}` : `${V.business.name} · ${V.business.place} · ${V.business.since}`; })()}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button onClick={() => setPaletteOpen(true)} className="hidden md:flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs text-g-muted w-40 hover:border-g-gold/40 transition"><FaMagnifyingGlass size={11} /><span className="truncate">{tr("Search… ⌘K")}</span></button>
             {!real && <button onClick={exportReport} className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-g-word hover:border-g-gold/40 transition"><FaDownload size={11} /> {tr("Report", lang)}</button>}
-            <button onClick={toggleLang} title={tr("Language")} aria-label={tr("Toggle language")} className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-black text-g-word hover:border-g-gold/40 transition"><span className={lang === "en" ? "text-g-gold" : "text-g-muted"}>EN</span><span className="text-g-muted">·</span><span className={lang === "pt" ? "text-g-gold" : "text-g-muted"}>PT</span><span className="text-g-muted">·</span><span className={lang === "es" ? "text-g-gold" : "text-g-muted"}>ES</span><span className="text-g-muted">·</span><span className={lang === "hi" ? "text-g-gold" : "text-g-muted"}>HI</span></button>
+            <button onClick={toggleLang} title={tr("Language")} aria-label={tr("Toggle language")} className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-black text-g-word hover:border-g-gold/40 transition">{/* celular: só o idioma atual (o toque troca); telas largas: os 4 */}{["en", "pt", "es", "hi"].map((l, i) => <Fragment key={l}>{i > 0 && <span className="hidden sm:inline text-g-muted">·</span>}<span className={lang === l ? "text-g-gold" : "hidden sm:inline text-g-muted"}>{l.toUpperCase()}</span></Fragment>)}</button>
             <div className="relative">
               <button onClick={() => setBellOpen((o) => !o)} className="relative grid place-items-center h-9 w-9 rounded-full border border-white/15 bg-white/[0.04] text-g-muted hover:text-g-word transition" aria-label={`Notifications (${totalNotif})`}><FaBell size={13} />{totalNotif > 0 && <span className="absolute -top-1 -right-1 inline-grid place-items-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black shadow-[0_0_8px_rgba(239,68,68,0.6)]">{totalNotif}</span>}</button>
               {bellOpen && (
@@ -3394,7 +3406,11 @@ export default function Portal() {
             sample numbers NEVER read as their real money. Clears the moment a valid code is pasted. */}
         {/* enquanto a PRIMEIRA leitura está a caminho (chave presente, nenhuma resposta ainda) a
             faixa não aparece: dizer "você está vendo dados de amostra" sobre um esqueleto é falso. */}
-        {!me?.demo && !real && !(loadDataKey() && realFalha == null) && (
+        {/* ?demo=natura (apresentação ao cliente): a verdade cabe num selo de uma linha, não numa caixa. */}
+        {DEMO_NATURA && !real && (
+          <div className="px-5 sm:px-8 pt-3"><span className="inline-flex items-center gap-1.5 rounded-full border border-g-gold/40 bg-g-gold/[0.10] px-3 py-1 text-[11px] font-bold text-g-gold">📊 {tr("Demo · sample data")}</span></div>
+        )}
+        {!DEMO_NATURA && !me?.demo && !real && !(loadDataKey() && realFalha == null) && (
           <div className="px-5 sm:px-8 pt-4">
             <button onClick={() => setView("settings")} className="w-full text-left rounded-xl2 border border-g-gold/40 bg-g-gold/[0.10] px-4 py-3 flex flex-wrap items-center gap-3 hover:border-g-gold/70 transition">
               <span className="text-lg">📊</span>
